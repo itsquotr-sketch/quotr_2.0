@@ -21,7 +21,8 @@
  * This module adds a projection and a transition contract. It does not
  * replace those columns. An accepted commercial snapshot is a copy of the
  * accepted quote revision. project_lifecycle_events record that something
- * happened; they are not the commercial baseline.
+ * happened; they are not the commercial baseline. Variation events are part
+ * of this vocabulary. Variation money lives on variation revisions, not here.
  *
  * Builder and Business are billing plans (lib/billing). Both use the same
  * organisation ownership. This module does not add a second tenant boundary.
@@ -62,6 +63,12 @@ export const LIFECYCLE_EVENT_TYPES = [
   "project_activated",
   "project_completed",
   "project_cancelled",
+  "variation_created",
+  "variation_issued",
+  "variation_accepted",
+  "variation_rejected",
+  "variation_withdrawn",
+  "variation_superseded",
 ] as const;
 
 export type LifecycleEventType = (typeof LIFECYCLE_EVENT_TYPES)[number];
@@ -75,6 +82,12 @@ export const LIFECYCLE_EVENT_COPY: Record<LifecycleEventType, string> = {
   project_activated: "Job started",
   project_completed: "Job completed",
   project_cancelled: "Project cancelled",
+  variation_created: "Variation created",
+  variation_issued: "Variation issued",
+  variation_accepted: "Variation accepted",
+  variation_rejected: "Variation rejected",
+  variation_withdrawn: "Variation withdrawn",
+  variation_superseded: "Variation superseded",
 };
 
 export const LIFECYCLE_EVENT_SCHEMA_VERSION = 1;

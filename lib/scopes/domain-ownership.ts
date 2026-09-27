@@ -372,12 +372,15 @@ export const DOMAIN_ENTITY_CONTRACTS: readonly DomainEntityContract[] = [
   },
   {
     id: "future_variation",
-    purpose: "Future signed change against an accepted baseline",
+    purpose:
+      "Signed change against an accepted baseline. The logical variation keeps its number; issued history is a new revision.",
     owner: "Organisation and project",
-    sourceOfTruth: "Not stored yet — boundary only, see lifecycle-foundation",
-    lifecycle: "own version and status; approval required before revised contract value",
-    freezePoint: "Must not edit the accepted commercial snapshot",
-    downstreamConsumers: ["Revised contract value", "future variation UI"],
+    sourceOfTruth:
+      "variations + variation_revisions + variation_items. Revised contract value reads the accepted snapshot and accepted current revisions only.",
+    lifecycle:
+      "draft, issued, accepted, rejected, withdrawn, superseded. Accepted revisions are immutable. Draft and issued values do not change revised contract value.",
+    freezePoint: "Must not edit the accepted commercial snapshot, quote, estimate, pricing, or company rates.",
+    downstreamConsumers: ["Revised contract value", "future variation documents"],
   },
   {
     id: "future_subcontractor_rfp",

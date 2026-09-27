@@ -200,7 +200,9 @@ function sourceChecks(): void {
     "M fresh chain and Preview upgrade share one final definition",
     m062.includes("create or replace function public.enforce_quote_events_append_only") &&
       m062.includes("drop function if exists public.preview_fixture_org(uuid)") &&
-      sqlFiles().at(-1) === "062_remove_preview_lifecycle_cleanup.sql"
+      sqlFiles().includes("062_remove_preview_lifecycle_cleanup.sql") &&
+      sqlFiles().at(-1) === "063_variation_domain_foundation.sql" &&
+      !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",
