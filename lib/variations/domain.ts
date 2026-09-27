@@ -89,6 +89,19 @@ export function canTransitionVariation(
   return VARIATION_TRANSITIONS[from].includes(to);
 }
 
+export type VariationPricingMode = "simple" | "build_up";
+
+export const VARIATION_COST_CATEGORIES = [
+  "material",
+  "labour",
+  "subcontract",
+  "plant",
+  "allowance",
+  "other",
+] as const;
+
+export type VariationCostCategory = (typeof VARIATION_COST_CATEGORIES)[number];
+
 export type VariationItemInput = {
   itemType: VariationItemType;
   clientDescription: string;
@@ -97,6 +110,9 @@ export type VariationItemInput = {
   unitSell: number | null;
   unitCost: number | null;
   substitutionGroupId: string | null;
+  pricingMode?: VariationPricingMode;
+  authoritativeLineSell?: number | null;
+  authoritativeLineCost?: number | null;
 };
 
 export type PreparedVariationItem = {
@@ -108,6 +124,7 @@ export type PreparedVariationItem = {
   lineSellAdjustmentExGst: number | null;
   lineCostAdjustment: number | null;
   substitutionGroupId: string | null;
+  costIncomplete?: boolean;
 };
 
 function centsAligned(value: number): boolean {
@@ -143,6 +160,38 @@ export function prepareVariationItem(
   }
   if (input.unitSell != null && !centsAligned(input.unitSell)) {
     return { ok: false, error: "INVALID_ITEM" };
+  }
+
+  if (input.pricingMode === "build_up") {
+    if (input.itemType === "no_cost_scope_change") {
+      return { ok: false, error: "INVALID_ITEM" };
+    }
+    const lineSell = input.authoritativeLineSell ?? null;
+    const lineCost = input.authoritativeLineCost ?? null;
+    if (lineSell != null && !centsAligned(lineSell)) return { ok: false, error: "INVALID_ITEM" };
+    if (lineCost != null && !centsAligned(lineCost)) return { ok: false, error: "INVALID_ITEM" };
+    if (input.itemType === "addition") {
+      if (lineSell != null && lineSell <= 0) return { ok: false, error: "INVALID_ITEM" };
+      if (lineCost != null && lineCost < 0) return { ok: false, error: "INVALID_ITEM" };
+    }
+    if (input.itemType === "omission") {
+      if (lineSell != null && lineSell >= 0) return { ok: false, error: "INVALID_ITEM" };
+      if (lineCost != null && lineCost > 0) return { ok: false, error: "INVALID_ITEM" };
+    }
+    return {
+      ok: true,
+      item: {
+        itemType: input.itemType,
+        quantity: input.quantity,
+        unit: input.unit.trim(),
+        unitSell: null,
+        unitCost: null,
+        lineSellAdjustmentExGst: lineSell,
+        lineCostAdjustment: lineCost,
+        substitutionGroupId: input.substitutionGroupId,
+        costIncomplete: lineCost == null,
+      },
+    };
   }
 
   let lineSell: number | null = null;
@@ -265,6 +314,27 @@ export function variationRevisionTotals(
     gstAdjustment,
     totalAdjustmentInclGst: roundMoney(totalSellAdjustmentExGst + gstAdjustment),
   };
+}
+
+export function componentLineCost(quantity: number, unitCost: number | null): number | null {
+  if (unitCost == null || !isFiniteNumber(quantity) || !isFiniteNumber(unitCost) || unitCost < 0) return null;
+  return roundMoney(quantity * unitCost);
+}
+
+export function aggregateComponentCost(lineCosts: readonly (number | null)[]): number | null {
+  if (lineCosts.length === 0) return null;
+  let total = 0;
+  for (const line of lineCosts) {
+    if (line == null) return null;
+    total += line;
+  }
+  return roundMoney(total);
+}
+
+/** Display only. Multiplying this rounded rate by quantity is not the stored sell. */
+export function approximateClientUnitRate(totalSell: number, quantity: number): number | null {
+  if (!isFiniteNumber(totalSell) || !isFiniteNumber(quantity) || quantity <= 0) return null;
+  return roundMoney(totalSell / quantity);
 }
 
 /**
@@ -431,10 +501,23 @@ export type ClientFacingVariation = {
   }>;
 };
 
+export type VariationCostComponent = {
+  id: string;
+  category: VariationCostCategory;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitCost: number | null;
+  lineCost: number | null;
+  sortOrder: number;
+};
+
 type InternalVariationItem = ClientFacingVariationItem & {
   unitCost: number | null;
   lineCostAdjustment: number | null;
   internalMetadata: Record<string, unknown>;
+  pricingMode: VariationPricingMode;
+  components: VariationCostComponent[];
 };
 
 export type InternalVariation = {

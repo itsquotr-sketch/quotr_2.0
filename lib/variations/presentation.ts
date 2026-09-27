@@ -318,9 +318,18 @@ export function internalMarginReadout(input: {
   totalsSell: number | null;
 }): MarginReadout {
   const commercial = input.items.filter((item) => item.itemType !== "no_cost_scope_change");
-  const sellOnly = commercial.some((item) => item.unitCost == null && item.lineSellAdjustmentExGst != null);
+  const incomplete = input.items.some((item) => item.costIncomplete);
+  const sellOnly = commercial.some((item) => item.lineCostAdjustment == null && item.lineSellAdjustmentExGst != null);
   const unresolved = commercial.some((item) => item.lineSellAdjustmentExGst == null);
   const hasOmission = commercial.some((item) => item.itemType === "omission");
+  if (incomplete && !unresolved && input.totalsSell != null) {
+    return {
+      costLabel: input.totalsCost == null ? null : formatSignedAdjustment(input.totalsCost, input.currency),
+      grossProfitLabel: null,
+      marginLabel: null,
+      note: "Internal cost is incomplete. Margin and profit are not available.",
+    };
+  }
   if (unresolved || input.totalsSell == null) {
     return {
       costLabel: input.totalsCost == null ? null : formatSignedAdjustment(input.totalsCost, input.currency),
@@ -409,6 +418,8 @@ export function buildVariationDocument(input: {
     lineSellAdjustmentExGst: number | null;
     substitutionGroupId: string | null;
     sortOrder: number;
+    quantity?: number;
+    unit?: string;
   }[];
   totals: {
     totalSellAdjustmentExGst: number | null;
@@ -438,11 +449,11 @@ export function buildVariationDocument(input: {
     const net = roundMoney(remove.lineSellAdjustmentExGst + add.lineSellAdjustmentExGst);
     substitutions.push({
       remove: {
-        description: remove.clientDescription,
+        description: clientScopeLabel(remove),
         amountLabel: formatSignedAdjustment(remove.lineSellAdjustmentExGst, currency),
       },
       add: {
-        description: add.clientDescription,
+        description: clientScopeLabel(add),
         amountLabel: formatSignedAdjustment(add.lineSellAdjustmentExGst, currency),
       },
       netLabel: formatSignedAdjustment(net, currency),
@@ -451,15 +462,20 @@ export function buildVariationDocument(input: {
   const additions = priced
     .filter((item) => item.itemType === "addition" && !item.substitutionGroupId)
     .map((item) => ({
-      description: item.clientDescription,
+      description: clientScopeLabel(item),
       amountLabel: formatSignedAdjustment(item.lineSellAdjustmentExGst ?? 0, currency),
     }));
   const omissions = priced
     .filter((item) => item.itemType === "omission" && !item.substitutionGroupId)
     .map((item) => ({
-      description: item.clientDescription,
+      description: clientScopeLabel(item),
       amountLabel: formatSignedAdjustment(item.lineSellAdjustmentExGst ?? 0, currency),
     }));
+  function clientScopeLabel(item: { clientDescription: string; quantity?: number; unit?: string }): string {
+    if (item.quantity == null || !item.unit) return item.clientDescription;
+    return `${item.clientDescription} · ${item.quantity} ${item.unit}`;
+  }
+
   const noCostChanges = input.items
     .filter((item) => item.itemType === "no_cost_scope_change")
     .map((item) => item.clientDescription);

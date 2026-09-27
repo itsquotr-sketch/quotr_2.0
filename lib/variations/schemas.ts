@@ -110,3 +110,40 @@ export const loadProjectVariationsSchema = z
 export const loadVariationSchema = z
   .object({ variationId: uuidSchema })
   .strict();
+
+const costComponentSchema = z
+  .object({
+    id: uuidSchema.nullable(),
+    category: z.enum(["material", "labour", "subcontract", "plant", "allowance", "other"]),
+    description: trimmedStringSchema(500, { min: 1, requiredMessage: "Describe this cost." }),
+    quantity: finitePositiveNumberSchema,
+    unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
+    unitCost: z.union([finiteNumberSchema, z.null()]),
+    sortOrder: z.number().int().min(0).max(10_000),
+  })
+  .strict();
+
+export const saveDraftVariationBuildUpSchema = z
+  .object({
+    variationId: uuidSchema,
+    revisionId: uuidSchema,
+    itemId: uuidSchema.nullable(),
+    confirmModeChange: z.boolean(),
+    itemType: z.enum(["addition", "omission"]),
+    clientDescription: trimmedStringSchema(500, { min: 1, requiredMessage: "Describe this variation item." }),
+    workAreaId: uuidSchema.nullable(),
+    snapshotLineId: uuidSchema.nullable(),
+    quantity: finitePositiveNumberSchema,
+    unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
+    sortOrder: z.number().int().min(0).max(10_000),
+    substitutionGroupId: uuidSchema.nullable(),
+    targetMarginPercent: finiteNumberSchema,
+    sellProvenance: z.enum(["calculated", "manual", "pricing_required"]),
+    manualSellTotal: z.union([finiteNumberSchema, z.null()]),
+    components: z.array(costComponentSchema).max(40),
+  })
+  .strict();
+
+export const convertDraftVariationItemToSimpleSchema = updateDraftVariationItemSchema
+  .extend({ confirmModeChange: z.boolean() })
+  .strict();

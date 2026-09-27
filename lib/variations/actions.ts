@@ -6,8 +6,11 @@ import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import {
   calculateRevisedContractValue,
   clientFacingVariation,
+  VARIATION_COST_CATEGORIES,
   VARIATION_ITEM_TYPES,
   VARIATION_STATUSES,
+  type VariationCostCategory,
+  type VariationPricingMode,
   type AcceptedBaselineMoney,
   type ClientFacingVariation,
   type InternalVariation,
@@ -24,6 +27,8 @@ import {
   loadProjectVariationsSchema,
   withdrawIssuedVariationSchema,
   loadVariationSchema,
+  convertDraftVariationItemToSimpleSchema,
+  saveDraftVariationBuildUpSchema,
   updateDraftVariationItemSchema,
   updateDraftVariationSchema,
   variationRevisionCommandSchema,
@@ -51,6 +56,7 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
     "A zero variation needs real additions and omissions, or a documented no-cost change.",
   EMPTY_VARIATION: "Add at least one item before issuing this variation.",
   INVALID_INPUT: "Check the variation details and try again.",
+  MODE_CONFIRM_REQUIRED: "Confirm the pricing method change before saving.",
 };
 
 const SAFE_ERROR = "That variation update is not available.";
@@ -76,6 +82,10 @@ function isStatus(value: string): value is VariationStatus {
 
 function isItemType(value: string): value is VariationItemType {
   return (VARIATION_ITEM_TYPES as readonly string[]).includes(value);
+}
+
+function isCostCategory(value: string): value is VariationCostCategory {
+  return (VARIATION_COST_CATEGORIES as readonly string[]).includes(value);
 }
 
 function readMoney(value: unknown): number | null {
@@ -206,6 +216,45 @@ export async function updateDraftVariationItem(input: unknown): Promise<ActionOk
     p_revision: revisionId,
     p_item_id: itemId,
     p_item: itemPayload(item),
+  });
+}
+
+export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionOk | ActionFail> {
+  const parsed = saveDraftVariationBuildUpSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  const data = parsed.data;
+  return runVariationRpc("apply_draft_variation_build_up_v1", {
+    p_variation: data.variationId,
+    p_revision: data.revisionId,
+    p_item_id: data.itemId,
+    p_confirm: data.confirmModeChange,
+    p_item: {
+      itemType: data.itemType,
+      clientDescription: data.clientDescription,
+      workAreaId: data.workAreaId,
+      snapshotLineId: data.snapshotLineId,
+      quantity: data.quantity,
+      unit: data.unit,
+      sortOrder: data.sortOrder,
+      substitutionGroupId: data.substitutionGroupId,
+      sellProvenance: data.sellProvenance,
+      targetMarginPercent: data.targetMarginPercent,
+      manualSellTotal: data.manualSellTotal,
+    },
+    p_components: data.components,
+  });
+}
+
+export async function convertDraftVariationItemToSimple(input: unknown): Promise<ActionOk | ActionFail> {
+  const parsed = convertDraftVariationItemToSimpleSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  const { variationId, revisionId, itemId, confirmModeChange, ...item } = parsed.data;
+  return runVariationRpc("convert_draft_variation_item_to_simple_v1", {
+    p_variation: variationId,
+    p_revision: revisionId,
+    p_item_id: itemId,
+    p_item: itemPayload(item),
+    p_confirm: confirmModeChange,
   });
 }
 
@@ -354,6 +403,19 @@ type ItemRow = {
   work_area_id: string | null;
   snapshot_line_id: string | null;
   internal_metadata: Record<string, unknown> | null;
+  pricing_mode: string | null;
+};
+
+type ComponentRow = {
+  id: string;
+  item_id: string;
+  category: string;
+  description: string;
+  quantity: number | string;
+  unit: string;
+  unit_cost: number | string | null;
+  line_cost: number | string | null;
+  sort_order: number;
 };
 
 async function loadInternalVariation(
@@ -372,18 +434,27 @@ async function loadInternalVariation(
       .select("id, variation_id, revision_number, status, title, summary, currency, gst_rate, tax_treatment, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, proposed_time_effect_days, client_notes, internal_notes")
       .eq("variation_id", variationId)
       .order("revision_number", { ascending: true }),
-    context.supabase
-      .from("variation_items")
-      .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, snapshot_line_id, internal_metadata")
-      .eq("variation_id", variationId)
-      .order("sort_order", { ascending: true }),
+    Promise.all([
+      context.supabase
+        .from("variation_items")
+        .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, snapshot_line_id, internal_metadata, pricing_mode")
+        .eq("variation_id", variationId)
+        .order("sort_order", { ascending: true }),
+      context.supabase
+        .from("variation_item_cost_components")
+        .select("id, item_id, category, description, quantity, unit, unit_cost, line_cost, sort_order")
+        .eq("variation_id", variationId)
+        .order("sort_order", { ascending: true }),
+    ]),
   ]);
   if (variation.error || !variation.data) return fail("NOT_FOUND");
   const header = variation.data as VariationRow;
   if (!isStatus(header.status)) return fail("INVALID_INPUT");
-  if (revisions.error || items.error) return fail("INVALID_INPUT");
+  const [itemResult, componentResult] = items;
+  if (revisions.error || itemResult.error || componentResult.error) return fail("INVALID_INPUT");
 
-  const itemRows = (items.data ?? []) as ItemRow[];
+  const itemRows = (itemResult.data ?? []) as ItemRow[];
+  const componentRows = (componentResult.data ?? []) as ComponentRow[];
   const mappedRevisions = ((revisions.data ?? []) as RevisionRow[]).flatMap((revision) => {
       if (!isStatus(revision.status)) return [];
       const gstRate = readRequiredMoney(revision.gst_rate);
@@ -408,6 +479,7 @@ async function loadInternalVariation(
           if (item.revision_id !== revision.id || !isItemType(item.item_type)) return [];
           const quantity = readRequiredMoney(item.quantity);
           if (quantity == null) return [];
+          const pricingMode: VariationPricingMode = item.pricing_mode === "build_up" ? "build_up" : "simple";
           return [{
             id: item.id,
             itemType: item.item_type,
@@ -425,6 +497,22 @@ async function loadInternalVariation(
             workAreaId: item.work_area_id,
             snapshotLineId: item.snapshot_line_id,
             internalMetadata: item.internal_metadata ?? {},
+            pricingMode,
+            components: componentRows.flatMap((component) => {
+              if (component.item_id !== item.id || !isCostCategory(component.category)) return [];
+              const componentQuantity = readRequiredMoney(component.quantity);
+              if (componentQuantity == null) return [];
+              return [{
+                id: component.id,
+                category: component.category,
+                description: component.description,
+                quantity: componentQuantity,
+                unit: component.unit,
+                unitCost: readMoney(component.unit_cost),
+                lineCost: readMoney(component.line_cost),
+                sortOrder: component.sort_order,
+              }];
+            }),
           }];
         }),
       }];

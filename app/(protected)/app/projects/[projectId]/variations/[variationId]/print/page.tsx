@@ -79,6 +79,8 @@ export default async function VariationPrintPage({ params, searchParams }: PageP
       lineSellAdjustmentExGst: item.lineSellAdjustmentExGst,
       substitutionGroupId: item.substitutionGroupId,
       sortOrder: item.sortOrder,
+      quantity: item.quantity,
+      unit: item.unit,
     })),
     totals: {
       totalSellAdjustmentExGst: viewing.totalSellAdjustmentExGst,

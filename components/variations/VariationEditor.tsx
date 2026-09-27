@@ -24,19 +24,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   addDraftVariationItem,
+  convertDraftVariationItemToSimple,
   createVariationRevision,
   deleteDraftVariationItem,
   deleteUnissuedDraftVariation,
   issueVariationRevision,
   withdrawIssuedVariation,
   loadVariation,
+  saveDraftVariationBuildUp,
   updateDraftVariation,
   updateDraftVariationItem,
 } from "@/lib/variations/actions";
 import {
+  aggregateComponentCost,
+  approximateClientUnitRate,
   calculateRevisedContractValue,
+  componentLineCost,
   type InternalVariation,
+  type VariationCostCategory,
   type VariationItemType,
+  type VariationPricingMode,
 } from "@/lib/variations/domain";
 import {
   buildVariationDocument,
@@ -92,9 +99,35 @@ type EditorProps = {
   startWithdraw?: boolean;
 };
 
+type BuildUpDraft = {
+  confirmModeChange: boolean;
+  targetMarginPercent: number;
+  sellProvenance: "calculated" | "manual" | "pricing_required";
+  manualSellTotal: number | null;
+  components: Array<{
+    id: string | null;
+    category: VariationCostCategory;
+    description: string;
+    quantity: number;
+    unit: string;
+    unitCost: number | null;
+    sortOrder: number;
+  }>;
+};
+
 type ItemSavePayload =
-  | { kind: "single"; item: SingleItem; itemId?: string }
-  | { kind: "substitution"; remove: SingleItem; add: SingleItem; removeId?: string; addId?: string };
+  | { kind: "single"; item: SingleItem; itemId?: string; buildUp: BuildUpDraft | null; convertToSimple: boolean }
+  | {
+      kind: "substitution";
+      remove: SingleItem;
+      add: SingleItem;
+      removeId?: string;
+      addId?: string;
+      removeBuildUp: BuildUpDraft | null;
+      addBuildUp: BuildUpDraft | null;
+      removeConvert: boolean;
+      addConvert: boolean;
+    };
 
 type SingleItem = {
   itemType: VariationItemType;
@@ -157,6 +190,9 @@ export function VariationEditor(props: EditorProps) {
         unitSell: item.unitSell,
         unitCost: item.unitCost,
         substitutionGroupId: item.substitutionGroupId,
+        pricingMode: item.pricingMode,
+        authoritativeLineSell: item.lineSellAdjustmentExGst,
+        authoritativeLineCost: item.lineCostAdjustment,
       })),
     });
   }, [current]);
@@ -212,6 +248,9 @@ export function VariationEditor(props: EditorProps) {
         unitSell: item.unitSell,
         unitCost: item.unitCost,
         substitutionGroupId: item.substitutionGroupId,
+        pricingMode: item.pricingMode,
+        authoritativeLineSell: item.lineSellAdjustmentExGst,
+        authoritativeLineCost: item.lineCostAdjustment,
       }))),
       totalsCost: viewing.totalDirectCostAdjustment,
       totalsSell: viewing.totalSellAdjustmentExGst,
@@ -235,6 +274,56 @@ export function VariationEditor(props: EditorProps) {
         label: revision.status === "superseded" ? "Historical" : "Current",
       }))
     );
+  }
+
+  async function persistSide(input: {
+    itemId?: string;
+    item: SingleItem;
+    buildUp: BuildUpDraft | null;
+    convertToSimple: boolean;
+  }): Promise<{ ok: boolean; error?: string; itemId?: string }> {
+    if (!current) return { ok: false, error: "That variation update is not available." };
+    if (input.buildUp) {
+      if (input.item.itemType !== "addition" && input.item.itemType !== "omission") {
+        return { ok: false, error: "Check this variation item and try again." };
+      }
+      return saveDraftVariationBuildUp({
+        variationId: variation.id,
+        revisionId: current.id,
+        itemId: input.itemId ?? null,
+        confirmModeChange: input.buildUp.confirmModeChange,
+        itemType: input.item.itemType,
+        clientDescription: input.item.clientDescription,
+        workAreaId: input.item.workAreaId,
+        snapshotLineId: input.item.snapshotLineId,
+        quantity: input.item.quantity,
+        unit: input.item.unit,
+        sortOrder: input.item.sortOrder,
+        substitutionGroupId: input.item.substitutionGroupId,
+        targetMarginPercent: input.buildUp.targetMarginPercent,
+        sellProvenance: input.buildUp.sellProvenance,
+        manualSellTotal: input.buildUp.manualSellTotal,
+        components: input.buildUp.components,
+      });
+    }
+    if (input.convertToSimple && input.itemId) {
+      return convertDraftVariationItemToSimple({
+        variationId: variation.id,
+        revisionId: current.id,
+        itemId: input.itemId,
+        confirmModeChange: true,
+        ...input.item,
+      });
+    }
+    if (input.itemId) {
+      return updateDraftVariationItem({
+        variationId: variation.id,
+        revisionId: current.id,
+        itemId: input.itemId,
+        ...input.item,
+      });
+    }
+    return addDraftVariationItem({ variationId: variation.id, revisionId: current.id, ...input.item });
   }
 
   async function run(action: () => Promise<{ ok: boolean; error?: string }>, refresh = false): Promise<boolean> {
@@ -412,7 +501,29 @@ export function VariationEditor(props: EditorProps) {
               </div>
               <p className="mt-2 break-words font-medium">{group.kind === "pair" ? `${group.remove.clientDescription} / ${group.add.clientDescription}` : lead.clientDescription}</p>
               <p className="mt-1 text-muted-foreground">{area ? area.name : "New scope"}{scope ? ` · ${scope.description}` : ""}</p>
-              <p className="mt-1">{lead.quantity} {lead.unit} · {provenanceLabel(readProvenance(lead.internalMetadata, lead.itemType, lead.unitSell))}</p>
+              <p className="mt-1">{lead.quantity} {lead.unit} · {provenanceLabel(readProvenance(lead.internalMetadata, lead.itemType, lead.lineSellAdjustmentExGst == null ? lead.unitSell : lead.lineSellAdjustmentExGst))}</p>
+              {(group.kind === "pair" ? [group.remove, group.add] : [lead]).map((row) => row.pricingMode === "build_up" ? (
+                <div key={row.id} className="mt-2 min-w-0 space-y-1 text-muted-foreground">
+                  <p>{row.components.length} internal cost {row.components.length === 1 ? "component" : "components"}</p>
+                  <p>{row.lineCostAdjustment == null ? "Internal cost incomplete" : `${row.itemType === "omission" ? "COST reduction" : "COST"} ${formatSignedAdjustment(row.lineCostAdjustment, currency)}`}</p>
+                  <p>{row.lineSellAdjustmentExGst == null ? VARIATION_PRICING_REQUIRED_LABEL : `Client sell total, ex GST ${formatSignedAdjustment(row.lineSellAdjustmentExGst, currency)}`}</p>
+                  {row.lineSellAdjustmentExGst != null && row.quantity > 0 ? (
+                    <p>Approx. client rate per unit {formatSignedAdjustment(approximateClientUnitRate(Math.abs(row.lineSellAdjustmentExGst), row.quantity) ?? 0, currency).replace(/^[+−]/, "")}/{row.unit}</p>
+                  ) : null}
+                  {row.lineCostAdjustment == null && row.lineSellAdjustmentExGst != null ? <p>Internal cost is incomplete. Margin and profit are not available.</p> : null}
+                  <details className="min-w-0">
+                    <summary className="min-h-11 cursor-pointer py-2">Internal cost build-up</summary>
+                    <div className="grid gap-2">
+                      {row.components.map((component) => (
+                        <div key={component.id} className="min-w-0 rounded-xl border px-3 py-2">
+                          <p className="break-words">{component.category} · {component.description}</p>
+                          <p>{component.quantity} {component.unit} · {component.unitCost == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(component.lineCost ?? 0, currency)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              ) : null)}
               {draft ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button type="button" size="touch" variant="outline" onClick={() => setItemEditor(lead.id)}>Edit item</Button>
@@ -432,7 +543,7 @@ export function VariationEditor(props: EditorProps) {
           <Row label="Net adjustment ex GST" value={viewing.totalSellAdjustmentExGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(viewing.totalSellAdjustmentExGst, currency)} />
           <Row label="GST" value={viewing.gstAdjustment == null ? "Not calculated yet" : formatSignedAdjustment(viewing.gstAdjustment, currency)} />
           <Row label="Adjustment incl GST" value={viewing.totalAdjustmentInclGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(viewing.totalAdjustmentInclGst, currency)} />
-          {marginReadout?.costLabel ? <Row label="Internal cost adjustment" value={marginReadout.costLabel} /> : null}
+          {marginReadout?.costLabel ? <Row label="Known internal cost adjustment" value={marginReadout.costLabel} /> : null}
           {marginReadout?.grossProfitLabel ? <Row label="Gross profit" value={marginReadout.grossProfitLabel} /> : null}
           {marginReadout?.marginLabel ? <Row label="Effective gross margin" value={marginReadout.marginLabel} /> : null}
         </dl>
@@ -504,21 +615,19 @@ export function VariationEditor(props: EditorProps) {
           onSave={(payload) =>
             void run(async () => {
               if (payload.kind === "single") {
-                return addDraftVariationItem({ variationId: variation.id, revisionId: current.id, ...payload.item });
+                return persistSide({ item: payload.item, buildUp: payload.buildUp, convertToSimple: false });
               }
               const groupId = crypto.randomUUID();
-              const first = await addDraftVariationItem({
-                variationId: variation.id,
-                revisionId: current.id,
-                ...payload.remove,
-                substitutionGroupId: groupId,
+              const first = await persistSide({
+                item: { ...payload.remove, substitutionGroupId: groupId },
+                buildUp: payload.removeBuildUp,
+                convertToSimple: false,
               });
               if (!first.ok || !first.itemId) return first;
-              const second = await addDraftVariationItem({
-                variationId: variation.id,
-                revisionId: current.id,
-                ...payload.add,
-                substitutionGroupId: groupId,
+              const second = await persistSide({
+                item: { ...payload.add, substitutionGroupId: groupId },
+                buildUp: payload.addBuildUp,
+                convertToSimple: false,
               });
               if (!second.ok) {
                 await deleteDraftVariationItem({ variationId: variation.id, revisionId: current.id, itemId: first.itemId });
@@ -534,19 +643,11 @@ export function VariationEditor(props: EditorProps) {
           pending={pending}
           onClose={() => setItemEditor(null)}
           onConfirm={() => {
-            const id = itemEditor.slice("delete:".length);
-            const item = viewing.items.find((row) => row.id === id);
-            const pair = item?.substitutionGroupId
-              ? viewing.items.filter((row) => row.substitutionGroupId === item.substitutionGroupId)
-              : item ? [item] : [];
-            void run(async () => {
-              let last: { ok: boolean; error?: string } = { ok: true };
-              for (const row of pair) {
-                last = await deleteDraftVariationItem({ variationId: variation.id, revisionId: current.id, itemId: row.id });
-                if (!last.ok) return last;
-              }
-              return last;
-            }).then((ok) => { if (ok) setItemEditor(null); });
+            void run(() => deleteDraftVariationItem({
+              variationId: variation.id,
+              revisionId: current.id,
+              itemId: itemEditor.slice("delete:".length),
+            })).then((ok) => { if (ok) setItemEditor(null); });
           }}
         />
       ) : null}
@@ -564,25 +665,25 @@ export function VariationEditor(props: EditorProps) {
           onSave={(payload) =>
             void run(async () => {
               if (payload.kind === "single") {
-                return updateDraftVariationItem({
-                  variationId: variation.id,
-                  revisionId: current.id,
+                return persistSide({
                   itemId: payload.itemId,
-                  ...payload.item,
+                  item: payload.item,
+                  buildUp: payload.buildUp,
+                  convertToSimple: payload.convertToSimple,
                 });
               }
-              const first = await updateDraftVariationItem({
-                variationId: variation.id,
-                revisionId: current.id,
+              const first = await persistSide({
                 itemId: payload.removeId,
-                ...payload.remove,
+                item: payload.remove,
+                buildUp: payload.removeBuildUp,
+                convertToSimple: payload.removeConvert,
               });
               if (!first.ok) return first;
-              return updateDraftVariationItem({
-                variationId: variation.id,
-                revisionId: current.id,
+              return persistSide({
                 itemId: payload.addId,
-                ...payload.add,
+                item: payload.add,
+                buildUp: payload.addBuildUp,
+                convertToSimple: payload.addConvert,
               });
             }).then((ok) => { if (ok) setItemEditor(null); })
           }
@@ -770,6 +871,112 @@ function HeaderForm(props: {
   );
 }
 
+const COST_CATEGORY_LABELS: Record<VariationCostCategory, string> = {
+  material: "Material",
+  labour: "Labour",
+  subcontract: "Subcontract",
+  plant: "Plant / equipment",
+  allowance: "Allowance",
+  other: "Other",
+};
+
+type CostDraft = {
+  key: string;
+  id: string | null;
+  category: VariationCostCategory;
+  description: string;
+  quantity: string;
+  unit: string;
+  unitCost: string;
+};
+
+function blankCostDraft(): CostDraft {
+  return { key: crypto.randomUUID(), id: null, category: "material", description: "", quantity: "1", unit: "item", unitCost: "" };
+}
+
+function ComponentEditor(props: { rows: CostDraft[]; currency: string; onChange: (rows: CostDraft[]) => void }) {
+  function update(key: string, patch: Partial<CostDraft>) {
+    props.onChange(props.rows.map((row) => row.key === key ? { ...row, ...patch } : row));
+  }
+  function move(index: number, direction: -1 | 1) {
+    const next = index + direction;
+    if (next < 0 || next >= props.rows.length) return;
+    const rows = props.rows.slice();
+    const [row] = rows.splice(index, 1);
+    if (!row) return;
+    rows.splice(next, 0, row);
+    props.onChange(rows);
+  }
+  return (
+    <div className="grid min-w-0 gap-3">
+      {props.rows.map((row, index) => {
+        const quantity = Number(row.quantity);
+        const unitCost = row.unitCost.trim() === "" ? null : Number(row.unitCost);
+        const line = componentLineCost(quantity, unitCost != null && Number.isFinite(unitCost) ? unitCost : null);
+        return (
+          <div key={row.key} className="grid min-w-0 gap-2 rounded-xl border p-3">
+            <Label htmlFor={`component-category-${row.key}`}>Category</Label>
+            <select id={`component-category-${row.key}`} className="h-11 rounded-xl border bg-background px-3 text-sm" value={row.category} onChange={(event) => update(row.key, { category: event.target.value as VariationCostCategory })}>
+              {Object.entries(COST_CATEGORY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <Field id={`component-description-${row.key}`} label="Description" value={row.description} onChange={(value) => update(row.key, { description: value })} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id={`component-qty-${row.key}`} label="Quantity" value={row.quantity} onChange={(value) => update(row.key, { quantity: value })} numeric />
+              <Field id={`component-unit-${row.key}`} label="Unit" value={row.unit} onChange={(value) => update(row.key, { unit: value })} />
+            </div>
+            <Field id={`component-cost-${row.key}`} label="Unit cost" value={row.unitCost} onChange={(value) => update(row.key, { unitCost: value })} numeric />
+            <p className="text-sm">Calculated line cost: {line == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(line, props.currency).replace(/^\+/, "")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="touch" onClick={() => move(index, -1)} disabled={index === 0}>Move up</Button>
+              <Button type="button" variant="outline" size="touch" onClick={() => move(index, 1)} disabled={index === props.rows.length - 1}>Move down</Button>
+              <Button type="button" variant="destructive" size="touch" onClick={() => props.onChange(props.rows.filter((entry) => entry.key !== row.key))}>Delete component</Button>
+            </div>
+          </div>
+        );
+      })}
+      <Button type="button" variant="outline" size="touch" onClick={() => props.onChange([...props.rows, blankCostDraft()])}>Add cost component</Button>
+    </div>
+  );
+}
+
+function draftsFromComponents(components: InternalVariation["revisions"][number]["items"][number]["components"]): CostDraft[] {
+  return components.map((component) => ({
+    key: component.id,
+    id: component.id,
+    category: component.category,
+    description: component.description,
+    quantity: String(component.quantity),
+    unit: component.unit,
+    unitCost: component.unitCost == null ? "" : String(component.unitCost),
+  }));
+}
+
+function buildUpFromDrafts(rows: CostDraft[], marginPercent: number, provenance: BuildUpDraft["sellProvenance"], manualSellTotal: number | null, confirmModeChange: boolean): BuildUpDraft | null {
+  const components = rows.map((row, index) => {
+    const quantity = Number(row.quantity);
+    const unitCost = row.unitCost.trim() === "" ? null : Number(row.unitCost);
+    return {
+      id: row.id,
+      category: row.category,
+      description: row.description.trim(),
+      quantity,
+      unit: row.unit.trim(),
+      unitCost: unitCost != null && Number.isFinite(unitCost) ? unitCost : null,
+      sortOrder: index,
+    };
+  });
+  if (components.some((row) => !row.description || !row.unit || !Number.isFinite(row.quantity) || row.quantity <= 0)) return null;
+  const cost = aggregateComponentCost(components.map((row) => componentLineCost(row.quantity, row.unitCost)));
+  const nextProvenance = provenance === "manual" ? "manual" : cost == null ? "pricing_required" : "calculated";
+  return {
+    confirmModeChange,
+    targetMarginPercent: marginPercent,
+    sellProvenance: nextProvenance,
+    manualSellTotal: nextProvenance === "manual" ? manualSellTotal : null,
+    components,
+  };
+}
+
 function ItemDialog(props: {
   title: string;
   currency: string;
@@ -798,6 +1005,15 @@ function ItemDialog(props: {
     itemId?: string;
     substitutionGroupId: string | null;
     sortOrder: number;
+    pricingMode?: VariationPricingMode;
+    components?: CostDraft[];
+    sellTotal?: string;
+    removePricingMode?: VariationPricingMode;
+    addPricingMode?: VariationPricingMode;
+    removeComponents?: CostDraft[];
+    addComponents?: CostDraft[];
+    removeSellTotal?: string;
+    addSellTotal?: string;
   };
   onClose: () => void;
   onSave: (payload: ItemSavePayload) => void;
@@ -818,6 +1034,16 @@ function ItemDialog(props: {
   const [scopeId, setScopeId] = useState(initial?.scopeId ?? "");
   const [workAreaId, setWorkAreaId] = useState(initial?.workAreaId ?? "");
   const [formError, setFormError] = useState<string | null>(null);
+  const [pricingMode, setPricingMode] = useState<VariationPricingMode>(initial?.pricingMode ?? "simple");
+  const [components, setComponents] = useState<CostDraft[]>(initial?.components ?? []);
+  const [sellTotal, setSellTotal] = useState(initial?.sellTotal ?? "");
+  const [modeConfirmed, setModeConfirmed] = useState(false);
+  const [removeMode, setRemoveMode] = useState<VariationPricingMode>(initial?.removePricingMode ?? "simple");
+  const [addMode, setAddMode] = useState<VariationPricingMode>(initial?.addPricingMode ?? "simple");
+  const [removeComponents, setRemoveComponents] = useState<CostDraft[]>(initial?.removeComponents ?? []);
+  const [addComponents, setAddComponents] = useState<CostDraft[]>(initial?.addComponents ?? []);
+  const [removeSellTotal, setRemoveSellTotal] = useState(initial?.removeSellTotal ?? "");
+  const [addSellTotal, setAddSellTotal] = useState(initial?.addSellTotal ?? "");
   const scope = props.scopeLines.find((line) => line.id === scopeId) ?? null;
   const parsedCost = costMagnitude.trim() === "" ? null : Number(costMagnitude);
   const parsedMargin = Number(margin);
@@ -870,24 +1096,68 @@ function ItemDialog(props: {
         <form className="grid gap-3" onSubmit={(event) => {
           event.preventDefault();
           if (props.pending) return;
+          const modeChanged = Boolean(initial) && pricingMode !== (initial?.pricingMode ?? "simple");
+          if (modeChanged && !modeConfirmed) {
+            setFormError("Confirm the pricing method change before saving.");
+            return;
+          }
           if (kind === "substitution") {
-            const remove = singleItem("omission", removeDescription, Number(removeMagnitude), initial?.sortOrder ?? 0, "manual", initial?.substitutionGroupId ?? null);
-            const add = singleItem("addition", addDescription, Number(addMagnitude), (initial?.sortOrder ?? 0) + 1, "manual", initial?.substitutionGroupId ?? null);
-            if (!remove || !add || remove.unitSell == null || add.unitSell == null) {
+            const remove = singleItem("omission", removeDescription, removeMode === "build_up" ? null : Number(removeMagnitude), initial?.sortOrder ?? 0, "manual", initial?.substitutionGroupId ?? null);
+            const add = singleItem("addition", addDescription, addMode === "build_up" ? null : Number(addMagnitude), (initial?.sortOrder ?? 0) + 1, "manual", initial?.substitutionGroupId ?? null);
+            const removeBuildUp = removeMode === "build_up" ? buildUpFromDrafts(removeComponents, Number.isFinite(parsedMargin) ? parsedMargin : props.defaultMarginPercent, removeSellTotal.trim() === "" ? "calculated" : "manual", removeSellTotal.trim() === "" ? null : Number(removeSellTotal), (initial?.removePricingMode ?? "simple") !== "build_up") : null;
+            const addBuildUp = addMode === "build_up" ? buildUpFromDrafts(addComponents, Number.isFinite(parsedMargin) ? parsedMargin : props.defaultMarginPercent, addSellTotal.trim() === "" ? "calculated" : "manual", addSellTotal.trim() === "" ? null : Number(addSellTotal), (initial?.addPricingMode ?? "simple") !== "build_up") : null;
+            if (!remove || !add || !removeDescription.trim() || !addDescription.trim() || (removeMode === "simple" && remove.unitSell == null) || (addMode === "simple" && add.unitSell == null) || (removeMode === "build_up" && !removeBuildUp) || (addMode === "build_up" && !addBuildUp)) {
               setFormError("Complete both sides of the substitution.");
               return;
             }
-            props.onSave({ kind: "substitution", remove, add, removeId: initial?.removeId, addId: initial?.addId });
+            props.onSave({
+              kind: "substitution",
+              remove,
+              add,
+              removeId: initial?.removeId,
+              addId: initial?.addId,
+              removeBuildUp,
+              addBuildUp,
+              removeConvert: removeMode === "simple" && (initial?.removePricingMode ?? "simple") === "build_up",
+              addConvert: addMode === "simple" && (initial?.addPricingMode ?? "simple") === "build_up",
+            });
             return;
           }
           const itemType: VariationItemType = kind === "no_cost" ? "no_cost_scope_change" : kind;
+          if (pricingMode === "build_up" && itemType !== "no_cost_scope_change") {
+            const manualTotal = sellTotal.trim() === "" ? null : Number(sellTotal);
+            const draft = buildUpFromDrafts(
+              components,
+              Number.isFinite(parsedMargin) ? parsedMargin : props.defaultMarginPercent,
+              provenance === "manual" ? "manual" : "calculated",
+              manualTotal != null && Number.isFinite(manualTotal) ? manualTotal : null,
+              modeChanged,
+            );
+            const item = singleItem(itemType, description, null, initial?.sortOrder ?? 0, "pricing_required", null);
+            if (!item || !draft || !description.trim()) {
+              setFormError("Add a description and complete each cost component before saving.");
+              return;
+            }
+            if (draft.sellProvenance === "manual" && (manualTotal == null || !Number.isFinite(manualTotal) || manualTotal <= 0)) {
+              setFormError("Enter the client sell total before saving.");
+              return;
+            }
+            props.onSave({ kind: "single", item, itemId: initial?.itemId, buildUp: draft, convertToSimple: false });
+            return;
+          }
           const nextProvenance: CommercialProvenance = kind === "no_cost" ? "no_cost" : provenance === "calculated" && calculated != null ? "calculated" : provenance;
           const item = singleItem(itemType, description, kind === "no_cost" ? 0 : shownSell, initial?.sortOrder ?? 0, nextProvenance, null);
           if (!item || !description.trim()) {
             setFormError("Add a description before saving this item.");
             return;
           }
-          props.onSave({ kind: "single", item, itemId: initial?.itemId });
+          props.onSave({
+            kind: "single",
+            item,
+            itemId: initial?.itemId,
+            buildUp: null,
+            convertToSimple: modeChanged && pricingMode === "simple",
+          });
         }}>
           <div className="grid gap-1.5">
             <Label htmlFor="item-kind">Change type</Label>
@@ -903,10 +1173,30 @@ function ItemDialog(props: {
           {kind === "substitution" ? (
             <>
               <Field id="remove-description" label="Remove" value={removeDescription} onChange={setRemoveDescription} />
-              <Field id="remove-amount" label="Amount to remove" value={removeMagnitude} onChange={setRemoveMagnitude} numeric />
+              <Label htmlFor="remove-pricing-mode">Pricing method</Label>
+              <select id="remove-pricing-mode" className="h-11 rounded-xl border bg-background px-3 text-sm" value={removeMode} onChange={(event) => setRemoveMode(event.target.value as VariationPricingMode)}>
+                <option value="simple">Simple price</option>
+                <option value="build_up">Build from costs</option>
+              </select>
+              {removeMode === "simple" ? <Field id="remove-amount" label="Amount to remove" value={removeMagnitude} onChange={setRemoveMagnitude} numeric /> : (
+                <>
+                  <ComponentEditor rows={removeComponents} currency={props.currency} onChange={setRemoveComponents} />
+                  <Field id="remove-sell-total" label="Client sell total, ex GST" value={removeSellTotal} onChange={setRemoveSellTotal} numeric />
+                </>
+              )}
               <p className="text-xs text-muted-foreground">{VARIATION_OMISSION_HELP}</p>
               <Field id="add-description" label="Add" value={addDescription} onChange={setAddDescription} />
-              <Field id="add-amount" label="Amount to add" value={addMagnitude} onChange={setAddMagnitude} numeric />
+              <Label htmlFor="add-pricing-mode">Pricing method</Label>
+              <select id="add-pricing-mode" className="h-11 rounded-xl border bg-background px-3 text-sm" value={addMode} onChange={(event) => setAddMode(event.target.value as VariationPricingMode)}>
+                <option value="simple">Simple price</option>
+                <option value="build_up">Build from costs</option>
+              </select>
+              {addMode === "simple" ? <Field id="add-amount" label="Amount to add" value={addMagnitude} onChange={setAddMagnitude} numeric /> : (
+                <>
+                  <ComponentEditor rows={addComponents} currency={props.currency} onChange={setAddComponents} />
+                  <Field id="add-sell-total" label="Client sell total, ex GST" value={addSellTotal} onChange={setAddSellTotal} numeric />
+                </>
+              )}
             </>
           ) : <Field id="item-description" label="Client-facing description" value={description} onChange={setDescription} />}
           <div className="grid gap-1.5">
@@ -928,6 +1218,25 @@ function ItemDialog(props: {
             <Field id="item-unit" label="Unit" value={unit} onChange={setUnit} />
           </div>
           {kind !== "no_cost" && kind !== "substitution" ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="item-pricing-mode">Pricing method</Label>
+              <select id="item-pricing-mode" className="h-11 rounded-xl border bg-background px-3 text-sm" value={pricingMode} onChange={(event) => { setPricingMode(event.target.value as VariationPricingMode); setModeConfirmed(false); }}>
+                <option value="simple">Simple price</option>
+                <option value="build_up">Build from costs</option>
+              </select>
+              {initial && pricingMode !== (initial.pricingMode ?? "simple") && !modeConfirmed ? (
+                <div className="grid gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    {pricingMode === "build_up"
+                      ? "Changing to Build from costs does not turn the existing unit cost into components."
+                      : "Changing to Simple price deletes the draft cost components."}
+                  </p>
+                  <Button type="button" variant="outline" size="touch" onClick={() => setModeConfirmed(true)}>Confirm pricing method change</Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {kind !== "no_cost" && kind !== "substitution" && pricingMode === "simple" ? (
             <>
               <Field id="item-cost" label="Internal cost per unit" value={costMagnitude} onChange={(value) => { setCostMagnitude(value); if (provenance !== "manual") setProvenance("calculated"); }} numeric />
               <Field id="item-margin" label="Target gross margin" value={margin} onChange={(value) => { setMargin(value); if (provenance !== "manual") setProvenance("calculated"); }} numeric />
@@ -944,6 +1253,32 @@ function ItemDialog(props: {
               {shownSell == null ? <p className="text-sm">{VARIATION_PRICING_REQUIRED_LABEL}</p> : null}
               {provenance === "manual" && calculated != null ? (
                 <Button type="button" variant="outline" size="touch" onClick={() => { setSellMagnitude(String(calculated)); setProvenance("calculated"); }}>Reset to calculated sell</Button>
+              ) : null}
+            </>
+          ) : null}
+          {kind !== "no_cost" && kind !== "substitution" && pricingMode === "build_up" ? (
+            <>
+              <Field id="item-margin" label="Target gross margin" value={margin} onChange={(value) => { setMargin(value); if (provenance !== "manual") setProvenance("calculated"); }} numeric />
+              <p className="text-xs text-muted-foreground">Target margin is the gross margin used to calculate client sell from internal cost.</p>
+              <ComponentEditor rows={components} currency={props.currency} onChange={(rows) => { setComponents(rows); if (provenance !== "manual") setProvenance("calculated"); }} />
+              <Field id="item-sell-total" label="Client sell total, ex GST" value={provenance === "calculated" && aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) != null ? String(sellFromKnownCost(aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) ?? 0, parsedMargin) ?? "") : sellTotal} onChange={(value) => { setSellTotal(value); setProvenance(value.trim() === "" ? "pricing_required" : "manual"); }} numeric />
+              {kind === "omission" ? <p className="text-xs text-muted-foreground">{VARIATION_OMISSION_HELP}</p> : null}
+              <p className="text-xs text-muted-foreground">{provenanceLabel(provenance === "calculated" ? "calculated" : provenance)}</p>
+              {(() => {
+                const cost = aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost))));
+                const total = provenance === "manual" && sellTotal.trim() !== "" ? Number(sellTotal) : cost == null ? null : sellFromKnownCost(cost, parsedMargin);
+                const approx = total != null ? approximateClientUnitRate(total, Number(quantity) || 1) : null;
+                return (
+                  <>
+                    <p className="text-sm">{cost == null ? "Internal cost incomplete" : `COST ${formatSignedAdjustment(kind === "omission" ? -cost : cost, props.currency)}`}</p>
+                    {total == null ? <p className="text-sm">{VARIATION_PRICING_REQUIRED_LABEL}</p> : <p className="text-sm">Client sell total, ex GST {formatSignedAdjustment(kind === "omission" ? -total : total, props.currency)}</p>}
+                    {approx != null ? <p className="text-sm">Approx. client rate per unit {formatSignedAdjustment(approx, props.currency).replace(/^[+−]/, "")}</p> : null}
+                    {cost == null && provenance === "manual" ? <p className="text-sm">Internal cost is incomplete. Margin and profit are not available.</p> : null}
+                  </>
+                );
+              })()}
+              {provenance === "manual" && aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) != null ? (
+                <Button type="button" variant="outline" size="touch" onClick={() => { setSellTotal(""); setProvenance("calculated"); }}>Reset to calculated sell</Button>
               ) : null}
             </>
           ) : null}
@@ -1010,6 +1345,15 @@ function EditExistingItem(props: {
         itemId: item.id,
         substitutionGroupId: item.substitutionGroupId,
         sortOrder: item.sortOrder,
+        pricingMode: item.pricingMode,
+        components: draftsFromComponents(item.components),
+        sellTotal: item.lineSellAdjustmentExGst == null ? "" : String(Math.abs(item.lineSellAdjustmentExGst)),
+        removePricingMode: remove?.pricingMode ?? "simple",
+        addPricingMode: add?.pricingMode ?? "simple",
+        removeComponents: draftsFromComponents(remove?.components ?? []),
+        addComponents: draftsFromComponents(add?.components ?? []),
+        removeSellTotal: remove?.lineSellAdjustmentExGst == null ? "" : String(Math.abs(remove.lineSellAdjustmentExGst)),
+        addSellTotal: add?.lineSellAdjustmentExGst == null ? "" : String(Math.abs(add.lineSellAdjustmentExGst)),
       }}
     />
   );
