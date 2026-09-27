@@ -39,6 +39,7 @@ export type VariationListRow = {
   issuedAt: string | null;
   acceptedAt: string | null;
   declinedAt: string | null;
+  withdrawnAt: string | null;
   outcomeLabel: string | null;
   currentRevisionId: string | null;
 };
@@ -61,6 +62,7 @@ export type VariationRevisionHistoryRow = {
   status: VariationStatus;
   statusLabel: string;
   issuedAt: string | null;
+  withdrawnAt: string | null;
   netExGst: number | null;
   label: "Current" | "Historical";
 };

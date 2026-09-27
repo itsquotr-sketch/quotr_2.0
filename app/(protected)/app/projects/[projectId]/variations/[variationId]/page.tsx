@@ -14,7 +14,7 @@ import { connection } from "next/server";
 
 type PageProps = {
   params: Promise<{ projectId: string; variationId: string }>;
-  searchParams: Promise<{ revision?: string }>;
+  searchParams: Promise<{ revision?: string; preview?: string; withdraw?: string }>;
 };
 
 export default async function VariationDetailPage({ params, searchParams }: PageProps) {
@@ -50,6 +50,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
       </div>
       <WorkspaceContainer innerClassName="py-6">
         <VariationEditor
+          key={`${editor.variation.id}:${editor.variation.status}:${editor.withdrawalReason ?? ""}`}
           projectId={projectId}
           variation={editor.variation}
           baseline={editor.baseline}
@@ -61,8 +62,11 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           clientName={editor.clientName}
           siteAddress={editor.siteAddress}
           history={editor.history}
+          withdrawalReason={editor.withdrawalReason}
           acceptedRevisions={editor.acceptedRevisions}
           viewRevisionId={query.revision ?? null}
+          startPreview={query.preview === "1"}
+          startWithdraw={query.withdraw === "1"}
         />
       </WorkspaceContainer>
     </div>

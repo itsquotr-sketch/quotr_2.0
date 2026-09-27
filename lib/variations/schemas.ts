@@ -93,6 +93,16 @@ export const deleteUnissuedDraftVariationSchema = variationRevisionCommandSchema
   .extend({ projectId: uuidSchema })
   .strict();
 
+export const withdrawIssuedVariationSchema = variationRevisionCommandSchema
+  .extend({
+    projectId: uuidSchema,
+    reason: trimmedStringSchema(500, {
+      min: 1,
+      requiredMessage: "Enter a withdrawal reason.",
+    }),
+  })
+  .strict();
+
 export const loadProjectVariationsSchema = z
   .object({ projectId: uuidSchema })
   .strict();

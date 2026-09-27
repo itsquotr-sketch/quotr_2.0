@@ -253,6 +253,7 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       issuedAt: formatDate(current?.issued_at ?? null),
       acceptedAt: formatDate(current?.accepted_at ?? null),
       declinedAt: formatDate(current?.rejected_at ?? null),
+      withdrawnAt: formatDate(current?.withdrawn_at ?? null),
       outcomeLabel: outcome,
       currentRevisionId: current?.id ?? null,
     });
@@ -332,6 +333,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
       clientName: string;
       siteAddress: string | null;
       history: VariationRevisionHistoryRow[];
+      withdrawalReason: string | null;
       eligible: boolean;
       reason: string | null;
       acceptedRevisions: Array<{
@@ -345,7 +347,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
 > {
   const owned = await ownedProject(projectId);
   if (!owned.ok) return owned;
-  const [loaded, project, lifecycle, snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows] =
+  const [loaded, project, lifecycle, snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows, withdrawalEvents] =
     await Promise.all([
     loadVariation({ variationId }),
     owned.context.supabase
@@ -377,13 +379,20 @@ export async function loadVariationEditor(projectId: string, variationId: string
     getCompanySettingsWithContext(owned.context),
     owned.context.supabase
       .from("variation_revisions")
-      .select("id, issued_at")
+      .select("id, issued_at, withdrawn_at")
       .eq("variation_id", variationId),
     owned.context.supabase
       .from("variation_revisions")
       .select("id, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst")
       .eq("project_id", owned.projectId)
       .eq("status", "accepted"),
+    owned.context.supabase
+      .from("project_lifecycle_events")
+      .select("metadata")
+      .eq("project_id", owned.projectId)
+      .eq("source_entity_id", variationId)
+      .eq("event_type", "variation_withdrawn")
+      .limit(1),
   ]);
   if (!loaded.ok) return loaded;
   if (loaded.variation.projectId !== projectId) {
@@ -454,12 +463,15 @@ export async function loadVariationEditor(projectId: string, variationId: string
     (marginRow.data as { default_margin_percent?: unknown } | null)?.default_margin_percent
   );
   const currentRevision = loaded.variation.revisions.find((revision) => revision.status !== "superseded");
-  const issuedById = new Map(
-    ((revisionDates.data ?? []) as Array<{ id: string; issued_at: string | null }>).map((row) => [
-      row.id,
-      formatDate(row.issued_at),
-    ])
-  );
+  const revisionDateRows = (revisionDates.data ?? []) as Array<{
+    id: string;
+    issued_at: string | null;
+    withdrawn_at: string | null;
+  }>;
+  const issuedById = new Map(revisionDateRows.map((row) => [row.id, formatDate(row.issued_at)]));
+  const withdrawnById = new Map(revisionDateRows.map((row) => [row.id, formatDate(row.withdrawn_at)]));
+  const withdrawalMetadata = ((withdrawalEvents.data ?? []) as Array<{ metadata?: { withdrawalReason?: unknown } }>)[0]?.metadata;
+  const withdrawalReason = typeof withdrawalMetadata?.withdrawalReason === "string" ? withdrawalMetadata.withdrawalReason : null;
   const history: VariationRevisionHistoryRow[] = [...loaded.variation.revisions]
     .sort((a, b) => a.revisionNumber - b.revisionNumber)
     .map((revision) => ({
@@ -469,6 +481,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
       status: revision.status,
       statusLabel: variationStatusLabel(revision.status),
       issuedAt: issuedById.get(revision.id) ?? null,
+      withdrawnAt: withdrawnById.get(revision.id) ?? null,
       netExGst: revision.totalSellAdjustmentExGst,
       label: revision.id === currentRevision?.id ? "Current" : "Historical",
     }));
@@ -495,6 +508,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
     clientName: projectRow.client_name?.trim() || "Client",
     siteAddress: projectRow.site_address,
     history,
+    withdrawalReason,
     eligible: eligibility.eligible,
     reason: eligibility.reason,
     acceptedRevisions: ((acceptedRows.data ?? []) as Array<{

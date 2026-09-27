@@ -1062,9 +1062,11 @@ async function hostedProof(): Promise<void> {
       p_variation: withdrawn.variationId,
       p_revision: withdrawn.revisionId,
     });
-    const withdrawResult = await call(user, "withdraw_variation_revision_v1", {
+    const withdrawResult = await call(user, "withdraw_issued_variation_v1", {
+      p_project: projects.lab,
       p_variation: withdrawn.variationId,
       p_revision: withdrawn.revisionId,
+      p_reason: "Hold this change.",
     });
     const withdrawIssue = await call(user, "issue_variation_revision_v1", {
       p_variation: withdrawn.variationId,

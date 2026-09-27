@@ -35,7 +35,7 @@ export const VARIATION_TRANSITIONS: Record<
   VariationStatus,
   readonly VariationStatus[]
 > = {
-  draft: ["issued", "withdrawn"],
+  draft: ["issued"],
   issued: ["accepted", "rejected", "withdrawn", "superseded"],
   accepted: [],
   rejected: [],

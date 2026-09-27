@@ -12,11 +12,15 @@ import { loadVariationWorkspace } from "@/lib/variations/workspace-actions";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
-type PageProps = { params: Promise<{ projectId: string }> };
+type PageProps = {
+  params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ notice?: string }>;
+};
 
-export default async function VariationsPage({ params }: PageProps) {
+export default async function VariationsPage({ params, searchParams }: PageProps) {
   await connection();
   const { projectId } = await params;
+  const query = await searchParams;
   const auth = await requireAuthOrgContext();
   if (!auth.ok) notFound();
   const [project, tabContext, quoteSummary, workspace] = await Promise.all([
@@ -49,6 +53,7 @@ export default async function VariationsPage({ params }: PageProps) {
           reason={workspace.reason}
           rows={workspace.rows}
           summary={workspace.summary}
+          notice={query.notice === "draft-deleted" ? "Draft Variation deleted." : null}
         />
       </WorkspaceContainer>
     </div>

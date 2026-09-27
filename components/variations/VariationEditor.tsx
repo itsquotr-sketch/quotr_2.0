@@ -7,6 +7,12 @@ import { VariationDocument } from "@/components/variations/VariationDocument";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,6 +28,7 @@ import {
   deleteDraftVariationItem,
   deleteUnissuedDraftVariation,
   issueVariationRevision,
+  withdrawIssuedVariation,
   loadVariation,
   updateDraftVariation,
   updateDraftVariationItem,
@@ -78,8 +85,11 @@ type EditorProps = {
   clientName: string;
   siteAddress: string | null;
   history: VariationRevisionHistoryRow[];
+  withdrawalReason: string | null;
   acceptedRevisions: AcceptedMoney[];
   viewRevisionId: string | null;
+  startPreview?: boolean;
+  startWithdraw?: boolean;
 };
 
 type ItemSavePayload =
@@ -121,7 +131,9 @@ export function VariationEditor(props: EditorProps) {
   const [saved, setSaved] = useState<string | null>(null);
   const [confirmIssue, setConfirmIssue] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(props.startWithdraw === true && props.variation.status === "issued");
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(props.startPreview === true);
   const [itemEditor, setItemEditor] = useState<"add" | string | null>(null);
   const current =
     variation.revisions.find((revision) => revision.status !== "superseded") ??
@@ -218,6 +230,7 @@ export function VariationEditor(props: EditorProps) {
         status: revision.status,
         statusLabel: variationStatusLabel(revision.status),
         issuedAt: previous.find((row) => row.id === revision.id)?.issuedAt ?? null,
+        withdrawnAt: previous.find((row) => row.id === revision.id)?.withdrawnAt ?? null,
         netExGst: revision.totalSellAdjustmentExGst,
         label: revision.status === "superseded" ? "Historical" : "Current",
       }))
@@ -244,6 +257,52 @@ export function VariationEditor(props: EditorProps) {
     return true;
   }
 
+  async function confirmDeleteDraft(): Promise<void> {
+    if (lock.current || !current) return;
+    lock.current = true;
+    setPending(true);
+    setError(null);
+    const result = await deleteUnissuedDraftVariation({
+      projectId: props.projectId,
+      variationId: variation.id,
+      revisionId: current.id,
+    });
+    if (!result.ok) {
+      lock.current = false;
+      setPending(false);
+      setError(result.error ?? "That variation update is not available.");
+      return;
+    }
+    setConfirmDelete(false);
+    router.refresh();
+    router.push(`/app/projects/${props.projectId}/variations?notice=draft-deleted`);
+  }
+
+  async function submitWithdraw(): Promise<void> {
+    if (lock.current || !current) return;
+    if (!withdrawReason.trim()) {
+      setError("Enter a withdrawal reason.");
+      return;
+    }
+    lock.current = true;
+    setPending(true);
+    setError(null);
+    const result = await withdrawIssuedVariation({
+      projectId: props.projectId,
+      variationId: variation.id,
+      revisionId: current.id,
+      reason: withdrawReason.trim(),
+    });
+    if (!result.ok) {
+      lock.current = false;
+      setPending(false);
+      setError(result.error ?? "This Variation can’t be withdrawn.");
+      return;
+    }
+    setConfirmWithdraw(false);
+    router.refresh();
+  }
+
   if (!current || !viewing) return <p>That variation could not be found.</p>;
 
   const currency = props.baseline.currency;
@@ -257,9 +316,41 @@ export function VariationEditor(props: EditorProps) {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
           <p className="text-sm text-muted-foreground">Revision {viewing.revisionNumber}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{variationStatusLabel(viewing.status)}</Badge>
+            <span className="text-sm text-muted-foreground">{historical ? "Historical revision" : "Current revision"}</span>
+          </div>
         </div>
-        <Badge variant="outline">{variationStatusLabel(viewing.status)}{historical ? " · Historical" : " · Current"}</Badge>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex h-11 min-h-11 items-center rounded-xl border px-3 text-sm">
+            Actions
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)]">
+            <DropdownMenuItem className="min-h-11" onClick={() => setPreviewOpen(true)}>View client document</DropdownMenuItem>
+            {current.status === "issued" && !historical ? (
+              <DropdownMenuItem className="min-h-11" onClick={() => void run(() => createVariationRevision({ variationId: variation.id, revisionId: current.id }))}>
+                Create new revision
+              </DropdownMenuItem>
+            ) : null}
+            {current.status === "issued" && !historical ? (
+              <DropdownMenuItem className="min-h-11" variant="destructive" onClick={() => setConfirmWithdraw(true)}>
+                Withdraw Variation
+              </DropdownMenuItem>
+            ) : null}
+            {canDelete && draft ? (
+              <DropdownMenuItem className="min-h-11" variant="destructive" onClick={() => setConfirmDelete(true)}>
+                Delete draft
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+      {viewing.status === "withdrawn" ? (
+        <p className="rounded-xl border bg-card px-4 py-3 text-sm">
+          Withdrawn{history.find((row) => row.id === viewing.id)?.withdrawnAt ? ` ${history.find((row) => row.id === viewing.id)?.withdrawnAt}` : ""}.
+          {props.withdrawalReason ? ` Reason: ${props.withdrawalReason}` : ""} This reason stays off the client document.
+        </p>
+      ) : null}
       {historical ? <p className="rounded-xl border bg-card px-4 py-3 text-sm">This is an earlier revision. It is not the current proposal.</p> : null}
       {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
       {saved ? <p role="status" className="text-sm text-muted-foreground">{saved}</p> : null}
@@ -367,16 +458,12 @@ export function VariationEditor(props: EditorProps) {
         </Button>
       ) : null}
 
-      {canDelete && draft ? (
-        <Button type="button" size="touch" variant="destructive" disabled={pending} onClick={() => setConfirmDelete(true)}>Delete draft</Button>
-      ) : null}
-
       <section>
         <h2 className="text-base font-semibold">Revision history</h2>
         <ul className="mt-2 space-y-2">
           {history.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-sm">
-              <span className="min-w-0 break-words">Revision {row.revisionNumber} · {row.title} · {row.statusLabel} · {row.label}{row.issuedAt ? ` · Issued ${row.issuedAt}` : ""}{row.netExGst != null ? ` · ${formatSignedAdjustment(row.netExGst, currency)}` : ""}</span>
+              <span className="min-w-0 break-words">Revision {row.revisionNumber} · {row.title} · {row.statusLabel} · {row.label}{row.issuedAt ? ` · Issued ${row.issuedAt}` : ""}{row.withdrawnAt ? ` · Withdrawn ${row.withdrawnAt}` : ""}{row.netExGst != null ? ` · ${formatSignedAdjustment(row.netExGst, currency)}` : ""}</span>
               <Link className="underline" href={`/app/projects/${props.projectId}/variations/${variation.id}?revision=${row.id}`}>View</Link>
             </li>
           ))}
@@ -517,7 +604,32 @@ export function VariationEditor(props: EditorProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <Dialog open={confirmWithdraw} onOpenChange={setConfirmWithdraw}>
+        <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Withdraw Variation {variation.variationNumber}?</DialogTitle>
+            <DialogDescription>This keeps the issued document and revision history, but removes this Variation from pending contract value. It cannot be accepted unless a new revision is created.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5">
+            <Label htmlFor="withdraw-reason">Withdrawal reason</Label>
+            <textarea
+              id="withdraw-reason"
+              className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm"
+              value={withdrawReason}
+              onChange={(event) => setWithdrawReason(event.target.value)}
+            />
+          </div>
+          {error ? <p role="alert" className="text-sm">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" size="touch" onClick={() => setConfirmWithdraw(false)} disabled={pending}>Cancel</Button>
+            <Button type="button" variant="destructive" size="touch" disabled={pending} onClick={() => void submitWithdraw()}>
+              {pending ? "Withdrawing…" : "Withdraw Variation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDelete} onOpenChange={(open) => { if (!pending) setConfirmDelete(open); }}>
         <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delete draft Variation?</DialogTitle>
@@ -525,7 +637,7 @@ export function VariationEditor(props: EditorProps) {
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" size="touch" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-            <Button type="button" variant="destructive" size="touch" disabled={pending} onClick={() => void run(() => deleteUnissuedDraftVariation({ projectId: props.projectId, variationId: variation.id, revisionId: current.id })).then((ok) => { if (ok) router.push(`/app/projects/${props.projectId}/variations`); })}>
+            <Button type="button" variant="destructive" size="touch" disabled={pending} onClick={() => void confirmDeleteDraft()}>
               {pending ? "Deleting…" : "Delete draft"}
             </Button>
           </DialogFooter>

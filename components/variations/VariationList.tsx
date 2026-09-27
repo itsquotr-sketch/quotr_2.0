@@ -6,6 +6,12 @@ import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createDraftVariation, createVariationRevision } from "@/lib/variations/actions";
+import { createDraftVariation, createVariationRevision, deleteUnissuedDraftVariation } from "@/lib/variations/actions";
 import {
   formatContractMoney,
   formatSignedAdjustment,
@@ -30,6 +36,7 @@ export function VariationList(props: {
   reason: string | null;
   rows: VariationListRow[];
   summary: VariationListSummary | null;
+  notice?: string | null;
 }) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -37,7 +44,9 @@ export function VariationList(props: {
   const [summary, setSummary] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(props.notice ?? null);
+  const [deleteTarget, setDeleteTarget] = useState<VariationListRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const createKey = useRef("");
   const createLock = useRef(false);
   const currency = props.summary?.currency ?? "NZD";
@@ -71,6 +80,26 @@ export function VariationList(props: {
       return;
     }
     router.push(`/app/projects/${props.projectId}/variations/${created.variationId}`);
+  }
+
+  async function confirmListDelete(): Promise<void> {
+    if (!deleteTarget?.currentRevisionId || deleting) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteUnissuedDraftVariation({
+      projectId: props.projectId,
+      variationId: deleteTarget.id,
+      revisionId: deleteTarget.currentRevisionId,
+    });
+    if (!result.ok) {
+      setDeleting(false);
+      setError(result.error);
+      return;
+    }
+    setDeleting(false);
+    setDeleteTarget(null);
+    setNotice("Draft Variation deleted.");
+    router.refresh();
   }
 
   return (
@@ -132,6 +161,7 @@ export function VariationList(props: {
                 </div>
                 {row.createdAt ? <div className="flex justify-between gap-3"><dt>Created</dt><dd>{row.createdAt}</dd></div> : null}
                 {row.issuedAt ? <div className="flex justify-between gap-3"><dt>Issued</dt><dd>{row.issuedAt}</dd></div> : null}
+                {row.withdrawnAt ? <div className="flex justify-between gap-3"><dt>Withdrawn</dt><dd>{row.withdrawnAt}</dd></div> : null}
                 {row.acceptedAt ? <div className="flex justify-between gap-3"><dt>Accepted</dt><dd>{row.acceptedAt}</dd></div> : null}
                 {row.declinedAt ? <div className="flex justify-between gap-3"><dt>Declined</dt><dd>{row.declinedAt}</dd></div> : null}
               </dl>
@@ -148,11 +178,51 @@ export function VariationList(props: {
                     onError={setNotice}
                   />
                 ) : null}
+                {row.status === "draft" || row.status === "issued" ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex h-11 min-h-11 items-center rounded-xl border px-3 text-sm">
+                      Actions
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-2rem)]">
+                      {row.status === "issued" ? (
+                        <DropdownMenuItem className="min-h-11" onClick={() => router.push(`/app/projects/${props.projectId}/variations/${row.id}?preview=1`)}>
+                          View client document
+                        </DropdownMenuItem>
+                      ) : null}
+                      {row.status === "draft" && row.currentRevisionId ? (
+                        <DropdownMenuItem className="min-h-11" variant="destructive" onClick={() => setDeleteTarget(row)}>
+                          Delete draft
+                        </DropdownMenuItem>
+                      ) : null}
+                      {row.status === "issued" && row.currentRevisionId ? (
+                        <DropdownMenuItem className="min-h-11" variant="destructive" onClick={() => router.push(`/app/projects/${props.projectId}/variations/${row.id}?withdraw=1`)}>
+                          Withdraw Variation
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
               </div>
             </li>
           ))}
         </ul>
       ) : null}
+
+      <Dialog open={deleteTarget != null} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
+        <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Delete draft Variation?</DialogTitle>
+            <DialogDescription>This will permanently remove this unissued draft and its items. This action can’t be undone. Variation numbers are not reused.</DialogDescription>
+          </DialogHeader>
+          {error ? <p role="alert" className="text-sm">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" size="touch" disabled={deleting} onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button type="button" variant="destructive" size="touch" disabled={deleting} onClick={() => void confirmListDelete()}>
+              {deleting ? "Deleting…" : "Delete draft"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {props.eligible && createOpen ? (
         <Dialog open={createOpen} onOpenChange={(open) => { if (!open) closeCreate(); }}>

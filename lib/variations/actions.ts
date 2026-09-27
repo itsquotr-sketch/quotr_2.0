@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import {
@@ -21,6 +22,7 @@ import {
   deleteDraftVariationItemSchema,
   deleteUnissuedDraftVariationSchema,
   loadProjectVariationsSchema,
+  withdrawIssuedVariationSchema,
   loadVariationSchema,
   updateDraftVariationItemSchema,
   updateDraftVariationSchema,
@@ -38,6 +40,8 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
   STALE_REVISION: "This variation has changed. Reload it and try again.",
   IMMUTABLE: "This variation revision can no longer be edited.",
   ISSUED_HISTORY: "This Variation has commercial history, so it can’t be deleted.",
+  REASON_REQUIRED: "Enter a withdrawal reason.",
+  WITHDRAW_BLOCKED: "This Variation can’t be withdrawn.",
   UNRESOLVED_PRICING: "Enter a price for every item before issuing this variation.",
   INVALID_ITEM: "Check this variation item and try again.",
   INVALID_QUANTITY: "Enter a valid quantity.",
@@ -222,11 +226,36 @@ export async function deleteUnissuedDraftVariation(input: unknown): Promise<Acti
   if (!parsed.success) return fail("INVALID_INPUT");
   const owned = await assertOrgOwnsActiveProject(context, parsed.data.projectId);
   if ("error" in owned) return fail("NOT_FOUND");
-  return runVariationRpc("delete_unissued_draft_variation_v1", {
+  const result = await runVariationRpc("delete_unissued_draft_variation_v1", {
     p_project: owned.projectId,
     p_variation: parsed.data.variationId,
     p_revision: parsed.data.revisionId,
   });
+  if (result.ok) revalidatePath(`/app/projects/${owned.projectId}/variations`);
+  return result;
+}
+
+export async function withdrawIssuedVariation(input: unknown): Promise<ActionOk | ActionFail> {
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const parsed = withdrawIssuedVariationSchema.safeParse(input);
+  if (!parsed.success) {
+    const reasonIssue = parsed.error.issues.some((issue) => issue.path.includes("reason"));
+    return fail(reasonIssue ? "REASON_REQUIRED" : "INVALID_INPUT");
+  }
+  const owned = await assertOrgOwnsActiveProject(context, parsed.data.projectId);
+  if ("error" in owned) return fail("NOT_FOUND");
+  const result = await runVariationRpc("withdraw_issued_variation_v1", {
+    p_project: owned.projectId,
+    p_variation: parsed.data.variationId,
+    p_revision: parsed.data.revisionId,
+    p_reason: parsed.data.reason,
+  });
+  if (result.ok) {
+    revalidatePath(`/app/projects/${owned.projectId}/variations`);
+    revalidatePath(`/app/projects/${owned.projectId}/variations/${parsed.data.variationId}`);
+  }
+  return result;
 }
 
 export async function createVariationRevision(input: unknown): Promise<ActionOk | ActionFail> {
