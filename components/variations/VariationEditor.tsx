@@ -107,8 +107,8 @@ export function VariationEditor(props: EditorProps) {
   const readiness = useMemo(() => {
     if (!current) return { ready: false, blockers: ["Add at least one Variation item."] };
     return variationIssueReadiness({
-      title: props.variation.title,
-      summary: props.variation.summary,
+      title: current.title,
+      summary: current.summary,
       items: current.items.map((item) => ({
         itemType: item.itemType,
         clientDescription: item.clientDescription,
@@ -119,7 +119,7 @@ export function VariationEditor(props: EditorProps) {
         substitutionGroupId: item.substitutionGroupId,
       })),
     });
-  }, [current, props.variation.summary, props.variation.title]);
+  }, [current]);
 
   const documentModel = useMemo(() => {
     if (!viewing) return null;
@@ -172,8 +172,8 @@ export function VariationEditor(props: EditorProps) {
       revisionNumber: viewing.revisionNumber,
       issuedAt: issued,
       status: viewing.status,
-      title: props.variation.title,
-      summary: props.variation.summary,
+      title: viewing.title,
+      summary: viewing.summary,
       clientNotes: viewing.clientNotes,
       currency: viewing.currency || props.baseline.currency,
       items: viewing.items,
@@ -275,8 +275,8 @@ export function VariationEditor(props: EditorProps) {
           <HeaderForm
             variationId={props.variation.id}
             revisionId={current.id}
-            title={props.variation.title}
-            summary={props.variation.summary ?? ""}
+            title={current.title}
+            summary={current.summary ?? ""}
             clientNotes={current.clientNotes ?? ""}
             internalNotes={current.internalNotes ?? ""}
             pending={pending}
@@ -296,8 +296,8 @@ export function VariationEditor(props: EditorProps) {
           />
         ) : (
           <dl className="mt-3 space-y-2 text-sm">
-            <div><dt className="text-muted-foreground">Title</dt><dd>{props.variation.title}</dd></div>
-            <div><dt className="text-muted-foreground">Summary</dt><dd>{props.variation.summary || "—"}</dd></div>
+            <div><dt className="text-muted-foreground">Title</dt><dd>{viewing.title}</dd></div>
+            <div><dt className="text-muted-foreground">Summary</dt><dd>{viewing.summary || "—"}</dd></div>
           </dl>
         )}
       </section>
@@ -483,7 +483,7 @@ export function VariationEditor(props: EditorProps) {
           {props.history.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-sm">
               <span>
-                Revision {row.revisionNumber} · {row.statusLabel} · {row.label}
+                Revision {row.revisionNumber} · {row.title} · {row.statusLabel} · {row.label}
                 {row.issuedAt ? ` · Issued ${row.issuedAt}` : ""}
                 {row.netExGst != null ? ` · ${formatSignedAdjustment(row.netExGst, currency)}` : ""}
               </span>

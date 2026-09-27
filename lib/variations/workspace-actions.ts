@@ -151,7 +151,7 @@ export async function loadVariationWorkspace(projectId: string): Promise<
     owned.context.supabase
       .from("variation_revisions")
       .select(
-        "id, variation_id, revision_number, status, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, issued_at, accepted_at, rejected_at, withdrawn_at"
+        "id, variation_id, revision_number, status, title, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, issued_at, accepted_at, rejected_at, withdrawn_at"
       )
       .eq("project_id", owned.projectId),
     loadRevisedContractValue({ projectId: owned.projectId }),
@@ -164,6 +164,7 @@ export async function loadVariationWorkspace(projectId: string): Promise<
     variation_id: string;
     revision_number: number;
     status: string;
+    title: string | null;
     total_sell_adjustment_ex_gst: unknown;
     gst_adjustment: unknown;
     total_adjustment_incl_gst: unknown;
@@ -194,7 +195,8 @@ export async function loadVariationWorkspace(projectId: string): Promise<
     rows.push({
       id: variation.id,
       variationNumber: variation.variation_number,
-      title: variation.title,
+      // Current revision title. variations.title is only the denormalised list copy.
+      title: current?.title?.trim() || variation.title,
       status: variation.status,
       statusLabel: variationStatusLabel(variation.status),
       revisionNumber: current?.revision_number ?? null,
@@ -356,6 +358,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
     .map((revision) => ({
       id: revision.id,
       revisionNumber: revision.revisionNumber,
+      title: revision.title,
       status: revision.status,
       statusLabel: variationStatusLabel(revision.status),
       issuedAt: issuedById.get(revision.id) ?? null,

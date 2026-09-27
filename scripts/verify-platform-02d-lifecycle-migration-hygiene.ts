@@ -201,8 +201,10 @@ function sourceChecks(): void {
     m062.includes("create or replace function public.enforce_quote_events_append_only") &&
       m062.includes("drop function if exists public.preview_fixture_org(uuid)") &&
       sqlFiles().includes("062_remove_preview_lifecycle_cleanup.sql") &&
-      sqlFiles().at(-1) === "063_variation_domain_foundation.sql" &&
-      !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org")
+      sqlFiles().includes("063_variation_domain_foundation.sql") &&
+      sqlFiles().at(-1) === "064_variation_revision_client_wording.sql" &&
+      !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

@@ -285,6 +285,8 @@ type RevisionRow = {
   gst_adjustment: number | string | null;
   total_adjustment_incl_gst: number | string | null;
   proposed_time_effect_days: number | null;
+  title: string;
+  summary: string | null;
   client_notes: string | null;
   internal_notes: string | null;
 };
@@ -325,7 +327,7 @@ async function loadInternalVariation(
 
   const revisions = await context.supabase
     .from("variation_revisions")
-    .select("id, variation_id, revision_number, status, currency, gst_rate, tax_treatment, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, proposed_time_effect_days, client_notes, internal_notes")
+    .select("id, variation_id, revision_number, status, title, summary, currency, gst_rate, tax_treatment, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, proposed_time_effect_days, client_notes, internal_notes")
     .eq("variation_id", header.id)
     .order("revision_number", { ascending: true });
   if (revisions.error) return fail("INVALID_INPUT");
@@ -338,21 +340,16 @@ async function loadInternalVariation(
   if (items.error) return fail("INVALID_INPUT");
 
   const itemRows = (items.data ?? []) as ItemRow[];
-  return {
-    id: header.id,
-    projectId: header.project_id,
-    variationNumber: header.variation_number,
-    title: header.title,
-    summary: header.summary,
-    status: header.status,
-    revisions: ((revisions.data ?? []) as RevisionRow[]).flatMap((revision) => {
+  const mappedRevisions = ((revisions.data ?? []) as RevisionRow[]).flatMap((revision) => {
       if (!isStatus(revision.status)) return [];
       const gstRate = readRequiredMoney(revision.gst_rate);
-      if (gstRate == null) return [];
+      if (gstRate == null || !revision.title?.trim()) return [];
       return [{
         id: revision.id,
         revisionNumber: revision.revision_number,
         status: revision.status,
+        title: revision.title,
+        summary: revision.summary,
         currency: revision.currency,
         gstRate,
         taxTreatment: revision.tax_treatment,
@@ -387,7 +384,16 @@ async function loadInternalVariation(
           }];
         }),
       }];
-    }),
+    });
+  const currentRevision = mappedRevisions.find((revision) => revision.status !== "superseded");
+  return {
+    id: header.id,
+    projectId: header.project_id,
+    variationNumber: header.variation_number,
+    title: currentRevision?.title ?? header.title,
+    summary: currentRevision?.summary ?? header.summary,
+    status: header.status,
+    revisions: mappedRevisions,
   };
 }
 

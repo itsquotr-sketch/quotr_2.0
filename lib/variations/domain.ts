@@ -417,6 +417,8 @@ export type ClientFacingVariation = {
     id: string;
     revisionNumber: number;
     status: VariationStatus;
+    title: string;
+    summary: string | null;
     currency: string;
     gstRate: number;
     taxTreatment: string;
@@ -439,13 +441,17 @@ export type InternalVariation = {
   id: string;
   projectId: string;
   variationNumber: number;
+  /** Current-list copy. Issued documents read `revisions[].title`. */
   title: string;
+  /** Current-list copy. Issued documents read `revisions[].summary`. */
   summary: string | null;
   status: VariationStatus;
   revisions: Array<{
     id: string;
     revisionNumber: number;
     status: VariationStatus;
+    title: string;
+    summary: string | null;
     currency: string;
     gstRate: number;
     taxTreatment: string;
@@ -475,6 +481,8 @@ export function clientFacingVariation(
       id: revision.id,
       revisionNumber: revision.revisionNumber,
       status: revision.status,
+      title: revision.title,
+      summary: revision.summary,
       currency: revision.currency,
       gstRate: revision.gstRate,
       taxTreatment: revision.taxTreatment,

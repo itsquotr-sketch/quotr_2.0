@@ -54,6 +54,7 @@ export type VariationListSummary = {
 export type VariationRevisionHistoryRow = {
   id: string;
   revisionNumber: number;
+  title: string;
   status: VariationStatus;
   statusLabel: string;
   issuedAt: string | null;

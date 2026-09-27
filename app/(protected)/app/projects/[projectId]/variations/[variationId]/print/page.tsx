@@ -69,8 +69,8 @@ export default async function VariationPrintPage({ params, searchParams }: PageP
     revisionNumber: viewing.revisionNumber,
     issuedAt: editor.history.find((row) => row.id === viewing.id)?.issuedAt ?? null,
     status: viewing.status,
-    title: editor.variation.title,
-    summary: editor.variation.summary,
+    title: viewing.title,
+    summary: viewing.summary,
     clientNotes: viewing.clientNotes,
     currency: viewing.currency,
     items: viewing.items.map((item) => ({
