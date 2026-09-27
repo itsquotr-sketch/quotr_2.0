@@ -177,7 +177,11 @@ function rankIndex(view: ClarifyView, key: string): number {
 const realView = composeFor(realFacts, realJob.sourceBrief);
 const exemplarView = composeFor(exemplarFacts, exemplar.sourceBrief);
 const exemplarAssumedView = composeFor(
-  [...exemplarFacts, fact("deck.step_width_m", DECK, "Not sure")],
+  [
+    ...exemplarFacts,
+    fact("deck.step_width_m", DECK, 1),
+    fact("deck.step_going_m", DECK, 0.28),
+  ],
   exemplar.sourceBrief,
   {
     constraints: [
@@ -290,10 +294,16 @@ check(
   skippedDemo[0]?.statement === "No demolition included" &&
     skippedDemo[0]?.persistedExclusion === false
 );
+const accessCandidate = realView.candidates.find(
+  (c) => c.constraintKey === "site_access"
+);
 check(
-  "14 skipped access → structured assumption",
-  skippedAccess[0]?.statement === "Standard access" &&
-    skippedAccess[0]?.persistedExclusion === false
+  "14 required access stays in Details with disclosed Standard access",
+  accessCandidate?.assumable === false &&
+    accessCandidate.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL" &&
+    accessCandidate.assumptionStatement === "Standard access" &&
+    skippedAccess.length === 0 &&
+    realView.estimateNowAssumptions.every((a) => a.persistedExclusion === false)
 );
 check(
   "15 skipped fascia → structured assumption",
@@ -417,7 +427,8 @@ check(
 );
 check(
   "34 context clear",
-  panel.includes("ContextLabel") &&
+  panel.includes("{group.workAreaName}") &&
+    panel.includes("data-details-group") &&
     multiView.candidates.every((c) => Boolean(c.workAreaName) || c.source === "project_condition")
 );
 check(

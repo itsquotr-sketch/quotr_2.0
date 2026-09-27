@@ -394,7 +394,7 @@ check(
   "40 retry available",
   labels.includes("updateEstimate") &&
     readyCard.includes("onUpdateEstimate") &&
-    ASSISTANT_ACTION_LABELS.retry === "Retry"
+    ASSISTANT_ACTION_LABELS.retry === "Try again"
 );
 
 // ——— LEGACY ———
@@ -478,7 +478,7 @@ check(
   "49 pre-estimate Clarify still primary",
   shell.includes("CLARIFY_IS_PRIMARY") &&
     shell.includes("<ClarifyPanel") &&
-    shell.includes('title="Clarify"') &&
+    shell.includes('title="Details"') &&
     existsSync("scripts/verify-recovery-4-clarify.ts")
 );
 check(
@@ -566,7 +566,9 @@ check(
   "60 one dominant stale CTA",
   (readyCard.match(/data-estimate-ready-primary-cta="update"/g) ?? []).length ===
     1 &&
-    !readyCard.includes('data-estimate-ready-primary-cta="review"') === false &&
+    readyCard.includes(
+      'data-estimate-ready-primary-cta={reviewIsPrimary ? "review" : undefined}'
+    ) &&
     readyCard.includes('data-estimate-ready-secondary-cta="review-previous"') &&
     readySurface.includes("!isStale && pricingCtaEnabled")
 );

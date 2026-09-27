@@ -204,7 +204,13 @@ console.log("\n== COMMERCIAL OVERVIEW ==");
 
 check(35, "Post-estimate title changed to 'Commercial Overview'", estimatePanel.includes(`"Commercial Overview"`));
 
-check(36, "Pre-estimate retains 'Quick Estimate' title", estimatePanel.includes(`"Quick Estimate"`) && estimatePanel.includes("Quick Estimate"));
+check(
+  36,
+  "Pre-estimate title is Estimate and compact ready title is Commercial Overview",
+  estimatePanel.includes(">Estimate</p>") &&
+    estimatePanel.includes('"Commercial Overview"') &&
+    estimatePanel.includes('data-mobile-qe-header="pending"')
+);
 
 check(37, "compactCommercialSidebar='estimate_ready' mode triggers rename", shell.includes(`compactCommercialSidebar={assistantMode === "estimate_ready"}`));
 

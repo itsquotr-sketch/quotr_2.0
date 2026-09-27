@@ -458,7 +458,7 @@ export function RefineEstimatePanel({
               <Button
                 type="button"
                 className="min-h-11 w-full"
-                data-clarify-primary-cta
+                data-refine-primary-cta
                 disabled={isSaving}
                 onClick={onEstimateNow}
               >

@@ -80,6 +80,10 @@ export async function answerClarifyConstraint(input: {
   };
 }
 
+/**
+ * Submit the open question block without writing answers.
+ * Does not write false Facts for skipped assumable items.
+ */
 async function submitOpenQuestionBlock(
   projectId: string
 ): Promise<AssistantActionState> {

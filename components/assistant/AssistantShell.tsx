@@ -1692,11 +1692,13 @@ export function AssistantShell({
       window.setTimeout(() => {
         setJobPlanScopeSaveStatus("idle");
       }, 2000);
+      bridgeEstimateStaleAfterCanonicalWrite();
       if (!settleCanonicalMutation(result, requestSeq)) {
         onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
+      bridgeEstimateStaleAfterCanonicalWrite,
       onRejectedCanonicalMutation,
       project.id,
       router,

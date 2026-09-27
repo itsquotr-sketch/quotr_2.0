@@ -42,6 +42,7 @@ const jobPlanPanel = read("components/assistant/job-plan/JobPlanPanel.tsx");
 const jobPlanCard = read("components/assistant/job-plan/JobPlanWorkAreaCard.tsx");
 const clarifyPanel = read("components/assistant/clarify/ClarifyPanel.tsx");
 const refinePanel = read("components/assistant/clarify/ClarifyReadiness.tsx");
+const refineFields = read("components/assistant/refine/RefineFieldRow.tsx");
 const shell = read("components/assistant/AssistantShell.tsx");
 const estimatePanel = read("components/assistant/EstimatePanel.tsx");
 const estimateReady = read("components/assistant/EstimateReadyCard.tsx");
@@ -130,8 +131,9 @@ check(
     shell.includes("MATERIAL_SPEC") &&
     shell.includes("specFactKey") &&
     shell.includes("refineAfterEstimateFocusKey") &&
-    refinePanel.includes("data-refine-field") &&
-    refinePanel.includes("focusKey")
+    refinePanel.includes("RefineFieldRow") &&
+    refinePanel.includes("focusKey") &&
+    refineFields.includes("data-refine-field")
 );
 
 check(

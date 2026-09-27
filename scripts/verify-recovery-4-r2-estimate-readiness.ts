@@ -364,7 +364,9 @@ check(
 );
 check(
   "25 post-estimate Improve remains optional",
-  read("components/assistant/clarify/ClarifyReadiness.tsx").includes("Optional details")
+  read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+    "Improve this estimate"
+  )
 );
 check(
   "26 writes canonical Facts/constraints only",
@@ -400,7 +402,8 @@ check("32 same canonical inputs = same sell", baseline.recommendedSell === 10775
 
 const exemplarAssumedFacts = [
   ...exemplarFacts,
-  fact("deck.step_width_m", DECK, "Not sure"),
+  fact("deck.step_width_m", DECK, 1),
+  fact("deck.step_going_m", DECK, 0.28),
 ];
 const exemplarAssumed = composePair(
   exemplarAssumedFacts,
