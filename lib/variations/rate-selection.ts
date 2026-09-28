@@ -34,6 +34,7 @@ export type EligibleVariationRate = {
   group: string;
   detail: string | null;
   badge: "Company Rate" | "Quotr benchmark";
+  derived: boolean;
   effectiveCost: number;
   source: "company_rate" | "quotr_benchmark";
   rateType: string;
@@ -195,6 +196,7 @@ function resolveEntry(
       unit: entry.unit,
       group,
       detail: null,
+      derived: false,
       badge: "Company Rate",
       effectiveCost: companyCost,
       source: "company_rate",
@@ -213,6 +215,7 @@ function resolveEntry(
     unit: entry.unit,
       group,
       detail: null,
+      derived: false,
       badge: "Quotr benchmark",
     effectiveCost: benchmarkCost,
     source: "quotr_benchmark",
@@ -273,6 +276,7 @@ function resolveMaterialItem(
       unit: item.unit,
       group: item.workAreaLabels[0] ?? item.categoryName,
       detail: materialDetail(item),
+      derived: item.benchmarkKind === "derived",
       badge: "Company Rate",
       effectiveCost: companyCost,
       source: "company_rate",
@@ -291,6 +295,7 @@ function resolveMaterialItem(
     unit: item.unit,
     group: item.workAreaLabels[0] ?? item.categoryName,
     detail: materialDetail(item),
+    derived: item.benchmarkKind === "derived",
     badge: "Quotr benchmark",
     effectiveCost: benchmarkCost,
     source: "quotr_benchmark",

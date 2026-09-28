@@ -805,7 +805,7 @@ async function loadOrganisationRates(orgId: string) {
 }
 
 export async function searchVariationComponentRates(input: unknown): Promise<
-  | { ok: true; rates: Array<{ canonicalKey: string; label: string; unit: string; group: string; detail: string | null; badge: "Company Rate" | "Quotr benchmark"; effectiveCost: number }>; truncated: boolean }
+  | { ok: true; rates: Array<{ canonicalKey: string; label: string; unit: string; group: string; detail: string | null; badge: "Company Rate" | "Quotr benchmark"; derived: boolean; effectiveCost: number }>; truncated: boolean }
   | ActionFail
 > {
   const parsed = searchVariationComponentRatesSchema.safeParse(input);
@@ -831,6 +831,7 @@ export async function searchVariationComponentRates(input: unknown): Promise<
       group: rate.group,
       detail: rate.detail,
       badge: rate.badge,
+      derived: rate.derived,
       effectiveCost: rate.effectiveCost,
     })),
   };
@@ -897,6 +898,7 @@ export async function describeVariationComponentRate(input: unknown): Promise<
       unit: string;
       detail: string | null;
       badge: "Company Rate" | "Quotr benchmark";
+      derived: boolean;
       effectiveCost: number;
       costSource: "company_rate" | "quotr_benchmark";
       rateId: string | null;
@@ -924,6 +926,7 @@ export async function describeVariationComponentRate(input: unknown): Promise<
     unit: resolved.unit,
     detail: resolved.detail,
     badge: resolved.badge,
+    derived: resolved.derived,
     effectiveCost: resolved.effectiveCost,
     costSource: resolved.source,
     rateId: resolved.rateId,
