@@ -31,6 +31,7 @@ import {
   loadVariationSchema,
   convertDraftVariationItemToSimpleSchema,
   saveDraftVariationBuildUpSchema,
+  describeVariationComponentRateSchema,
   searchVariationComponentRatesSchema,
   selectVariationComponentRateSchema,
   refreshVariationComponentRateSchema,
@@ -67,7 +68,7 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
   WRONG_UNIT: "That rate uses a different unit.",
   PRODUCTIVITY_REJECTED: "Labour productivity is not an hourly cost rate.",
   NO_RATE: "No rate is available for this component.",
-  RATE_UNAVAILABLE: "That rate is no longer available to refresh.",
+  RATE_UNAVAILABLE: "That rate is no longer available. Choose another rate or enter the cost manually.",
 };
 
 const SAFE_ERROR = "That variation update is not available.";
@@ -241,7 +242,37 @@ export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionO
   const parsed = saveDraftVariationBuildUpSchema.safeParse(input);
   if (!parsed.success) return fail("INVALID_INPUT");
   const data = parsed.data;
-  return runVariationRpc("apply_draft_variation_build_up_v1", {
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const adopted = data.components.filter((component) => component.canonicalKey);
+  const loadedRates = adopted.length > 0 ? await loadOrganisationRates(context.orgId) : [];
+  if (!loadedRates) return fail("INVALID_INPUT");
+  const companyRates = loadedRates;
+  const { resolveVariationComponentRate } = adopted.length > 0
+    ? await import("@/lib/variations/rate-selection")
+    : { resolveVariationComponentRate: null };
+  const prepared = [];
+  for (const component of data.components) {
+    if (!component.canonicalKey || !resolveVariationComponentRate) {
+      prepared.push({ ...component, resolved: null });
+      continue;
+    }
+    const resolved = resolveVariationComponentRate({
+      category: component.category,
+      componentUnit: component.unit,
+      canonicalKey: component.canonicalKey,
+      companyRates,
+    });
+    if (!resolved.ok) return fail(resolved.error === "NO_RATE" ? "RATE_UNAVAILABLE" : resolved.error);
+    prepared.push({
+      ...component,
+      unit: resolved.unit,
+      unitCost: resolved.effectiveCost,
+      description: component.description.trim() || resolved.label,
+      resolved,
+    });
+  }
+  const { data: rpcData, error } = await context.supabase.rpc("apply_draft_variation_build_up_v1", {
     p_variation: data.variationId,
     p_revision: data.revisionId,
     p_item_id: data.itemId,
@@ -259,8 +290,55 @@ export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionO
       targetMarginPercent: data.targetMarginPercent,
       manualSellTotal: data.manualSellTotal,
     },
-    p_components: data.components,
+    p_components: prepared.map((component) => ({
+      id: component.id,
+      category: component.category,
+      description: component.description,
+      quantity: component.quantity,
+      unit: component.unit,
+      unitCost: component.unitCost,
+      sortOrder: component.sortOrder,
+    })),
   });
+  if (error) {
+    if (error.message.includes("VARIATION_IMMUTABLE")) return fail("IMMUTABLE");
+    return fail("INVALID_INPUT");
+  }
+  const body = (rpcData ?? {}) as { ok?: boolean; error?: string; itemId?: string; componentIds?: string[] };
+  if (body.ok !== true) return fail(body.error);
+  const ids = body.componentIds ?? [];
+  for (let index = 0; index < prepared.length; index += 1) {
+    const component = prepared[index];
+    const componentId = ids[index];
+    if (!component || !componentId || !body.itemId) continue;
+    if (component.resolved) {
+      const snapshot = await runRateRpc("snapshot_draft_variation_component_rate_v1", {
+        p_variation: data.variationId,
+        p_revision: data.revisionId,
+        p_item: body.itemId,
+        p_component: componentId,
+        p_canonical_key: component.resolved.canonicalKey,
+        p_rate_type: component.resolved.rateType,
+        p_benchmark_cost: component.resolved.source === "quotr_benchmark" ? component.resolved.benchmarkCost : null,
+        p_benchmark_label: component.resolved.benchmarkLabel,
+        p_benchmark_unit: component.resolved.benchmarkUnit,
+        p_allow_benchmark: component.resolved.source === "quotr_benchmark",
+      });
+      if (!snapshot.ok) return snapshot;
+      continue;
+    }
+    if (component.clearRate && component.unitCost != null) {
+      const manual = await runRateRpc("set_draft_variation_component_manual_cost_v1", {
+        p_variation: data.variationId,
+        p_revision: data.revisionId,
+        p_item: body.itemId,
+        p_component: componentId,
+        p_unit_cost: component.unitCost,
+      });
+      if (!manual.ok) return manual;
+    }
+  }
+  return { ok: true, itemId: body.itemId };
 }
 
 export async function convertDraftVariationItemToSimple(input: unknown): Promise<ActionOk | ActionFail> {
@@ -727,7 +805,7 @@ async function loadOrganisationRates(orgId: string) {
 }
 
 export async function searchVariationComponentRates(input: unknown): Promise<
-  | { ok: true; rates: Array<{ canonicalKey: string; label: string; unit: string; group: string; badge: "Company Rate" | "Quotr benchmark"; effectiveCost: number }>; truncated: boolean }
+  | { ok: true; rates: Array<{ canonicalKey: string; label: string; unit: string; group: string; detail: string | null; badge: "Company Rate" | "Quotr benchmark"; effectiveCost: number }>; truncated: boolean }
   | ActionFail
 > {
   const parsed = searchVariationComponentRatesSchema.safeParse(input);
@@ -751,6 +829,7 @@ export async function searchVariationComponentRates(input: unknown): Promise<
       label: rate.label,
       unit: rate.unit,
       group: rate.group,
+      detail: rate.detail,
       badge: rate.badge,
       effectiveCost: rate.effectiveCost,
     })),
@@ -807,6 +886,47 @@ async function runRateRpc(name: string, args: Record<string, unknown>): Promise<
     proposedCost: readMoney(body.proposedCost),
     proposedSource: body.proposedSource ? readRateSource(body.proposedSource, body.proposedCost ?? null) : undefined,
     applied: body.applied === true,
+  };
+}
+
+export async function describeVariationComponentRate(input: unknown): Promise<
+  | {
+      ok: true;
+      canonicalKey: string;
+      label: string;
+      unit: string;
+      detail: string | null;
+      badge: "Company Rate" | "Quotr benchmark";
+      effectiveCost: number;
+      costSource: "company_rate" | "quotr_benchmark";
+      rateId: string | null;
+    }
+  | ActionFail
+> {
+  const parsed = describeVariationComponentRateSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const companyRates = await loadOrganisationRates(context.orgId);
+  if (!companyRates) return fail("INVALID_INPUT");
+  const { resolveVariationComponentRate } = await import("@/lib/variations/rate-selection");
+  const resolved = resolveVariationComponentRate({
+    category: parsed.data.category,
+    componentUnit: "",
+    canonicalKey: parsed.data.canonicalKey,
+    companyRates,
+  });
+  if (!resolved.ok) return fail(resolved.error === "NO_RATE" ? "RATE_UNAVAILABLE" : resolved.error);
+  return {
+    ok: true,
+    canonicalKey: resolved.canonicalKey,
+    label: resolved.label,
+    unit: resolved.unit,
+    detail: resolved.detail,
+    badge: resolved.badge,
+    effectiveCost: resolved.effectiveCost,
+    costSource: resolved.source,
+    rateId: resolved.rateId,
   };
 }
 

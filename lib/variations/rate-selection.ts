@@ -32,6 +32,7 @@ export type EligibleVariationRate = {
   label: string;
   unit: string;
   group: string;
+  detail: string | null;
   badge: "Company Rate" | "Quotr benchmark";
   effectiveCost: number;
   source: "company_rate" | "quotr_benchmark";
@@ -73,6 +74,16 @@ export function variationRateUnitsMatch(left: string, right: string): boolean {
   return canonicalVariationRateUnit(left) === canonicalVariationRateUnit(right);
 }
 
+/** A new component starts without a measured unit. That must not hide the catalogue. */
+export function variationRateUnitIsOpen(unit: string): boolean {
+  const value = unit.trim().toLowerCase();
+  return value.length === 0 || value === "item" || value === "unit";
+}
+
+function unitCanAdopt(catalogueUnit: string, componentUnit: string): boolean {
+  return variationRateUnitIsOpen(componentUnit) || variationRateUnitsMatch(catalogueUnit, componentUnit);
+}
+
 function positiveCost(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
   return value;
@@ -111,7 +122,7 @@ function winningCompanyRate(
       rate.active &&
       positiveCost(rate.cost_rate) != null &&
       variationRateUnitsMatch(rate.unit, catalogueUnit) &&
-      variationRateUnitsMatch(rate.unit, componentUnit)
+      unitCanAdopt(rate.unit, componentUnit)
   );
   return row ?? null;
 }
@@ -164,7 +175,7 @@ function resolveEntry(
   if (entry.rate_type === "productivity") {
     return { ok: false, error: "PRODUCTIVITY_REJECTED" };
   }
-  if (!variationRateUnitsMatch(entry.unit, componentUnit)) {
+  if (!unitCanAdopt(entry.unit, componentUnit)) {
     return { ok: false, error: "WRONG_UNIT" };
   }
   const benchmarkCost = positiveCost(entry.defaultCostRate);
@@ -183,6 +194,7 @@ function resolveEntry(
       label: company.label,
       unit: entry.unit,
       group,
+      detail: null,
       badge: "Company Rate",
       effectiveCost: companyCost,
       source: "company_rate",
@@ -199,8 +211,9 @@ function resolveEntry(
     canonicalKey: entry.item_key,
     label: entry.label,
     unit: entry.unit,
-    group,
-    badge: "Quotr benchmark",
+      group,
+      detail: null,
+      badge: "Quotr benchmark",
     effectiveCost: benchmarkCost,
     source: "quotr_benchmark",
     rateType: entry.rate_type,
@@ -211,12 +224,36 @@ function resolveEntry(
   };
 }
 
+function materialDetail(item: MaterialRegistryItem): string | null {
+  const parts = [item.thickness, item.sheetSize, item.section, item.gradeTreatment, item.colourType].filter(
+    (part): part is string => Boolean(part)
+  );
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function materialSearchText(item: MaterialRegistryItem): string {
+  return [
+    item.label,
+    item.familyName,
+    item.thickness,
+    item.sheetSize,
+    item.section,
+    item.gradeTreatment,
+    item.colourType,
+    item.categoryName,
+    item.unit,
+    ...item.workAreaLabels,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+}
+
 function resolveMaterialItem(
   item: MaterialRegistryItem,
   componentUnit: string,
   companyRates: readonly VariationCompanyRate[]
 ): ResolvedVariationRate | VariationRateFailure {
-  if (!variationRateUnitsMatch(item.unit, componentUnit)) {
+  if (!unitCanAdopt(item.unit, componentUnit)) {
     return { ok: false, error: "WRONG_UNIT" };
   }
   const benchmarkCost = positiveCost(item.quotrBenchmarkCost);
@@ -235,6 +272,7 @@ function resolveMaterialItem(
       label: company.label,
       unit: item.unit,
       group: item.workAreaLabels[0] ?? item.categoryName,
+      detail: materialDetail(item),
       badge: "Company Rate",
       effectiveCost: companyCost,
       source: "company_rate",
@@ -252,6 +290,7 @@ function resolveMaterialItem(
     label: item.label,
     unit: item.unit,
     group: item.workAreaLabels[0] ?? item.categoryName,
+    detail: materialDetail(item),
     badge: "Quotr benchmark",
     effectiveCost: benchmarkCost,
     source: "quotr_benchmark",
@@ -263,10 +302,21 @@ function resolveMaterialItem(
   };
 }
 
-function matchesQuery(label: string, group: string, query: string | undefined): boolean {
+function compactRateSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .replaceAll("×", "x")
+    .replaceAll("mm", "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function matchesQuery(haystack: string, query: string | undefined): boolean {
   const needle = query?.trim().toLowerCase() ?? "";
   if (!needle) return true;
-  return label.toLowerCase().includes(needle) || group.toLowerCase().includes(needle);
+  const tokens = needle.split(/\s+/).filter((token) => token.length > 0);
+  const compact = compactRateSearch(haystack);
+  const spaced = haystack.toLowerCase().replaceAll("×", " x ");
+  return tokens.every((token) => spaced.includes(token) || compact.includes(compactRateSearch(token)));
 }
 
 export function resolveVariationComponentRate(params: {
@@ -309,7 +359,7 @@ export function listEligibleVariationRates(params: {
     for (const item of registry.items) {
       const result = resolveMaterialItem(item, params.componentUnit, params.companyRates);
       if (!result.ok) continue;
-      if (!matchesQuery(result.label, result.group, params.query)) continue;
+      if (!matchesQuery(`${materialSearchText(item)} ${result.group}`, params.query)) continue;
       resolved.push(result);
     }
   } else if (params.category !== "other") {
@@ -321,7 +371,8 @@ export function listEligibleVariationRates(params: {
         groupFor(entry, params.category)
       );
       if (!result.ok) continue;
-      if (!matchesQuery(result.label, result.group, params.query)) continue;
+      const haystack = [result.label, result.group, entry.description, entry.unit, entry.trade].filter(Boolean).join(" ");
+      if (!matchesQuery(haystack, params.query)) continue;
       resolved.push(result);
     }
   }

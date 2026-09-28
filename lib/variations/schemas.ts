@@ -120,6 +120,8 @@ const costComponentSchema = z
     unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
     unitCost: z.union([finiteNumberSchema, z.null()]),
     sortOrder: z.number().int().min(0).max(10_000),
+    canonicalKey: z.union([z.string().trim().min(1).max(160), z.null()]),
+    clearRate: z.boolean(),
   })
   .strict();
 
@@ -160,8 +162,15 @@ const variationCostCategorySchema = z.enum([
 export const searchVariationComponentRatesSchema = z
   .object({
     category: variationCostCategorySchema,
-    unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
+    unit: z.string().trim().max(40),
     query: z.string().trim().max(80).optional(),
+  })
+  .strict();
+
+export const describeVariationComponentRateSchema = z
+  .object({
+    category: variationCostCategorySchema,
+    canonicalKey: trimmedStringSchema(160, { min: 1, requiredMessage: "Choose a rate." }),
   })
   .strict();
 

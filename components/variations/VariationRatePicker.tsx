@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { selectVariationComponentRate } from "@/lib/variations/actions";
+import { describeVariationComponentRate } from "@/lib/variations/actions";
 import type { VariationCostCategory, VariationRateSource } from "@/lib/variations/domain";
 
 export type VariationRateChoice = {
@@ -12,6 +12,7 @@ export type VariationRateChoice = {
   label: string;
   unit: string;
   group: string;
+  detail: string | null;
   badge: "Company Rate" | "Quotr benchmark";
   effectiveCost: number;
 };
@@ -29,61 +30,67 @@ function money(currency: string, value: number): string {
 
 export function VariationRatePicker(props: {
   category: VariationCostCategory;
-  unit: string;
   currency: string;
   selectedKey: string | null;
-  projectId: string;
-  variationId: string;
-  revisionId: string;
-  itemId: string;
-  componentId: string;
   rates: VariationRateChoice[];
   pending: boolean;
+  searched: boolean;
   truncated: boolean;
+  error: string | null;
   onSearch: (query: string) => void;
   onApplied: (patch: {
+    description: string;
+    unit: string;
     unitCost: string;
     costSource: VariationRateSource;
     canonicalRateKey: string;
     sourceLabel: string | null;
+    detail: string | null;
+    sourceRecordId: string | null;
   }) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
+  const [selectError, setSelectError] = useState<string | null>(null);
   const groups = new Map<string, VariationRateChoice[]>();
   for (const rate of props.rates) {
     const list = groups.get(rate.group) ?? [];
     list.push(rate);
     groups.set(rate.group, list);
   }
+  const searchLabel = props.category === "labour" ? "Search labour rates" : props.category === "material" ? "Search materials" : "Search rates";
+  const alert = selectError ?? props.error;
 
   return (
     <div className="grid gap-2 rounded-xl border bg-muted/30 p-3">
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={`rate-search-${props.componentId}`}>Search rates</Label>
+        <Label htmlFor="variation-rate-search">{searchLabel}</Label>
         <Button type="button" variant="outline" size="touch" onClick={props.onClose}>Close</Button>
       </div>
       <form
-        className="flex flex-wrap gap-2"
+        className="flex flex-col gap-2 sm:flex-row"
         onSubmit={(event) => {
           event.preventDefault();
+          setSelectError(null);
           props.onSearch(query);
         }}
       >
         <Input
-          id={`rate-search-${props.componentId}`}
+          id="variation-rate-search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name or work area"
+          placeholder={searchLabel}
         />
         <Button type="submit" variant="outline" size="touch" disabled={props.pending || selecting}>Search</Button>
       </form>
-      {error ? <p role="alert" className="text-sm">{error}</p> : null}
+      {alert ? <p role="alert" className="text-sm">{alert}</p> : null}
       {props.pending ? <p className="text-sm text-muted-foreground">Loading rates…</p> : null}
-      {!props.pending && props.rates.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No matching rates for this unit. Enter the cost manually.</p>
+      {!props.pending && !props.searched && !alert ? (
+        <p className="text-sm text-muted-foreground">Enter a search to find a rate.</p>
+      ) : null}
+      {!props.pending && props.searched && props.rates.length === 0 && !alert ? (
+        <p className="text-sm text-muted-foreground">No matching rates. Try different wording or enter the cost manually.</p>
       ) : null}
       {[...groups.entries()].map(([group, rows]) => (
         <div key={group} className="grid gap-2">
@@ -100,33 +107,31 @@ export function VariationRatePicker(props: {
                 onClick={() => {
                   void (async () => {
                     setSelecting(true);
-                    setError(null);
-                    const result = await selectVariationComponentRate({
-                      projectId: props.projectId,
-                      variationId: props.variationId,
-                      revisionId: props.revisionId,
-                      itemId: props.itemId,
-                      componentId: props.componentId,
+                    setSelectError(null);
+                    const result = await describeVariationComponentRate({
                       category: props.category,
-                      unit: props.unit,
                       canonicalKey: rate.canonicalKey,
                     });
                     setSelecting(false);
-                    if (!result.ok || result.unitCost == null) {
-                      setError(result.ok ? "That rate is not available for this component." : result.error);
+                    if (!result.ok) {
+                      setSelectError(result.error);
                       return;
                     }
                     props.onApplied({
-                      unitCost: String(result.unitCost),
+                      description: result.label,
+                      unit: result.unit,
+                      unitCost: String(result.effectiveCost),
                       costSource: result.costSource,
-                      canonicalRateKey: rate.canonicalKey,
-                      sourceLabel: result.sourceLabel ?? rate.label,
+                      canonicalRateKey: result.canonicalKey,
+                      sourceLabel: result.label,
+                      detail: result.detail,
+                      sourceRecordId: result.rateId,
                     });
-                    props.onClose();
                   })();
                 }}
               >
                 <span className="font-medium">{rate.label}</span>
+                {rate.detail ? <span>{rate.detail}</span> : null}
                 <span>
                   {displayUnit(rate.unit)} · {rate.badge} · {money(props.currency, rate.effectiveCost)}
                   {selected ? " · Selected" : ""}
@@ -136,7 +141,7 @@ export function VariationRatePicker(props: {
           })}
         </div>
       ))}
-      {props.truncated ? <p className="text-xs text-muted-foreground">Search to narrow this list.</p> : null}
+      {props.truncated ? <p className="text-xs text-muted-foreground">Showing the closest matches. Refine the search to see more.</p> : null}
     </div>
   );
 }

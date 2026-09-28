@@ -132,7 +132,7 @@ const editor = read("components/variations/VariationEditor.tsx");
 const documentView = read("components/variations/VariationDocument.tsx");
 const migration = read("supabase/migrations/068_variation_component_rate_snapshots.sql");
 const diff = execFileSync("git", ["diff", "--name-only", "HEAD"], { cwd: root, encoding: "utf8" });
-check("editor offers manual entry and rate selection", editor.includes("Enter cost manually") && editor.includes("Select from Rates") && editor.includes("Refresh rate") && editor.includes("Cost source"));
+check("editor offers manual entry and rate selection", editor.includes("Enter manually") && editor.includes("Select from Rates") && editor.includes("Refresh rate") && editor.includes("Cost source"));
 check("client document view has no rate source", !documentView.includes("Company Rate") && !documentView.includes("Quotr benchmark") && !documentView.includes("cost_source"));
 check("migration 068 does not edit 063 to 067", migration.includes("cost_source") && !diff.includes("supabase/migrations/063_") && !diff.includes("supabase/migrations/064_") && !diff.includes("supabase/migrations/065_") && !diff.includes("supabase/migrations/066_") && !diff.includes("supabase/migrations/067_"));
 check("catalogue identity is present", material?.defaultCostRate === 17.4 && labour?.defaultCostRate === 60 && labour?.unit === "hour");
