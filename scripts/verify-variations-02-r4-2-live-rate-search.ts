@@ -59,7 +59,7 @@ console.log("\nForm ownership");
 check("search control is not a nested form or parent submit", !picker.includes("<form") && !picker.includes("type=\"submit\"") && !picker.includes(">Search<"));
 check("Enter in the search input does not submit Add item", picker.includes("event.key === \"Enter\"") && picker.includes("event.preventDefault()") && picker.includes("event.stopPropagation()") && picker.includes("selectRate(rate)"));
 check("Escape closes the results list and the dialog can cancel that key", picker.includes("event.key === \"Escape\"") && picker.includes("setListOpen(false)") && editor.includes("details.reason === \"escape-key\"") && editor.includes("details.cancel()"));
-check("parent Add item is saved only by the parent action", parentSubmit.includes("activeComponentEditor") && parentSubmit.includes("?.save()") && parentSubmit.includes("return") && editor.includes("Save cost component") && editor.includes("Cancel component") && editor.includes("type=\"submit\"") && editor.includes("\"Add item\""));
+check("parent Add item is saved only by the parent action", parentSubmit.includes("activeComponentEditor") && parentSubmit.includes("?.save()") && parentSubmit.includes("return") && editor.includes("Save cost") && editor.includes("Add cost") && editor.includes("type=\"submit\"") && editor.includes("\"Add item\""));
 check("selecting a result leaves the Add item modal open", applied.includes("setPickerOpen(false)") && !applied.includes("props.onClose") && !applied.includes("props.onSave") && !applied.includes("router"));
 
 console.log("\nLive results");
@@ -98,7 +98,7 @@ const carpenter = labour.rates.find((rate) => rate.canonicalKey === LABOUR_KEY);
 check("labour search returns hourly COST only", Boolean(carpenter) && carpenter?.unit === "hour" && carpenter?.rateType === "labour" && labour.rates.every((rate) => rate.rateType === "labour" && rate.unit === "hour"));
 const productivity = resolveVariationComponentRate({ category: "labour", componentUnit: "hour", canonicalKey: PRODUCTIVITY_KEY, companyRates: [] });
 check("productivity rates remain excluded", productivity.ok === false && productivity.ok === false && productivity.error === "PRODUCTIVITY_REJECTED" && !labour.rates.some((rate) => rate.canonicalKey === PRODUCTIVITY_KEY));
-check("manual entry remains available", editor.includes("Enter manually") && editor.includes("Change rate") && editor.includes("Cancel component"));
+check("manual entry remains available", editor.includes("Enter manually") && editor.includes("Change rate") && editor.includes("← Back to item"));
 check("empty, loading and error states stay in the combobox", picker.includes("Start typing to search Rates.") && picker.includes("Loading rates…") && picker.includes("No matching rates.") && picker.includes("role=\"alert\"") && editor.includes("No compatible saved rates are available for this category. Enter the cost manually.") && picker.includes("filterVariationRateOptions") && searchRates.includes("catalogue: true") && !picker.includes("searchVariationComponentRates"));
 check("client payload remains confidential", !clientMap.includes("unitCost") && !clientMap.includes("costSource") && !clientMap.includes("canonicalRateKey"));
 check("search uses the signed-in organisation and rejects signed-out callers", searchAction.includes("getAuthOrgContext()") && searchAction.includes("NOT_AUTHENTICATED") && searchAction.includes("loadOrganisationRates(context.orgId)"));

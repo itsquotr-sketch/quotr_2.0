@@ -170,7 +170,7 @@ const document = buildVariationDocument({
 });
 const documentJson = JSON.stringify(document);
 check("built client document keeps the client description only", documentJson.includes("Client facing stair") && !documentJson.includes("Braceline") && !documentJson.includes("company_rate") && !documentJson.includes("unitCost"));
-check("dialog sections and sticky actions", editor.includes("Scope change") && editor.includes("Cost build-up") && editor.includes("No cost components yet") && editor.includes("Add cost component") && editor.includes("Add item") && editor.includes("overflow-y-auto") && editor.includes("shrink-0 border-t"));
+check("dialog sections and sticky actions", editor.includes("Scope change") && editor.includes("Cost build-up") && editor.includes("No costs added yet.") && editor.includes("Add cost") && editor.includes("Add item") && editor.includes("overflow-y-auto") && editor.includes("shrink-0 border-t"));
 check("save re-resolves a selected rate instead of trusting the client cost", actions.includes("resolveVariationComponentRate") && actions.includes("snapshot_draft_variation_component_rate_v1") && actions.includes("unit: resolved.unit") && actions.includes("unitCost: resolved.effectiveCost"));
 
 type Db = SupabaseClient;
