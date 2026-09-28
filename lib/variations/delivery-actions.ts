@@ -5,6 +5,7 @@ import { z } from "zod";
 import { resolveConfiguredSiteOrigin } from "@/lib/auth/site-url";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { parseVariationDocumentIdentity } from "@/lib/variations/document-identity";
 import {
   buildVariationDeliveryEmail,
   variationDeliveryFromHeader,
@@ -47,6 +48,7 @@ const COPY: Record<string, string> = {
   INVALID_EMAIL: "Enter a valid recipient email.",
   IN_PROGRESS: "A send is already in progress.",
   PROJECT_CLOSED: "This project is closed.",
+  IDENTITY_REQUIRED: "This Variation can’t be sent until the accepted Quote reference and client name are recorded.",
 };
 
 function fail(code: string | undefined, fallback = "The Variation could not be sent."): SendFail {
@@ -97,10 +99,10 @@ export async function sendVariationToClient(input: unknown): Promise<SendOk | Se
     return fail("NOT_ELIGIBLE", "The previous send failed. Try again.");
   }
 
-  const [revision, variation, project, organisation, settings] = await Promise.all([
+  const [revision, variation] = await Promise.all([
     context.supabase
       .from("variation_revisions")
-      .select("id, revision_number, title, total_adjustment_incl_gst, status")
+      .select("id, revision_number, title, total_adjustment_incl_gst, currency, status, document_identity")
       .eq("id", parsed.data.revisionId)
       .maybeSingle(),
     context.supabase
@@ -108,24 +110,14 @@ export async function sendVariationToClient(input: unknown): Promise<SendOk | Se
       .select("variation_number, project_id")
       .eq("id", parsed.data.variationId)
       .maybeSingle(),
-    context.supabase
-      .from("projects")
-      .select("title, client_name")
-      .eq("id", parsed.data.projectId)
-      .maybeSingle(),
-    context.supabase.from("organisations").select("name").eq("id", context.orgId).maybeSingle(),
-    context.supabase
-      .from("organisation_settings")
-      .select("contact_email, contact_phone")
-      .eq("org_id", context.orgId)
-      .maybeSingle(),
   ]);
 
   const revisionRow = revision.data;
+  const identity = parseVariationDocumentIdentity(revisionRow?.document_identity);
   const rawAdjustment = revisionRow?.total_adjustment_incl_gst;
   const adjustment = Number(rawAdjustment);
   const origin = resolveConfiguredSiteOrigin();
-  const from = variationDeliveryFromHeader(organisation.data?.name ?? "");
+  const from = variationDeliveryFromHeader(identity?.companyName ?? "");
   const snapshotReady =
     revisionRow?.id === parsed.data.revisionId &&
     revisionRow.status === "issued" &&
@@ -134,29 +126,40 @@ export async function sendVariationToClient(input: unknown): Promise<SendOk | Se
     revisionRow.title.trim() !== "" &&
     rawAdjustment != null &&
     Number.isFinite(adjustment) &&
+    identity?.available === true &&
     origin &&
     from;
 
-  if (!snapshotReady || !revisionRow || !variation.data || !project.data) {
+  if (!snapshotReady || !revisionRow || !variation.data || !identity) {
     await context.supabase.rpc("fail_variation_delivery_v1", {
       p_delivery: begun.deliveryId,
       p_code: "snapshot_unavailable",
       p_message: "The issued Variation could not be prepared for email.",
     });
-    return fail("NOT_ELIGIBLE", "The issued Variation could not be prepared for email.");
+    return fail(
+      identity?.available === false ? "IDENTITY_REQUIRED" : "NOT_ELIGIBLE",
+      identity?.available === false
+        ? "This Variation can’t be sent until the accepted Quote reference and client name are recorded."
+        : "The issued Variation could not be prepared for email."
+    );
   }
 
   const email = buildVariationDeliveryEmail({
-    companyName: organisation.data?.name ?? "Your builder",
-    clientName: parsed.data.recipientName?.trim() || project.data.client_name,
-    projectTitle: project.data.title,
+    companyName: identity.companyName,
+    clientName: identity.clientName,
+    projectTitle: identity.projectTitle,
     variationNumber: variation.data.variation_number,
     revisionNumber: revisionRow.revision_number,
     title: revisionRow.title,
     adjustmentInclGst: adjustment,
+    currency: typeof revisionRow.currency === "string" ? revisionRow.currency : "NZD",
     publicUrl: `${origin}${clientPath}`,
-    contactEmail: settings.data?.contact_email ?? null,
-    contactPhone: settings.data?.contact_phone ?? null,
+    contactEmail: identity.email,
+    contactPhone: identity.phone,
+    logoUrl: identity.logoUrl,
+    quoteNumber: identity.quoteNumber,
+    quoteRevision: identity.quoteRevision,
+    contractorAddress: identity.address,
   });
 
   const provider = getQuoteDeliveryProvider();

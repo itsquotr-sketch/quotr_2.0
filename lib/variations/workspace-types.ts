@@ -75,6 +75,7 @@ export type VariationRevisionHistoryRow = {
   status: VariationStatus;
   statusLabel: string;
   issuedAt: string | null;
+  issuedAtIso: string | null;
   withdrawnAt: string | null;
   netExGst: number | null;
   label: "Current" | "Historical";

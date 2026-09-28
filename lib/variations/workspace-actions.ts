@@ -5,6 +5,7 @@ import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { loadVariation } from "@/lib/variations/actions";
+import { parseVariationDocumentIdentity, type VariationDocumentIdentity } from "@/lib/variations/document-identity";
 import {
   calculateRevisedContractValue,
   type InternalVariation,
@@ -363,6 +364,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
       siteAddress: string | null;
       history: VariationRevisionHistoryRow[];
       deliveries: VariationDeliveryAttempt[];
+      documentIdentities: Record<string, VariationDocumentIdentity | null>;
       withdrawalReason: string | null;
       eligible: boolean;
       reason: string | null;
@@ -409,7 +411,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
     getCompanySettingsWithContext(owned.context),
     owned.context.supabase
       .from("variation_revisions")
-      .select("id, issued_at, withdrawn_at")
+      .select("id, issued_at, withdrawn_at, document_identity")
       .eq("variation_id", variationId),
     owned.context.supabase
       .from("variation_revisions")
@@ -498,8 +500,13 @@ export async function loadVariationEditor(projectId: string, variationId: string
     id: string;
     issued_at: string | null;
     withdrawn_at: string | null;
+    document_identity: unknown;
   }>;
   const issuedById = new Map(revisionDateRows.map((row) => [row.id, formatDate(row.issued_at)]));
+  const issuedIsoById = new Map(revisionDateRows.map((row) => [row.id, row.issued_at]));
+  const documentIdentities = Object.fromEntries(
+    revisionDateRows.map((row) => [row.id, parseVariationDocumentIdentity(row.document_identity)])
+  );
   const withdrawnById = new Map(revisionDateRows.map((row) => [row.id, formatDate(row.withdrawn_at)]));
   const withdrawalMetadata = ((withdrawalEvents.data ?? []) as Array<{ metadata?: { withdrawalReason?: unknown } }>)[0]?.metadata;
   const withdrawalReason = typeof withdrawalMetadata?.withdrawalReason === "string" ? withdrawalMetadata.withdrawalReason : null;
@@ -542,6 +549,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
       status: revision.status,
       statusLabel: variationStatusLabel(revision.status),
       issuedAt: issuedById.get(revision.id) ?? null,
+      issuedAtIso: issuedIsoById.get(revision.id) ?? null,
       withdrawnAt: withdrawnById.get(revision.id) ?? null,
       netExGst: revision.totalSellAdjustmentExGst,
       label: revision.id === currentRevision?.id ? "Current" : "Historical",
@@ -571,6 +579,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
     siteAddress: projectRow.site_address,
     history,
     deliveries,
+    documentIdentities,
     withdrawalReason,
     eligible: eligibility.eligible,
     reason: eligibility.reason,

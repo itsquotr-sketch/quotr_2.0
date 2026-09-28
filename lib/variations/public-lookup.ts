@@ -6,6 +6,7 @@ import {
   hashVariationAccessToken,
   isVariationAccessTokenFormat,
 } from "@/lib/variations/delivery-token";
+import { parseVariationDocumentIdentity } from "@/lib/variations/document-identity";
 import {
   buildVariationDocument,
   type VariationDocumentModel,
@@ -104,11 +105,13 @@ export async function lookupPublicVariationByToken(
     .filter((value): value is string => typeof value === "string" && value.trim() !== "")
     .join(" · ");
 
+  const identity = parseVariationDocumentIdentity(row.identity);
   const document = buildVariationDocument({
-    companyName: typeof row.companyName === "string" ? row.companyName : "",
-    clientName: typeof row.clientName === "string" && row.clientName.trim() ? row.clientName : "Client",
-    projectTitle: typeof row.projectTitle === "string" ? row.projectTitle : "",
-    siteAddress: typeof row.siteAddress === "string" ? row.siteAddress : null,
+    companyName: identity?.companyName || (typeof row.companyName === "string" ? row.companyName : ""),
+    clientName: identity?.clientName || (typeof row.clientName === "string" ? row.clientName : ""),
+    projectTitle: identity?.projectTitle || (typeof row.projectTitle === "string" ? row.projectTitle : ""),
+    siteAddress: identity?.siteAddress ?? (typeof row.siteAddress === "string" ? row.siteAddress : null),
+    identity,
     variationNumber,
     revisionNumber,
     issuedAt: typeof row.issuedAt === "string" ? row.issuedAt : null,

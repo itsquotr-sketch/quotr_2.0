@@ -64,6 +64,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           siteAddress={editor.siteAddress}
           history={editor.history}
           deliveries={editor.deliveries}
+          documentIdentities={editor.documentIdentities}
           withdrawalReason={editor.withdrawalReason}
           acceptedRevisions={editor.acceptedRevisions}
           viewRevisionId={query.revision ?? null}

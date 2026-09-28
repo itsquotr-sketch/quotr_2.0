@@ -121,7 +121,8 @@ assert(
     migrations.includes("067_variation_cost_build_ups.sql") &&
     migrations.includes("068_variation_component_rate_snapshots.sql") &&
     migrations.includes("069_variation_client_delivery.sql") &&
-    migrations.at(-1) === "069_variation_client_delivery.sql"
+    migrations.includes("070_variation_document_identity.sql") &&
+    migrations.at(-1) === "070_variation_document_identity.sql"
 );
 assert(
   "041 accept/decline RPCs remain",

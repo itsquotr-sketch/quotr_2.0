@@ -35,6 +35,7 @@ export function VariationDeliveryPanel(props: {
   recipientName: string;
   recipientEmail: string | null;
   attempts: VariationDeliveryAttempt[];
+  blockedMessage?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(props.recipientEmail ?? "");
@@ -93,8 +94,9 @@ export function VariationDeliveryPanel(props: {
       </ul>
       {latestSent || sent ? <p className="mt-2 text-sm font-medium">Sent</p> : null}
       {error && !open ? <p role="alert" className="mt-2 text-sm">{error}</p> : null}
+      {props.blockedMessage ? <p role="alert" className="mt-3 text-sm">{props.blockedMessage}</p> : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" size="touch" onClick={openDialog} disabled={pending}>
+        <Button type="button" size="touch" onClick={openDialog} disabled={pending || Boolean(props.blockedMessage)}>
           {latestSent || sent ? "Resend" : "Send to client"}
         </Button>
         {sent?.path ? (

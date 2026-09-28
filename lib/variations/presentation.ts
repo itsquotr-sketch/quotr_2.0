@@ -7,6 +7,11 @@
 import { deriveSellFromCost } from "@/lib/commercial-engine/core/sell-from-margin";
 import { roundMoney } from "@/lib/commercial-engine/core/money";
 import {
+  presentVariationIssueDate,
+  variationMasterQuoteClause,
+  type VariationDocumentIdentity,
+} from "@/lib/variations/document-identity";
+import {
   calculateRevisedContractValue,
   prepareVariationItem,
   variationIssueBlocker,
@@ -394,6 +399,18 @@ export type VariationDocumentModel = {
   proposedGstLabel: string;
   proposedInclLabel: string;
   clientNotes: string | null;
+  logoUrl: string | null;
+  legalName: string | null;
+  contractorAddress: string | null;
+  contractorEmail: string | null;
+  contractorPhone: string | null;
+  contractorWebsite: string | null;
+  registrationLines: string[];
+  brandPrimary: string | null;
+  quoteNumber: string | null;
+  quoteRevision: number | null;
+  quoteAcceptedOnLabel: string | null;
+  masterQuoteClause: string | null;
   statusWording: string;
   showsOmissionNotice: boolean;
   acceptancePlaceholder: string;
@@ -432,7 +449,13 @@ export function buildVariationDocument(input: {
     RevisedContractValue,
     "revisedContractValueExGst" | "gst" | "revisedContractValueInclGst"
   > | null;
+  identity?: VariationDocumentIdentity | null;
 }): VariationDocumentModel {
+  const identity = input.identity ?? null;
+  const quoteClause =
+    identity?.available && identity.quoteNumber && identity.quoteRevision != null
+      ? variationMasterQuoteClause(identity.quoteNumber, identity.quoteRevision)
+      : null;
   const currency = input.currency;
   const priced = input.items.filter((item) => item.lineSellAdjustmentExGst != null);
   const grouped = new Set<string>();
@@ -481,13 +504,13 @@ export function buildVariationDocument(input: {
     .map((item) => item.clientDescription);
   const dash = "—";
   return {
-    companyName: input.companyName,
-    clientName: input.clientName,
-    projectTitle: input.projectTitle,
-    siteAddress: input.siteAddress,
+    companyName: identity ? identity.companyName || input.companyName : input.companyName,
+    clientName: identity ? identity.clientName ?? "" : input.clientName,
+    projectTitle: identity ? identity.projectTitle || input.projectTitle : input.projectTitle,
+    siteAddress: identity ? identity.siteAddress : input.siteAddress,
     variationNumber: input.variationNumber,
     revisionNumber: input.revisionNumber,
-    issueDateLabel: input.issuedAt,
+    issueDateLabel: presentVariationIssueDate(input.issuedAt, identity?.timezone),
     title: input.title,
     summary: input.summary?.trim() || "",
     additions,
@@ -524,6 +547,18 @@ export function buildVariationDocument(input: {
         ? dash
         : formatContractMoney(input.proposed.revisedContractValueInclGst, currency),
     clientNotes: input.clientNotes,
+    logoUrl: identity?.logoUrl ?? null,
+    legalName: identity?.legalName ?? null,
+    contractorAddress: identity?.address ?? null,
+    contractorEmail: identity?.email ?? null,
+    contractorPhone: identity?.phone ?? null,
+    contractorWebsite: identity?.website ?? null,
+    registrationLines: identity?.registrationLines ?? [],
+    brandPrimary: identity?.brandPrimary ?? null,
+    quoteNumber: identity?.quoteNumber ?? null,
+    quoteRevision: identity?.quoteRevision ?? null,
+    quoteAcceptedOnLabel: identity?.acceptedOnLabel ?? null,
+    masterQuoteClause: quoteClause,
     statusWording:
       input.status === "accepted"
         ? "Accepted Variation."

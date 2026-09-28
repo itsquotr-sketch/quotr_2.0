@@ -1,35 +1,73 @@
+import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 import {
   VARIATION_DOCUMENT_ACCEPTANCE_COPY,
   VARIATION_DOCUMENT_OMISSION_COPY,
   type VariationDocumentModel,
 } from "@/lib/variations/presentation";
 
+function Detail({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value?.trim()) return null;
+  return (
+    <p>
+      <span className="text-neutral-500">{label}: </span>
+      {value}
+    </p>
+  );
+}
+
 export function VariationDocument({ model }: { model: VariationDocumentModel }) {
   return (
     <article
       data-variation-document="true"
-      className="mx-auto max-w-3xl bg-white px-6 py-8 text-black shadow-sm print:max-w-none print:px-0 print:py-0 print:shadow-none"
+      className="quote-template mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden rounded-xl border border-neutral-200 bg-white p-5 text-neutral-900 shadow-sm sm:p-7 print:max-w-none print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none"
+      style={model.brandPrimary ? { borderColor: model.brandPrimary } : undefined}
     >
-      <header className="border-b border-neutral-200 pb-4">
-        <p className="text-sm font-medium">{model.companyName}</p>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Variation {model.variationNumber}</h1>
-        <p className="mt-1 text-sm">Revision {model.revisionNumber}</p>
+      <header className="mb-5 flex flex-col gap-4 border-b border-neutral-200 pb-4 sm:flex-row sm:items-start sm:justify-between print:mb-4">
+        <div className="min-w-0 flex-1 space-y-1">
+          <QuoteCompanyLogo logoUrl={model.logoUrl} companyName={model.companyName} brandPrimary={model.brandPrimary} />
+          {model.companyName ? <p className="text-sm font-semibold">{model.companyName}</p> : null}
+          {model.legalName && model.legalName !== model.companyName ? <p className="text-xs text-neutral-500">{model.legalName}</p> : null}
+          <div className="space-y-0.5 text-xs leading-relaxed text-neutral-500">
+            {[model.contractorEmail, model.contractorPhone].filter(Boolean).join(" · ") ? (
+              <p>{[model.contractorEmail, model.contractorPhone].filter(Boolean).join(" · ")}</p>
+            ) : null}
+            {model.contractorWebsite ? <p>{model.contractorWebsite}</p> : null}
+            {model.contractorAddress ? <p>{model.contractorAddress}</p> : null}
+            {model.registrationLines.map((line) => <p key={line}>{line}</p>)}
+          </div>
+        </div>
+        <div className="shrink-0 sm:min-w-[220px] sm:text-right">
+          <p className="text-sm font-semibold uppercase tracking-wide">Variation</p>
+          <p className="mt-1 text-sm">Variation {model.variationNumber}</p>
+          <p className="text-sm">Revision {model.revisionNumber}</p>
+          <Detail label="Issued" value={model.issueDateLabel} />
+        </div>
       </header>
+
+      <p className="text-sm font-medium" data-variation-document-status="true">Proposed Variation — awaiting response</p>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Client and project</h2>
-          <p className="mt-1">{model.clientName}</p>
-          <p>{model.projectTitle}</p>
-          {model.siteAddress ? <p>{model.siteAddress}</p> : null}
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Client</h2>
+          {model.clientName ? <p className="mt-1">{model.clientName}</p> : null}
         </div>
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Issue date</h2>
-          <p className="mt-1">{model.issueDateLabel ?? "Not issued"}</p>
-          <p className="mt-2 text-sm font-medium" data-variation-document-status="true">
-            {model.statusWording}
-          </p>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Project</h2>
+          {model.projectTitle ? <p className="mt-1">{model.projectTitle}</p> : null}
+          {model.siteAddress ? <p>{model.siteAddress}</p> : null}
         </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Accepted master Quote</h2>
+        {model.quoteNumber && model.quoteRevision != null ? (
+          <p className="mt-1 text-sm">
+            {model.quoteNumber} · Revision {model.quoteRevision}
+            {model.quoteAcceptedOnLabel ? ` · Accepted ${model.quoteAcceptedOnLabel}` : ""}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm">Accepted Quote reference unavailable</p>
+        )}
       </section>
 
       <section className="mt-6">
@@ -105,6 +143,8 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
           Current accepted contract ex GST {model.currentContractExLabel}. Proposed revised contract ex GST {model.proposedExLabel}, GST {model.proposedGstLabel}.
         </p>
         <p className="mt-3 text-sm">{VARIATION_DOCUMENT_ACCEPTANCE_COPY}</p>
+        <p className="mt-2 text-sm">This proposed adjustment does not change the accepted contract value unless the Variation is accepted.</p>
+        {model.masterQuoteClause ? <p className="mt-3 text-sm leading-6">{model.masterQuoteClause}</p> : null}
         {model.showsOmissionNotice ? <p className="mt-1 text-sm">{VARIATION_DOCUMENT_OMISSION_COPY}</p> : null}
       </section>
 
@@ -117,7 +157,7 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
 
       <section className="mt-8 border-t border-dashed border-neutral-300 pt-4">
         <h2 className="text-sm font-semibold">Acceptance</h2>
-        <p className="mt-1 text-sm text-neutral-700">{model.acceptancePlaceholder}</p>
+        <p className="mt-1 text-sm text-neutral-700">Client response will be available in the next Variation stage.</p>
       </section>
     </article>
   );

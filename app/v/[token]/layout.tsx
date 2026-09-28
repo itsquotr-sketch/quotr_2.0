@@ -4,7 +4,7 @@ export default function PublicVariationLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-neutral-100">
+    <div className="fixed inset-0 overflow-y-auto bg-neutral-100 print:static print:overflow-visible print:bg-white">
       {children}
     </div>
   );

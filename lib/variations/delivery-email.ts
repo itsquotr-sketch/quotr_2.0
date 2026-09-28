@@ -1,8 +1,9 @@
-import { formatPricingMoney } from "@/lib/pricing/format";
+import { formatSignedAdjustment } from "@/lib/variations/presentation";
 import {
   formatNamedFromHeader,
   quoteChannelFromAddress,
 } from "@/lib/email/application-email";
+import { quoteEmailSafeLogoUrl } from "@/lib/quotes/delivery-email";
 
 function escapeHtml(value: string): string {
   return value
@@ -34,14 +35,19 @@ export function buildVariationDeliveryEmail(input: {
   revisionNumber: number;
   title: string;
   adjustmentInclGst: number;
+  currency?: string;
   publicUrl: string;
   contactEmail: string | null;
   contactPhone: string | null;
+  logoUrl?: string | null;
+  quoteNumber?: string | null;
+  quoteRevision?: number | null;
+  contractorAddress?: string | null;
 }): { subject: string; html: string; text: string } {
   const company = input.companyName.trim() || "Your builder";
   const client = input.clientName?.trim() || "there";
   const project = input.projectTitle.trim() || "your project";
-  const total = formatPricingMoney(input.adjustmentInclGst);
+  const total = formatSignedAdjustment(input.adjustmentInclGst, input.currency || "NZD");
   const subject = buildVariationDeliverySubject({
     variationNumber: input.variationNumber,
     projectTitle: project,
@@ -49,23 +55,33 @@ export function buildVariationDeliveryEmail(input: {
   const contact = [input.contactEmail?.trim(), input.contactPhone?.trim()]
     .filter((value): value is string => Boolean(value))
     .join(" · ");
-  const proposed =
-    "This Variation is proposed and has not yet been accepted.";
+  const address = input.contractorAddress?.trim() || "";
+  const quoteLine =
+    input.quoteNumber && input.quoteRevision != null
+      ? `This Variation relates to accepted Quote ${input.quoteNumber}, Revision ${input.quoteRevision}. It has not yet been accepted and does not currently change the accepted contract value.`
+      : "This Variation is proposed and has not yet been accepted.";
+  const logoUrl = quoteEmailSafeLogoUrl(input.logoUrl);
+  const logoHtml = logoUrl
+    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(company)}" width="160" style="max-width:160px;height:auto;display:block;padding:0 0 16px 0;border:0" />`
+    : "";
 
   const text = [
     `Hello ${client},`,
     "",
-    `${company} has sent a proposed Variation for ${project}.`,
+    `${company} has sent you proposed Variation ${input.variationNumber} for ${project}.`,
+    "Proposed Variation",
     `Variation ${input.variationNumber}`,
     `Revision ${input.revisionNumber}`,
     input.title.trim(),
     `Adjustment incl GST: ${total}`,
     "",
-    proposed,
+    quoteLine,
     "",
     `View Variation: ${input.publicUrl}`,
     "",
     contact || null,
+    address || null,
+    company,
   ]
     .filter((line): line is string => line != null)
     .join("\n");
@@ -74,21 +90,31 @@ export function buildVariationDeliveryEmail(input: {
 <html>
 <body style="padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 12px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;padding:24px">
-        <tr><td>
-          <p style="margin:0 0 4px;font-size:16px;font-weight:700">${escapeHtml(company)}</p>
-          <p style="margin:0 0 16px">Hello ${escapeHtml(client)},</p>
-          <p style="margin:0 0 12px">${escapeHtml(company)} has sent a proposed Variation for ${escapeHtml(project)}.</p>
-          <p style="margin:0">Variation ${input.variationNumber} · Revision ${input.revisionNumber}</p>
-          <p style="margin:0 0 8px;font-weight:700">${escapeHtml(input.title.trim())}</p>
-          <p style="margin:0 0 16px">Adjustment incl GST: ${escapeHtml(total)}</p>
-          <p style="margin:0 0 16px">${escapeHtml(proposed)}</p>
-          <p style="margin:0 0 16px"><a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;min-height:44px;line-height:44px;padding:0 16px;background:#c2410c;color:#fff;text-decoration:none;border-radius:8px">View Variation</a></p>
-          ${contact ? `<p style="margin:0;color:#444">${escapeHtml(contact)}</p>` : ""}
-        </td></tr>
-      </table>
-    </td></tr>
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;padding:28px 24px">
+          <tr>
+            <td>
+              ${logoHtml}
+              <p style="padding:0 0 4px 0;font-size:16px;font-weight:700;color:#111">${escapeHtml(company)}</p>
+              <p style="padding:0 0 20px 0;font-size:14px;color:#52525b">Proposed Variation ${input.variationNumber} · Revision ${input.revisionNumber}</p>
+              <p style="padding:0 0 16px 0;font-size:15px">${escapeHtml(company)} has sent you proposed Variation ${input.variationNumber} for ${escapeHtml(project)}.</p>
+              <p style="padding:0 0 8px 0;font-size:15px;font-weight:700">${escapeHtml(input.title.trim())}</p>
+              <p style="padding:20px 0 4px 0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#71717a">Adjustment incl GST</p>
+              <p style="padding:0 0 8px 0;font-size:22px;font-weight:700">${escapeHtml(total)} incl GST</p>
+              <p style="padding:0 0 20px 0;font-size:14px;color:#52525b">${escapeHtml(quoteLine)}</p>
+              <p style="padding:24px 0">
+                <a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View Variation</a>
+              </p>
+              ${contact ? `<p style="padding:0 0 4px 0;font-size:12px;color:#52525b">${escapeHtml(contact)}</p>` : ""}
+              ${address ? `<p style="padding:0 0 4px 0;font-size:12px;color:#52525b">${escapeHtml(address)}</p>` : ""}
+              <p style="padding:0 0 16px 0;font-size:12px;color:#52525b">${escapeHtml(company)}</p>
+              <p style="padding:0;font-size:11px;color:#a1a1aa">Sent securely via Quotr</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
   </table>
 </body>
 </html>`;

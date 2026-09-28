@@ -73,7 +73,7 @@ async function main(): Promise<void> {
   const sql = read("supabase/migrations/069_variation_client_delivery.sql");
   const action = read("lib/variations/delivery-actions.ts");
   const email = read("lib/variations/delivery-email.ts");
-  const view = read("components/variations/VariationPublicView.tsx");
+  const view = read("components/variations/VariationPublicView.tsx") + read("components/variations/VariationDocument.tsx");
   const panel = read("components/variations/VariationDeliveryPanel.tsx");
   const lookupSql = sql.slice(sql.indexOf("lookup_variation_client_by_token_hash_v1"));
   const sample = buildVariationDeliveryEmail({

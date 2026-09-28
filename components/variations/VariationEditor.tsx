@@ -72,6 +72,7 @@ import {
   VARIATION_READY_HEADING,
   type CommercialProvenance,
 } from "@/lib/variations/presentation";
+import { VARIATION_IDENTITY_SEND_BLOCK, VARIATION_QUOTE_REFERENCE_UNAVAILABLE, type VariationDocumentIdentity } from "@/lib/variations/document-identity";
 import type {
   VariationBaselineView,
   VariationDeliveryAttempt,
@@ -101,6 +102,7 @@ type EditorProps = {
   siteAddress: string | null;
   history: VariationRevisionHistoryRow[];
   deliveries: VariationDeliveryAttempt[];
+  documentIdentities: Record<string, VariationDocumentIdentity | null>;
   withdrawalReason: string | null;
   acceptedRevisions: AcceptedMoney[];
   viewRevisionId: string | null;
@@ -280,6 +282,7 @@ export function VariationEditor(props: EditorProps) {
         status: revision.status,
         statusLabel: variationStatusLabel(revision.status),
         issuedAt: previous.find((row) => row.id === revision.id)?.issuedAt ?? null,
+        issuedAtIso: previous.find((row) => row.id === revision.id)?.issuedAtIso ?? null,
         withdrawnAt: previous.find((row) => row.id === revision.id)?.withdrawnAt ?? null,
         netExGst: revision.totalSellAdjustmentExGst,
         label: revision.status === "superseded" ? "Historical" : "Current",
@@ -585,9 +588,10 @@ export function VariationEditor(props: EditorProps) {
           title={current.title}
           adjustmentInclGst={current.totalAdjustmentInclGst}
           currency={currency}
-          recipientName={props.clientName}
+          recipientName={props.documentIdentities[current.id]?.clientName || props.clientName}
           recipientEmail={props.clientEmail}
           attempts={props.deliveries}
+          blockedMessage={props.documentIdentities[current.id]?.available ? null : `${VARIATION_QUOTE_REFERENCE_UNAVAILABLE}. ${VARIATION_IDENTITY_SEND_BLOCK}`}
         />
       ) : null}
 
@@ -627,7 +631,8 @@ export function VariationEditor(props: EditorProps) {
         currency={currency}
         baseline={props.baseline}
         acceptedRevisions={props.acceptedRevisions}
-        issuedAt={history.find((row) => row.id === viewing.id)?.issuedAt ?? null}
+        issuedAt={history.find((row) => row.id === viewing.id)?.issuedAtIso ?? null}
+        identity={props.documentIdentities[viewing.id] ?? null}
       />
 
       {draft && itemEditor === "add" ? (
@@ -791,6 +796,7 @@ function ClientPreview(props: {
   baseline: VariationBaselineView;
   acceptedRevisions: AcceptedMoney[];
   issuedAt: string | null;
+  identity: VariationDocumentIdentity | null;
 }) {
   if (!props.open) return null;
   const viewing = props.viewing;
@@ -837,6 +843,7 @@ function ClientPreview(props: {
     title: viewing.title,
     summary: viewing.summary,
     clientNotes: viewing.clientNotes,
+    identity: props.identity,
     currency: viewing.currency || props.currency,
     items: viewing.items,
     totals: {
