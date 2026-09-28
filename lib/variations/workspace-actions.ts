@@ -19,6 +19,7 @@ import {
   variationStatusLabel,
 } from "@/lib/variations/presentation";
 import type {
+  VariationAttachmentView,
   VariationBaselineView,
   VariationDeliveryAttempt,
   VariationListRow,
@@ -374,6 +375,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
         gstAdjustment: number;
         totalAdjustmentInclGst: number;
       }>;
+      attachments: VariationAttachmentView[];
     }
   | Fail
 > {
@@ -540,6 +542,49 @@ export async function loadVariationEditor(projectId: string, variationId: string
       failureMessage: row.failure_message_safe,
     }];
   });
+  const attachmentQuery = await owned.context.supabase
+    .from("variation_attachments")
+    .select("id, variation_revision_id, visibility, display_filename, mime_type, byte_size, caption, internal_description, linked_variation_item_id, sort_order, upload_status, object_confirmed, created_at, frozen_at")
+    .eq("variation_id", variationId)
+    .order("sort_order", { ascending: true });
+  if (attachmentQuery.error) return { ok: false, error: "That variation could not be found." };
+  const attachments: VariationAttachmentView[] = ((attachmentQuery.data ?? []) as Array<{
+    id: string;
+    variation_revision_id: string;
+    visibility: string;
+    display_filename: string;
+    mime_type: string;
+    byte_size: number | string;
+    caption: string | null;
+    internal_description: string | null;
+    linked_variation_item_id: string | null;
+    sort_order: number;
+    upload_status: string;
+    object_confirmed: boolean;
+    created_at: string;
+    frozen_at: string | null;
+  }>).flatMap((row) => {
+    if (row.visibility !== "client" && row.visibility !== "internal") return [];
+    if (row.upload_status !== "pending" && row.upload_status !== "ready" && row.upload_status !== "failed") return [];
+    const byteSize = typeof row.byte_size === "number" ? row.byte_size : Number(row.byte_size);
+    if (!Number.isFinite(byteSize)) return [];
+    return [{
+      id: row.id,
+      revisionId: row.variation_revision_id,
+      visibility: row.visibility,
+      displayFilename: row.display_filename,
+      mimeType: row.mime_type,
+      byteSize,
+      caption: row.caption,
+      internalDescription: row.internal_description,
+      linkedVariationItemId: row.linked_variation_item_id,
+      sortOrder: row.sort_order,
+      uploadStatus: row.upload_status,
+      objectConfirmed: row.object_confirmed,
+      createdAt: row.created_at,
+      frozen: row.frozen_at != null,
+    }];
+  });
   const history: VariationRevisionHistoryRow[] = [...loaded.variation.revisions]
     .sort((a, b) => a.revisionNumber - b.revisionNumber)
     .map((revision) => ({
@@ -600,5 +645,6 @@ export async function loadVariationEditor(projectId: string, variationId: string
         totalAdjustmentInclGst: incl,
       }];
     }),
+    attachments,
   };
 }

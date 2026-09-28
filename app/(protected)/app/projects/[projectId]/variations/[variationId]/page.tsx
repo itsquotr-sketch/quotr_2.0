@@ -70,6 +70,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           viewRevisionId={query.revision ?? null}
           startPreview={query.preview === "1"}
           startWithdraw={query.withdraw === "1"}
+          attachments={editor.attachments}
         />
       </WorkspaceContainer>
     </div>

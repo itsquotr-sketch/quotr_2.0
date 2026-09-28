@@ -47,7 +47,7 @@ export const VARIATION_DOCUMENT_OMISSION_COPY =
   "This amount reduces the contract value.";
 
 export const VARIATION_ISSUE_CONFIRM_TEMPLATE =
-  "You’re about to issue Variation {number}, revision {revision}. Once issued, this revision can’t be edited. You can create a new revision if changes are needed.";
+  "You’re about to issue Variation {number}, revision {revision}. This revision includes {attachments} client attachments. Once issued, its scope, pricing and client attachments cannot be changed.";
 
 export const VARIATION_PRICING_REQUIRED_LABEL = "Pricing required";
 
@@ -108,11 +108,17 @@ export function formatSignedAdjustment(amount: number, currency: string): string
   return formatContractMoney(0, currency);
 }
 
-export function issueConfirmationCopy(variationNumber: number, revisionNumber: number): string {
-  return VARIATION_ISSUE_CONFIRM_TEMPLATE.replace("{number}", String(variationNumber)).replace(
-    "{revision}",
-    String(revisionNumber)
-  );
+export function issueConfirmationCopy(
+  variationNumber: number,
+  revisionNumber: number,
+  clientAttachmentCount = 0
+): string {
+  const count = Number.isFinite(clientAttachmentCount) ? Math.max(0, Math.trunc(clientAttachmentCount)) : 0;
+  const noun = count === 1 ? "client attachment" : "client attachments";
+  return VARIATION_ISSUE_CONFIRM_TEMPLATE
+    .replace("{number}", String(variationNumber))
+    .replace("{revision}", String(revisionNumber))
+    .replace("{attachments} client attachments", `${count} ${noun}`);
 }
 
 /**
@@ -242,6 +248,7 @@ export function variationIssueReadiness(input: {
   title: string;
   summary: string | null;
   items: readonly VariationItemInput[];
+  clientAttachments?: readonly { uploadStatus: string; objectConfirmed: boolean }[];
 }): VariationReadiness {
   const blockers: string[] = [];
   const blockerCodes: string[] = [];
@@ -289,6 +296,9 @@ export function variationIssueReadiness(input: {
   }
   if (code === "ZERO_NET_UNDOCUMENTED") {
     add("ZERO_NET_UNDOCUMENTED", "Describe the no-cost change, or price the additions and omissions.");
+  }
+  if ((input.clientAttachments ?? []).some((file) => file.uploadStatus !== "ready" || !file.objectConfirmed)) {
+    add("ATTACHMENT_INCOMPLETE", "Finish or remove the client attachments that are still uploading or failed.");
   }
   return { ready: blockers.length === 0, blockerCodes, blockers };
 }
@@ -414,6 +424,20 @@ export type VariationDocumentModel = {
   statusWording: string;
   showsOmissionNotice: boolean;
   acceptancePlaceholder: string;
+  supportingFiles: VariationSupportingFile[];
+};
+
+export type VariationSupportingFile = {
+  fileId: string;
+  displayFilename: string;
+  caption: string | null;
+  mimeType: string;
+  byteSize: number;
+  typeLabel: string;
+  sizeLabel: string;
+  kind: "image" | "document";
+  viewUrl: string | null;
+  downloadUrl: string | null;
 };
 
 export function buildVariationDocument(input: {
@@ -450,6 +474,7 @@ export function buildVariationDocument(input: {
     "revisedContractValueExGst" | "gst" | "revisedContractValueInclGst"
   > | null;
   identity?: VariationDocumentIdentity | null;
+  supportingFiles?: VariationSupportingFile[];
 }): VariationDocumentModel {
   const identity = input.identity ?? null;
   const quoteClause =
@@ -565,6 +590,7 @@ export function buildVariationDocument(input: {
         : VARIATION_DOCUMENT_PROPOSED_STATUS,
     showsOmissionNotice: omissions.length > 0 || substitutions.length > 0,
     acceptancePlaceholder: "Client acceptance will be available when this Variation is sent.",
+    supportingFiles: input.supportingFiles ?? [],
   };
 }
 

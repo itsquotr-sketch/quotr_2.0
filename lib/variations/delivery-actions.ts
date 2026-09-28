@@ -144,6 +144,14 @@ export async function sendVariationToClient(input: unknown): Promise<SendOk | Se
     );
   }
 
+  const attachmentCount = await context.supabase
+    .from("variation_attachments")
+    .select("id", { count: "exact", head: true })
+    .eq("variation_revision_id", parsed.data.revisionId)
+    .eq("visibility", "client")
+    .eq("upload_status", "ready");
+  const clientAttachmentCount = attachmentCount.count ?? 0;
+
   const email = buildVariationDeliveryEmail({
     companyName: identity.companyName,
     clientName: identity.clientName,
@@ -160,6 +168,7 @@ export async function sendVariationToClient(input: unknown): Promise<SendOk | Se
     quoteNumber: identity.quoteNumber,
     quoteRevision: identity.quoteRevision,
     contractorAddress: identity.address,
+    clientAttachmentCount: clientAttachmentCount,
   });
 
   const provider = getQuoteDeliveryProvider();

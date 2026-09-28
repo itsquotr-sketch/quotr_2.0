@@ -43,6 +43,7 @@ export function buildVariationDeliveryEmail(input: {
   quoteNumber?: string | null;
   quoteRevision?: number | null;
   contractorAddress?: string | null;
+  clientAttachmentCount?: number;
 }): { subject: string; html: string; text: string } {
   const company = input.companyName.trim() || "Your builder";
   const client = input.clientName?.trim() || "there";
@@ -64,6 +65,10 @@ export function buildVariationDeliveryEmail(input: {
   const logoHtml = logoUrl
     ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(company)}" width="160" style="max-width:160px;height:auto;display:block;padding:0 0 16px 0;border:0" />`
     : "";
+  const supporting =
+    (input.clientAttachmentCount ?? 0) > 0
+      ? "Supporting documents or photos are available through the secure View Variation link."
+      : null;
 
   const text = [
     `Hello ${client},`,
@@ -77,6 +82,8 @@ export function buildVariationDeliveryEmail(input: {
     "",
     quoteLine,
     "",
+    supporting,
+    supporting ? "" : null,
     `View Variation: ${input.publicUrl}`,
     "",
     contact || null,
@@ -103,6 +110,7 @@ export function buildVariationDeliveryEmail(input: {
               <p style="padding:20px 0 4px 0;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#71717a">Adjustment incl GST</p>
               <p style="padding:0 0 8px 0;font-size:22px;font-weight:700">${escapeHtml(total)} incl GST</p>
               <p style="padding:0 0 20px 0;font-size:14px;color:#52525b">${escapeHtml(quoteLine)}</p>
+              ${supporting ? `<p style="padding:0 0 16px 0;font-size:14px;color:#52525b">${escapeHtml(supporting)}</p>` : ""}
               <p style="padding:24px 0">
                 <a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View Variation</a>
               </p>

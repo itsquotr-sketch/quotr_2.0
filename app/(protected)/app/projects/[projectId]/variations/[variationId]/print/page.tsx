@@ -1,5 +1,10 @@
 import { VariationDocument } from "@/components/variations/VariationDocument";
 import { VariationPrintButton } from "@/components/variations/VariationPrintButton";
+import {
+  formatAttachmentSize,
+  variationAttachmentKind,
+  variationAttachmentTypeLabel,
+} from "@/lib/variations/attachment-files";
 import { calculateRevisedContractValue } from "@/lib/variations/domain";
 import {
   buildVariationDocument,
@@ -96,6 +101,20 @@ export default async function VariationPrintPage({ params, searchParams }: PageP
         }
       : null,
     proposed,
+    supportingFiles: editor.attachments
+      .filter((file) => file.revisionId === viewing.id && file.visibility === "client" && file.uploadStatus === "ready")
+      .map((file) => ({
+        fileId: file.id,
+        displayFilename: file.displayFilename,
+        caption: file.caption,
+        mimeType: file.mimeType,
+        byteSize: file.byteSize,
+        typeLabel: variationAttachmentTypeLabel(file.mimeType),
+        sizeLabel: formatAttachmentSize(file.byteSize),
+        kind: variationAttachmentKind(file.mimeType),
+        viewUrl: null,
+        downloadUrl: null,
+      })),
   });
 
   return (

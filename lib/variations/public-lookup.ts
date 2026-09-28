@@ -3,8 +3,14 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { roundMoney } from "@/lib/commercial-engine/core/money";
 import {
+  formatAttachmentSize,
+  variationAttachmentKind,
+  variationAttachmentTypeLabel,
+} from "@/lib/variations/attachment-files";
+import {
   hashVariationAccessToken,
   isVariationAccessTokenFormat,
+  variationPublicPath,
 } from "@/lib/variations/delivery-token";
 import { parseVariationDocumentIdentity } from "@/lib/variations/document-identity";
 import {
@@ -105,6 +111,31 @@ export async function lookupPublicVariationByToken(
     .filter((value): value is string => typeof value === "string" && value.trim() !== "")
     .join(" · ");
 
+  const supportingFiles = Array.isArray(row.clientAttachments)
+    ? row.clientAttachments.flatMap((file) => {
+        if (!file || typeof file !== "object") return [];
+        const record = file as Record<string, unknown>;
+        const fileId = typeof record.fileId === "string" ? record.fileId : "";
+        const displayFilename = typeof record.displayFilename === "string" ? record.displayFilename : "";
+        const mimeType = typeof record.mimeType === "string" ? record.mimeType : "";
+        const byteSize = numberOrNull(record.byteSize);
+        if (!fileId || !displayFilename || !mimeType || byteSize == null) return [];
+        const href = `${variationPublicPath(rawToken)}/files/${fileId}`;
+        return [{
+          fileId,
+          displayFilename,
+          caption: typeof record.caption === "string" && record.caption.trim() ? record.caption : null,
+          mimeType,
+          byteSize,
+          typeLabel: variationAttachmentTypeLabel(mimeType),
+          sizeLabel: formatAttachmentSize(byteSize),
+          kind: variationAttachmentKind(mimeType),
+          viewUrl: href,
+          downloadUrl: `${href}?download=1`,
+        }];
+      })
+    : [];
+
   const identity = parseVariationDocumentIdentity(row.identity);
   const document = buildVariationDocument({
     companyName: identity?.companyName || (typeof row.companyName === "string" ? row.companyName : ""),
@@ -133,6 +164,7 @@ export async function lookupPublicVariationByToken(
       gst: proposedGst,
       revisedContractValueInclGst: proposedIncl,
     },
+    supportingFiles,
   });
 
   return { state: "proposed", document, contactLine: contact || null };

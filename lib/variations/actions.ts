@@ -62,6 +62,7 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
   ZERO_NET_UNDOCUMENTED:
     "A zero variation needs real additions and omissions, or a documented no-cost change.",
   EMPTY_VARIATION: "Add at least one item before issuing this variation.",
+  ATTACHMENT_INCOMPLETE: "Finish or remove the client attachments that are still uploading or failed.",
   INVALID_INPUT: "Check the variation details and try again.",
   MODE_CONFIRM_REQUIRED: "Confirm the pricing method change before saving.",
   INVALID_RATE: "That rate is not available for this component.",
@@ -371,12 +372,33 @@ export async function deleteUnissuedDraftVariation(input: unknown): Promise<Acti
   if (!parsed.success) return fail("INVALID_INPUT");
   const owned = await assertOrgOwnsActiveProject(context, parsed.data.projectId);
   if ("error" in owned) return fail("NOT_FOUND");
+  const existingFiles = await context.supabase
+    .from("variation_attachments")
+    .select("storage_object_path")
+    .eq("variation_id", parsed.data.variationId);
+  const objectPaths = ((existingFiles.data ?? []) as Array<{ storage_object_path: string }>).map(
+    (row) => row.storage_object_path
+  );
   const result = await runVariationRpc("delete_unissued_draft_variation_v1", {
     p_project: owned.projectId,
     p_variation: parsed.data.variationId,
     p_revision: parsed.data.revisionId,
   });
-  if (result.ok) revalidatePath(`/app/projects/${owned.projectId}/variations`);
+  if (result.ok) {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    for (const objectPath of objectPaths) {
+      if (!objectPath.startsWith(`${context.orgId}/`) || objectPath.includes("..")) continue;
+      const remaining = await admin
+        .from("variation_attachments")
+        .select("id", { count: "exact", head: true })
+        .eq("storage_object_path", objectPath);
+      if ((remaining.count ?? 1) === 0) {
+        await admin.storage.from("variation-attachments").remove([objectPath]);
+      }
+    }
+    revalidatePath(`/app/projects/${owned.projectId}/variations`);
+  }
   return result;
 }
 

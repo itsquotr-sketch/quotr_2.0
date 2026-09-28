@@ -80,3 +80,20 @@ export type VariationRevisionHistoryRow = {
   netExGst: number | null;
   label: "Current" | "Historical";
 };
+
+export type VariationAttachmentView = {
+  id: string;
+  revisionId: string;
+  visibility: "client" | "internal";
+  displayFilename: string;
+  mimeType: string;
+  byteSize: number;
+  caption: string | null;
+  internalDescription: string | null;
+  linkedVariationItemId: string | null;
+  sortOrder: number;
+  uploadStatus: "pending" | "ready" | "failed";
+  objectConfirmed: boolean;
+  createdAt: string;
+  frozen: boolean;
+};

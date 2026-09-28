@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VariationDeliveryPanel } from "@/components/variations/VariationDeliveryPanel";
+import { VariationSupportingFiles } from "@/components/variations/VariationSupportingFiles";
+import { listVariationAttachments } from "@/lib/variations/attachment-actions";
+import {
+  formatAttachmentSize,
+  variationAttachmentKind,
+  variationAttachmentTypeLabel,
+} from "@/lib/variations/attachment-files";
 import { VariationDocument } from "@/components/variations/VariationDocument";
 import { VariationRatePicker, variationRateSourceText, type VariationRateChoice } from "@/components/variations/VariationRatePicker";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +81,7 @@ import {
 } from "@/lib/variations/presentation";
 import { VARIATION_IDENTITY_SEND_BLOCK, VARIATION_QUOTE_REFERENCE_UNAVAILABLE, type VariationDocumentIdentity } from "@/lib/variations/document-identity";
 import type {
+  VariationAttachmentView,
   VariationBaselineView,
   VariationDeliveryAttempt,
   VariationRevisionHistoryRow,
@@ -108,6 +116,7 @@ type EditorProps = {
   viewRevisionId: string | null;
   startPreview?: boolean;
   startWithdraw?: boolean;
+  attachments: VariationAttachmentView[];
 };
 
 type BuildUpDraft = {
@@ -181,6 +190,7 @@ export function VariationEditor(props: EditorProps) {
   const [withdrawReason, setWithdrawReason] = useState("");
   const [previewOpen, setPreviewOpen] = useState(props.startPreview === true);
   const [itemEditor, setItemEditor] = useState<"add" | string | null>(null);
+  const [attachments, setAttachments] = useState(props.attachments);
   const current =
     variation.revisions.find((revision) => revision.status !== "superseded") ??
     variation.revisions[variation.revisions.length - 1];
@@ -207,8 +217,11 @@ export function VariationEditor(props: EditorProps) {
         authoritativeLineSell: item.lineSellAdjustmentExGst,
         authoritativeLineCost: item.lineCostAdjustment,
       })),
+      clientAttachments: attachments
+        .filter((file) => file.revisionId === current.id && file.visibility === "client")
+        .map((file) => ({ uploadStatus: file.uploadStatus, objectConfirmed: file.objectConfirmed })),
     });
-  }, [current]);
+  }, [attachments, current]);
 
   const proposedLabel = useMemo(() => {
     if (!viewing) return null;
@@ -271,9 +284,13 @@ export function VariationEditor(props: EditorProps) {
   }, [props.baseline.currency, viewing]);
 
   async function reload(): Promise<void> {
-    const loaded = await loadVariation({ variationId: props.variation.id });
+    const [loaded, files] = await Promise.all([
+      loadVariation({ variationId: props.variation.id }),
+      listVariationAttachments({ projectId: props.projectId, variationId: props.variation.id }),
+    ]);
     if (!loaded.ok) return;
     setVariation(loaded.variation);
+    if (files.ok) setAttachments(files.attachments);
     setHistory((previous) =>
       loaded.variation.revisions.map((revision) => ({
         id: revision.id,
@@ -550,6 +567,18 @@ export function VariationEditor(props: EditorProps) {
         })}
       </section>
 
+      {viewing ? (
+        <VariationSupportingFiles
+          projectId={props.projectId}
+          variationId={variation.id}
+          revisionId={viewing.id}
+          editable={draft}
+          items={viewing.items.map((item) => ({ id: item.id, clientDescription: item.clientDescription }))}
+          attachments={attachments}
+          onChange={setAttachments}
+        />
+      ) : null}
+
       <section className="rounded-2xl border bg-card p-4" data-variation-commercial-summary="true">
         <h2 className="text-base font-semibold">Commercial summary</h2>
         <dl className="mt-3 space-y-1 text-sm">
@@ -570,7 +599,7 @@ export function VariationEditor(props: EditorProps) {
         <section className="rounded-2xl border bg-card p-4" data-variation-readiness="true">
           <h2 className="text-base font-semibold">{readiness.ready ? VARIATION_READY_HEADING : VARIATION_NOT_READY_HEADING}</h2>
           {readiness.ready ? <p className="mt-2 text-sm">{VARIATION_READY_DETAIL}</p> : (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm" role="alert">
               {readiness.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
             </ul>
           )}
@@ -633,6 +662,7 @@ export function VariationEditor(props: EditorProps) {
         acceptedRevisions={props.acceptedRevisions}
         issuedAt={history.find((row) => row.id === viewing.id)?.issuedAtIso ?? null}
         identity={props.documentIdentities[viewing.id] ?? null}
+        attachments={attachments.filter((file) => file.revisionId === viewing.id && file.visibility === "client" && file.uploadStatus === "ready")}
       />
 
       {draft && itemEditor === "add" ? (
@@ -729,7 +759,7 @@ export function VariationEditor(props: EditorProps) {
         <DialogContent data-issue-confirm="true" className="max-h-[min(90vh,640px)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Issue this revision</DialogTitle>
-            <DialogDescription>{issueConfirmationCopy(variation.variationNumber, current.revisionNumber)}</DialogDescription>
+            <DialogDescription>{issueConfirmationCopy(variation.variationNumber, current.revisionNumber, attachments.filter((file) => file.revisionId === current.id && file.visibility === "client" && file.uploadStatus === "ready").length)}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" size="touch" onClick={() => setConfirmIssue(false)}>Keep editing</Button>
@@ -797,6 +827,7 @@ function ClientPreview(props: {
   acceptedRevisions: AcceptedMoney[];
   issuedAt: string | null;
   identity: VariationDocumentIdentity | null;
+  attachments: VariationAttachmentView[];
 }) {
   if (!props.open) return null;
   const viewing = props.viewing;
@@ -854,6 +885,18 @@ function ClientPreview(props: {
     baseline: props.baseline,
     currentContract: currentContract.ok ? { exGst: currentContract.value.revisedContractValueExGst, inclGst: currentContract.value.revisedContractValueInclGst } : null,
     proposed,
+    supportingFiles: props.attachments.map((file) => ({
+      fileId: file.id,
+      displayFilename: file.displayFilename,
+      caption: file.caption,
+      mimeType: file.mimeType,
+      byteSize: file.byteSize,
+      typeLabel: variationAttachmentTypeLabel(file.mimeType),
+      sizeLabel: formatAttachmentSize(file.byteSize),
+      kind: variationAttachmentKind(file.mimeType),
+      viewUrl: null,
+      downloadUrl: null,
+    })),
   });
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>

@@ -1,4 +1,5 @@
 import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
+import { VariationSupportingGallery } from "@/components/variations/VariationSupportingGallery";
 import {
   VARIATION_DOCUMENT_ACCEPTANCE_COPY,
   VARIATION_DOCUMENT_OMISSION_COPY,
@@ -153,6 +154,26 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
           <h2 className="text-base font-semibold">Notes</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{model.clientNotes}</p>
         </section>
+      ) : null}
+
+      {model.supportingFiles.length > 0 ? (
+        <>
+          <section className="mt-6 hidden print:block" data-variation-supporting-print="true">
+            <h2 className="text-base font-semibold">Supporting information</h2>
+            <ul className="mt-2 space-y-2 text-sm">
+              {model.supportingFiles.map((file) => (
+                <li key={file.fileId} className="break-words">
+                  <p>{file.displayFilename}</p>
+                  <p className="text-neutral-600">{file.typeLabel} · {file.sizeLabel}</p>
+                  {file.caption ? <p>{file.caption}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+          <div className="print:hidden">
+            <VariationSupportingGallery files={model.supportingFiles} />
+          </div>
+        </>
       ) : null}
 
       <section className="mt-8 border-t border-dashed border-neutral-300 pt-4">
