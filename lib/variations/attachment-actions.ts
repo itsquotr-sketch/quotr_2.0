@@ -1,12 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import {
   VARIATION_ATTACHMENT_BUCKET,
   canDeleteVariationAttachmentObject,
   sniffVariationAttachment,
+  VARIATION_ATTACHMENT_MAX_BYTES,
+  type VariationAttachmentMime,
   type VariationAttachmentVisibility,
 } from "@/lib/variations/attachment-files";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -132,39 +133,66 @@ async function removeObjectIfUnreferenced(orgId: string, bucket: string, objectP
   await admin.storage.from(VARIATION_ATTACHMENT_BUCKET).remove([objectPath]);
 }
 
-export async function uploadVariationAttachment(formData: FormData): Promise<Ok<{ attachment: VariationAttachmentView }> | Fail> {
-  const projectId = String(formData.get("projectId") ?? "");
-  const variationId = String(formData.get("variationId") ?? "");
-  const revisionId = String(formData.get("revisionId") ?? "");
-  const visibility = String(formData.get("visibility") ?? "");
-  const caption = String(formData.get("caption") ?? "");
-  const internalDescription = String(formData.get("internalDescription") ?? "");
-  const linkedRaw = String(formData.get("linkedVariationItemId") ?? "");
-  const retryId = String(formData.get("retryAttachmentId") ?? "");
-  const file = formData.get("file");
-  if (!(file instanceof File) || !isVisibility(visibility)) return fail("FILE_TYPE");
-  const owned = await ownedRevision({ projectId, variationId, revisionId });
+function decodeHeader(value: string): Uint8Array | null {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value) || value.length > 88) return null;
+  const bytes = Buffer.from(value, "base64");
+  if (bytes.byteLength < 4 || bytes.byteLength > 64) return null;
+  return new Uint8Array(bytes);
+}
+
+export async function prepareVariationAttachmentUpload(input: {
+  projectId: string;
+  variationId: string;
+  revisionId: string;
+  visibility: VariationAttachmentVisibility;
+  originalFilename: string;
+  byteSize: number;
+  headerBase64: string;
+  retryAttachmentId?: string | null;
+}): Promise<Ok<{ attachmentId: string; signedUrl: string; displayFilename: string; mimeType: VariationAttachmentMime }> | Fail> {
+  if (!isVisibility(input.visibility)) return fail("FILE_TYPE");
+  const owned = await ownedRevision(input);
   if (!owned.ok) return owned;
   if (owned.revision.status !== "draft") return fail("IMMUTABLE");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const sniffed = sniffVariationAttachment(bytes, file.name);
-  if (!sniffed) return fail(bytes.byteLength > 15 * 1024 * 1024 ? "FILE_TOO_LARGE" : "FILE_TYPE");
+  if (!Number.isInteger(input.byteSize) || input.byteSize <= 0 || input.byteSize > VARIATION_ATTACHMENT_MAX_BYTES) {
+    return fail("FILE_TOO_LARGE");
+  }
+  const header = decodeHeader(input.headerBase64);
+  const sniffed = header ? sniffVariationAttachment(header, input.originalFilename) : null;
+  if (!sniffed) return fail("FILE_TYPE");
 
-  const prepared = retryId
-    ? await owned.context.supabase.rpc("retry_variation_attachment_v1", {
-        p_attachment: retryId,
-        p_byte_size: bytes.byteLength,
-      })
-    : await owned.context.supabase.rpc("prepare_variation_attachment_v1", {
-        p_revision: revisionId,
-        p_visibility: visibility,
-        p_original_filename: file.name,
-        p_mime_type: sniffed.mime,
-        p_byte_size: bytes.byteLength,
-        p_caption: visibility === "client" ? caption : null,
-        p_internal_description: visibility === "internal" ? internalDescription : null,
-        p_linked_item: linkedRaw || null,
-      });
+  const retryId = input.retryAttachmentId?.trim() || "";
+  let prepared: { data: unknown; error: { message: string } | null };
+  if (retryId) {
+    const existing = await owned.context.supabase
+      .from("variation_attachments")
+      .select("id, mime_type, upload_status, variation_id, variation_revision_id")
+      .eq("id", retryId)
+      .maybeSingle();
+    const row = existing.data as { mime_type?: string; upload_status?: string; variation_id?: string; variation_revision_id?: string } | null;
+    if (!row || row.variation_id !== input.variationId || row.variation_revision_id !== input.revisionId) return fail("NOT_FOUND");
+    if (row.mime_type !== sniffed.mime) return fail("FILE_TYPE");
+    if (row.upload_status === "pending") {
+      const failed = await owned.context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: retryId });
+      const failedBody = (failed.data ?? {}) as { ok?: boolean; error?: string };
+      if (failed.error || failedBody.ok !== true) return fail(failedBody.error);
+    }
+    prepared = await owned.context.supabase.rpc("retry_variation_attachment_v1", {
+      p_attachment: retryId,
+      p_byte_size: input.byteSize,
+    });
+  } else {
+    prepared = await owned.context.supabase.rpc("prepare_variation_attachment_v1", {
+      p_revision: input.revisionId,
+      p_visibility: input.visibility,
+      p_original_filename: input.originalFilename,
+      p_mime_type: sniffed.mime,
+      p_byte_size: input.byteSize,
+      p_caption: null,
+      p_internal_description: null,
+      p_linked_item: null,
+    });
+  }
   const body = (prepared.data ?? {}) as {
     ok?: boolean;
     error?: string;
@@ -172,47 +200,128 @@ export async function uploadVariationAttachment(formData: FormData): Promise<Ok<
     storageObjectPath?: string;
     storageBucket?: string;
     mimeType?: string;
+    displayFilename?: string;
   };
   if (prepared.error || body.ok !== true || !body.attachmentId || !body.storageObjectPath) {
     return fail(body.error);
   }
+  const expectedPrefix = `${owned.orgId}/${input.projectId}/${input.variationId}/${input.revisionId}/`;
   if (
-    !body.storageObjectPath.startsWith(`${owned.orgId}/`) ||
+    !body.storageObjectPath.startsWith(expectedPrefix) ||
+    body.storageObjectPath.includes("..") ||
     (body.storageBucket != null && body.storageBucket !== VARIATION_ATTACHMENT_BUCKET) ||
     (body.mimeType != null && body.mimeType !== sniffed.mime)
   ) {
     await owned.context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: body.attachmentId });
-    return { ...fail(body.mimeType && body.mimeType !== sniffed.mime ? "FILE_TYPE" : "NOT_FOUND"), attachmentId: body.attachmentId };
+    return { ...fail("NOT_FOUND"), attachmentId: body.attachmentId };
   }
 
   const admin = createAdminClient();
-  const uploaded = await admin.storage.from(VARIATION_ATTACHMENT_BUCKET).upload(body.storageObjectPath, bytes, {
-    contentType: sniffed.mime,
+  const signed = await admin.storage.from(VARIATION_ATTACHMENT_BUCKET).createSignedUploadUrl(body.storageObjectPath, {
     upsert: Boolean(retryId),
   });
-  if (uploaded.error) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let signedHostMatches = false;
+  try {
+    signedHostMatches = Boolean(
+      supabaseUrl &&
+        signed.data?.signedUrl &&
+        new URL(signed.data.signedUrl).host === new URL(supabaseUrl).host &&
+        new URL(signed.data.signedUrl).pathname.includes("/object/upload/sign/")
+    );
+  } catch {
+    signedHostMatches = false;
+  }
+  if (signed.error || !signedHostMatches || !signed.data?.signedUrl) {
     await owned.context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: body.attachmentId });
     return { ...fail("MISSING_OBJECT"), attachmentId: body.attachmentId };
   }
+  return {
+    ok: true,
+    attachmentId: body.attachmentId,
+    signedUrl: signed.data.signedUrl,
+    displayFilename: body.displayFilename || input.originalFilename,
+    mimeType: sniffed.mime,
+  };
+}
 
-  const completed = await owned.context.supabase.rpc("complete_variation_attachment_v1", {
-    p_attachment: body.attachmentId,
-    p_byte_size: bytes.byteLength,
+async function discardUnsharedObject(orgId: string, attachmentId: string, objectPath: string): Promise<void> {
+  if (!objectPath.startsWith(`${orgId}/`) || !objectPath.includes(`/${attachmentId}/`) || objectPath.includes("..")) return;
+  await createAdminClient().storage.from(VARIATION_ATTACHMENT_BUCKET).remove([objectPath]);
+}
+
+export async function finalizeVariationAttachment(input: {
+  projectId: string;
+  variationId: string;
+  attachmentId: string;
+}): Promise<Ok<{ attachment: VariationAttachmentView }> | Fail> {
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const owned = await assertOrgOwnsActiveProject(context, input.projectId);
+  if ("error" in owned) return fail("NOT_FOUND");
+  const rowQuery = await context.supabase
+    .from("variation_attachments")
+    .select("id, variation_id, variation_revision_id, original_filename, mime_type, byte_size, storage_object_path, upload_status")
+    .eq("id", input.attachmentId)
+    .maybeSingle();
+  const row = rowQuery.data as {
+    variation_id?: string;
+    original_filename?: string;
+    mime_type?: string;
+    byte_size?: number | string;
+    storage_object_path?: string;
+    upload_status?: string;
+  } | null;
+  if (!row || row.variation_id !== input.variationId || row.upload_status !== "pending" || !row.storage_object_path) {
+    return fail("NOT_FOUND");
+  }
+  if (!row.storage_object_path.startsWith(`${context.orgId}/`) || row.storage_object_path.includes("..")) {
+    return fail("NOT_FOUND");
+  }
+  const admin = createAdminClient();
+  const downloaded = await admin.storage.from(VARIATION_ATTACHMENT_BUCKET).download(row.storage_object_path);
+  const bytes = downloaded.data ? new Uint8Array(await downloaded.data.arrayBuffer()) : null;
+  const sniffed = bytes ? sniffVariationAttachment(bytes, row.original_filename || "file") : null;
+  const declaredSize = typeof row.byte_size === "number" ? row.byte_size : Number(row.byte_size);
+  const typeOk = Boolean(sniffed && sniffed.mime === row.mime_type);
+  const sizeOk = Boolean(bytes && bytes.byteLength === declaredSize);
+  if (downloaded.error || !bytes || !typeOk || !sizeOk) {
+    await discardUnsharedObject(context.orgId, input.attachmentId, row.storage_object_path);
+    await context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: input.attachmentId });
+    const code = !bytes || downloaded.error ? "MISSING_OBJECT" : !typeOk ? "FILE_TYPE" : "FILE_TOO_LARGE";
+    return { ...fail(code), attachmentId: input.attachmentId };
+  }
+  const completed = await context.supabase.rpc("complete_variation_attachment_v1", {
+    p_attachment: input.attachmentId,
+    p_byte_size: declaredSize,
   });
   const done = (completed.data ?? {}) as { ok?: boolean; error?: string };
   if (completed.error || done.ok !== true) {
-    await admin.storage.from(VARIATION_ATTACHMENT_BUCKET).remove([body.storageObjectPath]);
-    await owned.context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: body.attachmentId });
-    return { ...fail(done.error ?? "MISSING_OBJECT"), attachmentId: body.attachmentId };
+    await discardUnsharedObject(context.orgId, input.attachmentId, row.storage_object_path);
+    await context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: input.attachmentId });
+    return { ...fail(done.error ?? "MISSING_OBJECT"), attachmentId: input.attachmentId };
   }
-
-  const listed = await listVariationAttachments({ projectId, variationId });
-  const attachment = listed.ok ? listed.attachments.find((row) => row.id === body.attachmentId) : null;
-  if (!attachment || attachment.uploadStatus !== "ready") {
-    return { ...fail("MISSING_OBJECT"), attachmentId: body.attachmentId };
+  const listed = await listVariationAttachments({ projectId: input.projectId, variationId: input.variationId });
+  const attachment = listed.ok ? listed.attachments.find((item) => item.id === input.attachmentId) : null;
+  if (!attachment || attachment.uploadStatus !== "ready" || !attachment.objectConfirmed) {
+    return { ...fail("MISSING_OBJECT"), attachmentId: input.attachmentId };
   }
-  revalidatePath(`/app/projects/${projectId}/variations/${variationId}`);
   return { ok: true, attachment };
+}
+
+export async function failVariationAttachmentUpload(input: {
+  projectId: string;
+  variationId: string;
+  attachmentId: string;
+}): Promise<Fail & { ok: false }> {
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const owned = await assertOrgOwnsActiveProject(context, input.projectId);
+  if ("error" in owned) return fail("NOT_FOUND");
+  const result = await context.supabase.rpc("fail_variation_attachment_v1", { p_attachment: input.attachmentId });
+  const body = (result.data ?? {}) as { ok?: boolean; error?: string };
+  if (result.error || body.ok !== true) return { ...fail(body.error), attachmentId: input.attachmentId };
+  return { ...fail("MISSING_OBJECT"), attachmentId: input.attachmentId };
 }
 
 export async function updateVariationAttachment(input: {
@@ -238,7 +347,6 @@ export async function updateVariationAttachment(input: {
   });
   const body = (result.data ?? {}) as { ok?: boolean; error?: string; displayFilename?: string };
   if (result.error || body.ok !== true || !body.displayFilename) return fail(body.error);
-  revalidatePath(`/app/projects/${input.projectId}/variations/${input.variationId}`);
   return { ok: true, displayFilename: body.displayFilename };
 }
 
@@ -284,7 +392,6 @@ export async function removeVariationAttachment(input: {
   if (body.deleteObject && body.storageBucket && body.storageObjectPath) {
     await removeObjectIfUnreferenced(context.orgId, body.storageBucket, body.storageObjectPath, true);
   }
-  revalidatePath(`/app/projects/${input.projectId}/variations/${input.variationId}`);
   return { ok: true };
 }
 

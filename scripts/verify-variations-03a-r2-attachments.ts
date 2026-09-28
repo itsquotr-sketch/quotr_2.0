@@ -130,8 +130,8 @@ async function main(): Promise<void> {
       editor.includes("Internal files") &&
       editor.includes("Only your organisation can see these files.") &&
       editor.includes("Uploading") &&
+      editor.includes("Upload failed") &&
       editor.includes("Ready") &&
-      editor.includes("Failed") &&
       editor.includes('role="alert"')
   );
   check(

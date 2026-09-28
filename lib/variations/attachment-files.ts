@@ -76,6 +76,23 @@ export function safeVariationDisplayFilename(original: string, mime: VariationAt
   return `${stem.slice(0, 90)}.${extension}`;
 }
 
+/** Local and server gate. A valid file is not marked ready until storage finalisation succeeds. */
+export function variationAttachmentSelectionError(
+  filename: string,
+  byteSize: number,
+  prefix: Uint8Array
+): string | null {
+  if (!Number.isInteger(byteSize) || byteSize <= 0 || byteSize > VARIATION_ATTACHMENT_MAX_BYTES) {
+    return byteSize > VARIATION_ATTACHMENT_MAX_BYTES
+      ? "Each file must be 15 MB or smaller."
+      : "Use a JPG, PNG, PDF, DOCX or XLSX file.";
+  }
+  if (!sniffVariationAttachment(prefix, filename)) {
+    return "Use a JPG, PNG, PDF, DOCX or XLSX file.";
+  }
+  return null;
+}
+
 export function sniffVariationAttachment(
   bytes: Uint8Array,
   filename: string
