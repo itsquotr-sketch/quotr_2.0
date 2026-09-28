@@ -318,7 +318,9 @@ check(
     numberedMigrations().includes("065_delete_unissued_draft_variation.sql") &&
     numberedMigrations().includes("066_variation_issued_withdrawal.sql") &&
     numberedMigrations().includes("067_variation_cost_build_ups.sql") &&
-    numberedMigrations().at(-1) === "068_variation_component_rate_snapshots.sql"
+    numberedMigrations().includes("068_variation_component_rate_snapshots.sql") &&
+    numberedMigrations().includes("069_variation_client_delivery.sql") &&
+    numberedMigrations().at(-1) === "069_variation_client_delivery.sql"
 );
 const sql056 = readFileSync(
   join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql"),

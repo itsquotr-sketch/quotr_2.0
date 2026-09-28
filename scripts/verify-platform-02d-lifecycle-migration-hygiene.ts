@@ -207,13 +207,15 @@ function sourceChecks(): void {
       sqlFiles().includes("066_variation_issued_withdrawal.sql") &&
       sqlFiles().includes("067_variation_cost_build_ups.sql") &&
       sqlFiles().includes("068_variation_component_rate_snapshots.sql") &&
-      sqlFiles().at(-1) === "068_variation_component_rate_snapshots.sql" &&
+      sqlFiles().includes("069_variation_client_delivery.sql") &&
+      sqlFiles().at(-1) === "069_variation_client_delivery.sql" &&
       !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/065_delete_unissued_draft_variation.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/066_variation_issued_withdrawal.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/067_variation_cost_build_ups.sql").includes("preview_fixture_org") &&
-      !read("supabase/migrations/068_variation_component_rate_snapshots.sql").includes("preview_fixture_org")
+      !read("supabase/migrations/068_variation_component_rate_snapshots.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/069_variation_client_delivery.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

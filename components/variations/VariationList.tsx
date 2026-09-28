@@ -149,6 +149,7 @@ export function VariationList(props: {
                   <p className="mt-2 text-muted-foreground">
                     {row.revisionNumber == null ? "Current revision pending" : `Revision ${row.revisionNumber}`}
                   </p>
+                  {row.deliveryLabel ? <p className="mt-1 text-muted-foreground">{row.deliveryLabel}</p> : null}
                 </div>
                 <Badge variant="outline">{row.statusLabel}</Badge>
               </div>

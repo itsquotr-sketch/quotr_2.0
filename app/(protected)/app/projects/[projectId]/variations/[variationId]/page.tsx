@@ -60,8 +60,10 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           companyName={editor.companyName}
           projectTitle={editor.projectTitle}
           clientName={editor.clientName}
+          clientEmail={editor.clientEmail}
           siteAddress={editor.siteAddress}
           history={editor.history}
+          deliveries={editor.deliveries}
           withdrawalReason={editor.withdrawalReason}
           acceptedRevisions={editor.acceptedRevisions}
           viewRevisionId={query.revision ?? null}

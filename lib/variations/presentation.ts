@@ -556,3 +556,15 @@ export function revisionTotalsFromItems(
   }
   return variationRevisionTotals(prepared, gstRate);
 }
+
+/** List label only. It does not replace the Variation status. */
+export function variationDeliveryListLabel(input: {
+  status: VariationStatus;
+  latestAttempt: "sent" | "failed" | null;
+}): string | null {
+  if (input.status === "withdrawn") return "Withdrawn";
+  if (input.status !== "issued") return null;
+  if (input.latestAttempt === "sent") return "Issued · Sent";
+  if (input.latestAttempt === "failed") return "Issued · Delivery failed";
+  return "Issued · Not sent";
+}

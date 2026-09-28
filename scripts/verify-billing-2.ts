@@ -537,8 +537,9 @@ assert(
     migrations.includes("066_variation_issued_withdrawal.sql") &&
     migrations.includes("067_variation_cost_build_ups.sql") &&
     migrations.includes("068_variation_component_rate_snapshots.sql") &&
+    migrations.includes("069_variation_client_delivery.sql") &&
     migrations[migrations.length - 1] ===
-      "068_variation_component_rate_snapshots.sql"
+      "069_variation_client_delivery.sql"
 );
 assert(
   "047 only adds past_due_since; no overlay columns; no backfill",

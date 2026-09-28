@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { VariationDeliveryPanel } from "@/components/variations/VariationDeliveryPanel";
 import { VariationDocument } from "@/components/variations/VariationDocument";
 import { VariationRatePicker, variationRateSourceText, type VariationRateChoice } from "@/components/variations/VariationRatePicker";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ import {
 } from "@/lib/variations/presentation";
 import type {
   VariationBaselineView,
+  VariationDeliveryAttempt,
   VariationRevisionHistoryRow,
   VariationScopeLineOption,
   VariationWorkAreaOption,
@@ -95,8 +97,10 @@ type EditorProps = {
   companyName: string;
   projectTitle: string;
   clientName: string;
+  clientEmail: string | null;
   siteAddress: string | null;
   history: VariationRevisionHistoryRow[];
+  deliveries: VariationDeliveryAttempt[];
   withdrawalReason: string | null;
   acceptedRevisions: AcceptedMoney[];
   viewRevisionId: string | null;
@@ -569,6 +573,22 @@ export function VariationEditor(props: EditorProps) {
           )}
           <Button className="mt-3" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
         </section>
+      ) : null}
+
+      {current.status === "issued" && !historical ? (
+        <VariationDeliveryPanel
+          projectId={props.projectId}
+          variationId={variation.id}
+          revisionId={current.id}
+          variationNumber={variation.variationNumber}
+          revisionNumber={current.revisionNumber}
+          title={current.title}
+          adjustmentInclGst={current.totalAdjustmentInclGst}
+          currency={currency}
+          recipientName={props.clientName}
+          recipientEmail={props.clientEmail}
+          attempts={props.deliveries}
+        />
       ) : null}
 
       {current.status === "issued" && !historical ? (

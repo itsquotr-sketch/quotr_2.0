@@ -50,6 +50,7 @@ export const VARIATION_EVENT_TYPES = [
   "variation_rejected",
   "variation_withdrawn",
   "variation_superseded",
+  "variation_sent",
 ] as const;
 
 export type VariationEventType = (typeof VARIATION_EVENT_TYPES)[number];

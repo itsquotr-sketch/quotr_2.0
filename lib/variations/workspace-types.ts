@@ -42,6 +42,19 @@ export type VariationListRow = {
   withdrawnAt: string | null;
   outcomeLabel: string | null;
   currentRevisionId: string | null;
+  deliveryLabel: string | null;
+};
+
+export type VariationDeliveryAttempt = {
+  id: string;
+  revisionId: string;
+  recipientEmail: string;
+  status: "pending" | "sent" | "failed";
+  kind: "send" | "resend";
+  attemptedAt: string | null;
+  sentAt: string | null;
+  failedAt: string | null;
+  failureMessage: string | null;
 };
 
 export type VariationListSummary = {

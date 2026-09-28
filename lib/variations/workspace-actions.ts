@@ -13,11 +13,13 @@ import {
 } from "@/lib/variations/domain";
 import {
   formatContractMoney,
+  variationDeliveryListLabel,
   variationEligibility,
   variationStatusLabel,
 } from "@/lib/variations/presentation";
 import type {
   VariationBaselineView,
+  VariationDeliveryAttempt,
   VariationListRow,
   VariationListSummary,
   VariationRevisionHistoryRow,
@@ -256,7 +258,33 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       withdrawnAt: formatDate(current?.withdrawn_at ?? null),
       outcomeLabel: outcome,
       currentRevisionId: current?.id ?? null,
+      deliveryLabel: null,
     });
+  }
+  const revisionIds = rows.flatMap((row) => (row.currentRevisionId ? [row.currentRevisionId] : []));
+  if (revisionIds.length > 0) {
+    const deliveryRows = await owned.context.supabase
+      .from("variation_deliveries")
+      .select("revision_id, status, created_at")
+      .in("revision_id", revisionIds)
+      .order("created_at", { ascending: true });
+    if (deliveryRows.error) return { ok: false, error: "Variations could not be loaded." };
+    const latest = new Map<string, "sent" | "failed">();
+    for (const delivery of (deliveryRows.data ?? []) as Array<{ revision_id: string; status: string }>) {
+      if (delivery.status === "sent" || delivery.status === "failed") {
+        latest.set(delivery.revision_id, delivery.status);
+      }
+    }
+    for (const row of rows) {
+      row.deliveryLabel = variationDeliveryListLabel({
+        status: row.status,
+        latestAttempt: row.currentRevisionId ? latest.get(row.currentRevisionId) ?? null : null,
+      });
+    }
+  } else {
+    for (const row of rows) {
+      row.deliveryLabel = variationDeliveryListLabel({ status: row.status, latestAttempt: null });
+    }
   }
   const itemRows = (items.data ?? []) as Array<{
     revision_id: string;
@@ -331,8 +359,10 @@ export async function loadVariationEditor(projectId: string, variationId: string
       companyName: string;
       projectTitle: string;
       clientName: string;
+      clientEmail: string | null;
       siteAddress: string | null;
       history: VariationRevisionHistoryRow[];
+      deliveries: VariationDeliveryAttempt[];
       withdrawalReason: string | null;
       eligible: boolean;
       reason: string | null;
@@ -352,7 +382,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
     loadVariation({ variationId }),
     owned.context.supabase
       .from("projects")
-      .select("title, client_name, site_address, archived_at, business_status")
+      .select("title, client_name, client_email, site_address, archived_at, business_status")
       .eq("id", owned.projectId)
       .maybeSingle(),
     owned.context.supabase
@@ -402,6 +432,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
   const projectRow = project.data as {
     title: string;
     client_name: string | null;
+    client_email: string | null;
     site_address: string | null;
     archived_at: string | null;
     business_status: string | null;
@@ -472,6 +503,36 @@ export async function loadVariationEditor(projectId: string, variationId: string
   const withdrawnById = new Map(revisionDateRows.map((row) => [row.id, formatDate(row.withdrawn_at)]));
   const withdrawalMetadata = ((withdrawalEvents.data ?? []) as Array<{ metadata?: { withdrawalReason?: unknown } }>)[0]?.metadata;
   const withdrawalReason = typeof withdrawalMetadata?.withdrawalReason === "string" ? withdrawalMetadata.withdrawalReason : null;
+  const deliveryQuery = await owned.context.supabase
+    .from("variation_deliveries")
+    .select("id, revision_id, recipient_email, status, kind, attempted_at, sent_at, failed_at, failure_message_safe")
+    .eq("variation_id", variationId)
+    .order("created_at", { ascending: true });
+  if (deliveryQuery.error) return { ok: false, error: "That variation could not be found." };
+  const deliveries: VariationDeliveryAttempt[] = ((deliveryQuery.data ?? []) as Array<{
+    id: string;
+    revision_id: string;
+    recipient_email: string;
+    status: string;
+    kind: string;
+    attempted_at: string | null;
+    sent_at: string | null;
+    failed_at: string | null;
+    failure_message_safe: string | null;
+  }>).flatMap((row) => {
+    if (row.status !== "pending" && row.status !== "sent" && row.status !== "failed") return [];
+    return [{
+      id: row.id,
+      revisionId: row.revision_id,
+      recipientEmail: row.recipient_email,
+      status: row.status,
+      kind: row.kind === "resend" ? "resend" as const : "send" as const,
+      attemptedAt: row.attempted_at,
+      sentAt: row.sent_at,
+      failedAt: row.failed_at,
+      failureMessage: row.failure_message_safe,
+    }];
+  });
   const history: VariationRevisionHistoryRow[] = [...loaded.variation.revisions]
     .sort((a, b) => a.revisionNumber - b.revisionNumber)
     .map((revision) => ({
@@ -506,8 +567,10 @@ export async function loadVariationEditor(projectId: string, variationId: string
     companyName: company?.tradingName?.trim() || company?.organisationName || "Your company",
     projectTitle: projectRow.title,
     clientName: projectRow.client_name?.trim() || "Client",
+    clientEmail: projectRow.client_email?.trim() || null,
     siteAddress: projectRow.site_address,
     history,
+    deliveries,
     withdrawalReason,
     eligible: eligibility.eligible,
     reason: eligibility.reason,
