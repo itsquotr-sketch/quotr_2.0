@@ -9,14 +9,26 @@ import {
 function Detail({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value?.trim()) return null;
   return (
-    <p>
+    <p className="break-words">
       <span className="text-neutral-500">{label}: </span>
       {value}
     </p>
   );
 }
 
+function MoneyRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 ${strong ? "font-semibold" : ""}`}>
+      <dt className="min-w-0">{label}</dt>
+      <dd className="shrink-0 tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
 export function VariationDocument({ model }: { model: VariationDocumentModel }) {
+  const awaitingResponse = model.statusWording === "Proposed Variation — not yet accepted." || model.statusWording === "Proposed Variation — awaiting response";
+  const accepted = model.statusWording === "Accepted Variation.";
+  const declined = model.statusWording === "Declined Variation.";
   return (
     <article
       data-variation-document="true"
@@ -26,18 +38,18 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
       <header className="mb-5 flex flex-col gap-4 border-b border-neutral-200 pb-4 sm:flex-row sm:items-start sm:justify-between print:mb-4">
         <div className="min-w-0 flex-1 space-y-1">
           <QuoteCompanyLogo logoUrl={model.logoUrl} companyName={model.companyName} brandPrimary={model.brandPrimary} />
-          {model.companyName ? <p className="text-sm font-semibold">{model.companyName}</p> : null}
-          {model.legalName && model.legalName !== model.companyName ? <p className="text-xs text-neutral-500">{model.legalName}</p> : null}
+          {model.logoUrl && model.companyName ? <p className="break-words text-sm font-semibold">{model.companyName}</p> : null}
+          {model.legalName && model.legalName !== model.companyName ? <p className="break-words text-xs text-neutral-500">{model.legalName}</p> : null}
           <div className="space-y-0.5 text-xs leading-relaxed text-neutral-500">
             {[model.contractorEmail, model.contractorPhone].filter(Boolean).join(" · ") ? (
-              <p>{[model.contractorEmail, model.contractorPhone].filter(Boolean).join(" · ")}</p>
+              <p className="break-all">{[model.contractorEmail, model.contractorPhone].filter(Boolean).join(" · ")}</p>
             ) : null}
             {model.contractorWebsite ? <p>{model.contractorWebsite}</p> : null}
             {model.contractorAddress ? <p>{model.contractorAddress}</p> : null}
             {model.registrationLines.map((line) => <p key={line}>{line}</p>)}
           </div>
         </div>
-        <div className="shrink-0 sm:min-w-[220px] sm:text-right">
+        <div className="min-w-0 sm:shrink-0 sm:text-right">
           <p className="text-sm font-semibold uppercase tracking-wide">Variation</p>
           <p className="mt-1 text-sm">Variation {model.variationNumber}</p>
           <p className="text-sm">Revision {model.revisionNumber}</p>
@@ -45,7 +57,7 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
         </div>
       </header>
 
-      <p className="text-sm font-medium" data-variation-document-status="true">Proposed Variation — awaiting response</p>
+      <p className="text-sm font-medium" data-variation-document-status="true">{model.statusWording || "Proposed Variation — awaiting response"}</p>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2">
         <div>
@@ -62,7 +74,7 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Accepted master Quote</h2>
         {model.quoteNumber && model.quoteRevision != null ? (
-          <p className="mt-1 text-sm">
+          <p className="mt-1 break-words text-sm">
             {model.quoteNumber} · Revision {model.quoteRevision}
             {model.quoteAcceptedOnLabel ? ` · Accepted ${model.quoteAcceptedOnLabel}` : ""}
           </p>
@@ -83,8 +95,8 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
             <h3 className="text-sm font-semibold">Additions</h3>
             <ul className="mt-2 space-y-2">
               {model.additions.map((line) => (
-                <li key={line.description} className="flex items-start justify-between gap-4 text-sm">
-                  <span>{line.description}</span>
+                <li key={line.description} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                  <span className="min-w-0 break-words">{line.description}</span>
                   <span className="shrink-0 tabular-nums">{line.amountLabel}</span>
                 </li>
               ))}
@@ -97,8 +109,8 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
             <p className="mt-1 text-sm">{VARIATION_DOCUMENT_OMISSION_COPY}</p>
             <ul className="mt-2 space-y-2">
               {model.omissions.map((line) => (
-                <li key={line.description} className="flex items-start justify-between gap-4 text-sm">
-                  <span>{line.description}</span>
+                <li key={line.description} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                  <span className="min-w-0 break-words">{line.description}</span>
                   <span className="shrink-0 tabular-nums">{line.amountLabel}</span>
                 </li>
               ))}
@@ -134,18 +146,30 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
       <section className="mt-6 break-inside-avoid border-t border-neutral-200 pt-4">
         <h2 className="text-base font-semibold">Contract adjustment</h2>
         <dl className="mt-3 space-y-1 text-sm">
-          <div className="flex justify-between gap-4"><dt>Net adjustment ex GST</dt><dd className="tabular-nums">{model.netExLabel}</dd></div>
-          <div className="flex justify-between gap-4"><dt>GST</dt><dd className="tabular-nums">{model.gstLabel}</dd></div>
-          <div className="flex justify-between gap-4 font-semibold"><dt>Adjustment incl GST</dt><dd className="tabular-nums">{model.inclLabel}</dd></div>
-          <div className="flex justify-between gap-4 pt-2"><dt>Current accepted contract</dt><dd className="tabular-nums">{model.currentContractInclLabel}</dd></div>
-          <div className="flex justify-between gap-4"><dt>Proposed revised contract</dt><dd className="tabular-nums">{model.proposedInclLabel}</dd></div>
+          <MoneyRow label="Net adjustment ex GST" value={model.netExLabel} />
+          <MoneyRow label="GST" value={model.gstLabel} />
+          <MoneyRow label="Adjustment incl GST" value={model.inclLabel} strong />
+          {declined ? null : (
+            <>
+              <MoneyRow label={accepted ? "Previous accepted contract" : "Current accepted contract"} value={model.currentContractInclLabel} />
+              <MoneyRow label={accepted ? "Revised accepted contract" : "Proposed revised contract"} value={model.proposedInclLabel} />
+            </>
+          )}
         </dl>
-        <p className="mt-2 text-xs text-neutral-600">
-          Current accepted contract ex GST {model.currentContractExLabel}. Proposed revised contract ex GST {model.proposedExLabel}, GST {model.proposedGstLabel}.
-        </p>
-        <p className="mt-3 text-sm">{VARIATION_DOCUMENT_ACCEPTANCE_COPY}</p>
-        <p className="mt-2 text-sm">This proposed adjustment does not change the accepted contract value unless the Variation is accepted.</p>
-        {model.masterQuoteClause ? <p className="mt-3 text-sm leading-6">{model.masterQuoteClause}</p> : null}
+        {declined ? <p className="mt-3 text-sm">Contract value unchanged.</p> : null}
+        {awaitingResponse ? (
+          <p className="mt-2 break-words text-xs text-neutral-600">
+            Current accepted contract ex GST {model.currentContractExLabel}. Proposed revised contract ex GST {model.proposedExLabel}, GST {model.proposedGstLabel}.
+          </p>
+        ) : null}
+        {accepted ? (
+          <p className="mt-2 break-words text-xs text-neutral-600">
+            Previous accepted contract ex GST {model.currentContractExLabel}. Revised accepted contract ex GST {model.proposedExLabel}, GST {model.proposedGstLabel}.
+          </p>
+        ) : null}
+        {awaitingResponse ? <p className="mt-3 break-words text-sm">{VARIATION_DOCUMENT_ACCEPTANCE_COPY}</p> : null}
+        {awaitingResponse ? <p className="mt-2 break-words text-sm">This proposed adjustment does not change the accepted contract value unless the Variation is accepted.</p> : null}
+        {model.masterQuoteClause ? <p className="mt-3 break-words text-sm leading-6">{model.masterQuoteClause}</p> : null}
         {model.showsOmissionNotice ? <p className="mt-1 text-sm">{VARIATION_DOCUMENT_OMISSION_COPY}</p> : null}
       </section>
 

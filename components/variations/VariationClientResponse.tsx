@@ -78,11 +78,11 @@ export function VariationClientResponse(props: {
       <dl className="mt-3 space-y-1">
         <div className="flex flex-wrap justify-between gap-2">
           <dt>Variation</dt>
-          <dd>Variation {doc.variationNumber}, Revision {doc.revisionNumber}</dd>
+          <dd className="min-w-0 break-words">Variation {doc.variationNumber}, Revision {doc.revisionNumber}</dd>
         </div>
         <div className="flex flex-wrap justify-between gap-2">
           <dt>Master Quote</dt>
-          <dd>{quote}</dd>
+          <dd className="min-w-0 break-words">{quote}</dd>
         </div>
         <div className="flex flex-wrap justify-between gap-2">
           <dt>Adjustment incl GST</dt>

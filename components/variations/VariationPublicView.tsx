@@ -54,23 +54,23 @@ export function VariationPublicView({
         </p>
       ) : null}
       {view.state === "accepted" ? (
-        <section className="mb-4 rounded-2xl border bg-white p-4 text-sm" data-variation-public-accepted="true">
+        <section className="mb-4 min-w-0 rounded-2xl border bg-white p-4 text-sm" data-variation-public-accepted="true">
           <h1 className="text-lg font-semibold">Variation accepted</h1>
-          {formatWhen(view.outcome.respondedAt) ? <p className="mt-2">Accepted {formatWhen(view.outcome.respondedAt)}</p> : null}
-          {view.outcome.responderName ? <p>Accepted by {view.outcome.responderName}</p> : null}
-          <p>Accepted adjustment: {view.outcome.adjustmentInclLabel} incl GST</p>
-          <p>Revised accepted contract: {view.outcome.revisedContractInclLabel} incl GST</p>
+          {formatWhen(view.outcome.respondedAt) ? <p className="mt-2 break-words">Accepted {formatWhen(view.outcome.respondedAt)}</p> : null}
+          {view.outcome.responderName ? <p className="break-words">Accepted by {view.outcome.responderName}</p> : null}
+          <p className="break-words">Accepted adjustment: {view.outcome.adjustmentInclLabel} incl GST</p>
+          <p className="break-words">Revised accepted contract: {view.outcome.revisedContractInclLabel} incl GST</p>
           {quote ? <p className="break-words">{quote}</p> : null}
           <Button className="mt-3" size="touch" variant="outline" render={<Link href={view.recordPath} />}>View response record</Button>
         </section>
       ) : null}
       {view.state === "declined" ? (
-        <section className="mb-4 rounded-2xl border bg-white p-4 text-sm" data-variation-public-declined="true">
+        <section className="mb-4 min-w-0 rounded-2xl border bg-white p-4 text-sm" data-variation-public-declined="true">
           <h1 className="text-lg font-semibold">Variation declined</h1>
-          {formatWhen(view.outcome.respondedAt) ? <p className="mt-2">Declined {formatWhen(view.outcome.respondedAt)}</p> : null}
-          {view.outcome.responderName ? <p>Declined by {view.outcome.responderName}</p> : null}
-          {view.outcome.declineReason ? <p>Reason: {view.outcome.declineReason}</p> : null}
-          <p>Contract value unchanged. This decline did not change the accepted contract value.</p>
+          {formatWhen(view.outcome.respondedAt) ? <p className="mt-2 break-words">Declined {formatWhen(view.outcome.respondedAt)}</p> : null}
+          {view.outcome.responderName ? <p className="break-words">Declined by {view.outcome.responderName}</p> : null}
+          {view.outcome.declineReason ? <p className="break-words">Reason: {view.outcome.declineReason}</p> : null}
+          <p className="break-words">Contract value unchanged. This decline did not change the accepted contract value.</p>
           {view.outcome.revisedContractInclLabel ? <p>Accepted contract: {view.outcome.revisedContractInclLabel} incl GST</p> : null}
           <Button className="mt-3" size="touch" variant="outline" render={<Link href={view.recordPath} />}>View response record</Button>
         </section>

@@ -7,7 +7,7 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   return (
     <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
       <dt className="text-neutral-500">{label}</dt>
-      <dd className="min-w-0 break-words text-right">{value}</dd>
+      <dd className="min-w-0 break-all text-right sm:max-w-[70%]">{value}</dd>
     </div>
   );
 }
@@ -22,7 +22,7 @@ export function VariationResponseReceiptView({ receipt }: { receipt: VariationRe
       <header className="mb-5 flex flex-col gap-4 border-b border-neutral-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
           <QuoteCompanyLogo logoUrl={receipt.logoUrl} companyName={receipt.companyName} brandPrimary={receipt.brandPrimary} />
-          {receipt.companyName ? <p className="text-sm font-semibold">{receipt.companyName}</p> : null}
+          {receipt.logoUrl && receipt.companyName ? <p className="break-words text-sm font-semibold">{receipt.companyName}</p> : null}
           {receipt.legalName && receipt.legalName !== receipt.companyName ? <p className="text-xs text-neutral-500">{receipt.legalName}</p> : null}
           <div className="space-y-0.5 break-words text-xs leading-relaxed text-neutral-500">
             {[receipt.contractorEmail, receipt.contractorPhone].filter(Boolean).join(" · ") ? (
