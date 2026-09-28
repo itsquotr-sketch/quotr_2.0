@@ -48,7 +48,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           estimateIsStale={tabContext.estimateIsStale}
         />
       </div>
-      <WorkspaceContainer innerClassName="py-6">
+      <WorkspaceContainer className="min-h-0" innerClassName="py-6">
         <VariationEditor
           key={`${editor.variation.id}:${editor.variation.status}:${editor.withdrawalReason ?? ""}`}
           projectId={projectId}

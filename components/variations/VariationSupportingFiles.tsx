@@ -26,7 +26,7 @@ import {
   reorderVariationAttachments,
   signVariationAttachment,
   updateVariationAttachment,
-} from "@/lib/variations/attachment-actions";
+} from "@/lib/variations/attachment-client";
 import type { VariationAttachmentView } from "@/lib/variations/workspace-types";
 
 type ItemOption = { id: string; clientDescription: string };
@@ -304,7 +304,7 @@ function FileGroup(props: Props & {
       {props.visibility === "internal" ? <p className="mt-1 text-sm font-medium">Internal</p> : null}
       {props.editable ? (
         <label
-          className={`mt-3 flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed px-3 py-3 text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 ${dragging ? "bg-muted" : ""}`}
+          className={`relative mt-3 flex min-h-11 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed px-3 py-3 text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40 ${dragging ? "bg-muted" : ""}`}
           onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(event) => {
@@ -314,7 +314,7 @@ function FileGroup(props: Props & {
           }}
         >
           {props.addLabel}
-          <input className="sr-only" type="file" accept={ACCEPT} multiple aria-label={props.addLabel} onChange={(event) => {
+          <input className="absolute inset-0 size-full cursor-pointer opacity-0" type="file" accept={ACCEPT} multiple aria-label={props.addLabel} onChange={(event) => {
             if (event.target.files && event.target.files.length > 0) addFiles(event.target.files);
             event.target.value = "";
           }} />
@@ -427,8 +427,10 @@ function FileCard(props: {
     <article className="min-h-24 min-w-0 rounded-xl border p-3" data-upload-status={uploading ? "pending" : failed ? "failed" : "ready"}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
         {props.transfer?.previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={props.transfer.previewUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg border object-cover" />
+          <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-lg border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={props.transfer.previewUrl} alt="" width={64} height={64} className="absolute inset-0 h-full w-full max-w-none object-cover" />
+          </span>
         ) : kind === "image" && props.file.uploadStatus === "ready" ? (
           <Thumbnail projectId={props.projectId} variationId={props.variationId} attachmentId={props.file.id} alt={props.file.displayFilename} onOpen={() => props.onOpen("view")} />
         ) : (
@@ -499,9 +501,9 @@ function FileCard(props: {
                   </>
                 ) : null}
                 {failed ? (
-                  <label className="inline-flex h-11 min-h-11 cursor-pointer items-center rounded-2xl border px-4 text-sm has-[:focus-visible]:ring-3">
+                  <label className="relative inline-flex h-11 min-h-11 cursor-pointer items-center overflow-hidden rounded-2xl border px-4 text-sm has-[:focus-visible]:ring-3">
                     Retry
-                    <input className="sr-only" type="file" accept={ACCEPT} aria-label={`Retry ${props.file.displayFilename}`} onChange={(event) => { const picked = event.target.files?.[0]; if (picked) props.onRetry(picked); event.target.value = ""; }} />
+                    <input className="absolute inset-0 size-full cursor-pointer opacity-0" type="file" accept={ACCEPT} aria-label={`Retry ${props.file.displayFilename}`} onChange={(event) => { const picked = event.target.files?.[0]; if (picked) props.onRetry(picked); event.target.value = ""; }} />
                   </label>
                 ) : null}
                 <Button type="button" size="touch" variant="destructive" onClick={() => void props.onRemove()}>Remove</Button>

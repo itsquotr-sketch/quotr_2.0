@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { VariationDeliveryPanel } from "@/components/variations/VariationDeliveryPanel";
 import { VariationSupportingFiles } from "@/components/variations/VariationSupportingFiles";
 import { listVariationAttachments } from "@/lib/variations/attachment-actions";
@@ -191,6 +191,13 @@ export function VariationEditor(props: EditorProps) {
   const [previewOpen, setPreviewOpen] = useState(props.startPreview === true);
   const [itemEditor, setItemEditor] = useState<"add" | string | null>(null);
   const [attachments, setAttachments] = useState(props.attachments);
+  const editorInstance = useId();
+  function mergeAttachments(update: (current: typeof attachments) => typeof attachments): void {
+    setAttachments((current) => {
+      const next = update(current);
+      return Array.isArray(next) ? next : current;
+    });
+  }
   const current =
     variation.revisions.find((revision) => revision.status !== "superseded") ??
     variation.revisions[variation.revisions.length - 1];
@@ -431,7 +438,7 @@ export function VariationEditor(props: EditorProps) {
   const omissionTotal = sumLines(viewing.items.filter((item) => item.itemType === "omission"));
 
   return (
-    <div data-variation-editor="true" className="min-w-0 space-y-6 overflow-x-hidden">
+    <div data-variation-editor="true" data-editor-instance={editorInstance} className="min-w-0 space-y-6 overflow-x-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
@@ -575,7 +582,7 @@ export function VariationEditor(props: EditorProps) {
           editable={draft}
           items={viewing.items.map((item) => ({ id: item.id, clientDescription: item.clientDescription }))}
           attachments={attachments}
-          onChange={setAttachments}
+          onChange={mergeAttachments}
         />
       ) : null}
 
