@@ -80,6 +80,7 @@ export type VariationResponseView = {
   declineReason: string | null;
   evidenceTypeLabel: string | null;
   evidenceNote: string | null;
+  recordedByName: string | null;
   adjustmentInclGst: number;
 };
 

@@ -634,22 +634,38 @@ export function VariationEditor(props: EditorProps) {
       ) : null}
 
       {props.response && (viewing.status === "accepted" || viewing.status === "rejected") ? (
-        <section className="rounded-2xl border bg-card p-4 text-sm" data-variation-response-summary="true">
-          <h2 className="text-base font-semibold">{viewing.status === "accepted" ? "Accepted" : "Declined"}</h2>
+        <section className="min-w-0 rounded-2xl border bg-card p-4 text-sm" data-variation-response-summary="true">
+          <h2 className="text-base font-semibold">Response</h2>
           <dl className="mt-3 space-y-1">
-            {props.response.respondedAt ? <div className="flex justify-between gap-3"><dt>{viewing.status === "accepted" ? "Accepted" : "Declined"}</dt><dd>{props.response.respondedAt}</dd></div> : null}
-            <div className="flex justify-between gap-3"><dt>Source</dt><dd>{props.response.sourceLabel}</dd></div>
-            <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{props.response.responderName}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt>Outcome</dt><dd>{viewing.status === "accepted" ? "Accepted" : "Declined"}</dd></div>
+            {props.response.respondedAt ? <div className="flex flex-wrap justify-between gap-3"><dt>Response date</dt><dd>{props.response.respondedAt}</dd></div> : null}
+            <div className="flex flex-wrap justify-between gap-3"><dt>Responder</dt><dd className="break-words">{props.response.responderName}</dd></div>
+            <div className="flex flex-wrap justify-between gap-3"><dt>Source</dt><dd>{props.response.sourceLabel}</dd></div>
             {viewing.status === "accepted" ? (
               <>
-                <div className="flex justify-between gap-3"><dt>Adjustment applied</dt><dd className="tabular-nums">{formatSignedAdjustment(props.response.adjustmentInclGst, currency)}</dd></div>
-                {props.revisedContractInclGst != null ? <div className="flex justify-between gap-3"><dt>Revised accepted contract</dt><dd className="tabular-nums">{formatContractMoney(props.revisedContractInclGst, currency)}</dd></div> : null}
+                <div className="flex flex-wrap justify-between gap-3"><dt>Adjustment applied</dt><dd className="tabular-nums">{formatSignedAdjustment(props.response.adjustmentInclGst, currency)}</dd></div>
+                {props.revisedContractInclGst != null ? <div className="flex flex-wrap justify-between gap-3"><dt>Revised accepted contract</dt><dd className="tabular-nums">{formatContractMoney(props.revisedContractInclGst, currency)}</dd></div> : null}
               </>
-            ) : null}
-            {viewing.status === "rejected" && props.response.declineReason ? <div className="flex justify-between gap-3"><dt>Reason</dt><dd className="break-words">{props.response.declineReason}</dd></div> : null}
-            {props.response.evidenceTypeLabel ? <div className="flex justify-between gap-3"><dt>Evidence</dt><dd>{props.response.evidenceTypeLabel}</dd></div> : null}
-            {props.response.evidenceNote ? <div className="flex justify-between gap-3"><dt>Evidence note</dt><dd className="break-words">{props.response.evidenceNote}</dd></div> : null}
+            ) : (
+              <div className="flex flex-wrap justify-between gap-3"><dt>Contract</dt><dd>Contract value unchanged</dd></div>
+            )}
+            {viewing.status === "rejected" && props.response.declineReason ? <div className="flex flex-wrap justify-between gap-3"><dt>Reason</dt><dd className="min-w-0 break-words">{props.response.declineReason}</dd></div> : null}
           </dl>
+          <p className="mt-3" data-variation-notification-delivery="independent">A failed notification does not change this response.</p>
+          <Button className="mt-3" size="touch" variant="outline" render={<Link href={`/app/projects/${props.projectId}/variations/${variation.id}/response`} />}>
+            View response record
+          </Button>
+          {props.response.sourceLabel === "Manual" ? (
+            <div className="mt-4 border-t pt-3" data-variation-manual-evidence="true">
+              <h3 className="font-medium">Recorded manually</h3>
+              <dl className="mt-2 space-y-1">
+                {props.response.evidenceTypeLabel ? <div className="flex flex-wrap justify-between gap-3"><dt>Evidence type</dt><dd>{props.response.evidenceTypeLabel}</dd></div> : null}
+                {props.response.evidenceNote ? <div className="flex flex-wrap justify-between gap-3"><dt>Evidence note</dt><dd className="min-w-0 break-words">{props.response.evidenceNote}</dd></div> : null}
+                {props.response.recordedByName ? <div className="flex flex-wrap justify-between gap-3"><dt>Recorded by</dt><dd className="break-words">{props.response.recordedByName}</dd></div> : null}
+                {props.response.respondedAt ? <div className="flex flex-wrap justify-between gap-3"><dt>Recorded time</dt><dd>{props.response.respondedAt}</dd></div> : null}
+              </dl>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

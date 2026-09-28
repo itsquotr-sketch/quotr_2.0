@@ -152,6 +152,14 @@ export function VariationList(props: {
                 </div>
                 <Badge variant="outline">{row.deliveryLabel ?? row.statusLabel}</Badge>
               </div>
+              {row.status === "accepted" || row.status === "rejected" ? (
+                <p className="mt-2 break-words text-muted-foreground" data-variation-list-scan="true">
+                  {row.statusLabel}
+                  {row.status === "accepted" && row.acceptedAt ? ` · ${row.acceptedAt}` : ""}
+                  {row.status === "rejected" && row.declinedAt ? ` · ${row.declinedAt}` : ""}
+                  {row.inclGst != null ? ` · ${formatSignedAdjustment(row.inclGst, currency)}` : ""}
+                </p>
+              ) : null}
               <dl className="mt-3 grid gap-1">
                 <div className="flex flex-wrap justify-between gap-3">
                   <dt>Net adjustment ex GST</dt>

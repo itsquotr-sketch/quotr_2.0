@@ -11,7 +11,11 @@ import {
 } from "@/lib/quotes/acceptance-request";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { hashVariationAccessToken, isVariationAccessTokenFormat } from "@/lib/variations/delivery-token";
-import { buildVariationResponseNotificationEmail } from "@/lib/variations/response-email";
+import {
+  buildVariationClientConfirmationEmail,
+  buildVariationResponseNotificationEmail,
+} from "@/lib/variations/response-email";
+import { loadVariationResponseReceiptByIds } from "@/lib/variations/response-receipt-load";
 import { VARIATION_MANUAL_EVIDENCE_TYPES, manualEvidenceNoteProblem } from "@/lib/variations/response";
 import { createClient } from "@supabase/supabase-js";
 
@@ -42,11 +46,15 @@ const manualSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(200),
 });
 
+export type VariationResponseDeliveryState = "sent" | "failed" | "skipped";
+
 export type VariationResponseActionResult = {
   ok: boolean;
   error?: string;
   outcome?: "accepted" | "declined";
   idempotent?: boolean;
+  clientEmail?: VariationResponseDeliveryState;
+  contractorEmail?: VariationResponseDeliveryState;
 };
 
 const COPY: Record<string, string> = {
@@ -83,44 +91,71 @@ function readResult(data: unknown): Record<string, unknown> | null {
   return data as Record<string, unknown>;
 }
 
-async function notifyContractor(row: Record<string, unknown>): Promise<void> {
-  if (row.idempotent === true) return;
-  const email = typeof row.notifyEmail === "string" ? row.notifyEmail.trim() : "";
-  if (!email || !email.includes("@")) return;
-  const variationNumber = Number(row.variationNumber);
-  const revisionNumber = Number(row.revisionNumber);
-  const adjustment = Number(row.adjustmentInclGst);
+async function notifyContractor(
+  row: Record<string, unknown>,
+  token: string
+): Promise<{ clientEmail: VariationResponseDeliveryState; contractorEmail: VariationResponseDeliveryState }> {
+  if (row.idempotent === true) return { clientEmail: "skipped", contractorEmail: "skipped" };
   const projectId = typeof row.projectId === "string" ? row.projectId : "";
   const variationId = typeof row.variationId === "string" ? row.variationId : "";
-  const outcome = row.outcome === "declined" ? "declined" : "accepted";
-  if (!projectId || !variationId || !Number.isFinite(variationNumber) || !Number.isFinite(adjustment)) return;
+  const responseId = typeof row.responseId === "string" ? row.responseId : variationId;
+  if (!projectId || !variationId) return { clientEmail: "failed", contractorEmail: "failed" };
+  const receipt = await loadVariationResponseReceiptByIds({ projectId, variationId });
+  if (!receipt) return { clientEmail: "failed", contractorEmail: "failed" };
   const origin = await resolveConfiguredSiteOrigin();
-  if (!origin) return;
-  const built = buildVariationResponseNotificationEmail({
-    projectTitle: typeof row.projectTitle === "string" ? row.projectTitle : "Project",
-    variationNumber,
-    revisionNumber: Number.isFinite(revisionNumber) ? revisionNumber : 1,
-    outcome,
-    responderName: typeof row.responderName === "string" ? row.responderName : "The client",
-    respondedAt: typeof row.respondedAt === "string" ? row.respondedAt : new Date().toISOString(),
-    adjustmentInclGst: adjustment,
-    currency: typeof row.currency === "string" ? row.currency : "NZD",
-    internalUrl: `${origin}/app/projects/${projectId}/variations/${variationId}`,
-  });
-  if (!built.from) return;
-  try {
-    const provider = getQuoteDeliveryProvider();
-    await provider.send({
-      to: email,
-      from: built.from,
-      subject: built.subject,
-      html: built.html,
-      text: built.text,
-      idempotencyKey: `variation-response:${String(row.responseId ?? variationId)}`,
+  if (!origin) return { clientEmail: "failed", contractorEmail: "failed" };
+  const provider = getQuoteDeliveryProvider();
+  let clientEmail: VariationResponseDeliveryState = "skipped";
+  let contractorEmail: VariationResponseDeliveryState = "skipped";
+  const clientTo = receipt.responderEmail?.trim() ?? "";
+  if (clientTo.includes("@")) {
+    const built = buildVariationClientConfirmationEmail({
+      receipt,
+      recordUrl: `${origin}/v/${token}/response`,
     });
-  } catch {
-    // The response is already committed. Notification failure must not change it.
+    if (built.from) {
+      try {
+        const sent = await provider.send({
+          to: clientTo,
+          from: built.from,
+          subject: built.subject,
+          html: built.html,
+          text: built.text,
+          idempotencyKey: `variation-response-client:${responseId}`,
+        });
+        clientEmail = sent.ok ? "sent" : "failed";
+      } catch {
+        clientEmail = "failed";
+      }
+    } else {
+      clientEmail = "failed";
+    }
   }
+  const contractorTo = typeof row.notifyEmail === "string" ? row.notifyEmail.trim() : "";
+  if (contractorTo.includes("@")) {
+    const built = buildVariationResponseNotificationEmail({
+      receipt,
+      internalUrl: `${origin}/app/projects/${projectId}/variations/${variationId}`,
+    });
+    if (built.from) {
+      try {
+        const sent = await provider.send({
+          to: contractorTo,
+          from: built.from,
+          subject: built.subject,
+          html: built.html,
+          text: built.text,
+          idempotencyKey: `variation-response-contractor:${responseId}`,
+        });
+        contractorEmail = sent.ok ? "sent" : "failed";
+      } catch {
+        contractorEmail = "failed";
+      }
+    } else {
+      contractorEmail = "failed";
+    }
+  }
+  return { clientEmail, contractorEmail };
 }
 
 export async function respondToVariationAsClient(input: unknown): Promise<VariationResponseActionResult> {
@@ -154,9 +189,17 @@ export async function respondToVariationAsClient(input: unknown): Promise<Variat
   if (error) return fail("NOT_FOUND");
   const row = readResult(data);
   if (!row || row.ok !== true) return fail(typeof row?.error === "string" ? row.error : undefined);
-  await notifyContractor(row);
+  let delivery: { clientEmail: VariationResponseDeliveryState; contractorEmail: VariationResponseDeliveryState } = {
+    clientEmail: "failed",
+    contractorEmail: "failed",
+  };
+  try {
+    delivery = await notifyContractor(row, parsed.data.token);
+  } catch {
+    delivery = { clientEmail: "failed", contractorEmail: "failed" };
+  }
   const outcome = row.outcome === "declined" ? "declined" : "accepted";
-  return { ok: true, outcome, idempotent: row.idempotent === true };
+  return { ok: true, outcome, idempotent: row.idempotent === true, ...delivery };
 }
 
 export async function recordVariationResponse(input: unknown): Promise<VariationResponseActionResult> {

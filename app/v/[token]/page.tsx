@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { VariationPublicView } from "@/components/variations/VariationPublicView";
+import { VariationPublicExperience } from "@/components/variations/VariationPublicExperience";
 import { lookupPublicVariationByToken } from "@/lib/variations/public-lookup";
 
 export const runtime = "nodejs";
@@ -15,5 +15,5 @@ export default async function PublicVariationPage({ params }: PageProps) {
   await connection();
   const { token } = await params;
   const view = await lookupPublicVariationByToken(token);
-  return <VariationPublicView view={view} />;
+  return <VariationPublicExperience view={view} />;
 }

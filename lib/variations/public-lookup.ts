@@ -43,6 +43,7 @@ export type VariationPublicView =
       state: "accepted" | "declined";
       document: VariationDocumentModel;
       contactLine: string | null;
+      recordPath: string;
       outcome: VariationPublicOutcome;
     }
   | { state: "withdrawn" }
@@ -215,6 +216,7 @@ export async function lookupPublicVariationByToken(
     state: responseState,
     document,
     contactLine: contact || null,
+    recordPath: `${variationPublicPath(rawToken)}/response`,
     outcome: {
       outcome: responseState,
       respondedAt: typeof row.respondedAt === "string" ? row.respondedAt : null,

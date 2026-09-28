@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { respondToVariationAsClient } from "@/lib/variations/response-actions";
+import { respondToVariationAsClient, type VariationResponseDeliveryState } from "@/lib/variations/response-actions";
 import {
   variationAcceptFinalConfirmation,
   variationAttachmentConfirmation,
@@ -21,6 +21,7 @@ export function VariationClientResponse(props: {
   token: string;
   document: VariationDocumentModel;
   attachmentCount: number;
+  onClientEmail?: (state: VariationResponseDeliveryState) => void;
 }) {
   const router = useRouter();
   const key = useRef(typeof crypto !== "undefined" ? crypto.randomUUID() : "");
@@ -67,6 +68,7 @@ export function VariationClientResponse(props: {
       setError(result.error ?? "This Variation could not be updated.");
       return;
     }
+    props.onClientEmail?.(result.clientEmail ?? "skipped");
     router.refresh();
   }
 
@@ -124,7 +126,7 @@ export function VariationClientResponse(props: {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="variation-response-email">Email address</Label>
-            <Input id="variation-response-email" type="email" className="h-11 w-full text-base" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
+            <Input id="variation-response-email" type="email" className="h-11 w-full min-w-0 break-all text-base" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
           </div>
           {mode === "decline" ? (
             <>
@@ -167,14 +169,16 @@ export function VariationClientResponse(props: {
 
 function CheckLine(props: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return (
-    <label className="flex items-start gap-3 leading-5">
-      <input
-        type="checkbox"
-        className="mt-1 size-4 shrink-0"
-        checked={props.checked}
-        onChange={(event) => props.onChange(event.target.checked)}
-      />
-      <span>{props.label}</span>
+    <label className="flex min-h-11 items-start gap-3 leading-5">
+      <span className="inline-flex size-11 shrink-0 items-center justify-center">
+        <input
+          type="checkbox"
+          className="size-5 focus-visible:outline-2 focus-visible:outline-offset-2"
+          checked={props.checked}
+          onChange={(event) => props.onChange(event.target.checked)}
+        />
+      </span>
+      <span className="break-words pt-2.5">{props.label}</span>
     </label>
   );
 }

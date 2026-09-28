@@ -1,5 +1,6 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
@@ -472,7 +473,7 @@ export async function loadVariationEditor(projectId: string, variationId: string
       .limit(1),
     owned.context.supabase
       .from("variation_responses")
-      .select("outcome, source, responder_name, responded_at, client_decline_reason, manual_evidence_type, manual_evidence_note, issued_total_incl_gst")
+      .select("outcome, source, responder_name, responded_at, client_decline_reason, manual_evidence_type, manual_evidence_note, issued_total_incl_gst, builder_actor_id")
       .eq("project_id", owned.projectId)
       .eq("org_id", owned.context.orgId)
       .eq("variation_id", variationId)
@@ -698,12 +699,12 @@ export async function loadVariationEditor(projectId: string, variationId: string
       }];
     }),
     attachments,
-    response: mapVariationResponse(responseRow.data),
+    response: await mapVariationResponse(owned.context.supabase, responseRow.data),
     revisedContractInclGst: revisedInclFromLedger(sellIncl, acceptedRows.data),
   };
 }
 
-function mapVariationResponse(data: unknown): VariationResponseView | null {
+async function mapVariationResponse(db: SupabaseClient, data: unknown): Promise<VariationResponseView | null> {
   if (!data || typeof data !== "object") return null;
   const row = data as {
     outcome?: string;
@@ -714,6 +715,7 @@ function mapVariationResponse(data: unknown): VariationResponseView | null {
     manual_evidence_type?: string | null;
     manual_evidence_note?: string | null;
     issued_total_incl_gst?: unknown;
+    builder_actor_id?: string | null;
   };
   if (row.outcome !== "accepted" && row.outcome !== "declined") return null;
   if (row.source !== "client" && row.source !== "manual") return null;
@@ -721,6 +723,12 @@ function mapVariationResponse(data: unknown): VariationResponseView | null {
   if (adjustment == null || !row.responder_name) return null;
   const evidenceType = row.manual_evidence_type;
   const known = evidenceType === "email_confirmation" || evidenceType === "signed_document" || evidenceType === "verbal_approval" || evidenceType === "other";
+  let recordedByName: string | null = null;
+  if (row.source === "manual" && row.builder_actor_id) {
+    const profile = await db.from("profiles").select("full_name").eq("id", row.builder_actor_id).maybeSingle();
+    const name = (profile.data as { full_name?: string | null } | null)?.full_name?.trim();
+    recordedByName = name || "A team member";
+  }
   return {
     outcome: row.outcome,
     sourceLabel: row.source === "client" ? "Client" : "Manual",
@@ -729,6 +737,7 @@ function mapVariationResponse(data: unknown): VariationResponseView | null {
     declineReason: row.source === "client" ? row.client_decline_reason ?? null : null,
     evidenceTypeLabel: known ? variationEvidenceTypeLabel(evidenceType as VariationManualEvidenceType) : null,
     evidenceNote: row.source === "manual" ? row.manual_evidence_note ?? null : null,
+    recordedByName,
     adjustmentInclGst: adjustment,
   };
 }
