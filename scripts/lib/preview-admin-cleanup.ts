@@ -30,6 +30,23 @@ const IMMUTABILITY_TRIGGERS = [
   ["public.quote_items", "quote_items_protect_snapshot"],
 ] as const;
 
+/** Present after migration 072. Skipped when that migration is not applied yet. */
+const OPTIONAL_IMMUTABILITY_TRIGGERS = [
+  ["public.variation_responses", "variation_responses_no_delete"],
+  ["public.variation_accepted_adjustments", "variation_accepted_adjustments_no_delete"],
+] as const;
+
+function triggerStatement(
+  action: "disable" | "enable",
+  table: string,
+  trigger: string,
+  optional: boolean
+): string {
+  const statement = `alter table ${table} ${action} trigger ${trigger};`;
+  if (!optional) return statement;
+  return `do $$ begin if to_regclass('${table}') is not null then ${statement} end if; end $$;`;
+}
+
 export function registerPreviewFixtureOrg(orgId: string): void {
   const id = requireUuid(orgId);
   registeredOrgIds.add(id);
@@ -95,12 +112,14 @@ function requireUuid(orgId: string): string {
 function cleanupSql(orgIds: readonly string[]): string {
   const list = orgIds.map((id) => `'${id}'`).join(", ");
   const array = `array[${list}]::uuid[]`;
-  const disable = IMMUTABILITY_TRIGGERS.map(
-    ([table, trigger]) => `alter table ${table} disable trigger ${trigger};`
-  ).join("\n");
-  const enable = IMMUTABILITY_TRIGGERS.map(
-    ([table, trigger]) => `alter table ${table} enable trigger ${trigger};`
-  ).join("\n");
+  const disable = [
+    ...IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("disable", table, trigger, false)),
+    ...OPTIONAL_IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("disable", table, trigger, true)),
+  ].join("\n");
+  const enable = [
+    ...IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("enable", table, trigger, false)),
+    ...OPTIONAL_IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("enable", table, trigger, true)),
+  ].join("\n");
   return `
 begin;
 ${disable}
@@ -116,9 +135,10 @@ commit;
 function enableImmutabilityTriggers(): void {
   const directory = mkdtempSync(join(tmpdir(), "quotr-preview-enable-"));
   const file = join(directory, "enable.sql");
-  const enable = IMMUTABILITY_TRIGGERS.map(
-    ([table, trigger]) => `alter table ${table} enable trigger ${trigger};`
-  ).join("\n");
+  const enable = [
+    ...IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("enable", table, trigger, false)),
+    ...OPTIONAL_IMMUTABILITY_TRIGGERS.map(([table, trigger]) => triggerStatement("enable", table, trigger, true)),
+  ].join("\n");
   try {
     writeFileSync(file, `begin;\n${enable}\ncommit;\n`, "utf8");
     runPreviewSqlFile(file);

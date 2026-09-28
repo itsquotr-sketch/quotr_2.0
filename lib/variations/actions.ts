@@ -6,6 +6,7 @@ import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import {
   calculateRevisedContractValue,
+  type VariationAcceptedLedgerEntry,
   clientFacingVariation,
   VARIATION_COST_CATEGORIES,
   VARIATION_ITEM_TYPES,
@@ -754,7 +755,7 @@ export async function loadRevisedContractValue(
   const headers = (variations.data ?? []) as Array<{ id: string; current_revision_id: string | null }>;
   const ids = headers.map((row) => row.id);
   if (ids.length === 0) {
-    const empty = calculateRevisedContractValue({ baseline, revisions: [] });
+    const empty = calculateRevisedContractValue({ baseline, revisions: [], ledger: [] });
     return empty.ok ? { ok: true, value: empty.value } : fail(empty.error);
   }
 
@@ -802,7 +803,25 @@ export async function loadRevisedContractValue(
     });
   }
 
-  const value = calculateRevisedContractValue({ baseline, revisions: revisionRows });
+  const ledgerQuery = await context.supabase
+    .from("variation_accepted_adjustments")
+    .select("variation_id, variation_revision_id, net_adjustment_ex_gst, gst_adjustment, adjustment_incl_gst")
+    .eq("project_id", owned.projectId);
+  if (ledgerQuery.error) return fail("INVALID_INPUT");
+  const ledger: VariationAcceptedLedgerEntry[] = ((ledgerQuery.data ?? []) as Array<{
+    variation_id: string;
+    variation_revision_id: string;
+    net_adjustment_ex_gst: number | string | null;
+    gst_adjustment: number | string | null;
+    adjustment_incl_gst: number | string | null;
+  }>).map((row) => ({
+    variationId: row.variation_id,
+    revisionId: row.variation_revision_id,
+    netAdjustmentExGst: readMoney(row.net_adjustment_ex_gst),
+    gstAdjustment: readMoney(row.gst_adjustment),
+    adjustmentInclGst: readMoney(row.adjustment_incl_gst),
+  }));
+  const value = calculateRevisedContractValue({ baseline, revisions: revisionRows, ledger });
   if (!value.ok) return fail(value.error);
   return { ok: true, value: value.value };
 }

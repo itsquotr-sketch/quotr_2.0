@@ -10,6 +10,7 @@ import {
   calculateRevisedContractValue,
   type InternalVariation,
   type RevisedVariationRevision,
+  type VariationAcceptedLedgerEntry,
   type VariationStatus,
 } from "@/lib/variations/domain";
 import {
@@ -18,12 +19,14 @@ import {
   variationEligibility,
   variationStatusLabel,
 } from "@/lib/variations/presentation";
+import { variationEvidenceTypeLabel, type VariationManualEvidenceType } from "@/lib/variations/response";
 import type {
   VariationAttachmentView,
   VariationBaselineView,
   VariationDeliveryAttempt,
   VariationListRow,
   VariationListSummary,
+  VariationResponseView,
   VariationRevisionHistoryRow,
   VariationScopeLineOption,
   VariationWorkAreaOption,
@@ -135,7 +138,7 @@ export async function loadVariationWorkspace(projectId: string): Promise<
 > {
   const owned = await ownedProject(projectId);
   if (!owned.ok) return owned;
-  const [project, snapshot, lifecycle, variations, revisions, items] = await Promise.all([
+  const [project, snapshot, lifecycle, variations, revisions, items, ledgerRows, responseRows] = await Promise.all([
     owned.context.supabase
       .from("projects")
       .select("title, client_name, archived_at, business_status")
@@ -166,8 +169,18 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       .from("variation_items")
       .select("revision_id, item_type, line_sell_adjustment_ex_gst")
       .eq("project_id", owned.projectId),
+    owned.context.supabase
+      .from("variation_accepted_adjustments")
+      .select("variation_id, variation_revision_id, net_adjustment_ex_gst, gst_adjustment, adjustment_incl_gst")
+      .eq("project_id", owned.projectId)
+      .eq("org_id", owned.context.orgId),
+    owned.context.supabase
+      .from("variation_responses")
+      .select("variation_id, outcome, source, responder_name, client_decline_reason, responded_at")
+      .eq("project_id", owned.projectId)
+      .eq("org_id", owned.context.orgId),
   ]);
-  if (project.error || !project.data || variations.error || revisions.error || items.error) {
+  if (project.error || !project.data || variations.error || revisions.error || items.error || ledgerRows.error || responseRows.error) {
     return { ok: false, error: "Variations could not be loaded." };
   }
   const projectRow = project.data as {
@@ -238,10 +251,17 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       variation.status === "accepted"
         ? "Accepted"
         : variation.status === "rejected"
-          ? "Rejected"
+          ? "Declined"
           : variation.status === "withdrawn"
             ? "Withdrawn"
             : null;
+    const response = ((responseRows.data ?? []) as Array<{
+      variation_id: string;
+      outcome: string;
+      source: string;
+      responder_name: string;
+      client_decline_reason: string | null;
+    }>).find((row) => row.variation_id === variation.id);
     rows.push({
       id: variation.id,
       variationNumber: variation.variation_number,
@@ -259,6 +279,10 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       declinedAt: formatDate(current?.rejected_at ?? null),
       withdrawnAt: formatDate(current?.withdrawn_at ?? null),
       outcomeLabel: outcome,
+      responseSource: response?.source === "client" ? "Client" : response?.source === "manual" ? "Manual" : null,
+      responderName: response?.responder_name ?? null,
+      declineReason: response?.source === "client" ? response.client_decline_reason : null,
+      revisedContractInclGst: null,
       currentRevisionId: current?.id ?? null,
       deliveryLabel: null,
     });
@@ -317,6 +341,19 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       }),
     }];
   });
+  const ledger: VariationAcceptedLedgerEntry[] = ((ledgerRows.data ?? []) as Array<{
+    variation_id: string;
+    variation_revision_id: string;
+    net_adjustment_ex_gst: unknown;
+    gst_adjustment: unknown;
+    adjustment_incl_gst: unknown;
+  }>).map((row) => ({
+    variationId: row.variation_id,
+    revisionId: row.variation_revision_id,
+    netAdjustmentExGst: money(row.net_adjustment_ex_gst),
+    gstAdjustment: money(row.gst_adjustment),
+    adjustmentInclGst: money(row.adjustment_incl_gst),
+  }));
   const contract = calculateRevisedContractValue({
     baseline: {
       currency: snap.currency,
@@ -327,8 +364,12 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       sellInclGst: sellIncl,
     },
     revisions: contractRevisions,
+    ledger,
   });
   if (!contract.ok) return { ok: false, error: "Variations could not be loaded." };
+  for (const row of rows) {
+    if (row.status === "accepted") row.revisedContractInclGst = contract.value.revisedContractValueInclGst;
+  }
   const summary: VariationListSummary = {
     originalAcceptedExGst: contract.value.originalAcceptedContractExGst,
     originalAcceptedInclGst: sellIncl,
@@ -376,12 +417,14 @@ export async function loadVariationEditor(projectId: string, variationId: string
         totalAdjustmentInclGst: number;
       }>;
       attachments: VariationAttachmentView[];
+      response: VariationResponseView | null;
+      revisedContractInclGst: number | null;
     }
   | Fail
 > {
   const owned = await ownedProject(projectId);
   if (!owned.ok) return owned;
-  const [loaded, project, lifecycle, snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows, withdrawalEvents] =
+  const [loaded, project, lifecycle, snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows, withdrawalEvents, responseRow] =
     await Promise.all([
     loadVariation({ variationId }),
     owned.context.supabase
@@ -416,10 +459,10 @@ export async function loadVariationEditor(projectId: string, variationId: string
       .select("id, issued_at, withdrawn_at, document_identity")
       .eq("variation_id", variationId),
     owned.context.supabase
-      .from("variation_revisions")
-      .select("id, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst")
+      .from("variation_accepted_adjustments")
+      .select("variation_revision_id, net_adjustment_ex_gst, gst_adjustment, adjustment_incl_gst")
       .eq("project_id", owned.projectId)
-      .eq("status", "accepted"),
+      .eq("org_id", owned.context.orgId),
     owned.context.supabase
       .from("project_lifecycle_events")
       .select("metadata")
@@ -427,12 +470,21 @@ export async function loadVariationEditor(projectId: string, variationId: string
       .eq("source_entity_id", variationId)
       .eq("event_type", "variation_withdrawn")
       .limit(1),
+    owned.context.supabase
+      .from("variation_responses")
+      .select("outcome, source, responder_name, responded_at, client_decline_reason, manual_evidence_type, manual_evidence_note, issued_total_incl_gst")
+      .eq("project_id", owned.projectId)
+      .eq("org_id", owned.context.orgId)
+      .eq("variation_id", variationId)
+      .maybeSingle(),
   ]);
   if (!loaded.ok) return loaded;
   if (loaded.variation.projectId !== projectId) {
     return { ok: false, error: "That variation could not be found." };
   }
-  if (project.error || !project.data) return { ok: false, error: "That project could not be found." };
+  if (project.error || !project.data || acceptedRows.error || responseRow.error) {
+    return { ok: false, error: "That project could not be found." };
+  }
   const projectRow = project.data as {
     title: string;
     client_name: string | null;
@@ -629,22 +681,65 @@ export async function loadVariationEditor(projectId: string, variationId: string
     eligible: eligibility.eligible,
     reason: eligibility.reason,
     acceptedRevisions: ((acceptedRows.data ?? []) as Array<{
-      id: string;
-      total_sell_adjustment_ex_gst: unknown;
+      variation_revision_id: string;
+      net_adjustment_ex_gst: unknown;
       gst_adjustment: unknown;
-      total_adjustment_incl_gst: unknown;
+      adjustment_incl_gst: unknown;
     }>).flatMap((row) => {
-      const sell = money(row.total_sell_adjustment_ex_gst);
+      const sell = money(row.net_adjustment_ex_gst);
       const gst = money(row.gst_adjustment);
-      const incl = money(row.total_adjustment_incl_gst);
+      const incl = money(row.adjustment_incl_gst);
       if (sell == null || gst == null || incl == null) return [];
       return [{
-        id: row.id,
+        id: row.variation_revision_id,
         totalSellAdjustmentExGst: sell,
         gstAdjustment: gst,
         totalAdjustmentInclGst: incl,
       }];
     }),
     attachments,
+    response: mapVariationResponse(responseRow.data),
+    revisedContractInclGst: revisedInclFromLedger(sellIncl, acceptedRows.data),
   };
+}
+
+function mapVariationResponse(data: unknown): VariationResponseView | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as {
+    outcome?: string;
+    source?: string;
+    responder_name?: string;
+    responded_at?: string | null;
+    client_decline_reason?: string | null;
+    manual_evidence_type?: string | null;
+    manual_evidence_note?: string | null;
+    issued_total_incl_gst?: unknown;
+  };
+  if (row.outcome !== "accepted" && row.outcome !== "declined") return null;
+  if (row.source !== "client" && row.source !== "manual") return null;
+  const adjustment = money(row.issued_total_incl_gst);
+  if (adjustment == null || !row.responder_name) return null;
+  const evidenceType = row.manual_evidence_type;
+  const known = evidenceType === "email_confirmation" || evidenceType === "signed_document" || evidenceType === "verbal_approval" || evidenceType === "other";
+  return {
+    outcome: row.outcome,
+    sourceLabel: row.source === "client" ? "Client" : "Manual",
+    responderName: row.responder_name,
+    respondedAt: formatDate(row.responded_at ?? null),
+    declineReason: row.source === "client" ? row.client_decline_reason ?? null : null,
+    evidenceTypeLabel: known ? variationEvidenceTypeLabel(evidenceType as VariationManualEvidenceType) : null,
+    evidenceNote: row.source === "manual" ? row.manual_evidence_note ?? null : null,
+    adjustmentInclGst: adjustment,
+  };
+}
+
+function revisedInclFromLedger(baselineIncl: number, rows: unknown): number | null {
+  const ledger = Array.isArray(rows) ? rows : [];
+  let sum = 0;
+  for (const row of ledger) {
+    const incl = money((row as { adjustment_incl_gst?: unknown }).adjustment_incl_gst);
+    if (incl == null) return null;
+    sum += incl;
+  }
+  return Math.round((baselineIncl + sum) * 100) / 100;
 }

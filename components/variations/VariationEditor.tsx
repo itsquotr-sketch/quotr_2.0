@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { VariationDeliveryPanel } from "@/components/variations/VariationDeliveryPanel";
+import { VariationManualResponse } from "@/components/variations/VariationManualResponse";
 import { VariationSupportingFiles } from "@/components/variations/VariationSupportingFiles";
 import { listVariationAttachments } from "@/lib/variations/attachment-actions";
 import {
@@ -60,6 +61,7 @@ import {
 } from "@/lib/variations/domain";
 import {
   buildVariationDocument,
+  formatContractMoney,
   formatSignedAdjustment,
   internalMarginReadout,
   issueConfirmationCopy,
@@ -70,6 +72,7 @@ import {
   sellFromKnownCost,
   signedUnitFromMagnitude,
   variationIssueReadiness,
+  variationDeliveryListLabel,
   variationStatusLabel,
   variationUnitLineReadout,
   VARIATION_NOT_READY_HEADING,
@@ -84,6 +87,7 @@ import type {
   VariationAttachmentView,
   VariationBaselineView,
   VariationDeliveryAttempt,
+  VariationResponseView,
   VariationRevisionHistoryRow,
   VariationScopeLineOption,
   VariationWorkAreaOption,
@@ -117,6 +121,8 @@ type EditorProps = {
   startPreview?: boolean;
   startWithdraw?: boolean;
   attachments: VariationAttachmentView[];
+  response: VariationResponseView | null;
+  revisedContractInclGst: number | null;
 };
 
 type BuildUpDraft = {
@@ -174,6 +180,14 @@ function readProvenance(metadata: Record<string, unknown>, itemType: string, uni
   if (itemType === "no_cost_scope_change") return "no_cost";
   if (unitSell == null) return "pricing_required";
   return "manual";
+}
+
+function latestDelivery(
+  deliveries: VariationDeliveryAttempt[],
+  revisionId: string
+): "sent" | "failed" | null {
+  const latest = [...deliveries].reverse().find((row) => row.revisionId === revisionId && (row.status === "sent" || row.status === "failed"));
+  return latest?.status === "sent" || latest?.status === "failed" ? latest.status : null;
 }
 
 export function VariationEditor(props: EditorProps) {
@@ -444,7 +458,10 @@ export function VariationEditor(props: EditorProps) {
           <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
           <p className="text-sm text-muted-foreground">Revision {viewing.revisionNumber}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{variationStatusLabel(viewing.status)}</Badge>
+            <Badge variant="outline">{variationDeliveryListLabel({
+              status: viewing.status,
+              latestAttempt: latestDelivery(props.deliveries, viewing.id),
+            }) ?? variationStatusLabel(viewing.status)}</Badge>
             <span className="text-sm text-muted-foreground">{historical ? "Historical revision" : "Current revision"}</span>
           </div>
         </div>
@@ -599,7 +616,9 @@ export function VariationEditor(props: EditorProps) {
           {marginReadout?.marginLabel ? <Row label="Effective gross margin" value={marginReadout.marginLabel} /> : null}
         </dl>
         {marginReadout?.note ? <p className="mt-2 text-sm text-muted-foreground">{marginReadout.note}</p> : null}
-        <p className="mt-3 text-sm">Proposed revised contract if this Variation were accepted: <span className="font-medium">{proposedLabel ?? "Not calculated yet"}</span> <span className="text-muted-foreground">(proposed, not accepted)</span></p>
+        {viewing.status === "draft" || viewing.status === "issued" ? (
+          <p className="mt-3 text-sm">Proposed revised contract if this Variation were accepted: <span className="font-medium">{proposedLabel ?? "Not calculated yet"}</span> <span className="text-muted-foreground">(proposed, not accepted)</span></p>
+        ) : null}
       </section>
 
       {draft ? (
@@ -612,6 +631,30 @@ export function VariationEditor(props: EditorProps) {
           )}
           <Button className="mt-3" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
         </section>
+      ) : null}
+
+      {props.response && (viewing.status === "accepted" || viewing.status === "rejected") ? (
+        <section className="rounded-2xl border bg-card p-4 text-sm" data-variation-response-summary="true">
+          <h2 className="text-base font-semibold">{viewing.status === "accepted" ? "Accepted" : "Declined"}</h2>
+          <dl className="mt-3 space-y-1">
+            {props.response.respondedAt ? <div className="flex justify-between gap-3"><dt>{viewing.status === "accepted" ? "Accepted" : "Declined"}</dt><dd>{props.response.respondedAt}</dd></div> : null}
+            <div className="flex justify-between gap-3"><dt>Source</dt><dd>{props.response.sourceLabel}</dd></div>
+            <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{props.response.responderName}</dd></div>
+            {viewing.status === "accepted" ? (
+              <>
+                <div className="flex justify-between gap-3"><dt>Adjustment applied</dt><dd className="tabular-nums">{formatSignedAdjustment(props.response.adjustmentInclGst, currency)}</dd></div>
+                {props.revisedContractInclGst != null ? <div className="flex justify-between gap-3"><dt>Revised accepted contract</dt><dd className="tabular-nums">{formatContractMoney(props.revisedContractInclGst, currency)}</dd></div> : null}
+              </>
+            ) : null}
+            {viewing.status === "rejected" && props.response.declineReason ? <div className="flex justify-between gap-3"><dt>Reason</dt><dd className="break-words">{props.response.declineReason}</dd></div> : null}
+            {props.response.evidenceTypeLabel ? <div className="flex justify-between gap-3"><dt>Evidence</dt><dd>{props.response.evidenceTypeLabel}</dd></div> : null}
+            {props.response.evidenceNote ? <div className="flex justify-between gap-3"><dt>Evidence note</dt><dd className="break-words">{props.response.evidenceNote}</dd></div> : null}
+          </dl>
+        </section>
+      ) : null}
+
+      {current.status === "issued" && !historical ? (
+        <VariationManualResponse projectId={props.projectId} variationId={variation.id} revisionId={current.id} />
       ) : null}
 
       {current.status === "issued" && !historical ? (

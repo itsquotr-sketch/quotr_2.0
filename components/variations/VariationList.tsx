@@ -149,9 +149,8 @@ export function VariationList(props: {
                   <p className="mt-2 text-muted-foreground">
                     {row.revisionNumber == null ? "Current revision pending" : `Revision ${row.revisionNumber}`}
                   </p>
-                  {row.deliveryLabel ? <p className="mt-1 text-muted-foreground">{row.deliveryLabel}</p> : null}
                 </div>
-                <Badge variant="outline">{row.statusLabel}</Badge>
+                <Badge variant="outline">{row.deliveryLabel ?? row.statusLabel}</Badge>
               </div>
               <dl className="mt-3 grid gap-1">
                 <div className="flex flex-wrap justify-between gap-3">
@@ -163,8 +162,23 @@ export function VariationList(props: {
                 {row.createdAt ? <div className="flex justify-between gap-3"><dt>Created</dt><dd>{row.createdAt}</dd></div> : null}
                 {row.issuedAt ? <div className="flex justify-between gap-3"><dt>Issued</dt><dd>{row.issuedAt}</dd></div> : null}
                 {row.withdrawnAt ? <div className="flex justify-between gap-3"><dt>Withdrawn</dt><dd>{row.withdrawnAt}</dd></div> : null}
-                {row.acceptedAt ? <div className="flex justify-between gap-3"><dt>Accepted</dt><dd>{row.acceptedAt}</dd></div> : null}
-                {row.declinedAt ? <div className="flex justify-between gap-3"><dt>Declined</dt><dd>{row.declinedAt}</dd></div> : null}
+                {row.status === "accepted" ? (
+                  <>
+                    {row.acceptedAt ? <div className="flex justify-between gap-3"><dt>Accepted</dt><dd>{row.acceptedAt}</dd></div> : null}
+                    {row.responseSource ? <div className="flex justify-between gap-3"><dt>Source</dt><dd>{row.responseSource}</dd></div> : null}
+                    {row.responderName ? <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{row.responderName}</dd></div> : null}
+                    {row.inclGst != null ? <div className="flex justify-between gap-3"><dt>Adjustment applied</dt><dd className="tabular-nums">{formatSignedAdjustment(row.inclGst, currency)}</dd></div> : null}
+                    {row.revisedContractInclGst != null ? <div className="flex justify-between gap-3"><dt>Revised accepted contract</dt><dd className="tabular-nums">{formatContractMoney(row.revisedContractInclGst, currency)}</dd></div> : null}
+                  </>
+                ) : null}
+                {row.status === "rejected" ? (
+                  <>
+                    {row.declinedAt ? <div className="flex justify-between gap-3"><dt>Declined</dt><dd>{row.declinedAt}</dd></div> : null}
+                    {row.responseSource ? <div className="flex justify-between gap-3"><dt>Source</dt><dd>{row.responseSource}</dd></div> : null}
+                    {row.responderName ? <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{row.responderName}</dd></div> : null}
+                    {row.declineReason ? <div className="flex justify-between gap-3"><dt>Reason</dt><dd className="break-words">{row.declineReason}</dd></div> : null}
+                  </>
+                ) : null}
               </dl>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button variant="outline" size="touch" render={<Link href={`/app/projects/${props.projectId}/variations/${row.id}`} />}>

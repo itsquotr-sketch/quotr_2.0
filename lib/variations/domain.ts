@@ -5,9 +5,9 @@
  * It never rewrites that snapshot, the quote, the estimate, pricing, or rates.
  * Negative money is valid only for variation adjustments.
  *
- * Revised contract value is the accepted baseline plus accepted current
- * variation revisions. Draft, issued, rejected, withdrawn and superseded
- * revisions do not change it. Lifecycle events are not a money source.
+ * Revised contract value is the accepted Quote snapshot plus the accepted
+ * Variation adjustment ledger. Draft, issued, declined, withdrawn and
+ * superseded revisions do not change it. Lifecycle events are not a money source.
  */
 
 import { isFiniteNumber, roundMoney } from "@/lib/commercial-engine/core/money";
@@ -48,6 +48,7 @@ export const VARIATION_EVENT_TYPES = [
   "variation_issued",
   "variation_accepted",
   "variation_rejected",
+  "variation_declined",
   "variation_withdrawn",
   "variation_superseded",
   "variation_sent",
@@ -390,6 +391,15 @@ export type RevisedVariationRevision = {
   >[];
 };
 
+/** Frozen signed amounts from one accepted Variation. Null money is unresolved, never zero. */
+export type VariationAcceptedLedgerEntry = {
+  variationId: string;
+  revisionId: string;
+  netAdjustmentExGst: number | null;
+  gstAdjustment: number | null;
+  adjustmentInclGst: number | null;
+};
+
 export type RevisedContractValue = {
   currency: string;
   gstRate: number;
@@ -407,6 +417,11 @@ export type RevisedContractValue = {
 export function calculateRevisedContractValue(input: {
   baseline: AcceptedBaselineMoney;
   revisions: readonly RevisedVariationRevision[];
+  /**
+   * When present, including an empty list, accepted money comes only from
+   * these frozen ledger rows. Accepted revision status is not a money source.
+   */
+  ledger?: readonly VariationAcceptedLedgerEntry[];
 }): { ok: true; value: RevisedContractValue } | { ok: false; error: VariationFailureCode } {
   const { baseline } = input;
   if (
@@ -418,9 +433,6 @@ export function calculateRevisedContractValue(input: {
     return { ok: false, error: "INVALID_INPUT" };
   }
 
-  const accepted = input.revisions.filter(
-    (revision) => revision.status === "accepted" && revision.isCurrent
-  );
   const pending = input.revisions.filter(
     (revision) => revision.status === "issued" && revision.isCurrent
   );
@@ -429,22 +441,46 @@ export function calculateRevisedContractValue(input: {
   let omissions = 0;
   let net = 0;
   let gst = 0;
-  for (const revision of accepted) {
-    if (
-      revision.totalSellAdjustmentExGst == null ||
-      revision.gstAdjustment == null ||
-      revision.totalAdjustmentInclGst == null
-    ) {
-      return { ok: false, error: "UNRESOLVED_PRICING" };
-    }
-    net += revision.totalSellAdjustmentExGst;
-    gst += revision.gstAdjustment;
-    for (const item of revision.items) {
-      if (item.lineSellAdjustmentExGst == null) {
+  let ledgerIncl = 0;
+  if (input.ledger) {
+    for (const entry of input.ledger) {
+      if (
+        entry.netAdjustmentExGst == null ||
+        entry.gstAdjustment == null ||
+        entry.adjustmentInclGst == null ||
+        !isFiniteNumber(entry.netAdjustmentExGst) ||
+        !isFiniteNumber(entry.gstAdjustment) ||
+        !isFiniteNumber(entry.adjustmentInclGst)
+      ) {
         return { ok: false, error: "UNRESOLVED_PRICING" };
       }
-      if (item.itemType === "addition") additions += item.lineSellAdjustmentExGst;
-      if (item.itemType === "omission") omissions += item.lineSellAdjustmentExGst;
+      net += entry.netAdjustmentExGst;
+      gst += entry.gstAdjustment;
+      ledgerIncl += entry.adjustmentInclGst;
+      if (entry.netAdjustmentExGst > 0) additions += entry.netAdjustmentExGst;
+      if (entry.netAdjustmentExGst < 0) omissions += entry.netAdjustmentExGst;
+    }
+  } else {
+    const accepted = input.revisions.filter(
+      (revision) => revision.status === "accepted" && revision.isCurrent
+    );
+    for (const revision of accepted) {
+      if (
+        revision.totalSellAdjustmentExGst == null ||
+        revision.gstAdjustment == null ||
+        revision.totalAdjustmentInclGst == null
+      ) {
+        return { ok: false, error: "UNRESOLVED_PRICING" };
+      }
+      net += revision.totalSellAdjustmentExGst;
+      gst += revision.gstAdjustment;
+      for (const item of revision.items) {
+        if (item.lineSellAdjustmentExGst == null) {
+          return { ok: false, error: "UNRESOLVED_PRICING" };
+        }
+        if (item.itemType === "addition") additions += item.lineSellAdjustmentExGst;
+        if (item.itemType === "omission") omissions += item.lineSellAdjustmentExGst;
+      }
     }
   }
 
@@ -471,7 +507,9 @@ export function calculateRevisedContractValue(input: {
       netAcceptedVariationAdjustmentExGst: netAccepted,
       revisedContractValueExGst: revisedEx,
       gst: revisedGst,
-      revisedContractValueInclGst: roundMoney(revisedEx + revisedGst),
+      revisedContractValueInclGst: input.ledger
+        ? roundMoney(baseline.sellInclGst + ledgerIncl)
+        : roundMoney(revisedEx + revisedGst),
       pendingVariationValueExGst: roundMoney(pendingValue),
     },
   };

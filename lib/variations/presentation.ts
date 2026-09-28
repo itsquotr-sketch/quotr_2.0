@@ -80,7 +80,7 @@ export function variationStatusLabel(status: VariationStatus): string {
     case "accepted":
       return "Accepted";
     case "rejected":
-      return "Rejected";
+      return "Declined";
     case "withdrawn":
       return "Withdrawn";
     case "superseded":
@@ -587,7 +587,9 @@ export function buildVariationDocument(input: {
     statusWording:
       input.status === "accepted"
         ? "Accepted Variation."
-        : VARIATION_DOCUMENT_PROPOSED_STATUS,
+        : input.status === "rejected"
+          ? "Declined Variation."
+          : VARIATION_DOCUMENT_PROPOSED_STATUS,
     showsOmissionNotice: omissions.length > 0 || substitutions.length > 0,
     acceptancePlaceholder: "Client acceptance will be available when this Variation is sent.",
     supportingFiles: input.supportingFiles ?? [],

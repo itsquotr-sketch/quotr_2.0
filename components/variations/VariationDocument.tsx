@@ -176,10 +176,6 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
         </>
       ) : null}
 
-      <section className="mt-8 border-t border-dashed border-neutral-300 pt-4">
-        <h2 className="text-sm font-semibold">Acceptance</h2>
-        <p className="mt-1 text-sm text-neutral-700">Client response will be available in the next Variation stage.</p>
-      </section>
     </article>
   );
 }

@@ -15,12 +15,36 @@ import {
 import { parseVariationDocumentIdentity } from "@/lib/variations/document-identity";
 import {
   buildVariationDocument,
+  formatContractMoney,
   type VariationDocumentModel,
 } from "@/lib/variations/presentation";
 import type { VariationItemType } from "@/lib/variations/domain";
 
+export type VariationPublicOutcome = {
+  outcome: "accepted" | "declined";
+  respondedAt: string | null;
+  responderName: string | null;
+  declineReason: string | null;
+  adjustmentInclLabel: string;
+  revisedContractInclLabel: string;
+  quoteNumber: string | null;
+  quoteRevision: number | null;
+};
+
 export type VariationPublicView =
-  | { state: "proposed"; document: VariationDocumentModel; contactLine: string | null }
+  | {
+      state: "proposed";
+      token: string;
+      document: VariationDocumentModel;
+      contactLine: string | null;
+      attachmentCount: number;
+    }
+  | {
+      state: "accepted" | "declined";
+      document: VariationDocumentModel;
+      contactLine: string | null;
+      outcome: VariationPublicOutcome;
+    }
   | { state: "withdrawn" }
   | { state: "unavailable" };
 
@@ -54,7 +78,11 @@ export async function lookupPublicVariationByToken(
   const row = data as Record<string, unknown>;
   if (row.ok !== true) return unavailable();
   if (row.state === "withdrawn") return { state: "withdrawn" };
-  if (row.state !== "proposed") return unavailable();
+  const responseState =
+    row.state === "accepted" || row.state === "declined" || row.state === "proposed"
+      ? row.state
+      : null;
+  if (!responseState) return unavailable();
 
   const sell = numberOrNull(row.totalSellAdjustmentExGst);
   const gst = numberOrNull(row.gstAdjustment);
@@ -102,11 +130,11 @@ export async function lookupPublicVariationByToken(
       })
     : [];
 
-  const currentEx = roundMoney(baselineEx + acceptedEx);
-  const currentIncl = roundMoney(baselineIncl + acceptedIncl);
-  const proposedEx = roundMoney(currentEx + sell);
+  const revisedEx = roundMoney(baselineEx + acceptedEx);
+  const revisedIncl = roundMoney(baselineIncl + acceptedIncl);
+  const proposedEx = roundMoney(revisedEx + sell);
   const proposedGst = roundMoney((numberOrNull(row.baselineGst) ?? 0) + acceptedGst + gst);
-  const proposedIncl = roundMoney(currentIncl + incl);
+  const proposedIncl = roundMoney(revisedIncl + incl);
   const contact = [row.contactEmail, row.contactPhone]
     .filter((value): value is string => typeof value === "string" && value.trim() !== "")
     .join(" · ");
@@ -146,7 +174,7 @@ export async function lookupPublicVariationByToken(
     variationNumber,
     revisionNumber,
     issuedAt: typeof row.issuedAt === "string" ? row.issuedAt : null,
-    status: "issued",
+    status: responseState === "accepted" ? "accepted" : responseState === "declined" ? "rejected" : "issued",
     title: row.title,
     summary: typeof row.summary === "string" ? row.summary : null,
     clientNotes: typeof row.clientNotes === "string" ? row.clientNotes : null,
@@ -158,14 +186,44 @@ export async function lookupPublicVariationByToken(
       totalAdjustmentInclGst: incl,
     },
     baseline: { sellExGst: baselineEx, sellInclGst: baselineIncl },
-    currentContract: { exGst: currentEx, inclGst: currentIncl },
-    proposed: {
-      revisedContractValueExGst: proposedEx,
-      gst: proposedGst,
-      revisedContractValueInclGst: proposedIncl,
-    },
+    currentContract: responseState === "accepted"
+      ? { exGst: roundMoney(revisedEx - sell), inclGst: roundMoney(revisedIncl - incl) }
+      : { exGst: revisedEx, inclGst: revisedIncl },
+    proposed: responseState === "declined"
+      ? null
+      : {
+          revisedContractValueExGst: responseState === "accepted" ? revisedEx : proposedEx,
+          gst: responseState === "accepted"
+            ? roundMoney((numberOrNull(row.baselineGst) ?? 0) + acceptedGst)
+            : proposedGst,
+          revisedContractValueInclGst: responseState === "accepted" ? revisedIncl : proposedIncl,
+        },
     supportingFiles,
   });
 
-  return { state: "proposed", document, contactLine: contact || null };
+  if (responseState === "proposed") {
+    return {
+      state: "proposed",
+      token: rawToken,
+      document,
+      contactLine: contact || null,
+      attachmentCount: supportingFiles.length,
+    };
+  }
+
+  return {
+    state: responseState,
+    document,
+    contactLine: contact || null,
+    outcome: {
+      outcome: responseState,
+      respondedAt: typeof row.respondedAt === "string" ? row.respondedAt : null,
+      responderName: typeof row.responderName === "string" ? row.responderName : null,
+      declineReason: typeof row.declineReason === "string" && row.declineReason.trim() ? row.declineReason : null,
+      adjustmentInclLabel: document.inclLabel,
+      revisedContractInclLabel: formatContractMoney(revisedIncl, typeof row.currency === "string" ? row.currency : "NZD"),
+      quoteNumber: document.quoteNumber,
+      quoteRevision: document.quoteRevision,
+    },
+  };
 }

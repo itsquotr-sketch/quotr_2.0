@@ -67,6 +67,7 @@ export const LIFECYCLE_EVENT_TYPES = [
   "variation_issued",
   "variation_accepted",
   "variation_rejected",
+  "variation_declined",
   "variation_withdrawn",
   "variation_superseded",
 ] as const;
@@ -86,6 +87,7 @@ export const LIFECYCLE_EVENT_COPY: Record<LifecycleEventType, string> = {
   variation_issued: "Variation issued",
   variation_accepted: "Variation accepted",
   variation_rejected: "Variation rejected",
+  variation_declined: "Variation declined",
   variation_withdrawn: "Variation withdrawn",
   variation_superseded: "Variation superseded",
 };

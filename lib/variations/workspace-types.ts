@@ -41,6 +41,10 @@ export type VariationListRow = {
   declinedAt: string | null;
   withdrawnAt: string | null;
   outcomeLabel: string | null;
+  responseSource: "Client" | "Manual" | null;
+  responderName: string | null;
+  declineReason: string | null;
+  revisedContractInclGst: number | null;
   currentRevisionId: string | null;
   deliveryLabel: string | null;
 };
@@ -66,6 +70,17 @@ export type VariationListSummary = {
   pendingIssuedExGst: number;
   draftCount: number;
   currency: string;
+};
+
+export type VariationResponseView = {
+  outcome: "accepted" | "declined";
+  sourceLabel: "Client" | "Manual";
+  responderName: string;
+  respondedAt: string | null;
+  declineReason: string | null;
+  evidenceTypeLabel: string | null;
+  evidenceNote: string | null;
+  adjustmentInclGst: number;
 };
 
 export type VariationRevisionHistoryRow = {

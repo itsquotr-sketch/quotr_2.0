@@ -210,7 +210,8 @@ function sourceChecks(): void {
       sqlFiles().includes("069_variation_client_delivery.sql") &&
       sqlFiles().includes("070_variation_document_identity.sql") &&
       sqlFiles().includes("071_variation_attachments.sql") &&
-      sqlFiles().at(-1) === "071_variation_attachments.sql" &&
+      sqlFiles().includes("072_variation_response_and_contract_application.sql") &&
+      sqlFiles().at(-1) === "072_variation_response_and_contract_application.sql" &&
       !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/065_delete_unissued_draft_variation.sql").includes("preview_fixture_org") &&
@@ -219,7 +220,8 @@ function sourceChecks(): void {
       !read("supabase/migrations/068_variation_component_rate_snapshots.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/069_variation_client_delivery.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/070_variation_document_identity.sql").includes("preview_fixture_org") &&
-      !read("supabase/migrations/071_variation_attachments.sql").includes("preview_fixture_org")
+      !read("supabase/migrations/071_variation_attachments.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/072_variation_response_and_contract_application.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

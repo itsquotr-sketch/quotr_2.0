@@ -390,11 +390,11 @@ async function main(): Promise<void> {
         !JSON.stringify(publicView).includes("internalNotes")
     );
     check(
-      "13 public view has no acceptance controls",
+      "13 issued document stays proposed until a recorded response",
       view.includes("Proposed Variation — awaiting response") &&
-        view.includes("Client response will be available in the next Variation stage.") &&
-        !view.includes(">Accept<") &&
-        !view.includes(">Decline<")
+        !email.includes("Accept Variation") &&
+        read("components/variations/VariationClientResponse.tsx").includes("Accept Variation") &&
+        read("components/variations/VariationClientResponse.tsx").includes("Decline Variation")
     );
     check(
       "14 invalid token is generic",
