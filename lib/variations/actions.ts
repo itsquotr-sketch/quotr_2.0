@@ -805,7 +805,27 @@ async function loadOrganisationRates(orgId: string) {
 }
 
 export async function searchVariationComponentRates(input: unknown): Promise<
-  | { ok: true; rates: Array<{ canonicalKey: string; label: string; unit: string; group: string; detail: string | null; badge: "Company Rate" | "Quotr benchmark"; derived: boolean; effectiveCost: number }>; truncated: boolean }
+  | {
+      ok: true;
+      rates: Array<{
+        canonicalKey: string;
+        label: string;
+        unit: string;
+        group: string;
+        detail: string | null;
+        familyName: string | null;
+        thickness: string | null;
+        sheetSize: string | null;
+        badge: "Company Rate" | "Quotr benchmark";
+        derived: boolean;
+        effectiveCost: number;
+        source: "company_rate" | "quotr_benchmark";
+        rateType: string;
+        rateId: string | null;
+        searchText: string;
+      }>;
+      truncated: boolean;
+    }
   | ActionFail
 > {
   const parsed = searchVariationComponentRatesSchema.safeParse(input);
@@ -814,12 +834,14 @@ export async function searchVariationComponentRates(input: unknown): Promise<
   if (!context) return fail("NOT_AUTHENTICATED");
   const companyRates = await loadOrganisationRates(context.orgId);
   if (!companyRates) return fail("INVALID_INPUT");
-  const { listEligibleVariationRates } = await import("@/lib/variations/rate-selection");
+  const { CATEGORY_CATALOGUE_LIMIT, listEligibleVariationRates } = await import("@/lib/variations/rate-selection");
+  const catalogue = parsed.data.catalogue === true;
   const listed = listEligibleVariationRates({
     category: parsed.data.category,
     componentUnit: parsed.data.unit,
     companyRates,
-    query: parsed.data.query,
+    query: catalogue ? "" : parsed.data.query,
+    limit: catalogue ? CATEGORY_CATALOGUE_LIMIT : undefined,
   });
   return {
     ok: true,
@@ -830,9 +852,16 @@ export async function searchVariationComponentRates(input: unknown): Promise<
       unit: rate.unit,
       group: rate.group,
       detail: rate.detail,
+      familyName: rate.familyName,
+      thickness: rate.thickness,
+      sheetSize: rate.sheetSize,
       badge: rate.badge,
       derived: rate.derived,
       effectiveCost: rate.effectiveCost,
+      source: rate.source,
+      rateType: rate.rateType,
+      rateId: rate.rateId,
+      searchText: rate.searchText,
     })),
   };
 }

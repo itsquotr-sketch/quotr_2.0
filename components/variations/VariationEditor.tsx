@@ -947,6 +947,8 @@ function ComponentEditor(props: {
   editorId: string;
   rows: CostDraft[];
   currency: string;
+  catalogues: Partial<Record<VariationCostCategory, VariationRateChoice[]>>;
+  onCatalogue: (category: VariationCostCategory, rates: VariationRateChoice[]) => void;
   onChange: (rows: CostDraft[]) => void;
   onPresence: (id: string, actions: ComponentEditorActions | null) => void;
   onListOpenChange?: (open: boolean) => void;
@@ -954,7 +956,6 @@ function ComponentEditor(props: {
 }) {
   const [draft, setDraft] = useState<CostDraft | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerRates, setPickerRates] = useState<VariationRateChoice[]>([]);
   const [pickerPending, setPickerPending] = useState(false);
   const [pickerTruncated, setPickerTruncated] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -988,7 +989,6 @@ function ComponentEditor(props: {
   function openEditor(row: CostDraft): void {
     setDraft({ ...row });
     setPickerOpen(false);
-    setPickerRates([]);
     setSearched(false);
     setPickerPending(false);
     setEditorError(null);
@@ -1013,32 +1013,28 @@ function ComponentEditor(props: {
     setPickerOpen(false);
   }
 
-  async function searchRates(query: string): Promise<void> {
-    const serial = searchSerial.current + 1;
-    searchSerial.current = serial;
-    if (!draft) return;
-    if (!query.trim()) {
-      setSearched(false);
-      setPickerRates([]);
+  async function searchRates(category: VariationCostCategory): Promise<void> {
+    if (props.catalogues[category]) {
       setPickerPending(false);
-      setPickerTruncated(false);
+      setSearched(true);
       setRateError(null);
       return;
     }
+    const serial = searchSerial.current + 1;
+    searchSerial.current = serial;
     setPickerPending(true);
-    setSearched(true);
     setRateError(null);
-    const result = await searchVariationComponentRates({ category: draft.category, unit: "", query });
+    const result = await searchVariationComponentRates({ category, unit: "", catalogue: true });
     if (serial !== searchSerial.current) return;
     setPickerPending(false);
     if (!result.ok) {
       setRateError(result.error);
-      setPickerRates([]);
       setPickerTruncated(false);
       return;
     }
-    setPickerRates(result.rates);
+    props.onCatalogue(category, result.rates);
     setPickerTruncated(result.truncated);
+    setSearched(true);
   }
 
   function saveComponent(): void {
@@ -1225,7 +1221,6 @@ function ComponentEditor(props: {
                   clearRate: draft.clearRate || draft.canonicalRateKey != null,
                 });
                 setPickerOpen(false);
-                setPickerRates([]);
                 setSearched(false);
                 void probeCategory(category);
               }}
@@ -1257,9 +1252,8 @@ function ComponentEditor(props: {
                   checked={pickerOpen || draft.costSource === "company_rate" || draft.costSource === "quotr_benchmark"}
                   onChange={() => {
                     setPickerOpen(true);
-                    setSearched(false);
-                    setPickerRates([]);
                     setRateError(null);
+                    void searchRates(draft.category);
                   }}
                 />
                 Select from Rates
@@ -1271,13 +1265,12 @@ function ComponentEditor(props: {
               category={draft.category}
               currency={props.currency}
               selectedKey={draft.canonicalRateKey}
-              rates={pickerRates}
-              pending={pickerPending}
-              searched={searched}
+              rates={props.catalogues[draft.category] ?? []}
+              pending={pickerPending && !props.catalogues[draft.category]}
+              searched={searched || Boolean(props.catalogues[draft.category])}
               truncated={pickerTruncated}
               error={rateError}
               onListOpenChange={props.onListOpenChange}
-              onSearch={(query) => void searchRates(query)}
               onApplied={(patch) => {
                 setDraft({
                   ...draft,
@@ -1306,7 +1299,7 @@ function ComponentEditor(props: {
                 Internal COST per unit {componentMoney(props.currency, Number(draft.unitCost))} / {draft.unit} · {variationRateSourceText({ badge: draft.costSource === "company_rate" ? "Company Rate" : "Quotr benchmark", derived: draft.derivedBenchmark })}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="touch" onClick={() => { setPickerOpen(true); setRateError(null); }}>Change rate</Button>
+                <Button type="button" variant="outline" size="touch" onClick={() => { setPickerOpen(true); setRateError(null); void searchRates(draft.category); }}>Change rate</Button>
                 <Button type="button" variant="outline" size="touch" onClick={() => chooseManual(draft)}>Enter manually</Button>
               </div>
             </div>
@@ -1466,6 +1459,10 @@ function ItemDialog(props: {
   const [sellTotal, setSellTotal] = useState(initial?.sellTotal ?? "");
   const [modeConfirmed, setModeConfirmed] = useState(false);
   const componentEditors = useRef(new Map<string, ComponentEditorActions>());
+  const [rateCatalogues, setRateCatalogues] = useState<Partial<Record<VariationCostCategory, VariationRateChoice[]>>>({});
+  const rememberRateCatalogue = useCallback((category: VariationCostCategory, rates: VariationRateChoice[]) => {
+    setRateCatalogues((current) => (current[category] ? current : { ...current, [category]: rates }));
+  }, []);
   const rateListOpen = useRef(false);
   const setRateListOpen = useCallback((open: boolean) => {
     rateListOpen.current = open;
@@ -1635,7 +1632,7 @@ function ItemDialog(props: {
               </select>
               {removeMode === "simple" ? <Field id="remove-amount" label="Amount to remove" value={removeMagnitude} onChange={setRemoveMagnitude} numeric /> : (
                 <>
-                  <ComponentEditor editorId="remove" rows={removeComponents} currency={props.currency} onChange={setRemoveComponents} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.removeId ?? null } : undefined} />
+                  <ComponentEditor editorId="remove" rows={removeComponents} currency={props.currency} catalogues={rateCatalogues} onCatalogue={rememberRateCatalogue} onChange={setRemoveComponents} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.removeId ?? null } : undefined} />
                   <Field id="remove-sell-total" label="Client sell total, ex GST" value={removeSellTotal} onChange={setRemoveSellTotal} numeric />
                 </>
               )}
@@ -1648,7 +1645,7 @@ function ItemDialog(props: {
               </select>
               {addMode === "simple" ? <Field id="add-amount" label="Amount to add" value={addMagnitude} onChange={setAddMagnitude} numeric /> : (
                 <>
-                  <ComponentEditor editorId="add" rows={addComponents} currency={props.currency} onChange={setAddComponents} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.addId ?? null } : undefined} />
+                  <ComponentEditor editorId="add" rows={addComponents} currency={props.currency} catalogues={rateCatalogues} onCatalogue={rememberRateCatalogue} onChange={setAddComponents} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.addId ?? null } : undefined} />
                   <Field id="add-sell-total" label="Client sell total, ex GST" value={addSellTotal} onChange={setAddSellTotal} numeric />
                 </>
               )}
@@ -1720,7 +1717,7 @@ function ItemDialog(props: {
             <h2 id="variation-item-build-up" className="text-xs font-semibold tracking-wide text-muted-foreground">Cost build-up</h2>
               <Field id="item-margin" label="Target gross margin" value={margin} onChange={(value) => { setMargin(value); if (provenance !== "manual") setProvenance("calculated"); }} numeric />
               <p className="text-xs text-muted-foreground">Target margin is the gross margin used to calculate client sell from internal cost.</p>
-              <ComponentEditor editorId="item" rows={components} currency={props.currency} onChange={(rows) => { setComponents(rows); if (provenance !== "manual") setProvenance("calculated"); }} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.itemId ?? null } : undefined} />
+              <ComponentEditor editorId="item" rows={components} currency={props.currency} catalogues={rateCatalogues} onCatalogue={rememberRateCatalogue} onChange={(rows) => { setComponents(rows); if (provenance !== "manual") setProvenance("calculated"); }} onPresence={setComponentPresence} onListOpenChange={setRateListOpen} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.itemId ?? null } : undefined} />
               <Field id="item-sell-total" label="Client sell total, ex GST" value={provenance === "calculated" && aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) != null ? String(sellFromKnownCost(aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) ?? 0, parsedMargin) ?? "") : sellTotal} onChange={(value) => { setSellTotal(value); setProvenance(value.trim() === "" ? "pricing_required" : "manual"); }} numeric />
               {kind === "omission" ? <p className="text-xs text-muted-foreground">{VARIATION_OMISSION_HELP}</p> : null}
               <p className="text-xs text-muted-foreground">{provenanceLabel(provenance === "calculated" ? "calculated" : provenance)}</p>

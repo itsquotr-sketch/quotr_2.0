@@ -3,8 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { describeVariationComponentRate } from "@/lib/variations/actions";
 import type { VariationCostCategory, VariationRateSource } from "@/lib/variations/domain";
+import { filterVariationRateOptions, variationRateHeading } from "@/lib/variations/rate-query";
 
 export type VariationRateChoice = {
   canonicalKey: string;
@@ -12,10 +12,19 @@ export type VariationRateChoice = {
   unit: string;
   group: string;
   detail: string | null;
+  familyName: string | null;
+  thickness: string | null;
+  sheetSize: string | null;
   badge: "Company Rate" | "Quotr benchmark";
   derived: boolean;
   effectiveCost: number;
+  source: "company_rate" | "quotr_benchmark";
+  rateType: string;
+  rateId: string | null;
+  searchText: string;
 };
+
+const VISIBLE_LIMIT = 80;
 
 function displayUnit(unit: string): string {
   if (unit === "m2") return "m²";
@@ -34,6 +43,15 @@ export function variationRateSourceText(rate: { badge: VariationRateChoice["badg
   return "Quotr benchmark";
 }
 
+function resultHeading(rate: VariationRateChoice): string {
+  return variationRateHeading(rate);
+}
+
+function resultContext(rate: VariationRateChoice): string {
+  const context = rate.familyName ?? (rate.group && rate.group !== rate.label ? rate.group : null);
+  return [context, displayUnit(rate.unit)].filter(Boolean).join(" · ");
+}
+
 export function VariationRatePicker(props: {
   category: VariationCostCategory;
   currency: string;
@@ -44,7 +62,6 @@ export function VariationRatePicker(props: {
   truncated: boolean;
   error: string | null;
   onListOpenChange?: (open: boolean) => void;
-  onSearch: (query: string) => void;
   onApplied: (patch: {
     description: string;
     unit: string;
@@ -58,32 +75,21 @@ export function VariationRatePicker(props: {
   }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const onSearchRef = useRef(props.onSearch);
+  const appliedRef = useRef(false);
   const [query, setQuery] = useState("");
   const [listOpen, setListOpen] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selecting, setSelecting] = useState(false);
-  const [selectError, setSelectError] = useState<string | null>(null);
   const listId = useId();
   const searchLabel = props.category === "labour" ? "Search labour rates" : props.category === "material" ? "Search materials" : "Search rates";
-  const alert = selectError ?? props.error;
-  const index = props.rates.length === 0 ? 0 : Math.min(activeIndex, props.rates.length - 1);
-  const activeId = props.rates[index] ? `${listId}-option-${index}` : undefined;
-
-  useEffect(() => {
-    onSearchRef.current = props.onSearch;
-  });
+  const needle = query.trim();
+  const matched = needle ? filterVariationRateOptions(props.rates, needle) : [];
+  const visible = matched.slice(0, VISIBLE_LIMIT);
+  const index = visible.length === 0 ? 0 : Math.min(activeIndex, visible.length - 1);
+  const activeId = visible[index] ? `${listId}-option-${index}` : undefined;
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
-
-  useEffect(() => {
-    const handle = window.setTimeout(() => {
-      onSearchRef.current(query);
-    }, 250);
-    return () => window.clearTimeout(handle);
-  }, [query]);
 
   const onListOpenChange = props.onListOpenChange;
   useEffect(() => {
@@ -91,33 +97,24 @@ export function VariationRatePicker(props: {
     return () => onListOpenChange?.(false);
   }, [listOpen, onListOpenChange]);
 
-  async function selectRate(rate: VariationRateChoice): Promise<void> {
-    setSelecting(true);
-    setSelectError(null);
-    const result = await describeVariationComponentRate({
-      category: props.category,
-      canonicalKey: rate.canonicalKey,
-    });
-    setSelecting(false);
-    if (!result.ok) {
-      setSelectError(result.error);
-      return;
-    }
+  function selectRate(rate: VariationRateChoice): void {
+    if (appliedRef.current) return;
+    appliedRef.current = true;
     props.onApplied({
-      description: result.label,
-      unit: result.unit,
-      unitCost: String(result.effectiveCost),
-      costSource: result.costSource,
-      canonicalRateKey: result.canonicalKey,
-      sourceLabel: result.label,
-      detail: result.detail,
-      sourceRecordId: result.rateId,
-      derived: result.derived,
+      description: rate.label,
+      unit: rate.unit,
+      unitCost: String(rate.effectiveCost),
+      costSource: rate.source,
+      canonicalRateKey: rate.canonicalKey,
+      sourceLabel: rate.label,
+      detail: rate.detail,
+      sourceRecordId: rate.rateId,
+      derived: rate.derived,
     });
   }
 
   return (
-    <div className="grid gap-2" data-variation-rate-combobox="true">
+    <div className="grid min-w-0 gap-2" data-variation-rate-combobox="true">
       <Label htmlFor="variation-rate-search">{searchLabel}</Label>
       <Input
         ref={inputRef}
@@ -134,14 +131,13 @@ export function VariationRatePicker(props: {
           setQuery(event.target.value);
           setListOpen(true);
           setActiveIndex(0);
-          setSelectError(null);
         }}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown") {
             event.preventDefault();
             event.stopPropagation();
             setListOpen(true);
-            setActiveIndex((current) => Math.min(current + 1, Math.max(props.rates.length - 1, 0)));
+            setActiveIndex((current) => Math.min(current + 1, Math.max(visible.length - 1, 0)));
             return;
           }
           if (event.key === "ArrowUp") {
@@ -154,8 +150,8 @@ export function VariationRatePicker(props: {
           if (event.key === "Enter") {
             event.preventDefault();
             event.stopPropagation();
-            const rate = props.rates[index];
-            if (rate && !selecting) void selectRate(rate);
+            const rate = visible[index];
+            if (rate) selectRate(rate);
             return;
           }
           if (event.key === "Escape") {
@@ -166,16 +162,16 @@ export function VariationRatePicker(props: {
         }}
       />
       {listOpen ? (
-        <div id={listId} role="listbox" className="grid max-h-60 gap-1 overflow-y-auto rounded-xl border bg-background p-1">
-          {alert ? <p role="alert" className="px-2 py-2 text-sm">{alert}</p> : null}
-          {props.pending ? <p className="px-2 py-2 text-sm text-muted-foreground">Loading rates…</p> : null}
-          {!props.pending && !query.trim() && !alert ? (
+        <div id={listId} role="listbox" className="flex max-h-72 min-w-0 flex-col gap-1 overflow-x-hidden overflow-y-auto rounded-xl border bg-background p-1">
+          {props.error ? <p role="alert" className="px-2 py-2 text-sm">{props.error}</p> : null}
+          {props.pending && props.rates.length === 0 ? <p className="px-2 py-2 text-sm text-muted-foreground">Loading rates…</p> : null}
+          {!props.pending && !needle && !props.error ? (
             <p className="px-2 py-2 text-sm text-muted-foreground">Start typing to search Rates.</p>
           ) : null}
-          {!props.pending && props.searched && query.trim() && props.rates.length === 0 && !alert ? (
+          {!props.pending && props.searched && needle && visible.length === 0 && !props.error ? (
             <p className="px-2 py-2 text-sm text-muted-foreground">No matching rates.</p>
           ) : null}
-          {props.rates.map((rate, rateIndex) => {
+          {visible.map((rate, rateIndex) => {
             const selected = rate.canonicalKey === props.selectedKey;
             const active = rateIndex === index;
             return (
@@ -185,23 +181,20 @@ export function VariationRatePicker(props: {
                 type="button"
                 role="option"
                 aria-selected={active || selected}
-                disabled={selecting}
-                className={`grid min-h-11 gap-0.5 rounded-lg px-2 py-2 text-left text-sm ${active ? "bg-muted" : ""}`}
+                className={`flex h-auto w-full min-w-0 shrink-0 flex-col items-start gap-0.5 whitespace-normal break-words rounded-lg px-3 py-2.5 text-left text-sm leading-5 hover:bg-muted focus-visible:bg-muted ${active || selected ? "bg-muted" : ""}`}
                 onMouseEnter={() => setActiveIndex(rateIndex)}
-                onClick={() => {
-                  void selectRate(rate);
-                }}
+                onClick={() => selectRate(rate)}
               >
-                <span className="font-medium">{rate.label}</span>
-                <span>{[rate.detail, displayUnit(rate.unit)].filter(Boolean).join(" · ")}</span>
-                <span>
-                  {money(props.currency, rate.effectiveCost)} / {displayUnit(rate.unit)} · {variationRateSourceText(rate)}
-                  {selected ? " · Selected" : ""}
-                </span>
+                <span className="w-full font-medium leading-5">{resultHeading(rate)}</span>
+                <span className="w-full leading-5 text-muted-foreground">{resultContext(rate)}</span>
+                <span className="w-full leading-5">{money(props.currency, rate.effectiveCost)} / {displayUnit(rate.unit)}</span>
+                <span className="w-full leading-5">{variationRateSourceText(rate)}{selected ? " · Selected" : ""}</span>
               </button>
             );
           })}
-          {props.truncated ? <p className="px-2 py-1 text-xs text-muted-foreground">Showing the closest matches. Keep typing to narrow this list.</p> : null}
+          {needle && (matched.length > VISIBLE_LIMIT || props.truncated) ? (
+            <p className="px-2 py-1 text-xs text-muted-foreground">Showing the closest matches. Keep typing to narrow this list.</p>
+          ) : null}
         </div>
       ) : null}
     </div>

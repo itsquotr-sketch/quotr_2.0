@@ -16,6 +16,7 @@ import {
 } from "@/lib/rates/material-registry";
 import type { RateCatalogueEntry, RatesPageRate } from "@/lib/rates/types";
 import type { VariationCostCategory } from "@/lib/variations/domain";
+import { variationRateQueryMatches } from "@/lib/variations/rate-query";
 
 export type VariationCompanyRate = {
   id: string;
@@ -38,6 +39,14 @@ export type EligibleVariationRate = {
   effectiveCost: number;
   source: "company_rate" | "quotr_benchmark";
   rateType: string;
+};
+
+export type ListedVariationRate = EligibleVariationRate & {
+  familyName: string | null;
+  thickness: string | null;
+  sheetSize: string | null;
+  rateId: string | null;
+  searchText: string;
 };
 
 export type ResolvedVariationRate = EligibleVariationRate & {
@@ -307,23 +316,6 @@ function resolveMaterialItem(
   };
 }
 
-function compactRateSearch(value: string): string {
-  return value
-    .toLowerCase()
-    .replaceAll("×", "x")
-    .replaceAll("mm", "")
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-function matchesQuery(haystack: string, query: string | undefined): boolean {
-  const needle = query?.trim().toLowerCase() ?? "";
-  if (!needle) return true;
-  const tokens = needle.split(/\s+/).filter((token) => token.length > 0);
-  const compact = compactRateSearch(haystack);
-  const spaced = haystack.toLowerCase().replaceAll("×", " x ");
-  return tokens.every((token) => spaced.includes(token) || compact.includes(compactRateSearch(token)));
-}
-
 export function resolveVariationComponentRate(params: {
   category: VariationCostCategory;
   componentUnit: string;
@@ -349,23 +341,40 @@ export function resolveVariationComponentRate(params: {
   return resolveEntry(entry, params.componentUnit, params.companyRates, groupFor(entry, params.category));
 }
 
+const CATEGORY_CATALOGUE_LIMIT = 5000;
+
 export function listEligibleVariationRates(params: {
   category: VariationCostCategory;
   componentUnit: string;
   companyRates: readonly VariationCompanyRate[];
   query?: string;
-}): { rates: EligibleVariationRate[]; truncated: boolean } {
-  const resolved: EligibleVariationRate[] = [];
+  limit?: number;
+}): { rates: ListedVariationRate[]; truncated: boolean } {
+  const resolved: ListedVariationRate[] = [];
+  const seen = new Set<string>();
+  const push = (rate: ListedVariationRate) => {
+    if (seen.has(rate.canonicalKey)) return;
+    seen.add(rate.canonicalKey);
+    resolved.push(rate);
+  };
   if (params.category === "material") {
     const registry = buildMaterialRegistry({
       rates: asRegistryRates(params.companyRates),
       editable: false,
     });
     for (const item of registry.items) {
+      if (item.alias) continue;
       const result = resolveMaterialItem(item, params.componentUnit, params.companyRates);
       if (!result.ok) continue;
-      if (!matchesQuery(`${materialSearchText(item)} ${result.group}`, params.query)) continue;
-      resolved.push(result);
+      const searchText = `${materialSearchText(item)} ${result.group}`;
+      if (!variationRateQueryMatches(searchText, params.query)) continue;
+      push({
+        ...result,
+        familyName: item.familyName,
+        thickness: item.thickness,
+        sheetSize: item.sheetSize,
+        searchText,
+      });
     }
   } else if (params.category !== "other") {
     for (const entry of candidateEntries(params.category)) {
@@ -376,14 +385,26 @@ export function listEligibleVariationRates(params: {
         groupFor(entry, params.category)
       );
       if (!result.ok) continue;
-      const haystack = [result.label, result.group, entry.description, entry.unit, entry.trade].filter(Boolean).join(" ");
-      if (!matchesQuery(haystack, params.query)) continue;
-      resolved.push(result);
+      const searchText = [result.label, result.group, entry.description, entry.unit, entry.trade].filter(Boolean).join(" ");
+      if (!variationRateQueryMatches(searchText, params.query)) continue;
+      push({
+        ...result,
+        familyName: null,
+        thickness: null,
+        sheetSize: null,
+        searchText,
+      });
     }
   }
-  resolved.sort((left, right) => left.group.localeCompare(right.group) || left.label.localeCompare(right.label));
+  resolved.sort(
+    (left, right) =>
+      left.group.localeCompare(right.group) || left.label.localeCompare(right.label) || left.canonicalKey.localeCompare(right.canonicalKey)
+  );
+  const limit = params.limit ?? RESULT_LIMIT;
   return {
-    rates: resolved.slice(0, RESULT_LIMIT),
-    truncated: resolved.length > RESULT_LIMIT,
+    rates: resolved.slice(0, limit),
+    truncated: resolved.length > limit,
   };
 }
+
+export { CATEGORY_CATALOGUE_LIMIT };

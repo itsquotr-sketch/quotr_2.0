@@ -164,6 +164,7 @@ export const searchVariationComponentRatesSchema = z
     category: variationCostCategorySchema,
     unit: z.string().trim().max(40),
     query: z.string().trim().max(80).optional(),
+    catalogue: z.boolean().optional(),
   })
   .strict();
 

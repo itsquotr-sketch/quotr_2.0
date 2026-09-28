@@ -63,7 +63,7 @@ const clientMap = between(domain, "items: revision.items.map((item) => ({", "}))
 
 console.log("\nPicker visibility and search");
 check("Select from Rates exposes the picker without a saved component id", editor.includes("Select from Rates") && editor.includes("<VariationRatePicker") && editor.includes("setPickerOpen(true)") && !editor.includes("Save this item, then select a rate."));
-check("picker searches before a component row exists", picker.includes("describeVariationComponentRate") && !picker.includes("selectVariationComponentRate") && !picker.includes("componentId"));
+check("picker fills an unsaved component from a loaded option", picker.includes("props.onApplied") && picker.includes("rate.canonicalKey") && !picker.includes("describeVariationComponentRate") && !picker.includes("selectVariationComponentRate") && !picker.includes("componentId"));
 check("blank and generic units stay open", variationRateUnitIsOpen("") && variationRateUnitIsOpen("item") && variationRateUnitIsOpen("unit") && !variationRateUnitIsOpen("m2") && !variationRateUnitIsOpen("lm"));
 
 const materialQueries = ["braceline", "braceline 13", "2400 1200", "13mm braceline"];

@@ -79,7 +79,7 @@ check(
 );
 check(
   "results show label, unit COST, unit and source",
-  picker.includes("{rate.label}") && picker.includes("rate.effectiveCost") && picker.includes("displayUnit(rate.unit)") && picker.includes("variationRateSourceText(rate)") && picker.includes("Derived Quotr benchmark") && picker.includes("Company Rate"),
+  picker.includes("resultHeading(rate)") && picker.includes("resultContext(rate)") && picker.includes("rate.effectiveCost") && picker.includes("displayUnit(rate.unit)") && picker.includes("variationRateSourceText(rate)") && picker.includes("Derived Quotr benchmark") && picker.includes("Company Rate"),
 );
 const selected = resolveVariationComponentRate({
   category: "material",
@@ -99,7 +99,7 @@ check("labour search returns hourly COST only", Boolean(carpenter) && carpenter?
 const productivity = resolveVariationComponentRate({ category: "labour", componentUnit: "hour", canonicalKey: PRODUCTIVITY_KEY, companyRates: [] });
 check("productivity rates remain excluded", productivity.ok === false && productivity.ok === false && productivity.error === "PRODUCTIVITY_REJECTED" && !labour.rates.some((rate) => rate.canonicalKey === PRODUCTIVITY_KEY));
 check("manual entry remains available", editor.includes("Enter manually") && editor.includes("Change rate") && editor.includes("Cancel component"));
-check("empty, loading and error states stay in the combobox", picker.includes("Start typing to search Rates.") && picker.includes("Loading rates…") && picker.includes("No matching rates.") && picker.includes("role=\"alert\"") && editor.includes("No compatible saved rates are available for this category. Enter the cost manually.") && picker.includes("window.setTimeout") && picker.includes("250"));
+check("empty, loading and error states stay in the combobox", picker.includes("Start typing to search Rates.") && picker.includes("Loading rates…") && picker.includes("No matching rates.") && picker.includes("role=\"alert\"") && editor.includes("No compatible saved rates are available for this category. Enter the cost manually.") && picker.includes("filterVariationRateOptions") && searchRates.includes("catalogue: true") && !picker.includes("searchVariationComponentRates"));
 check("client payload remains confidential", !clientMap.includes("unitCost") && !clientMap.includes("costSource") && !clientMap.includes("canonicalRateKey"));
 check("search uses the signed-in organisation and rejects signed-out callers", searchAction.includes("getAuthOrgContext()") && searchAction.includes("NOT_AUTHENTICATED") && searchAction.includes("loadOrganisationRates(context.orgId)"));
 
