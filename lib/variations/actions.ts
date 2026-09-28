@@ -40,6 +40,9 @@ import {
   updateDraftVariationItemSchema,
   updateDraftVariationSchema,
   variationRevisionCommandSchema,
+  variationWorkAreaFieldsSchema,
+  updateVariationWorkAreaSchema,
+  deleteVariationWorkAreaSchema,
 } from "@/lib/variations/schemas";
 
 const VARIATION_ERROR_COPY: Record<string, string> = {
@@ -71,6 +74,7 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
   PRODUCTIVITY_REJECTED: "Labour productivity is not an hourly cost rate.",
   NO_RATE: "No rate is available for this component.",
   RATE_UNAVAILABLE: "That rate is no longer available. Choose another rate or enter the cost manually.",
+  DUPLICATE_NAME: "A work area with that name is already on this Variation.",
 };
 
 const SAFE_ERROR = "That variation update is not available.";
@@ -82,6 +86,9 @@ type ActionOk = {
   revisionId?: string;
   variationNumber?: number;
   itemId?: string;
+  workAreaId?: string;
+  name?: string;
+  description?: string | null;
 };
 
 type ActionFail = { ok: false; error: string };
@@ -128,6 +135,9 @@ type RpcBody = {
   revisionId?: string;
   variationNumber?: number;
   itemId?: string;
+  workAreaId?: string;
+  name?: string;
+  description?: string | null;
   status?: string;
 };
 
@@ -151,6 +161,9 @@ async function runVariationRpc(
     revisionId: body.revisionId,
     variationNumber: body.variationNumber,
     itemId: body.itemId,
+    workAreaId: body.workAreaId,
+    name: body.name,
+    description: body.description ?? null,
   };
 }
 
@@ -158,6 +171,7 @@ function itemPayload(input: {
   itemType: string;
   clientDescription: string;
   workAreaId: string | null;
+  variationWorkAreaId?: string | null;
   snapshotLineId: string | null;
   stableComponentKey: string | null;
   quantity: number;
@@ -173,7 +187,7 @@ function itemPayload(input: {
   return {
     itemType: input.itemType,
     clientDescription: input.clientDescription,
-    workAreaId: input.workAreaId,
+    workAreaId: input.variationWorkAreaId ? null : input.workAreaId,
     snapshotLineId: input.snapshotLineId,
     stableComponentKey: input.stableComponentKey,
     quantity: input.quantity,
@@ -186,6 +200,23 @@ function itemPayload(input: {
     substitutionGroupId: input.substitutionGroupId,
     internalMetadata: input.internalMetadata ?? {},
   };
+}
+
+async function bindItemScope(input: {
+  variationId: string;
+  revisionId: string;
+  itemId: string;
+  workAreaId: string | null;
+  variationWorkAreaId: string | null;
+}): Promise<ActionOk | ActionFail> {
+  if (input.workAreaId && input.variationWorkAreaId) return fail("INVALID_INPUT");
+  return runVariationRpc("assign_draft_variation_item_scope_v1", {
+    p_variation: input.variationId,
+    p_revision: input.revisionId,
+    p_item: input.itemId,
+    p_work_area: input.variationWorkAreaId ? null : input.workAreaId,
+    p_variation_work_area: input.variationWorkAreaId,
+  });
 }
 
 export async function createDraftVariation(input: unknown): Promise<ActionOk | ActionFail> {
@@ -217,27 +248,80 @@ export async function updateDraftVariation(input: unknown): Promise<ActionOk | A
   });
 }
 
+export async function createDraftVariationWorkArea(input: unknown): Promise<ActionOk | ActionFail> {
+  const parsed = variationWorkAreaFieldsSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  return runVariationRpc("create_draft_variation_work_area_v1", {
+    p_variation: parsed.data.variationId,
+    p_revision: parsed.data.revisionId,
+    p_name: parsed.data.name,
+    p_description: parsed.data.description,
+  });
+}
+
+export async function updateDraftVariationWorkArea(input: unknown): Promise<ActionOk | ActionFail> {
+  const parsed = updateVariationWorkAreaSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  return runVariationRpc("update_draft_variation_work_area_v1", {
+    p_variation: parsed.data.variationId,
+    p_revision: parsed.data.revisionId,
+    p_work_area: parsed.data.workAreaId,
+    p_name: parsed.data.name,
+    p_description: parsed.data.description,
+  });
+}
+
+export async function deleteDraftVariationWorkArea(input: unknown): Promise<ActionOk | ActionFail> {
+  const parsed = deleteVariationWorkAreaSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  return runVariationRpc("delete_draft_variation_work_area_v1", {
+    p_variation: parsed.data.variationId,
+    p_revision: parsed.data.revisionId,
+    p_work_area: parsed.data.workAreaId,
+  });
+}
+
 export async function addDraftVariationItem(input: unknown): Promise<ActionOk | ActionFail> {
   const parsed = addDraftVariationItemSchema.safeParse(input);
   if (!parsed.success) return fail("INVALID_INPUT");
   const { variationId, revisionId, ...item } = parsed.data;
-  return runVariationRpc("add_draft_variation_item_v1", {
+  const created = await runVariationRpc("add_draft_variation_item_v1", {
     p_variation: variationId,
     p_revision: revisionId,
     p_item: itemPayload(item),
   });
+  if (!created.ok || !created.itemId) return created;
+  const bound = await bindItemScope({
+    variationId,
+    revisionId,
+    itemId: created.itemId,
+    workAreaId: item.workAreaId,
+    variationWorkAreaId: item.variationWorkAreaId,
+  });
+  if (!bound.ok) return bound;
+  return created;
 }
 
 export async function updateDraftVariationItem(input: unknown): Promise<ActionOk | ActionFail> {
   const parsed = updateDraftVariationItemSchema.safeParse(input);
   if (!parsed.success) return fail("INVALID_INPUT");
   const { variationId, revisionId, itemId, ...item } = parsed.data;
-  return runVariationRpc("update_draft_variation_item_v1", {
+  const updated = await runVariationRpc("update_draft_variation_item_v1", {
     p_variation: variationId,
     p_revision: revisionId,
     p_item_id: itemId,
     p_item: itemPayload(item),
   });
+  if (!updated.ok) return updated;
+  const bound = await bindItemScope({
+    variationId,
+    revisionId,
+    itemId,
+    workAreaId: item.workAreaId,
+    variationWorkAreaId: item.variationWorkAreaId,
+  });
+  if (!bound.ok) return bound;
+  return updated;
 }
 
 export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionOk | ActionFail> {
@@ -282,7 +366,7 @@ export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionO
     p_item: {
       itemType: data.itemType,
       clientDescription: data.clientDescription,
-      workAreaId: data.workAreaId,
+      workAreaId: data.variationWorkAreaId ? null : data.workAreaId,
       snapshotLineId: data.snapshotLineId,
       quantity: data.quantity,
       unit: data.unit,
@@ -340,6 +424,15 @@ export async function saveDraftVariationBuildUp(input: unknown): Promise<ActionO
       if (!manual.ok) return manual;
     }
   }
+  if (!body.itemId) return fail("INVALID_INPUT");
+  const bound = await bindItemScope({
+    variationId: data.variationId,
+    revisionId: data.revisionId,
+    itemId: body.itemId,
+    workAreaId: data.workAreaId,
+    variationWorkAreaId: data.variationWorkAreaId,
+  });
+  if (!bound.ok) return bound;
   return { ok: true, itemId: body.itemId };
 }
 
@@ -347,13 +440,23 @@ export async function convertDraftVariationItemToSimple(input: unknown): Promise
   const parsed = convertDraftVariationItemToSimpleSchema.safeParse(input);
   if (!parsed.success) return fail("INVALID_INPUT");
   const { variationId, revisionId, itemId, confirmModeChange, ...item } = parsed.data;
-  return runVariationRpc("convert_draft_variation_item_to_simple_v1", {
+  const converted = await runVariationRpc("convert_draft_variation_item_to_simple_v1", {
     p_variation: variationId,
     p_revision: revisionId,
     p_item_id: itemId,
     p_item: itemPayload(item),
     p_confirm: confirmModeChange,
   });
+  if (!converted.ok) return converted;
+  const bound = await bindItemScope({
+    variationId,
+    revisionId,
+    itemId,
+    workAreaId: item.workAreaId,
+    variationWorkAreaId: item.variationWorkAreaId,
+  });
+  if (!bound.ok) return bound;
+  return converted;
 }
 
 export async function deleteDraftVariationItem(input: unknown): Promise<ActionOk | ActionFail> {
@@ -520,6 +623,7 @@ type ItemRow = {
   client_exclusion: string | null;
   substitution_group_id: string | null;
   work_area_id: string | null;
+  variation_work_area_id: string | null;
   snapshot_line_id: string | null;
   internal_metadata: Record<string, unknown> | null;
   pricing_mode: string | null;
@@ -549,7 +653,7 @@ async function loadInternalVariation(
 ): Promise<InternalVariation | ActionFail> {
   const context = await getAuthOrgContext();
   if (!context) return fail("NOT_AUTHENTICATED");
-  const [variation, revisions, items] = await Promise.all([
+  const [variation, revisions, items, variationAreas] = await Promise.all([
     context.supabase
       .from("variations")
       .select("id, project_id, variation_number, title, summary, status, current_revision_id, accepted_snapshot_id")
@@ -563,7 +667,7 @@ async function loadInternalVariation(
     Promise.all([
       context.supabase
         .from("variation_items")
-        .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, snapshot_line_id, internal_metadata, pricing_mode")
+        .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, variation_work_area_id, snapshot_line_id, internal_metadata, pricing_mode")
         .eq("variation_id", variationId)
         .order("sort_order", { ascending: true }),
       context.supabase
@@ -572,12 +676,34 @@ async function loadInternalVariation(
         .eq("variation_id", variationId)
         .order("sort_order", { ascending: true }),
     ]),
+    context.supabase
+      .from("variation_work_areas")
+      .select("id, revision_id, name, description, sort_order")
+      .eq("variation_id", variationId)
+      .order("sort_order", { ascending: true }),
   ]);
   if (variation.error || !variation.data) return fail("NOT_FOUND");
   const header = variation.data as VariationRow;
   if (!isStatus(header.status)) return fail("INVALID_INPUT");
   const [itemResult, componentResult] = items;
-  if (revisions.error || itemResult.error || componentResult.error) return fail("INVALID_INPUT");
+  if (revisions.error || itemResult.error || componentResult.error || variationAreas.error) return fail("INVALID_INPUT");
+
+  const estimatorAreas = await context.supabase
+    .from("work_areas")
+    .select("id, name")
+    .eq("project_id", header.project_id);
+  if (estimatorAreas.error) return fail("INVALID_INPUT");
+  const estimatorName = new Map(
+    ((estimatorAreas.data ?? []) as Array<{ id: string; name: string }>).map((area) => [area.id, area.name])
+  );
+  const ownedAreas = (variationAreas.data ?? []) as Array<{
+    id: string;
+    revision_id: string;
+    name: string;
+    description: string | null;
+    sort_order: number;
+  }>;
+  const ownedName = new Map(ownedAreas.map((area) => [area.id, area]));
 
   const itemRows = (itemResult.data ?? []) as ItemRow[];
   const componentRows = (componentResult.data ?? []) as ComponentRow[];
@@ -621,6 +747,15 @@ async function loadInternalVariation(
             clientExclusion: item.client_exclusion,
             substitutionGroupId: item.substitution_group_id,
             workAreaId: item.work_area_id,
+            variationWorkAreaId: item.variation_work_area_id,
+            workAreaName: item.variation_work_area_id
+              ? ownedName.get(item.variation_work_area_id)?.name ?? null
+              : item.work_area_id
+                ? estimatorName.get(item.work_area_id) ?? null
+                : null,
+            workAreaDescription: item.variation_work_area_id
+              ? ownedName.get(item.variation_work_area_id)?.description ?? null
+              : null,
             snapshotLineId: item.snapshot_line_id,
             internalMetadata: item.internal_metadata ?? {},
             pricingMode,
@@ -648,6 +783,14 @@ async function loadInternalVariation(
             }),
           }];
         }),
+        variationWorkAreas: ownedAreas
+          .filter((area) => area.revision_id === revision.id)
+          .map((area) => ({
+            id: area.id,
+            name: area.name,
+            description: area.description,
+            sortOrder: area.sort_order,
+          })),
       }];
     });
   const currentRevision = mappedRevisions.find((revision) => revision.status !== "superseded");

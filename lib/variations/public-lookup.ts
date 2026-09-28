@@ -127,6 +127,8 @@ export async function lookupPublicVariationByToken(
           sortOrder: numberOrNull(record.sortOrder) ?? 0,
           quantity: numberOrNull(record.quantity) ?? undefined,
           unit: typeof record.unit === "string" ? record.unit : undefined,
+          workAreaName: typeof record.workAreaName === "string" ? record.workAreaName : null,
+          workAreaDescription: typeof record.workAreaDescription === "string" ? record.workAreaDescription : null,
         }];
       })
     : [];

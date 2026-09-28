@@ -90,6 +90,19 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
 
       <section className="mt-6 break-inside-avoid">
         <h2 className="text-base font-semibold">Scope changes</h2>
+        {model.scopeGroups.length > 0 ? (
+          <div className="mt-3 space-y-3" data-variation-scope-groups="true">
+            {model.scopeGroups.map((group) => (
+              <div key={group.name}>
+                <h3 className="text-sm font-semibold">{group.name}</h3>
+                {group.description ? <p className="mt-1 text-sm text-neutral-600">{group.description}</p> : null}
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                  {group.items.map((item) => <li key={`${group.name}:${item}`} className="break-words">{item}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {model.additions.length > 0 ? (
           <div className="mt-3">
             <h3 className="text-sm font-semibold">Additions</h3>

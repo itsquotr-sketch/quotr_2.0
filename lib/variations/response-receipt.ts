@@ -5,6 +5,7 @@
  * the Variation or rewrite the snapshot.
  */
 
+import type { VariationScopeGroup } from "@/lib/variations/work-areas";
 import {
   VARIATION_QUOTE_REFERENCE_UNAVAILABLE,
   parseVariationDocumentIdentity,
@@ -83,6 +84,7 @@ export type VariationResponseReceipt = {
   attachments: VariationResponseReceiptFile[];
   confirmations: string[];
   declineReason: string | null;
+  scopeGroups: VariationScopeGroup[];
 };
 
 export type VariationReceiptMoney = {
@@ -193,6 +195,7 @@ export function buildVariationResponseReceipt(input: {
   revisionNumber: number;
   baseline: VariationReceiptMoney | null;
   earlierAdjustments: VariationReceiptMoney[];
+  scopeGroups?: VariationScopeGroup[];
 }): VariationResponseReceipt | null {
   if (!Number.isInteger(input.variationNumber) || input.variationNumber < 1) return null;
   if (!Number.isInteger(input.revisionNumber) || input.revisionNumber < 1) return null;
@@ -270,5 +273,6 @@ export function buildVariationResponseReceipt(input: {
     attachments: manifest.files,
     confirmations,
     declineReason: input.source === "client" && input.outcome === "declined" ? input.declineReason : null,
+    scopeGroups: input.scopeGroups ?? [],
   };
 }

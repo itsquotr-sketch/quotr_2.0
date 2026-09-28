@@ -44,17 +44,17 @@ export function VariationPublicView({
   return (
     <main className="mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 print:bg-white print:p-0">
       {clientEmail === "failed" ? (
-        <p role="alert" className="mb-4 rounded-2xl border bg-white p-4 text-sm" data-variation-client-email="failed">
+        <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm text-red-700" data-variation-client-email="failed">
           Your response is recorded. The confirmation email could not be sent.
         </p>
       ) : null}
       {clientEmail === "sent" ? (
-        <p role="status" className="mb-4 rounded-2xl border bg-white p-4 text-sm" data-variation-client-email="sent">
+        <p role="status" className="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" data-variation-client-email="sent">
           A confirmation email has been sent.
         </p>
       ) : null}
       {view.state === "accepted" ? (
-        <section className="mb-4 min-w-0 rounded-2xl border bg-white p-4 text-sm" data-variation-public-accepted="true">
+        <section className="mb-4 min-w-0 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" data-variation-public-accepted="true" role="status">
           <h1 className="text-lg font-semibold">Variation accepted</h1>
           {formatWhen(view.outcome.respondedAt) ? <p className="mt-2 break-words">Accepted {formatWhen(view.outcome.respondedAt)}</p> : null}
           {view.outcome.responderName ? <p className="break-words">Accepted by {view.outcome.responderName}</p> : null}
@@ -65,7 +65,7 @@ export function VariationPublicView({
         </section>
       ) : null}
       {view.state === "declined" ? (
-        <section className="mb-4 min-w-0 rounded-2xl border bg-white p-4 text-sm" data-variation-public-declined="true">
+        <section className="mb-4 min-w-0 rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-800" data-variation-public-declined="true" role="status">
           <h1 className="text-lg font-semibold">Variation declined</h1>
           {formatWhen(view.outcome.respondedAt) ? <p className="mt-2 break-words">Declined {formatWhen(view.outcome.respondedAt)}</p> : null}
           {view.outcome.responderName ? <p className="break-words">Declined by {view.outcome.responderName}</p> : null}

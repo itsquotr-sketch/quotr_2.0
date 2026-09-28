@@ -42,6 +42,7 @@ const manualSchema = z.object({
   responderEmail: z.string().trim().email().max(200).optional().or(z.literal("")),
   evidenceType: z.enum(VARIATION_MANUAL_EVIDENCE_TYPES),
   evidenceNote: z.string().trim().min(1).max(2000),
+  declineReason: z.string().trim().max(2000).optional(),
   confirmReceived: z.boolean(),
   idempotencyKey: z.string().trim().min(8).max(200),
 });
@@ -222,6 +223,7 @@ export async function recordVariationResponse(input: unknown): Promise<Variation
     p_evidence_note: parsed.data.evidenceNote.trim(),
     p_confirm_received: true,
     p_idempotency_key: parsed.data.idempotencyKey,
+    p_decline_reason: parsed.data.outcome === "declined" ? parsed.data.declineReason ?? null : null,
   });
   if (error) return fail("INVALID_TRANSITION");
   const row = readResult(data);

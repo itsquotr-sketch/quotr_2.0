@@ -11,6 +11,7 @@ import {
   variationMasterQuoteClause,
   type VariationDocumentIdentity,
 } from "@/lib/variations/document-identity";
+import { groupVariationScope, type VariationScopeGroup } from "@/lib/variations/work-areas";
 import {
   calculateRevisedContractValue,
   prepareVariationItem,
@@ -398,6 +399,7 @@ export type VariationDocumentModel = {
   summary: string;
   additions: DocumentLine[];
   omissions: DocumentLine[];
+  scopeGroups: VariationScopeGroup[];
   substitutions: Array<{ remove: DocumentLine; add: DocumentLine; netLabel: string }>;
   noCostChanges: string[];
   netExLabel: string;
@@ -461,6 +463,8 @@ export function buildVariationDocument(input: {
     sortOrder: number;
     quantity?: number;
     unit?: string;
+    workAreaName?: string | null;
+    workAreaDescription?: string | null;
   }[];
   totals: {
     totalSellAdjustmentExGst: number | null;
@@ -541,6 +545,7 @@ export function buildVariationDocument(input: {
     additions,
     omissions,
     substitutions,
+    scopeGroups: groupVariationScope(input.items),
     noCostChanges,
     netExLabel:
       input.totals.totalSellAdjustmentExGst == null

@@ -35,7 +35,9 @@ import { Label } from "@/components/ui/label";
 import {
   addDraftVariationItem,
   convertDraftVariationItemToSimple,
+  createDraftVariationWorkArea,
   createVariationRevision,
+  deleteDraftVariationWorkArea,
   deleteDraftVariationItem,
   deleteUnissuedDraftVariation,
   issueVariationRevision,
@@ -46,6 +48,7 @@ import {
   searchVariationComponentRates,
   updateDraftVariation,
   updateDraftVariationItem,
+  updateDraftVariationWorkArea,
 } from "@/lib/variations/actions";
 import {
   aggregateComponentCost,
@@ -54,6 +57,7 @@ import {
   componentLineCost,
   type InternalVariation,
   type VariationCostCategory,
+  type VariationOwnedWorkArea,
   type VariationItemType,
   type VariationRateSource,
   variationRateSourceLabel,
@@ -161,6 +165,7 @@ type SingleItem = {
   itemType: VariationItemType;
   clientDescription: string;
   workAreaId: string | null;
+  variationWorkAreaId: string | null;
   snapshotLineId: string | null;
   stableComponentKey: null;
   quantity: number;
@@ -204,6 +209,8 @@ export function VariationEditor(props: EditorProps) {
   const [withdrawReason, setWithdrawReason] = useState("");
   const [previewOpen, setPreviewOpen] = useState(props.startPreview === true);
   const [itemEditor, setItemEditor] = useState<"add" | string | null>(null);
+  const [extraAreas, setExtraAreas] = useState<VariationOwnedWorkArea[]>([]);
+  const [areaEditor, setAreaEditor] = useState<VariationOwnedWorkArea | "create" | null>(null);
   const [attachments, setAttachments] = useState(props.attachments);
   const editorInstance = useId();
   function mergeAttachments(update: (current: typeof attachments) => typeof attachments): void {
@@ -219,6 +226,12 @@ export function VariationEditor(props: EditorProps) {
     variation.revisions.find((revision) => revision.id === props.viewRevisionId) ?? current;
   const draft = current?.status === "draft" && viewing?.id === current.id;
   const historical = viewing != null && current != null && viewing.id !== current.id;
+  const scopeAreas = [
+    ...(viewing?.variationWorkAreas ?? []),
+    ...(viewing?.id === current?.id
+      ? extraAreas.filter((area) => !(viewing?.variationWorkAreas ?? []).some((saved) => saved.id === area.id))
+      : []),
+  ];
   const canDelete = variation.status === "draft" && variation.revisions.every((revision) => revision.status === "draft");
 
   const readiness = useMemo(() => {
@@ -328,6 +341,25 @@ export function VariationEditor(props: EditorProps) {
     );
   }
 
+  async function createWorkArea(input: { name: string; description: string | null }): Promise<{ ok: boolean; error?: string; workAreaId?: string }> {
+    if (!current) return { ok: false, error: "That variation update is not available." };
+    const result = await createDraftVariationWorkArea({
+      variationId: variation.id,
+      revisionId: current.id,
+      name: input.name,
+      description: input.description,
+    });
+    if (result.ok && result.workAreaId && result.name) {
+      setExtraAreas((rows) => [...rows, {
+        id: result.workAreaId ?? "",
+        name: result.name ?? input.name,
+        description: result.description ?? null,
+        sortOrder: rows.length,
+      }]);
+    }
+    return result;
+  }
+
   async function persistSide(input: {
     itemId?: string;
     item: SingleItem;
@@ -347,6 +379,7 @@ export function VariationEditor(props: EditorProps) {
         itemType: input.item.itemType,
         clientDescription: input.item.clientDescription,
         workAreaId: input.item.workAreaId,
+        variationWorkAreaId: input.item.variationWorkAreaId,
         snapshotLineId: input.item.snapshotLineId,
         quantity: input.item.quantity,
         unit: input.item.unit,
@@ -533,6 +566,35 @@ export function VariationEditor(props: EditorProps) {
         )}
       </section>
 
+      {scopeAreas.length > 0 ? (
+        <section className="rounded-2xl border bg-card p-4" data-variation-scope-groups="true">
+          <h2 className="text-sm font-semibold">Scope</h2>
+          <ul className="mt-2 space-y-2">
+            {scopeAreas.map((area) => (
+              <li key={area.id} className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium">{area.name}</p>
+                  {area.description ? <p className="break-words text-muted-foreground">{area.description}</p> : null}
+                </div>
+                {draft ? (
+                  <div className="flex gap-2">
+                    <Button type="button" size="touch" variant="outline" onClick={() => setAreaEditor(area)}>Edit</Button>
+                    <Button type="button" size="touch" variant="outline" onClick={() => {
+                      if (!current) return;
+                      void run(() => deleteDraftVariationWorkArea({
+                        variationId: variation.id,
+                        revisionId: current.id,
+                        workAreaId: area.id,
+                      })).then((ok) => { if (ok) setExtraAreas((rows) => rows.filter((row) => row.id !== area.id)); });
+                    }}>Remove</Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Scope and pricing</h2>
@@ -547,7 +609,8 @@ export function VariationEditor(props: EditorProps) {
           const lead = group.kind === "single" ? group.item : group.remove;
           const line = lead.lineSellAdjustmentExGst;
           const scope = props.scopeLines.find((row) => row.id === lead.snapshotLineId);
-          const area = props.workAreas.find((row) => row.id === (lead.workAreaId ?? scope?.workAreaId));
+          const variationArea = scopeAreas.find((row) => row.id === lead.variationWorkAreaId);
+          const area = variationArea ?? props.workAreas.find((row) => row.id === (lead.workAreaId ?? scope?.workAreaId));
           return (
             <article key={lead.id} className="rounded-2xl border bg-card p-4 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -670,7 +733,13 @@ export function VariationEditor(props: EditorProps) {
       ) : null}
 
       {current.status === "issued" && !historical ? (
-        <VariationManualResponse projectId={props.projectId} variationId={variation.id} revisionId={current.id} />
+        <VariationManualResponse
+          projectId={props.projectId}
+          variationId={variation.id}
+          revisionId={current.id}
+          adjustmentInclLabel={viewing.totalAdjustmentInclGst == null ? "Not calculated yet" : formatSignedAdjustment(viewing.totalAdjustmentInclGst, currency)}
+          revisedContractInclLabel={proposedLabel ?? "Not calculated yet"}
+        />
       ) : null}
 
       {current.status === "issued" && !historical ? (
@@ -714,6 +783,24 @@ export function VariationEditor(props: EditorProps) {
         <Button type="button" className="mt-3" size="touch" variant="outline" onClick={() => setPreviewOpen(true)}>Preview client document</Button>
       </section>
 
+      {areaEditor ? (
+        <WorkAreaEditDialog
+          area={areaEditor === "create" ? null : areaEditor}
+          pending={pending}
+          onClose={() => setAreaEditor(null)}
+          onSave={(input) => {
+            if (!current || areaEditor === "create") return;
+            void run(() => updateDraftVariationWorkArea({
+              variationId: variation.id,
+              revisionId: current.id,
+              workAreaId: areaEditor.id,
+              name: input.name,
+              description: input.description,
+            })).then((ok) => { if (ok) setAreaEditor(null); });
+          }}
+        />
+      ) : null}
+
       <ClientPreview
         open={previewOpen}
         onOpenChange={setPreviewOpen}
@@ -738,6 +825,8 @@ export function VariationEditor(props: EditorProps) {
           defaultMarginPercent={props.defaultMarginPercent}
           scopeLines={props.scopeLines}
           workAreas={props.workAreas}
+          variationWorkAreas={scopeAreas}
+          onCreateWorkArea={createWorkArea}
           pending={pending}
           initial={null}
           rateContext={{ projectId: props.projectId, variationId: variation.id, revisionId: current.id, onReload: reload }}
@@ -790,6 +879,8 @@ export function VariationEditor(props: EditorProps) {
           defaultMarginPercent={props.defaultMarginPercent}
           scopeLines={props.scopeLines}
           workAreas={props.workAreas}
+          variationWorkAreas={scopeAreas}
+          onCreateWorkArea={createWorkArea}
           pending={pending}
           rateContext={{ projectId: props.projectId, variationId: variation.id, revisionId: current.id, onReload: reload }}
           onClose={() => setItemEditor(null)}
@@ -1604,6 +1695,8 @@ function ItemDialog(props: {
   defaultMarginPercent: number;
   scopeLines: VariationScopeLineOption[];
   workAreas: VariationWorkAreaOption[];
+  variationWorkAreas: VariationOwnedWorkArea[];
+  onCreateWorkArea: (input: { name: string; description: string | null }) => Promise<{ ok: boolean; error?: string; workAreaId?: string }>;
   pending: boolean;
   initial: null | {
     kind: "addition" | "omission" | "substitution" | "no_cost";
@@ -1654,7 +1747,12 @@ function ItemDialog(props: {
   const [margin, setMargin] = useState(initial?.margin ?? String(props.defaultMarginPercent));
   const [provenance, setProvenance] = useState<CommercialProvenance>(initial?.provenance ?? "pricing_required");
   const [scopeId, setScopeId] = useState(initial?.scopeId ?? "");
-  const [workAreaId, setWorkAreaId] = useState(initial?.workAreaId ?? "");
+  const [workAreaChoice, setWorkAreaChoice] = useState(initial?.workAreaId ?? "");
+  const [creatingArea, setCreatingArea] = useState(false);
+  const [areaName, setAreaName] = useState("");
+  const [areaDescription, setAreaDescription] = useState("");
+  const [areaError, setAreaError] = useState<string | null>(null);
+  const [areaPending, setAreaPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [pricingMode, setPricingMode] = useState<VariationPricingMode>(initial?.pricingMode ?? "simple");
   const [components, setComponents] = useState<CostDraft[]>(initial?.components ?? []);
@@ -1702,9 +1800,29 @@ function ItemDialog(props: {
     currency: props.currency,
   });
 
-  function selectedWorkArea(): string | null {
-    if (scope?.workAreaId) return scope.workAreaId;
-    return workAreaId || null;
+  function selectedScope(): { workAreaId: string | null; variationWorkAreaId: string | null } {
+    if (workAreaChoice.startsWith("variation:")) {
+      return { workAreaId: null, variationWorkAreaId: workAreaChoice.slice("variation:".length) };
+    }
+    if (workAreaChoice.startsWith("accepted:")) {
+      return { workAreaId: workAreaChoice.slice("accepted:".length), variationWorkAreaId: null };
+    }
+    return { workAreaId: null, variationWorkAreaId: null };
+  }
+
+  async function createArea(): Promise<void> {
+    setAreaPending(true);
+    setAreaError(null);
+    const result = await props.onCreateWorkArea({ name: areaName, description: areaDescription.trim() || null });
+    setAreaPending(false);
+    if (!result.ok || !result.workAreaId) {
+      setAreaError(result.error ?? "The work area could not be created.");
+      return;
+    }
+    setWorkAreaChoice(`variation:${result.workAreaId}`);
+    setCreatingArea(false);
+    setAreaName("");
+    setAreaDescription("");
   }
 
   function singleItem(itemType: VariationItemType, clientDescription: string, magnitude: number | null, sortOrder: number, nextProvenance: CommercialProvenance, groupId: string | null): SingleItem | null {
@@ -1714,7 +1832,7 @@ function ItemDialog(props: {
     return {
       itemType,
       clientDescription,
-      workAreaId: selectedWorkArea(),
+      ...selectedScope(),
       snapshotLineId: scope?.id ?? null,
       stableComponentKey: null,
       quantity: Number(quantity) || 1,
@@ -1874,18 +1992,54 @@ function ItemDialog(props: {
           ) : <Field id="item-description" label="Client-facing description" value={description} onChange={setDescription} />}
           <div className="grid gap-1.5">
             <Label htmlFor="item-scope">Link to accepted scope (optional)</Label>
-            <select id="item-scope" className="h-11 rounded-xl border bg-background px-3 text-sm" value={scopeId} onChange={(event) => setScopeId(event.target.value)}>
+            <select id="item-scope" className="h-11 rounded-xl border bg-background px-3 text-sm" value={scopeId} onChange={(event) => {
+              const next = event.target.value;
+              setScopeId(next);
+              const line = props.scopeLines.find((row) => row.id === next);
+              if (line?.workAreaId) setWorkAreaChoice(`accepted:${line.workAreaId}`);
+            }}>
               <option value="">New scope / no linked item</option>
               {props.scopeLines.map((line) => <option key={line.id} value={line.id}>{(line.workAreaName ? `${line.workAreaName} · ` : "") + line.description}</option>)}
             </select>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="item-area">Work area</Label>
-            <select id="item-area" className="h-11 rounded-xl border bg-background px-3 text-sm" value={workAreaId} onChange={(event) => setWorkAreaId(event.target.value)}>
-              <option value="">No work area</option>
-              {props.workAreas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
+            <Label htmlFor="item-area">Link to work area (optional)</Label>
+            <select id="item-area" className="h-11 rounded-xl border bg-background px-3 text-sm" value={workAreaChoice} onChange={(event) => {
+              if (event.target.value === "__create") {
+                setCreatingArea(true);
+                setAreaError(null);
+                return;
+              }
+              setWorkAreaChoice(event.target.value);
+            }}>
+              <option value="">No linked work area</option>
+              {props.workAreas.length > 0 ? <optgroup label="Existing accepted Work Areas">{props.workAreas.map((area) => <option key={area.id} value={`accepted:${area.id}`}>{area.name}</option>)}</optgroup> : null}
+              {props.variationWorkAreas.length > 0 ? <optgroup label="Variation Work Areas">{props.variationWorkAreas.map((area) => <option key={area.id} value={`variation:${area.id}`}>{area.name}</option>)}</optgroup> : null}
+              <option value="__create">+ Create new work area</option>
             </select>
           </div>
+          {creatingArea ? (
+            <Dialog open onOpenChange={(open) => { if (!open && !areaPending) setCreatingArea(false); }}>
+              <DialogContent className="sm:max-w-[28rem]" data-variation-create-work-area="true">
+                <DialogHeader>
+                  <DialogTitle>Create work area</DialogTitle>
+                  <DialogDescription>This work area belongs to this Variation. It does not change the accepted Quote.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3">
+                  <Field id="variation-area-name" label="Work area name" value={areaName} onChange={setAreaName} />
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="variation-area-description">Description (optional)</Label>
+                    <textarea id="variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-sm" value={areaDescription} onChange={(event) => setAreaDescription(event.target.value)} />
+                  </div>
+                  {areaError ? <p role="alert" className="text-sm">{areaError}</p> : null}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" size="touch" disabled={areaPending} onClick={() => setCreatingArea(false)}>Cancel</Button>
+                  <Button type="button" size="touch" disabled={areaPending} onClick={() => void createArea()}>{areaPending ? "Creating…" : "Create work area"}</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
           <details className="rounded-xl border px-3 py-2">
             <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Client quantity and unit</summary>
             <div className="grid gap-3 pb-2 sm:grid-cols-2">
@@ -2017,6 +2171,8 @@ function EditExistingItem(props: {
   defaultMarginPercent: number;
   scopeLines: VariationScopeLineOption[];
   workAreas: VariationWorkAreaOption[];
+  variationWorkAreas: VariationOwnedWorkArea[];
+  onCreateWorkArea: (input: { name: string; description: string | null }) => Promise<{ ok: boolean; error?: string; workAreaId?: string }>;
   pending: boolean;
   onClose: () => void;
   onSave: (payload: ItemSavePayload) => void;
@@ -2038,6 +2194,8 @@ function EditExistingItem(props: {
       defaultMarginPercent={props.defaultMarginPercent}
       scopeLines={props.scopeLines}
       workAreas={props.workAreas}
+      variationWorkAreas={props.variationWorkAreas}
+      onCreateWorkArea={props.onCreateWorkArea}
       pending={props.pending}
       onClose={props.onClose}
       onSave={props.onSave}
@@ -2057,7 +2215,7 @@ function EditExistingItem(props: {
         margin,
         provenance,
         scopeId: item.snapshotLineId ?? "",
-        workAreaId: item.workAreaId ?? "",
+        workAreaId: item.variationWorkAreaId ? `variation:${item.variationWorkAreaId}` : item.workAreaId ? `accepted:${item.workAreaId}` : "",
         removeId: remove?.id,
         addId: add?.id,
         itemId: item.id,
@@ -2088,6 +2246,38 @@ function DeleteItemDialog(props: { pending: boolean; onClose: () => void; onConf
         <DialogFooter>
           <Button type="button" variant="outline" size="touch" onClick={props.onClose}>Cancel</Button>
           <Button type="button" variant="destructive" size="touch" disabled={props.pending} onClick={props.onConfirm}>{props.pending ? "Deleting…" : "Delete item"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WorkAreaEditDialog(props: {
+  area: VariationOwnedWorkArea | null;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (input: { name: string; description: string | null }) => void;
+}) {
+  const [name, setName] = useState(props.area?.name ?? "");
+  const [description, setDescription] = useState(props.area?.description ?? "");
+  if (!props.area) return null;
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) props.onClose(); }}>
+      <DialogContent className="sm:max-w-[28rem]">
+        <DialogHeader>
+          <DialogTitle>Edit work area</DialogTitle>
+          <DialogDescription>Changes apply to this draft Variation only.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <Field id="edit-variation-area-name" label="Work area name" value={name} onChange={setName} />
+          <div className="grid gap-1.5">
+            <Label htmlFor="edit-variation-area-description">Description (optional)</Label>
+            <textarea id="edit-variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-sm" value={description} onChange={(event) => setDescription(event.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" size="touch" onClick={props.onClose}>Cancel</Button>
+          <Button type="button" size="touch" disabled={props.pending || !name.trim()} onClick={() => props.onSave({ name: name.trim(), description: description.trim() || null })}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

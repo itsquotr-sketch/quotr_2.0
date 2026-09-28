@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 import { formatAttachmentSize } from "@/lib/variations/attachment-files";
 import type { VariationResponseReceipt } from "@/lib/variations/response-receipt";
@@ -12,8 +13,20 @@ function Row({ label, value }: { label: string; value: string | null | undefined
   );
 }
 
-export function VariationResponseReceiptView({ receipt }: { receipt: VariationResponseReceipt }) {
+export function VariationResponseReceiptView({
+  receipt,
+  backHref,
+}: {
+  receipt: VariationResponseReceipt;
+  backHref?: string | null;
+}) {
   return (
+    <>
+    {backHref ? (
+      <p className="mb-4 print:hidden">
+        <Link href={backHref} className="text-sm font-medium underline">← Back to Variation</Link>
+      </p>
+    ) : null}
     <article
       data-variation-response-receipt="true"
       className="quote-template mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden rounded-xl border border-neutral-200 bg-white p-5 text-sm text-neutral-900 shadow-sm sm:p-7 print:max-w-none print:rounded-none print:border-0 print:bg-white print:p-0 print:shadow-none"
@@ -85,6 +98,23 @@ export function VariationResponseReceiptView({ receipt }: { receipt: VariationRe
         </dl>
       </section>
 
+      {receipt.scopeGroups.length > 0 ? (
+        <section className="mt-6" data-variation-scope-groups="true">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">Scope</h2>
+          <div className="mt-2 space-y-3">
+            {receipt.scopeGroups.map((group) => (
+              <div key={group.name}>
+                <h3 className="font-medium">{group.name}</h3>
+                {group.description ? <p className="break-words text-neutral-600">{group.description}</p> : null}
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {group.items.map((item) => <li key={`${group.name}:${item}`} className="break-words">{item}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-600">
           Supporting attachments ({receipt.attachmentCount})
@@ -123,5 +153,6 @@ export function VariationResponseReceiptView({ receipt }: { receipt: VariationRe
         </section>
       ) : null}
     </article>
+    </>
   );
 }

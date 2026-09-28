@@ -515,6 +515,13 @@ export function calculateRevisedContractValue(input: {
   };
 }
 
+export type VariationOwnedWorkArea = {
+  id: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+};
+
 export type ClientFacingVariationItem = {
   id: string;
   itemType: VariationItemType;
@@ -528,6 +535,8 @@ export type ClientFacingVariationItem = {
   clientExclusion: string | null;
   substitutionGroupId: string | null;
   workAreaId: string | null;
+  workAreaName?: string | null;
+  workAreaDescription?: string | null;
   snapshotLineId: string | null;
 };
 
@@ -575,6 +584,7 @@ export type VariationCostComponent = {
 };
 
 type InternalVariationItem = ClientFacingVariationItem & {
+  variationWorkAreaId: string | null;
   unitCost: number | null;
   lineCostAdjustment: number | null;
   internalMetadata: Record<string, unknown>;
@@ -608,6 +618,7 @@ export type InternalVariation = {
     clientNotes: string | null;
     internalNotes: string | null;
     items: InternalVariationItem[];
+    variationWorkAreas: VariationOwnedWorkArea[];
   }>;
 };
 
@@ -649,6 +660,8 @@ export function clientFacingVariation(
         clientExclusion: item.clientExclusion,
         substitutionGroupId: item.substitutionGroupId,
         workAreaId: item.workAreaId,
+        workAreaName: item.workAreaName ?? null,
+        workAreaDescription: item.workAreaDescription ?? null,
         snapshotLineId: item.snapshotLineId,
       })),
     })),

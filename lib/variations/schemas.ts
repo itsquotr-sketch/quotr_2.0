@@ -47,6 +47,7 @@ export const variationItemFieldsSchema = z
       requiredMessage: "Describe this variation item.",
     }),
     workAreaId: uuidSchema.nullable(),
+    variationWorkAreaId: uuidSchema.nullable(),
     snapshotLineId: uuidSchema.nullable(),
     stableComponentKey: optionalText(120),
     quantity: finitePositiveNumberSchema,
@@ -134,6 +135,7 @@ export const saveDraftVariationBuildUpSchema = z
     itemType: z.enum(["addition", "omission"]),
     clientDescription: trimmedStringSchema(500, { min: 1, requiredMessage: "Describe this variation item." }),
     workAreaId: uuidSchema.nullable(),
+    variationWorkAreaId: uuidSchema.nullable(),
     snapshotLineId: uuidSchema.nullable(),
     quantity: finitePositiveNumberSchema,
     unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
@@ -209,5 +211,26 @@ export const setVariationComponentManualCostSchema = selectVariationComponentRat
   })
   .extend({
     unitCost: z.union([z.null(), z.number().finite().min(0).max(10_000_000)]),
+  })
+  .strict();
+
+export const variationWorkAreaFieldsSchema = z
+  .object({
+    variationId: uuidSchema,
+    revisionId: uuidSchema,
+    name: trimmedStringSchema(120, { min: 1, requiredMessage: "Enter a work area name." }),
+    description: optionalText(2000),
+  })
+  .strict();
+
+export const updateVariationWorkAreaSchema = variationWorkAreaFieldsSchema
+  .extend({ workAreaId: uuidSchema })
+  .strict();
+
+export const deleteVariationWorkAreaSchema = z
+  .object({
+    variationId: uuidSchema,
+    revisionId: uuidSchema,
+    workAreaId: uuidSchema,
   })
   .strict();

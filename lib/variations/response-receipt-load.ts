@@ -10,6 +10,7 @@ import {
   type VariationResponseReceipt,
 } from "@/lib/variations/response-receipt";
 import { variationEvidenceTypeLabel, type VariationManualEvidenceType } from "@/lib/variations/response";
+import { groupVariationScope } from "@/lib/variations/work-areas";
 
 export type VariationManualEvidenceView = {
   evidenceTypeLabel: string;
@@ -66,6 +67,7 @@ async function receiptFromStored(input: {
   revisionNumber: number;
   baseline: VariationReceiptMoney | null;
   earlier: VariationReceiptMoney[];
+  scopeGroups?: VariationResponseReceipt["scopeGroups"];
 }): Promise<VariationResponseReceipt | null> {
   if (input.response.outcome !== "accepted" && input.response.outcome !== "declined") return null;
   if (input.response.source !== "client" && input.response.source !== "manual") return null;
@@ -87,6 +89,7 @@ async function receiptFromStored(input: {
     revisionNumber: input.revisionNumber,
     baseline: input.baseline,
     earlierAdjustments: input.earlier,
+    scopeGroups: input.scopeGroups ?? [],
   });
 }
 
@@ -95,6 +98,7 @@ async function assemble(db: SupabaseClient, response: ResponseRow): Promise<Vari
   const revision = await db.from("variation_revisions").select("revision_number").eq("id", response.variation_revision_id).eq("org_id", response.org_id).eq("project_id", response.project_id).maybeSingle();
   const snapshot = await db.from("accepted_commercial_snapshots").select("sell_ex_gst, gst_amount, sell_incl_gst").eq("id", response.accepted_snapshot_id).eq("org_id", response.org_id).eq("project_id", response.project_id).maybeSingle();
   const ledger = await db.from("variation_accepted_adjustments").select("variation_id, net_adjustment_ex_gst, gst_adjustment, adjustment_incl_gst, accepted_at").eq("org_id", response.org_id).eq("project_id", response.project_id).lte("accepted_at", response.responded_at);
+  const scope = await loadClientScope(db, response);
   if (variation.error || revision.error || snapshot.error || ledger.error) return null;
   const variationNumber = Number((variation.data as { variation_number?: unknown } | null)?.variation_number);
   const revisionNumber = Number((revision.data as { revision_number?: unknown } | null)?.revision_number);
@@ -107,7 +111,41 @@ async function assemble(db: SupabaseClient, response: ResponseRow): Promise<Vari
     if (!entry) return null;
     earlier.push(entry);
   }
-  return receiptFromStored({ response, variationNumber, revisionNumber, baseline, earlier });
+  return receiptFromStored({ response, variationNumber, revisionNumber, baseline, earlier, scopeGroups: scope });
+}
+
+async function loadClientScope(db: SupabaseClient, response: ResponseRow) {
+  const [areas, items] = await Promise.all([
+    db.from("variation_work_areas")
+      .select("id, name, description, sort_order")
+      .eq("org_id", response.org_id)
+      .eq("project_id", response.project_id)
+      .eq("variation_id", response.variation_id)
+      .eq("revision_id", response.variation_revision_id)
+      .order("sort_order", { ascending: true }),
+    db.from("variation_items")
+      .select("client_description, variation_work_area_id, sort_order")
+      .eq("org_id", response.org_id)
+      .eq("project_id", response.project_id)
+      .eq("variation_id", response.variation_id)
+      .eq("revision_id", response.variation_revision_id)
+      .order("sort_order", { ascending: true }),
+  ]);
+  if (areas.error || items.error) return [];
+  const byId = new Map(
+    ((areas.data ?? []) as Array<{ id: string; name: string; description: string | null }>).map((area) => [area.id, area])
+  );
+  return groupVariationScope(
+    ((items.data ?? []) as Array<{ client_description: string; variation_work_area_id: string | null; sort_order: number }>).map((item) => {
+      const area = item.variation_work_area_id ? byId.get(item.variation_work_area_id) : null;
+      return {
+        workAreaName: area?.name ?? null,
+        workAreaDescription: area?.description ?? null,
+        clientDescription: item.client_description,
+        sortOrder: item.sort_order,
+      };
+    })
+  );
 }
 
 export async function loadVariationResponseReceiptByIds(input: {
@@ -175,7 +213,7 @@ export async function loadPublicVariationResponseReceipt(rawToken: string): Prom
 }
 
 export async function loadInternalVariationResponseRecord(projectId: string, variationId: string): Promise<
-  | { ok: true; receipt: VariationResponseReceipt; manual: VariationManualEvidenceView | null }
+  | { ok: true; receipt: VariationResponseReceipt; manual: VariationManualEvidenceView | null; backHref: string; recordedDeclineReason: string | null }
   | { ok: false }
 > {
   const context = await getAuthOrgContext();
@@ -189,9 +227,10 @@ export async function loadInternalVariationResponseRecord(projectId: string, var
     .maybeSingle();
   if (response.error || !response.data) return { ok: false };
   const row = response.data as ResponseRow;
-  if (row.project_id !== projectId || row.org_id !== context.orgId) return { ok: false };
+  if (row.project_id !== projectId || row.variation_id !== variationId || row.org_id !== context.orgId) return { ok: false };
   const receipt = await assemble(context.supabase, row);
   if (!receipt) return { ok: false };
+  const backHref = `/app/projects/${row.project_id}/variations/${row.variation_id}?revision=${row.variation_revision_id}`;
   let manual: VariationManualEvidenceView | null = null;
   if (row.source === "manual" && row.manual_evidence_note && row.manual_evidence_type) {
     const known = row.manual_evidence_type === "email_confirmation" || row.manual_evidence_type === "signed_document" || row.manual_evidence_type === "verbal_approval" || row.manual_evidence_type === "other";
@@ -208,5 +247,11 @@ export async function loadInternalVariationResponseRecord(projectId: string, var
       recordedAtLabel: receipt.respondedAtLabel,
     };
   }
-  return { ok: true, receipt, manual };
+  return {
+    ok: true,
+    receipt,
+    manual,
+    backHref,
+    recordedDeclineReason: row.source === "manual" && row.outcome === "declined" ? row.client_decline_reason : null,
+  };
 }
