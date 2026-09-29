@@ -46,6 +46,12 @@ export default async function ProfilePage() {
     getAuthDisplayProfile()
   );
 
+  const { data: consentRow } = await auth.supabase
+    .from("profiles")
+    .select("marketing_consent")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
   // STATE C — display could not be assembled from the signed-in org
   if (!display) {
     redirect("/app/setup-required");
@@ -65,6 +71,7 @@ export default async function ProfilePage() {
           email={auth.user.email ?? display.userEmail ?? ""}
           role={formatRole(display.role)}
           organisationName={display.organisationName?.trim() || "Company not set"}
+          marketingConsent={consentRow?.marketing_consent === true}
         />
       </SettingsContainer>
     </div>

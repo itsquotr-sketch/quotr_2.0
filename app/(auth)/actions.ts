@@ -54,6 +54,7 @@ const signupSchema = z.object({
   email: z.email("Invalid email address"),
   password: passwordSchema,
   invite_token: z.string().optional(),
+  marketing_consent: z.boolean().optional(),
 });
 
 const loginSchema = z.object({
@@ -121,20 +122,29 @@ export async function signup(
   const correlationId = createAuthCorrelationId();
   const startedAt = Date.now();
 
+  const marketingConsentValue = formData.get("marketing_consent");
   const parsed = signupSchema.safeParse({
     full_name: formData.get("full_name"),
     organisation_name: formData.get("organisation_name") ?? undefined,
     email: formData.get("email"),
     password: formData.get("password"),
     invite_token: formData.get("invite_token") ?? undefined,
+    marketing_consent:
+      marketingConsentValue === "true" || marketingConsentValue === "on",
   });
 
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const { full_name, organisation_name, email, password, invite_token } =
-    parsed.data;
+  const {
+    full_name,
+    organisation_name,
+    email,
+    password,
+    invite_token,
+    marketing_consent,
+  } = parsed.data;
   const inviteToken = isWellFormedInviteToken(invite_token ?? "")
     ? invite_token!.trim()
     : null;
@@ -187,10 +197,11 @@ export async function signup(
     options: {
       emailRedirectTo,
       data: inviteToken
-        ? { full_name }
+        ? { full_name, marketing_consent: marketing_consent === true }
         : {
             full_name,
             organisation_name,
+            marketing_consent: marketing_consent === true,
           },
     },
   });

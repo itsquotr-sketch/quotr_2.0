@@ -11,6 +11,7 @@ import { isUsableInviteEmail, normalizeInviteEmail } from "@/lib/team/email-norm
 import { sendOrganisationInviteEmail } from "@/lib/team/invite-email";
 import { validateInviteRole } from "@/lib/team/invite-policy";
 import { requireEntitlementAndPermission } from "@/lib/team/permission-server";
+import { recordSignupConsentAndSync } from "@/lib/communications/sync";
 import { getAuthSiteOrigin } from "@/lib/auth/site-url";
 import { buildInviteAcceptUrl } from "@/lib/email/application-email";
 import { generateInviteToken, hashInviteToken, isWellFormedInviteToken } from "@/lib/team/tokens";
@@ -326,6 +327,7 @@ export async function acceptInvitation(rawToken: string): Promise<TeamActionResu
   if (error) return { error: mapTeamRpcError(error) };
   const row = (Array.isArray(data) ? data[0] : data) as BeginAcceptanceRow | undefined;
   if (!row) return { error: "This invitation could not be accepted." };
+  await recordSignupConsentAndSync(supabase);
   if (row.already_member) {
     return { success: true };
   }
@@ -353,12 +355,14 @@ export async function acceptPendingInvitationForCurrentUser(): Promise<TeamActio
       | BeginAcceptanceRow
       | undefined;
     if (!retryRow) return { error: "No invitation is waiting for this email." };
+    await recordSignupConsentAndSync(supabase);
     if (retryRow.already_member) return { success: true };
     return finalizeSeatActivation(retryRow);
   }
   if (error) return { error: mapTeamRpcError(error) };
   const row = (Array.isArray(data) ? data[0] : data) as BeginAcceptanceRow | undefined;
   if (!row) return { error: "No invitation is waiting for this email." };
+  await recordSignupConsentAndSync(supabase);
   if (row.already_member) return { success: true };
   return finalizeSeatActivation(row);
 }
@@ -421,6 +425,7 @@ export async function retryOwnSeatActivation(): Promise<TeamActionResult> {
     | BeginAcceptanceRow
     | undefined;
   if (!row) return { error: SEAT_PAYMENT_FAILED_MESSAGE };
+  await recordSignupConsentAndSync(supabase);
   if (row.already_member) return { success: true };
   return finalizeSeatActivation(row);
 }

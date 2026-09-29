@@ -68,6 +68,11 @@ export async function handleStripeWebhookRequest(
     } catch {
       // Mirror remains authority. Queue advance retries on the next event or user refresh.
     }
+    // Loops is not called here. Plan, subscription status, and trial end
+    // refresh on the next contact sync (provisioning, company or pricing
+    // basics, trading name or region, profile name, or marketing preference).
+    // Those syncs read the billing mirror. A slow Loops response must not
+    // delay Stripe acknowledgement.
   }
 
   return NextResponse.json(

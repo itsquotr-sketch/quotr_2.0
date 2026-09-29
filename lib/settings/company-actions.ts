@@ -14,6 +14,7 @@ import type {
   OrgQuoteDefaults,
 } from "@/lib/settings/types";
 import { loadCompanySettingsForRequest } from "@/lib/settings/company-settings-loader";
+import { syncOrganisationContacts } from "@/lib/communications/sync";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const COMPANY_SETTINGS_PATH = "/app/settings/company";
@@ -405,6 +406,13 @@ export async function updateCompanySettings(
 
   revalidatePath(COMPANY_SETTINGS_PATH);
   revalidatePath("/app/rates");
+
+  if (
+    Object.prototype.hasOwnProperty.call(update, "trading_name") ||
+    Object.prototype.hasOwnProperty.call(update, "region")
+  ) {
+    await syncOrganisationContacts(context.orgId);
+  }
 
   return {
     settings: mapSettingsRow(context.organisationName, updated),

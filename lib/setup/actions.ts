@@ -50,6 +50,7 @@ import {
   parseRequiredHourlyCost,
 } from "@/lib/setup/tax-identifier";
 import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
+import { syncOrganisationContacts } from "@/lib/communications/sync";
 import { toUserError } from "@/lib/errors/user-message";
 
 function setupDbError(error: unknown): ActionResult {
@@ -301,6 +302,8 @@ export async function saveCompanyBasics(
   revalidatePath("/app/settings/company");
   revalidatePath("/app/rates");
 
+  await syncOrganisationContacts(orgId);
+
   return { success: true };
 }
 
@@ -524,6 +527,8 @@ export async function savePricingBasics(input: {
   revalidatePath("/app/setup");
   revalidatePath("/app/rates");
   revalidatePath("/app/dashboard");
+
+  await syncOrganisationContacts(orgId);
 
   return { success: true };
 }

@@ -10,6 +10,7 @@ import {
   classifyProvisioningError,
   type AuthErrorCategory,
 } from "@/lib/auth/errors";
+import { recordSignupConsentAndSync } from "@/lib/communications/sync";
 import { logAuthEvent } from "@/lib/auth/logging";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -122,6 +123,8 @@ export async function provisionOrganisationForCurrentUser(
       elapsedMs: Date.now() - startedAt,
     });
   }
+
+  await recordSignupConsentAndSync(supabase);
 
   return {
     ok: true,

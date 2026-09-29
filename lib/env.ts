@@ -41,6 +41,7 @@ const SERVER_ENV_CHECKS: EnvCheck[] = [
   { name: "RESEND_FROM_EMAIL", value: process.env.RESEND_FROM_EMAIL, required: false },
   { name: "RESEND_TEAM_FROM_EMAIL", value: process.env.RESEND_TEAM_FROM_EMAIL, required: false },
   { name: "RESEND_QUOTE_FROM_EMAIL", value: process.env.RESEND_QUOTE_FROM_EMAIL, required: false },
+  { name: "LOOPS_API_KEY", value: process.env.LOOPS_API_KEY, required: false },
 ];
 
 function formatMissing(checks: EnvCheck[]): string[] {
@@ -98,6 +99,7 @@ const FORBIDDEN_PUBLIC_ENV_NAMES = [
   "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
   "NEXT_PUBLIC_STRIPE_SECRET_KEY",
   "NEXT_PUBLIC_STRIPE_WEBHOOK_SECRET",
+  "NEXT_PUBLIC_LOOPS_API_KEY",
 ];
 
 export function assertEnvSafety(): void {

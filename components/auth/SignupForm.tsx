@@ -239,6 +239,25 @@ export function SignupForm(props: {
             />
             <FieldError messages={state.fieldErrors?.password} />
           </div>
+
+          <div className="flex items-start gap-3 pt-1">
+            <input
+              id="marketing_consent"
+              name="marketing_consent"
+              type="checkbox"
+              value="true"
+              className="mt-0.5 size-4 shrink-0 rounded-[5px] border border-input bg-input/90 accent-foreground"
+            />
+            <label htmlFor="marketing_consent" className="space-y-1">
+              <span className="block text-sm font-medium leading-none">
+                Keep me updated about Quotr
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Get product updates, practical tips, new features and occasional
+                Quotr news.
+              </span>
+            </label>
+          </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="h-11 w-full" disabled={pending}>

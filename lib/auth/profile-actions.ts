@@ -11,6 +11,7 @@ import {
   logAuthEvent,
 } from "@/lib/auth/logging";
 import { newPasswordPairSchema, passwordSchema } from "@/lib/auth/password";
+import { syncSessionUser } from "@/lib/communications/sync";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileActionState = {
@@ -103,6 +104,8 @@ export async function updateProfileFullName(
 
   revalidatePath("/app", "layout");
   revalidatePath("/app/profile");
+
+  await syncSessionUser(supabase, "routine");
 
   return { success: "Profile saved." };
 }

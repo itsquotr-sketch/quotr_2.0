@@ -7,6 +7,7 @@ import {
   updateProfileFullName,
   type ProfileActionState,
 } from "@/lib/auth/profile-actions";
+import { updateMarketingConsent } from "@/lib/communications/consent-actions";
 import { logout } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ type ProfilePageContentProps = {
   email: string;
   role: string;
   organisationName: string;
+  marketingConsent: boolean;
 };
 
 export function ProfilePageContent({
@@ -52,9 +54,14 @@ export function ProfilePageContent({
   email,
   role,
   organisationName,
+  marketingConsent,
 }: ProfilePageContentProps) {
   const [profileState, profileAction, profilePending] = useActionState(
     updateProfileFullName,
+    initialState
+  );
+  const [consentState, consentAction, consentPending] = useActionState(
+    updateMarketingConsent,
     initialState
   );
   const [passwordState, passwordAction, passwordPending] = useActionState(
@@ -146,6 +153,44 @@ export function ProfilePageContent({
               {profilePending ? "Saving…" : "Save changes"}
             </Button>
           </div>
+        </form>
+      </section>
+
+      <section className="space-y-4 border-t pt-8">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">
+            Product & community updates
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Product updates, practical tips, new features and occasional Quotr
+            news.
+          </p>
+        </div>
+
+        <form action={consentAction} className="space-y-4">
+          {consentState.error ? (
+            <Alert tone="error">{consentState.error}</Alert>
+          ) : null}
+          {consentState.success ? (
+            <Alert tone="success">{consentState.success}</Alert>
+          ) : null}
+          <div className="flex items-start gap-3">
+            <input
+              id="marketing_consent"
+              name="marketing_consent"
+              type="checkbox"
+              value="true"
+              defaultChecked={marketingConsent}
+              disabled={consentPending}
+              className="mt-0.5 size-4 shrink-0 rounded-[5px] border border-input bg-input/90 accent-foreground"
+            />
+            <label htmlFor="marketing_consent" className="text-sm leading-snug">
+              Keep me updated about Quotr
+            </label>
+          </div>
+          <Button type="submit" disabled={consentPending} className="sm:w-auto">
+            {consentPending ? "Saving…" : "Save preference"}
+          </Button>
         </form>
       </section>
 
