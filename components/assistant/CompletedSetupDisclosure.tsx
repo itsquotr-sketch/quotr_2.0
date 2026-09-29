@@ -40,7 +40,7 @@ export function CompletedSetupDisclosure({
     >
       <button
         type="button"
-        className="flex w-full min-h-11 items-start gap-3 px-3.5 py-3 text-left"
+        className="flex w-full min-h-11 items-start gap-3 rounded-xl px-3.5 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={() => onExpandedChange(!expanded)}
         aria-expanded={expanded}
         data-completed-setup-toggle="true"

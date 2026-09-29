@@ -122,7 +122,6 @@ import {
 } from "@/lib/assistant/readiness/clarify-estimate";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
-import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { composeRefineView } from "@/lib/assistant/refine/compose";
 import {
   answerClarifyConstraint,
@@ -370,12 +369,7 @@ export function AssistantShell({
   const [jobPlanEditFocus, setJobPlanEditFocus] = useState<JobPlanEditFocus | null>(
     null
   );
-  // Estimate Basis: expanded by default on desktop (lg), collapsed on mobile.
-  // Estimate Basis: expanded by default on desktop (lg ≥ 1024px), collapsed on mobile.
-  const [jobDetailsOpen, setJobDetailsOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 1024px)").matches;
-  });
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
   const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
     useState(false);
   const marginSaveLockRef = useRef(false);
@@ -2705,8 +2699,7 @@ export function AssistantShell({
             : "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
           assistantMode === "planning" &&
             "lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[200px_minmax(0,1fr)_380px]",
-          assistantMode === "estimate_ready" &&
-            "lg:grid-cols-[minmax(0,1fr)_380px]",
+          assistantMode === "estimate_ready" && "grid-cols-1",
           assistantMode === "edit_job" && "grid-cols-1"
         )}
         data-assistant-main-grid
@@ -2862,11 +2855,6 @@ export function AssistantShell({
                       setBuilderReviewCompleted(true);
                       setBuilderReviewOpen(true);
                     }}
-                    reviewLabel={
-                      displayEstimateStale
-                        ? ASSISTANT_ACTION_LABELS.reviewPreviousEstimate
-                        : ASSISTANT_ACTION_LABELS.reviewEstimate
-                    }
                     onEditJob={() => openEditJob(null)}
                     onViewBreakdown={() => {
                       setBuilderReviewOpen(false);
@@ -2874,7 +2862,7 @@ export function AssistantShell({
                     }}
                     marginControl={
                       !displayEstimateStale ? (
-                        <span className="lg:hidden" data-mobile-margin-edit="true">
+                        <span data-mobile-margin-edit="true">
                           <MarginEditControl
                             marginPercent={estimate.marginPercent}
                             targetMarginPercent={estimate.targetMarginPercent}
@@ -2889,9 +2877,9 @@ export function AssistantShell({
                     }
                     marginSaveIndicator={
                       !displayEstimateStale && isSavingMargin ? (
-                        <SaveStatusIndicator className="lg:hidden" status="saving" isSaving />
+                        <SaveStatusIndicator status="saving" isSaving />
                       ) : !displayEstimateStale && marginSaveLabel ? (
-                        <p className="text-xs text-muted-foreground lg:hidden" data-margin-save-label>
+                        <p className="text-xs text-foreground/75" data-margin-save-label>
                           {marginSaveLabel}
                         </p>
                       ) : null
@@ -2906,55 +2894,61 @@ export function AssistantShell({
                     <div className="space-y-4 text-sm">
                       {(briefText || project.briefText) ? (
                         <dl>
-                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                            Project Brief
+                          <dt className="text-sm font-semibold text-foreground/80">
+                            Project brief
                           </dt>
-                          <dd className="mt-1 text-xs leading-relaxed text-foreground/90">
+                          <dd className="mt-1 text-sm leading-6 text-foreground/80">
                             {briefText || project.briefText}
                           </dd>
                         </dl>
                       ) : null}
                       <dl>
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-sm font-semibold text-foreground/80">
                           Work Areas
                         </dt>
-                        <dd className="mt-1">{workAreaLists.included.join(" · ")}</dd>
+                        <dd>
+                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
+                            {workAreaLists.included.map((name) => (
+                              <li key={name}>{name}</li>
+                            ))}
+                          </ul>
+                        </dd>
                       </dl>
                       {jobPlan.cards.length > 0 && jobPlan.cards.some((c) => c.included.length > 0) ? (
                         <dl>
-                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt className="text-sm font-semibold text-foreground/80">
                             Scope
                           </dt>
                           <dd>
-                          <ul className="mt-1 space-y-0.5 text-xs text-foreground/90">
+                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
                             {jobPlan.cards.flatMap((c) =>
                               c.included.map((item) => (
                                 <li key={`${c.workAreaId}-${item.id}`}>
-                                  {c.name !== workAreaLists.included[0] || jobPlan.cards.length > 1
-                                    ? `${c.name}: ` : ""}{item.label}
+                                  {jobPlan.cards.length > 1 ? `${c.name}: ` : ""}
+                                  {item.label}
                                 </li>
                               ))
-                            ).slice(0, 8)}
+                            )}
                           </ul>
                           </dd>
                         </dl>
                       ) : null}
                       {qualityTitleLabel ? (
                         <dl>
-                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt className="text-sm font-semibold text-foreground/80">
                             Finish level
                           </dt>
-                          <dd className="mt-1">{qualityTitleLabel}</dd>
+                          <dd className="mt-1 text-sm leading-6 text-foreground/80">{qualityTitleLabel}</dd>
                         </dl>
                       ) : null}
                       {liveConstraints.length > 0 ? (
                         <dl>
-                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <dt className="text-sm font-semibold text-foreground/80">
                             Project conditions
                           </dt>
                           <dd>
-                          <ul className="mt-1 space-y-1 text-xs text-foreground/90">
-                            {liveConstraints.slice(0, 4).map((row) => (
+                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
+                            {liveConstraints.map((row) => (
                               <li key={row.id}>
                                 {row.label}: {String(row.value)}
                               </li>
@@ -3647,14 +3641,10 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        {assistantMode !== "edit_job" ? (
+        {assistantMode === "planning" ? (
         <div
           ref={estimatePanelAnchorRef}
-          className={cn(
-            "min-w-0 lg:self-start",
-            assistantMode === "planning" && "order-1 lg:order-none",
-            assistantMode === "estimate_ready" && "hidden lg:block"
-          )}
+          className="order-1 min-w-0 lg:order-none lg:self-start"
           data-quick-estimate-anchor
         >
           <EstimatePanel
@@ -3704,13 +3694,10 @@ export function AssistantShell({
             scopeReviewAttention={scopeReviewAttentionItems}
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
-            compactCommercialSidebar={assistantMode === "estimate_ready"}
+            compactCommercialSidebar={false}
             workAreasConfirmed={workAreasConfirmed}
             pricingProgressionPrimary={builderReviewCompleted}
-            hidePricingProgression={
-              builderReviewOpen ||
-              (assistantMode === "estimate_ready" && !refineAfterEstimateOpen)
-            }
+            hidePricingProgression={builderReviewOpen}
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);
@@ -3718,11 +3705,7 @@ export function AssistantShell({
             }}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
-            onMarginSave={
-              assistantMode === "estimate_ready" && !displayEstimateStale
-                ? handleMarginSave
-                : undefined
-            }
+            onMarginSave={undefined}
             onEditQuality={undefined}
             onReviewAttention={handleReviewAttention}
           />

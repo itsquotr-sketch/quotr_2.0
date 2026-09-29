@@ -48,6 +48,7 @@ type OpenFinalPricingLinkProps = {
   pricingDocumentId: string;
   variant?: "default" | "outline";
   className?: string;
+  label?: string;
 };
 
 export function OpenFinalPricingLink({
@@ -55,6 +56,7 @@ export function OpenFinalPricingLink({
   pricingDocumentId,
   variant = "outline",
   className,
+  label = "Open Pricing",
 }: OpenFinalPricingLinkProps) {
   return (
     <Button
@@ -65,7 +67,7 @@ export function OpenFinalPricingLink({
         <Link href={`/app/projects/${projectId}/pricing/${pricingDocumentId}`} />
       }
     >
-      Open Pricing
+      {label}
     </Button>
   );
 }
