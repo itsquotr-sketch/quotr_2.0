@@ -15,7 +15,13 @@ import { EstimateOverview } from "@/components/assistant/mode/EstimateOverview";
 import {
   EstimateViewControl,
   WorkAreaBreakdown,
+  type EstimatePresentationView,
 } from "@/components/assistant/mode/WorkAreaBreakdown";
+import {
+  AssumptionsChecks,
+  LabourTakeoff,
+  MaterialsTakeoff,
+} from "@/components/assistant/mode/EstimateTakeoffViews";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -399,7 +405,7 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
-  const [estimateView, setEstimateView] = useState<"overview" | "work_areas">("overview");
+  const [estimateView, setEstimateView] = useState<EstimatePresentationView>("overview");
   const [builderReviewCompleted, setBuilderReviewCompleted] = useState(false);
   const [refineAfterEstimateOpen, setRefineAfterEstimateOpen] = useState(false);
   const [refineAfterEstimateFocusKey, setRefineAfterEstimateFocusKey] = useState<
@@ -2664,6 +2670,28 @@ export function AssistantShell({
     questionsSubmitted &&
     (estimateReviewActionable || estimateReviewDetailsOpen);
 
+  const estimateScope = jobPlan.cards.map((card) => ({
+    workAreaId: card.workAreaId,
+    name: card.name,
+    included: card.included.map((item) => item.label),
+    excluded: card.notIncluded.map((item) => item.label),
+  }));
+  const estimateRegenerate = displayEstimateStale ? handleRegenerateEstimate : undefined;
+  const estimateRegenerateLabel =
+    estimateOverview.primary === "regenerate" ? estimateOverview.primaryLabel : undefined;
+  const estimatePricing =
+    estimateOverview.primary === "continue_pricing" &&
+    !estimateOverview.pricingCreationBlocked &&
+    estimateOverview.pricingEntry !== "blocked"
+      ? {
+          projectId: project.id,
+          estimateId: generationProjection?.estimateId,
+          pricingDocumentId: pricingSummary?.id ?? null,
+          entry: estimateOverview.pricingEntry,
+          label: estimateOverview.primaryLabel,
+        }
+      : null;
+
   const stepperAttention = {
     constraints:
       questionsSubmitted &&
@@ -2849,37 +2877,43 @@ export function AssistantShell({
                   {estimateView === "work_areas" && builderReviewView ? (
                     <WorkAreaBreakdown
                       view={builderReviewView}
-                      scope={jobPlan.cards.map((card) => ({
-                        workAreaId: card.workAreaId,
-                        name: card.name,
-                        included: card.included.map((item) => item.label),
-                        excluded: card.notIncluded.map((item) => item.label),
-                      }))}
+                      scope={estimateScope}
                       isRegenerating={updatingEstimate}
-                      onBack={() => setEstimateView("overview")}
                       onEditJob={() => openEditJob(null)}
                       onReviewWorkArea={() => openEditJob("job_plan")}
-                      onRegenerate={
-                        displayEstimateStale ? handleRegenerateEstimate : undefined
-                      }
-                      regenerateLabel={
-                        estimateOverview.primary === "regenerate"
-                          ? estimateOverview.primaryLabel
-                          : undefined
-                      }
-                      pricing={
-                        estimateOverview.primary === "continue_pricing" &&
-                        !estimateOverview.pricingCreationBlocked &&
-                        estimateOverview.pricingEntry !== "blocked"
-                          ? {
-                              projectId: project.id,
-                              estimateId: generationProjection?.estimateId,
-                              pricingDocumentId: pricingSummary?.id ?? null,
-                              entry: estimateOverview.pricingEntry,
-                              label: estimateOverview.primaryLabel,
-                            }
-                          : null
-                      }
+                      onRegenerate={estimateRegenerate}
+                      regenerateLabel={estimateRegenerateLabel}
+                      pricing={estimatePricing}
+                    />
+                  ) : estimateView === "materials" && builderReviewView ? (
+                    <MaterialsTakeoff
+                      view={builderReviewView}
+                      isRegenerating={updatingEstimate}
+                      onEditJob={() => openEditJob(null)}
+                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onRegenerate={estimateRegenerate}
+                      regenerateLabel={estimateRegenerateLabel}
+                      pricing={estimatePricing}
+                    />
+                  ) : estimateView === "labour" && builderReviewView ? (
+                    <LabourTakeoff
+                      view={builderReviewView}
+                      isRegenerating={updatingEstimate}
+                      onEditJob={() => openEditJob(null)}
+                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onRegenerate={estimateRegenerate}
+                      regenerateLabel={estimateRegenerateLabel}
+                      pricing={estimatePricing}
+                    />
+                  ) : estimateView === "checks" && builderReviewView ? (
+                    <AssumptionsChecks
+                      view={builderReviewView}
+                      isRegenerating={updatingEstimate}
+                      onEditJob={() => openEditJob(null)}
+                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onRegenerate={estimateRegenerate}
+                      regenerateLabel={estimateRegenerateLabel}
+                      pricing={estimatePricing}
                     />
                   ) : (
                 <>

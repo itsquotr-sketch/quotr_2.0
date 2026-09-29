@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import {
   projectWorkAreaBreakdown,
+  type WorkAreaBreakdownCard,
   type WorkAreaBreakdownGroup,
   type WorkAreaBreakdownLine,
   type WorkAreaBreakdownModel,
@@ -18,7 +19,12 @@ const actionClassName = "h-11 min-h-11 w-full sm:w-auto";
 const pricingClassName =
   "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] sm:w-auto";
 
-export type EstimatePresentationView = "overview" | "work_areas";
+export type EstimatePresentationView =
+  | "overview"
+  | "work_areas"
+  | "materials"
+  | "labour"
+  | "checks";
 
 type PricingRoute = {
   projectId: string;
@@ -32,7 +38,6 @@ type WorkAreaBreakdownProps = {
   view: BuilderReviewView;
   scope?: readonly WorkAreaBreakdownScope[];
   isRegenerating?: boolean;
-  onBack: () => void;
   onEditJob?: () => void;
   onReviewWorkArea?: () => void;
   onRegenerate?: () => void;
@@ -50,13 +55,17 @@ export function EstimateViewControl({
   const items: { id: EstimatePresentationView; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "work_areas", label: "By work area" },
+    { id: "materials", label: "Materials takeoff" },
+    { id: "labour", label: "Labour takeoff" },
+    { id: "checks", label: "Assumptions & checks" },
   ];
   return (
+    <div className="min-w-0 max-w-full overflow-x-hidden" data-estimate-view-control>
     <div
       role="tablist"
       aria-label="Estimate view"
-      data-estimate-view-control
-      className="flex overflow-x-hidden border-b border-border"
+      data-estimate-view-scroll
+      className="flex max-w-full gap-1 overflow-x-auto overscroll-x-contain border-b border-border"
     >
       {items.map((item) => {
         const selected = view === item.id;
@@ -76,11 +85,25 @@ export function EstimateViewControl({
             onClick={() => onChange(item.id)}
           >
             {item.label}
-          </button>
-        );
+        </button>
+      );
       })}
     </div>
+    </div>
   );
+}
+
+function reviewPhrase(card: WorkAreaBreakdownCard): string | null {
+  const assumptions =
+    card.assumptions.length +
+    card.portions.reduce((sum, portion) => sum + portion.assumptions.length, 0);
+  const checks = card.checks.length;
+  const parts: string[] = [];
+  if (assumptions === 1) parts.push("1 assumption to review");
+  else if (assumptions > 1) parts.push(`${assumptions} assumptions to review`);
+  if (checks === 1) parts.push("1 check to review");
+  else if (checks > 1) parts.push(`${checks} checks to review`);
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -207,7 +230,6 @@ export function WorkAreaBreakdown({
   view,
   scope = [],
   isRegenerating = false,
-  onBack,
   onEditJob,
   onReviewWorkArea,
   onRegenerate,
@@ -228,18 +250,6 @@ export function WorkAreaBreakdown({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-work-area-breakdown>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-11 min-h-11 px-3"
-          data-back-to-overview
-          onClick={onBack}
-        >
-          Back to overview
-        </Button>
-      </div>
-
       <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-work-area-summary>
         <h2 className="text-base font-semibold">{model.title}</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -285,6 +295,7 @@ export function WorkAreaBreakdown({
       <div className="space-y-3">
         {model.cards.map((card) => {
           const open = openIds.has(card.id);
+          const phrase = reviewPhrase(card);
           return (
             <section
               key={card.id}
@@ -302,47 +313,22 @@ export function WorkAreaBreakdown({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-semibold break-words">{card.name}</span>
-                  <span className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <span className="block min-w-0">
-                      <span className="block text-sm text-foreground/75">Readiness</span>
-                      <span className="mt-1 block font-medium">{card.readiness}</span>
-                    </span>
+                  <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/80">
+                    <span>{card.readiness}</span>
                     {card.directCost ? (
-                      <span className="block min-w-0">
-                        <span className="block text-sm text-foreground/75">Direct cost</span>
-                        <span className="mt-1 block font-medium tabular-nums">{card.directCost}</span>
-                      </span>
+                      <span className="tabular-nums">Direct cost {card.directCost}</span>
                     ) : null}
                     {card.previousDirectCost ? (
-                      <span className="block min-w-0">
-                        <span className="block text-sm text-foreground/75">Previous direct cost</span>
-                        <span className="mt-1 block font-medium tabular-nums">{card.previousDirectCost}</span>
-                      </span>
+                      <span className="tabular-nums">Previous direct cost {card.previousDirectCost}</span>
                     ) : null}
                     {card.indicativeSell ? (
-                      <span className="block min-w-0">
-                        <span className="block text-sm text-foreground/75">Indicative client sell</span>
-                        <span className="mt-1 block font-medium tabular-nums">{card.indicativeSell}</span>
-                      </span>
+                      <span className="tabular-nums">Indicative client sell {card.indicativeSell}</span>
                     ) : null}
                     {card.labourHours ? (
-                      <span className="block min-w-0">
-                        <span className="block text-sm text-foreground/75">Labour hours</span>
-                        <span className="mt-1 block font-medium tabular-nums">{card.labourHours}</span>
-                      </span>
+                      <span className="tabular-nums">Labour hours {card.labourHours}</span>
                     ) : null}
-                    {card.composition ? (
-                      <span className="block min-w-0 sm:col-span-2">
-                        <span className="block text-sm text-foreground/75">Composition</span>
-                        <span className="mt-1 block break-words">{card.composition}</span>
-                      </span>
-                    ) : null}
-                    {card.reviewCount > 0 ? (
-                      <span className="block min-w-0">
-                        <span className="block text-sm text-foreground/75">To review</span>
-                        <span className="mt-1 block font-medium tabular-nums">{card.reviewCount}</span>
-                      </span>
-                    ) : null}
+                    {card.composition ? <span className="break-words">{card.composition}</span> : null}
+                    {phrase ? <span>{phrase}</span> : null}
                   </span>
                 </span>
                 <span className="shrink-0 pt-1 text-sm text-foreground/70">{open ? "Hide" : "Show"}</span>

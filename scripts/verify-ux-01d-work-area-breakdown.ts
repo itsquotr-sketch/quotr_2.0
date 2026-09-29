@@ -69,7 +69,7 @@ const reviewHandler = shell.slice(
 
 check(
   "1 Overview remains the default",
-  shell.includes('useState<"overview" | "work_areas">("overview")') &&
+  shell.includes('useState<EstimatePresentationView>("overview")') &&
     shell.includes("data-estimate-view={estimateView}") &&
     breakdown.includes("data-estimate-view-tab={item.id}") &&
     breakdown.includes('id: "overview", label: "Overview"')
@@ -82,9 +82,10 @@ check(
     !reviewHandler.includes("router.refresh") &&
     !reviewHandler.includes("fetch(") &&
     !reviewHandler.includes("saveBrief") &&
-    shell.includes('onBack={() => setEstimateView("overview")}') &&
-    breakdown.includes("Back to overview") &&
-    breakdown.includes("data-back-to-overview")
+    shell.includes("onChange={setEstimateView}") &&
+    breakdown.includes('id: "overview", label: "Overview"') &&
+    !breakdown.includes("Back to overview") &&
+    !breakdown.includes("data-back-to-overview")
 );
 
 const priced = view({
