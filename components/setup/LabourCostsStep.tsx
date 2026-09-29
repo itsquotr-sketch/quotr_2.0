@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  OnboardingFieldError,
+  useFocusOnboardingError,
+} from "./focus-onboarding-error";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +43,13 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
+  const errorSignature = [
+    error ?? "",
+    ...Object.entries(fieldErrors).map(
+      ([key, messages]) => `${key}:${messages[0] ?? ""}`
+    ),
+  ].join("|");
+  useFocusOnboardingError(errorSignature);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -67,7 +78,11 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
           rates you charge clients.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col">
+      <form
+        onSubmit={handleSubmit}
+        data-onboarding-form=""
+        className="flex flex-col"
+      >
         <CardContent className="space-y-5">
           <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-snug text-muted-foreground">
             Enter internal hourly costs excluding GST
@@ -90,9 +105,10 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
               required
               className="h-11"
             />
-            {fieldErrors.carpenterCost?.[0] ? (
-              <p className="text-sm text-destructive">{fieldErrors.carpenterCost[0]}</p>
-            ) : null}
+            <OnboardingFieldError
+              id="labour-carpenter"
+              message={fieldErrors.carpenterCost?.[0]}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="labour-labourer">Labourer internal cost per hour ({currency})</Label>
@@ -104,13 +120,19 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
               required
               className="h-11"
             />
-            {fieldErrors.labourerCost?.[0] ? (
-              <p className="text-sm text-destructive">{fieldErrors.labourerCost[0]}</p>
-            ) : null}
+            <OnboardingFieldError
+              id="labour-labourer"
+              message={fieldErrors.labourerCost?.[0]}
+            />
           </div>
         </CardContent>
         <CardFooter className="border-t">
-          <Button type="submit" className="h-11 w-full sm:w-auto" disabled={saving}>
+          <Button
+            id="labour-continue"
+            type="submit"
+            className="h-11 w-full scroll-mb-4 sm:w-auto"
+            disabled={saving}
+          >
             {saving ? "Saving…" : "Continue"}
           </Button>
         </CardFooter>

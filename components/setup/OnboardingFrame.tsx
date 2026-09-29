@@ -11,7 +11,13 @@ type OnboardingFrameProps = {
   deploymentLabel?: "Local" | "Preview" | null;
 };
 
-/** Focused shell while required onboarding is unfinished. No primary nav. */
+/**
+ * Focused shell while required onboarding is unfinished. No primary nav.
+ *
+ * Root `body` is `md:h-dvh md:overflow-hidden`, so the document cannot scroll.
+ * This frame takes that same viewport height. The step form is the only
+ * scrollport (see FormContainer). The header stays in flow above it.
+ */
 export function OnboardingFrame({
   children,
   userEmail,
@@ -31,8 +37,8 @@ export function OnboardingFrame({
         deploymentLabel,
       }}
     >
-      <div className="flex min-h-dvh flex-col bg-background">
-        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4">
           <div className="flex min-w-0 items-center gap-2">
             <QuotrLogo variant="wordmark" href={null} height={22} />
             {deploymentLabel ? (

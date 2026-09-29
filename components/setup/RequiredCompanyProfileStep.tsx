@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  OnboardingFieldError,
+  useFocusOnboardingError,
+} from "./focus-onboarding-error";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -59,6 +63,13 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
   const [saving, setSaving] = useState(false);
 
   const copy = taxRegistrationCopy(country);
+  const errorSignature = [
+    error ?? "",
+    ...Object.entries(fieldErrors).map(
+      ([key, messages]) => `${key}:${messages[0] ?? ""}`
+    ),
+  ].join("|");
+  useFocusOnboardingError(errorSignature);
 
   function handleCountryChange(next: string) {
     setCountry(next);
@@ -108,7 +119,11 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
           later under Company.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col">
+      <form
+        onSubmit={handleSubmit}
+        data-onboarding-form=""
+        className="flex flex-col"
+      >
         <CardContent className="space-y-5">
           {error ? (
             <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -126,9 +141,10 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
               autoComplete="organization"
               className="h-11"
             />
-            {fieldErrors.trading_name?.[0] ? (
-              <p className="text-sm text-destructive">{fieldErrors.trading_name[0]}</p>
-            ) : null}
+            <OnboardingFieldError
+              id="basics-trading-name"
+              message={fieldErrors.trading_name?.[0]}
+            />
           </div>
 
           <div className="space-y-2">
@@ -160,9 +176,10 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                 required
                 className="h-11"
               />
-              {fieldErrors.address_line_1?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.address_line_1[0]}</p>
-              ) : null}
+              <OnboardingFieldError
+                id="basics-address-1"
+                message={fieldErrors.address_line_1?.[0]}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="basics-address-2">Address line 2 (optional)</Label>
@@ -185,9 +202,7 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                   required
                   className="h-11"
                 />
-                {fieldErrors.city?.[0] ? (
-                  <p className="text-sm text-destructive">{fieldErrors.city[0]}</p>
-                ) : null}
+                <OnboardingFieldError id="basics-city" message={fieldErrors.city?.[0]} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="basics-postcode">Postcode</Label>
@@ -200,9 +215,10 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                   required
                   className="h-11"
                 />
-                {fieldErrors.postcode?.[0] ? (
-                  <p className="text-sm text-destructive">{fieldErrors.postcode[0]}</p>
-                ) : null}
+                <OnboardingFieldError
+                  id="basics-postcode"
+                  message={fieldErrors.postcode?.[0]}
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -226,6 +242,7 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                 >
                   <input
                     type="radio"
+                    id={choice === "yes" ? "basics-gst-yes" : "basics-gst-no"}
                     name="gst_registered"
                     value={choice}
                     checked={gstRegistered === choice}
@@ -236,9 +253,10 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                 </label>
               ))}
             </div>
-            {fieldErrors.gst_registered?.[0] ? (
-              <p className="text-sm text-destructive">{fieldErrors.gst_registered[0]}</p>
-            ) : null}
+            <OnboardingFieldError
+              id="basics-gst-yes"
+              message={fieldErrors.gst_registered?.[0]}
+            />
             {gstRegistered === "yes" ? (
               <div className="space-y-2">
                 <Label htmlFor="basics-tax-id">{copy.identifierLabel}</Label>
@@ -251,9 +269,10 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
                   autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">{copy.identifierHint}</p>
-                {fieldErrors.tax_identifier?.[0] ? (
-                  <p className="text-sm text-destructive">{fieldErrors.tax_identifier[0]}</p>
-                ) : null}
+                <OnboardingFieldError
+                  id="basics-tax-id"
+                  message={fieldErrors.tax_identifier?.[0]}
+                />
               </div>
             ) : null}
             <p className="text-xs text-muted-foreground">
@@ -268,7 +287,12 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
           </fieldset>
         </CardContent>
         <CardFooter className="border-t">
-          <Button type="submit" className="h-11 w-full sm:w-auto" disabled={saving}>
+          <Button
+            id="basics-continue"
+            type="submit"
+            className="h-11 w-full scroll-mb-4 sm:w-auto"
+            disabled={saving}
+          >
             {saving ? "Saving…" : "Continue"}
           </Button>
         </CardFooter>

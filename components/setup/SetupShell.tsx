@@ -31,6 +31,10 @@ import {
   workAreasSummary,
 } from "@/lib/setup/completed-setup";
 import { resolveOptionalPersonalisationTarget } from "@/lib/setup/optional-personalisation";
+import {
+  onboardingFormEndPadding,
+  onboardingFormScrollClass,
+} from "./onboarding-scroll";
 
 export type SetupShellMode = "basics" | "work" | "labour" | "pricing" | "ready" | "improve";
 
@@ -99,7 +103,10 @@ export function SetupShell({
           title="Welcome to Quotr"
           description="Company details, the work you price, and your internal labour costs."
         />
-        <FormContainer>
+        <FormContainer
+          className={onboardingFormScrollClass}
+          innerClassName={onboardingFormEndPadding}
+        >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="company" />
             <RequiredCompanyProfileStep state={state} />
@@ -117,7 +124,10 @@ export function SetupShell({
           title="Your work"
           description="Tell Quotr the jobs you usually price."
         />
-        <FormContainer>
+        <FormContainer
+          className={onboardingFormScrollClass}
+          innerClassName={onboardingFormEndPadding}
+        >
           <div className="mx-auto w-full max-w-2xl">
             <FirstRunProgress current="work" />
             <WorkAreasStep state={state} mode="first-run" />
@@ -135,7 +145,10 @@ export function SetupShell({
           title="Labour costs"
           description="Internal hourly costs for the business, not client charge-out rates."
         />
-        <FormContainer>
+        <FormContainer
+          className={onboardingFormScrollClass}
+          innerClassName={onboardingFormEndPadding}
+        >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="labour" />
             <LabourCostsStep state={state} />
@@ -154,7 +167,10 @@ export function SetupShell({
           description="Optional labour cost and target margin — skip if you are not sure yet."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
-        <FormContainer>
+        <FormContainer
+          className={onboardingFormScrollClass}
+          innerClassName={onboardingFormEndPadding}
+        >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="labour" />
             <PricingBasicsStep state={state} />
@@ -172,7 +188,10 @@ export function SetupShell({
           title="Start your first job"
           description="You can refine details as you go."
         />
-        <FormContainer>
+        <FormContainer
+          className={onboardingFormScrollClass}
+          innerClassName={onboardingFormEndPadding}
+        >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="job" />
             <FirstRunReady
