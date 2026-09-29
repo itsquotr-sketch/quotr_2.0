@@ -146,6 +146,9 @@ function Cell({
             label !== "Portion" &&
             label !== "Source" &&
             label !== "Productivity" &&
+            label !== "Productivity basis" &&
+            label !== "Productivity source" &&
+            label !== "Hourly-rate source" &&
             "tabular-nums lg:text-right"
         )}
       >
@@ -160,6 +163,49 @@ function moneyCell(row: TakeoffRow, amount: string | null): string | null {
   return amount;
 }
 
+function IdentityCell({ row, kind }: { row: TakeoffRow; kind: "materials" | "labour" }) {
+  if (kind === "labour") {
+    return (
+      <div className="min-w-0">
+        <p className="text-sm text-foreground/70 lg:sr-only">Worker type</p>
+        <p className="break-words text-sm" data-worker-type={row.id}>
+          {row.workerType ?? "Worker type not specified"}
+        </p>
+        {row.pricedUsing ? (
+          <p className="mt-1 break-words text-sm text-foreground/80" data-priced-using={row.id}>
+            {row.pricedUsing}
+          </p>
+        ) : null}
+        <p className="mt-1 break-words font-medium [overflow-wrap:anywhere]" data-labour-activity={row.id}>
+          {row.activity ?? row.description}
+        </p>
+      </div>
+    );
+  }
+  const primary = row.product ?? row.description;
+  const useLine =
+    row.materialUse && row.materialUse !== primary ? row.materialUse : null;
+  const secondary = [useLine, row.specification].filter(Boolean).join(" · ");
+  return (
+    <div className="min-w-0">
+      <p className="text-sm text-foreground/70 lg:sr-only">Material</p>
+      <p className="break-words font-medium [overflow-wrap:anywhere]" data-material-product={row.id}>
+        {primary}
+      </p>
+      {row.genericCaption ? (
+        <p className="mt-1 text-sm text-foreground/70" data-material-caption={row.id}>
+          {row.genericCaption}
+        </p>
+      ) : null}
+      {secondary ? (
+        <p className="mt-1 break-words text-sm text-foreground/80" data-material-use={row.id}>
+          {secondary}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function TakeoffRows({
   rows,
   kind,
@@ -169,12 +215,12 @@ function TakeoffRows({
 }) {
   const materials = kind === "materials";
   const grid = materials
-    ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_4.5rem_3.5rem_6.5rem_7rem_minmax(0,0.9fr)]"
-    : "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.7fr)_5.5rem_6.5rem_7rem_minmax(0,0.9fr)_minmax(0,0.9fr)]";
+    ? "lg:grid-cols-[minmax(0,1.7fr)_minmax(0,0.7fr)_4.5rem_3.5rem_6.5rem_7rem_minmax(0,0.9fr)]"
+    : "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.7fr)_4.5rem_minmax(0,0.9fr)_minmax(0,0.8fr)_6rem_minmax(0,0.8fr)_6.5rem]";
   return (
     <div className="min-w-0">
       <div className={cn("hidden text-sm text-foreground/70 lg:grid lg:gap-3", grid)}>
-        <span>Description</span>
+        <span>{materials ? "Material" : "Labour"}</span>
         <span>Portion</span>
         {materials ? (
           <>
@@ -182,27 +228,29 @@ function TakeoffRows({
             <span className="text-right">Unit</span>
             <span className="text-right">Unit cost</span>
             <span className="text-right">Total</span>
+            <span>Rate source</span>
           </>
         ) : (
           <>
             <span className="text-right">Hours</span>
+            <span>Productivity basis</span>
+            <span>Productivity source</span>
             <span className="text-right">Hourly cost</span>
+            <span>Hourly-rate source</span>
             <span className="text-right">Labour cost</span>
-            <span>Productivity</span>
           </>
         )}
-        <span>Source</span>
       </div>
       <ul>
         {rows.map((row) => (
           <li
             key={row.id}
-            className={cn("grid gap-1 border-t border-border/70 py-3 lg:items-start lg:gap-3", grid)}
+            className={cn("grid gap-2 border-t border-border/70 py-3 lg:items-start lg:gap-3", grid)}
             data-takeoff-row={row.id}
             data-takeoff-shared={row.shared ? "true" : "false"}
             data-pricing-required={row.pricingRequired ? "true" : "false"}
           >
-            <Cell label="Description" value={row.description} emphasize />
+            <IdentityCell row={row} kind={kind} />
             <Cell label="Portion" value={row.portion ?? "—"} />
             {materials ? (
               <>
@@ -210,29 +258,31 @@ function TakeoffRows({
                 <Cell label="Unit" value={row.unit ?? "—"} />
                 <Cell label="Unit cost" value={moneyCell(row, row.unitCost) ?? "—"} />
                 <Cell label="Total" value={moneyCell(row, row.total) ?? "—"} />
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground/70 lg:sr-only">Rate source</p>
+                  <p
+                    className={cn(
+                      "break-words text-sm",
+                      row.pricingRequired && "font-medium text-amber-800 dark:text-amber-200"
+                    )}
+                    data-takeoff-source={row.id}
+                  >
+                    {row.source ?? "—"}
+                  </p>
+                </div>
               </>
             ) : (
               <>
                 <Cell label="Hours" value={row.hours ?? "—"} />
+                <Cell label="Productivity basis" value={row.productivityBasis ?? "—"} />
+                <Cell label="Productivity source" value={row.productivitySource ?? "—"} />
                 <Cell label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
+                <Cell label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
                 <Cell label="Labour cost" value={moneyCell(row, row.total) ?? "—"} />
-                <Cell label="Productivity" value={row.productivity ?? "—"} />
               </>
             )}
-            <div className="min-w-0">
-              <p className="text-sm text-foreground/70 lg:sr-only">Source</p>
-              <p
-                className={cn(
-                  "break-words text-sm",
-                  row.pricingRequired && "font-medium text-amber-800 dark:text-amber-200"
-                )}
-                data-takeoff-source={row.id}
-              >
-                {row.source ?? "—"}
-              </p>
-            </div>
             {row.pricingRequired ? (
-              <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-7")}>
+              <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-8")}>
                 {TAKEOFF_PRICING_EXPLANATION}
               </p>
             ) : null}
@@ -255,10 +305,18 @@ function filterGroups(
       workArea: group.workArea,
       rows: group.rows.filter((row) => {
         if (!needle) return true;
-        return (
-          row.description.toLowerCase().includes(needle) ||
-          row.workArea.toLowerCase().includes(needle)
-        );
+        const haystack = [
+          row.description,
+          row.product,
+          row.materialUse,
+          row.specification,
+          row.activity,
+          row.workArea,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(needle);
       }),
     }))
     .filter((group) => group.rows.length > 0);
@@ -451,6 +509,12 @@ function ReviewList({
           <li key={item.id} className="border-t border-border/60 py-2 text-sm break-words" data-review-entry={item.id}>
             <p>{item.label}</p>
             {item.detail ? <p className="mt-1 text-foreground/75">{item.detail}</p> : null}
+            {item.portion && item.portion !== item.detail ? (
+              <p className="mt-1 text-foreground/75">{item.portion}</p>
+            ) : null}
+            {item.count > 1 ? (
+              <p className="mt-1 text-foreground/75">{item.count} lines</p>
+            ) : null}
           </li>
         ))}
       </ul>

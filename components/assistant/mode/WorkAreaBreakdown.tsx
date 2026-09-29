@@ -313,25 +313,52 @@ export function WorkAreaBreakdown({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-semibold break-words">{card.name}</span>
-                  <span className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/80">
-                    <span>{card.readiness}</span>
+                  <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 xl:grid-cols-6">
+                    <span className="min-w-0">
+                      <span className="block text-xs text-foreground/70">Readiness</span>
+                      <span className="block font-medium">{card.readiness}</span>
+                    </span>
                     {card.directCost ? (
-                      <span className="tabular-nums">Direct cost {card.directCost}</span>
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Direct cost</span>
+                        <span className="block font-medium tabular-nums">{card.directCost}</span>
+                      </span>
                     ) : null}
                     {card.previousDirectCost ? (
-                      <span className="tabular-nums">Previous direct cost {card.previousDirectCost}</span>
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Previous direct cost</span>
+                        <span className="block font-medium tabular-nums">{card.previousDirectCost}</span>
+                      </span>
                     ) : null}
                     {card.indicativeSell ? (
-                      <span className="tabular-nums">Indicative client sell {card.indicativeSell}</span>
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Indicative client sell</span>
+                        <span className="block font-medium tabular-nums">{card.indicativeSell}</span>
+                      </span>
                     ) : null}
                     {card.labourHours ? (
-                      <span className="tabular-nums">Labour hours {card.labourHours}</span>
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Labour hours</span>
+                        <span className="block font-medium tabular-nums">{card.labourHours}</span>
+                      </span>
                     ) : null}
-                    {card.composition ? <span className="break-words">{card.composition}</span> : null}
-                    {phrase ? <span>{phrase}</span> : null}
+                    {card.composition ? (
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Composition</span>
+                        <span className="block break-words">{card.composition}</span>
+                      </span>
+                    ) : null}
+                    {phrase ? (
+                      <span className="min-w-0">
+                        <span className="block text-xs text-foreground/70">Assumptions and checks</span>
+                        <span className="block break-words">{phrase}</span>
+                      </span>
+                    ) : null}
                   </span>
                 </span>
-                <span className="shrink-0 pt-1 text-sm text-foreground/70">{open ? "Hide" : "Show"}</span>
+                <span className="shrink-0 pt-1 text-sm text-foreground/70">
+                  {open ? "Hide breakdown" : "View breakdown"}
+                </span>
               </button>
 
               {open ? (

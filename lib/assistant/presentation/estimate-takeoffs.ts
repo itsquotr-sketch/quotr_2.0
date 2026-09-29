@@ -13,8 +13,15 @@ import type {
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
 import {
   formatLabourHours,
+  formatProductivity,
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
+import {
+  APPRENTICE_LABOUR_RATE_KEY,
+  CARPENTER_LABOUR_RATE_KEY,
+  GENERAL_LABOUR_RATE_KEY,
+  LABOURER_LABOUR_RATE_KEY,
+} from "@/lib/estimate/labour-trade-mapping";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 
 export const TAKEOFF_PRICING_EXPLANATION =
@@ -31,6 +38,20 @@ type PlacedLine = {
 export type TakeoffRow = {
   readonly id: string;
   readonly description: string;
+  /** Authoritative product name when the stored identity supplies one. */
+  readonly product: string | null;
+  /** Work Area use, such as Decking or Joists. The line label, not a guessed product. */
+  readonly materialUse: string | null;
+  readonly specification: string | null;
+  /** Shown only when no specific product is stored. */
+  readonly genericCaption: string | null;
+  readonly workerType: string | null;
+  /** Applied rate identity when the line uses a known labour-rate fallback. */
+  readonly pricedUsing: string | null;
+  readonly activity: string | null;
+  readonly productivityBasis: string | null;
+  readonly productivitySource: string | null;
+  readonly hourlyRateSource: string | null;
   readonly workArea: string;
   readonly portion: string | null;
   readonly quantity: string | null;
@@ -82,6 +103,8 @@ export type ReviewEntry = {
   readonly id: string;
   readonly label: string;
   readonly detail: string | null;
+  readonly portion: string | null;
+  readonly count: number;
 };
 
 export type ReviewGroup = {
@@ -129,8 +152,95 @@ function money(amount: number | null): string | null {
   return formatCurrency(amount);
 }
 
-function hourlyUnit(unit: string | null): boolean {
-  return Boolean(unit && /^(hr|hrs|hour|hours)$/i.test(unit.trim()));
+function isProcurementPhrase(text: string): boolean {
+  return /\b(required|purchased|waste)\b/i.test(text) || /×/.test(text) || /\bh\//.test(text);
+}
+
+function isMeasurementOnly(text: string): boolean {
+  return /^\d+(\.\d+)?\s*(mm|m|m2|m²|lm)$/i.test(text.trim());
+}
+
+function splitStoredIdentity(label: string, identitySummary: string | null): {
+  product: string | null;
+  materialUse: string;
+  specification: string | null;
+  genericCaption: string | null;
+} {
+  const summary = identitySummary?.trim() ?? "";
+  const parts = summary
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const first = parts[0] ?? "";
+  const firstIsProduct =
+    first.length > 0 &&
+    first.toLowerCase() !== label.trim().toLowerCase() &&
+    !isProcurementPhrase(first) &&
+    !isMeasurementOnly(first);
+  if (firstIsProduct) {
+    const specification = parts.slice(1).join(" · ");
+    return {
+      product: first,
+      materialUse: label,
+      specification: specification || null,
+      genericCaption: null,
+    };
+  }
+  const dash = label.match(/^(.+?)\s+—\s+(.+)$/);
+  if (dash) {
+    const product = dash[1]?.trim() ?? "";
+    const use = dash[2]?.trim() ?? label;
+    if (
+      product &&
+      !isProcurementPhrase(product) &&
+      !isMeasurementOnly(product)
+    ) {
+      return {
+        product,
+        materialUse: use,
+        specification: summary && summary !== label ? summary : null,
+        genericCaption: null,
+      };
+    }
+  }
+  return {
+    product: null,
+    materialUse: label,
+    specification: summary && summary !== label ? summary : null,
+    genericCaption: /package|allowance/i.test(label)
+      ? "Estimated material allowance"
+      : "Material category",
+  };
+}
+
+function labourRateIdentity(itemKey: string | null | undefined): {
+  workerType: string | null;
+  pricedUsing: string | null;
+} {
+  if (itemKey === LABOURER_LABOUR_RATE_KEY) {
+    return { workerType: "Labourer", pricedUsing: null };
+  }
+  if (itemKey === APPRENTICE_LABOUR_RATE_KEY) {
+    return { workerType: "Apprentice", pricedUsing: null };
+  }
+  if (itemKey === CARPENTER_LABOUR_RATE_KEY) {
+    return { workerType: null, pricedUsing: "Priced using Carpenter labour cost" };
+  }
+  if (itemKey === GENERAL_LABOUR_RATE_KEY) {
+    return { workerType: null, pricedUsing: "Priced using General labour cost" };
+  }
+  return { workerType: null, pricedUsing: null };
+}
+
+function storedProductivityBasis(line: BuilderReviewPricedLine): string | null {
+  const summary = line.sourceLine.identitySummary?.trim() ?? "";
+  if (summary && /\bh\//.test(summary)) return summary;
+  const rate = line.sourceLine.productivityRate;
+  const unit = line.sourceLine.productivityUnit ?? line.unit;
+  if (rate != null && rate > 0 && unit) {
+    return `${formatProductivity(rate)} h/${unit}`;
+  }
+  return null;
 }
 
 function presentRow(placed: PlacedLine): TakeoffRow {
@@ -144,9 +254,23 @@ function presentRow(placed: PlacedLine): TakeoffRow {
       ? formatCurrency(line.costRate)
       : null;
   const labour = isLabourLine(line);
+  const identity = labour
+    ? null
+    : splitStoredIdentity(line.label, line.sourceLine.identitySummary ?? line.specification);
+  const worker = labour ? labourRateIdentity(line.itemKey ?? line.sourceLine.itemKey) : null;
   return {
     id: line.id,
     description: line.label,
+    product: identity?.product ?? null,
+    materialUse: labour ? null : identity?.materialUse ?? line.label,
+    specification: identity?.specification ?? null,
+    genericCaption: identity?.genericCaption ?? null,
+    workerType: worker?.workerType ?? null,
+    pricedUsing: worker?.pricedUsing ?? null,
+    activity: labour ? line.label : null,
+    productivityBasis: labour ? storedProductivityBasis(line) : null,
+    productivitySource: labour ? line.productivityLabel : null,
+    hourlyRateSource: labour ? sourceLabel(line, required) : null,
     workArea: placed.workArea,
     portion: placed.portion,
     quantity: line.quantity == null ? null : formatQuantity(line.quantity),
@@ -154,7 +278,7 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     unitCost: labour ? null : unitCost,
     total: money(cost),
     hours: hours == null ? null : `${formatLabourHours(hours)} hrs`,
-    hourlyCost: labour && hourlyUnit(line.unit) ? unitCost : null,
+    hourlyCost: labour ? unitCost : null,
     productivity: line.productivityLabel,
     source: sourceLabel(line, required),
     pricingRequired: required,
@@ -358,13 +482,21 @@ export function projectAssumptionsReview(view: BuilderReviewView): AssumptionsRe
   };
 
   for (const item of view.checks) {
-    bucket(item.label).attention.push({ id: item.id, label: item.label, detail: item.detail });
+    bucket(item.label).attention.push({
+      id: item.id,
+      label: item.label,
+      detail: item.detail,
+      portion: null,
+      count: 1,
+    });
   }
   for (const item of view.assumptions) {
     bucket(item.label).assumptions.push({
       id: item.id,
       label: item.label,
       detail: item.detail,
+      portion: null,
+      count: 1,
     });
   }
   for (const area of areas) {
@@ -376,18 +508,35 @@ export function projectAssumptionsReview(view: BuilderReviewView): AssumptionsRe
           id: `${portion.id}-assumption-${index}`,
           label,
           detail: portion.label,
+          portion: portion.label,
+          count: 1,
         });
       });
     }
+    const notices: ReviewEntry[] = [];
     for (const placed of placeLines({ ...view, workAreas: [area] })) {
       if (!/benchmark/i.test(placed.line.rateLabel)) continue;
-      if (group.benchmarks.some((row) => row.id === placed.line.id)) continue;
-      group.benchmarks.push({
+      const portion = placed.portion;
+      const existing = notices.find(
+        (row) =>
+          row.label === placed.line.label &&
+          row.detail === placed.line.rateLabel &&
+          row.portion === portion
+      );
+      if (existing) {
+        const index = notices.indexOf(existing);
+        notices[index] = { ...existing, count: existing.count + 1 };
+        continue;
+      }
+      notices.push({
         id: placed.line.id,
         label: placed.line.label,
         detail: placed.line.rateLabel,
+        portion,
+        count: 1,
       });
     }
+    group.benchmarks.push(...notices);
   }
 
   const visible = [...groups, other].filter(
@@ -398,7 +547,10 @@ export function projectAssumptionsReview(view: BuilderReviewView): AssumptionsRe
   );
   const attentionCount = visible.reduce((sum, group) => sum + group.attention.length, 0);
   const assumptionCount = visible.reduce((sum, group) => sum + group.assumptions.length, 0);
-  const benchmarkCount = visible.reduce((sum, group) => sum + group.benchmarks.length, 0);
+  const benchmarkCount = visible.reduce(
+    (sum, group) => sum + group.benchmarks.reduce((count, row) => count + row.count, 0),
+    0
+  );
 
   return {
     title: "Assumptions and checks",
