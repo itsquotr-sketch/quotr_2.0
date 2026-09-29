@@ -252,12 +252,13 @@ check(
 );
 
 const strip = read("components/projects/ProjectWorkflowStrip.tsx");
+const header = read("components/projects/ProjectSectionHeader.tsx");
 const orientation = read("lib/projects/workflow-orientation.ts");
 const tabs = read("components/projects/ProjectWorkspaceTabs.tsx");
 const nav = read("components/projects/ProjectWorkspaceNav.tsx");
 const quotePage = read("app/(protected)/app/projects/[projectId]/quotes/[quoteId]/page.tsx");
 const variationPage = read("app/(protected)/app/projects/[projectId]/variations/page.tsx");
-const confidential = `${strip}\n${orientation}`;
+const confidential = `${strip}\n${header}\n${orientation}`;
 
 check(
   "13 strip does not render cost, margin, or sell figures",
@@ -275,36 +276,22 @@ check(
 );
 
 check(
-  "14 desktop groups and mobile compact contract",
-  strip.includes("Define the job") &&
-    strip.includes("Build the price") &&
-    strip.includes("Send and manage") &&
-    strip.includes("md:grid md:grid-cols-3") &&
-    strip.includes("md:hidden") &&
-    strip.includes("overflow-x-hidden") &&
-    strip.includes("min-h-11") &&
-    strip.includes('aria-current={stage.viewing ? "page" : undefined}') &&
-    strip.includes('aria-current="page"') &&
-    strip.includes("focus-visible:outline") &&
-    strip.includes("motion-reduce:transition-none") &&
-    !strip.includes("font-display") &&
-    !strip.includes("CreateFinalPricingDialog") &&
-    !strip.includes("bottom-nav")
-);
-check(
-  "14 existing tabs remain the route controls",
-  nav.includes("<ProjectWorkflowStrip") &&
-    nav.includes("<ProjectWorkspaceTabs") &&
-    tabs.includes("projectWorkflowRoutes") &&
-    tabs.includes("\n            Estimate\n") &&
-    tabs.includes("Pricing") &&
-    tabs.includes("Quote") &&
-    tabs.includes("Variations") &&
-    tabs.includes('data-variations-nav="true"') &&
-    tabs.includes("/variations") &&
-    tabs.includes("overflow-x-auto") &&
-    tabs.includes("formatContractorQuoteStatusLabel") &&
-    tabs.includes("CreateFinalPricingDialog")
+  "14 four-column header replaces the strip and tab row",
+  nav.includes("<ProjectSectionHeader") &&
+    !nav.includes("<ProjectWorkflowStrip") &&
+    !nav.includes("<ProjectWorkspaceTabs") &&
+    header.includes("lg:grid-cols-4") &&
+    header.includes("Project information") &&
+    header.includes("aria-label=\"Project section\"") &&
+    header.includes("min-h-11") &&
+    header.includes("text-base") &&
+    header.includes('aria-current={current ? "page" : undefined}') &&
+    header.includes("focus-visible:outline") &&
+    !header.includes("overflow-x-auto") &&
+    !header.includes("Define the job") &&
+    !header.includes("font-display") &&
+    header.includes("CreateFinalPricingDialog") &&
+    tabs.includes("Variations")
 );
 
 if (failed > 0) {

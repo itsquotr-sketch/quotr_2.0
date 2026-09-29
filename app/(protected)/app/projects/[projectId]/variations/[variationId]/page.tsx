@@ -6,6 +6,7 @@ import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHe
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getProjectWorkspaceTabContextWithContext } from "@/lib/pricing/pricing-loaders";
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
+import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { loadVariationEditor } from "@/lib/variations/workspace-actions";
@@ -42,6 +43,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
         <ProjectWorkspaceNav
           projectId={projectId}
           activeTab="variations"
+          projectContext={projectSectionContext(project)}
           pricingSummary={tabContext.pricingSummary}
           quoteSummary={quoteSummary}
           hasEstimate={tabContext.hasEstimate}

@@ -14,6 +14,7 @@ import {
   getLatestQuoteSummaryWithContext,
   getQuoteWorkspaceDataWithContext,
 } from "@/lib/quotes/quote-loaders";
+import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { notFound } from "next/navigation";
@@ -59,6 +60,7 @@ export default async function QuotePage({ params }: QuotePageProps) {
         <ProjectWorkspaceNav
           projectId={projectId}
           activeTab="quote"
+          projectContext={projectSectionContext(project)}
           pricingSummary={tabContext.pricingSummary}
           quoteSummary={quoteSummary}
           hasEstimate={tabContext.hasEstimate}

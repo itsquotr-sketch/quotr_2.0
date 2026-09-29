@@ -27,6 +27,7 @@ function read(path: string) {
 const orientation = read("lib/projects/workflow-orientation.ts");
 const tabs = read("components/projects/ProjectWorkspaceTabs.tsx");
 const menu = read("components/projects/ProjectActionsMenu.tsx");
+const header = read("components/projects/ProjectSectionHeader.tsx");
 const page = read("app/(protected)/app/projects/[projectId]/information/page.tsx");
 const workspace = read("components/projects/information/ProjectInformationWorkspace.tsx");
 const documents = read("components/projects/information/project-documents.ts");
@@ -84,12 +85,11 @@ const emptyOptional = projectInformationModel({
 check(
   "1 Project information sits outside the commercial lifecycle",
   orientation.includes('export type WorkflowStageId = "estimate" | "pricing" | "quote" | "variations"') &&
-    !orientation.includes("information") &&
     !tabs.includes("Project information") &&
-    menu.includes('data-project-information-entry="desktop"') &&
-    menu.includes('data-project-information-entry="mobile"') &&
-    page.includes("/information") &&
-    !page.includes("ProjectWorkspaceNav") &&
+    !menu.includes("data-project-information-entry") &&
+    header.includes("Project information") &&
+    page.includes('activeTab="information"') &&
+    page.includes("<ProjectWorkspaceNav") &&
     !page.includes("deriveProjectWorkflow")
 );
 
@@ -99,8 +99,10 @@ check(
     tabs.includes("Pricing") &&
     tabs.includes("Quote") &&
     tabs.includes("Variations") &&
-    workspace.includes("Back to Estimate") &&
-    workspace.includes("Open Estimate")
+    header.includes("Estimate") &&
+    header.includes("Pricing") &&
+    header.includes("Quote") &&
+    header.includes("Variations")
 );
 
 check(
@@ -192,8 +194,7 @@ check(
     !workspace.includes("<table") &&
     !workspace.includes("overflow-x-auto") &&
     !workspace.includes("text-[10px]") &&
-    !workspace.includes("text-[11px]") &&
-    menu.includes('className="min-h-11 sm:hidden"')
+    !workspace.includes("text-[11px]")
 );
 
 check(

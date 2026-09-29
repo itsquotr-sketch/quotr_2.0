@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
-import type { ProjectWorkspaceTab } from "@/components/projects/ProjectWorkspaceTabs";
+import type { ProjectWorkflowInput } from "@/lib/projects/workflow-orientation";
 import type { EstimateGenerationResult } from "@/lib/assistant/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
@@ -107,10 +107,12 @@ export function useEstimateGenerationProjection(): EstimateGenerationProjectionC
 export function ProjectWorkspaceNavProjected({
   projectId,
   activeTab,
+  projectContext,
   quoteSummary = null,
 }: {
   projectId: string;
-  activeTab: ProjectWorkspaceTab;
+  activeTab: ProjectWorkflowInput["activeTab"];
+  projectContext: string;
   quoteSummary?: QuoteSummary | null;
 }) {
   const ctx = useEstimateGenerationProjection();
@@ -119,6 +121,7 @@ export function ProjectWorkspaceNavProjected({
     <ProjectWorkspaceNav
       projectId={projectId}
       activeTab={activeTab}
+      projectContext={projectContext}
       pricingSummary={projection?.pricingSummary ?? null}
       quoteSummary={quoteSummary}
       hasEstimate={projection?.hasEstimate}

@@ -22,6 +22,7 @@ import {
   getProjectWorkspaceTabContextWithContext,
 } from "@/lib/pricing/pricing-loaders";
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
+import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
@@ -122,6 +123,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         <ProjectWorkspaceNavProjected
           projectId={projectId}
           activeTab="assistant"
+          projectContext={projectSectionContext(project)}
           quoteSummary={quoteSummary}
         />
       }

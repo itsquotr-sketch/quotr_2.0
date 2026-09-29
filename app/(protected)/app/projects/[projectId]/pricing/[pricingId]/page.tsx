@@ -15,6 +15,7 @@ import {
 } from "@/lib/pricing/pricing-loaders";
 import { getQuoteSummaryForPricingDocument } from "@/lib/quotes/actions";
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
+import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { notFound } from "next/navigation";
@@ -67,6 +68,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
         <ProjectWorkspaceNav
           projectId={projectId}
           activeTab="pricing"
+          projectContext={projectSectionContext(project)}
           pricingSummary={{
             id: pricingId,
             status: data.document.status,
