@@ -15,9 +15,10 @@ import {
 import type { BuilderReviewView } from "@/lib/assistant/builder-review";
 import { cn } from "@/lib/utils";
 
-const actionClassName = "h-11 min-h-11 w-full sm:w-auto";
+const actionClassName = "h-11 min-h-11 w-full text-sm lg:w-auto";
 const pricingClassName =
-  "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] sm:w-auto";
+  "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-sm text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] lg:w-auto";
+const primaryActionClassName = "sm:col-span-2 lg:col-span-1";
 
 export type EstimatePresentationView =
   | "overview"
@@ -61,11 +62,27 @@ export function EstimateViewControl({
   ];
   return (
     <div className="min-w-0 max-w-full overflow-x-hidden" data-estimate-view-control>
+    <label data-estimate-view-select className="grid gap-1 lg:hidden">
+      <span className="text-xs leading-4 text-foreground/70">Estimate view</span>
+      <select
+        value={view}
+        aria-label="Estimate view"
+        data-estimate-view-dropdown
+        className="h-11 min-h-11 w-full rounded-md border border-border bg-card px-3 text-base text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
+        onChange={(event) => onChange(event.target.value as EstimatePresentationView)}
+      >
+        {items.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
     <div
       role="tablist"
       aria-label="Estimate view"
       data-estimate-view-scroll
-      className="flex max-w-full gap-1 overflow-x-auto overscroll-x-contain border-b border-border"
+      className="hidden max-w-full gap-1 overflow-x-auto overscroll-x-contain border-b border-border lg:flex"
     >
       {items.map((item) => {
         const selected = view === item.id;
@@ -109,8 +126,8 @@ function reviewPhrase(card: WorkAreaBreakdownCard): string | null {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-sm text-foreground/75">{label}</p>
-      <p className="mt-1 text-lg font-medium break-words tabular-nums">{value}</p>
+      <p className="text-xs leading-4 text-foreground/70">{label}</p>
+      <p className="mt-1 break-words text-2xl font-semibold leading-7 tabular-nums lg:text-lg lg:font-medium">{value}</p>
     </div>
   );
 }
@@ -251,8 +268,8 @@ export function WorkAreaBreakdown({
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-work-area-breakdown>
       <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-work-area-summary>
-        <h2 className="text-base font-semibold">{model.title}</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <h2 className="text-lg font-semibold leading-6">{model.title}</h2>
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-4">
           <Stat
             label="Work Areas"
             value={model.workAreaCount === 1 ? "1 Work Area" : `${model.workAreaCount} Work Areas`}
@@ -312,7 +329,7 @@ export function WorkAreaBreakdown({
                 onClick={() => toggle(card.id)}
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold break-words">{card.name}</span>
+                  <span className="block break-words text-base font-semibold leading-snug">{card.name}</span>
                   <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 xl:grid-cols-6">
                     <span className="min-w-0">
                       <span className="block text-xs text-foreground/70">Readiness</span>
@@ -343,15 +360,15 @@ export function WorkAreaBreakdown({
                       </span>
                     ) : null}
                     {card.composition ? (
-                      <span className="min-w-0">
-                        <span className="block text-xs text-foreground/70">Composition</span>
-                        <span className="block break-words">{card.composition}</span>
+                      <span className="hidden min-w-0 lg:block">
+                        <span className="block text-xs leading-4 text-foreground/70">Composition</span>
+                        <span className="block break-words text-sm leading-5">{card.composition}</span>
                       </span>
                     ) : null}
                     {phrase ? (
-                      <span className="min-w-0">
-                        <span className="block text-xs text-foreground/70">Assumptions and checks</span>
-                        <span className="block break-words">{phrase}</span>
+                      <span className="hidden min-w-0 lg:block">
+                        <span className="block text-xs leading-4 text-foreground/70">Assumptions and checks</span>
+                        <span className="block break-words text-sm leading-5">{phrase}</span>
                       </span>
                     ) : null}
                   </span>
@@ -363,6 +380,11 @@ export function WorkAreaBreakdown({
 
               {open ? (
                 <div className="space-y-4 border-t border-border/70 px-4 py-4">
+                  {card.composition || phrase ? (
+                    <p className="text-sm leading-5 text-foreground/80 lg:hidden">
+                      {[card.composition, phrase].filter(Boolean).join(" · ")}
+                    </p>
+                  ) : null}
                   {card.included.length > 0 || card.excluded.length > 0 || card.quantities.length > 0 ? (
                     <section data-work-area-scope>
                       <h4 className="text-sm font-semibold">Scope and quantities</h4>
@@ -518,11 +540,11 @@ function Actions({
   pricing: PricingRoute | null;
 }) {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap" data-work-area-actions>
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap" data-work-area-actions>
       {onRegenerate ? (
         <Button
           type="button"
-          className={actionClassName}
+          className={cn(actionClassName, primaryActionClassName)}
           data-work-area-regenerate
           disabled={isRegenerating}
           onClick={onRegenerate}
@@ -531,7 +553,7 @@ function Actions({
         </Button>
       ) : null}
       {pricing?.entry === "create" ? (
-        <div data-work-area-pricing="create">
+        <div className={primaryActionClassName} data-work-area-pricing="create">
           <PrepareFinalPricingButton
             projectId={pricing.projectId}
             estimateId={pricing.estimateId}
@@ -541,7 +563,7 @@ function Actions({
         </div>
       ) : null}
       {pricing?.entry === "open" && pricing.pricingDocumentId ? (
-        <div data-work-area-pricing="open">
+        <div className={primaryActionClassName} data-work-area-pricing="open">
           <OpenFinalPricingLink
             projectId={pricing.projectId}
             pricingDocumentId={pricing.pricingDocumentId}

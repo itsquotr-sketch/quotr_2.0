@@ -16,11 +16,12 @@ import {
 } from "@/lib/assistant/presentation/estimate-takeoffs";
 import { cn } from "@/lib/utils";
 
-const actionClassName = "h-11 min-h-11 w-full sm:w-auto";
+const actionClassName = "h-11 min-h-11 w-full text-sm lg:w-auto";
 const pricingClassName =
-  "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] sm:w-auto";
+  "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-sm text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] lg:w-auto";
+const primaryActionClassName = "sm:col-span-2 lg:col-span-1";
 const controlClassName =
-  "h-11 min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]";
+  "h-11 min-h-11 w-full min-w-0 rounded-md border border-border bg-card px-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]";
 
 type PricingRoute = {
   projectId: string;
@@ -48,11 +49,11 @@ function Actions({
   pricing = null,
 }: TakeoffActions) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap" data-takeoff-actions>
       {onRegenerate ? (
         <Button
           type="button"
-          className={pricingClassName}
+          className={cn(pricingClassName, primaryActionClassName)}
           data-takeoff-regenerate
           disabled={isRegenerating}
           onClick={onRegenerate}
@@ -61,21 +62,25 @@ function Actions({
         </Button>
       ) : null}
       {pricing?.entry === "create" ? (
-        <PrepareFinalPricingButton
-          projectId={pricing.projectId}
-          estimateId={pricing.estimateId}
-          className={pricingClassName}
-          label={pricing.label}
-        />
+        <div className={primaryActionClassName}>
+          <PrepareFinalPricingButton
+            projectId={pricing.projectId}
+            estimateId={pricing.estimateId}
+            className={pricingClassName}
+            label={pricing.label}
+          />
+        </div>
       ) : null}
       {pricing?.entry === "open" && pricing.pricingDocumentId ? (
-        <OpenFinalPricingLink
-          projectId={pricing.projectId}
-          pricingDocumentId={pricing.pricingDocumentId}
-          className={pricingClassName}
-          variant="default"
-          label={pricing.label}
-        />
+        <div className={primaryActionClassName}>
+          <OpenFinalPricingLink
+            projectId={pricing.projectId}
+            pricingDocumentId={pricing.pricingDocumentId}
+            className={pricingClassName}
+            variant="default"
+            label={pricing.label}
+          />
+        </div>
       ) : null}
       {onReviewWorkArea ? (
         <Button
@@ -106,8 +111,8 @@ function Actions({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-sm text-foreground/75">{label}</p>
-      <p className="mt-1 text-lg font-medium break-words tabular-nums">{value}</p>
+      <p className="text-xs leading-4 text-foreground/70">{label}</p>
+      <p className="mt-1 break-words text-2xl font-semibold leading-7 tabular-nums lg:text-lg lg:font-medium">{value}</p>
     </div>
   );
 }
@@ -206,6 +211,121 @@ function IdentityCell({ row, kind }: { row: TakeoffRow; kind: "materials" | "lab
   );
 }
 
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs leading-4 text-foreground/70">{label}</p>
+      <p className="break-words text-sm leading-5 [overflow-wrap:anywhere]">{value}</p>
+    </div>
+  );
+}
+
+function CompactTakeoffRow({
+  row,
+  kind,
+  open,
+  onToggle,
+}: {
+  row: TakeoffRow;
+  kind: "materials" | "labour";
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const materials = kind === "materials";
+  const title = materials ? (row.product ?? row.description) : (row.activity ?? row.description);
+  const panelId = `takeoff-detail-${row.id}`;
+  const money = moneyCell(row, materials ? row.total : row.total) ?? "—";
+  const quantity = [row.quantity, row.unit].filter(Boolean).join(" ");
+  const useLine = materials
+    ? [row.materialUse && row.materialUse !== title ? row.materialUse : null, row.specification]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  const labourSummary = [row.hours, money].filter((part) => part && part !== "—").join(" · ");
+  return (
+    <div className="lg:hidden" data-takeoff-compact={row.id}>
+      <button
+        type="button"
+        className="flex min-h-11 w-full items-start gap-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={`${open ? "Hide details" : "View details"} for ${title}`}
+        onClick={onToggle}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-base font-medium leading-snug [overflow-wrap:anywhere]">
+            {title}
+          </span>
+          {materials && useLine ? (
+            <span className="mt-0.5 block break-words text-sm leading-5 text-foreground/80">{useLine}</span>
+          ) : null}
+          {materials && row.genericCaption ? (
+            <span className="mt-0.5 block text-xs leading-4 text-foreground/70">{row.genericCaption}</span>
+          ) : null}
+          {!materials ? (
+            <span className="mt-0.5 block text-sm leading-5 text-foreground/80">
+              {row.workerType ?? "Worker type not specified"}
+            </span>
+          ) : null}
+          {!materials && row.pricedUsing ? (
+            <span className="mt-0.5 block text-sm leading-5 text-foreground/80">{row.pricedUsing}</span>
+          ) : null}
+          <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm leading-5 tabular-nums">
+            {materials && quantity ? <span>{quantity}</span> : null}
+            {!materials && labourSummary ? <span>{labourSummary}</span> : null}
+            {materials ? <span>{money}</span> : null}
+            {materials && row.source ? (
+              <span className="font-normal text-foreground/75">{row.source}</span>
+            ) : null}
+          </span>
+        </span>
+        <span className="shrink-0 pt-0.5 text-sm leading-5 text-foreground/70">
+          {open ? "Hide details" : "View details"}
+        </span>
+      </button>
+      {open ? (
+        <div id={panelId} className="grid grid-cols-1 gap-2 pb-3 min-[420px]:grid-cols-2">
+          <Detail label="Work Area" value={row.workArea} />
+          {row.portion ? <Detail label="Portion" value={row.portion} /> : null}
+          {materials ? (
+            <>
+              {row.specification ? <Detail label="Specification" value={row.specification} /> : null}
+              <Detail label="Quantity" value={row.quantity ?? "—"} />
+              <Detail label="Unit" value={row.unit ?? "—"} />
+              <Detail label="Unit cost" value={moneyCell(row, row.unitCost) ?? "—"} />
+              <Detail label="Total" value={money} />
+              <Detail label="Rate source" value={row.source ?? "—"} />
+              {row.genericCaption ? <Detail label="Category" value={row.genericCaption} /> : null}
+            </>
+          ) : (
+            <>
+              <Detail label="Worker type" value={row.workerType ?? "Worker type not specified"} />
+              <Detail label="Activity" value={row.activity ?? row.description} />
+              <Detail label="Hours" value={row.hours ?? "—"} />
+              <Detail label="Productivity basis" value={row.productivityBasis ?? "—"} />
+              <Detail label="Productivity source" value={row.productivitySource ?? "—"} />
+              <Detail label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
+              <Detail label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
+              <Detail label="Labour cost" value={money} />
+              {row.pricedUsing ? <Detail label="Pricing basis" value={row.pricedUsing} /> : null}
+            </>
+          )}
+          {row.pricingRequired ? (
+            <p className="text-sm leading-5 text-foreground/80 min-[420px]:col-span-2">
+              {TAKEOFF_PRICING_EXPLANATION}
+            </p>
+          ) : null}
+          <p className="text-sm leading-5 text-foreground/75 min-[420px]:col-span-2">
+            {materials
+              ? "Change physical quantities in Work Area details. Complete commercial prices in Pricing."
+              : "Labour hours shown here are the hours already on the estimate. Complete commercial prices in Pricing."}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TakeoffRows({
   rows,
   kind,
@@ -214,11 +334,22 @@ function TakeoffRows({
   kind: "materials" | "labour";
 }) {
   const materials = kind === "materials";
+  const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
   const grid = materials
     ? "lg:grid-cols-[minmax(0,1.7fr)_minmax(0,0.7fr)_4.5rem_3.5rem_6.5rem_7rem_minmax(0,0.9fr)]"
     : "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.7fr)_4.5rem_minmax(0,0.9fr)_minmax(0,0.8fr)_6rem_minmax(0,0.8fr)_6.5rem]";
+
+  function toggle(id: string) {
+    setOpenIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" data-takeoff-desktop={kind}>
       <div className={cn("hidden text-sm text-foreground/70 lg:grid lg:gap-3", grid)}>
         <span>{materials ? "Material" : "Labour"}</span>
         <span>Portion</span>
@@ -242,52 +373,64 @@ function TakeoffRows({
         )}
       </div>
       <ul>
-        {rows.map((row) => (
-          <li
-            key={row.id}
-            className={cn("grid gap-2 border-t border-border/70 py-3 lg:items-start lg:gap-3", grid)}
-            data-takeoff-row={row.id}
-            data-takeoff-shared={row.shared ? "true" : "false"}
-            data-pricing-required={row.pricingRequired ? "true" : "false"}
-          >
-            <IdentityCell row={row} kind={kind} />
-            <Cell label="Portion" value={row.portion ?? "—"} />
-            {materials ? (
-              <>
-                <Cell label="Quantity" value={row.quantity ?? "—"} />
-                <Cell label="Unit" value={row.unit ?? "—"} />
-                <Cell label="Unit cost" value={moneyCell(row, row.unitCost) ?? "—"} />
-                <Cell label="Total" value={moneyCell(row, row.total) ?? "—"} />
-                <div className="min-w-0">
-                  <p className="text-sm text-foreground/70 lg:sr-only">Rate source</p>
-                  <p
-                    className={cn(
-                      "break-words text-sm",
-                      row.pricingRequired && "font-medium text-amber-800 dark:text-amber-200"
-                    )}
-                    data-takeoff-source={row.id}
-                  >
-                    {row.source ?? "—"}
+        {rows.map((row) => {
+          const open = openIds.has(row.id);
+          return (
+            <li
+              key={row.id}
+              className={cn("border-t border-border/70 lg:grid lg:items-start lg:gap-3 lg:py-3", grid)}
+              data-takeoff-row={row.id}
+              data-takeoff-shared={row.shared ? "true" : "false"}
+              data-pricing-required={row.pricingRequired ? "true" : "false"}
+              data-takeoff-open={open ? "true" : "false"}
+            >
+              <CompactTakeoffRow
+                row={row}
+                kind={kind}
+                open={open}
+                onToggle={() => toggle(row.id)}
+              />
+              <div className="hidden lg:contents">
+                <IdentityCell row={row} kind={kind} />
+                <Cell label="Portion" value={row.portion ?? "—"} />
+                {materials ? (
+                  <>
+                    <Cell label="Quantity" value={row.quantity ?? "—"} />
+                    <Cell label="Unit" value={row.unit ?? "—"} />
+                    <Cell label="Unit cost" value={moneyCell(row, row.unitCost) ?? "—"} />
+                    <Cell label="Total" value={moneyCell(row, row.total) ?? "—"} />
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground/70 lg:sr-only">Rate source</p>
+                      <p
+                        className={cn(
+                          "break-words text-sm",
+                          row.pricingRequired && "font-medium text-amber-800 dark:text-amber-200"
+                        )}
+                        data-takeoff-source={row.id}
+                      >
+                        {row.source ?? "—"}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Cell label="Hours" value={row.hours ?? "—"} />
+                    <Cell label="Productivity basis" value={row.productivityBasis ?? "—"} />
+                    <Cell label="Productivity source" value={row.productivitySource ?? "—"} />
+                    <Cell label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
+                    <Cell label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
+                    <Cell label="Labour cost" value={moneyCell(row, row.total) ?? "—"} />
+                  </>
+                )}
+                {row.pricingRequired ? (
+                  <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-8")}>
+                    {TAKEOFF_PRICING_EXPLANATION}
                   </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <Cell label="Hours" value={row.hours ?? "—"} />
-                <Cell label="Productivity basis" value={row.productivityBasis ?? "—"} />
-                <Cell label="Productivity source" value={row.productivitySource ?? "—"} />
-                <Cell label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
-                <Cell label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
-                <Cell label="Labour cost" value={moneyCell(row, row.total) ?? "—"} />
-              </>
-            )}
-            {row.pricingRequired ? (
-              <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-8")}>
-                {TAKEOFF_PRICING_EXPLANATION}
-              </p>
-            ) : null}
-          </li>
-        ))}
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -358,8 +501,8 @@ function TakeoffBoard({
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff={marker}>
       <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
-        <h2 className="text-base font-semibold">{title}</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <h2 className="text-lg font-semibold leading-6">{title}</h2>
+        <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-4">
           <Stat label={lineCountLabel} value={String(lineCount)} />
           {facts.map((fact) => (
             <Stat key={fact.label} label={fact.label} value={fact.value} />
@@ -386,7 +529,7 @@ function TakeoffBoard({
         </p>
       ) : (
         <div className="space-y-3">
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_14rem]">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_14rem]">
             <input
               type="search"
               value={query}
@@ -422,7 +565,7 @@ function TakeoffBoard({
                 className="rounded-xl border border-border/70 bg-card px-4 py-3"
                 data-takeoff-group={group.workArea}
               >
-                <h3 className="text-sm font-semibold break-words">{group.workArea}</h3>
+                <h3 className="text-base font-semibold leading-snug break-words">{group.workArea}</h3>
                 <TakeoffRows rows={group.rows} kind={kind} />
               </section>
             ))
@@ -530,8 +673,8 @@ export function AssumptionsChecks({
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff="checks">
       <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
-        <h2 className="text-base font-semibold">{model.title}</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <h2 className="text-lg font-semibold leading-6">{model.title}</h2>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat label="Requires attention" value={String(model.attentionCount)} />
           <Stat label="Assumptions" value={String(model.assumptionCount)} />
           <Stat label="Benchmark and rate notices" value={String(model.benchmarkCount)} />
@@ -551,8 +694,22 @@ export function AssumptionsChecks({
               className="rounded-xl border border-border/70 bg-card px-4 py-2"
               data-review-group={group.name}
             >
-              <summary className="min-h-11 cursor-pointer rounded-sm py-2 text-sm font-semibold break-words focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]">
-                {group.name}
+              <summary className="min-h-11 cursor-pointer rounded-sm py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]">
+                <span className="block break-words text-base font-semibold leading-snug">{group.name}</span>
+                <span className="mt-1 grid grid-cols-3 gap-2 text-sm font-normal leading-5 text-foreground/80">
+                  <span>
+                    <span className="block text-xs leading-4 text-foreground/70">Requires attention</span>
+                    {group.attention.length}
+                  </span>
+                  <span>
+                    <span className="block text-xs leading-4 text-foreground/70">Assumptions</span>
+                    {group.assumptions.length}
+                  </span>
+                  <span>
+                    <span className="block text-xs leading-4 text-foreground/70">Benchmark notices</span>
+                    {group.benchmarks.length}
+                  </span>
+                </span>
               </summary>
               <ReviewList title="Requires attention" items={group.attention} marker="attention" />
               <ReviewList title="Assumptions" items={group.assumptions} marker="assumptions" />
