@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
+import { cn } from "@/lib/utils";
 
 type PrepareFinalPricingButtonProps = {
   projectId: string;
@@ -45,17 +46,21 @@ export function PrepareFinalPricingButton({
 type OpenFinalPricingLinkProps = {
   projectId: string;
   pricingDocumentId: string;
+  variant?: "default" | "outline";
+  className?: string;
 };
 
 export function OpenFinalPricingLink({
   projectId,
   pricingDocumentId,
+  variant = "outline",
+  className,
 }: OpenFinalPricingLinkProps) {
   return (
     <Button
       type="button"
-      variant="outline"
-      className="w-full"
+      variant={variant}
+      className={cn("w-full", className)}
       render={
         <Link href={`/app/projects/${projectId}/pricing/${pricingDocumentId}`} />
       }

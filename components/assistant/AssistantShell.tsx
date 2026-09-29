@@ -10,10 +10,8 @@ import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
-import { CommercialOverviewMetrics } from "@/components/assistant/CommercialOverviewMetrics";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
-import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
-import { labourProductivityDisclosureFromLines } from "@/lib/company-dna/provenance-display";
+import { EstimateOverview } from "@/components/assistant/mode/EstimateOverview";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -177,20 +175,12 @@ import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import {
   buildQuickEstimateAttentionItems,
-  buildQuickEstimateStatusPresentation,
   type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
+import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-overview";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
-import {
-  deriveQuickEstimateConfidencePresentation,
-  rankQuickEstimateAssumptions,
-} from "@/lib/assistant/presentation/quick-estimate-confidence";
-import {
-  presentEstimateConfidenceCopy,
-  selectEstimatingAssumptionPhrase,
-} from "@/lib/assistant/presentation/estimate-confidence-copy";
-import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
+import { deriveQuickEstimateConfidencePresentation } from "@/lib/assistant/presentation/quick-estimate-confidence";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
 import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
@@ -434,7 +424,6 @@ export function AssistantShell({
     generationProjection?.stage ??
     assistantMutationProjection?.stage ??
     project.stage;
-  const [commercialOverviewOpen, setCommercialOverviewOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
@@ -2604,23 +2593,37 @@ export function AssistantShell({
     [builderReviewView]
   );
 
-  const mobileCommercialStatus = useMemo(
-    () =>
-      estimate
-        ? buildQuickEstimateStatusPresentation({
-            hasEstimate: true,
-            isStale: displayEstimateStale,
-            attentionItems: completedEstimateAttentionItems,
-            assumptionCritical:
-              estimate.assumptionMetadata?.assumptionSeverity === "critical",
-          })
-        : null,
-    [
-      completedEstimateAttentionItems,
-      displayEstimateStale,
-      estimate,
-    ]
-  );
+  const estimateOverview = projectEstimateOverview({
+        hasEstimate: Boolean(estimate),
+        isStale: displayEstimateStale,
+        detailsOutstanding:
+          !estimate &&
+          (estimateReadiness.blocksEstimate || !estimateReadiness.enoughToEstimate),
+        estimate: estimate
+          ? {
+              recommendedSell: estimate.recommendedSell,
+              recommendedCost: estimate.recommendedCost,
+              grossProfit: estimate.grossProfit,
+              marginPercent: estimate.marginPercent,
+              markupPercent: estimate.markupPercent,
+            }
+          : null,
+        gstRate: initialState.defaultGstRate,
+        breakdown: commercialBreakdown,
+        review: builderReviewView,
+        readinessBlockers: estimate
+          ? []
+          : [estimateReadiness.blockerCopy, ...estimateReadiness.checks].filter(
+              (row): row is string => Boolean(row && row.trim())
+            ),
+        rateSourceSummary: estimate?.rateSourceSummary ?? null,
+        pricingDocumentExists: Boolean(pricingSummary),
+        specialistPricingNotice:
+          estimate && estimateReadiness.specialistPricingRequired
+            ? estimateReadiness.heading
+            : null,
+        workAreaNames: workAreaLists.included,
+      });
 
   const estimateReviewActionable =
     displayEstimateStale ||
@@ -2727,13 +2730,32 @@ export function AssistantShell({
         ) : null}
 
         <div className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5">
+          {assistantMode === "planning" && !estimate ? (
+            <EstimateOverview
+              model={estimateOverview}
+              onContinueInformation={() => {
+                document
+                  .querySelector("[data-assistant-surface='planning']")
+                  ?.scrollIntoView({ block: "start" });
+              }}
+              onCompleteDetails={() => {
+                (
+                  questionsCardRef.current ??
+                  document.querySelector("[data-assistant-surface='planning']")
+                )?.scrollIntoView({ block: "start" });
+              }}
+            />
+          ) : null}
           {assistantMode === "estimate_ready" && estimate ? (
             <EstimateReadySurface
               projectId={project.id}
               estimateId={generationProjection?.estimateId}
               isStale={displayEstimateStale}
               isRegenerating={updatingEstimate}
-              pricingCtaEnabled={!pricingSummary}
+              pricingCtaEnabled={
+                !pricingSummary &&
+                (refineAfterEstimateOpen || builderReviewOpen)
+              }
               pricingCtaPrimary={builderReviewCompleted}
               reviewOpen={builderReviewOpen}
             >
@@ -2827,80 +2849,53 @@ export function AssistantShell({
                 />
               ) : (
                 <>
-                  <EstimateReadyCard
-                    workAreaSummaryLine={formatWorkAreaSummaryLine(
-                      workAreaLists.included
-                    )}
-                    workAreaSummaryDetail={formatWorkAreaSummaryDetail(
-                      workAreaLists.included
-                    )}
-                    recommendedSell={estimate.recommendedSell}
-                    sellLow={estimate.sellLow}
-                    sellHigh={estimate.sellHigh}
-                    gstRate={initialState.defaultGstRate}
-                    estimatedCost={estimate.recommendedCost}
-                    targetMarginPercent={
-                      estimate.targetMarginPercent ?? estimate.marginPercent
-                    }
-                    isStale={displayEstimateStale}
+                  <EstimateOverview
+                    model={estimateOverview}
+                    projectId={project.id}
+                    estimateId={generationProjection?.estimateId}
+                    pricingDocumentId={pricingSummary?.id ?? null}
                     isRegenerating={updatingEstimate}
-                    confidenceBand={
-                      deriveQuickEstimateConfidencePresentation({
-                        confidencePercent: estimate.confidence,
-                        assumptionSeverity:
-                          estimate.assumptionMetadata?.assumptionSeverity,
-                        missingInfoCount: estimate.missingInfo.length,
-                        attentionCount: completedEstimateAttentionItems.length,
-                      }).band
+                    onRegenerate={
+                      displayEstimateStale ? handleRegenerateEstimate : undefined
                     }
-                    confidenceExplanation={
-                      presentEstimateConfidenceCopy({
-                        band: deriveQuickEstimateConfidencePresentation({
-                          confidencePercent: estimate.confidence,
-                          assumptionSeverity:
-                            estimate.assumptionMetadata?.assumptionSeverity,
-                          missingInfoCount: estimate.missingInfo.length,
-                          attentionCount: completedEstimateAttentionItems.length,
-                        }).band,
-                        assumptionPhrase: selectEstimatingAssumptionPhrase(
-                          estimate.assumptions,
-                          estimate.assumptionMetadata,
-                          jobPlanFacts
-                        ),
-                      }).explanation
-                    }
-                    assumptions={rankQuickEstimateAssumptions(
-                      estimate.assumptions,
-                      MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS,
-                      estimate.assumptionMetadata,
-                      jobPlanFacts
-                    )}
-                    attentionItems={completedEstimateAttentionItems}
-                    workAreaTotals={Array.from(
-                      estimate.lineItems.reduce((map, item) => {
-                        const name = item.workAreaName?.trim() || "Unallocated";
-                        map.set(
-                          name,
-                          (map.get(name) ?? 0) + Number(item.recommendedSell ?? 0)
-                        );
-                        return map;
-                      }, new Map<string, number>())
-                    ).map(([name, sell]) => ({ name, sell }))}
-                    rateSourceSummary={estimate.rateSourceSummary}
-                    labourProductivityDisclosure={labourProductivityDisclosureFromLines(
-                      estimate.lineItems
-                    )}
-                    compactResult={false}
-                    reviewIsPrimary={!builderReviewCompleted}
                     onReviewEstimate={() => {
                       setBuilderReviewCompleted(true);
                       setBuilderReviewOpen(true);
                     }}
-                    onEditJob={() => openEditJob(null)}
-                    onUpdateEstimate={
-                      displayEstimateStale ? handleRegenerateEstimate : undefined
+                    reviewLabel={
+                      displayEstimateStale
+                        ? ASSISTANT_ACTION_LABELS.reviewPreviousEstimate
+                        : ASSISTANT_ACTION_LABELS.reviewEstimate
                     }
-                    onReviewAttention={handleReviewAttention}
+                    onEditJob={() => openEditJob(null)}
+                    onViewBreakdown={() => {
+                      setBuilderReviewOpen(false);
+                      setBreakdownOpen(true);
+                    }}
+                    marginControl={
+                      !displayEstimateStale ? (
+                        <span className="lg:hidden" data-mobile-margin-edit="true">
+                          <MarginEditControl
+                            marginPercent={estimate.marginPercent}
+                            targetMarginPercent={estimate.targetMarginPercent}
+                            defaultMarginPercent={initialState.defaultMarginPercent}
+                            disabled={updatingEstimate || isGenerating}
+                            isSaving={isSavingMargin}
+                            onSave={handleMarginSave}
+                            presentation="inline"
+                          />
+                        </span>
+                      ) : null
+                    }
+                    marginSaveIndicator={
+                      !displayEstimateStale && isSavingMargin ? (
+                        <SaveStatusIndicator className="lg:hidden" status="saving" isSaving />
+                      ) : !displayEstimateStale && marginSaveLabel ? (
+                        <p className="text-xs text-muted-foreground lg:hidden" data-margin-save-label>
+                          {marginSaveLabel}
+                        </p>
+                      ) : null
+                    }
                   />
                   <CompletedSetupDisclosure
                     summaryLine={setupSummaryLine}
@@ -2970,71 +2965,6 @@ export function AssistantShell({
                       ) : null}
                     </div>
                   </CompletedSetupDisclosure>
-                  <div
-                    className="lg:hidden"
-                    data-mobile-commercial-overview="true"
-                    data-mobile-commercial-open={
-                      commercialOverviewOpen ? "true" : "false"
-                    }
-                  >
-                    <CompletedSetupDisclosure
-                      title="Commercial Overview"
-                      summaryLine="Direct cost, margin, and composition"
-                      expanded={commercialOverviewOpen}
-                      onExpandedChange={setCommercialOverviewOpen}
-                    >
-                      <CommercialOverviewMetrics
-                        estimate={estimate}
-                        breakdown={commercialBreakdown}
-                        isStale={displayEstimateStale}
-                        statusLabel={mobileCommercialStatus?.statusLabel ?? null}
-                        statusKind={mobileCommercialStatus?.kind}
-                        compositionHeading="Composition"
-                        otherLabel="Other Direct"
-                        marginTrailing={
-                          !displayEstimateStale && estimate ? (
-                            <span data-mobile-margin-edit="true">
-                              <MarginEditControl
-                                marginPercent={estimate.marginPercent}
-                                targetMarginPercent={estimate.targetMarginPercent}
-                                defaultMarginPercent={
-                                  initialState.defaultMarginPercent
-                                }
-                                disabled={updatingEstimate || isGenerating}
-                                isSaving={isSavingMargin}
-                                onSave={handleMarginSave}
-                                presentation="inline"
-                              />
-                            </span>
-                          ) : null
-                        }
-                        marginSaveIndicator={
-                          !displayEstimateStale && isSavingMargin ? (
-                            <SaveStatusIndicator status="saving" isSaving />
-                          ) : !displayEstimateStale && marginSaveLabel ? (
-                            <p
-                              className="text-xs text-muted-foreground"
-                              data-margin-save-label
-                            >
-                              {marginSaveLabel}
-                            </p>
-                          ) : null
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="mt-2 text-left text-[11px] text-muted-foreground underline-offset-4 hover:underline"
-                        onClick={() => {
-                          setBuilderReviewOpen(false);
-                          setBreakdownOpen(true);
-                        }}
-                        data-mobile-detailed-breakdown="true"
-                        data-detailed-breakdown-tertiary="true"
-                      >
-                        {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
-                      </button>
-                    </CompletedSetupDisclosure>
-                  </div>
                 </>
               )}
             </EstimateReadySurface>
@@ -3777,7 +3707,10 @@ export function AssistantShell({
             compactCommercialSidebar={assistantMode === "estimate_ready"}
             workAreasConfirmed={workAreasConfirmed}
             pricingProgressionPrimary={builderReviewCompleted}
-            hidePricingProgression={builderReviewOpen}
+            hidePricingProgression={
+              builderReviewOpen ||
+              (assistantMode === "estimate_ready" && !refineAfterEstimateOpen)
+            }
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);
