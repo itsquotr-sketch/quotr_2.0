@@ -45,6 +45,11 @@ export default async function VariationsPage({ params, searchParams }: PageProps
         quoteSummary={quoteSummary}
         hasEstimate={tabContext.hasEstimate}
         estimateIsStale={tabContext.estimateIsStale}
+        variations={{
+          eligible: workspace.eligible,
+          reason: workspace.reason,
+          statuses: workspace.rows.map((row) => row.status),
+        }}
       />
       <WorkspaceContainer innerClassName="py-6">
         <VariationList

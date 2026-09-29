@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
 import type { PricingSummary } from "@/lib/pricing/types";
+import { projectWorkflowRoutes } from "@/lib/projects/workflow-orientation";
 import { formatContractorQuoteStatusLabel } from "@/lib/quotes/status";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { cn } from "@/lib/utils";
@@ -30,16 +31,19 @@ export function ProjectWorkspaceTabs({
 }: ProjectWorkspaceTabsProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const assistantHref = `/app/projects/${projectId}`;
-  const pricingHref = pricingSummary
-    ? `/app/projects/${projectId}/pricing/${pricingSummary.id}`
-    : null;
-  const quoteHref = quoteSummary
-    ? `/app/projects/${projectId}/quotes/${quoteSummary.id}`
-    : null;
+  const routes = projectWorkflowRoutes({
+    projectId,
+    hasEstimate,
+    estimateIsStale,
+    pricingSummary,
+    quoteSummary,
+  });
+  const assistantHref = routes.estimateHref;
+  const pricingHref = routes.pricingHref;
+  const quoteHref = routes.quoteHref;
 
   const pricingNotStarted = !pricingSummary;
-  const pricingBlocked = estimateIsStale || !hasEstimate;
+  const pricingBlocked = routes.pricingBlocked;
 
   const handlePricingTabClick = () => {
     if (pricingHref) return;

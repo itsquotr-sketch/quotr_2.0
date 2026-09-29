@@ -8,6 +8,7 @@ import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHe
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { measureServerLoad } from "@/lib/perf/timing";
+import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import {
   getPricingWorkspaceDataWithContext,
   getProjectWorkspaceTabContextWithContext,
@@ -73,6 +74,9 @@ export default async function PricingPage({ params }: PricingPageProps) {
           quoteSummary={quoteSummaryForDoc ?? quoteSummary}
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
+          pricingUnresolvedRequired={data.items.some(
+            (item) => pricingItemViewModel(item).pricingRequired
+          )}
         />
       }
       contentClassName="py-6"

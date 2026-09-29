@@ -46,6 +46,11 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           quoteSummary={quoteSummary}
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
+          variations={{
+            eligible: editor.eligible,
+            reason: editor.reason,
+            statuses: [editor.variation.status],
+          }}
         />
       </div>
       <WorkspaceContainer className="min-h-0" innerClassName="py-6">
