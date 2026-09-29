@@ -24,13 +24,13 @@ export function ProjectWorkflowStrip(props: ProjectWorkflowInput) {
     <section
       aria-label="Project workflow"
       data-workflow-strip="true"
-      className="mb-3 overflow-x-hidden rounded-md border border-border bg-card text-sm text-foreground motion-reduce:transition-none"
+      className="mb-2 overflow-x-hidden rounded-md border border-border bg-card text-sm text-foreground motion-reduce:transition-none"
     >
-      <div className="hidden gap-6 px-4 py-3 md:grid md:grid-cols-3">
+      <div className="hidden gap-4 px-4 py-2 md:grid md:grid-cols-3">
         {GROUPS.map((group) => (
           <div key={group.id} className="min-w-0">
             <p className="text-muted-foreground">{group.label}</p>
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-1.5 space-y-1">
               {model.stages
                 .filter((stage) => stage.groupId === group.id)
                 .map((stage) => (
@@ -44,7 +44,7 @@ export function ProjectWorkflowStrip(props: ProjectWorkflowInput) {
       </div>
 
       <div
-        className="px-4 py-3 md:hidden"
+        className="px-4 py-2 md:hidden"
         aria-current="page"
         data-workflow-stage={model.current.id}
         data-workflow-status={model.current.status}
@@ -59,7 +59,7 @@ export function ProjectWorkflowStrip(props: ProjectWorkflowInput) {
           </span>
         </p>
         <p className="mt-1 text-muted-foreground">{model.current.detail}</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <AdjacentControl label="Previous" stage={model.previous} />
           <AdjacentControl label="Next" stage={model.next} />
         </div>
@@ -132,7 +132,7 @@ function StageShell({
     className
   );
 
-  if (stage.href) {
+  if (stage.href && !stage.viewing) {
     return (
       <Link
         href={stage.href}
@@ -150,9 +150,11 @@ function StageShell({
 
   return (
     <p
+      aria-current={stage.viewing ? "page" : undefined}
       data-workflow-stage={stage.id}
       data-workflow-status={stage.status}
       data-workflow-locked={stage.locked ? "true" : "false"}
+      data-workflow-current-action={stage.viewing ? "false" : undefined}
       className={shared}
     >
       {stage.locked ? <span className="sr-only">Unavailable. </span> : null}

@@ -25,7 +25,6 @@ type EstimateOverviewProps = {
   estimateId?: string;
   pricingDocumentId?: string | null;
   isRegenerating?: boolean;
-  onContinueInformation?: () => void;
   onCompleteDetails?: () => void;
   onRegenerate?: () => void;
   onReviewEstimate?: () => void;
@@ -108,7 +107,6 @@ export function EstimateOverview({
   estimateId,
   pricingDocumentId = null,
   isRegenerating = false,
-  onContinueInformation,
   onCompleteDetails,
   onRegenerate,
   onReviewEstimate,
@@ -125,19 +123,35 @@ export function EstimateOverview({
   );
   const readyForPricing =
     model.required.length === 0 && !model.pricingCreationBlocked;
+  const showRequiredList = model.required.length > 0;
+  const showCommercial = sell.presentation !== "hidden";
+  const showActionCentre =
+    readyForPricing ||
+    showRequiredList ||
+    model.pricingAttention.length > 0 ||
+    model.accuracy.length > 0 ||
+    model.rates.length > 0;
   const blockerRepeatsStatus = model.required.some((item) => item.title === model.statusDetail);
   const showQuietStatus =
     (model.status === "stale" || model.status === "incomplete") && !blockerRepeatsStatus;
 
+  if (
+    !showCommercial &&
+    !showActionCentre &&
+    !onCompleteDetails &&
+    !onRegenerate &&
+    !onReviewEstimate &&
+    !onEditJob &&
+    !onViewBreakdown
+  ) {
+    return null;
+  }
+
   return (
     <div className="flex min-w-0 flex-col gap-4 overflow-x-hidden" data-estimate-overview>
+      {showCommercial ? (
       <section className="order-1 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-commercial>
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
-          {sell.presentation === "hidden" ? (
-            <p className="text-sm text-foreground/75" data-estimate-overview-sell="hidden">
-              No estimate yet
-            </p>
-          ) : null}
           {sell.presentation === "unresolved" ? (
             <p className="text-lg font-medium" data-estimate-overview-sell="unresolved">
               Pricing Required
@@ -251,13 +265,13 @@ export function EstimateOverview({
           </p>
         )}
         {marginSaveIndicator}
-        {sell.presentation !== "hidden" ? (
-          <p className="mt-4 text-sm text-foreground/75" data-estimate-overview-boundary>
-            {sell.boundaryCopy}
-          </p>
-        ) : null}
+        <p className="mt-4 text-sm text-foreground/75" data-estimate-overview-boundary>
+          {sell.boundaryCopy}
+        </p>
       </section>
+      ) : null}
 
+      {showActionCentre ? (
       <section className="order-2 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-actions>
         <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
         {readyForPricing ? (
@@ -265,7 +279,7 @@ export function EstimateOverview({
             <h3 className="text-sm font-semibold text-foreground">Ready for Pricing</h3>
             <p className="mt-1 text-sm text-foreground/75">No required issues remain.</p>
           </div>
-        ) : (
+        ) : showRequiredList ? (
           <div className="mt-3" data-estimate-overview-blockers="true">
             <h3 className="text-sm font-semibold text-foreground">Required before Pricing</h3>
             <p className="mt-1 text-sm font-medium tabular-nums text-foreground" data-estimate-overview-required-count>
@@ -273,7 +287,7 @@ export function EstimateOverview({
             </p>
             <ActionItems items={model.required} />
           </div>
-        )}
+        ) : null}
         {model.pricingAttention.length > 0 ? (
           <div className="mt-3 border-t border-border/70 pt-3" data-estimate-overview-pricing-attention="true">
             <h3 className="text-sm font-semibold text-foreground/80">Needs attention in Pricing</h3>
@@ -291,18 +305,9 @@ export function EstimateOverview({
           marker="benchmark"
         />
       </section>
+      ) : null}
 
       <div className="order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        {model.primary === "continue_information" && onContinueInformation ? (
-          <Button
-            type="button"
-            className={actionButtonClassName}
-            data-estimate-overview-primary="continue_information"
-            onClick={onContinueInformation}
-          >
-            {model.primaryLabel}
-          </Button>
-        ) : null}
         {model.primary === "complete_details" && onCompleteDetails ? (
           <Button
             type="button"

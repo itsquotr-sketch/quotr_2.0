@@ -2698,7 +2698,11 @@ export function AssistantShell({
             ? "mt-1 grid min-w-0 gap-5 lg:mt-4 lg:items-start"
             : "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
           assistantMode === "planning" &&
+            briefSubmitted &&
             "lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[200px_minmax(0,1fr)_380px]",
+          assistantMode === "planning" &&
+            !briefSubmitted &&
+            "xl:grid-cols-[200px_minmax(0,1fr)]",
           assistantMode === "estimate_ready" && "grid-cols-1",
           assistantMode === "edit_job" && "grid-cols-1"
         )}
@@ -2722,23 +2726,14 @@ export function AssistantShell({
           </aside>
         ) : null}
 
-        <div className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5">
-          {assistantMode === "planning" && !estimate ? (
-            <EstimateOverview
-              model={estimateOverview}
-              onContinueInformation={() => {
-                document
-                  .querySelector("[data-assistant-surface='planning']")
-                  ?.scrollIntoView({ block: "start" });
-              }}
-              onCompleteDetails={() => {
-                (
-                  questionsCardRef.current ??
-                  document.querySelector("[data-assistant-surface='planning']")
-                )?.scrollIntoView({ block: "start" });
-              }}
-            />
-          ) : null}
+        <div
+          className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5 overflow-x-hidden"
+          data-active-task={
+            assistantMode === "planning" && !estimate && !briefSubmitted
+              ? "job-details"
+              : undefined
+          }
+        >
           {assistantMode === "estimate_ready" && estimate ? (
             <EstimateReadySurface
               projectId={project.id}
@@ -3641,11 +3636,12 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        {assistantMode === "planning" ? (
+        {assistantMode === "planning" && briefSubmitted ? (
         <div
           ref={estimatePanelAnchorRef}
-          className="order-1 min-w-0 lg:order-none lg:self-start"
+          className="order-3 min-w-0 lg:order-none lg:self-start"
           data-quick-estimate-anchor
+          data-estimate-guidance="after-active-task"
         >
           <EstimatePanel
             projectId={initialState.project.id}
