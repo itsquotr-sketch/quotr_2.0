@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   Archive,
@@ -33,6 +34,7 @@ import {
   restoreProject,
 } from "@/lib/projects/lifecycle-actions";
 import type { Project } from "@/lib/projects/types";
+import { cn } from "@/lib/utils";
 
 type ConfirmAction = "archive" | "delete" | null;
 
@@ -48,11 +50,14 @@ export function ProjectActionsMenu({
   showEdit = false,
 }: ProjectActionsMenuProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isArchived = Boolean(project.archived_at);
+  const informationHref = `/app/projects/${project.id}/information`;
+  const informationActive = pathname === informationHref;
 
   const runAction = (action: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -96,6 +101,21 @@ export function ProjectActionsMenu({
   return (
     <>
       <div className="flex items-center gap-2">
+        {variant === "header" ? (
+          <Link
+            href={informationHref}
+            data-project-information-entry="desktop"
+            aria-current={informationActive ? "page" : undefined}
+            className={cn(
+              "hidden h-8 items-center rounded-md border px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)] sm:inline-flex",
+              informationActive
+                ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground"
+                : "border-input bg-background text-foreground hover:bg-muted/50"
+            )}
+          >
+            Project information
+          </Link>
+        ) : null}
         {showEdit ? <EditProjectDialog project={project} /> : null}
         <DropdownMenu>
           {variant === "card" ? (
@@ -117,6 +137,16 @@ export function ProjectActionsMenu({
             </DropdownMenuTrigger>
           )}
           <DropdownMenuContent align="end" className="w-52">
+            {variant === "header" ? (
+              <DropdownMenuItem
+                className="min-h-11 sm:hidden"
+                data-project-information-entry="mobile"
+                disabled={isPending}
+                onClick={() => router.push(informationHref)}
+              >
+                Project information
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onClick={handleDuplicate} disabled={isPending}>
               <Copy className="size-4" />
               Duplicate project
