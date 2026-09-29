@@ -12,6 +12,10 @@ import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupD
 import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { EstimateOverview } from "@/components/assistant/mode/EstimateOverview";
+import {
+  EstimateViewControl,
+  WorkAreaBreakdown,
+} from "@/components/assistant/mode/WorkAreaBreakdown";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -395,6 +399,7 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
+  const [estimateView, setEstimateView] = useState<"overview" | "work_areas">("overview");
   const [builderReviewCompleted, setBuilderReviewCompleted] = useState(false);
   const [refineAfterEstimateOpen, setRefineAfterEstimateOpen] = useState(false);
   const [refineAfterEstimateFocusKey, setRefineAfterEstimateFocusKey] = useState<
@@ -2836,6 +2841,47 @@ export function AssistantShell({
                   }}
                 />
               ) : (
+                <div data-estimate-view={estimateView} className="min-w-0 space-y-3 overflow-x-hidden">
+                  <EstimateViewControl
+                    view={estimateView}
+                    onChange={setEstimateView}
+                  />
+                  {estimateView === "work_areas" && builderReviewView ? (
+                    <WorkAreaBreakdown
+                      view={builderReviewView}
+                      scope={jobPlan.cards.map((card) => ({
+                        workAreaId: card.workAreaId,
+                        name: card.name,
+                        included: card.included.map((item) => item.label),
+                        excluded: card.notIncluded.map((item) => item.label),
+                      }))}
+                      isRegenerating={updatingEstimate}
+                      onBack={() => setEstimateView("overview")}
+                      onEditJob={() => openEditJob(null)}
+                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onRegenerate={
+                        displayEstimateStale ? handleRegenerateEstimate : undefined
+                      }
+                      regenerateLabel={
+                        estimateOverview.primary === "regenerate"
+                          ? estimateOverview.primaryLabel
+                          : undefined
+                      }
+                      pricing={
+                        estimateOverview.primary === "continue_pricing" &&
+                        !estimateOverview.pricingCreationBlocked &&
+                        estimateOverview.pricingEntry !== "blocked"
+                          ? {
+                              projectId: project.id,
+                              estimateId: generationProjection?.estimateId,
+                              pricingDocumentId: pricingSummary?.id ?? null,
+                              entry: estimateOverview.pricingEntry,
+                              label: estimateOverview.primaryLabel,
+                            }
+                          : null
+                      }
+                    />
+                  ) : (
                 <>
                   <EstimateOverview
                     model={estimateOverview}
@@ -2847,14 +2893,9 @@ export function AssistantShell({
                       displayEstimateStale ? handleRegenerateEstimate : undefined
                     }
                     onReviewEstimate={() => {
-                      setBuilderReviewCompleted(true);
-                      setBuilderReviewOpen(true);
+                      setEstimateView("work_areas");
                     }}
                     onEditJob={() => openEditJob(null)}
-                    onViewBreakdown={() => {
-                      setBuilderReviewOpen(false);
-                      setBreakdownOpen(true);
-                    }}
                     marginControl={
                       !displayEstimateStale ? (
                         <span data-mobile-margin-edit="true">
@@ -2955,6 +2996,8 @@ export function AssistantShell({
                     </div>
                   </CompletedSetupDisclosure>
                 </>
+                  )}
+                </div>
               )}
             </EstimateReadySurface>
           ) : null}
