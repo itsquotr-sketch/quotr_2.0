@@ -53,7 +53,7 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     trade: "labourer",
     unit: "hour",
-    description: "Optional helper rate — not selected by current calculators (they use carpenter/builder).",
+    description: "Internal hourly cost stored for the company. Priced Work Areas still use the carpenter rate until they can split labourer hours.",
     defaultCostRate: 40,
     defaultSellRate: 65,
     recommended: true,

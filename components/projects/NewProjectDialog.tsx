@@ -33,11 +33,14 @@ type NewProjectDialogProps = {
   trigger?: React.ReactElement<{ onClick?: React.MouseEventHandler }>;
   /** Conversational first-job CTA. Project remains the entity. */
   intent?: "default" | "first-job";
+  /** Return false to keep the dialog closed. */
+  beforeOpen?: () => Promise<boolean>;
 };
 
 export function NewProjectDialog({
   trigger,
   intent = "default",
+  beforeOpen,
 }: NewProjectDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -122,11 +125,24 @@ export function NewProjectDialog({
         cloneElement(trigger, {
           onClick: (event: React.MouseEvent) => {
             trigger.props.onClick?.(event);
-            setOpen(true);
+            void (async () => {
+              if (beforeOpen && !(await beforeOpen())) return;
+              setOpen(true);
+            })();
           },
         } as React.Attributes)
       ) : (
-        <Button type="button" size="touch" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+        <Button
+          type="button"
+          size="touch"
+          onClick={() => {
+            void (async () => {
+              if (beforeOpen && !(await beforeOpen())) return;
+              setOpen(true);
+            })();
+          }}
+          className="w-full sm:w-auto"
+        >
           {intent === "first-job" ? "Start your first job" : "New project"}
         </Button>
       )}

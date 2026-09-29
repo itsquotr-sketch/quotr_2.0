@@ -23,18 +23,31 @@ import type {
   WorkAreaSelection,
 } from "@/components/setup/types";
 import {
+  getCountryOption,
   isSupportedCountryCode,
   isSupportedCurrencyCode,
   normalizeCountryCode,
   normalizeCurrencyCode,
 } from "@/lib/setup/locale-catalogue";
-import { isCatalogueTimezone } from "@/lib/org/timezone";
+import { defaultTimezoneForCountry, isCatalogueTimezone } from "@/lib/org/timezone";
 import {
   ONBOARDING_LABOUR_RATE,
   parseOptionalLabourCost,
   parseOptionalTargetMargin,
 } from "@/lib/setup/pricing-basics";
-import { resolveFirstRunStage, type FirstRunStage } from "@/lib/setup/first-run-stage";
+import {
+  onboardingMutationIsTenantScoped,
+  resolveFirstRunStage,
+  type FirstRunStage,
+} from "@/lib/setup/first-run-stage";
+import {
+  CARPENTER_LABOUR_RATE_KEY,
+  LABOURER_LABOUR_RATE_KEY,
+} from "@/lib/estimate/labour-trade-mapping";
+import {
+  parseRequiredCompanyProfile,
+  parseRequiredHourlyCost,
+} from "@/lib/setup/tax-identifier";
 import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
 import { toUserError } from "@/lib/errors/user-message";
 
@@ -290,6 +303,116 @@ export async function saveCompanyBasics(
   return { success: true };
 }
 
+/**
+ * Required first-run company profile.
+ * Writes trading name, manual address, GST status and tax identifier into
+ * the existing organisation_settings columns used by Quote and Variation
+ * documents. Does not mark onboarding complete.
+ */
+export async function saveRequiredCompanyProfile(
+  input: CompanyBasicsInput
+): Promise<ActionResult> {
+  const countryCode = normalizeCountryCode(input.country);
+  const suggested =
+    getCountryOption(countryCode ?? "")?.suggestedGstPercent ?? 15;
+  const parsed = parseRequiredCompanyProfile(
+    {
+      tradingName: input.trading_name ?? "",
+      country: countryCode ?? input.country,
+      addressLine1: input.address_line_1 ?? "",
+      addressLine2: input.address_line_2,
+      city: input.city ?? "",
+      postcode: input.postcode ?? "",
+      region: input.region,
+      gstRegistered: input.gst_registered ?? "",
+      taxIdentifier: input.tax_identifier,
+    },
+    suggested
+  );
+  if (!parsed.ok) {
+    return { fieldErrors: parsed.fieldErrors };
+  }
+
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
+
+  const { supabase, orgId, user } = context;
+  const value = parsed.value;
+  const { data: existing } = await supabase
+    .from("organisation_settings")
+    .select("id, onboarding_status, onboarding_step, contact_email, timezone")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  const alreadyCompleted = existing?.onboarding_status === "completed";
+  const currentStep = existing?.onboarding_step ?? "company";
+  const shouldAdvance =
+    !alreadyCompleted &&
+    (!existing || currentStep === "company" || currentStep === "not_started");
+
+  const timezone =
+    (typeof existing?.timezone === "string" && existing.timezone) ||
+    defaultTimezoneForCountry({
+      country: value.countryCode,
+      region: value.region,
+    }) ||
+    "";
+
+  const contactEmail =
+    input.contact_email?.trim() ||
+    (typeof existing?.contact_email === "string" ? existing.contact_email : "") ||
+    user.email ||
+    null;
+
+  const payload: Record<string, unknown> = {
+    org_id: orgId,
+    trading_name: value.tradingName,
+    country: value.countryCode,
+    currency: value.currency,
+    address_line_1: value.addressLine1,
+    address_line_2: value.addressLine2,
+    city: value.city,
+    postcode: value.postcode,
+    region: value.region,
+    address_country: value.addressCountry,
+    default_gst_rate: value.defaultGstRate,
+    gst_number: value.gstNumber,
+    contact_email: contactEmail,
+    ...(timezone ? { timezone } : {}),
+    ...(shouldAdvance
+      ? {
+          onboarding_status: "in_progress" as const,
+          onboarding_step: "work_areas" as const,
+        }
+      : {}),
+  };
+
+  if (value.countryCode === "AU") {
+    payload.nzbn = value.nzbn;
+  }
+
+  const { error } = await supabase
+    .from("organisation_settings")
+    .upsert(payload, { onConflict: "org_id" });
+
+  if (error) {
+    return { error: "Could not save company details. Please try again." };
+  }
+
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/setup");
+  revalidatePath("/app/settings/company");
+  revalidatePath("/app/rates");
+  return { success: true };
+}
+
 const pricingBasicsSchema = z.object({
   labourCost: z.union([z.string(), z.number()]).nullable().optional(),
   targetMarginPercent: z.union([z.string(), z.number()]).nullable().optional(),
@@ -506,14 +629,6 @@ export async function saveCompanyDefaults(
   const { supabase, orgId } = context;
   const data = parsed.data;
 
-  const { data: existing } = await supabase
-    .from("organisation_settings")
-    .select("id, onboarding_status")
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  const isCompleted = existing?.onboarding_status === "completed";
-
   const payload = {
     org_id: orgId,
     currency: data.currency,
@@ -526,12 +641,6 @@ export async function saveCompanyDefaults(
     prefer_user_rates: data.prefer_user_rates,
     allow_benchmark_rates: data.allow_benchmark_rates,
     show_profit_in_estimates: data.show_profit_in_estimates,
-    ...(isCompleted
-      ? {}
-      : {
-          onboarding_status: "in_progress" as const,
-          onboarding_step: "work_areas" as const,
-        }),
   };
 
   const { error } = await supabase
@@ -608,38 +717,18 @@ export async function saveOrganisationWorkAreas(input: {
     return setupDbError(upsertError);
   }
 
-  const { data: settings } = await supabase
-    .from("organisation_settings")
-    .select("onboarding_status")
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  // Soft progress marker only — not product authority.
-  if (settings?.onboarding_status !== "completed") {
-    const { error: settingsError } = await supabase
-      .from("organisation_settings")
-      .update({
-        onboarding_status: "in_progress",
-        onboarding_step: "rates",
-      })
-      .eq("org_id", orgId);
-
-    if (settingsError) {
-      return setupDbError(settingsError);
-    }
-  }
-
   revalidatePath("/app/setup");
   revalidatePath("/app/dashboard");
   revalidatePath("/app/rates");
+  revalidatePath("/app/settings/company");
 
   return {};
 }
 
 /**
  * First-run primary Work Areas. Requires at least one selection.
- * Persists to organisation_work_areas.enabled. Does not advance
- * onboarding_step to rates (Pricing Basics still required).
+ * Persists to organisation_work_areas.enabled and advances to labour
+ * costs. Does not mark onboarding complete.
  */
 export async function savePrimaryWorkAreas(input: {
   selections: WorkAreaSelection[];
@@ -689,6 +778,27 @@ export async function savePrimaryWorkAreas(input: {
 
   if (upsertError) {
     return setupDbError(upsertError);
+  }
+
+  const { data: settings } = await supabase
+    .from("organisation_settings")
+    .select("onboarding_status, onboarding_step")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (
+    settings?.onboarding_status !== "completed" &&
+    (settings?.onboarding_step === "work_areas" ||
+      settings?.onboarding_step === "company")
+  ) {
+    const { error: settingsError } = await supabase
+      .from("organisation_settings")
+      .update({
+        onboarding_status: "in_progress",
+        onboarding_step: "labour",
+      })
+      .eq("org_id", orgId);
+    if (settingsError) return setupDbError(settingsError);
   }
 
   revalidatePath("/app/setup");
@@ -815,5 +925,143 @@ export async function completeSetup(): Promise<ActionResult> {
     return setupDbError(error);
   }
 
+  revalidatePath("/app/setup");
+  revalidatePath("/app/dashboard");
+  return { success: true };
+}
+
+async function upsertInternalLabourCost(params: {
+  supabase: SetupAuthContext["supabase"];
+  orgId: string;
+  itemKey: string;
+  trade: string;
+  label: string;
+  costRate: number;
+}): Promise<ActionResult | null> {
+  const { error } = await params.supabase.from("rates").upsert(
+    {
+      org_id: params.orgId,
+      rate_type: "labour",
+      trade: params.trade,
+      work_area_type: null,
+      item_key: params.itemKey,
+      label: params.label,
+      unit: "hour",
+      cost_rate: params.costRate,
+      sell_rate: null,
+      markup_percent: null,
+      active: true,
+    },
+    { onConflict: "org_id,rate_type,item_key" }
+  );
+  if (error) {
+    return { error: "Could not save your labour costs. Please try again." };
+  }
+  return null;
+}
+
+/**
+ * Required carpenter and labourer internal hourly costs.
+ * Sell stays unset so charge-out still comes from company margin.
+ * Does not rewrite historical quote or variation amounts.
+ */
+export async function saveRequiredLabourCosts(input: {
+  carpenterCost?: string | number | null;
+  labourerCost?: string | number | null;
+}): Promise<ActionResult> {
+  const carpenter = parseRequiredHourlyCost(input.carpenterCost, "carpenter");
+  const labourer = parseRequiredHourlyCost(input.labourerCost, "labourer");
+  const fieldErrors: Record<string, string[]> = {};
+  if (!carpenter.ok) fieldErrors.carpenterCost = [carpenter.error];
+  if (!labourer.ok) fieldErrors.labourerCost = [labourer.error];
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+  const orgId = context.orgId;
+  if (!onboardingMutationIsTenantScoped(orgId, orgId)) {
+    return MISSING_ORG_ERROR;
+  }
+
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: context.user.id,
+    permission: "company.rates.manage",
+    entitlement: "company_rates.basic",
+  });
+  if (denied) return denied;
+
+  if (!carpenter.ok || !labourer.ok) return { fieldErrors };
+
+  const carpenterError = await upsertInternalLabourCost({
+    supabase: context.supabase,
+    orgId,
+    itemKey: CARPENTER_LABOUR_RATE_KEY,
+    trade: "carpenter",
+    label: "Carpenter / builder",
+    costRate: carpenter.costRate,
+  });
+  if (carpenterError) return carpenterError;
+
+  const labourerError = await upsertInternalLabourCost({
+    supabase: context.supabase,
+    orgId,
+    itemKey: LABOURER_LABOUR_RATE_KEY,
+    trade: "labourer",
+    label: "Labourer",
+    costRate: labourer.costRate,
+  });
+  if (labourerError) return labourerError;
+
+  const { data: settings } = await context.supabase
+    .from("organisation_settings")
+    .select("onboarding_status")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (settings?.onboarding_status !== "completed") {
+    const { error } = await context.supabase
+      .from("organisation_settings")
+      .update({
+        onboarding_status: "in_progress",
+        onboarding_step: "ready",
+      })
+      .eq("org_id", orgId);
+    if (error) return setupDbError(error);
+  }
+
+  revalidatePath("/app/setup");
+  revalidatePath("/app/rates");
+  revalidatePath("/app/dashboard");
+  return { success: true };
+}
+
+/** Marks required onboarding finished. Safe to call again. */
+export async function completeRequiredOnboarding(): Promise<ActionResult> {
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+
+  const stage = await getFirstRunStageUncached();
+  if (stage === "done") return { success: true };
+  if (stage !== "ready") {
+    return { error: "Finish the required setup steps first." };
+  }
+
+  return completeSetup();
+}
+
+export async function dismissOptionalPersonalisation(): Promise<ActionResult> {
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+
+  const { error } = await context.supabase
+    .from("organisation_settings")
+    .update({
+      optional_personalisation_dismissed_at: new Date().toISOString(),
+    })
+    .eq("org_id", context.orgId);
+
+  if (error) return setupDbError(error);
+  revalidatePath("/app/dashboard");
   return { success: true };
 }

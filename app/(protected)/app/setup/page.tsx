@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { SetupShell } from "@/components/setup/SetupShell";
-import { getCompanyDnaHubState } from "@/lib/company-dna/actions";
 import { getFirstRunStage, getSetupState } from "@/lib/setup/actions";
 import {
   setupModeRedirect,
@@ -8,50 +7,18 @@ import {
 } from "@/lib/setup/first-run-stage";
 
 type SetupPageProps = {
-  searchParams: Promise<{ mode?: string; section?: string }>;
+  searchParams: Promise<{ mode?: string }>;
 };
-
-const IMPROVE_SECTIONS = new Set([
-  "company",
-  "work_areas",
-  "rates",
-  "calibrate",
-]);
 
 export default async function SetupPage({ searchParams }: SetupPageProps) {
   const params = await searchParams;
   const stage = await getFirstRunStage();
-  const modeParam = params.mode;
-  const modeRedirect = setupModeRedirect(modeParam, stage);
+  const modeRedirect = setupModeRedirect(params.mode, stage);
   if (modeRedirect) {
     redirect(modeRedirect);
   }
 
-  const shellMode = setupShellMode(modeParam, stage);
+  const state = await getSetupState();
 
-  const sectionParam = params.section?.trim();
-  const initialImproveSection =
-    sectionParam && IMPROVE_SECTIONS.has(sectionParam)
-      ? (sectionParam as
-          | "company"
-          | "work_areas"
-          | "rates"
-          | "calibrate")
-      : undefined;
-
-  const [state, dnaHub] = await Promise.all([
-    getSetupState(),
-    shellMode === "improve"
-      ? getCompanyDnaHubState()
-      : Promise.resolve(null),
-  ]);
-
-  return (
-    <SetupShell
-      initialState={state}
-      mode={shellMode}
-      initialImproveSection={initialImproveSection}
-      dnaHub={dnaHub}
-    />
-  );
+  return <SetupShell initialState={state} mode={setupShellMode(params.mode, stage)} />;
 }

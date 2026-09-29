@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,42 +12,87 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { completeRequiredOnboarding } from "@/lib/setup/actions";
+import { optionalRatesHref } from "@/lib/setup/optional-personalisation";
 
-export function FirstRunReady() {
+type FirstRunReadyProps = {
+  personaliseHref: string | null;
+  personaliseLabel: string | null;
+};
+
+export function FirstRunReady({
+  personaliseHref,
+  personaliseLabel,
+}: FirstRunReadyProps) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  async function finish(): Promise<boolean> {
+    const result = await completeRequiredOnboarding();
+    if (result.error) {
+      setError(result.error);
+      return false;
+    }
+    return true;
+  }
+
+  async function openOptional(href: string) {
+    setError(null);
+    setLeaving(true);
+    const ok = await finish();
+    setLeaving(false);
+    if (!ok) return;
+    router.push(href);
+  }
+
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl">You&apos;re ready to price your first job.</CardTitle>
-        <CardDescription className="hidden md:block">
-          Add what you know now — plans and full details aren&apos;t required.
+        <CardTitle className="text-xl">You can price your first job</CardTitle>
+        <CardDescription>
+          Personalising rates and work areas can wait. It does not block this
+          job.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <p
-          className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-snug text-muted-foreground"
-          data-onboarding-standard-rates-notice
-        >
-          Quotr will start with standard rates. For better accuracy, personalise
-          your rates and calibrate Quotr to your business.
-        </p>
-        <p className="text-xs">
-          <Link
-            href="/app/setup?mode=improve"
-            className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Personalise Quotr
-          </Link>
+      <CardContent className="space-y-3">
+        {error ? (
+          <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <p className="text-sm leading-snug text-muted-foreground">
+          Quotr will use the carpenter and labourer costs you just entered.
+          Crew times and other rates can be improved later from Rates.
         </p>
       </CardContent>
-      <CardFooter className="flex flex-col gap-3 border-t sm:flex-row sm:justify-end">
-        <Button
-          render={<Link href="/app/dashboard" />}
-          variant="ghost"
-          className="h-11 w-full sm:w-auto"
-        >
-          Go to dashboard
-        </Button>
-        <NewProjectDialog intent="first-job" />
+      <CardFooter className="flex flex-col items-stretch gap-3 border-t sm:items-end">
+        <NewProjectDialog
+          intent="first-job"
+          beforeOpen={finish}
+        />
+        <div className="flex w-full flex-col gap-2 sm:items-end">
+          {personaliseHref && personaliseLabel ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full sm:w-auto"
+              disabled={leaving}
+              onClick={() => void openOptional(personaliseHref)}
+            >
+              {personaliseLabel}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 w-full sm:w-auto"
+            disabled={leaving}
+            onClick={() => void openOptional(optionalRatesHref())}
+          >
+            Review rates later
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

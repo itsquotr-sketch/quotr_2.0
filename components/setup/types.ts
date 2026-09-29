@@ -3,6 +3,8 @@ import type { EstimateSupport } from "@/lib/scopes/catalogue";
 export type SetupStep =
   | "company"
   | "work_areas"
+  | "labour"
+  | "ready"
   | "rates"
   | "review"
   | "completed";
@@ -28,6 +30,14 @@ export type OrganisationSettings = {
   onboarding_status: SetupStatus;
   onboarding_step: SetupStep;
   onboarding_completed_at: string | null;
+  trading_name?: string | null;
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  postcode?: string | null;
+  address_country?: string | null;
+  gst_number?: string | null;
+  nzbn?: string | null;
   prefer_user_rates: boolean;
   allow_benchmark_rates: boolean;
   show_profit_in_estimates: boolean;
@@ -67,15 +77,23 @@ export type SetupState = {
   rates: OrganisationRate[];
 };
 
-/** Minimum first-run company basics (Stage 3.1C.3). */
+/** Minimum first-run company basics (Stage 3.1C.3 / ONBOARDING-01). */
 export type CompanyBasicsInput = {
-  currency: string;
+  currency?: string;
   country: string;
   region?: string;
   timezone?: string;
-  contact_email: string;
+  contact_email?: string;
   contact_phone?: string;
-  default_gst_rate: number;
+  default_gst_rate?: number;
+  required_profile?: boolean;
+  trading_name?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  postcode?: string;
+  gst_registered?: string;
+  tax_identifier?: string;
 };
 
 export type CompanyDefaultsInput = {

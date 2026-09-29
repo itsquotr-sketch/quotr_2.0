@@ -117,7 +117,7 @@ export function WorkAreasStep({
     }
 
     if (isFirstRun) {
-      router.replace("/app/setup?mode=pricing");
+      router.replace("/app/setup?mode=labour");
       return;
     }
 

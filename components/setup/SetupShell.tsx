@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { getSetupState } from "@/lib/setup/actions";
 import { CompanyDnaHub } from "@/components/company-dna/CompanyDnaHub";
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
+import { LabourCostsStep } from "./LabourCostsStep";
+import { RequiredCompanyProfileStep } from "./RequiredCompanyProfileStep";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
 import { CompletedSetupSummary } from "./CompletedSetupSummary";
 import { FirstRunProgress } from "./FirstRunProgress";
@@ -28,8 +30,9 @@ import {
   ratesSetupSummary,
   workAreasSummary,
 } from "@/lib/setup/completed-setup";
+import { resolveOptionalPersonalisationTarget } from "@/lib/setup/optional-personalisation";
 
-export type SetupShellMode = "basics" | "work" | "pricing" | "ready" | "improve";
+export type SetupShellMode = "basics" | "work" | "labour" | "pricing" | "ready" | "improve";
 
 type ImproveSection = "company" | "work_areas" | "rates" | "calibrate";
 
@@ -67,6 +70,12 @@ export function SetupShell({
 }: SetupShellProps) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
+  const personalise = resolveOptionalPersonalisationTarget({
+    preferredWorkAreaTypes: state.workAreas
+      .filter((area) => area.enabled)
+      .map((area) => area.work_area_type),
+    progress: [],
+  });
   const [section, setSection] = useState<ImproveSection>(
     () =>
       initialImproveSection ??
@@ -88,17 +97,12 @@ export function SetupShell({
         <PageHeader
           compactOnMobile
           title="Welcome to Quotr"
-          description="A few company details, then the work you usually price."
-          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
+          description="Company details, the work you price, and your internal labour costs."
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="company" />
-            <CompanyBasicsStep
-              state={state}
-              mode="basics"
-              userEmail={userEmail}
-            />
+            <RequiredCompanyProfileStep state={state} />
           </div>
         </FormContainer>
       </div>
@@ -112,12 +116,29 @@ export function SetupShell({
           compactOnMobile
           title="Your work"
           description="Tell Quotr the jobs you usually price."
-          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-2xl">
             <FirstRunProgress current="work" />
             <WorkAreasStep state={state} mode="first-run" />
+          </div>
+        </FormContainer>
+      </div>
+    );
+  }
+
+  if (mode === "labour") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PageHeader
+          compactOnMobile
+          title="Labour costs"
+          description="Internal hourly costs for the business, not client charge-out rates."
+        />
+        <FormContainer>
+          <div className="mx-auto w-full max-w-lg">
+            <FirstRunProgress current="labour" />
+            <LabourCostsStep state={state} />
           </div>
         </FormContainer>
       </div>
@@ -135,7 +156,7 @@ export function SetupShell({
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-lg">
-            <FirstRunProgress current="pricing" />
+            <FirstRunProgress current="labour" />
             <PricingBasicsStep state={state} />
           </div>
         </FormContainer>
@@ -150,12 +171,14 @@ export function SetupShell({
           compactOnMobile
           title="Start your first job"
           description="You can refine details as you go."
-          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="job" />
-            <FirstRunReady />
+            <FirstRunReady
+              personaliseHref={personalise?.href ?? null}
+              personaliseLabel={personalise?.title ?? null}
+            />
           </div>
         </FormContainer>
       </div>

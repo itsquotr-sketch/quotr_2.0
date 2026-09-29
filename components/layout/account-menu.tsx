@@ -62,6 +62,7 @@ export function AccountMenu({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const appUser = useAppUser();
+  const onboardingLocked = appUser.onboardingLocked === true;
 
   const userEmail = userEmailProp ?? appUser.userEmail;
   const fullName = fullNameProp ?? appUser.fullName;
@@ -161,6 +162,7 @@ export function AccountMenu({
           <UserRound className="size-4" />
           Profile
         </DropdownMenuItem>
+        {onboardingLocked ? null : (
         <DropdownMenuItem
           className="min-h-10 cursor-pointer sm:min-h-8"
           data-account-menu-company
@@ -169,6 +171,7 @@ export function AccountMenu({
           <Building2 className="size-4" />
           Company settings
         </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className="min-h-10 cursor-pointer sm:min-h-8"
           data-account-menu-billing

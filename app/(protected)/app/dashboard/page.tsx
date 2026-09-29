@@ -6,7 +6,8 @@ import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
 import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
-import { ImproveSetupCard } from "@/components/setup/ImproveSetupCard";
+import { OptionalPersonalisationPrompt } from "@/components/setup/OptionalPersonalisationPrompt";
+import { resolveOptionalPersonalisationTarget } from "@/lib/setup/optional-personalisation";
 import { loadDashboardPageData } from "@/lib/dashboard/load-dashboard-page";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getProjectNextAction } from "@/lib/projects/next-action";
@@ -29,6 +30,42 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
 
   const isEmpty = !hasProjects;
+  const personalisation = resolveOptionalPersonalisationTarget({
+    dismissed: readiness.personalisationPromptDismissed,
+    preferredWorkAreaTypes: readiness.preferredWorkAreaTypes,
+    progress: [
+      {
+        workAreaType: "deck",
+        calibrated: readiness.deckKeyTasksCalibrated,
+        total: readiness.deckKeyTasksTotal,
+        complete:
+          readiness.deckKeyTasksTotal > 0 &&
+          readiness.deckKeyTasksCalibrated >= readiness.deckKeyTasksTotal,
+      },
+      {
+        workAreaType: "fence",
+        calibrated: readiness.fenceKeyTasksCalibrated,
+        total: readiness.fenceKeyTasksTotal,
+        complete:
+          readiness.fenceKeyTasksTotal > 0 &&
+          readiness.fenceKeyTasksCalibrated >= readiness.fenceKeyTasksTotal,
+      },
+      {
+        workAreaType: "retaining_wall",
+        calibrated: readiness.rwKeyTasksCalibrated,
+        total: readiness.rwKeyTasksTotal,
+        complete: readiness.rwWorkAreaCalibrated,
+      },
+      {
+        workAreaType: "bathroom",
+        calibrated: readiness.bathroomKeyTasksCalibrated,
+        total: readiness.bathroomKeyTasksTotal,
+        complete:
+          readiness.bathroomKeyTasksTotal > 0 &&
+          readiness.bathroomKeyTasksCalibrated >= readiness.bathroomKeyTasksTotal,
+      },
+    ],
+  });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -68,15 +105,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   <NewProjectDialog intent="first-job" />
                 </div>
               </div>
-              <ImproveSetupCard readiness={readiness} />
+              {personalisation ? (
+                <OptionalPersonalisationPrompt
+                  href={personalisation.href}
+                  title={personalisation.title}
+                  reason={personalisation.reason}
+                />
+              ) : null}
               <RecentActivityCard items={activity} />
             </>
           ) : (
             <>
-              <ImproveSetupCard
-                readiness={readiness}
-                hasProjects={!isEmpty}
-              />
+              {personalisation ? (
+                <OptionalPersonalisationPrompt
+                  href={personalisation.href}
+                  title={personalisation.title}
+                  reason={personalisation.reason}
+                />
+              ) : null}
               <div data-dashboard-kpis>
                 <DashboardSummaryCards summary={summary} activeFilter={filter} />
               </div>

@@ -6,7 +6,6 @@ import { useState } from "react";
 import {
   Building2,
   Menu,
-  Settings2,
   UserRound,
   Users,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import { cn } from "@/lib/utils";
 const MENU_LINKS = [
   { href: "/app/settings/company", label: "Company", icon: Building2 },
   { href: "/app/settings/team", label: "Team", icon: Users },
-  { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
 
 type MobileMenuSheetProps = {

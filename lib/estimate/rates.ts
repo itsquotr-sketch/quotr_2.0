@@ -345,6 +345,11 @@ export function resolveRate(params: {
   });
 }
 
+/**
+ * Trade key order is documented in lib/estimate/labour-trade-mapping.ts.
+ * Do not reorder: existing organisations without a labourer row must keep
+ * the carpenter → general fallback. Historical quote snapshots are not read here.
+ */
 export function resolveLabourRate(params: {
   rates: OrganisationRate[];
   organisationSettings: OrganisationSettings | null;

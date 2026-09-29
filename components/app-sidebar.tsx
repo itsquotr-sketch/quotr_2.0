@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, DollarSign, LayoutDashboard, Settings2, Users } from "lucide-react";
+import { Building2, DollarSign, LayoutDashboard, Users } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
@@ -21,7 +21,6 @@ const NAV_ITEMS = [
   { href: "/app/rates", label: "Rates", icon: DollarSign },
   { href: "/app/settings/company", label: "Company", icon: Building2 },
   { href: "/app/settings/team", label: "Team", icon: Users },
-  { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
 
 function NavPendingMark() {

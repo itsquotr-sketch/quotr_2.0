@@ -34,9 +34,9 @@ export const SETUP_RECOMMENDATION_DESTINATIONS: Record<
   },
   work_types: {
     id: "work_types",
-    href: "/app/setup?mode=improve&section=work_areas",
-    surface: "Setup / Work types",
-    section: "work_areas",
+    href: "/app/settings/company?section=work",
+    surface: "Company / Work types",
+    section: "work",
   },
   default_margin: {
     id: "default_margin",
@@ -115,6 +115,7 @@ export function parseRatesSection(
 
 export const COMPANY_SECTION_IDS = [
   "general",
+  "work",
   "pricing",
   "quotes",
 ] as const;

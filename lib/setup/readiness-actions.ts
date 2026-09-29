@@ -54,7 +54,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [organisationName, settings, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
+  const [organisationName, settings, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }, dismissal] =
     await Promise.all([
       loadOrganisationName(orgId),
       loadOrganisationSettingsRow(orgId),
@@ -75,6 +75,11 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .select("id, calibration_task_key")
         .eq("org_id", orgId)
         .eq("status", "active"),
+      supabase
+        .from("organisation_settings")
+        .select("optional_personalisation_dismissed_at")
+        .eq("org_id", orgId)
+        .maybeSingle(),
     ]);
 
   const onboardingStatus = settings?.onboarding_status as
@@ -140,5 +145,8 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       }) === "calibrated",
     bathroomKeyTasksCalibrated: bathroomCounts.tier1Calibrated,
     bathroomKeyTasksTotal: bathroomCounts.tier1Total,
+    personalisationPromptDismissed:
+      !dismissal.error &&
+      Boolean(dismissal.data?.optional_personalisation_dismissed_at),
   });
 }

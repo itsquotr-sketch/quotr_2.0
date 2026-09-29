@@ -7,6 +7,7 @@ import { measureServerLoad } from "@/lib/perf/timing";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettings } from "@/lib/settings/company-actions";
+import { getSetupState } from "@/lib/setup/actions";
 import {
   isMovedCompanyAdvancedSection,
   parseCompanySettingsSection,
@@ -27,7 +28,7 @@ export default async function CompanySettingsPage({
   const initialSection =
     parseCompanySettingsSection(params.section) ?? "general";
 
-  const [settings, canEdit, display] = await Promise.all([
+  const [settings, canEdit, display, setupState] = await Promise.all([
     measureServerLoad("company-settings", () => getCompanySettings()),
     (async () => {
       const auth = await getAuthOrgContext();
@@ -41,6 +42,7 @@ export default async function CompanySettingsPage({
       ).ok;
     })(),
     getAuthDisplayProfile(),
+    getSetupState(),
   ]);
 
   if (!settings) {
@@ -51,7 +53,7 @@ export default async function CompanySettingsPage({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
-        description="Company identity, contact details, tax, timezone, quotes, and branding."
+        description="Company identity, address, tax, work types, quotes, and branding."
         actions={<UserMenu />}
       />
       <FormContainer>
@@ -61,6 +63,7 @@ export default async function CompanySettingsPage({
           userFullName={display?.fullName}
           initialSection={initialSection}
           canEdit={canEdit}
+          setupState={setupState}
         />
       </FormContainer>
     </div>

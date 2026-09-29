@@ -23,6 +23,8 @@ import {
 import { sanitizeBrandColour } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
 import { CompanyLogoField } from "@/components/settings/CompanyLogoField";
+import { WorkAreasStep } from "@/components/setup/WorkAreasStep";
+import type { SetupState } from "@/components/setup/types";
 import {
   isOrganisationBrandingPublicUrl,
   validateLegacyLogoUrl,
@@ -42,10 +44,12 @@ type CompanySettingsContentProps = {
   /** Deep-link from Setup recommendations (`?section=`). */
   initialSection?: CompanySettingsSectionId;
   canEdit: boolean;
+  setupState: SetupState;
 };
 
 const COMPANY_SECTION_LABELS: Record<CompanySettingsSectionId, string> = {
   general: "General",
+  work: "Work types",
   pricing: "Pricing defaults",
   quotes: "Quotes",
 };
@@ -123,6 +127,7 @@ export function CompanySettingsContent({
   userFullName,
   initialSection = "general",
   canEdit,
+  setupState,
 }: CompanySettingsContentProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [tradingName, setTradingName] = useState(settings.tradingName ?? "");
@@ -250,6 +255,19 @@ export function CompanySettingsContent({
     settings.legalName?.trim() ||
     settings.organisationName;
 
+  if (activeSection === "work") {
+    return (
+      <div className="space-y-6">
+        <SettingsSectionNav
+          items={[...COMPANY_SECTIONS]}
+          activeId={activeSection}
+          onChange={selectSection}
+        />
+        <WorkAreasStep state={setupState} mode="improve" />
+      </div>
+    );
+  }
+
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <Card className="border-border/60 bg-muted/20 shadow-none">
@@ -262,13 +280,6 @@ export function CompanySettingsContent({
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Link
-              href="/app/setup"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Setup wizard
-            </Link>
-            <span className="text-muted-foreground">·</span>
             <Link
               href="/app/rates"
               className="text-primary underline-offset-4 hover:underline"
