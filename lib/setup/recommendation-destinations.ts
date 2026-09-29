@@ -70,15 +70,15 @@ export const SETUP_RECOMMENDATION_DESTINATIONS: Record<
   },
   calibrate: {
     id: "calibrate",
-    href: "/app/setup?mode=improve&section=calibrate",
-    surface: "Setup / Calibrate",
-    section: "calibrate",
+    href: "/app/rates?section=calibration",
+    surface: "Rates / Calibration",
+    section: "calibration",
   },
   calibrate_another: {
     id: "calibrate_another",
-    href: "/app/setup?mode=improve&section=calibrate",
-    surface: "Setup / Calibrate",
-    section: "calibrate",
+    href: "/app/rates?section=calibration",
+    surface: "Rates / Calibration",
+    section: "calibration",
   },
 };
 
@@ -99,6 +99,7 @@ export const RATES_SECTION_IDS = [
   "waste",
   "legacy",
   "benchmarks",
+  "calibration",
 ] as const;
 
 export type RatesSectionId = (typeof RATES_SECTION_IDS)[number];

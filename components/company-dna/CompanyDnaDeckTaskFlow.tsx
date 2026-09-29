@@ -472,7 +472,7 @@ export function CompanyDnaDeckTaskFlow({
             </p>
             <div className="flex flex-col gap-2 sm:flex-row pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
               <Link
-                href="/app/setup?mode=improve&section=calibrate"
+                href="/app/rates?section=calibration"
                 className={cn(buttonVariants(), "min-h-11")}
                 data-company-dna-done
               >

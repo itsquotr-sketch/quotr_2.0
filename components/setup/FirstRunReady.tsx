@@ -13,17 +13,12 @@ import {
 } from "@/components/ui/card";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { completeRequiredOnboarding } from "@/lib/setup/actions";
-import { optionalRatesHref } from "@/lib/setup/optional-personalisation";
 
 type FirstRunReadyProps = {
-  personaliseHref: string | null;
-  personaliseLabel: string | null;
+  improveHref: string;
 };
 
-export function FirstRunReady({
-  personaliseHref,
-  personaliseLabel,
-}: FirstRunReadyProps) {
+export function FirstRunReady({ improveHref }: FirstRunReadyProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -62,37 +57,25 @@ export function FirstRunReady({
           </p>
         ) : null}
         <p className="text-sm leading-snug text-muted-foreground">
-          Quotr will use the carpenter and labourer costs you just entered.
-          Crew times and other rates can be improved later from Rates.
+          Quotr will use the carpenter and labourer costs and the default
+          gross margin you just entered.
+        </p>
+        <p className="text-sm leading-snug text-muted-foreground">
+          Optional — personalise material, labour and productivity rates for
+          more accurate estimates. You can do this later.
         </p>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-3 border-t sm:items-end">
-        <NewProjectDialog
-          intent="first-job"
-          beforeOpen={finish}
-        />
-        <div className="flex w-full flex-col gap-2 sm:items-end">
-          {personaliseHref && personaliseLabel ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full sm:w-auto"
-              disabled={leaving}
-              onClick={() => void openOptional(personaliseHref)}
-            >
-              {personaliseLabel}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-11 w-full sm:w-auto"
-            disabled={leaving}
-            onClick={() => void openOptional(optionalRatesHref())}
-          >
-            Review rates later
-          </Button>
-        </div>
+        <NewProjectDialog intent="first-job" beforeOpen={finish} />
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full sm:w-auto"
+          disabled={leaving}
+          onClick={() => void openOptional(improveHref)}
+        >
+          Improve my rates and productivity
+        </Button>
       </CardFooter>
     </Card>
   );

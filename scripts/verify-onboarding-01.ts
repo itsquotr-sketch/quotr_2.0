@@ -8,7 +8,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import type { CompanySettings } from "../lib/settings/types";
 import type { OrganisationRate, OrganisationSettings } from "../components/setup/types";
-import { resolveLabourRate } from "../lib/estimate/rates";
+import { quotrFallbackSellFromCost, resolveLabourRate } from "../lib/estimate/rates";
 import {
   CARPENTER_LABOUR_RATE_KEY,
   GENERAL_LABOUR_RATE_KEY,
@@ -25,9 +25,18 @@ import {
   resolveFirstRunStage,
 } from "../lib/setup/first-run-stage";
 import {
+  improveRatesAndProductivityHref,
   optionalRatesHref,
+  RATES_CALIBRATION_HREF,
   resolveOptionalPersonalisationTarget,
 } from "../lib/setup/optional-personalisation";
+import { getSetupRecommendationHref } from "../lib/setup/recommendation-destinations";
+import { parseRequiredTargetMargin } from "../lib/setup/pricing-basics";
+import {
+  calibrationStatusLabel,
+  calibrationWorkAreaHref,
+} from "../lib/rates/calibration-access";
+import { summarizeProductivityWorkAreas } from "../lib/rates/productivity-work-area-summary";
 import {
   normalizeAbn,
   normalizeNzGstNumber,
@@ -185,7 +194,10 @@ function main() {
     },
     10
   );
-  assert("AU registered profile persists ABN", au.ok && au.value.nzbn === "51824753556" && au.value.gstNumber === null);
+  assert(
+    "AU registered profile persists ABN",
+    au.ok && au.value.abn === "51824753556" && au.value.nzbn === null && au.value.gstNumber === null
+  );
   assert("AU gst rate 10", au.ok && au.value.defaultGstRate === 10);
   assert("invalid ABN rejected", normalizeAbn("51824753555") === null);
   assert("short NZ GST rejected", normalizeNzGstNumber("1234567") === null);
@@ -233,6 +245,7 @@ function main() {
       postcode: au.value.postcode,
       addressCountry: au.value.addressCountry,
       nzbn: au.value.nzbn,
+      abn: au.value.abn,
       gstNumber: au.value.gstNumber,
       defaultGstRate: au.value.defaultGstRate,
     });
@@ -246,6 +259,7 @@ function main() {
         postcode: au.value.postcode,
         addressCountry: au.value.addressCountry,
         nzbn: au.value.nzbn,
+      abn: au.value.abn,
         gstNumber: au.value.gstNumber,
       },
       client: { name: "Client" },
@@ -254,7 +268,27 @@ function main() {
     });
     assert("variation address includes the street", variation?.address?.includes("8 George Street") === true);
     assert("variation registration is the ABN", variation?.registrationLines.join(" ") === "ABN 51824753556");
+    assert(
+      "issued Australian snapshot still prints ABN",
+      formatRegistrationLines(
+        settings({ addressCountry: "Australia", nzbn: "51824753556", abn: null })
+      ).join(" ") === "ABN 51824753556"
+    );
+    assert(
+      "NZBN is not labelled as an ABN",
+      formatRegistrationLines(
+        settings({ addressCountry: "New Zealand", nzbn: "9429000000000" })
+      ).join(" ") === "NZBN 9429000000000"
+    );
   }
+
+  const margin25 = parseRequiredTargetMargin("25");
+  assert("margin uses the organisation gross-margin rule", margin25.ok && margin25.marginPercent === 25);
+  assert("margin above 95 is rejected", !parseRequiredTargetMargin("96").ok);
+  assert(
+    "saved margin prices a new labour cost",
+    quotrFallbackSellFromCost(85, { ...ORG_SETTINGS, default_margin_percent: 25 }) === 113.33
+  );
 
   assert("new user starts at company", resolveFirstRunStage({ onboardingStatus: "not_started", onboardingStep: "company" }) === "basics");
   assert(
@@ -327,12 +361,81 @@ function main() {
     }) === null
   );
   assert("rates remain the other optional route", optionalRatesHref() === "/app/rates?section=core");
+  assert(
+    "optional improvement opens the next calibration task",
+    improveRatesAndProductivityHref({
+      preferredWorkAreaTypes: ["deck"],
+      progress: [],
+    }) === "/app/setup/dna/deck"
+  );
+  assert(
+    "optional improvement without a calibration task opens Rates",
+    improveRatesAndProductivityHref({
+      preferredWorkAreaTypes: ["kitchen"],
+      progress: [],
+    }) === RATES_CALIBRATION_HREF
+  );
+  assert(
+    "calibration recommendations stay on Rates",
+    getSetupRecommendationHref("calibrate") === RATES_CALIBRATION_HREF &&
+      getSetupRecommendationHref("calibrate_another") === RATES_CALIBRATION_HREF
+  );
+  const deckSummary = summarizeProductivityWorkAreas([], ["bathroom", "deck"]).find(
+    (row) => row.workAreaType === "deck"
+  );
+  const bathroomSummary = summarizeProductivityWorkAreas([], ["bathroom", "deck"]).find(
+    (row) => row.workAreaType === "bathroom"
+  );
+  assert(
+    "calibration lists selected work areas first",
+    summarizeProductivityWorkAreas([], ["bathroom"]).map((row) => row.workAreaType)[0] === "bathroom"
+  );
+  assert(
+    "uncalibrated work uses Quotr benchmarks",
+    deckSummary != null && calibrationStatusLabel(deckSummary.status) === "Quotr benchmarks"
+  );
+  assert(
+    "calibration opens the work-area flow",
+    bathroomSummary != null && calibrationWorkAreaHref(bathroomSummary).startsWith("/app/setup/dna/")
+  );
 
   assert("tenant match", onboardingMutationIsTenantScoped("org-a", "org-a"));
   assert("tenant mismatch rejected", !onboardingMutationIsTenantScoped("org-a", "org-b"));
   assert("empty org rejected", !onboardingMutationIsTenantScoped("", "org-a"));
 
+  const ready = read("components/setup/FirstRunReady.tsx");
+  const labourStep = read("components/setup/LabourCostsStep.tsx");
+  const ratesNav = read("components/rates/RatesPageContent.tsx");
+  assert(
+    "first job keeps the primary action and describes the optional path",
+    ready.includes("intent=\"first-job\"") &&
+      ready.includes("Improve my rates and productivity") &&
+      ready.includes("Optional — personalise material, labour and productivity rates")
+  );
+  assert(
+    "labour step collects both costs and the default margin",
+    labourStep.includes("Carpenter internal cost per hour") &&
+      labourStep.includes("Labourer internal cost per hour") &&
+      labourStep.includes("Default target gross margin %") &&
+      labourStep.includes("not client")
+  );
+  assert("Rates navigation includes Calibration", ratesNav.includes('label: "Calibration"'));
+
   const actions = read("lib/setup/actions.ts");
+  const labourSave = actions.slice(actions.indexOf("export async function saveRequiredLabourCosts"));
+  assert(
+    "labour save writes the organisation margin and not historical documents",
+    labourSave.includes("default_margin_percent: margin.marginPercent") &&
+      labourSave.includes("parseRequiredTargetMargin") &&
+      !labourSave.includes('.from("quotes")') &&
+      !labourSave.includes('.from("variations")')
+  );
+  assert(
+    "ABN is stored on abn",
+    actions.includes("payload.abn = value.abn") &&
+      actions.includes("payload.nzbn = null") &&
+      !actions.includes("payload.nzbn = value.nzbn")
+  );
   assert(
     "onboarding writes use the authenticated org",
     actions.includes('.eq("org_id", orgId)') &&

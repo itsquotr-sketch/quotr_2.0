@@ -51,12 +51,16 @@ export function formatRegistrationLines(
   if (settings.gstNumber?.trim()) {
     lines.push(`GST ${settings.gstNumber.trim()}`);
   }
-  if (settings.nzbn?.trim()) {
-    if (country === "australia" || country === "au") {
-      lines.push(`ABN ${settings.nzbn.trim()}`);
-    } else {
-      lines.push(`NZBN ${settings.nzbn.trim()}`);
-    }
+  const australia = country === "australia" || country === "au";
+  const abn = settings.abn?.trim() ?? "";
+  if (abn) {
+    lines.push(`ABN ${abn}`);
+  } else if (australia && settings.nzbn?.trim()) {
+    // Snapshots issued before the abn column froze the number on nzbn.
+    lines.push(`ABN ${settings.nzbn.trim()}`);
+  }
+  if (!australia && settings.nzbn?.trim()) {
+    lines.push(`NZBN ${settings.nzbn.trim()}`);
   }
 
   return lines;

@@ -336,7 +336,7 @@ export function CalibrationFlow({
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <p className="text-sm">
         <Link
-          href="/app/setup?mode=improve&section=calibrate"
+          href="/app/rates?section=calibration"
           className="text-muted-foreground underline-offset-4 hover:underline"
         >
           Back to Calibrate Quotr
@@ -403,7 +403,7 @@ export function CalibrationFlow({
               Recalibrate
             </Button>
             <Link
-              href="/app/setup?mode=improve&section=calibrate"
+              href="/app/rates?section=calibration"
               className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
             >
               Done
@@ -645,7 +645,7 @@ export function CalibrationFlow({
               Recalibrate
             </Button>
             <Link
-              href="/app/setup?mode=improve&section=calibrate"
+              href="/app/rates?section=calibration"
               className={cn(buttonVariants())}
             >
               Done

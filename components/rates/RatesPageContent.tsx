@@ -13,6 +13,7 @@ import {
 } from "@/lib/setup/recommendation-destinations";
 import { cn } from "@/lib/utils";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
+import { RatesCalibrationAccess } from "./RatesCalibrationAccess";
 import { MaterialWastageDefaultsSection } from "./MaterialWastageDefaultsSection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
@@ -39,6 +40,7 @@ const RATES_SECTIONS = [
   { id: "defaults", label: "Defaults" },
   { id: "materials", label: "Materials" },
   { id: "core", label: "Labour & Productivity" },
+  { id: "calibration", label: "Calibration" },
   { id: "plant", label: "Plant" },
   { id: "subcontract", label: "Subcontract" },
   { id: "waste", label: "Waste" },
@@ -93,7 +95,7 @@ export function RatesPageContent({
   const view = viewFor(activeSection);
   const navActive = navIdFor(activeSection);
   const showNonDefault =
-    view !== "defaults" ||
+    (view !== "defaults" && view !== "calibration") ||
     activeSection === LEGACY_RATES_SECTION.id ||
     activeSection === "benchmarks";
 
@@ -149,6 +151,13 @@ export function RatesPageContent({
               />
             ) : null}
           </div>
+        ) : null}
+
+        {view === "calibration" ? (
+          <RatesCalibrationAccess
+            rates={state.rates}
+            preferredWorkAreaTypes={state.preferredWorkAreaTypes}
+          />
         ) : null}
 
         {showNonDefault ? (

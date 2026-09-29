@@ -34,6 +34,7 @@ import {
   ONBOARDING_LABOUR_RATE,
   parseOptionalLabourCost,
   parseOptionalTargetMargin,
+  parseRequiredTargetMargin,
 } from "@/lib/setup/pricing-basics";
 import {
   onboardingMutationIsTenantScoped,
@@ -395,7 +396,8 @@ export async function saveRequiredCompanyProfile(
   };
 
   if (value.countryCode === "AU") {
-    payload.nzbn = value.nzbn;
+    payload.abn = value.abn;
+    payload.nzbn = null;
   }
 
   const { error } = await supabase
@@ -961,19 +963,23 @@ async function upsertInternalLabourCost(params: {
 }
 
 /**
- * Required carpenter and labourer internal hourly costs.
- * Sell stays unset so charge-out still comes from company margin.
+ * Required carpenter and labourer internal hourly costs, plus the
+ * organisation default gross margin (organisation_settings.default_margin_percent).
+ * Sell stays unset so charge-out still comes from that margin.
  * Does not rewrite historical quote or variation amounts.
  */
 export async function saveRequiredLabourCosts(input: {
   carpenterCost?: string | number | null;
   labourerCost?: string | number | null;
+  targetMarginPercent?: string | number | null;
 }): Promise<ActionResult> {
   const carpenter = parseRequiredHourlyCost(input.carpenterCost, "carpenter");
   const labourer = parseRequiredHourlyCost(input.labourerCost, "labourer");
+  const margin = parseRequiredTargetMargin(input.targetMarginPercent);
   const fieldErrors: Record<string, string[]> = {};
   if (!carpenter.ok) fieldErrors.carpenterCost = [carpenter.error];
   if (!labourer.ok) fieldErrors.labourerCost = [labourer.error];
+  if (!margin.ok) fieldErrors.targetMarginPercent = [margin.error];
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   const context = await getSetupAuthContext();
@@ -991,7 +997,7 @@ export async function saveRequiredLabourCosts(input: {
   });
   if (denied) return denied;
 
-  if (!carpenter.ok || !labourer.ok) return { fieldErrors };
+  if (!carpenter.ok || !labourer.ok || !margin.ok) return { fieldErrors };
 
   const carpenterError = await upsertInternalLabourCost({
     supabase: context.supabase,
@@ -1019,16 +1025,18 @@ export async function saveRequiredLabourCosts(input: {
     .eq("org_id", orgId)
     .maybeSingle();
 
+  const settingsUpdate: Record<string, unknown> = {
+    default_margin_percent: margin.marginPercent,
+  };
   if (settings?.onboarding_status !== "completed") {
-    const { error } = await context.supabase
-      .from("organisation_settings")
-      .update({
-        onboarding_status: "in_progress",
-        onboarding_step: "ready",
-      })
-      .eq("org_id", orgId);
-    if (error) return setupDbError(error);
+    settingsUpdate.onboarding_status = "in_progress";
+    settingsUpdate.onboarding_step = "ready";
   }
+  const { error: marginError } = await context.supabase
+    .from("organisation_settings")
+    .update(settingsUpdate)
+    .eq("org_id", orgId);
+  if (marginError) return setupDbError(marginError);
 
   revalidatePath("/app/setup");
   revalidatePath("/app/rates");

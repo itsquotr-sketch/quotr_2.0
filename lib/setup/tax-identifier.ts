@@ -1,7 +1,8 @@
 /**
  * Country-specific GST / tax identifier for required onboarding.
  * Persists into existing organisation_settings columns.
- * NZ GST number → gst_number. AU ABN → nzbn (documents already label that ABN).
+ * NZ GST number → gst_number. AU ABN → organisation_settings.abn.
+ * NZBN stays a New Zealand identifier and is not used for an ABN.
  */
 
 export type TaxCountryCode = "NZ" | "AU";
@@ -80,7 +81,10 @@ export type RequiredCompanyProfileValue = {
   region: string | null;
   gstRegistered: boolean;
   gstNumber: string | null;
+  /** Always null from this step. NZBN is not collected here. */
   nzbn: string | null;
+  /** Australian Business Number. Null for New Zealand. */
+  abn: string | null;
   defaultGstRate: number;
 };
 
@@ -142,7 +146,7 @@ export function parseRequiredCompanyProfile(
 
   const registered = input.gstRegistered === "yes";
   let gstNumber: string | null = null;
-  let nzbn: string | null = null;
+  let abn: string | null = null;
   if (registered && (countryCode === "NZ" || countryCode === "AU")) {
     const raw = input.taxIdentifier?.trim() ?? "";
     if (!raw) {
@@ -152,13 +156,13 @@ export function parseRequiredCompanyProfile(
           : "Enter your GST number.",
       ];
     } else if (countryCode === "AU") {
-      const abn = normalizeAbn(raw);
-      if (!abn) {
+      const normalizedAbn = normalizeAbn(raw);
+      if (!normalizedAbn) {
         fieldErrors.tax_identifier = [
           "Enter a valid 11-digit ABN.",
         ];
       } else {
-        nzbn = abn;
+        abn = normalizedAbn;
       }
     } else {
       const gst = normalizeNzGstNumber(raw);
@@ -196,7 +200,8 @@ export function parseRequiredCompanyProfile(
       region: region || null,
       gstRegistered: registered,
       gstNumber: registered ? gstNumber : null,
-      nzbn: registered && countryCode === "AU" ? nzbn : null,
+      nzbn: null,
+      abn: registered && countryCode === "AU" ? abn : null,
       defaultGstRate: registered ? percent : 0,
     },
   };

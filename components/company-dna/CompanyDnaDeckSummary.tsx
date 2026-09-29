@@ -258,7 +258,7 @@ export function CompanyDnaDeckSummary({
             </Link>
           ) : null}
           <Link
-            href="/app/setup?mode=improve&section=calibrate"
+            href="/app/rates?section=calibration"
             className={cn(
               buttonVariants({ variant: nextOptionalHref ? "outline" : "default" }),
               "min-h-11"

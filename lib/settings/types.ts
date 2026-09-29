@@ -13,6 +13,7 @@ export type CompanySettings = {
   postcode: string | null;
   addressCountry: string;
   nzbn: string | null;
+  abn?: string | null;
   gstNumber: string | null;
   defaultGstRate: number;
   defaultQuoteValidityDays: number;
@@ -45,6 +46,7 @@ export type CompanySettingsInput = {
   postcode?: string;
   addressCountry?: string;
   nzbn?: string;
+  abn?: string;
   gstNumber?: string;
   defaultGstRate?: number;
   defaultQuoteValidityDays?: number;

@@ -38,6 +38,7 @@ export type OrganisationSettings = {
   address_country?: string | null;
   gst_number?: string | null;
   nzbn?: string | null;
+  abn?: string | null;
   prefer_user_rates: boolean;
   allow_benchmark_rates: boolean;
   show_profit_in_estimates: boolean;

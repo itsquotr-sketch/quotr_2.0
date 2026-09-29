@@ -145,6 +145,7 @@ export function CompanySettingsContent({
     settings.addressCountry ?? "New Zealand"
   );
   const [nzbn, setNzbn] = useState(settings.nzbn ?? "");
+  const [abn, setAbn] = useState(settings.abn ?? "");
   const [gstNumber, setGstNumber] = useState(settings.gstNumber ?? "");
   const [defaultGstRate, setDefaultGstRate] = useState(
     String(settings.defaultGstRate)
@@ -214,6 +215,7 @@ export function CompanySettingsContent({
       postcode,
       addressCountry,
       nzbn,
+      abn,
       gstNumber,
       defaultGstRate: Number(defaultGstRate),
       defaultQuoteValidityDays: Number(defaultQuoteValidityDays),
@@ -365,12 +367,28 @@ export function CompanySettingsContent({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="nzbn">NZBN</Label>
-              <LockedInput canEdit={canEdit}
-                id="nzbn"
-                value={nzbn}
-                onChange={(event) => setNzbn(event.target.value)}
-              />
+              {addressCountry.trim().toLowerCase() === "australia" ||
+              addressCountry.trim().toUpperCase() === "AU" ? (
+                <>
+                  <Label htmlFor="abn">ABN</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="abn"
+                    value={abn}
+                    onChange={(event) => setAbn(event.target.value)}
+                  />
+                </>
+              ) : (
+                <>
+                  <Label htmlFor="nzbn">NZBN</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="nzbn"
+                    value={nzbn}
+                    onChange={(event) => setNzbn(event.target.value)}
+                  />
+                </>
+              )}
             </div>
           </div>
           <div className="space-y-1.5">

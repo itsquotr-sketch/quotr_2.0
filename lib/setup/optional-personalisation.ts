@@ -57,3 +57,18 @@ export function resolveOptionalPersonalisationTarget(input: {
 export function optionalRatesHref(): string {
   return "/app/rates?section=core";
 }
+
+export const RATES_CALIBRATION_HREF = "/app/rates?section=calibration";
+
+/** Next unfinished calibration, or the Rates calibration list. Never the setup wizard. */
+export function improveRatesAndProductivityHref(input: {
+  preferredWorkAreaTypes: readonly string[];
+  progress: readonly OptionalCalibrationProgress[];
+}): string {
+  return (
+    resolveOptionalPersonalisationTarget({
+      preferredWorkAreaTypes: input.preferredWorkAreaTypes,
+      progress: input.progress,
+    })?.href ?? RATES_CALIBRATION_HREF
+  );
+}

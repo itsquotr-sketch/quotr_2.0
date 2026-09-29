@@ -51,6 +51,7 @@ const companySettingsSchema = z.object({
     .min(1, "Country is required.")
     .optional(),
   nzbn: optionalText,
+  abn: optionalText,
   gstNumber: optionalText,
   defaultGstRate: z
     .number()
@@ -178,6 +179,7 @@ function mapSettingsRow(
     postcode: (row.postcode as string | null) ?? null,
     addressCountry: (row.address_country as string) ?? "New Zealand",
     nzbn: (row.nzbn as string | null) ?? null,
+    abn: (row.abn as string | null) ?? null,
     gstNumber: (row.gst_number as string | null) ?? null,
     defaultGstRate: Number(row.default_gst_rate ?? 15),
     defaultQuoteValidityDays: Number(row.default_quote_validity_days ?? 30),
@@ -250,7 +252,7 @@ export async function getOrgQuoteDefaultsForOrg(
 }
 
 const COMPANY_SETTINGS_SELECT =
-  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, abn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function getCompanySettings(): Promise<CompanySettings | null> {
   return loadCompanySettingsForRequest();
@@ -326,6 +328,14 @@ export async function updateCompanySettings(
     update.address_country = data.addressCountry;
   }
   if (data.nzbn !== undefined) update.nzbn = data.nzbn;
+  if (data.abn !== undefined) update.abn = data.abn;
+  const savedCountry = (data.addressCountry ?? "").trim().toLowerCase();
+  if (
+    (savedCountry === "australia" || savedCountry === "au") &&
+    data.abn !== undefined
+  ) {
+    update.nzbn = null;
+  }
   if (data.gstNumber !== undefined) update.gst_number = data.gstNumber;
   if (data.defaultGstRate !== undefined) {
     update.default_gst_rate = data.defaultGstRate;

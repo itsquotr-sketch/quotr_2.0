@@ -30,7 +30,7 @@ import {
   ratesSetupSummary,
   workAreasSummary,
 } from "@/lib/setup/completed-setup";
-import { resolveOptionalPersonalisationTarget } from "@/lib/setup/optional-personalisation";
+import { improveRatesAndProductivityHref } from "@/lib/setup/optional-personalisation";
 import {
   onboardingFormEndPadding,
   onboardingFormScrollClass,
@@ -74,7 +74,7 @@ export function SetupShell({
 }: SetupShellProps) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
-  const personalise = resolveOptionalPersonalisationTarget({
+  const improveHref = improveRatesAndProductivityHref({
     preferredWorkAreaTypes: state.workAreas
       .filter((area) => area.enabled)
       .map((area) => area.work_area_type),
@@ -194,10 +194,7 @@ export function SetupShell({
         >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="job" />
-            <FirstRunReady
-              personaliseHref={personalise?.href ?? null}
-              personaliseLabel={personalise?.title ?? null}
-            />
+            <FirstRunReady improveHref={improveHref} />
           </div>
         </FormContainer>
       </div>

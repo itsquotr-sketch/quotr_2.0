@@ -7,7 +7,7 @@ import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-setting
 import type { CompanySettings } from "@/lib/settings/types";
 
 const COMPANY_SETTINGS_SELECT =
-  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, abn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function ensureCompanySettingsRow(
   supabase: AuthOrgContext["supabase"],
@@ -55,6 +55,7 @@ export function mapCompanySettingsRow(
     postcode: (row.postcode as string | null) ?? null,
     addressCountry: (row.address_country as string) ?? "New Zealand",
     nzbn: (row.nzbn as string | null) ?? null,
+    abn: (row.abn as string | null) ?? null,
     gstNumber: (row.gst_number as string | null) ?? null,
     defaultGstRate: Number(row.default_gst_rate ?? 15),
     defaultQuoteValidityDays: Number(row.default_quote_validity_days ?? 30),

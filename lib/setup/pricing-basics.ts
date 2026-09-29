@@ -32,6 +32,19 @@ export function parseOptionalLabourCost(
   return { skip: false, costRate };
 }
 
+export function parseRequiredTargetMargin(
+  value: string | number | null | undefined
+): { ok: true; marginPercent: number } | { ok: false; error: string } {
+  const raw = value == null ? "" : String(value).trim();
+  if (!raw) {
+    return { ok: false, error: "Enter the default target gross margin." };
+  }
+  const marginPercent = Number(raw);
+  const valid = validateMarginPercent(marginPercent);
+  if (!valid.ok) return { ok: false, error: valid.message };
+  return { ok: true, marginPercent };
+}
+
 export function parseOptionalTargetMargin(
   value: string | number | null | undefined
 ): { skip: true } | { skip: false; marginPercent: number } | { error: string } {

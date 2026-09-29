@@ -115,7 +115,7 @@ export function CompanyDnaRwIntro({
             </Link>
           ) : null}
           <Link
-            href="/app/setup?mode=improve&section=calibrate"
+            href="/app/rates?section=calibration"
             className={cn(buttonVariants({ variant: "ghost" }), "min-h-11")}
           >
             Back

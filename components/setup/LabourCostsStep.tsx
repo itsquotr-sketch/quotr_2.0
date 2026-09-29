@@ -40,6 +40,11 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
   const [labourerCost, setLabourerCost] = useState(
     existingCost(state, LABOURER_LABOUR_RATE_KEY)
   );
+  const [targetMarginPercent, setTargetMarginPercent] = useState(
+    state.settings?.default_margin_percent != null
+      ? String(state.settings.default_margin_percent)
+      : ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
@@ -56,7 +61,11 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
     setError(null);
     setFieldErrors({});
     setSaving(true);
-    const result = await saveRequiredLabourCosts({ carpenterCost, labourerCost });
+    const result = await saveRequiredLabourCosts({
+      carpenterCost,
+      labourerCost,
+      targetMarginPercent,
+    });
     setSaving(false);
     if (result.error) {
       setError(result.error);
@@ -74,8 +83,8 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
       <CardHeader className="pb-4">
         <CardTitle className="text-xl">Internal labour costs</CardTitle>
         <CardDescription>
-          What an hour of each role costs your business. These are not the
-          rates you charge clients.
+          Costs to the business, excluding GST. These are not client
+          charge-out rates.
         </CardDescription>
       </CardHeader>
       <form
@@ -85,10 +94,10 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
       >
         <CardContent className="space-y-5">
           <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm leading-snug text-muted-foreground">
-            Enter internal hourly costs excluding GST
-            {state.settings?.country === "AU" ? "" : " where GST applies"}.
-            Quotr uses them as cost. Client charge-out still comes from your
-            margin, which you can set later under Rates.
+            Labour costs are what an hour costs your business, excluding GST.
+            They are not the rates you charge clients. The default gross margin
+            is used to calculate client pricing and can be changed later for
+            individual pricing where supported.
           </p>
           {error ? (
             <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -123,6 +132,21 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
             <OnboardingFieldError
               id="labour-labourer"
               message={fieldErrors.labourerCost?.[0]}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="labour-margin">Default target gross margin %</Label>
+            <Input
+              id="labour-margin"
+              inputMode="decimal"
+              value={targetMarginPercent}
+              onChange={(event) => setTargetMarginPercent(event.target.value)}
+              required
+              className="h-11"
+            />
+            <OnboardingFieldError
+              id="labour-margin"
+              message={fieldErrors.targetMarginPercent?.[0]}
             />
           </div>
         </CardContent>

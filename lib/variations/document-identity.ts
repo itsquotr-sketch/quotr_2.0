@@ -92,6 +92,7 @@ export function parseVariationDocumentIdentity(value: unknown): VariationDocumen
     postcode: text(contractor.postcode),
     addressCountry: text(contractor.addressCountry) ?? "New Zealand",
     nzbn: text(contractor.nzbn),
+    abn: text(contractor.abn),
     gstNumber: text(contractor.gstNumber),
     defaultGstRate: 15,
     defaultQuoteValidityDays: 30,

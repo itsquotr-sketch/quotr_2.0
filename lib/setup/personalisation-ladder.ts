@@ -71,7 +71,7 @@ const CALIBRATE_STEP: PersonalisationStep = {
   title: "Make Quotr price more like you",
   reason: "Tell us how long common jobs normally take your crew.",
   cta: "Calibrate how you work",
-  href: "/app/setup?mode=improve&section=calibrate",
+  href: "/app/rates?section=calibration",
   helper: "About 3 minutes",
 };
 
@@ -81,7 +81,7 @@ const CONTINUE_CALIBRATE_STEP: PersonalisationStep = {
   reason:
     "Finish the key tasks for the work you do most. One minor task is not enough.",
   cta: "Continue calibration",
-  href: "/app/setup?mode=improve&section=calibrate",
+  href: "/app/rates?section=calibration",
 };
 
 const RATES_STEP: PersonalisationStep = {

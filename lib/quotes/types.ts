@@ -37,6 +37,7 @@ export type QuoteIssuerSnapshot = {
   addressCountry: string;
   timezone?: string | null;
   nzbn: string | null;
+  abn?: string | null;
   gstNumber: string | null;
   logoUrl: string | null;
   brandPrimaryColour: string | null;

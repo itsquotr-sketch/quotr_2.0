@@ -20,6 +20,7 @@ export function captureQuoteIssuerSnapshot(
     postcode: settings.postcode,
     addressCountry: settings.addressCountry,
     nzbn: settings.nzbn,
+    abn: settings.abn ?? null,
     gstNumber: settings.gstNumber,
     logoUrl: settings.logoUrl,
     brandPrimaryColour: settings.brandPrimaryColour,
@@ -62,6 +63,7 @@ export function parseQuoteIssuerSnapshot(
         ? row.addressCountry
         : "New Zealand",
     nzbn: text("nzbn"),
+    abn: text("abn"),
     gstNumber: text("gstNumber"),
     logoUrl: text("logoUrl"),
     brandPrimaryColour: text("brandPrimaryColour"),
@@ -99,6 +101,7 @@ export function resolveQuoteIssuerSettings(
     postcode: snapshot.postcode,
     addressCountry: snapshot.addressCountry,
     nzbn: snapshot.nzbn,
+    abn: snapshot.abn ?? null,
     gstNumber: snapshot.gstNumber,
     defaultGstRate: liveSettings?.defaultGstRate ?? 15,
     defaultQuoteValidityDays: liveSettings?.defaultQuoteValidityDays ?? 30,

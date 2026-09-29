@@ -48,14 +48,14 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
   const [gstRegistered, setGstRegistered] = useState<GstRegisteredChoice | "">(
     () => {
       if (!savedProfile) return "";
-      if (settings?.gst_number?.trim() || settings?.nzbn?.trim()) return "yes";
+      if (settings?.gst_number?.trim() || settings?.abn?.trim()) return "yes";
       if (settings?.default_gst_rate === 0) return "no";
       return "";
     }
   );
   const [taxIdentifier, setTaxIdentifier] = useState(
     initialCountry === "AU"
-      ? (settings?.nzbn ?? "")
+      ? (settings?.abn ?? "")
       : (settings?.gst_number ?? "")
   );
   const [error, setError] = useState<string | null>(null);
