@@ -24,9 +24,9 @@ export function WorkspacePage({
       ) : null}
       {nav}
       <WorkspaceContainer
-        innerClassName={cn("pt-4 pb-6 sm:pt-6 lg:pt-8", contentClassName)}
+        innerClassName={cn("pt-4 pb-6 lg:pt-6", contentClassName)}
       >
-        <div data-workspace-content-gap="compact" className="min-w-0">
+        <div data-workspace-content-gap="progression" className="min-w-0">
         {children}
         </div>
       </WorkspaceContainer>

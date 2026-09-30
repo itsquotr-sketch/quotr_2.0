@@ -2728,7 +2728,7 @@ export function AssistantShell({
       <div
         className={cn(
           assistantMode === "estimate_ready"
-            ? "mt-1 grid min-w-0 gap-5 lg:mt-4 lg:items-start"
+            ? "grid min-w-0 gap-5 lg:items-start"
             : "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
           assistantMode === "planning" &&
             briefSubmitted &&
@@ -2869,7 +2869,7 @@ export function AssistantShell({
                   }}
                 />
               ) : (
-                <div data-estimate-view={estimateView} className="min-w-0 space-y-3 overflow-x-hidden">
+                <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className="min-w-0 space-y-3 overflow-x-hidden">
                   <EstimateViewControl
                     view={estimateView}
                     onChange={setEstimateView}

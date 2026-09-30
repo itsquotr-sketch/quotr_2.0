@@ -23,16 +23,18 @@ export function ProjectInformationWorkspace({
 }: ProjectInformationWorkspaceProps) {
   return (
     <div
-      className="min-w-0 space-y-4 overflow-x-hidden"
+      className="min-w-0 overflow-x-hidden"
       data-project-information="true"
       data-project-documents-owner={PROJECT_DOCUMENT_OWNERSHIP}
     >
-      <h2 className="text-lg font-semibold leading-6">Project information</h2>
-      <div className="grid gap-3">
+      <h2 className="text-lg font-semibold leading-6" data-project-information-title>
+        Project information
+      </h2>
+      <div className="mt-4 grid gap-3" data-project-information-cards>
         <InfoCard title="Overview">
           <FieldList fields={model.overview} columns="three" />
         </InfoCard>
-        <InfoCard title="Job and site" tone="emphasis">
+        <InfoCard title="Job and site">
           {model.job.length > 0 ? (
             <FieldList fields={model.job} />
           ) : (
@@ -47,11 +49,11 @@ export function ProjectInformationWorkspace({
             </RecordLink>
           </div>
         </InfoCard>
-        <InfoCard title="Captured details and Work Areas" tone="quiet">
+        <InfoCard title="Captured details and Work Areas">
           <CapturedDetails summary={model.capturedSummary} groups={model.capturedGroups} />
         </InfoCard>
-        <section className="min-w-0 rounded-xl border border-border bg-card px-4 py-3" id="project-documents" data-project-documents-section="true">
-          <h3 className="text-base font-semibold leading-snug">Documents and images</h3>
+        <section className={informationCardClass} id="project-documents" data-project-documents-section="true" data-project-information-card>
+          <h3 className={informationTitleClass}>Documents and images</h3>
           <div className="mt-3">
             <ProjectDocumentsSection projectId={projectId} centre={documents} />
           </div>
@@ -61,26 +63,19 @@ export function ProjectInformationWorkspace({
   );
 }
 
+const informationCardClass = "min-w-0 rounded-xl border border-border bg-card px-4 py-3";
+const informationTitleClass = "text-base font-semibold leading-snug";
+
 function InfoCard({
   title,
   children,
-  tone = "plain",
 }: {
   title: string;
   children: ReactNode;
-  tone?: "plain" | "emphasis" | "quiet";
 }) {
   return (
-    <section
-      className={
-        tone === "quiet"
-          ? "min-w-0 rounded-xl border border-border/70 bg-muted/30 px-4 py-3"
-          : tone === "emphasis"
-            ? "min-w-0 rounded-xl border border-border bg-card px-4 py-3"
-            : "min-w-0 rounded-xl border border-border/70 bg-card px-4 py-3"
-      }
-    >
-      <h3 className="text-base font-semibold leading-snug">{title}</h3>
+    <section className={informationCardClass} data-project-information-card>
+      <h3 className={informationTitleClass}>{title}</h3>
       <div className="mt-3">{children}</div>
     </section>
   );

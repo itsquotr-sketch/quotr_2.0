@@ -63,9 +63,11 @@ const presented = presentProjectDocuments([sample("photo", "image/jpeg"), sample
 check(
   "1 desktop destinations have bounded active and idle states",
   header.includes('data-project-section-columns="four"') &&
-    header.includes('data-project-column-surface={current ? "active" : "idle"}') &&
-    header.includes("hover:border-foreground/30") &&
-    header.includes("shadow-[inset_3px_0_0_0_var(--brand-orange)]") &&
+    header.includes('data-project-progression="rail"') &&
+    header.includes("border-foreground/70 bg-muted/60") &&
+    header.includes("hover:bg-muted/40") &&
+    !header.includes("color-mix(in_oklch,var(--brand-orange)") &&
+    !header.includes("shadow-[inset_3px_0_0_0_var(--brand-orange)]") &&
     header.includes("lg:grid-cols-4")
 );
 check(
@@ -87,8 +89,8 @@ check(
 );
 check(
   "4 shared header spacing is compact",
-  workspacePage.includes("pt-4 pb-6 sm:pt-6 lg:pt-8") &&
-    workspacePage.includes('data-workspace-content-gap="compact"') &&
+  workspacePage.includes("pt-4 pb-6 lg:pt-6") &&
+    workspacePage.includes('data-workspace-content-gap="progression"') &&
     !workspacePage.includes("sm:mt-5 sm:pt-6") &&
     information.includes('className="text-lg font-semibold leading-6"')
 );

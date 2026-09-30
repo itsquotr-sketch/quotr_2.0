@@ -28,7 +28,7 @@ export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
 
   return (
     <div className="min-w-0" data-captured-details="true">
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-2 sm:grid-cols-4" data-captured-summary>
         <SummaryItem label="Work Areas" value={String(summary.workAreaCount)} />
         <SummaryItem label="Captured facts" value={String(summary.factCount)} />
         <SummaryItem label="Conditions" value={String(summary.conditionCount)} />
@@ -53,7 +53,7 @@ export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
             const open = openIds.has(group.id);
             const panelId = `captured-detail-${group.id}`;
             return (
-              <section key={group.id} className="rounded-md border border-border/70" data-captured-group={group.name}>
+              <section key={group.id} className="rounded-md border border-border/70 bg-muted/40" data-captured-group={group.name}>
                 <button
                   type="button"
                   className="flex min-h-11 w-full items-start gap-3 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
@@ -81,12 +81,12 @@ export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
                       {group.conditionCount} conditions
                     </span>
                   </span>
-                  <span className="shrink-0 text-sm leading-5 text-foreground/70">
+                  <span className="shrink-0 text-xs font-medium leading-5 text-foreground/70" data-captured-disclosure="neutral">
                     {open ? "Hide details" : "View details"}
                   </span>
                 </button>
                 {open ? (
-                  <div id={panelId} className="grid gap-3 border-t border-border/70 px-3 py-3">
+                  <div id={panelId} className="grid gap-3 divide-y divide-border/60 border-t border-border/60 bg-card px-3 py-3">
                     {group.categories.map((category) => (
                       <div key={category.name}>
                         <h4 className="text-sm font-medium leading-5">{category.name}</h4>

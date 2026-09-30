@@ -44,6 +44,7 @@ export function ProjectSectionHeader({
   const sections = [
     {
       id: "information",
+      step: "1",
       label: "Project information",
       href: informationHref,
       disabled: false,
@@ -51,6 +52,7 @@ export function ProjectSectionHeader({
     },
     {
       id: "assistant",
+      step: "2",
       label: "Estimate",
       href: estimate.href,
       disabled: false,
@@ -58,6 +60,7 @@ export function ProjectSectionHeader({
     },
     {
       id: "pricing",
+      step: "3",
       label: "Pricing",
       href: pricingCanCreate ? null : pricing.href,
       disabled: pricing.locked || (pricing.href == null && !pricingCanCreate),
@@ -65,6 +68,7 @@ export function ProjectSectionHeader({
     },
     {
       id: "quote",
+      step: "4",
       label: "Quote",
       href: quote.href,
       disabled: quote.href == null,
@@ -72,32 +76,41 @@ export function ProjectSectionHeader({
     },
   ] as const;
 
+  const activeSection = sections.find((section) => section.id === topLevel) ?? sections[0];
+  const activeDetail =
+    topLevel === "information"
+      ? projectContext
+      : topLevel === "assistant"
+        ? statusDetail(estimateStatusText(estimate, workflowInput.estimateIsStale))
+        : topLevel === "pricing"
+          ? statusDetail(stageStatusText(pricing))
+          : statusDetail(stageStatusText(quote));
+
   return (
     <nav aria-label="Project sections" data-project-section-header="true" className="overflow-x-hidden">
-      <div
-        className="hidden gap-1 rounded-lg border border-border bg-muted/40 p-1 lg:grid lg:grid-cols-4"
-        data-project-section-columns="four"
-      >
-        <Column current={informationCurrent}>
-          <Destination
+      <div className="hidden lg:block" data-project-progression="rail">
+        <div
+          className="grid grid-cols-4 gap-1 rounded-lg border border-border bg-muted/30 p-1 lg:grid-cols-4"
+          data-project-section-columns="four"
+        >
+          <Stage
+            step="1"
             title="Project information"
             status={projectContext}
             href={informationCurrent ? null : informationHref}
             current={informationCurrent}
             column="information"
           />
-        </Column>
-        <Column current={estimate.viewing}>
-          <Destination
+          <Stage
+            step="2"
             title="Estimate"
             status={estimateStatusText(estimate, workflowInput.estimateIsStale)}
             href={estimate.viewing ? null : estimate.href}
             current={estimate.viewing}
             column="estimate"
           />
-        </Column>
-        <Column current={pricing.viewing}>
-          <Destination
+          <Stage
+            step="3"
             title="Pricing"
             status={stageStatusText(pricing)}
             reason={pricingLockReason(pricing)}
@@ -106,15 +119,20 @@ export function ProjectSectionHeader({
             column="pricing"
             onCreate={pricingCanCreate ? () => setCreatePricingOpen(true) : undefined}
           />
-        </Column>
-        <Column current={quoteColumnCurrent}>
-          <Destination
+          <Stage
+            step="4"
             title="Quote"
             status={stageStatusText(quote)}
             href={quote.viewing ? null : quote.href}
             current={quote.viewing}
             column="quote"
           />
+        </div>
+        <div
+          className="mt-1.5 flex min-w-0 items-center justify-between gap-3"
+          data-project-variations-row
+        >
+          <p className="text-xs leading-4 text-foreground/70">Separate from Quote</p>
           <Destination
             title="Variations"
             status={stageStatusText(variations)}
@@ -122,13 +140,17 @@ export function ProjectSectionHeader({
             href={variations.viewing ? null : variations.href}
             current={variations.viewing}
             column="variations"
+            compact
           />
-        </Column>
+        </div>
       </div>
 
       <div className="grid gap-2 lg:hidden">
         <label className="grid gap-1">
           <span className="text-xs leading-4 text-foreground/70">Project section</span>
+          <span className="text-sm font-semibold leading-5" data-project-stage-current>
+            Step {activeSection.step}. {activeSection.label}
+          </span>
           <select
             aria-label="Project section"
             data-project-section-select
@@ -150,18 +172,14 @@ export function ProjectSectionHeader({
           >
             {sections.map((section) => (
               <option key={section.id} value={section.id} disabled={section.disabled}>
-                {section.disabled && section.hint ? `${section.label} — ${section.hint}` : section.label}
+                {section.disabled && section.hint
+                  ? `${section.step}. ${section.label} — ${section.hint}`
+                  : `${section.step}. ${section.label}`}
               </option>
             ))}
           </select>
           <span className="text-xs leading-4 text-foreground/75" data-project-section-context>
-            {topLevel === "information"
-              ? projectContext
-              : topLevel === "assistant"
-                ? estimateStatusText(estimate, workflowInput.estimateIsStale)
-                : topLevel === "pricing"
-                  ? stageStatusText(pricing)
-                  : stageStatusText(quote)}
+            {activeDetail}
           </span>
         </label>
         {topLevel === "quote" ? (
@@ -205,19 +223,40 @@ function stageById(
   return found;
 }
 
-function Column({ current, children }: { current: boolean; children: ReactNode }) {
+function statusDetail(status: string) {
+  return status.endsWith(" · Current") ? status.slice(0, -" · Current".length) : status;
+}
+
+function Stage({
+  step,
+  title,
+  status,
+  reason,
+  href,
+  current,
+  column,
+  onCreate,
+}: {
+  step: string;
+  title: string;
+  status: string;
+  reason?: string | null;
+  href: string | null;
+  current: boolean;
+  column: string;
+  onCreate?: () => void;
+}) {
+  const detail = [statusDetail(status), reason].filter(Boolean).join(" · ");
   return (
-    <div
-      data-project-column-surface={current ? "active" : "idle"}
-      className={cn(
-        "min-w-0 rounded-md border p-1",
-        current
-          ? "border-[color-mix(in_oklch,var(--brand-orange)_50%,var(--border))] bg-[color-mix(in_oklch,var(--brand-orange)_8%,white)]"
-          : "border-transparent bg-transparent"
-      )}
-    >
-      <div className="flex min-w-0 flex-col gap-1">{children}</div>
-    </div>
+    <Destination
+      title={title}
+      status={detail}
+      href={href}
+      current={current}
+      column={column}
+      onCreate={onCreate}
+      step={step}
+    />
   );
 }
 
@@ -229,6 +268,8 @@ function Destination({
   current,
   column,
   onCreate,
+  step,
+  compact = false,
 }: {
   title: string;
   status: string;
@@ -237,30 +278,53 @@ function Destination({
   current: boolean;
   column: string;
   onCreate?: () => void;
+  step?: string;
+  compact?: boolean;
 }) {
   const locked = href == null && !current && !onCreate;
-  const body = (
+  const detail = compact ? [statusDetail(status), reason].filter(Boolean).join(" · ") : status;
+  const body = compact ? (
     <>
+      <span className="text-xs font-semibold leading-4">{title}</span>
+      <span className="min-w-0 truncate text-xs leading-4 text-foreground/75">{detail}</span>
+      {current ? <span className="text-xs font-medium leading-4">Current</span> : null}
+    </>
+  ) : (
+    <>
+      <span className="flex items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex size-5 items-center justify-center rounded-full border text-xs font-medium leading-4",
+            current
+              ? "border-[var(--brand-orange)] text-[var(--brand-orange)]"
+              : "border-border text-foreground/60",
+            locked && "border-border/70 text-foreground/45"
+          )}
+        >
+          {step}
+        </span>
+        {current ? <span className="text-xs font-medium leading-4">Current</span> : null}
+      </span>
       <span className="block text-sm font-semibold leading-5">{title}</span>
-      <span className="mt-0.5 block text-xs leading-4 text-foreground/75">{status}</span>
-      {reason ? (
-        <span className="mt-0.5 block text-xs leading-4 text-foreground/70">{reason}</span>
-      ) : null}
+      <span className="line-clamp-2 block text-xs leading-4 text-foreground/75">{status}</span>
     </>
   );
   const className = cn(
-    "block min-w-0 rounded-md border px-2.5 py-2 text-left transition-colors",
     focusClass,
-    current && "border-[var(--brand-orange)] bg-[color-mix(in_oklch,var(--brand-orange)_12%,white)] shadow-[inset_3px_0_0_0_var(--brand-orange)]",
-    !current && !locked && "border-border bg-white hover:border-foreground/30 hover:bg-muted/50",
-    locked && "border-border/70 bg-muted/50 text-foreground/55"
+    compact
+      ? "inline-flex max-w-full min-w-0 items-center gap-2 rounded-md border px-2.5 py-1 text-left"
+      : "flex h-full min-w-0 flex-col gap-0.5 rounded-md border px-3 py-2 text-left",
+    current && "border-foreground/70 bg-muted/60 text-foreground",
+    !current && !locked && "border-border/80 bg-card hover:border-foreground/25 hover:bg-muted/40",
+    locked && "border-border/70 bg-muted/40 text-foreground/55 hover:border-border/70 hover:bg-muted/40"
   );
   if (onCreate) {
     return (
       <button
         type="button"
-        className={cn(className, "w-full")}
+        className={cn(className, compact ? undefined : "w-full")}
         data-project-column={column}
+        data-project-stage={step}
         onClick={onCreate}
       >
         {body}
@@ -269,7 +333,14 @@ function Destination({
   }
   if (href) {
     return (
-      <Link href={href} prefetch className={className} data-project-column={column} data-variations-nav={column === "variations" ? "true" : undefined}>
+      <Link
+        href={href}
+        prefetch
+        className={className}
+        data-project-column={column}
+        data-project-stage={step}
+        data-variations-nav={column === "variations" ? "true" : undefined}
+      >
         {body}
       </Link>
     );
@@ -279,6 +350,7 @@ function Destination({
       className={className}
       aria-current={current ? "page" : undefined}
       data-project-column={column}
+      data-project-stage={step}
       data-variations-nav={column === "variations" ? "true" : undefined}
       data-project-column-locked={href == null && !current ? "true" : undefined}
     >
@@ -301,17 +373,23 @@ function SectionChoice({
   reason?: string | null;
 }) {
   const className = cn(
-    "inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-center text-sm font-medium",
+    "inline-flex min-h-11 items-center justify-center gap-1 rounded-md border px-3 text-center text-sm font-medium",
     focusClass,
     current
-      ? "border-[var(--brand-orange)] bg-[color-mix(in_oklch,var(--brand-orange)_10%,white)] text-foreground shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
+      ? "border-foreground/80 bg-muted/50 font-semibold text-foreground"
       : "border-border bg-white text-foreground/80 hover:border-foreground/30 hover:bg-muted/50",
     disabled && !current && "border-border/70 bg-muted/50 text-foreground/50 hover:border-border/70 hover:bg-muted/50"
+  );
+  const content: ReactNode = (
+    <>
+      {label}
+      {current ? <span className="text-xs font-medium">Current</span> : null}
+    </>
   );
   if (href && !current) {
     return (
       <Link href={href} className={className} data-project-column={label === "Variations" ? "variations" : "quote"}>
-        {label}
+        {content}
       </Link>
     );
   }
@@ -321,7 +399,7 @@ function SectionChoice({
       aria-current={current ? "page" : undefined}
       data-project-column={label === "Variations" ? "variations" : "quote"}
     >
-      {label}
+      {content}
       {reason ? <span className="sr-only">. {reason}</span> : null}
     </p>
   );
