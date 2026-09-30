@@ -66,6 +66,7 @@ export function PricingWorkspace({
   const [openRequest, setOpenRequest] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const documentDraftRef = useRef<PricingDocumentInput>({});
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
@@ -133,6 +134,7 @@ export function PricingWorkspace({
       ...documentDraftRef.current,
       ...updates,
     };
+    setHasUnsavedChanges(true);
     setDocument((prev) => ({
       ...prev,
       ...(updates.client_name !== undefined
@@ -171,6 +173,7 @@ export function PricingWorkspace({
         return;
       }
       documentDraftRef.current = {};
+      setHasUnsavedChanges(false);
       setDocument((current) => ({
         ...current,
         ...draft,
@@ -393,10 +396,11 @@ export function PricingWorkspace({
   };
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(14.5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
         document={document}
         isSaving={isSaving}
+        hasUnsavedChanges={hasUnsavedChanges}
         onSaveDocument={handleSaveDocument}
         statusNote={
           <PricingStatusNote
@@ -481,15 +485,24 @@ export function PricingWorkspace({
                   onSelectionModeChange={setSelectionMode}
                   selectedCount={selectedIds.size}
                 />
-                <PricingBulkToolbar
-                  selectedCount={selectedIds.size}
-                  canDeleteCount={canDeleteCount}
-                  isPending={isBulkPending}
-                  onShowOnQuote={() => handleBulkVisibility(true)}
-                  onHideFromQuote={() => handleBulkVisibility(false)}
-                  onDeleteManual={handleBulkDelete}
-                  onClear={() => setSelectedIds(new Set())}
-                />
+                {selectionMode && selectedIds.size === 0 ? (
+                  <p className="text-sm text-muted-foreground md:hidden">
+                    Select the lines to show, hide, or delete.
+                  </p>
+                ) : null}
+                {selectedIds.size > 0 ? (
+                  <div className={selectionMode ? undefined : "hidden md:block"}>
+                    <PricingBulkToolbar
+                      selectedCount={selectedIds.size}
+                      canDeleteCount={canDeleteCount}
+                      isPending={isBulkPending}
+                      onShowOnQuote={() => handleBulkVisibility(true)}
+                      onHideFromQuote={() => handleBulkVisibility(false)}
+                      onDeleteManual={handleBulkDelete}
+                      onClear={() => setSelectedIds(new Set())}
+                    />
+                  </div>
+                ) : null}
               </>
             ) : null}
             <div data-pricing-advanced-lines>
@@ -596,6 +609,7 @@ export function PricingWorkspace({
         items={items}
         quoteSummary={quoteSummary}
         isSaving={isSaving}
+        hasUnsavedChanges={hasUnsavedChanges}
         needsRecalibration={document.needs_recalibration}
         onSaveDocument={handleSaveDocument}
         onMarkReviewed={handleMarkReviewed}

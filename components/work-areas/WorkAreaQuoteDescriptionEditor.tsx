@@ -250,55 +250,61 @@ export function WorkAreaQuoteDescriptionEditor({
     );
   }
 
+  const descriptionActions = !isEditing ? (
+    <div className="order-3 flex flex-wrap gap-2 lg:order-2 lg:justify-end">
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11"
+        disabled={isGenerating}
+        onClick={() => void handleGenerateDraft()}
+      >
+        {isGenerating ? "Generating…" : "Use suggested description"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11"
+        onClick={openManualEditor}
+      >
+        {currentPreview ? "Edit description" : "Add description"}
+      </Button>
+    </div>
+  ) : null;
+
   return (
-    <div className={cn("mt-3 border-t border-border/50 pt-3", className)}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Client description
-          </h4>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Shown on the client quote for this work area. You own the final wording.
+    <div className={cn("mt-3 border-t border-border/50 pt-3", className)} data-pricing-client-description>
+      <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-4">
+        <div className="order-1 min-w-0">
+          <h4 className="text-sm font-medium">Client description</h4>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Shown on the client quote for this work area. A suggestion is saved only when you choose it.
           </p>
           {existingQuoteWarning ? (
-            <p className="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+            <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
               Existing quotes will not update automatically. Revise the quote if
               this description should be reflected.
             </p>
           ) : null}
         </div>
+        {descriptionActions}
+        {error ? (
+          <p className="order-2 text-xs text-destructive lg:col-span-2" role="alert">
+            {error}
+          </p>
+        ) : null}
         {!isEditing ? (
-          <div className="flex shrink-0 gap-1">
-            <Button
-              type="button"
-              variant={currentPreview ? "ghost" : "outline"}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              disabled={isGenerating}
-              onClick={() => void handleGenerateDraft()}
-            >
-              {isGenerating
-                ? "Generating…"
-                : currentPreview
-                  ? "Regenerate draft"
-                  : "Use suggested description"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={openManualEditor}
-            >
-              {currentPreview ? "Edit" : "Add"}
-            </Button>
-          </div>
+          currentPreview ? (
+            <p className="order-2 text-sm leading-5 break-words whitespace-pre-wrap lg:col-span-2">
+              {currentPreview}
+            </p>
+          ) : (
+            <p className="order-2 text-sm text-muted-foreground lg:col-span-2">
+              No client description yet.
+            </p>
+          )
         ) : null}
       </div>
-
-      {error ? (
-        <p className="mt-2 text-xs text-destructive">{error}</p>
-      ) : null}
 
       {isEditing ? (
         <div className="mt-2 space-y-2">
@@ -312,7 +318,7 @@ export function WorkAreaQuoteDescriptionEditor({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              size="sm"
+              className="min-h-11"
               disabled={isSaving}
               onClick={() => void handleSave()}
             >
@@ -321,7 +327,7 @@ export function WorkAreaQuoteDescriptionEditor({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              className="min-h-11"
               disabled={isGenerating}
               onClick={() => void handleGenerateDraft()}
             >
@@ -330,7 +336,7 @@ export function WorkAreaQuoteDescriptionEditor({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              className="min-h-11"
               disabled={isSaving}
               onClick={() => {
                 setDraft(savedDescription);
@@ -341,17 +347,12 @@ export function WorkAreaQuoteDescriptionEditor({
               Cancel
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Suggested text stays a draft until you save. Your saved description
+            is authoritative.
+          </p>
         </div>
-      ) : currentPreview ? (
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
-          {currentPreview}
-        </p>
-      ) : (
-        <p className="mt-2 text-xs text-muted-foreground italic">
-          No description yet. Use suggested description to generate a
-          client-facing scope paragraph for this work area.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function PricingGroupControl({
   selectedCount = 0,
 }: PricingGroupControlProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <div
         className="inline-flex rounded-lg border border-border/70 bg-muted/30 p-0.5"
         role="group"
@@ -53,15 +53,16 @@ export function PricingGroupControl({
         <Button
           type="button"
           variant={selectionMode ? "secondary" : "outline"}
-          size="sm"
-          className="h-8 md:hidden"
+          className="min-h-11 w-full sm:w-auto md:hidden"
+          aria-pressed={selectionMode}
+          aria-label={
+            selectionMode
+              ? `Finish selecting${selectedCount > 0 ? `, ${selectedCount} selected` : ""}`
+              : "Select items"
+          }
           onClick={() => onSelectionModeChange(!selectionMode)}
         >
-          {selectionMode
-            ? selectedCount > 0
-              ? `Done (${selectedCount})`
-              : "Done"
-            : "Select"}
+          {selectionMode ? "Finish selecting" : "Select items"}
         </Button>
       ) : null}
     </div>

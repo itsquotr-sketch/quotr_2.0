@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,6 @@ import {
   presentExpectedGrossMarginPercent,
   sellsMatchRecommended,
 } from "@/lib/pricing/final-sell";
-import { presentPricingSectionTotals } from "@/lib/pricing/presentation-section-totals";
 import { formatProfitabilityDisplay } from "@/lib/financial-presentation/format";
 import type { PricingDocument, PricingItem, PricingWorkArea } from "@/lib/pricing/types";
 
@@ -25,8 +24,6 @@ type PricingDecisionCardProps = {
 
 export function PricingDecisionCard({
   document,
-  items,
-  workAreas,
   recommendedSell,
   disabled = false,
   onApplyFinalSell,
@@ -45,30 +42,6 @@ export function PricingDecisionCard({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const workAreaRows = useMemo(() => {
-    const byArea = new Map<string, PricingItem[]>();
-    for (const item of items) {
-      const key = item.work_area_id ?? "none";
-      const list = byArea.get(key) ?? [];
-      list.push(item);
-      byArea.set(key, list);
-    }
-    const named = workAreas.map((area) => {
-      const sectionItems = byArea.get(area.id) ?? [];
-      const totals = presentPricingSectionTotals(sectionItems);
-      return { id: area.id, name: area.name, sell: totals.subtotalSell };
-    });
-    const unallocated = byArea.get("none") ?? [];
-    if (unallocated.length > 0) {
-      named.push({
-        id: "none",
-        name: "Other",
-        sell: presentPricingSectionTotals(unallocated).subtotalSell,
-      });
-    }
-    return named.filter((row) => row.sell > 0 || named.length === 1);
-  }, [items, workAreas]);
-
   const typedSell = Number(ownPrice);
   const previewMargin =
     mode === "own" && Number.isFinite(typedSell)
@@ -82,6 +55,10 @@ export function PricingDecisionCard({
     grossProfit: document.gross_profit,
     marginPercent: document.margin_percent,
   });
+  const priceDifference =
+    recommendedSell != null && !usingRecommended
+      ? document.subtotal_sell - recommendedSell
+      : null;
 
   const apply = (target: number) => {
     setError(null);
@@ -102,93 +79,23 @@ export function PricingDecisionCard({
       data-pricing-using-recommended={usingRecommended ? "true" : "false"}
     >
       <div>
-        <p className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:block">
-          Pricing
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground md:hidden">
-          The quote will use this price.
-        </p>
-        <p className="mt-1 hidden text-sm text-muted-foreground md:block">
+        <h2 className="text-base font-semibold">Final client price</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           The estimate is Quotr’s working recommendation. Pricing is what you
           intend to charge. The quote will use this price.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div data-pricing-recommended-price>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Recommended price
-          </p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums">
-            {recommendedSell != null
-              ? formatPricingMoney(recommendedSell)
-              : "—"}
-            {view.showGst ? (
-              <span className="ml-1 text-sm font-medium text-muted-foreground">
-                ex GST
-              </span>
-            ) : null}
-          </p>
-        </div>
-        <div data-pricing-final-price>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Your final price
-          </p>
-          <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight">
-            {view.subtotalSellFormatted}
-            {view.showGst ? (
-              <span className="ml-1 text-sm font-medium text-muted-foreground">
-                ex GST
-              </span>
-            ) : null}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-pricing-decision-metrics>
-        <span>
-          Estimated cost{" "}
-          <span className="font-medium tabular-nums">
-            {view.subtotalCostFormatted}
-          </span>
-        </span>
-        <span>
-          Expected gross margin{" "}
-          <span className="font-medium tabular-nums">{storedMargin.marginLabel}</span>
-        </span>
-      </div>
-
-      {view.showGst ? (
-        <div className="text-sm" data-pricing-gst>
-          <p>
-            {view.totalInclGstFormatted} incl GST
-            <span className="text-muted-foreground">
-              {" "}
-              · {view.gstAmountFormatted} {view.gstLabel}
-            </span>
-          </p>
-        </div>
-      ) : (
-        <p className="text-sm font-medium tabular-nums" data-pricing-total>
-          {view.totalInclGstFormatted}
+      {priceDifference != null && recommendedSell != null ? (
+        <p className="text-sm text-muted-foreground" data-pricing-final-price-difference>
+          {formatPricingMoney(Math.abs(priceDifference))}{" "}
+          {priceDifference > 0 ? "above" : "below"} the{" "}
+          {formatPricingMoney(recommendedSell)} recommendation.
+          {view.costKnown ? ` Expected gross margin ${storedMargin.marginLabel}.` : ""}
         </p>
-      )}
-
-      {workAreaRows.length > 0 ? (
-        <ul className="space-y-1 text-sm" data-pricing-work-area-breakdown>
-          {workAreaRows.map((row) => (
-            <li key={row.id} className="flex justify-between gap-3">
-              <span className="min-w-0 truncate">{row.name}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {formatPricingMoney(row.sell)}
-              </span>
-            </li>
-          ))}
-        </ul>
       ) : null}
 
-      <div className="space-y-3 border-t border-border/50 pt-3" data-pricing-final-price-control>
-        <p className="text-sm font-medium">Choose a final price</p>
+      <div className="space-y-3" data-pricing-final-price-control>
         <div className="flex flex-col gap-2">
           <label className="flex min-h-11 items-center gap-2 text-sm">
             <input

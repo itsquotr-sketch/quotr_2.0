@@ -23,6 +23,7 @@ type PricingMobileActionBarProps = {
   items?: PricingItem[];
   quoteSummary?: QuoteSummary | null;
   isSaving?: boolean;
+  hasUnsavedChanges?: boolean;
   needsRecalibration?: boolean;
   onSaveDocument?: () => void;
   onMarkReviewed?: () => Promise<void>;
@@ -36,6 +37,7 @@ export function PricingMobileActionBar({
   items = [],
   quoteSummary = null,
   isSaving = false,
+  hasUnsavedChanges = false,
   needsRecalibration = false,
   onSaveDocument,
   onMarkReviewed,
@@ -43,6 +45,7 @@ export function PricingMobileActionBar({
   className,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
+  const isConverted = document.status === "converted_to_quote";
   const view = pricingDocumentViewModel(document);
   const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
     ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
@@ -67,7 +70,7 @@ export function PricingMobileActionBar({
     >
       <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
         <div className="min-w-0" data-pricing-mobile-total="true">
-          <p className="text-[11px] font-medium text-muted-foreground">
+          <p className="text-xs font-medium text-muted-foreground">
             {view.showGst ? "Total incl. GST" : "Your final price"}
           </p>
           <p className="text-lg font-semibold tabular-nums tracking-tight">
@@ -98,7 +101,7 @@ export function PricingMobileActionBar({
               presentation="bar"
               quoteBlockedReason={quoteBlockedReason}
             />
-          ) : !isReviewed && onMarkReviewed ? (
+          ) : !isReviewed && !isConverted && onMarkReviewed ? (
             <>
               <Button
                 type="button"
@@ -116,10 +119,9 @@ export function PricingMobileActionBar({
                   "Mark as reviewed"
                 )}
               </Button>
-              {onSaveDocument ? (
+              {hasUnsavedChanges && onSaveDocument ? (
                 <Button
                   type="button"
-                  size="sm"
                   variant="outline"
                   className="h-11 min-h-11 w-full"
                   disabled={isSaving || isReviewing}
@@ -128,17 +130,16 @@ export function PricingMobileActionBar({
                   {isSaving ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    "Save"
+                    "Save changes"
                   )}
                 </Button>
               ) : null}
             </>
-          ) : (
+          ) : isConverted ? null : (
             <>
-              {onSaveDocument ? (
+              {hasUnsavedChanges && onSaveDocument ? (
                 <Button
                   type="button"
-                  size="sm"
                   variant="outline"
                   className="h-11 min-h-11 w-full"
                   disabled={isSaving}
@@ -147,7 +148,7 @@ export function PricingMobileActionBar({
                   {isSaving ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    "Save"
+                    "Save changes"
                   )}
                 </Button>
               ) : null}

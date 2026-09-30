@@ -76,24 +76,31 @@ export function PricingSummaryPanel({
   return (
     <Card
       className={cn(
-        "border-border/60 shadow-none lg:sticky lg:top-4 lg:self-start",
+        "h-auto border-border/60 shadow-none [--card-spacing:--spacing(3)] lg:sticky lg:top-4 lg:self-start",
         className
       )}
       data-pricing-commercial-summary="true"
     >
-      <CardHeader className={cn("pb-2", compact && "pb-1.5 pt-4")}>
+      <CardHeader className="gap-1 pb-2">
         <CardTitle className="text-base font-semibold">Commercial summary</CardTitle>
         <p className="text-xs leading-4 text-foreground/70">
           Internal pricing. Expected margin is not realised profit.
         </p>
       </CardHeader>
-      <CardContent className={cn("space-y-3", compact && "pt-0")}>
+      <CardContent className="space-y-3 pt-0">
         <div className="space-y-2">
           <SummaryRow
             label={view.showGst ? "Client sell ex GST" : "Client sell"}
             value={pricingRequiredCount > 0 && !view.costKnown ? "Pricing required" : view.subtotalSellFormatted}
             prominent
           />
+          {compact && view.showGst ? (
+            <SummaryRow
+              label="Client sell incl GST"
+              value={view.totalInclGstFormatted}
+              prominent
+            />
+          ) : null}
           {pricingRequiredCount > 0 ? (
             <p className="text-xs leading-4 text-foreground/75" data-pricing-summary-required>
               {pricingRequiredCount} Pricing required
@@ -101,17 +108,14 @@ export function PricingSummaryPanel({
           ) : null}
           {compact ? (
             <details className="text-sm">
-              <summary className="min-h-11 cursor-pointer text-xs font-medium leading-4 text-foreground/75">
+              <summary className="cursor-pointer py-2 text-xs font-medium leading-4 text-foreground/75">
                 Cost, margin and GST
               </summary>
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2 pt-1">
                 <SummaryRow label="Direct cost" value={costValue} />
                 <SummaryRow label="Expected gross margin" value={view.marginLabel} />
                 {view.showGst ? (
-                  <>
-                    <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
-                    <SummaryRow label="Client sell incl GST" value={view.totalInclGstFormatted} />
-                  </>
+                  <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
                 ) : null}
               </div>
             </details>
@@ -135,7 +139,7 @@ export function PricingSummaryPanel({
             isReviewed &&
               !quoteSummary &&
               !quoteBlockedReason &&
-              "rounded-xl border border-border bg-muted/30 p-3"
+              "rounded-lg border border-border bg-muted/30 p-3"
           )}
           data-pricing-desktop-quote-cta={
             quoteSummary
