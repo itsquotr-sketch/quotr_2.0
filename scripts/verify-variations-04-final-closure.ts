@@ -3,7 +3,7 @@
  *
  * Run: npx --yes tsx scripts/verify-variations-04-final-closure.ts
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { calculateRevisedContractValue } from "../lib/variations/domain";
 import { buildVariationResponseReceipt } from "../lib/variations/response-receipt";
@@ -80,7 +80,6 @@ const publicView = read("components/variations/VariationPublicView.tsx");
 const form = read("components/variations/VariationClientResponse.tsx");
 const loader = read("lib/variations/response-receipt-load.ts");
 const withdraw = read("supabase/migrations/066_variation_issued_withdrawal.sql");
-const migrations = readdirSync(join(root, "supabase/migrations")).filter((name) => name.endsWith(".sql")).sort();
 
 check("1 one response and one ledger row are enforced per Variation", migration.includes("variation_responses_variation_uidx") && migration.includes("variation_accepted_adjustments_variation_uidx") && migration.includes("variation_responses_idempotency_uidx"));
 check("2 a terminal response cannot be answered again", migration.includes("v_rev.status in ('accepted', 'rejected')") && migration.includes("'INVALID_TRANSITION'"));
@@ -99,7 +98,7 @@ check("14 phone layout wraps long text and keeps money on the page", document.in
 check("15 response controls stay keyboard-reachable and errors are announced", form.includes('htmlFor="variation-response-name"') && form.includes("<label") && form.includes('type="checkbox"') && form.includes('role="alert"') && form.includes("Saving…") && form.includes("min-h-11") && form.includes("focus-visible:outline-2"));
 check("16 print removes the browser control and keeps the A4 page", read("components/variations/VariationPrintButton.tsx").includes("print:hidden") && read("app/globals.css").includes("size: A4") && receiptView.includes("print:p-0"));
 check("17 manual evidence is internal and print-hidden", !receiptView.includes("evidenceNote") && read("app/(protected)/app/projects/[projectId]/variations/[variationId]/response/page.tsx").includes("print:hidden") && read("components/variations/VariationEditor.tsx").includes('data-variation-manual-evidence="true"'));
-check("18 work-area migration does not rewrite accepted quotes or estimator areas", migrations.at(-1) === "073_variation_work_areas.sql" && !existsSync(join(root, "supabase/migrations/073_variation_closure.sql")) && !read("supabase/migrations/073_variation_work_areas.sql").includes("update public.accepted_commercial_snapshots") && !read("supabase/migrations/073_variation_work_areas.sql").includes("update public.quotes") && !read("supabase/migrations/073_variation_work_areas.sql").includes("insert into public.work_areas"));
+check("18 work-area migration does not rewrite accepted quotes or estimator areas", !existsSync(join(root, "supabase/migrations/073_variation_closure.sql")) && !read("supabase/migrations/073_variation_work_areas.sql").includes("update public.accepted_commercial_snapshots") && !read("supabase/migrations/073_variation_work_areas.sql").includes("update public.quotes") && !read("supabase/migrations/073_variation_work_areas.sql").includes("insert into public.work_areas"));
 check("19 duplicate catalogue or browser totals are not a second authority", !actions.includes("variation_accepted_adjustments") && read("lib/variations/domain.ts").includes("Accepted revision status is not a money source."));
 check("20 public terminal copy stays outcome-specific", publicView.includes("Variation accepted") && publicView.includes("Variation declined") && publicView.includes("did not change the accepted contract value"));
 

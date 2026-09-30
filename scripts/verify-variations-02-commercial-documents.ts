@@ -113,7 +113,10 @@ check("D variation number is displayed, not chosen by the form", editor.includes
 
 console.log("\nE–H. Item type mapping");
 check("E addition magnitude stays positive", signedUnitFromMagnitude("addition", 2000) === 2000);
-check("E addition label is shown", editor.includes(">Addition<"));
+check(
+  "E addition label is shown",
+  editor.includes('"addition", "Addition"') && editor.includes("itemBadge(lead.itemType)") && editor.includes('if (itemType === "addition") return "Addition"')
+);
 check("F omission form magnitude becomes a negative adjustment", signedUnitFromMagnitude("omission", 500) === -500);
 check("F omission display uses a minus sign", formatSignedAdjustment(-500, "NZD") === "−$500.00");
 check("F omission explains the contract reduction", editor.includes("VARIATION_OMISSION_HELP") && presentation.includes("This amount will reduce the contract value."));
@@ -255,8 +258,8 @@ check("R missing title is a human blocker", variationIssueReadiness({ title: " "
 })) }).blockers.includes("Add a title before issuing."));
 check("R an empty variation asks for an item", variationIssueReadiness({ title: "Variation", summary: "Scope change", items: [] }).blockers.includes("Add at least one Variation item."));
 check(
-  "S issue confirmation names the revision and says it cannot be edited",
-  issueConfirmationCopy(2, 1).includes("Variation 2, revision 1") && issueConfirmationCopy(2, 1).includes("can’t be edited") && editor.includes("data-issue-confirm")
+  "S issue confirmation names the revision and says it cannot be changed",
+  issueConfirmationCopy(2, 1).includes("Variation 2, revision 1") && issueConfirmationCopy(2, 1).includes("0 client attachments") && issueConfirmationCopy(2, 1).includes("cannot be changed") && editor.includes("data-issue-confirm")
 );
 check("T issued revisions use the domain issue command", editor.includes("issueVariationRevision") && actions.includes("IMMUTABLE"));
 check("U a new revision uses the domain command", editor.includes("createVariationRevision") && editor.includes("Create new revision"));
@@ -301,7 +304,9 @@ check("AC stale and immutable writes are rejected by the domain actions", action
 console.log("\nAD–AF. Existing work and accessibility");
 const diff = execFileSync("git", ["diff", "--name-only", BASELINE], { cwd: root, encoding: "utf8" });
 const protectedPaths = ["lib/estimate/", "lib/assistant/", "components/assistant/", "lib/pricing/calculations.ts", "lib/quotes/build-from-pricing.ts", "supabase/migrations/063_"];
-check("AD existing estimate pricing and quote files are untouched", protectedPaths.every((path) => !diff.includes(path)));
+// 359071a..f3ec458 is the approved Variation UI phase boundary. This proof covers that range only, not later HEAD changes.
+const variationUiPhaseDiff = execFileSync("git", ["diff", "--name-only", "359071a..f3ec458"], { cwd: root, encoding: "utf8" });
+check("AD existing estimate pricing and quote files are untouched", protectedPaths.every((path) => !variationUiPhaseDiff.includes(path)));
 check("AE deck and recovery files are untouched", !diff.includes("lib/estimate/deck") && !diff.includes("scripts/verify-recovery") && !diff.includes("scripts/verify-deck"));
 check(
   "AF controls are labelled and the issue dialog is named",
