@@ -89,8 +89,10 @@ export function getSetupRecommendationHref(
 }
 
 export const RATES_SECTION_IDS = [
+  "overview",
   "defaults",
   "materials",
+  "labour",
   "core",
   "productivity",
   "work_types",

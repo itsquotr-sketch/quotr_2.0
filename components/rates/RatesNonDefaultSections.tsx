@@ -1,13 +1,14 @@
 "use client";
 
-import { LABOUR_RATE_CATALOGUE, SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalogue";
-import {
-  SPECIFIC_MATERIAL_RATE_GROUPS,
-  WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
-  listSubcontractRatesCatalogueEntries,
-} from "@/lib/rates/specific-material-catalogue";
+import { SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalogue";
+import { WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
 import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
-import type { RateCatalogueEntry, RatesPageRate, RatesPageState } from "@/lib/rates/types";
+import {
+  labourRatesCatalogue,
+  plantRatesCatalogue,
+  subcontractRatesCatalogue,
+} from "@/lib/rates/rates-workspace-summary";
+import type { RatesPageRate, RatesPageState } from "@/lib/rates/types";
 import type { RatesSectionId } from "@/lib/setup/recommendation-destinations";
 import { RatesTableSection } from "./RatesTableSection";
 import { ProductivityByWorkArea } from "./ProductivityByWorkArea";
@@ -23,24 +24,6 @@ type RatesNonDefaultSectionsProps = {
   companyGrossMarginPercent: number;
 };
 
-function plantCatalogue(): RateCatalogueEntry[] {
-  return catalogueEntriesForRatesSection(
-    SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => [...group.entries]).filter(
-      (entry) =>
-        entry.item_key.startsWith("plant.") ||
-        entry.workAreaLabel?.toLowerCase().includes("plant")
-    ),
-    "material"
-  );
-}
-
-function subcontractCatalogue(): RateCatalogueEntry[] {
-  return catalogueEntriesForRatesSection(
-    listSubcontractRatesCatalogueEntries(),
-    "material"
-  );
-}
-
 export function RatesNonDefaultSections({
   view,
   activeSection,
@@ -51,25 +34,23 @@ export function RatesNonDefaultSections({
 }: RatesNonDefaultSectionsProps) {
   const preferred = state.preferredWorkAreaTypes ?? [];
 
-  const plantEntries = plantCatalogue();
-  const subcontractEntries = subcontractCatalogue();
+  const plantEntries = plantRatesCatalogue();
+  const subcontractEntries = subcontractRatesCatalogue();
   const wasteEntries = catalogueEntriesForRatesSection(
     WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
     "material"
   );
 
-  if (view === "core") {
+  if (view === "labour" || view === "core") {
     return (
-      <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div
+        className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
+        data-rates-labour
+      >
         <RatesTableSection
           title="Labour"
-          description={`Enter your cost per hour. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin.`}
-          catalogue={LABOUR_RATE_CATALOGUE.filter(
-            (entry) =>
-              entry.item_key === "labour.carpenter.hour" ||
-              entry.item_key === "labour.labourer.hour" ||
-              entry.item_key === "labour.general.hour"
-          )}
+          description={`Hourly cost for each role. Carpenter and labourer stay separate. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin.`}
+          catalogue={labourRatesCatalogue()}
           rates={state.rates}
           onRatesChange={onRatesChange}
           companyGrossMarginPercent={companyGrossMarginPercent}
@@ -77,6 +58,13 @@ export function RatesNonDefaultSections({
           showEngineColumn
           readOnly={!state.canManageRates}
         />
+      </div>
+    );
+  }
+
+  if (view === "productivity") {
+    return (
+      <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
         <ProductivityByWorkArea
           rates={state.rates}
           preferredWorkAreaTypes={preferred}
@@ -114,7 +102,7 @@ export function RatesNonDefaultSections({
     ) : (
       <RatesTableSection
         title="Plant"
-        description="Hire and plant day rates used by current estimates."
+        description="Hire and plant rates, grouped by the work that uses them."
         catalogue={plantEntries}
         rates={state.rates}
         onRatesChange={onRatesChange}
@@ -134,7 +122,7 @@ export function RatesNonDefaultSections({
     ) : (
       <RatesTableSection
         title="Subcontract"
-        description="Company subcontract rates."
+        description="Specialist rates, grouped by the work they belong to."
         catalogue={subcontractEntries}
         rates={state.rates}
         onRatesChange={onRatesChange}

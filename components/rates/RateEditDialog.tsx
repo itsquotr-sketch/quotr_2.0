@@ -190,7 +190,7 @@ export function RateEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{catalogueEntry.label}</DialogTitle>
           <DialogDescription>

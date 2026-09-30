@@ -104,7 +104,8 @@ check(
   "Productivity path still separate from Materials branch",
   ratesNonDefault.includes("<ProductivityByWorkArea") &&
     !materialsBranch.includes("ProductivityByWorkArea") &&
-    ratesPage.includes('{ id: "core", label: "Labour & Productivity" }')
+    ratesPage.includes('{ id: "labour", label: "Labour" }') &&
+    ratesPage.includes('{ id: "productivity", label: "Productivity" }')
 );
 
 console.log(`\n=== Result: ${passed} passed, ${failed} failed ===`);

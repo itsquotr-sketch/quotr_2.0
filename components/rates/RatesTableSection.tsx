@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { ChevronDown, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   formatRateUnit,
   formatProductivityHours,
@@ -19,6 +19,7 @@ import {
 import { upsertRate } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageRate } from "@/lib/rates/types";
+import { cn } from "@/lib/utils";
 import {
   displayChargeOut,
   formatMoney,
@@ -79,7 +80,7 @@ function RateMobileCard({
     ? "Your rate"
     : entry.defaultCostRate != null
       ? "Quotr benchmark"
-      : "Pricing required";
+      : "Pricing Required";
   const yourRateDisplay = isProductivityEntry(entry)
     ? formatProductivityHours(rate?.cost_rate ?? null, entry.unit)
     : formatMoney(rate?.cost_rate);
@@ -92,20 +93,24 @@ function RateMobileCard({
       : "—";
 
   return (
-    <div className="border-b border-border/50 px-0 py-2.5 last:border-0 sm:grid sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] sm:items-center sm:gap-3">
+    <div
+      className="border-b border-border/50 px-0 py-2.5 last:border-0 lg:grid lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] lg:items-center lg:gap-3"
+      data-rate-key={entry.item_key}
+      data-rate-authority={statusLabel}
+    >
       <div className="min-w-0">
         <p className="text-sm font-medium leading-snug">{labelColumn}</p>
         {entry.trade ? (
           <p className="text-xs text-muted-foreground">{entry.trade}</p>
         ) : null}
       </div>
-      <p className="mt-1 text-sm tabular-nums sm:mt-0">
-        <span className="text-xs text-muted-foreground sm:hidden">Your rate </span>
+      <p className="mt-1 text-sm tabular-nums lg:mt-0">
+        <span className="text-xs text-muted-foreground lg:hidden">Your rate </span>
         {yourRateDisplay}
         <span className="sr-only">Your cost</span>
       </p>
       <p className="text-sm text-muted-foreground tabular-nums">
-        <span className="text-xs sm:hidden">Quotr benchmark </span>
+        <span className="text-xs lg:hidden">Quotr benchmark </span>
         {benchmarkDisplay}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -113,10 +118,17 @@ function RateMobileCard({
           ? `h/${formatRateUnit(entry.unit)}`
           : formatRateUnit(entry.unit)}
       </p>
-      <Badge variant={hasCompanyRate ? "secondary" : "outline"} className="mt-1 w-fit text-[10px] sm:mt-0">
+      <p
+        className={cn(
+          "mt-1 w-fit text-xs lg:mt-0",
+          statusLabel === "Pricing Required"
+            ? "font-medium text-[var(--brand-orange)]"
+            : "text-muted-foreground"
+        )}
+      >
         {statusLabel}
-      </Badge>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1 sm:mt-0 sm:justify-end">
+      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1 lg:mt-0 lg:justify-end">
         {isProductivityEntry(entry) ? null : charge.value != null ? (
           <span className="text-[11px] text-muted-foreground tabular-nums">
             Charge-out {formatMoney(charge.value)}
@@ -128,14 +140,14 @@ function RateMobileCard({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="h-8 text-xs"
+                size="touch"
+                className="text-xs"
                 onClick={onAdoptBenchmark}
               >
                 {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
               </Button>
             ) : null}
-            <Button type="button" variant="outline" size="sm" className="h-8" onClick={onEdit}>
+            <Button type="button" variant="outline" size="touch" onClick={onEdit}>
               <Pencil className="mr-1 size-3.5" />
               {hasCompanyRate ? "Edit" : "Add"}
             </Button>
@@ -170,6 +182,14 @@ export function RatesTableSection({
   );
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeTone, setNoticeTone] = useState<"error" | "success">("success");
+  const [query, setQuery] = useState("");
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  function showNotice(message: string, tone: "error" | "success") {
+    setNotice(message);
+    setNoticeTone(tone);
+  }
 
   const unsetEntries = catalogue.filter(
     (entry) => !rateMap.has(entry.item_key)
@@ -211,7 +231,7 @@ export function RatesTableSection({
     setSaving(false);
 
     if (result.error) {
-      setNotice(result.error);
+      showNotice(result.error, "error");
       return false;
     }
 
@@ -222,7 +242,7 @@ export function RatesTableSection({
           )
         : [...rates, result.rate];
       onRatesChange(nextRates);
-      setNotice("Regenerate an estimate to apply updated rates.");
+      showNotice("Regenerate an estimate to apply updated rates.", "success");
     }
 
     return true;
@@ -253,7 +273,7 @@ export function RatesTableSection({
     setSaving(false);
 
     if (result.error) {
-      setNotice(result.error);
+      showNotice(result.error, "error");
       return;
     }
 
@@ -264,16 +284,44 @@ export function RatesTableSection({
           )
         : [...rates, result.rate];
       onRatesChange(nextRates);
-      setNotice(
-        `Benchmark cost adopted. Charge-out will use your ${margin}% company gross margin. Regenerate an estimate to apply.`
+      showNotice(
+        `Benchmark cost adopted. Charge-out will use your ${margin}% company gross margin. Regenerate an estimate to apply.`,
+        "success"
       );
     }
   }
 
+  const filteredGroups = groups
+    .map((group) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return group;
+      return {
+        ...group,
+        entries: group.entries.filter((entry) => {
+          const haystack = [
+            entry.label,
+            entry.item_key,
+            entry.workAreaLabel,
+            entry.trade,
+            entry.unit,
+            group.workAreaLabel,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(q);
+        }),
+      };
+    })
+    .filter((group) => group.entries.length > 0);
+
+  const collapsible =
+    (variant === "grouped" || variant === "productivity") && groups.length > 1;
+
   return (
     <>
       <Card className="border-border/60 shadow-none">
-        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <CardHeader className="flex flex-col items-start justify-between gap-3 space-y-0 sm:flex-row sm:gap-4">
           <div>
             <CardTitle className="text-base">{title}</CardTitle>
             <CardDescription className="mt-1.5">{description}</CardDescription>
@@ -282,7 +330,7 @@ export function RatesTableSection({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="touch"
               className="shrink-0"
               onClick={() => {
                 setEditingEntry(unsetEntries[0]);
@@ -296,7 +344,10 @@ export function RatesTableSection({
         </CardHeader>
         <CardContent className="space-y-4">
           {notice ? (
-            <p className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            <p
+              role={noticeTone === "error" ? "alert" : "status"}
+              className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+            >
               {notice}
             </p>
           ) : null}
@@ -306,45 +357,94 @@ export function RatesTableSection({
               No rates in this section.
             </p>
           ) : (
-            groups.map((group) => (
-              <div key={group.workAreaLabel || "labour"} className="space-y-1">
-                {((variant === "grouped" || variant === "productivity") &&
-                group.workAreaLabel) ? (
-                  <h3 className="text-sm font-medium">{group.workAreaLabel}</h3>
-                ) : null}
+            <>
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search this section"
+                aria-label={`Search ${title}`}
+                className="h-11 min-h-11 max-w-md"
+              />
+              {filteredGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No matching rates.
+                </p>
+              ) : (
+                filteredGroups.map((group) => {
+                  const groupKey = group.workAreaLabel || "labour";
+                  const expanded =
+                    !collapsible || Boolean(query.trim()) || openGroups[groupKey] === true;
+                  return (
+                    <div key={groupKey} className="space-y-1" data-rates-group={groupKey}>
+                      {collapsible && group.workAreaLabel ? (
+                        <button
+                          type="button"
+                          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                          aria-expanded={expanded}
+                          onClick={() =>
+                            setOpenGroups((current) => ({
+                              ...current,
+                              [groupKey]: !expanded,
+                            }))
+                          }
+                        >
+                          <span className="text-sm font-medium">
+                            {group.workAreaLabel}
+                            <span className="ml-2 font-normal text-muted-foreground">
+                              {group.entries.length}
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className={cn(
+                              "size-4 shrink-0 text-muted-foreground transition-transform",
+                              expanded && "rotate-180"
+                            )}
+                            aria-hidden
+                          />
+                        </button>
+                      ) : group.workAreaLabel ? (
+                        <h3 className="text-sm font-medium">{group.workAreaLabel}</h3>
+                      ) : null}
 
-                <div
-                  className="min-w-0 overflow-hidden"
-                  data-rates-compact-list
-                >
-                  <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] sm:gap-3">
-                    <span>Item</span>
-                    <span>{productivityTable ? "Hours" : "Your rate"}</span>
-                    <span>Quotr benchmark</span>
-                    <span>Unit</span>
-                    <span>Status</span>
-                    <span className="text-right">Edit</span>
-                  </div>
-                  {group.entries.map((entry) => (
-                    <RateMobileCard
-                      key={entry.item_key}
-                      entry={entry}
-                      rate={rateMap.get(entry.item_key)}
-                      labelColumn={entry.label}
-                      companyGrossMarginPercent={margin}
-                      onEdit={() => {
-                        setEditingEntry(entry);
-                        setNotice(null);
-                      }}
-                      onAdoptBenchmark={() => {
-                        void handleAdoptBenchmark(entry);
-                      }}
-                      readOnly={readOnly}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
+                      {expanded ? (
+                        <div
+                          className="min-w-0 overflow-hidden"
+                          data-rates-compact-list
+                          role={collapsible ? "region" : undefined}
+                        >
+                          <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] lg:gap-3">
+                            <span>Item</span>
+                            <span>{productivityTable ? "Hours" : "Your rate"}</span>
+                            <span>Quotr benchmark</span>
+                            <span>Unit</span>
+                            <span>Status</span>
+                            <span className="text-right">Edit</span>
+                          </div>
+                          {group.entries.map((entry) => (
+                            <RateMobileCard
+                              key={entry.item_key}
+                              entry={entry}
+                              rate={rateMap.get(entry.item_key)}
+                              labelColumn={entry.label}
+                              companyGrossMarginPercent={margin}
+                              onEdit={() => {
+                                setEditingEntry(entry);
+                                setNotice(null);
+                              }}
+                              onAdoptBenchmark={() => {
+                                void handleAdoptBenchmark(entry);
+                              }}
+                              readOnly={readOnly}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </>
           )}
         </CardContent>
       </Card>

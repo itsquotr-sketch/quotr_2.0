@@ -87,7 +87,8 @@ check(
 check(
   "Labour COST section retained",
   ratesNonDefault.includes('title="Labour"') &&
-    ratesNonDefault.includes("LABOUR_RATE_CATALOGUE")
+    ratesNonDefault.includes("labourRatesCatalogue()") &&
+    read("lib/rates/rates-workspace-summary.ts").includes("LABOUR_RATE_CATALOGUE")
 );
 check(
   "productivity helper copy",

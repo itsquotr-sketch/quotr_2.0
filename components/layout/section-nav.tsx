@@ -12,6 +12,8 @@ type SettingsSectionNavProps = {
   activeId: string;
   onChange: (id: string) => void;
   className?: string;
+  label?: string;
+  touchTargets?: boolean;
 };
 
 export function SettingsSectionNav({
@@ -19,6 +21,8 @@ export function SettingsSectionNav({
   activeId,
   onChange,
   className,
+  label = "Settings sections",
+  touchTargets = false,
 }: SettingsSectionNavProps) {
   return (
     <div
@@ -27,7 +31,7 @@ export function SettingsSectionNav({
         className
       )}
       role="tablist"
-      aria-label="Settings sections"
+      aria-label={label}
     >
       <div className="flex w-max min-w-full gap-1.5 pb-1 lg:flex-wrap lg:w-auto">
         {items.map((item) => {
@@ -41,7 +45,8 @@ export function SettingsSectionNav({
               aria-selected={isActive}
               onClick={() => onChange(item.id)}
               className={cn(
-                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow] duration-150",
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium whitespace-nowrap outline-none transition-[color,background-color,border-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2",
+                touchTargets && "min-h-11",
                 isActive
                   ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground shadow-[inset_0_0_0_1px_oklch(0.705_0.213_47.604/0.25)]"
                   : "border-border/60 bg-card text-muted-foreground hover:border-border hover:text-foreground"

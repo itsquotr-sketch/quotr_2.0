@@ -109,15 +109,15 @@ check(
   "6 primary nav omits legacy tab",
   primaryNavBody.length > 0 &&
     !primaryNavBody.includes('"legacy"') &&
-    primaryNavBody.includes('"core"') &&
-    primaryNavBody.includes('"defaults"')
+    primaryNavBody.includes('"labour"') &&
+    primaryNavBody.includes('"productivity"') &&
+    primaryNavBody.includes('"calibration"')
 );
 check(
-  "6b Advanced / Legacy package rates retained",
-  ratesPage.includes("Advanced") &&
-    ratesPage.includes("Legacy package rates") &&
-    ratesPage.includes('activeSection === "legacy"') &&
-    ratesPage.includes("SCOPE_RATE_CATALOGUE")
+  "6b Legacy package rates retained outside primary nav",
+  ratesPage.includes("Legacy package rates") &&
+    ratesPage.includes('selectSection(LEGACY_RATES_SECTION.id)') &&
+    read("components/rates/RatesNonDefaultSections.tsx").includes("SCOPE_RATE_CATALOGUE")
 );
 check(
   "6c scope catalogue still present (no data deletion)",

@@ -13,7 +13,7 @@ type RatesPageProps = {
 
 export default async function RatesPage({ searchParams }: RatesPageProps) {
   const params = await searchParams;
-  const initialSection = parseRatesSection(params.section) ?? "defaults";
+  const initialSection = parseRatesSection(params.section) ?? "overview";
 
   const [state, companySettings] = await Promise.all([
     measureServerLoad("rates", () => getRatesPageState()),
@@ -24,7 +24,7 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Rates"
-        description="Set the rates Quotr uses to prepare estimates."
+        description="Company costs, Quotr benchmarks, and rates that still need a price."
         actions={<UserMenu className="hidden md:inline-flex" />}
       />
       <PageContainer>

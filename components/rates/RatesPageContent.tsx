@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
@@ -13,7 +12,8 @@ import {
 } from "@/lib/setup/recommendation-destinations";
 import { cn } from "@/lib/utils";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
-import { RatesCalibrationAccess } from "./RatesCalibrationAccess";
+import { RatesCalibrationPanel } from "./RatesCalibrationPanel";
+import { RatesOverview } from "./RatesOverview";
 import { MaterialWastageDefaultsSection } from "./MaterialWastageDefaultsSection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
@@ -35,15 +35,15 @@ type RatesPageContentProps = {
   companySettings?: CompanySettings | null;
 };
 
-/** Primary Rates navigation — used-now contractor setup. */
+/** Primary Rates navigation. */
 const RATES_SECTIONS = [
-  { id: "defaults", label: "Defaults" },
+  { id: "overview", label: "Overview" },
   { id: "materials", label: "Materials" },
-  { id: "core", label: "Labour & Productivity" },
-  { id: "calibration", label: "Calibration" },
-  { id: "plant", label: "Plant" },
+  { id: "labour", label: "Labour" },
+  { id: "productivity", label: "Productivity" },
   { id: "subcontract", label: "Subcontract" },
-  { id: "waste", label: "Waste" },
+  { id: "plant", label: "Plant" },
+  { id: "calibration", label: "Calibration" },
 ] as const;
 
 /** Historical package rates — kept reachable, not primary nav. */
@@ -60,25 +60,25 @@ function replaceRatesSectionInUrl(section: RatesSectionId) {
 }
 
 function navIdFor(section: RatesSectionId): string {
-  if (section === "productivity") return "core";
+  if (section === "core") return "labour";
   if (section === "work_types") return "materials";
   return section;
 }
 
 function viewFor(section: RatesSectionId): RatesSectionId {
-  if (section === "productivity") return "core";
+  if (section === "core") return "labour";
   if (section === "work_types") return "materials";
   return section;
 }
 
 export function RatesPageContent({
   initialState,
-  initialSection = "defaults",
+  initialSection = "overview",
   companySettings = null,
 }: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
   const [activeSection, setActiveSection] = useState<RatesSectionId>(
-    parseRatesSection(initialSection) ?? "defaults"
+    parseRatesSection(initialSection) ?? "overview"
   );
 
   async function refresh() {
@@ -87,7 +87,7 @@ export function RatesPageContent({
   }
 
   function selectSection(id: string) {
-    const next = parseRatesSection(id) ?? "defaults";
+    const next = parseRatesSection(id) ?? "overview";
     setActiveSection(next);
     replaceRatesSectionInUrl(next);
   }
@@ -95,7 +95,12 @@ export function RatesPageContent({
   const view = viewFor(activeSection);
   const navActive = navIdFor(activeSection);
   const showNonDefault =
-    (view !== "defaults" && view !== "calibration") ||
+    view === "materials" ||
+    view === "labour" ||
+    view === "productivity" ||
+    view === "plant" ||
+    view === "subcontract" ||
+    view === "waste" ||
     activeSection === LEGACY_RATES_SECTION.id ||
     activeSection === "benchmarks";
 
@@ -103,7 +108,13 @@ export function RatesPageContent({
     RATES_SECTIONS.find((section) => section.id === navActive)?.label ??
     (activeSection === LEGACY_RATES_SECTION.id
       ? LEGACY_RATES_SECTION.label
-      : "Rates");
+      : activeSection === "defaults"
+        ? "Margin and wastage"
+        : activeSection === "waste"
+          ? "Waste"
+          : activeSection === "benchmarks"
+            ? "Fallback settings"
+            : "Rates");
 
   const companyGrossMarginPercent = resolveCompanyGrossMarginPercent(
     state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
@@ -114,27 +125,22 @@ export function RatesPageContent({
   }
 
   return (
-    <div className="space-y-4" data-rates-compact>
+    <div className="min-w-0 space-y-4 overflow-x-hidden" data-rates-compact>
       <SettingsSectionNav
         items={[...RATES_SECTIONS]}
         activeId={navActive}
         onChange={selectSection}
+        label="Rates sections"
+        touchTargets
       />
 
       <h2 className="sr-only">{activeLabel}</h2>
-      <p className="text-sm text-muted-foreground">
-        Enter what work costs your business. Gross margin is under Defaults; GST
-        under{" "}
-        <Link
-          href="/app/settings/company"
-          className="font-medium underline-offset-4 hover:underline"
-        >
-          Company settings
-        </Link>
-        .
-      </p>
 
       <div className="min-w-0">
+        {view === "overview" ? (
+          <RatesOverview state={state} onOpenSection={selectSection} />
+        ) : null}
+
         {view === "defaults" ? (
           <div className="space-y-4" data-rates-defaults>
             <CompanyDefaultsSection
@@ -154,9 +160,13 @@ export function RatesPageContent({
         ) : null}
 
         {view === "calibration" ? (
-          <RatesCalibrationAccess
-            rates={state.rates}
+          <RatesCalibrationPanel
+            state={state}
             preferredWorkAreaTypes={state.preferredWorkAreaTypes}
+            onSettingsChange={(settings) =>
+              setState((prev) => ({ ...prev, settings }))
+            }
+            onOpenSection={selectSection}
           />
         ) : null}
 
@@ -174,43 +184,52 @@ export function RatesPageContent({
         ) : null}
       </div>
 
-      <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-3">
-        <p className="text-xs font-medium text-muted-foreground">Advanced</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Older overall package rates and fallback toggles are kept for history.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "h-8 px-2 text-xs"
-            )}
-            onClick={() => selectSection(LEGACY_RATES_SECTION.id)}
-            aria-current={
-              activeSection === LEGACY_RATES_SECTION.id ? "page" : undefined
-            }
-          >
-            {LEGACY_RATES_SECTION.label}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "h-8 px-2 text-xs"
-            )}
-            onClick={() => selectSection("benchmarks")}
-            aria-current={activeSection === "benchmarks" ? "page" : undefined}
-          >
-            Fallbacks
-          </button>
+      {view === "overview" ? null : (
+        <div className="rounded-lg border border-dashed border-border/70 bg-card px-3 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Advanced</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "touch" }),
+                "px-3 text-xs"
+              )}
+              onClick={() => selectSection("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "touch" }),
+                "px-3 text-xs"
+              )}
+              onClick={() => selectSection(LEGACY_RATES_SECTION.id)}
+              aria-current={
+                activeSection === LEGACY_RATES_SECTION.id ? "page" : undefined
+              }
+            >
+              {LEGACY_RATES_SECTION.label}
+            </button>
+            <button
+              type="button"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "touch" }),
+                "px-3 text-xs"
+              )}
+              onClick={() => selectSection("benchmarks")}
+              aria-current={activeSection === "benchmarks" ? "page" : undefined}
+            >
+              Fallbacks
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <p className="text-xs text-muted-foreground">
         <button
           type="button"
-          className="underline-offset-4 hover:underline"
+          className="min-h-11 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
           onClick={() => {
             void refresh();
           }}

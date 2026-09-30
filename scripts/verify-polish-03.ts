@@ -119,16 +119,18 @@ const dnaCompare = read("components/rates/CompanyDnaRatesCompare.tsx");
 const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 check(
   "compact Rates structure",
-  ratesContent.includes('data-rates-compact') &&
-    ratesContent.includes('{ id: "defaults", label: "Defaults" }') &&
+  ratesContent.includes("data-rates-compact") &&
     ratesContent.includes('{ id: "materials", label: "Materials" }') &&
-    ratesContent.includes('{ id: "core", label: "Labour & Productivity" }')
+    ratesContent.includes('{ id: "labour", label: "Labour" }') &&
+    ratesContent.includes('{ id: "productivity", label: "Productivity" }')
 );
 check(
-  "Defaults is the default Rates section",
+  "Overview is the Rates landing; Defaults remains a deep link",
   read("app/(protected)/app/rates/page.tsx").includes(
-    'parseRatesSection(params.section) ?? "defaults"'
-  ) && parseRatesSection("defaults") === "defaults"
+    'parseRatesSection(params.section) ?? "overview"'
+  ) &&
+    parseRatesSection("overview") === "overview" &&
+    parseRatesSection("defaults") === "defaults"
 );
 check(
   "legacy core/productivity/work_types deep links still parse",

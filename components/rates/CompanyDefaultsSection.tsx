@@ -264,7 +264,7 @@ export function CompanyDefaultsSection({
         </CardContent>
         {readOnly ? null : (
           <CardFooter className="border-t">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" size="touch" disabled={saving}>
               {saving ? "Saving…" : "Save defaults"}
             </Button>
           </CardFooter>

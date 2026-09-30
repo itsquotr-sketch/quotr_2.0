@@ -63,7 +63,7 @@ const STATUS_OPTIONS: { value: ProductivityStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "customised", label: "Customised" },
   { value: "benchmark", label: "Quotr benchmark" },
-  { value: "pricing_required", label: "Pricing required" },
+  { value: "pricing_required", label: "Pricing Required" },
 ];
 
 const RW_GROUPS = [
@@ -227,9 +227,9 @@ export function ProductivityByWorkArea({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search work areas, tasks, keys, units"
           aria-label="Search labour productivity"
-          className="h-11 min-h-11 max-w-md sm:h-9 sm:min-h-9"
+          className="h-11 min-h-11 max-w-md lg:h-9 lg:min-h-9"
         />
-        <label className="flex min-h-11 items-center gap-2 text-sm sm:min-h-9">
+        <label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
           <span className="sr-only">Status filter</span>
           <select
             value={status}
@@ -237,7 +237,7 @@ export function ProductivityByWorkArea({
               setStatus(event.target.value as ProductivityStatusFilter)
             }
             aria-label="Filter by productivity status"
-            className="h-11 min-h-11 rounded-md border border-input bg-background px-3 text-sm sm:h-9 sm:min-h-9"
+            className="h-11 min-h-11 rounded-md border border-input bg-background px-3 text-sm lg:h-9 lg:min-h-9"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -251,7 +251,7 @@ export function ProductivityByWorkArea({
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-11 sm:h-8 sm:min-h-8"
+            className="h-11 min-h-11 lg:h-8 lg:min-h-8"
             onClick={() => setAllExpanded(true)}
           >
             Expand all
@@ -260,7 +260,7 @@ export function ProductivityByWorkArea({
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-11 sm:h-8 sm:min-h-8"
+            className="h-11 min-h-11 lg:h-8 lg:min-h-8"
             onClick={() => setAllExpanded(false)}
           >
             Collapse all
@@ -384,7 +384,7 @@ export function ProductivityByWorkArea({
                             })}
                             className={cn(
                               buttonVariants({ variant: "outline", size: "sm" }),
-                              "h-11 min-h-11 sm:h-8 sm:min-h-8"
+                              "h-11 min-h-11 lg:h-8 lg:min-h-8"
                             )}
                             data-company-dna-rates-cta
                           >
@@ -395,7 +395,7 @@ export function ProductivityByWorkArea({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-11 min-h-11 sm:h-8 sm:min-h-8"
+                          className="h-11 min-h-11 lg:h-8 lg:min-h-8"
                           onClick={() =>
                             setDnaTasksOpen((prev) => ({
                               ...prev,
@@ -564,7 +564,7 @@ function ProductivityOperationsList({
 
   return (
     <div className="min-w-0 overflow-hidden" data-rates-compact-list>
-      <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] sm:gap-3">
+      <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] lg:gap-3">
         <span>Operation</span>
         <span>Your productivity</span>
         <span>Quotr benchmark</span>
@@ -574,14 +574,15 @@ function ProductivityOperationsList({
       </div>
       {items.map((item) => {
         const hasCompany = item.companyOverrideHours != null;
-        const statusLabel = productivityEffectiveSourceLabel(
-          item.effectiveSource
-        );
+        const statusLabel =
+          item.effectiveSource === "pricing_required"
+            ? "Pricing Required"
+            : productivityEffectiveSourceLabel(item.effectiveSource);
         const legacyLabel = productivityLegacyLabel(item.legacyKind);
         return (
           <div
             key={item.productivityKey}
-            className="border-b border-border/50 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] sm:items-center sm:gap-3 sm:py-2.5"
+            className="border-b border-border/50 py-3 last:border-0 sm:grid sm:grid-cols-1 sm:gap-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] lg:items-center lg:gap-3 lg:py-2.5"
             data-productivity-key={item.productivityKey}
             data-productivity-legacy={legacy ? "true" : "false"}
           >
@@ -603,14 +604,14 @@ function ProductivityOperationsList({
                 </Badge>
               ) : null}
             </div>
-            <p className="mt-1.5 text-sm tabular-nums sm:mt-0">
-              <span className="text-xs text-muted-foreground sm:hidden">
+            <p className="mt-1.5 text-sm tabular-nums lg:mt-0">
+              <span className="text-xs text-muted-foreground lg:hidden">
                 Your productivity{" "}
               </span>
               {formatProductivityHours(item.companyOverrideHours, item.unit)}
             </p>
             <p className="text-sm text-muted-foreground tabular-nums">
-              <span className="text-xs sm:hidden">Quotr benchmark </span>
+              <span className="text-xs lg:hidden">Quotr benchmark </span>
               {item.benchmarkHours != null
                 ? formatProductivityHours(item.benchmarkHours, item.unit)
                 : "—"}
@@ -620,17 +621,21 @@ function ProductivityOperationsList({
             </p>
             <Badge
               variant={hasCompany ? "secondary" : "outline"}
-              className="mt-1.5 w-fit text-[10px] sm:mt-0"
+              className={cn(
+                "mt-1.5 w-fit text-[10px] lg:mt-0",
+                item.effectiveSource === "pricing_required" &&
+                  "border-[var(--brand-orange)] text-[var(--brand-orange)]"
+              )}
             >
               {statusLabel}
             </Badge>
-            <div className="mt-2 sm:mt-0 sm:justify-self-end">
+            <div className="mt-2 lg:mt-0 lg:justify-self-end">
               {readOnly ? null : (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-11 sm:h-8 sm:min-h-8"
+                  className="h-11 min-h-11 lg:h-8 lg:min-h-8"
                   onClick={() => onEdit(item)}
                 >
                   <Pencil className="mr-1 size-3.5" />
@@ -778,7 +783,7 @@ function DnaTaskRow(params: {
             href={`/app/setup/dna/${encodeURIComponent(params.row.task.calibrationTaskKey)}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
-              "h-11 min-h-11 sm:h-8 sm:min-h-8"
+              "h-11 min-h-11 lg:h-8 lg:min-h-8"
             )}
           >
             {calibrated ? DNA_RECALIBRATE : DNA_CALIBRATE}
@@ -788,7 +793,7 @@ function DnaTaskRow(params: {
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 min-h-11 sm:h-8 sm:min-h-8"
+              className="h-11 min-h-11 lg:h-8 lg:min-h-8"
               disabled={params.resetting === params.row.task.calibrationTaskKey}
               onClick={() => params.onReset(params.row.task.calibrationTaskKey)}
             >
