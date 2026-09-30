@@ -19,6 +19,7 @@ import {
 } from "../lib/calibration/types";
 import { FUTURE_RATE_AUTHORITY_STACK } from "../lib/rates/authority";
 import { computeCompanySetupReadiness } from "../lib/setup/readiness";
+import { parseRatesSection } from "../lib/setup/recommendation-destinations";
 
 let failed = 0;
 
@@ -158,7 +159,12 @@ assert(
 );
 assert(
   "calibrate deep-links section",
-  calibrateTip?.href.includes("section=calibrate") === true
+  calibrateTip?.href === "/app/rates?section=calibration"
+);
+assert(
+  "section=calibrate parses as the calibration alias",
+  parseRatesSection("calibrate") === "calibration" &&
+    parseRatesSection("calibration") === "calibration"
 );
 assert(
   "calibrate not required severity",

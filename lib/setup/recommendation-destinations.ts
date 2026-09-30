@@ -111,6 +111,8 @@ export function parseRatesSection(
 ): RatesSectionId | null {
   if (!value) return null;
   const trimmed = value.trim();
+  // Backward-compatible alias. Generated links stay section=calibration.
+  if (trimmed === "calibrate") return "calibration";
   return (RATES_SECTION_IDS as readonly string[]).includes(trimmed)
     ? (trimmed as RatesSectionId)
     : null;

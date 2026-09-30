@@ -9,6 +9,8 @@ type PageHeaderProps = {
    * Keeps an sr-only H1 for accessibility. Desktop unchanged.
    */
   compactOnMobile?: boolean;
+  /** Let the subtitle wrap instead of truncating. Header grows with the copy. */
+  wrapDescription?: boolean;
 };
 
 export function PageHeader({
@@ -16,6 +18,7 @@ export function PageHeader({
   description,
   actions,
   compactOnMobile = false,
+  wrapDescription = false,
 }: PageHeaderProps) {
   return (
     <>
@@ -24,7 +27,8 @@ export function PageHeader({
       ) : null}
       <header
         className={cn(
-          "flex shrink-0 flex-col gap-3 border-b bg-background px-4 py-4 sm:h-14 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0",
+          "flex shrink-0 flex-col gap-3 border-b bg-background px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
+          wrapDescription ? "sm:min-h-14 sm:py-3" : "sm:h-14 sm:py-0",
           compactOnMobile && "max-md:hidden"
         )}
       >
@@ -33,7 +37,12 @@ export function PageHeader({
             {title}
           </h1>
           {description ? (
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            <p
+              className={cn(
+                "mt-0.5 text-sm text-muted-foreground",
+                wrapDescription ? "whitespace-normal" : "truncate"
+              )}
+            >
               {description}
             </p>
           ) : null}

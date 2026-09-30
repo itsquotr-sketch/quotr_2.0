@@ -12,6 +12,7 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 import { resolveLocalDbContainer } from "./local-db-container";
 import { computeCompanySetupReadiness } from "../lib/setup/readiness";
+import { parseRatesSection } from "../lib/setup/recommendation-destinations";
 import { FUTURE_RATE_AUTHORITY_STACK } from "../lib/rates/authority";
 
 let failed = 0;
@@ -151,7 +152,22 @@ assert(
       x.includes("COMPANY_DNA_OR_CALIBRATION")
     )
 );
-assert("no Company DNA module", !existsSync(join(process.cwd(), "lib/company-dna")));
+assert(
+  "Company DNA module remains the approved calibration surface",
+  existsSync(join(process.cwd(), "lib/company-dna"))
+);
+assert(
+  "section=calibrate parses as the calibration alias",
+  parseRatesSection("calibrate") === "calibration"
+);
+assert(
+  "save_calibration_response stays out of rates, projects, estimates, and quotes",
+  persistence.includes("save_calibration_response") &&
+    !persistence.includes('.from("rates")') &&
+    !persistence.includes('.from("projects")') &&
+    !persistence.includes('.from("estimates")') &&
+    !persistence.includes('.from("quotes")')
+);
 
 section("PRIVACY");
 assert(

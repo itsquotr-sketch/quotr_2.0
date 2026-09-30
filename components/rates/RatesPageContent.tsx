@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
 import { getRatesPageState } from "@/lib/rates/actions";
@@ -52,11 +53,18 @@ const LEGACY_RATES_SECTION = {
   label: "Legacy package rates",
 };
 
-function replaceRatesSectionInUrl(section: RatesSectionId) {
+function writeRatesSectionUrl(
+  section: RatesSectionId,
+  mode: "push" | "replace"
+) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
+  if (url.searchParams.get("section") === section) return;
   url.searchParams.set("section", section);
-  window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  const next = `${url.pathname}${url.search}`;
+  const state = { ratesSection: section };
+  if (mode === "replace") window.history.replaceState(state, "", next);
+  else window.history.pushState(state, "", next);
 }
 
 function navIdFor(section: RatesSectionId): string {
@@ -80,6 +88,30 @@ export function RatesPageContent({
   const [activeSection, setActiveSection] = useState<RatesSectionId>(
     parseRatesSection(initialSection) ?? "overview"
   );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("section") === "calibrate") {
+      url.searchParams.set("section", "calibration");
+      window.history.replaceState(
+        { ratesSection: "calibration" },
+        "",
+        `${url.pathname}${url.search}`
+      );
+    }
+
+    function onPopState() {
+      const next =
+        parseRatesSection(
+          new URL(window.location.href).searchParams.get("section")
+        ) ?? "overview";
+      setActiveSection(next);
+    }
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   async function refresh() {
     const refreshed = await getRatesPageState();
@@ -89,7 +121,7 @@ export function RatesPageContent({
   function selectSection(id: string) {
     const next = parseRatesSection(id) ?? "overview";
     setActiveSection(next);
-    replaceRatesSectionInUrl(next);
+    writeRatesSectionUrl(next, "push");
   }
 
   const view = viewFor(activeSection);
@@ -126,12 +158,40 @@ export function RatesPageContent({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-rates-compact>
+      <label className="grid gap-1.5 md:hidden" htmlFor="rates-section">
+        <span className="text-xs font-medium text-muted-foreground">
+          Rates section
+        </span>
+        <select
+          id="rates-section"
+          data-rates-section-select
+          aria-label="Rates section"
+          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+          value={
+            RATES_SECTIONS.some((section) => section.id === navActive)
+              ? navActive
+              : activeSection
+          }
+          onChange={(event) => selectSection(event.target.value)}
+        >
+          {RATES_SECTIONS.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.label}
+            </option>
+          ))}
+          {RATES_SECTIONS.some((section) => section.id === navActive) ? null : (
+            <option value={activeSection}>{activeLabel}</option>
+          )}
+        </select>
+      </label>
       <SettingsSectionNav
         items={[...RATES_SECTIONS]}
         activeId={navActive}
         onChange={selectSection}
         label="Rates sections"
         touchTargets
+        wrap
+        className="hidden md:block"
       />
 
       <h2 className="sr-only">{activeLabel}</h2>
@@ -185,44 +245,67 @@ export function RatesPageContent({
       </div>
 
       {view === "overview" ? null : (
-        <div className="rounded-lg border border-dashed border-border/70 bg-card px-3 py-3">
-          <p className="text-xs font-medium text-muted-foreground">Advanced</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
+        <div
+          className="rounded-lg border border-dashed border-border/70 bg-card"
+          data-rates-advanced
+        >
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-inset"
+            aria-expanded={advancedOpen}
+            aria-controls="rates-advanced-settings"
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            Advanced settings
+            <ChevronDown
               className={cn(
-                buttonVariants({ variant: "ghost", size: "touch" }),
-                "px-3 text-xs"
+                "size-4 shrink-0 text-muted-foreground transition-transform",
+                advancedOpen && "rotate-180"
               )}
-              onClick={() => selectSection("overview")}
+              aria-hidden
+            />
+          </button>
+          {advancedOpen ? (
+            <div
+              id="rates-advanced-settings"
+              className="flex flex-wrap gap-2 px-3 pb-3"
             >
-              Overview
-            </button>
-            <button
-              type="button"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "touch" }),
-                "px-3 text-xs"
-              )}
-              onClick={() => selectSection(LEGACY_RATES_SECTION.id)}
-              aria-current={
-                activeSection === LEGACY_RATES_SECTION.id ? "page" : undefined
-              }
-            >
-              {LEGACY_RATES_SECTION.label}
-            </button>
-            <button
-              type="button"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "touch" }),
-                "px-3 text-xs"
-              )}
-              onClick={() => selectSection("benchmarks")}
-              aria-current={activeSection === "benchmarks" ? "page" : undefined}
-            >
-              Fallbacks
-            </button>
-          </div>
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "touch" }),
+                  "px-3 text-xs"
+                )}
+                onClick={() => selectSection("overview")}
+              >
+                Overview
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "touch" }),
+                  "px-3 text-xs"
+                )}
+                onClick={() => selectSection(LEGACY_RATES_SECTION.id)}
+                aria-current={
+                  activeSection === LEGACY_RATES_SECTION.id ? "page" : undefined
+                }
+              >
+                {LEGACY_RATES_SECTION.label}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "touch" }),
+                  "px-3 text-xs"
+                )}
+                onClick={() => selectSection("benchmarks")}
+                aria-current={activeSection === "benchmarks" ? "page" : undefined}
+              >
+                Fallbacks
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 

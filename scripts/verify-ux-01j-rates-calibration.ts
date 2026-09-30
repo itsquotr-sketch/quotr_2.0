@@ -47,7 +47,18 @@ check(
     parseRatesSection("core") === "core" &&
     parseRatesSection("productivity") === "productivity" &&
     parseRatesSection("defaults") === "defaults" &&
-    parseRatesSection("calibration") === "calibration"
+    parseRatesSection("calibration") === "calibration" &&
+    parseRatesSection("calibrate") === "calibration"
+);
+check(
+  "phone section menu updates the section query and keeps history",
+  page.includes('aria-label="Rates section"') &&
+    page.includes("data-rates-section-select") &&
+    page.includes("md:hidden") &&
+    page.includes("pushState") &&
+    page.includes("popstate") &&
+    page.includes("Advanced settings") &&
+    page.includes("aria-expanded={advancedOpen}")
 );
 check(
   "primary sections are Materials, Labour, Productivity, Subcontract, Plant, Calibration",

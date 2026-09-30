@@ -9,6 +9,15 @@ import { formatRateUnit } from "@/lib/rates/catalogue";
 import { upsertRate } from "@/lib/rates/actions";
 import { formatMoney } from "@/lib/rates/cost-first-presentation";
 import {
+  RateField,
+  RateGridHeader,
+  RateGridRow,
+  materialRateColumns,
+  ratesFilterActionClass,
+  ratesFilterControlClass,
+  ratesFilterRowClass,
+} from "@/components/rates/rate-row-grid";
+import {
   MATERIAL_CATEGORY_NAMES,
   type MaterialCategoryId,
 } from "@/lib/rates/material-presentation-map";
@@ -208,72 +217,66 @@ export function MaterialsByProductFamily({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className={ratesFilterRowClass} data-rates-filters>
         <Input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search families, sizes, thickness, keys, work areas"
           aria-label="Search materials"
-          className="h-11 min-h-11 max-w-md lg:h-9 lg:min-h-9"
+          className={cn(
+            ratesFilterControlClass,
+            "sm:col-span-2 lg:max-w-md lg:flex-1"
+          )}
         />
-        <label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <span className="sr-only">Category filter</span>
-          <select
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-            aria-label="Filter by category"
-            className="h-11 min-h-11 rounded-md border border-input bg-background px-3 text-sm lg:h-9 lg:min-h-9"
-          >
-            <option value="all">All categories</option>
-            {(Object.keys(MATERIAL_CATEGORY_NAMES) as MaterialCategoryId[]).map(
-              (id) => (
-                <option key={id} value={id}>
-                  {MATERIAL_CATEGORY_NAMES[id]}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-        <label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <span className="sr-only">Work area filter</span>
-          <select
-            value={workAreaFilter}
-            onChange={(event) => setWorkAreaFilter(event.target.value)}
-            aria-label="Filter by work area"
-            className="h-11 min-h-11 rounded-md border border-input bg-background px-3 text-sm lg:h-9 lg:min-h-9"
-          >
-            <option value="all">All work areas</option>
-            {workAreaOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+        <select
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          aria-label="Filter by category"
+          className={ratesFilterControlClass}
+        >
+          <option value="all">All categories</option>
+          {(Object.keys(MATERIAL_CATEGORY_NAMES) as MaterialCategoryId[]).map(
+            (id) => (
+              <option key={id} value={id}>
+                {MATERIAL_CATEGORY_NAMES[id]}
               </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <span className="sr-only">Status filter</span>
-          <select
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as MaterialStatusFilter)
-            }
-            aria-label="Filter by material status"
-            className="h-11 min-h-11 rounded-md border border-input bg-background px-3 text-sm lg:h-9 lg:min-h-9"
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex flex-wrap gap-2">
+            )
+          )}
+        </select>
+        <select
+          value={workAreaFilter}
+          onChange={(event) => setWorkAreaFilter(event.target.value)}
+          aria-label="Filter by work area"
+          className={ratesFilterControlClass}
+        >
+          <option value="all">All work areas</option>
+          {workAreaOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={status}
+          onChange={(event) =>
+            setStatus(event.target.value as MaterialStatusFilter)
+          }
+          aria-label="Filter by material status"
+          className={ratesFilterControlClass}
+        >
+          {STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-2 sm:col-span-2 lg:contents">
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-11 min-h-11 lg:h-8 lg:min-h-8"
+            size="touch"
+            className={ratesFilterActionClass}
             onClick={() => setAllExpanded(true)}
           >
             Expand all
@@ -281,19 +284,19 @@ export function MaterialsByProductFamily({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-11 min-h-11 lg:h-8 lg:min-h-8"
+            size="touch"
+            className={ratesFilterActionClass}
             onClick={() => setAllExpanded(false)}
           >
             Collapse all
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground sm:ml-auto">
-          {categoryCount} categor{categoryCount === 1 ? "y" : "ies"} ·{" "}
-          {familyCount} famil{familyCount === 1 ? "y" : "ies"} · {variantCount}{" "}
-          variant{variantCount === 1 ? "" : "s"}
-        </p>
       </div>
+      <p className="text-xs text-muted-foreground">
+        {categoryCount} categor{categoryCount === 1 ? "y" : "ies"} ·{" "}
+        {familyCount} famil{familyCount === 1 ? "y" : "ies"} · {variantCount}{" "}
+        variant{variantCount === 1 ? "" : "s"}
+      </p>
 
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <input
@@ -515,14 +518,17 @@ function MaterialVariantsList({
 
   return (
     <div className="min-w-0 overflow-hidden" data-rates-compact-list>
-      <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] lg:gap-3">
-        <span>{attrLabel}</span>
-        <span>Your rate</span>
-        <span>Quotr benchmark</span>
-        <span>Unit</span>
-        <span>Status</span>
-        <span className="text-right">Edit</span>
-      </div>
+      <RateGridHeader
+        columns={materialRateColumns}
+        labels={[
+          { text: attrLabel },
+          { text: "Your rate", align: "end" },
+          { text: "Quotr benchmark", align: "end" },
+          { text: "Unit" },
+          { text: "Status" },
+          { text: "Action", align: "end" },
+        ]}
+      />
       {items.map((item) => {
         const statusLabel =
           item.effectiveSource === "pricing_required"
@@ -541,9 +547,10 @@ function MaterialVariantsList({
                 item.label
               : item.colourType || item.label;
         return (
-          <div
+          <RateGridRow
             key={item.canonicalKey}
-            className="border-b border-border/50 py-3 last:border-0 sm:grid sm:grid-cols-1 sm:gap-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.45fr)_auto_auto] lg:items-center lg:gap-3 lg:py-2.5"
+            columns={materialRateColumns}
+            className="sm:grid sm:grid-cols-1"
             data-materials-key={item.canonicalKey}
             data-materials-legacy={legacy ? "true" : "false"}
             data-materials-benchmark={item.benchmarkKind}
@@ -551,17 +558,17 @@ function MaterialVariantsList({
             <div className="min-w-0">
               <p className="text-sm font-medium leading-snug">{primary}</p>
               {primary !== item.label ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {item.label}
                 </p>
               ) : null}
               {item.workAreaLabels.length > 0 ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   Used in: {item.workAreaLabels.join(", ")}
                 </p>
               ) : null}
               {item.benchmarkKind === "derived" && item.derivedHint ? (
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                   {item.derivedHint}
                 </p>
               ) : null}
@@ -571,7 +578,7 @@ function MaterialVariantsList({
                 </p>
               ) : null}
               {showKeys ? (
-                <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/80">
+                <p className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground/80">
                   {item.canonicalKey}
                 </p>
               ) : null}
@@ -581,38 +588,31 @@ function MaterialVariantsList({
                 </Badge>
               ) : null}
             </div>
-            <p className="mt-1.5 text-sm tabular-nums lg:mt-0">
-              <span className="text-xs text-muted-foreground lg:hidden">
-                Your rate{" "}
-              </span>
+            <RateField label="Your rate" align="end">
               {formatMoney(item.companyOverride)}
-            </p>
-            <p className="text-sm text-muted-foreground tabular-nums">
-              <span className="text-xs lg:hidden">Quotr benchmark </span>
+            </RateField>
+            <RateField label="Quotr benchmark" align="end">
               {formatMoney(item.quotrBenchmarkCost)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatRateUnit(item.unit)}
-            </p>
-            <Badge
-              variant={
-                item.effectiveSource === "company" ? "secondary" : "outline"
-              }
-              className={cn(
-                "mt-1 w-fit text-[10px] lg:mt-0",
-                item.effectiveSource === "pricing_required" &&
-                  "border-[var(--brand-orange)] text-[var(--brand-orange)]"
-              )}
+            </RateField>
+            <RateField label="Unit">{formatRateUnit(item.unit)}</RateField>
+            <RateField
+              label="Status"
+              attention={item.effectiveSource === "pricing_required"}
             >
               {statusLabel}
-            </Badge>
-            <div className="mt-1.5 flex justify-start lg:mt-0 lg:justify-end">
-              {readOnly ? null : (
+            </RateField>
+            <div className="flex min-h-11 items-center justify-between gap-2 lg:min-h-0">
+              <span className="text-xs text-muted-foreground lg:sr-only">
+                Action
+              </span>
+              {readOnly ? (
+                <span className="text-sm text-muted-foreground">—</span>
+              ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="h-11 min-h-11 lg:h-8 lg:min-h-8"
+                  size="touch"
+                  className="h-11 min-h-11 lg:h-9 lg:min-h-9 lg:w-full"
                   onClick={() => onEdit(item)}
                 >
                   <Pencil className="mr-1 size-3.5" />
@@ -620,7 +620,7 @@ function MaterialVariantsList({
                 </Button>
               )}
             </div>
-          </div>
+          </RateGridRow>
         );
       })}
     </div>

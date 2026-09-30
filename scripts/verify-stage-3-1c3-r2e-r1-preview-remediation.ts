@@ -107,8 +107,8 @@ assert(
   getSetupRecommendationHref("work_types").includes("section=work_areas")
 );
 assert(
-  "calibrate → Setup calibrate",
-  getSetupRecommendationHref("calibrate").includes("section=calibrate")
+  "calibrate → Rates calibration",
+  getSetupRecommendationHref("calibrate") === "/app/rates?section=calibration"
 );
 assert(
   "quote details → Company quotes",
@@ -246,7 +246,10 @@ assert(
 );
 
 section("BOUNDARIES");
-assert("no Company DNA", !existsSync(join(process.cwd(), "lib/company-dna")));
+assert(
+  "Company DNA module remains the approved calibration surface",
+  existsSync(join(process.cwd(), "lib/company-dna"))
+);
 assert(
   "SCOPE_DISCOVERY not force-enabled",
   !/^[^#\n]*SCOPE_DISCOVERY_ENABLED\s*=\s*true/m.test(read(".env.local.example"))

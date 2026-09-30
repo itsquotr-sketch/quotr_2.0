@@ -14,6 +14,8 @@ type SettingsSectionNavProps = {
   className?: string;
   label?: string;
   touchTargets?: boolean;
+  /** Wrap pills instead of scrolling when the row is wider than the page. */
+  wrap?: boolean;
 };
 
 export function SettingsSectionNav({
@@ -23,17 +25,23 @@ export function SettingsSectionNav({
   className,
   label = "Settings sections",
   touchTargets = false,
+  wrap = false,
 }: SettingsSectionNavProps) {
   return (
     <div
       className={cn(
-        "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0",
+        wrap ? "overflow-visible" : "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0",
         className
       )}
       role="tablist"
       aria-label={label}
     >
-      <div className="flex w-max min-w-full gap-1.5 pb-1 lg:flex-wrap lg:w-auto">
+      <div
+        className={cn(
+          "flex gap-1.5 pb-1",
+          wrap ? "flex-wrap" : "w-max min-w-full lg:w-auto lg:flex-wrap"
+        )}
+      >
         {items.map((item) => {
           const isActive = item.id === activeId;
 

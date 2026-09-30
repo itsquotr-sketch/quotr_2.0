@@ -56,9 +56,9 @@ Clear company hardwood lm and m².
 | # | Check | Pass? |
 | --- | --- | --- |
 | C1 | Quantity **126.65 lm** | |
-| C2 | Quotr **$22 / $34** per lm | |
-| C3 | Cost **$2,786.30** · sell **$4,306.10** | |
-| C4 | Rate source **Quotr benchmark** (legacy paired; not 20% GM stacked on $34) | |
+| C2 | Quotr cost **$22** per lm. Sell **$27.50** is derived from that cost and the company gross margin. The old paired **$34** sell is not used. | |
+| C3 | Cost **$2,786.30** · sell **$3,482.88** | |
+| C4 | Rate source **Quotr benchmark**. `sellDerivedFromMargin` is true. This is the cost-only benchmark plus gross-margin sell rule, not a second sell stored on the benchmark. | |
 
 ---
 

@@ -289,15 +289,13 @@ check(
   lineC?.materialRateResolution?.display === "Quotr benchmark"
 );
 check(
-  "CASE C: commercial math 126.65 × $22 = $2,786.30",
+  "CASE C: cost-only benchmark $22 and gross-margin sell $27.50",
   lineC != null &&
+    lineC.costRate === 22 &&
+    lineC.sellRate === 27.5 &&
+    lineC.sellDerivedFromMargin === true &&
     Math.abs((lineC.recommendedCost ?? 0) - 2786.3) < 0.02 &&
-    Math.abs((lineC.recommendedSell ?? 0) - 4306.1) < 0.02
-);
-check(
-  "CASE C: legacy paired benchmark sell is not stacked with project GM",
-  lineC?.sellDerivedFromMargin === false &&
-    lineC.sellRate === DECK_BENCHMARKS.hardwoodLm.sell
+    Math.abs((lineC.recommendedSell ?? 0) - 3482.88) < 0.02
 );
 
 // CASE D — board width unknown → no fake lm

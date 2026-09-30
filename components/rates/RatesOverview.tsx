@@ -31,23 +31,29 @@ export function RatesOverview({ state, onOpenSection }: RatesOverviewProps) {
           Company rates you have set, Quotr benchmarks still in use, and rates
           that still need a price.
         </p>
-        <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">Company rates</dt>
-            <dd className="mt-0.5 text-lg font-semibold tabular-nums">
+        <dl className="mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-3">
+          <div className="min-w-0">
+            <dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">
+              Company rates
+            </dt>
+            <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
               {coverage.company}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Quotr benchmarks</dt>
-            <dd className="mt-0.5 text-lg font-semibold tabular-nums">
+          <div className="min-w-0">
+            <dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">
+              Quotr benchmarks
+            </dt>
+            <dd className="mt-0.5 text-base font-semibold tabular-nums sm:text-lg">
               {coverage.benchmark}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Pricing Required</dt>
+          <div className="min-w-0">
+            <dt className="text-[11px] leading-tight text-muted-foreground sm:text-xs">
+              Pricing Required
+            </dt>
             <dd
-              className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--brand-orange)]"
+              className="mt-0.5 text-base font-semibold tabular-nums text-[var(--brand-orange)] sm:text-lg"
               data-rates-pricing-required={coverage.pricingRequired}
             >
               {coverage.pricingRequired}

@@ -25,6 +25,7 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
       <PageHeader
         title="Rates"
         description="Company costs, Quotr benchmarks, and rates that still need a price."
+        wrapDescription
         actions={<UserMenu className="hidden md:inline-flex" />}
       />
       <PageContainer>

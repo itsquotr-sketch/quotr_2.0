@@ -31,6 +31,14 @@ import {
   parseOptionalNumber,
   type RateEditValues,
 } from "./RateEditDialog";
+import {
+  RateField,
+  RateGridHeader,
+  RateGridRow,
+  moneyRateColumns,
+  productivityRateColumns,
+  ratesFilterControlClass,
+} from "./rate-row-grid";
 
 type RatesTableSectionProps = {
   title: string;
@@ -92,69 +100,74 @@ function RateMobileCard({
       ? formatMoney(entry.defaultCostRate)
       : "—";
 
+  const productivity = isProductivityEntry(entry);
+  const unitLabel = productivity
+    ? `h/${formatRateUnit(entry.unit)}`
+    : formatRateUnit(entry.unit);
+
   return (
-    <div
-      className="border-b border-border/50 px-0 py-2.5 last:border-0 lg:grid lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] lg:items-center lg:gap-3"
+    <RateGridRow
+      columns={productivity ? productivityRateColumns : moneyRateColumns}
       data-rate-key={entry.item_key}
       data-rate-authority={statusLabel}
     >
       <div className="min-w-0">
         <p className="text-sm font-medium leading-snug">{labelColumn}</p>
         {entry.trade ? (
-          <p className="text-xs text-muted-foreground">{entry.trade}</p>
+          <p className="line-clamp-2 text-xs text-muted-foreground">{entry.trade}</p>
         ) : null}
       </div>
-      <p className="mt-1 text-sm tabular-nums lg:mt-0">
-        <span className="text-xs text-muted-foreground lg:hidden">Your rate </span>
+      <RateField label={productivity ? "Your productivity" : "Your rate"} align="end">
         {yourRateDisplay}
         <span className="sr-only">Your cost</span>
-      </p>
-      <p className="text-sm text-muted-foreground tabular-nums">
-        <span className="text-xs lg:hidden">Quotr benchmark </span>
+      </RateField>
+      <RateField label="Quotr benchmark" align="end">
         {benchmarkDisplay}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {isProductivityEntry(entry)
-          ? `h/${formatRateUnit(entry.unit)}`
-          : formatRateUnit(entry.unit)}
-      </p>
-      <p
-        className={cn(
-          "mt-1 w-fit text-xs lg:mt-0",
-          statusLabel === "Pricing Required"
-            ? "font-medium text-[var(--brand-orange)]"
-            : "text-muted-foreground"
-        )}
+      </RateField>
+      <RateField label="Unit">{unitLabel}</RateField>
+      <RateField
+        label="Status"
+        attention={statusLabel === "Pricing Required"}
       >
         {statusLabel}
-      </p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1 lg:mt-0 lg:justify-end">
-        {isProductivityEntry(entry) ? null : charge.value != null ? (
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            Charge-out {formatMoney(charge.value)}
-          </span>
-        ) : null}
-        {readOnly ? null : (
-          <>
+      </RateField>
+      {productivity ? null : (
+        <RateField label="Recommended charge-out" align="end">
+          {charge.value != null ? formatMoney(charge.value) : "—"}
+          <span className="sr-only">Charge-out</span>
+        </RateField>
+      )}
+      <div className="flex min-h-11 items-center justify-between gap-2 lg:min-h-0 lg:flex-col lg:items-stretch">
+        <span className="text-xs text-muted-foreground lg:sr-only">Action</span>
+        {readOnly ? (
+          <span className="text-sm text-muted-foreground">—</span>
+        ) : (
+          <div className="flex flex-wrap justify-end gap-1 lg:flex-col">
             {canAdopt ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="touch"
-                className="text-xs"
+                className="h-11 min-h-11 px-2 text-xs lg:h-9 lg:min-h-9 lg:w-full lg:whitespace-normal"
                 onClick={onAdoptBenchmark}
               >
-                {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
+                {productivity ? "Use starter hours" : "Use benchmark cost"}
               </Button>
             ) : null}
-            <Button type="button" variant="outline" size="touch" onClick={onEdit}>
+            <Button
+              type="button"
+              variant="outline"
+              size="touch"
+              className="h-11 min-h-11 lg:h-9 lg:min-h-9 lg:w-full"
+              onClick={onEdit}
+            >
               <Pencil className="mr-1 size-3.5" />
               {hasCompanyRate ? "Edit" : "Add"}
             </Button>
-          </>
+          </div>
         )}
       </div>
-    </div>
+    </RateGridRow>
   );
 }
 
@@ -364,7 +377,7 @@ export function RatesTableSection({
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search this section"
                 aria-label={`Search ${title}`}
-                className="h-11 min-h-11 max-w-md"
+                className={cn(ratesFilterControlClass, "sm:col-span-2 lg:max-w-md")}
               />
               {filteredGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -413,14 +426,33 @@ export function RatesTableSection({
                           data-rates-compact-list
                           role={collapsible ? "region" : undefined}
                         >
-                          <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] lg:gap-3">
-                            <span>Item</span>
-                            <span>{productivityTable ? "Hours" : "Your rate"}</span>
-                            <span>Quotr benchmark</span>
-                            <span>Unit</span>
-                            <span>Status</span>
-                            <span className="text-right">Edit</span>
-                          </div>
+                          <RateGridHeader
+                            columns={
+                              productivityTable
+                                ? productivityRateColumns
+                                : moneyRateColumns
+                            }
+                            labels={
+                              productivityTable
+                                ? [
+                                    { text: "Operation" },
+                                    { text: "Your productivity", align: "end" },
+                                    { text: "Quotr benchmark", align: "end" },
+                                    { text: "Unit" },
+                                    { text: "Status" },
+                                    { text: "Action", align: "end" },
+                                  ]
+                                : [
+                                    { text: "Item" },
+                                    { text: "Your rate", align: "end" },
+                                    { text: "Quotr benchmark", align: "end" },
+                                    { text: "Unit" },
+                                    { text: "Status" },
+                                    { text: "Charge-out", align: "end" },
+                                    { text: "Action", align: "end" },
+                                  ]
+                            }
+                          />
                           {group.entries.map((entry) => (
                             <RateMobileCard
                               key={entry.item_key}
