@@ -74,7 +74,10 @@ export function ProjectSectionHeader({
 
   return (
     <nav aria-label="Project sections" data-project-section-header="true" className="overflow-x-hidden">
-      <div className="hidden overflow-hidden rounded-md border border-border bg-card lg:grid lg:grid-cols-4">
+      <div
+        className="hidden gap-1 rounded-lg border border-border bg-muted/40 p-1 lg:grid lg:grid-cols-4"
+        data-project-section-columns="four"
+      >
         <Column current={informationCurrent}>
           <Destination
             title="Project information"
@@ -151,6 +154,15 @@ export function ProjectSectionHeader({
               </option>
             ))}
           </select>
+          <span className="text-xs leading-4 text-foreground/75" data-project-section-context>
+            {topLevel === "information"
+              ? projectContext
+              : topLevel === "assistant"
+                ? estimateStatusText(estimate, workflowInput.estimateIsStale)
+                : topLevel === "pricing"
+                  ? stageStatusText(pricing)
+                  : stageStatusText(quote)}
+          </span>
         </label>
         {topLevel === "quote" ? (
           <div
@@ -196,12 +208,15 @@ function stageById(
 function Column({ current, children }: { current: boolean; children: ReactNode }) {
   return (
     <div
+      data-project-column-surface={current ? "active" : "idle"}
       className={cn(
-        "min-w-0 px-3 py-2",
-        current && "border-b-2 border-[var(--brand-orange)]"
+        "min-w-0 rounded-md border p-1",
+        current
+          ? "border-[color-mix(in_oklch,var(--brand-orange)_50%,var(--border))] bg-[color-mix(in_oklch,var(--brand-orange)_8%,white)]"
+          : "border-transparent bg-transparent"
       )}
     >
-      {children}
+      <div className="flex min-w-0 flex-col gap-1">{children}</div>
     </div>
   );
 }
@@ -223,16 +238,23 @@ function Destination({
   column: string;
   onCreate?: () => void;
 }) {
+  const locked = href == null && !current && !onCreate;
   const body = (
     <>
-      <span className="block text-sm font-medium leading-5">{title}</span>
-      <span className="mt-0.5 block text-sm leading-5 text-foreground/75">{status}</span>
+      <span className="block text-sm font-semibold leading-5">{title}</span>
+      <span className="mt-0.5 block text-xs leading-4 text-foreground/75">{status}</span>
       {reason ? (
         <span className="mt-0.5 block text-xs leading-4 text-foreground/70">{reason}</span>
       ) : null}
     </>
   );
-  const className = cn("block min-w-0 rounded-sm py-1 text-left", focusClass);
+  const className = cn(
+    "block min-w-0 rounded-md border px-2.5 py-2 text-left transition-colors",
+    focusClass,
+    current && "border-[var(--brand-orange)] bg-[color-mix(in_oklch,var(--brand-orange)_12%,white)] shadow-[inset_3px_0_0_0_var(--brand-orange)]",
+    !current && !locked && "border-border bg-white hover:border-foreground/30 hover:bg-muted/50",
+    locked && "border-border/70 bg-muted/50 text-foreground/55"
+  );
   if (onCreate) {
     return (
       <button
@@ -282,8 +304,9 @@ function SectionChoice({
     "inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-center text-sm font-medium",
     focusClass,
     current
-      ? "border-[var(--brand-orange)] text-foreground"
-      : "border-border text-foreground/80"
+      ? "border-[var(--brand-orange)] bg-[color-mix(in_oklch,var(--brand-orange)_10%,white)] text-foreground shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
+      : "border-border bg-white text-foreground/80 hover:border-foreground/30 hover:bg-muted/50",
+    disabled && !current && "border-border/70 bg-muted/50 text-foreground/50 hover:border-border/70 hover:bg-muted/50"
   );
   if (href && !current) {
     return (

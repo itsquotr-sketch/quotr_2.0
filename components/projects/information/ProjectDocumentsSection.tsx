@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { ImageOff, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,12 +21,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import {
   failProjectDocumentUpload,
   finalizeProjectDocumentUpload,
+  deleteProjectDocument,
   prepareProjectDocumentUpload,
   removeProjectDocumentUpload,
   renameProjectDocumentTitle,
@@ -34,8 +58,11 @@ import {
   type ProjectDocumentVisibility,
 } from "@/lib/projects/document-files";
 import {
+  currentReadyVersion,
   mergeReadyVersion,
+  presentProjectDocuments,
   projectDocumentCategoryGroups,
+  removeProjectDocument,
   removeProjectVersion,
   renameProjectDocument,
   setProjectDocumentArchived,
@@ -92,18 +119,88 @@ export function ProjectDocumentsSection({
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [visibilityFilter, setVisibilityFilter] = useState("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [archiveFilter, setArchiveFilter] = useState<"active" | "archived">("active");
+  const [details, setDetails] = useState<ProjectDocumentView | null>(null);
+  const [renameTarget, setRenameTarget] = useState<ProjectDocumentView | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProjectDocumentView | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [narrow, setNarrow] = useState(false);
   const [fileAlert, setFileAlert] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
-  const summary = summariseProjectDocuments(documents);
+  const focusReturn = useRef<HTMLElement | null>(null);
+  const summary = summariseProjectDocuments(documents.filter((document) => !document.archived));
   const filtered = useMemo(
-    () => filterDocuments(documents, query, categoryFilter, visibilityFilter),
-    [documents, query, categoryFilter, visibilityFilter]
+    () => filterDocuments(
+      documents.filter((document) => document.archived === (archiveFilter === "archived")),
+      query,
+      categoryFilter,
+      visibilityFilter
+    ),
+    [documents, query, categoryFilter, visibilityFilter, archiveFilter]
   );
-  const groups = projectDocumentCategoryGroups(filtered);
-  const photos = photoVersions(documents, query, categoryFilter, visibilityFilter);
+  const presented = presentProjectDocuments(filtered);
+  const groups = projectDocumentCategoryGroups(presented.listed);
+  const photos = presented.gallery;
   const variationGroups = filterVariations(centre.variationGroups, query, categoryFilter, visibilityFilter);
-  const filtering = query.trim() !== "" || categoryFilter !== "all" || visibilityFilter !== "all";
+  const filtering = query.trim() !== "" || categoryFilter !== "all" || visibilityFilter !== "all" || archiveFilter === "archived";
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const apply = () => setNarrow(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  function rememberFocus() {
+    focusReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
+  function restoreFocus() {
+    focusReturn.current?.focus();
+  }
+
+  function openNewVersion(document: ProjectDocumentView) {
+    rememberFocus();
+    setVisibility("internal");
+    setNote("");
+    setFiles([]);
+    setChooser({ documentId: document.id, category: document.category, title: document.title });
+  }
+
+  function openRename(document: ProjectDocumentView) {
+    rememberFocus();
+    setRenameError(null);
+    setRenameTitle(document.title);
+    setRenameTarget(document);
+  }
+
+  async function archiveDocument(document: ProjectDocumentView) {
+    const saved = await setProjectDocumentArchive({ projectId, documentId: document.id, archived: !document.archived });
+    if (!saved.ok) {
+      setFileAlert(saved.error);
+      return;
+    }
+    setDocuments((current) => setProjectDocumentArchived(current, document.id, saved.archived));
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const removed = await deleteProjectDocument({ projectId, documentId: deleteTarget.id });
+    setDeleting(false);
+    if (!removed.ok) {
+      setDeleteError(removed.error);
+      return;
+    }
+    setDocuments((current) => removeProjectDocument(current, deleteTarget.id));
+    setDeleteTarget(null);
+    restoreFocus();
+  }
   const visibleDrafts = drafts.filter((draft) => draftMatches(draft, query, categoryFilter, visibilityFilter));
 
   function updateTransfer(id: string, next: UploadTransfer | null) {
@@ -254,6 +351,7 @@ export function ProjectDocumentsSection({
           size="touch"
           className="w-full sm:w-auto"
           onClick={() => {
+            rememberFocus();
             setVisibility("internal");
             setNote("");
             setFiles([]);
@@ -262,8 +360,9 @@ export function ProjectDocumentsSection({
         >
           Upload files
         </Button>
+        <p className="text-xs leading-4 text-foreground/75 sm:self-center">JPG, PNG, PDF, DOCX or XLSX. 15 MB each.</p>
       </div>
-      <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -286,11 +385,21 @@ export function ProjectDocumentsSection({
           aria-label="Visibility"
           value={visibilityFilter}
           onChange={(event) => setVisibilityFilter(event.target.value)}
-          className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-sm"
+          className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base sm:text-sm"
         >
           <option value="all">All visibility</option>
           <option value="internal">Internal</option>
           <option value="shareable">Shareable</option>
+        </select>
+        <select
+          aria-label="Archived files"
+          data-project-document-archive-filter
+          value={archiveFilter}
+          onChange={(event) => setArchiveFilter(event.target.value === "archived" ? "archived" : "active")}
+          className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base sm:text-sm"
+        >
+          <option value="active">Active files</option>
+          <option value="archived">Archived</option>
         </select>
       </div>
 
@@ -301,26 +410,43 @@ export function ProjectDocumentsSection({
         <p className="mt-3 text-sm leading-5" role="alert">{fileAlert}</p>
       ) : null}
 
-      <div className="mt-4 min-w-0">
-        <h4 className="text-sm font-medium leading-5">Photos</h4>
-        {photos.length > 0 ? (
-          <ul className="mt-2 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-            {photos.map((photo) => (
-              <li key={photo.version.id} className="min-w-0 rounded-lg border border-border/70 px-3 py-2">
-                <p className="break-words text-sm font-medium leading-5">{photo.document.title}</p>
-                <p className="break-words text-sm leading-5 text-foreground/75">
-                  {photo.version.displayFilename} · Version {photo.version.versionNumber} · {projectDocumentVisibilityLabel(photo.version.visibility)} · {formatAttachmentSize(photo.version.byteSize)}
-                </p>
-                <button type="button" className={`${CONTROL} mt-2 w-full sm:w-auto`} onClick={() => void openFile(photo.version.id, photo.version.displayFilename, photo.version.mimeType)}>
-                  View
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : categoryFilter === "all" || categoryFilter === "photos" ? (
-          <p className="mt-2 text-sm leading-5 text-foreground/75">No photos yet</p>
-        ) : null}
-      </div>
+      {photos.length > 0 || categoryFilter === "all" || categoryFilter === "photos" ? (
+        <div className="mt-4 min-w-0" data-project-photo-gallery="true">
+          <h4 className="text-base font-semibold leading-snug">Photos</h4>
+          {photos.length > 0 ? (
+            <ul className="mt-2 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 lg:grid-cols-3">
+              {photos.map((document) => {
+                const version = currentReadyVersion(document);
+                if (!version) return null;
+                return (
+                  <li key={document.id} className="min-w-0" data-project-document-row={document.id} data-project-photo-card="true">
+                    <PhotoCard
+                      projectId={projectId}
+                      document={document}
+                      version={version}
+                      onView={() => void openFile(version.id, version.displayFilename, version.mimeType)}
+                      onDetails={() => { rememberFocus(); setDetails(document); }}
+                      menu={
+                        <DocumentActions
+                          document={document}
+                          onView={() => void openFile(version.id, version.displayFilename, version.mimeType)}
+                          onDetails={() => { rememberFocus(); setDetails(document); }}
+                          onNewVersion={() => openNewVersion(document)}
+                          onRename={() => openRename(document)}
+                          onArchive={() => void archiveDocument(document)}
+                          onDelete={() => { rememberFocus(); setDeleteError(null); setDeleteTarget(document); }}
+                        />
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm leading-5 text-foreground/75">No photos yet</p>
+          )}
+        </div>
+      ) : null}
 
       <div className="mt-4 min-w-0 space-y-4">
         {noProjectFiles && !filtering ? (
@@ -343,32 +469,32 @@ export function ProjectDocumentsSection({
           </ul>
         ) : null}
         {groups.map((group) => (
-          <section key={group.category} className="min-w-0">
-            <h4 className="text-sm font-medium leading-5">{group.label}</h4>
-            <ul className="mt-2 divide-y divide-border/70">
-              {group.documents.map((document) => (
-                <DocumentRow
-                  key={document.id}
-                  document={document}
-                  open={openId === document.id}
-                  onToggle={() => setOpenId((current) => current === document.id ? null : document.id)}
-                  onOpenFile={(version) => void openFile(version.id, version.displayFilename, version.mimeType)}
-                  onNewVersion={() => {
-                    setVisibility("internal");
-                    setNote("");
-                    setFiles([]);
-                    setChooser({ documentId: document.id, category: document.category, title: document.title });
-                  }}
-                  onRename={async (title) => {
-                    const renamed = await renameProjectDocumentTitle({ projectId, documentId: document.id, title });
-                    if (renamed.ok) setDocuments((current) => renameProjectDocument(current, document.id, renamed.title));
-                  }}
-                  onArchive={async (archived) => {
-                    const saved = await setProjectDocumentArchive({ projectId, documentId: document.id, archived });
-                    if (saved.ok) setDocuments((current) => setProjectDocumentArchived(current, document.id, saved.archived));
-                  }}
-                />
-              ))}
+          <section key={group.category} className="min-w-0" data-project-document-list="true">
+            <h4 className="text-base font-semibold leading-snug">{group.label}</h4>
+            <ul className="mt-2 grid gap-2">
+              {group.documents.map((document) => {
+                const version = currentReadyVersion(document) ?? document.versions[0];
+                if (!version) return null;
+                return (
+                  <FileCard
+                    key={document.id}
+                    document={document}
+                    version={version}
+                    onView={() => void openFile(version.id, version.displayFilename, version.mimeType)}
+                    actions={
+                      <DocumentActions
+                        document={document}
+                        onView={() => void openFile(version.id, version.displayFilename, version.mimeType)}
+                        onDetails={() => { rememberFocus(); setDetails(document); }}
+                        onNewVersion={() => openNewVersion(document)}
+                        onRename={() => openRename(document)}
+                        onArchive={() => void archiveDocument(document)}
+                        onDelete={() => { rememberFocus(); setDeleteError(null); setDeleteTarget(document); }}
+                      />
+                    }
+                  />
+                );
+              })}
             </ul>
           </section>
         ))}
@@ -415,16 +541,18 @@ export function ProjectDocumentsSection({
         )}
       </section>
 
-      <Dialog open={chooser != null} onOpenChange={(open) => { if (!open) setChooser(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{chooser?.documentId ? "Upload new version" : "Upload files"}</DialogTitle>
-            <DialogDescription>
-              {chooser?.documentId
-                ? "Adds a new version. Earlier versions stay available."
-                : "Each file becomes its own project document."}
-            </DialogDescription>
-          </DialogHeader>
+      <ResponsivePanel
+        open={chooser != null}
+        narrow={narrow}
+        title={chooser?.documentId ? "Upload new version" : "Upload files"}
+        description={chooser?.documentId ? "Adds a new version. Earlier versions stay available." : "Each file becomes its own project document. JPG, PNG, PDF, DOCX or XLSX up to 15 MB."}
+        onOpenChange={(open) => {
+          if (!open) {
+            setChooser(null);
+            restoreFocus();
+          }
+        }}
+      >
           {chooser ? (
             <form
               className="grid gap-3"
@@ -477,7 +605,7 @@ export function ProjectDocumentsSection({
                   <input type="radio" name="project-document-visibility" checked={visibility === "shareable"} onChange={() => setVisibility("shareable")} />
                   Shareable
                 </label>
-                <p className="text-sm leading-5 text-foreground/75">Shareable does not create a public link.</p>
+                <p className="text-sm leading-5 text-foreground/75">Internal stays in your organisation. Shareable can be included in a later deliberate share, and does not create a public link.</p>
               </fieldset>
               <div className="grid gap-1">
                 <Label htmlFor="project-document-title">Title</Label>
@@ -490,10 +618,88 @@ export function ProjectDocumentsSection({
               <Button type="submit" size="touch" disabled={files.length === 0}>Start upload</Button>
             </form>
           ) : null}
-        </DialogContent>
-      </Dialog>
+      </ResponsivePanel>
 
-      <Dialog open={preview != null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
+      <ResponsivePanel
+        open={details != null}
+        narrow={narrow}
+        title={details?.title ?? "Document details"}
+        description="Version history for this project file."
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetails(null);
+            restoreFocus();
+          }
+        }}
+      >
+        {details ? <VersionHistory document={details} onOpenFile={(version) => void openFile(version.id, version.displayFilename, version.mimeType)} /> : null}
+      </ResponsivePanel>
+
+      <ResponsivePanel
+        open={renameTarget != null}
+        narrow={narrow}
+        title="Rename document"
+        description="The title changes. Earlier filenames stay on their versions."
+        onOpenChange={(open) => {
+          if (!open) {
+            setRenameTarget(null);
+            restoreFocus();
+          }
+        }}
+      >
+        <form
+          className="grid gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!renameTarget) return;
+            void renameProjectDocumentTitle({ projectId, documentId: renameTarget.id, title: renameTitle }).then((renamed) => {
+              if (!renamed.ok) {
+                setRenameError(renamed.error);
+                return;
+              }
+              setDocuments((current) => renameProjectDocument(current, renameTarget.id, renamed.title));
+              setRenameTarget(null);
+              restoreFocus();
+            });
+          }}
+        >
+          <Label htmlFor="project-document-rename">Title</Label>
+          <Input id="project-document-rename" value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} className="min-h-11 text-base sm:text-sm" />
+          {renameError ? <p className="text-sm leading-5" role="alert">{renameError}</p> : null}
+          <Button type="submit" size="touch">Save title</Button>
+        </form>
+      </ResponsivePanel>
+
+      <AlertDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+            restoreFocus();
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this document permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `${deleteTarget.title} and its ${deleteTarget.versions.length} ${deleteTarget.versions.length === 1 ? "version" : "versions"} will be removed.`
+                : "This document will be removed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError ? <p className="text-sm leading-5" role="alert">{deleteError}</p> : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" size="touch" disabled={deleting} onClick={() => void confirmDelete()}>
+              {deleting ? "Deleting…" : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={preview != null} onOpenChange={(open) => { if (!open) { setPreview(null); restoreFocus(); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{preview?.name ?? "Photo"}</DialogTitle>
@@ -551,99 +757,215 @@ function DraftRow({
   );
 }
 
-function DocumentRow({
+function DocumentActions({
   document,
-  open,
-  onToggle,
-  onOpenFile,
+  onView,
+  onDetails,
   onNewVersion,
   onRename,
   onArchive,
+  onDelete,
 }: {
   document: ProjectDocumentView;
-  open: boolean;
-  onToggle: () => void;
-  onOpenFile: (version: ProjectDocumentVersionView) => void;
+  onView: () => void;
+  onDetails: () => void;
   onNewVersion: () => void;
-  onRename: (title: string) => Promise<void>;
-  onArchive: (archived: boolean) => Promise<void>;
+  onRename: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
 }) {
-  const current = document.versions.find((version) => version.current) ?? document.versions[0];
-  const [title, setTitle] = useState(document.title);
-  if (!current) return null;
+  const current = currentReadyVersion(document) ?? document.versions[0];
   return (
-    <li className="min-w-0 py-3" data-project-document-row={document.id}>
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p className="min-w-0 basis-full break-words text-sm font-medium leading-5 md:flex-1 md:basis-auto">{document.title}</p>
-        <p className="text-sm leading-5 text-foreground/75">{projectDocumentCategoryLabel(document.category)}</p>
-        <p className="text-sm leading-5 text-foreground/75">Version {current.versionNumber}{current.current ? " · Current" : ""}</p>
-        <p className="text-sm leading-5 text-foreground/75">{projectDocumentVisibilityLabel(current.visibility)}</p>
-        <p className="text-sm leading-5 text-foreground/75">{formatAttachmentSize(current.byteSize)}</p>
-        {document.archived ? <p className="text-sm leading-5">Archived</p> : null}
-      </div>
-      <p className="mt-1 break-words text-sm leading-5">{current.displayFilename}</p>
-      {current.uploadStatus === "ready" ? (
-        <p className="mt-1 text-sm leading-5 text-foreground/75">Ready</p>
-      ) : (
-        <p className="mt-1 text-sm leading-5" role="alert">Upload failed</p>
-      )}
-      <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <button type="button" className={`${CONTROL} w-full sm:w-auto`} onClick={() => onOpenFile(current)} disabled={current.uploadStatus !== "ready"}>
-          {variationAttachmentKind(current.mimeType) === "image" ? "View" : "Download"}
-        </button>
-        <button type="button" className={`${CONTROL} w-full sm:w-auto`} onClick={onToggle} aria-expanded={open}>
-          {open ? "Hide details" : "Details"}
-        </button>
-        <button type="button" className={`${CONTROL} w-full sm:w-auto`} onClick={onNewVersion} disabled={document.archived}>
-          Upload new version
-        </button>
-      </div>
-      {open ? (
-        <div className="mt-3 grid min-w-0 gap-3 rounded-lg bg-muted/40 px-3 py-3">
-          <form
-            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void onRename(title);
-            }}
-          >
-            <Input aria-label="Document title" value={title} onChange={(event) => setTitle(event.target.value)} className="min-h-11" />
-            <Button type="submit" size="touch" variant="outline">Rename</Button>
-          </form>
-          <button type="button" className={`${CONTROL} w-full sm:w-auto`} onClick={() => void onArchive(!document.archived)}>
-            {document.archived ? "Restore" : "Archive"}
-          </button>
-          <ul className="grid gap-2">
-            {document.versions.map((version) => (
-              <li key={version.id} className="min-w-0 text-sm leading-5">
-                <p className="break-words">
-                  Version {version.versionNumber}
-                  {version.current ? " · Current" : ""}
-                  {" · "}
-                  {projectDocumentVisibilityLabel(version.visibility)}
-                  {" · "}
-                  {formatAttachmentSize(version.byteSize)}
-                  {" · "}
-                  {version.uploadStatus === "ready" ? "Ready" : "Upload failed"}
-                </p>
-                <p className="break-words text-foreground/75">
-                  {version.displayFilename}
-                  {version.versionNote ? ` · ${version.versionNote}` : ""}
-                  {version.uploaderName ? ` · ${version.uploaderName}` : ""}
-                  {" · "}
-                  {formatWhen(version.createdAt)}
-                </p>
-                {version.uploadStatus === "ready" ? (
-                  <button type="button" className={`${CONTROL} mt-2 w-full sm:w-auto`} onClick={() => onOpenFile(version)}>
-                    {variationAttachmentKind(version.mimeType) === "image" ? "View" : "Download"}
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+    <DropdownMenu>
+      <DropdownMenuTrigger className="inline-flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]" data-project-document-actions="true">
+        Actions
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem className="min-h-11" disabled={!current || current.uploadStatus !== "ready"} onClick={onView}>
+          {current && variationAttachmentKind(current.mimeType) === "image" ? "View" : "Download"}
+        </DropdownMenuItem>
+        <DropdownMenuItem className="min-h-11" onClick={onDetails}>Details and version history</DropdownMenuItem>
+        <DropdownMenuItem className="min-h-11" disabled={document.archived} onClick={onNewVersion}>Upload new version</DropdownMenuItem>
+        <DropdownMenuItem className="min-h-11" onClick={onRename}>Rename</DropdownMenuItem>
+        <DropdownMenuItem className="min-h-11" onClick={onArchive}>{document.archived ? "Restore" : "Archive"}</DropdownMenuItem>
+        <DropdownMenuItem className="min-h-11" variant="destructive" onClick={onDelete}>Delete permanently</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function FileCard({
+  document,
+  version,
+  onView,
+  actions,
+}: {
+  document: ProjectDocumentView;
+  version: ProjectDocumentVersionView;
+  onView: () => void;
+  actions: ReactNode;
+}) {
+  return (
+    <li className="min-w-0 rounded-lg border border-border/70 bg-card px-3 py-2" data-project-document-row={document.id}>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-medium leading-5">{document.title}</p>
+          <p className="mt-0.5 break-words text-xs leading-4 text-foreground/75">
+            {projectDocumentCategoryLabel(document.category)}
+            {" · "}
+            Version {version.versionNumber}
+            {" · "}
+            {projectDocumentVisibilityLabel(version.visibility)}
+            {" · "}
+            {variationAttachmentTypeLabel(version.mimeType)}
+            {" · "}
+            {formatAttachmentSize(version.byteSize)}
+          </p>
+          <p className="mt-0.5 text-xs leading-4 text-foreground/75">{version.uploadStatus === "ready" ? "Ready" : "Upload failed"}</p>
         </div>
-      ) : null}
+        {actions}
+      </div>
+      <Button type="button" variant="outline" size="touch" className="mt-2" onClick={onView} disabled={version.uploadStatus !== "ready"}>
+        {variationAttachmentKind(version.mimeType) === "image" ? "View" : "Download"}
+      </Button>
     </li>
+  );
+}
+
+function PhotoCard({
+  projectId,
+  document,
+  version,
+  onView,
+  onDetails,
+  menu,
+}: {
+  projectId: string;
+  document: ProjectDocumentView;
+  version: ProjectDocumentVersionView;
+  onView: () => void;
+  onDetails: () => void;
+  menu: ReactNode;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void signProjectDocumentVersion({ projectId, versionId: version.id }).then((signed) => {
+      if (cancelled) return;
+      if (!signed.ok || !signed.url) setFailed(true);
+      else setUrl(signed.url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, version.id]);
+  return (
+    <div className="min-w-0 rounded-lg border border-border/70 bg-card p-2">
+      <button type="button" className="block w-full overflow-hidden rounded-md bg-muted/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]" onClick={onView}>
+        {url && !failed ? (
+          // The URL is a short-lived private signed link and must not be proxied.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt="" className="aspect-[4/3] w-full object-cover" onError={() => setFailed(true)} />
+        ) : (
+          <span className="flex aspect-[4/3] w-full items-center justify-center text-foreground/60">
+            <ImageOff className="size-5" aria-hidden="true" />
+            <span className="sr-only">Photo unavailable</span>
+          </span>
+        )}
+      </button>
+      <div className="mt-2 flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-medium leading-5">{document.title}</p>
+          <p className="text-xs leading-4 text-foreground/75">Version {version.versionNumber}</p>
+        </div>
+        {menu}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <Button type="button" variant="outline" size="touch" onClick={onView}>View</Button>
+        <Button type="button" variant="ghost" size="touch" onClick={onDetails}>Details</Button>
+      </div>
+    </div>
+  );
+}
+
+function VersionHistory({
+  document,
+  onOpenFile,
+}: {
+  document: ProjectDocumentView;
+  onOpenFile: (version: ProjectDocumentVersionView) => void;
+}) {
+  return (
+    <ul className="grid gap-3">
+      {document.versions.map((version) => (
+        <li key={version.id} className="min-w-0 text-sm leading-5">
+          <p className="break-words">
+            Version {version.versionNumber}
+            {version.current ? " · Current" : ""}
+            {" · "}
+            {projectDocumentVisibilityLabel(version.visibility)}
+            {" · "}
+            {formatAttachmentSize(version.byteSize)}
+            {" · "}
+            {version.uploadStatus === "ready" ? "Ready" : "Upload failed"}
+          </p>
+          <p className="break-words text-xs leading-4 text-foreground/75">
+            {version.displayFilename}
+            {version.versionNote ? ` · ${version.versionNote}` : ""}
+            {version.uploaderName ? ` · ${version.uploaderName}` : ""}
+            {" · "}
+            {formatWhen(version.createdAt)}
+          </p>
+          {version.uploadStatus === "ready" ? (
+            <Button type="button" variant="outline" size="touch" className="mt-2" onClick={() => onOpenFile(version)}>
+              {variationAttachmentKind(version.mimeType) === "image" ? "View" : "Download"}
+            </Button>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ResponsivePanel({
+  open,
+  narrow,
+  title,
+  description,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  narrow: boolean;
+  title: string;
+  description: string;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  if (narrow) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-xl">
+          <SheetHeader>
+            <SheetTitle>{title}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-4">{children}</div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -668,20 +990,6 @@ function draftMatches(draft: DraftCard, query: string, category: string, visibil
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
   return draft.title.toLowerCase().includes(needle) || draft.displayFilename.toLowerCase().includes(needle);
-}
-
-function photoVersions(
-  documents: readonly ProjectDocumentView[],
-  query: string,
-  category: string,
-  visibility: string
-) {
-  if (category !== "all" && category !== "photos") return [];
-  return filterDocuments(documents, query, "photos", visibility).flatMap((document) =>
-    document.versions
-      .filter((version) => version.uploadStatus === "ready" && (version.mimeType === "image/jpeg" || version.mimeType === "image/png"))
-      .map((version) => ({ document, version }))
-  );
 }
 
 function filterVariations(

@@ -218,7 +218,8 @@ function sourceChecks(): void {
       sqlFiles().includes("077_organisation_abn.sql") &&
       sqlFiles().includes("078_project_documents.sql") &&
       sqlFiles().includes("079_variation_revision_attachment_copy.sql") &&
-      sqlFiles().at(-1) === "079_variation_revision_attachment_copy.sql" &&
+      sqlFiles().includes("080_project_document_delete.sql") &&
+      sqlFiles().at(-1) === "080_project_document_delete.sql" &&
       !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/065_delete_unissued_draft_variation.sql").includes("preview_fixture_org") &&
@@ -235,7 +236,8 @@ function sourceChecks(): void {
       !read("supabase/migrations/076_onboarding_required_steps.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/077_organisation_abn.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/078_project_documents.sql").includes("preview_fixture_org") &&
-      !read("supabase/migrations/079_variation_revision_attachment_copy.sql").includes("preview_fixture_org")
+      !read("supabase/migrations/079_variation_revision_attachment_copy.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/080_project_document_delete.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

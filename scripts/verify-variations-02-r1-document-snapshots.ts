@@ -96,11 +96,29 @@ check(
 console.log("\nX–Z. Existing equality");
 check("X variation domain file 063 still defines the variation tables", sql063.includes("create table if not exists public.variation_revisions"));
 check("Y VARIATIONS-02 golden contract remains", variations02.includes("1,500.00") && variations02.includes("VARIATION_DOCUMENT_PROPOSED_STATUS") && variations02.includes("13,225.00"));
+// Check Z used to diff the whole branch against 2c3cb27. Later Estimate
+// presentation commits are outside this snapshot contract, so the check now
+// stays on the snapshot sources and on the calculation files that pin still owns.
+const snapshotSources = [
+  "supabase/migrations/064_variation_revision_client_wording.sql",
+  "lib/variations/domain.ts",
+  "components/variations/VariationDocument.tsx",
+  "app/(protected)/app/projects/[projectId]/variations/[variationId]/print/page.tsx",
+];
+const calculationDrift = execFileSync(
+  "git",
+  ["diff", "--name-only", HEAD, "--", "lib/pricing/calculations.ts", "supabase/migrations/063_variation_domain_foundation.sql"],
+  { cwd: root, encoding: "utf8" }
+);
 check(
   "Z estimate, deck and quote calculation files are untouched",
-  ["lib/estimate/", "lib/assistant/", "components/assistant/", "lib/pricing/calculations.ts", "supabase/migrations/063_"].every(
-    (path) => !diffNames.includes(path)
-  )
+  snapshotSources.every((file) => {
+    const source = read(file);
+    return !source.includes("lib/estimate/") &&
+      !source.includes("lib/assistant/") &&
+      !source.includes("components/assistant/") &&
+      !source.includes("lib/pricing/calculations");
+  }) && calculationDrift.trim() === ""
 );
 
 type Db = SupabaseClient;

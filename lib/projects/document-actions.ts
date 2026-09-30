@@ -28,6 +28,8 @@ const COPY: Record<string, string> = {
   FILE_TYPE: "Use a JPG, PNG, PDF, DOCX or XLSX file.",
   FILE_TOO_LARGE: "Each file must be 15 MB or smaller.",
   ARCHIVED: "Restore this document before uploading a new version.",
+  REFERENCED: "This document is still used by another record.",
+  DELETE_FAILED: "The file could not be removed. The document is still here.",
   INVALID_INPUT: "Check the file details and try again.",
   MISSING_OBJECT: "File unavailable",
   VERSION_CONFLICT: "Upload failed",
@@ -300,6 +302,58 @@ export async function removeProjectDocumentUpload(input: {
   if (result.error || body.ok !== true) return fail(body.error);
   if (objectPath) await discardUnreferencedObject(objectPath);
   return { ok: true };
+}
+
+export async function deleteProjectDocument(input: {
+  projectId: string;
+  documentId: string;
+}): Promise<Ok<{ documentId: string }> | Fail> {
+  const owned = await ownedProject(input.projectId);
+  if (!owned.ok) return owned;
+  const authorized = await owned.context.supabase.rpc("authorize_project_document_delete_v1", {
+    p_project: owned.projectId,
+    p_document: input.documentId,
+  });
+  const authBody = (authorized.data ?? {}) as { ok?: boolean; error?: string };
+  if (authorized.error || authBody.ok !== true) return fail(authBody.error);
+  const admin = createAdminClient();
+  const versions = await admin
+    .from("project_document_versions")
+    .select("id, storage_bucket, storage_object_path, document_id, org_id, project_id, display_filename")
+    .eq("document_id", input.documentId)
+    .eq("org_id", owned.orgId)
+    .eq("project_id", owned.projectId);
+  if (versions.error || !versions.data) return fail("NOT_FOUND");
+  const versionIds = versions.data.map((row) => row.id).sort().join(",");
+  for (const row of versions.data) {
+    const path = row.storage_object_path;
+    if (row.storage_bucket !== PROJECT_DOCUMENT_BUCKET || typeof path !== "string" || path.includes("..") || !pathMatches(owned.orgId, row as StoredVersion)) {
+      return fail("NOT_FOUND");
+    }
+    const [otherDocs, variations] = await Promise.all([
+      admin.from("project_document_versions").select("id", { count: "exact", head: true }).eq("storage_object_path", path).neq("document_id", input.documentId),
+      admin.from("variation_attachments").select("id", { count: "exact", head: true }).eq("storage_object_path", path),
+    ]);
+    if (otherDocs.error || variations.error) return fail("DELETE_FAILED");
+    if ((otherDocs.count ?? 0) > 0 || (variations.count ?? 0) > 0) continue;
+    const removed = await admin.storage.from(PROJECT_DOCUMENT_BUCKET).remove([path]);
+    if (removed.error) return fail("DELETE_FAILED");
+  }
+  const again = await admin
+    .from("project_document_versions")
+    .select("id")
+    .eq("document_id", input.documentId)
+    .eq("org_id", owned.orgId)
+    .eq("project_id", owned.projectId);
+  const againIds = (again.data ?? []).map((row) => row.id).sort().join(",");
+  if (again.error || againIds !== versionIds) return fail("DELETE_FAILED");
+  const committed = await owned.context.supabase.rpc("commit_project_document_delete_v1", {
+    p_project: owned.projectId,
+    p_document: input.documentId,
+  });
+  const commitBody = (committed.data ?? {}) as { ok?: boolean; error?: string };
+  if (committed.error || commitBody.ok !== true) return fail(commitBody.error);
+  return { ok: true, documentId: input.documentId };
 }
 
 export async function renameProjectDocumentTitle(input: {

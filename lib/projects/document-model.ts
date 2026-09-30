@@ -185,6 +185,37 @@ export function setProjectDocumentArchived(
   return documents.map((document) => (document.id === documentId ? { ...document, archived } : document));
 }
 
+export function removeProjectDocument(
+  documents: readonly ProjectDocumentView[],
+  documentId: string
+): ProjectDocumentView[] {
+  return documents.filter((document) => document.id !== documentId);
+}
+
+export function currentReadyVersion(document: ProjectDocumentView): ProjectDocumentVersionView | null {
+  return document.versions.find((version) => version.current && version.uploadStatus === "ready")
+    ?? document.versions.find((version) => version.uploadStatus === "ready")
+    ?? null;
+}
+
+export function isGalleryProjectDocument(document: ProjectDocumentView): boolean {
+  const current = currentReadyVersion(document);
+  return current != null && (current.mimeType === "image/jpeg" || current.mimeType === "image/png");
+}
+
+export function presentProjectDocuments(documents: readonly ProjectDocumentView[]): {
+  gallery: ProjectDocumentView[];
+  listed: ProjectDocumentView[];
+} {
+  const gallery: ProjectDocumentView[] = [];
+  const listed: ProjectDocumentView[] = [];
+  for (const document of documents) {
+    if (isGalleryProjectDocument(document)) gallery.push(document);
+    else listed.push(document);
+  }
+  return { gallery, listed };
+}
+
 export function removeProjectVersion(
   documents: readonly ProjectDocumentView[],
   versionId: string

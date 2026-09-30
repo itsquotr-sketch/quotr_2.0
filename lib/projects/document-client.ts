@@ -78,6 +78,13 @@ export function renameProjectDocumentTitle(input: {
   return postDocument({ op: "rename", ...input });
 }
 
+export function deleteProjectDocument(input: {
+  projectId: string;
+  documentId: string;
+}): Promise<{ ok: true; documentId: string } | Fail> {
+  return postDocument({ op: "delete", ...input });
+}
+
 export function setProjectDocumentArchive(input: {
   projectId: string;
   documentId: string;

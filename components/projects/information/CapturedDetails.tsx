@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   filterCapturedDetailGroups,
   type CapturedDetailGroup,
@@ -15,7 +15,16 @@ type CapturedDetailsProps = {
 export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
   const [query, setQuery] = useState("");
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [narrow, setNarrow] = useState(false);
   const visible = filterCapturedDetailGroups(groups, query);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const apply = () => setNarrow(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
 
   return (
     <div className="min-w-0" data-captured-details="true">
@@ -52,6 +61,7 @@ export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
                   aria-controls={panelId}
                   onClick={() =>
                     setOpenIds((current) => {
+                      if (narrow) return current.has(group.id) ? new Set() : new Set([group.id]);
                       const next = new Set(current);
                       if (next.has(group.id)) next.delete(group.id);
                       else next.add(group.id);

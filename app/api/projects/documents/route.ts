@@ -4,6 +4,7 @@ import {
   finalizeProjectDocumentUpload,
   prepareProjectDocumentUpload,
   removeProjectDocumentUpload,
+  deleteProjectDocument,
   renameProjectDocumentTitle,
   setProjectDocumentArchive,
   signProjectDocumentVersion,
@@ -71,6 +72,9 @@ export async function POST(request: Request) {
   }
   if (body.op === "rename") {
     return NextResponse.json(await renameProjectDocumentTitle({ projectId, documentId, title: text(body.title) }));
+  }
+  if (body.op === "delete") {
+    return NextResponse.json(await deleteProjectDocument({ projectId, documentId }));
   }
   if (body.op === "archive") {
     return NextResponse.json(await setProjectDocumentArchive({

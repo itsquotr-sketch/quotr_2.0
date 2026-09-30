@@ -398,7 +398,8 @@ check(
   "reduced mobile top gap contract",
   shell.includes('data-estimate-ready-mobile-gap={') &&
     shell.includes('"mt-1 grid min-w-0 gap-5 lg:mt-4') &&
-    workspacePage.includes("mt-2 pt-3 pb-6 sm:mt-5 sm:pt-6") &&
+    workspacePage.includes("pt-4 pb-6 sm:pt-6 lg:pt-8") &&
+    workspacePage.includes('data-workspace-content-gap="compact"') &&
     !readySurface.includes("mt-8") &&
     readySurface.includes("space-y-3")
 );
