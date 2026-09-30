@@ -70,6 +70,8 @@ function main() {
   const publicShell = read("components/quotes/QuotePublicShell.tsx");
   const template = read("components/quotes/QuoteTemplate.tsx");
   const tabs = read("components/projects/ProjectWorkspaceTabs.tsx");
+  const projectNavigation = read("components/projects/ProjectSectionHeader.tsx");
+  const projectNavigationHost = read("components/projects/ProjectWorkspaceNav.tsx");
   const statusSrc = read("lib/quotes/status.ts");
   const narrative = read("lib/quotes/client-narrative.ts");
   const transaction = read("lib/quotes/transaction.ts");
@@ -338,15 +340,29 @@ function main() {
   assert("quote preview labelled for the client", quoteWorkspace.includes("What the client will see"));
 
   section("NAVIGATION / TERMINOLOGY");
-  assert("project tabs are Estimate / Pricing / Quote", tabs.includes("\n            Estimate\n") && tabs.includes("Pricing") && tabs.includes("Quote") && tabs.includes('activeTab === "assistant"'));
-  assert("no customer-facing Quick Estimate in tabs", !tabs.includes("quick estimate"));
+  assert(
+    "project navigation is Project information, Estimate, Pricing and Quote",
+    projectNavigation.includes('title="Project information"') &&
+      projectNavigation.includes('title="Estimate"') &&
+      projectNavigation.includes('title="Pricing"') &&
+      projectNavigation.includes('title="Quote"') &&
+      projectNavigation.includes('id: "assistant"') &&
+      projectNavigationHost.includes("ProjectSectionHeader")
+  );
+  assert("no customer-facing Quick Estimate in tabs", !projectNavigation.includes("quick estimate"));
   assert("Open Pricing replaces Open final pricing", read("components/pricing/PrepareFinalPricingButton.tsx").includes("Open Pricing"));
   assert("allowance helper is plain language", review.includes("budgeted amount included in the price"));
 
   section("ECONOMIC INTEGRITY");
   assert("calculate-estimate not importing beta-3 UX files", !calc.includes("PricingDecisionCard") && !calc.includes("final-sell"));
   assert("sell-from-margin formula file untouched by presentation", sellFromMargin.includes("deriveSellFromCost"));
-  assert("no BETA-3-owned migration 053/054/056", latestMigration() === "056_bathroom_company_dna_catalogue_seed.sql");
+  assert(
+    "migration chain keeps 053/054/056 and the local tip is 080",
+    existsSync(join(process.cwd(), "supabase/migrations/053_role_aware_rls_hardening.sql")) &&
+      existsSync(join(process.cwd(), "supabase/migrations/054_company_dna_v2_catalogue_seed.sql")) &&
+      existsSync(join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql")) &&
+      latestMigration() === "080_project_document_delete.sql"
+  );
   assert(
     "create pricing uses the current/latest estimate",
     pricingActions.includes('.order("created_at", { ascending: false })') &&

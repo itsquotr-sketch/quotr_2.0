@@ -179,10 +179,11 @@ export function PricingItemEditForm({
     calculationMode === "productivity_labour" ? "Hourly charge" : "Unit charge";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-pricing-line-editor>
       <p className="text-xs text-muted-foreground">
         {calculationHelperText(calculationMode)}
       </p>
+      <p className="text-xs font-medium text-muted-foreground">Line</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Client label</Label>
@@ -467,6 +468,7 @@ export function PricingItemEditForm({
           </div>
         </div>
 
+        <p className="text-xs font-medium text-muted-foreground sm:col-span-2">Quote</p>
         <div className="space-y-2 sm:col-span-2">
           <Label>Client description</Label>
           <Textarea
@@ -529,7 +531,7 @@ export function PricingItemEditForm({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" disabled={isPending} onClick={onSave}>
+        <Button type="button" className="min-h-11" disabled={isPending} onClick={onSave}>
           {saveLabel}
         </Button>
         <Button

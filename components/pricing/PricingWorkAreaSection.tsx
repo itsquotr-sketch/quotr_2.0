@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { PricingItemListItem } from "@/components/pricing/PricingItemListItem";
-import { useIsDesktop } from "@/lib/hooks/use-media-query";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { presentPricingSectionTotals } from "@/lib/pricing/presentation-section-
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { PRICING_TABLE_HEADER_CLASS } from "@/lib/pricing/table-layout";
 import type {
+  PricingDocumentStatus,
   PricingItem,
   PricingItemInput,
   PricingWorkArea,
@@ -41,6 +42,7 @@ type PricingWorkAreaSectionProps = {
   showAddItem?: boolean;
   openRequest?: string | null;
   sectionKey?: string;
+  documentStatus?: PricingDocumentStatus;
 };
 
 export function PricingWorkAreaSection({
@@ -59,12 +61,14 @@ export function PricingWorkAreaSection({
   showAddItem = true,
   openRequest = null,
   sectionKey = "section",
+  documentStatus,
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [handledRequest, setHandledRequest] = useState<string | null>(null);
+  const [openLineId, setOpenLineId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const isDesktop = useIsDesktop();
-  const itemLayout = isDesktop ? "table" : "card";
+  const desktopLines = useMediaQuery("(min-width: 1024px)");
+  const itemLayout = desktopLines ? "table" : "card";
 
   const sectionTotals = useMemo(
     () => presentPricingSectionTotals(items),
@@ -171,9 +175,9 @@ export function PricingWorkAreaSection({
             <span className="min-w-0">Item</span>
             <span className="min-w-0">Category</span>
             <span className="text-right">Qty</span>
-            <span className="text-right">Total charge</span>
-            <span className="text-right">Margin</span>
-            <span>On quote</span>
+            <span className="text-right">Cost</span>
+            <span className="text-right">Client sell</span>
+            <span className="text-right">Source</span>
             <span className="text-right">Actions</span>
           </div>
 
@@ -189,6 +193,16 @@ export function PricingWorkAreaSection({
                 key={item.id}
                 item={item}
                 layout={itemLayout}
+                documentStatus={documentStatus}
+                detailsOpen={desktopLines ? undefined : openLineId === item.id}
+                onToggleDetails={
+                  desktopLines
+                    ? undefined
+                    : () =>
+                        setOpenLineId((current) =>
+                          current === item.id ? null : item.id
+                        )
+                }
                 selected={selectedIds?.has(item.id) ?? false}
                 selectionMode={selectionMode}
                 onToggleSelect={onToggleSelect}

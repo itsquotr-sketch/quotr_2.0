@@ -1,7 +1,7 @@
 export const PRICING_TABLE_GRID_COLS =
-  "md:grid-cols-[2rem_minmax(0,1.8fr)_minmax(0,0.85fr)_minmax(0,0.65fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.65fr)_4.5rem]";
+  "lg:grid-cols-[1.5rem_minmax(0,1.6fr)_minmax(4.5rem,0.7fr)_minmax(3.5rem,0.5fr)_minmax(4.5rem,0.65fr)_minmax(4.5rem,0.7fr)_minmax(4rem,0.55fr)_auto]";
 
 export const PRICING_TABLE_GRID =
-  `grid gap-x-2 gap-y-1 px-3 py-2.5 ${PRICING_TABLE_GRID_COLS} md:items-center`;
+  `grid gap-x-3 gap-y-1 px-3 py-3 ${PRICING_TABLE_GRID_COLS} lg:items-center`;
 
-export const PRICING_TABLE_HEADER_CLASS = `hidden gap-x-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:grid ${PRICING_TABLE_GRID_COLS} md:items-center`;
+export const PRICING_TABLE_HEADER_CLASS = `hidden gap-x-3 px-3 py-2 text-xs font-medium text-muted-foreground lg:grid ${PRICING_TABLE_GRID_COLS} lg:items-center`;

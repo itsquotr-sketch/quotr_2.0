@@ -511,6 +511,7 @@ export function PricingWorkspace({
                 onAddItem={handleAddItem}
                 showAddItem={groupBy === "work_area"}
                 openRequest={openRequest}
+                documentStatus={document.status}
               />
             ))}
             </div>

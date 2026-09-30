@@ -2,11 +2,18 @@
 
 import { memo, useCallback } from "react";
 import { PricingItemRow } from "@/components/pricing/PricingItemRow";
-import type { PricingItem, PricingItemInput } from "@/lib/pricing/types";
+import type {
+  PricingDocumentStatus,
+  PricingItem,
+  PricingItemInput,
+} from "@/lib/pricing/types";
 
 type PricingItemListItemProps = {
   item: PricingItem;
   layout: "table" | "card";
+  documentStatus?: PricingDocumentStatus;
+  detailsOpen?: boolean;
+  onToggleDetails?: () => void;
   selected?: boolean;
   selectionMode?: boolean;
   onToggleSelect?: (itemId: string) => void;
@@ -21,6 +28,9 @@ type PricingItemListItemProps = {
 function PricingItemListItemComponent({
   item,
   layout,
+  documentStatus,
+  detailsOpen,
+  onToggleDetails,
   selected,
   selectionMode,
   onToggleSelect,
@@ -45,6 +55,9 @@ function PricingItemListItemComponent({
     <PricingItemRow
       item={item}
       layout={layout}
+      documentStatus={documentStatus}
+      detailsOpen={detailsOpen}
+      onToggleDetails={onToggleDetails}
       selected={selected}
       selectionMode={selectionMode}
       onToggleSelect={onToggleSelect}
