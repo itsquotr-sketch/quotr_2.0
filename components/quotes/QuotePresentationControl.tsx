@@ -7,9 +7,21 @@ import {
 } from "@/lib/quotes/presentation";
 
 const OPTIONS: Array<{ value: QuotePresentationMode; label: string; hint: string }> = [
-  { value: "detailed", label: "Detailed", hint: "Visible lines" },
-  { value: "grouped", label: "Grouped", hint: "Work area totals" },
-  { value: "lump_sum", label: "Lump sum", hint: "Scope plus total" },
+  {
+    value: "detailed",
+    label: "Detailed",
+    hint: "The client sees each visible line.",
+  },
+  {
+    value: "grouped",
+    label: "Grouped",
+    hint: "The client sees each Work Area with its stored total.",
+  },
+  {
+    value: "lump_sum",
+    label: "Lump sum",
+    hint: "The client sees the scope and the quote total.",
+  },
 ];
 
 type QuotePresentationControlProps = {
@@ -26,35 +38,42 @@ export function QuotePresentationControl({
   const mode = parseQuotePresentationMode(value);
 
   return (
-    <div className="space-y-1.5 sm:col-span-2">
-      <p className="text-xs font-medium">Client presentation</p>
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-sm font-medium">Client presentation</p>
       <div
-        className="inline-flex w-full rounded-lg border border-border/70 bg-muted/30 p-0.5 sm:w-auto"
-        role="group"
+        className="grid gap-2 sm:grid-cols-3"
+        role="radiogroup"
         aria-label="Client quote presentation"
       >
-        {OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            disabled={disabled}
-            className={cn(
-              "flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors sm:flex-none",
-              mode === option.value
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-              disabled && "cursor-not-allowed opacity-60"
-            )}
-            aria-pressed={mode === option.value}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {OPTIONS.map((option) => {
+          const selected = mode === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              disabled={disabled}
+              aria-checked={selected}
+              className={cn(
+                "min-h-11 rounded-lg border px-3 py-2 text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selected
+                  ? "border-foreground/40 bg-background font-semibold text-foreground shadow-sm"
+                  : "border-border bg-muted/30 text-muted-foreground",
+                disabled && "cursor-not-allowed opacity-60"
+              )}
+              onClick={() => onChange(option.value)}
+            >
+              <span className="block">{option.label}</span>
+              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                {selected ? "Selected" : "Not selected"}
+              </span>
+            </button>
+          );
+        })}
       </div>
-      <p className="text-xs text-muted-foreground">
-        {OPTIONS.find((option) => option.value === mode)?.hint}. Does not change
-        the quote total.
+      <p className="text-sm text-muted-foreground">
+        {OPTIONS.find((option) => option.value === mode)?.hint} Hidden lines
+        stay on the quote. This does not change the quote total.
       </p>
     </div>
   );

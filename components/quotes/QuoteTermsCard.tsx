@@ -49,12 +49,13 @@ export function QuoteTermsCard({
         <Label htmlFor="quote-assumptions" className="text-xs">
           Client assumptions
         </Label>
-        <p className="text-[11px] text-muted-foreground">
-          One item per line. Internal estimate language is hidden from the client
-          preview automatically.
+        <p className="text-xs text-muted-foreground">
+          One item per line. Optional. Internal estimate language is hidden from
+          the client preview automatically.
         </p>
         <Textarea
           id="quote-assumptions"
+          className="text-base md:text-sm"
           rows={4}
           defaultValue={arrayToTextList(assumptions)}
           onChange={(event) =>
@@ -66,9 +67,12 @@ export function QuoteTermsCard({
         <Label htmlFor="quote-exclusions" className="text-xs">
           Exclusions
         </Label>
-        <p className="text-[11px] text-muted-foreground">One item per line</p>
+        <p className="text-xs text-muted-foreground">
+          One item per line. Optional.
+        </p>
         <Textarea
           id="quote-exclusions"
+          className="text-base md:text-sm"
           rows={4}
           defaultValue={arrayToTextList(exclusions)}
           onChange={(event) =>
@@ -80,8 +84,12 @@ export function QuoteTermsCard({
         <Label htmlFor="quote-terms" className="text-xs">
           Quote terms
         </Label>
+        <p className="text-xs text-muted-foreground">
+          Optional. This does not add legal wording for you.
+        </p>
         <Textarea
           id="quote-terms"
+          className="text-base md:text-sm"
           rows={5}
           defaultValue={terms ?? ""}
           onChange={(event) =>
@@ -95,6 +103,7 @@ export function QuoteTermsCard({
         </Label>
         <Textarea
           id="quote-notes"
+          className="text-base md:text-sm"
           rows={4}
           defaultValue={notesToClient ?? ""}
           onChange={(event) =>

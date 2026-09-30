@@ -35,9 +35,11 @@ export function QuoteDisplayControl({
       data-quote-display-control="true"
     >
       <div>
-        <p className="text-xs font-medium">Client quote display</p>
-        <p className="text-xs text-muted-foreground">
-          Choose how much pricing detail your client will see.
+        <p className="text-sm font-medium">Client quote display</p>
+        <p className="text-sm text-muted-foreground">
+          Choose how much pricing detail your client will see. These choices
+          change the client document only. The stored quote total stays the
+          same, and hidden detail is not deleted.
         </p>
       </div>
       <fieldset
@@ -88,15 +90,8 @@ export function QuoteDisplayControl({
           onCheckedChange={(checked) => toggle({ show_line_total: checked })}
         />
       </fieldset>
-      <p
-        className="text-xs text-muted-foreground"
-        data-quote-display-preview
-      >
+      <p className="text-sm text-muted-foreground" data-quote-display-preview>
         Client will see: {formatQuoteDisplayPreview(options)}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        This changes the client quote only. Your Pricing and quote totals stay
-        the same.
       </p>
     </div>
   );
@@ -135,18 +130,18 @@ function DisplayToggle({
       <label
         htmlFor={id}
         className={cn(
-          "min-w-0 text-xs leading-snug",
+          "flex min-h-11 min-w-0 flex-col justify-center text-sm leading-snug",
           disabled && "cursor-not-allowed text-muted-foreground"
         )}
       >
         <span className="font-medium text-foreground">{label}</span>
         {locked ? (
-          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-            Always shown
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            Always shown. Description cannot be turned off.
           </span>
         ) : null}
         {helper ? (
-          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+          <span className="mt-0.5 block text-xs text-muted-foreground">
             {helper}
           </span>
         ) : null}

@@ -58,6 +58,7 @@ function SendFields({
   denial,
   success,
   publicPath,
+  pending,
 }: {
   quote: Quote;
   projectTitle: string;
@@ -74,6 +75,7 @@ function SendFields({
   } | null;
   success: string | null;
   publicPath: string | null;
+  pending: boolean;
 }) {
   const view = quoteDocumentViewModel(quote);
 
@@ -81,9 +83,14 @@ function SendFields({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="quote-send-name">Client</Label>
+        <p className="text-xs text-muted-foreground">
+          Chosen in this step. Nothing is emailed until you confirm.
+        </p>
         <Input
           id="quote-send-name"
+          className="min-h-11 text-base md:text-sm"
           value={recipientName}
+          disabled={pending}
           onChange={(event) => setRecipientName(event.target.value)}
           autoComplete="name"
         />
@@ -92,10 +99,12 @@ function SendFields({
         <Label htmlFor="quote-send-email">Email</Label>
         <Input
           id="quote-send-email"
+          className="min-h-11 text-base md:text-sm"
           type="email"
           inputMode="email"
           autoComplete="email"
           value={recipientEmail}
+          disabled={pending}
           onChange={(event) => setRecipientEmail(event.target.value)}
         />
       </div>
@@ -103,8 +112,10 @@ function SendFields({
         <Label htmlFor="quote-send-message">Message</Label>
         <Textarea
           id="quote-send-message"
+          className="text-base md:text-sm"
           rows={5}
           value={message}
+          disabled={pending}
           onChange={(event) => setMessage(event.target.value)}
         />
       </div>
@@ -296,7 +307,7 @@ export function QuoteSendSheet({
 
   const title = mode === "resend" ? "Resend quote" : "Send quote";
   const description =
-    "Email a secure link to this exact revision. The quote snapshot will not change.";
+    "Confirming emails a secure link to this exact revision. The quote snapshot will not change. Cancel closes this step without sending.";
   const fields = (
     <SendFields
       quote={quote}
@@ -311,10 +322,20 @@ export function QuoteSendSheet({
       denial={denial}
       success={success}
       publicPath={publicPath}
+      pending={isPending}
     />
   );
   const actions = (
     <>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full"
+        disabled={isPending}
+        onClick={() => onOpenChange(false)}
+      >
+        Cancel
+      </Button>
       <Button
         type="button"
         className="h-11 w-full"

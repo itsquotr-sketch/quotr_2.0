@@ -181,7 +181,7 @@ function QuoteItemsTable({
   columns: QuoteDisplayColumn[];
 }) {
   return (
-    <div className="overflow-x-hidden">
+    <div className="max-sm:overflow-x-hidden overflow-x-hidden">
       <table
         className="quote-template-table w-full table-fixed text-xs print:text-[9pt]"
         data-quote-line-columns={columns.join(",")}
@@ -513,7 +513,7 @@ export function QuoteTemplate({
       ) : null}
 
       {presentation.mode === "grouped" ? (
-        <div className="quote-template-sections mb-5 space-y-5 print:mb-4 print:space-y-4">
+        <div className="quote-template-sections mb-4 space-y-3 print:mb-4 print:space-y-4 sm:space-y-5">
           {presentation.groupedSections.length === 0 ? (
             <EmptyState
               title="No quote items"
@@ -564,7 +564,7 @@ export function QuoteTemplate({
       ) : null}
 
       {presentation.mode === "detailed" ? (
-        <div className="quote-template-sections mb-5 space-y-5 print:mb-4 print:space-y-4">
+        <div className="quote-template-sections mb-4 space-y-3 print:mb-4 print:space-y-4 sm:space-y-5">
           {detailedSections.length === 0 ? (
             <EmptyState
               title="No quote items"

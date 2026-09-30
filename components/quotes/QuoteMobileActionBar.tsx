@@ -1,7 +1,13 @@
 "use client";
 
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Quote } from "@/lib/quotes/types";
 import { canMarkQuoteAccepted } from "@/lib/quotes/transaction";
@@ -15,6 +21,10 @@ type QuoteMobileActionBarProps = {
   hasUnsavedChanges?: boolean;
   onSave?: () => void;
   onPrint: () => void;
+  viewMode?: "review" | "preview";
+  onShowReview?: () => void;
+  onShowPreview?: () => void;
+  reviewLabel?: string;
   onSendQuote?: () => void;
   onResendQuote?: () => void;
   onMarkAccepted?: () => void;
@@ -30,6 +40,10 @@ export function QuoteMobileActionBar({
   hasUnsavedChanges = false,
   onSave,
   onPrint,
+  viewMode = "review",
+  onShowReview,
+  onShowPreview,
+  reviewLabel = "Finalise",
   onSendQuote,
   onResendQuote,
   onMarkAccepted,
@@ -50,16 +64,30 @@ export function QuoteMobileActionBar({
         className
       )}
     >
-      <Button
-        type="button"
-        variant="outline"
-        className="h-11 shrink-0 px-3"
-        onClick={onPrint}
-        disabled={busy}
-        aria-label="Print or save as PDF"
-      >
-        <Printer className="size-4" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          type="button"
+          className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
+          disabled={busy}
+          aria-label="More actions"
+        >
+          <MoreHorizontal className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-48">
+          <DropdownMenuItem className="min-h-11" onClick={onPrint}>
+            Print / Save as PDF
+          </DropdownMenuItem>
+          {viewMode === "preview" ? (
+            <DropdownMenuItem className="min-h-11" onClick={onShowReview}>
+              {reviewLabel}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem className="min-h-11" onClick={onShowPreview}>
+              Client preview
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {canSave && hasUnsavedChanges && onSave ? (
         <Button

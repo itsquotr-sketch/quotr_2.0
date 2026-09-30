@@ -21,6 +21,7 @@ import type { Quote } from "@/lib/quotes/types";
 type QuoteSummaryPanelProps = {
   quote: Quote;
   showActions?: boolean;
+  figures?: "full" | "total";
   onSendQuote?: () => void;
   onResendQuote?: () => void;
   onMarkSent?: () => Promise<{ error?: string }>;
@@ -57,6 +58,7 @@ function SummaryRow({
 export function QuoteSummaryPanel({
   quote,
   showActions = true,
+  figures = "full",
   onSendQuote,
   onResendQuote,
   onMarkSent,
@@ -96,17 +98,21 @@ export function QuoteSummaryPanel({
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <SummaryRow
-          label={view.showGst ? "Price ex GST" : "Price"}
-          value={view.subtotalFormatted}
-        />
-        {view.showGst ? (
-          <SummaryRow
-            label={view.gstLabel}
-            value={view.gstAmountFormatted}
-          />
+        {figures === "full" ? (
+          <>
+            <SummaryRow
+              label={view.showGst ? "Price ex GST" : "Price"}
+              value={view.subtotalFormatted}
+            />
+            {view.showGst ? (
+              <SummaryRow
+                label={view.gstLabel}
+                value={view.gstAmountFormatted}
+              />
+            ) : null}
+          </>
         ) : null}
-        <div className="border-t pt-3">
+        <div className={figures === "full" ? "border-t pt-3" : ""}>
           <SummaryRow
             label={view.showGst ? "Total incl. GST" : "Total"}
             value={view.totalInclGstFormatted}
