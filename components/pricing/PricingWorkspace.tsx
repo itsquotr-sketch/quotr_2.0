@@ -8,6 +8,10 @@ import { PricingDecisionCard } from "@/components/pricing/PricingDecisionCard";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
 import { PricingGroupControl } from "@/components/pricing/PricingGroupControl";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
+import {
+  PricingAttention,
+  PricingStatusNote,
+} from "@/components/pricing/PricingReadiness";
 import { PricingMobileActionBar } from "@/components/pricing/PricingMobileActionBar";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
 import { PricingSummaryPanel } from "@/components/pricing/PricingSummaryPanel";
@@ -59,14 +63,14 @@ export function PricingWorkspace({
   const [isBulkPending, startBulk] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<PricingGroupBy>("work_area");
+  const [openRequest, setOpenRequest] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const documentDraftRef = useRef<PricingDocumentInput>({});
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
-  const { projectTitle, latestEstimateIsStale, latestEstimateRecommendedSell } =
-    initialData;
+  const { latestEstimateIsStale, latestEstimateRecommendedSell } = initialData;
   const projectId = document.project_id;
   const pricingDocumentId = document.id;
 
@@ -377,22 +381,44 @@ export function PricingWorkspace({
     });
   };
 
+  const jumpToSection = (sectionId: string) => {
+    setGroupBy("work_area");
+    setOpenRequest(sectionId);
+    window.setTimeout(() => {
+      globalThis.document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
+
   return (
-    <div className="space-y-5 pb-[calc(14.5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(14.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
         document={document}
-        projectTitle={projectTitle}
         isSaving={isSaving}
         onSaveDocument={handleSaveDocument}
+        statusNote={
+          <PricingStatusNote
+            document={document}
+            items={items}
+            latestEstimateIsStale={latestEstimateIsStale}
+            quoteSummary={quoteSummary}
+            projectId={projectId}
+          />
+        }
       />
 
-      <PricingDecisionCard
+      <PricingAttention items={items} onJump={jumpToSection} />
+
+      <PricingSummaryPanel
+        className="md:hidden"
+        compact
         document={document}
+        projectId={projectId}
         items={items}
-        workAreas={workAreas}
-        recommendedSell={latestEstimateRecommendedSell}
-        disabled={isSaving}
-        onApplyFinalSell={handleApplyFinalSell}
+        quoteSummary={quoteSummary}
+        pricingChangedAfterQuote={pricingChangedAfterQuote}
       />
 
       {quoteSummary != null ? (
@@ -422,26 +448,6 @@ export function PricingWorkspace({
           }}
         />
       </div>
-
-      {/* Desktop/tablet review control; mobile uses PricingMobileActionBar CTA. */}
-      {document.status !== "reviewed" ? (
-        <div className="hidden md:block">
-          <PricingReviewChecklist
-            onMarkReviewed={handleMarkReviewed}
-            disabled={isSaving}
-          />
-        </div>
-      ) : (
-        <div
-          className="rounded-xl border border-border/60 bg-card px-4 py-3"
-          data-pricing-reviewed-status="true"
-        >
-          <p className="text-sm font-medium tracking-tight">Pricing reviewed</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Further edits will revert status to draft.
-          </p>
-        </div>
-      )}
 
       {saveError ? (
         <p className="text-sm text-destructive" role="alert">
@@ -490,6 +496,7 @@ export function PricingWorkspace({
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
                 key={section.key}
+                sectionKey={section.key}
                 projectId={projectId}
                 title={section.title}
                 workArea={groupBy === "work_area" ? section.workArea : null}
@@ -503,11 +510,21 @@ export function PricingWorkspace({
                 onDeleteItem={handleDeleteItem}
                 onAddItem={handleAddItem}
                 showAddItem={groupBy === "work_area"}
+                openRequest={openRequest}
               />
             ))}
             </div>
             </div>
           </details>
+
+          <PricingDecisionCard
+            document={document}
+            items={items}
+            workAreas={workAreas}
+            recommendedSell={latestEstimateRecommendedSell}
+            disabled={isSaving}
+            onApplyFinalSell={handleApplyFinalSell}
+          />
 
           <details className="rounded-lg border border-border/60 bg-card" data-pricing-quote-details>
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
@@ -540,6 +557,26 @@ export function PricingWorkspace({
               />
             </div>
           </details>
+
+          {/* Desktop/tablet review control; mobile uses PricingMobileActionBar CTA. */}
+          {document.status !== "reviewed" ? (
+            <div className="hidden md:block">
+              <PricingReviewChecklist
+                onMarkReviewed={handleMarkReviewed}
+                disabled={isSaving}
+              />
+            </div>
+          ) : (
+            <div
+              className="rounded-xl border border-border bg-card px-4 py-3"
+              data-pricing-reviewed-status="true"
+            >
+              <p className="text-sm font-medium tracking-tight">Pricing reviewed</p>
+              <p className="mt-0.5 text-xs leading-4 text-foreground/70">
+                Further edits will revert status to draft.
+              </p>
+            </div>
+          )}
         </div>
 
         <PricingSummaryPanel

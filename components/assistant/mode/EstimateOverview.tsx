@@ -150,7 +150,7 @@ export function EstimateOverview({
   return (
     <div className="flex min-w-0 flex-col gap-4 overflow-x-hidden" data-estimate-overview>
       {showCommercial ? (
-      <section className="order-1 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-commercial>
+      <section className="order-1 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-commercial data-mobile-commercial-overview="true">
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
           {sell.presentation === "unresolved" ? (
             <p className="text-lg font-medium" data-estimate-overview-sell="unresolved">

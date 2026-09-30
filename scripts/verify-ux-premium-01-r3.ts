@@ -59,8 +59,10 @@ const shell = read("components/assistant/AssistantShell.tsx");
 const waActions = read("lib/assistant/work-area-actions.ts");
 const waActive = read("lib/assistant/work-area-active.ts");
 const clarifyPanel = read("components/assistant/clarify/ClarifyPanel.tsx");
+const answerControl = read("components/assistant/clarify/ClarifyAnswerControl.tsx");
 const refinePanel = read("components/assistant/clarify/ClarifyReadiness.tsx");
 const valueField = read("components/assistant/clarify/ClarifyValueField.tsx");
+const estimateOverview = read("components/assistant/mode/EstimateOverview.tsx");
 const numeric = read("lib/assistant/clarify/numeric.ts");
 const composeSrc = read("lib/assistant/clarify/compose.ts");
 const metrics = read("components/assistant/CommercialOverviewMetrics.tsx");
@@ -269,10 +271,11 @@ check(
   16,
   "explicit submit action exists",
   valueField.includes('data-clarify-value-submit="true"') &&
-    clarifyPanel.includes("<ClarifyValueField") &&
-    refinePanel.includes("<ClarifyValueField") &&
-    !clarifyPanel.includes("onBlur") &&
-    !refinePanel.includes("onBlur={(event)")
+    answerControl.includes("<ClarifyValueField") &&
+    clarifyPanel.includes("<ClarifyAnswerControl") &&
+    !valueField.includes("onBlur") &&
+    !answerControl.includes("onBlur") &&
+    !clarifyPanel.includes("onBlur")
 );
 check(
   17,
@@ -330,20 +333,24 @@ check(
       (c) => c.factKey === "retaining_wall.material" && c.blocksEstimate
     )
 );
+// Initial-capture questions, including assumable ones, stay unanswered in this
+// fixture. question-contract.ts keeps Ready false until that count is zero.
 check(
   21,
-  "core facts resolved + assumable secondary gap → CTA allowed",
+  "core facts do not block, and initial capture still withholds Estimate now",
   !coreReady.clarify.blocksEstimate &&
-    coreReady.clarify.canEstimateNow === true &&
-    clarifyPanel.includes("{view.canEstimateNow ? (")
+    coreReady.clarify.remainingRequiredCount > 0 &&
+    coreReady.clarify.canEstimateNow === false &&
+    clarifyPanel.includes("view.canEstimateNow ? (")
 );
 check(
   22,
-  "fully ready → normal Estimate now",
-  coreReady.readiness.canEstimateNow &&
+  "Estimate now waits for a clear initial capture",
+  composeSrc.includes("canEstimateNow: !blocksEstimate && remainingRequiredCount === 0") &&
+    coreReady.readiness.canEstimateNow === false &&
     refinePanel.includes("estimateNow") &&
     read("lib/assistant/presentation/action-labels.ts").includes(
-      'estimateNow: "Estimate now"'
+      'estimateNow: "Create estimate"'
     )
 );
 
@@ -366,8 +373,9 @@ check(
 check(
   25,
   "detailed breakdown available",
-  shell.includes('data-mobile-detailed-breakdown="true"') &&
-    shell.includes("viewFullBreakdown")
+  estimateOverview.includes('data-mobile-detailed-breakdown="true"') &&
+    estimateOverview.includes("viewFullBreakdown") &&
+    shell.includes("<EstimateOverview")
 );
 check(
   26,
@@ -382,7 +390,7 @@ check(
   "no duplicate sell",
   !metrics.includes("Recommended sell") &&
     !metrics.includes("recommendedSell") &&
-    shell.includes("data-mobile-commercial-overview")
+    estimateOverview.includes('data-mobile-commercial-overview="true"')
 );
 check(
   28,
@@ -504,7 +512,7 @@ check(
     read("components/project-notes/SiteNotesCaptureCard.tsx").includes(
       'data-site-notes-composer='
     ) &&
-    shell.includes('data-mobile-commercial-overview="true"') &&
+    estimateOverview.includes('data-mobile-commercial-overview="true"') &&
     jobPlanCard.includes("data-job-plan-available")
 );
 

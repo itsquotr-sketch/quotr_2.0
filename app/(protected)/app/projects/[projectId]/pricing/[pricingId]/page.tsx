@@ -81,7 +81,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
           )}
         />
       }
-      contentClassName="py-6"
+      contentClassName="bg-muted/30"
     >
       <SetupGuidanceServerBanner dimension="pricing" />
       <PricingWorkspace

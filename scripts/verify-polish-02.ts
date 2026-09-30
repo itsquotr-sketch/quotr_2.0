@@ -163,8 +163,11 @@ check(
     pricingWorkspace.includes("data-pricing-quote-details")
 );
 check(
-  "mobile Pricing still shows project title for identity",
-  pricingHeader.includes("sm:hidden") && pricingHeader.includes("projectTitle")
+  "Pricing heading does not repeat the project title",
+  pricingHeader.includes('data-pricing-identity-duplicate="false"') &&
+    pricingHeader.includes("<h1") &&
+    !pricingHeader.includes("{projectTitle}") &&
+    read("components/projects/ProjectWorkspaceHeader.tsx").includes("<ProjectHeader")
 );
 check(
   "core Pricing decision card preserved",

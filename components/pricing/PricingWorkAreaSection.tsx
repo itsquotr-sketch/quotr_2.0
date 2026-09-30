@@ -7,11 +7,10 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import { pricingWorkAreaDomId } from "@/components/pricing/PricingReadiness";
 import { presentPricingSectionTotals } from "@/lib/pricing/presentation-section-totals";
 import { formatPricingMoney } from "@/lib/pricing/format";
-import {
-  formatProfitabilityDisplay,
-} from "@/lib/financial-presentation/format";
 import { PRICING_TABLE_HEADER_CLASS } from "@/lib/pricing/table-layout";
 import type {
   PricingItem,
@@ -40,6 +39,8 @@ type PricingWorkAreaSectionProps = {
   onDeleteItem: (itemId: string) => Promise<{ error?: string }>;
   onAddItem: (workAreaId: string | null) => Promise<{ error?: string }>;
   showAddItem?: boolean;
+  openRequest?: string | null;
+  sectionKey?: string;
 };
 
 export function PricingWorkAreaSection({
@@ -56,8 +57,11 @@ export function PricingWorkAreaSection({
   onDeleteItem,
   onAddItem,
   showAddItem = true,
+  openRequest = null,
+  sectionKey = "section",
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const [handledRequest, setHandledRequest] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const isDesktop = useIsDesktop();
   const itemLayout = isDesktop ? "table" : "card";
@@ -66,11 +70,29 @@ export function PricingWorkAreaSection({
     () => presentPricingSectionTotals(items),
     [items]
   );
-  const sectionProfitability = formatProfitabilityDisplay({
-    costKnown: sectionTotals.costKnown,
-    grossProfit: sectionTotals.grossProfit,
-    marginPercent: sectionTotals.marginPercent,
-  });
+  const requiredCount = items.filter(
+    (item) => pricingItemViewModel(item).pricingRequired
+  ).length;
+  const sectionId = workArea
+    ? pricingWorkAreaDomId(workArea.id)
+    : sectionKey === "general"
+      ? pricingWorkAreaDomId(null)
+      : `pricing-group-${sectionKey}`;
+  const costLabel = sectionTotals.costKnown
+    ? formatPricingMoney(sectionTotals.subtotalCost)
+    : "Pricing required";
+  const sellLabel =
+    requiredCount === items.length && requiredCount > 0
+      ? "Pricing required"
+      : formatPricingMoney(sectionTotals.subtotalSell);
+  const readiness =
+    requiredCount > 0
+      ? `${requiredCount} Pricing required`
+      : "Priced";
+  if (openRequest && openRequest === sectionId && handledRequest !== openRequest) {
+    setHandledRequest(openRequest);
+    setExpanded(true);
+  }
 
   const handleAdd = () => {
     startTransition(async () => {
@@ -81,13 +103,18 @@ export function PricingWorkAreaSection({
   const sectionName = title ?? workArea?.name ?? "General";
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border/60 bg-card">
-      <div className="flex items-start gap-2 border-b border-border/60 px-3 py-3 sm:px-4">
+    <section
+      id={sectionId}
+      className="scroll-mt-4 overflow-hidden rounded-xl border border-border bg-card"
+      data-pricing-work-area={sectionName}
+    >
+      <div className="flex items-start gap-2 px-3 py-2 sm:px-4">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
+          className="flex min-h-11 min-w-0 flex-1 items-start gap-2 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
           onClick={() => setExpanded((prev) => !prev)}
           aria-expanded={expanded}
+          aria-controls={`${sectionId}-lines`}
         >
           <ChevronDown
             className={cn(
@@ -97,26 +124,23 @@ export function PricingWorkAreaSection({
           />
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold">{sectionName}</h3>
-              <Badge variant="secondary" className="text-[10px] font-normal">
-                {items.length} item{items.length === 1 ? "" : "s"}
+              <h3 className="text-base font-semibold leading-snug">{sectionName}</h3>
+              <Badge variant="secondary" className="text-xs font-normal">
+                {readiness}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs">
-              <span className="font-medium text-foreground">
-                {formatPricingMoney(sectionTotals.subtotalSell)}
-              </span>
-              <span className="text-muted-foreground">
-                · {sectionProfitability.marginLabel} gross margin
-              </span>
-            </div>
+            <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs leading-4 text-foreground/75">
+              <span>{items.length} {items.length === 1 ? "item" : "items"}</span>
+              <span className="tabular-nums">Direct cost {costLabel}</span>
+              <span className="tabular-nums">Client sell {sellLabel}</span>
+            </p>
           </div>
         </button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-8 shrink-0", !showAddItem && "hidden")}
+          className={cn("h-11 min-h-11 shrink-0", !showAddItem && "hidden")}
           disabled={isPending}
           onClick={handleAdd}
         >
@@ -127,7 +151,7 @@ export function PricingWorkAreaSection({
       </div>
 
       {expanded ? (
-        <>
+        <div id={`${sectionId}-lines`}>
           {workArea ? (
             <div className="border-b border-border/60 px-3 py-3 sm:px-4">
               <WorkAreaQuoteDescriptionEditor
@@ -174,7 +198,7 @@ export function PricingWorkAreaSection({
               />
             ))}
           </div>
-        </>
+        </div>
       ) : null}
     </section>
   );

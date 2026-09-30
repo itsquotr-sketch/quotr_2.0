@@ -1,6 +1,9 @@
 "use client";
 
-import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
+import {
+  pricingDocumentViewModel,
+  pricingItemViewModel,
+} from "@/lib/pricing/financial-view-model";
 import type { PricingDocument, PricingItem } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
@@ -8,7 +11,6 @@ import {
   CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
-import { MetricRow } from "@/components/ui/metric-row";
 import {
   Card,
   CardContent,
@@ -42,7 +44,7 @@ function SummaryRow({
       <span
         className={
           prominent
-            ? "text-right text-lg font-semibold tracking-tight"
+            ? "text-right text-lg font-semibold tabular-nums tracking-tight"
             : "text-right text-sm font-medium tabular-nums"
         }
       >
@@ -63,6 +65,10 @@ export function PricingSummaryPanel({
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
+  const pricingRequiredCount = items.filter(
+    (item) => pricingItemViewModel(item).pricingRequired
+  ).length;
+  const costValue = view.costKnown ? view.subtotalCostFormatted : "Pricing required";
   const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
     ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
     : null;
@@ -70,66 +76,58 @@ export function PricingSummaryPanel({
   return (
     <Card
       className={cn(
-        "border-border/60 shadow-none lg:sticky lg:top-[4.5rem] lg:self-start",
+        "border-border/60 shadow-none lg:sticky lg:top-4 lg:self-start",
         className
       )}
+      data-pricing-commercial-summary="true"
     >
       <CardHeader className={cn("pb-2", compact && "pb-1.5 pt-4")}>
-        <CardTitle className="text-base">Pricing summary</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Internal pricing — not a client quote
+        <CardTitle className="text-base font-semibold">Commercial summary</CardTitle>
+        <p className="text-xs leading-4 text-foreground/70">
+          Internal pricing. Expected margin is not realised profit.
         </p>
       </CardHeader>
       <CardContent className={cn("space-y-3", compact && "pt-0")}>
-        <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+        <div className="space-y-2">
           <SummaryRow
-            label="Your final price"
-            value={view.subtotalSellFormatted}
+            label={view.showGst ? "Client sell ex GST" : "Client sell"}
+            value={pricingRequiredCount > 0 && !view.costKnown ? "Pricing required" : view.subtotalSellFormatted}
             prominent
           />
-          {!compact ? (
-            <>
-              <MetricRow
-                label="Estimated cost"
-                value={view.subtotalCostFormatted}
-                tertiary
-              />
-              <MetricRow
-                label="Expected gross margin"
-                value={view.marginLabel}
-                tertiary
-              />
-            </>
+          {pricingRequiredCount > 0 ? (
+            <p className="text-xs leading-4 text-foreground/75" data-pricing-summary-required>
+              {pricingRequiredCount} Pricing required
+            </p>
+          ) : null}
+          {compact ? (
+            <details className="text-sm">
+              <summary className="min-h-11 cursor-pointer text-xs font-medium leading-4 text-foreground/75">
+                Cost, margin and GST
+              </summary>
+              <div className="space-y-2 pt-2">
+                <SummaryRow label="Direct cost" value={costValue} />
+                <SummaryRow label="Expected gross margin" value={view.marginLabel} />
+                {view.showGst ? (
+                  <>
+                    <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
+                    <SummaryRow label="Client sell incl GST" value={view.totalInclGstFormatted} />
+                  </>
+                ) : null}
+              </div>
+            </details>
           ) : (
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
-              <span>Cost {view.subtotalCostFormatted}</span>
-              <span>{view.marginLabel} gross margin</span>
-            </div>
+            <>
+              <SummaryRow label="Direct cost" value={costValue} />
+              <SummaryRow label="Expected gross margin" value={view.marginLabel} />
+              {view.showGst ? (
+                <>
+                  <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
+                  <SummaryRow label="Client sell incl GST" value={view.totalInclGstFormatted} prominent />
+                </>
+              ) : null}
+            </>
           )}
         </div>
-        {view.showGst ? (
-        <div className={cn("rounded-lg border border-border/60 bg-card px-3 py-3", !compact && "border-[var(--brand-orange-muted)]/60")}>
-          <SummaryRow
-            label={view.gstLabel}
-            value={view.gstAmountFormatted}
-          />
-          <div className="mt-2 border-t border-border/60 pt-2">
-            <SummaryRow
-              label="Total incl. GST"
-              value={view.totalInclGstFormatted}
-              prominent
-            />
-          </div>
-        </div>
-        ) : (
-          <div className="rounded-lg border border-border/60 bg-card px-3 py-3">
-            <SummaryRow
-              label="Total"
-              value={view.totalInclGstFormatted}
-              prominent
-            />
-          </div>
-        )}
 
         <div
           className={cn(
@@ -137,7 +135,7 @@ export function PricingSummaryPanel({
             isReviewed &&
               !quoteSummary &&
               !quoteBlockedReason &&
-              "rounded-xl border border-[var(--brand-orange-muted)]/70 bg-[var(--brand-orange-muted)]/25 p-3"
+              "rounded-xl border border-border bg-muted/30 p-3"
           )}
           data-pricing-desktop-quote-cta={
             quoteSummary
