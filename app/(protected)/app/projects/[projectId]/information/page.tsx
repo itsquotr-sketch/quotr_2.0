@@ -8,6 +8,7 @@ import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHe
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getAssistantStateWithContext } from "@/lib/assistant/state";
 import { getProjectWorkspaceTabContextWithContext } from "@/lib/pricing/pricing-loaders";
+import { readProjectDocumentCentre } from "@/lib/projects/document-centre";
 import {
   projectInformationFromLoaded,
   projectSectionContext,
@@ -32,11 +33,12 @@ export default async function ProjectInformationPage({
     notFound();
   }
 
-  const [project, assistant, tabContext, quoteSummary] = await Promise.all([
+  const [project, assistant, tabContext, quoteSummary, documents] = await Promise.all([
     getProjectWithContext(auth, projectId),
     getAssistantStateWithContext(auth, projectId),
     getProjectWorkspaceTabContextWithContext(auth, projectId),
     getLatestQuoteSummaryWithContext(auth, projectId),
+    readProjectDocumentCentre(auth.supabase, projectId, auth.orgId),
   ]);
 
   const model = projectInformationFromLoaded(project, assistant, projectId);
@@ -60,7 +62,7 @@ export default async function ProjectInformationPage({
         />
       }
     >
-      <ProjectInformationWorkspace model={model} />
+      <ProjectInformationWorkspace model={model} projectId={projectId} documents={documents} />
     </WorkspacePage>
   );
 }

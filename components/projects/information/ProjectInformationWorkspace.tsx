@@ -1,19 +1,25 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { CapturedDetails } from "@/components/projects/information/CapturedDetails";
+import { ProjectDocumentsSection } from "@/components/projects/information/ProjectDocumentsSection";
 import { PROJECT_DOCUMENT_OWNERSHIP } from "@/components/projects/information/project-documents";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import type {
   ProjectInformationField,
   ProjectInformationModel,
 } from "@/lib/projects/project-information";
+import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 
 type ProjectInformationWorkspaceProps = {
   model: ProjectInformationModel;
+  projectId: string;
+  documents: ProjectDocumentCentreModel;
 };
 
 export function ProjectInformationWorkspace({
   model,
+  projectId,
+  documents,
 }: ProjectInformationWorkspaceProps) {
   return (
     <div
@@ -46,9 +52,7 @@ export function ProjectInformationWorkspace({
         </InfoCard>
         <InfoCard title="Documents and images">
           <div id="project-documents" data-project-documents-section="true">
-            <p className="text-sm leading-5 text-foreground/75">
-              Plans, specifications, photos and project files will be managed here.
-            </p>
+            <ProjectDocumentsSection projectId={projectId} centre={documents} />
           </div>
         </InfoCard>
       </div>

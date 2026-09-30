@@ -63,6 +63,7 @@ const menu = read("components/projects/ProjectActionsMenu.tsx");
 const captured = read("components/projects/information/CapturedDetails.tsx");
 const workspace = read("components/projects/information/ProjectInformationWorkspace.tsx");
 const documents = read("components/projects/information/project-documents.ts");
+const section = read("components/projects/information/ProjectDocumentsSection.tsx");
 const capture = read("components/assistant/ProjectCaptureBlock.tsx");
 const shell = read("components/assistant/AssistantShell.tsx");
 const orientation = read("lib/projects/workflow-orientation.ts");
@@ -202,7 +203,9 @@ check(
 check(
   "8 documents stay inside Project Information",
   workspace.includes('id="project-documents"') &&
-    workspace.includes("Plans, specifications, photos and project files will be managed here.") &&
+    workspace.includes("<ProjectDocumentsSection") &&
+    section.includes("Plans, specifications, photos and project files") &&
+    !workspace.includes("will be managed here.") &&
     documents.includes('PROJECT_DOCUMENT_OWNERSHIP = "project-information"') &&
     !workspace.includes('type="file"') &&
     !workspace.includes("storage.from") &&

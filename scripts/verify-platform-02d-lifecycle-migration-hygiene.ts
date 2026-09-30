@@ -212,7 +212,12 @@ function sourceChecks(): void {
       sqlFiles().includes("071_variation_attachments.sql") &&
       sqlFiles().includes("072_variation_response_and_contract_application.sql") &&
       sqlFiles().includes("073_variation_work_areas.sql") &&
-      sqlFiles().at(-1) === "073_variation_work_areas.sql" &&
+      sqlFiles().includes("074_marketing_consent.sql") &&
+      sqlFiles().includes("075_marketing_loops_sync_pending.sql") &&
+      sqlFiles().includes("076_onboarding_required_steps.sql") &&
+      sqlFiles().includes("077_organisation_abn.sql") &&
+      sqlFiles().includes("078_project_documents.sql") &&
+      sqlFiles().at(-1) === "078_project_documents.sql" &&
       !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/065_delete_unissued_draft_variation.sql").includes("preview_fixture_org") &&
@@ -223,7 +228,12 @@ function sourceChecks(): void {
       !read("supabase/migrations/070_variation_document_identity.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/071_variation_attachments.sql").includes("preview_fixture_org") &&
       !read("supabase/migrations/072_variation_response_and_contract_application.sql").includes("preview_fixture_org") &&
-      !read("supabase/migrations/073_variation_work_areas.sql").includes("preview_fixture_org")
+      !read("supabase/migrations/073_variation_work_areas.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/074_marketing_consent.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/075_marketing_loops_sync_pending.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/076_onboarding_required_steps.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/077_organisation_abn.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/078_project_documents.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

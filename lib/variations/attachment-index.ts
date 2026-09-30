@@ -16,6 +16,10 @@ export type VariationAttachmentIndexSource = {
   mimeType: string;
   createdAt: string;
   frozen: boolean;
+  /** Discovery fields. They do not copy the Variation row or its object. */
+  displayFilename?: string;
+  byteSize?: number;
+  variationId?: string;
 };
 
 export type IndexedVariationAttachment = VariationAttachmentIndexSource & {
