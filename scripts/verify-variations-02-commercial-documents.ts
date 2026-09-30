@@ -107,8 +107,8 @@ check(
 check("C list summary does not render internal COST", !list.includes("unitCost") && !list.includes("margin"));
 
 console.log("\nD. Draft header");
-check("D title and client summary are labelled", editor.includes('htmlFor="variation-title"') && editor.includes("Client-facing summary"));
-check("D internal notes are marked as internal", editor.includes("data-variation-internal-notes") && editor.includes("Internal notes stay off the client document"));
+check("D title and client summary are labelled", editor.includes('htmlFor="variation-title"') && editor.includes("Summary of change"));
+check("D internal notes are marked as internal", editor.includes("data-variation-internal-notes") && editor.includes("Internal notes are never shown to the client."));
 check("D variation number is displayed, not chosen by the form", editor.includes("Variation {props.variation.variationNumber}") && !editor.includes('htmlFor="variation-number"'));
 
 console.log("\nE–H. Item type mapping");

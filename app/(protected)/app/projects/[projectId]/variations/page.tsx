@@ -56,7 +56,6 @@ export default async function VariationsPage({ params, searchParams }: PageProps
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <VariationList
           projectId={projectId}
-          projectTitle={project.title}
           acceptedQuoteHref={
             quoteSummary?.status === "accepted"
               ? `/app/projects/${projectId}/quotes/${quoteSummary.id}`

@@ -32,7 +32,6 @@ import type { VariationListRow, VariationListSummary } from "@/lib/variations/wo
 
 export function VariationList(props: {
   projectId: string;
-  projectTitle?: string | null;
   acceptedQuoteHref?: string | null;
   eligible: boolean;
   reason: string | null;
@@ -104,60 +103,52 @@ export function VariationList(props: {
     router.refresh();
   }
 
+  const summaryRows = props.summary
+    ? [
+        ["Original accepted contract", formatContractMoney(props.summary.originalAcceptedInclGst, currency)],
+        ["Accepted Variation adjustments, ex GST", formatSignedAdjustment(props.summary.acceptedAdjustmentExGst, currency)],
+        ["Revised accepted contract", formatContractMoney(props.summary.revisedAcceptedInclGst, currency)],
+        ["Issued or pending Variations — ex GST", formatSignedAdjustment(props.summary.pendingIssuedExGst, currency)],
+        ["Draft Variations", String(props.summary.draftCount)],
+      ]
+    : [];
+
   return (
-    <div data-variation-list="true" className="min-w-0 space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div data-variation-list="true" className="min-w-0">
+      <div className="flex min-w-0 flex-col gap-5">
+      <div className="order-1 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">Variations</h1>
           <p className="mt-1 text-sm text-muted-foreground">Changes to the agreed scope and price.</p>
-          {props.projectTitle ? (
-            <p className="mt-1 text-sm text-muted-foreground">Project · {props.projectTitle}</p>
-          ) : null}
         </div>
         {props.eligible ? (
-          <Button type="button" size="touch" onClick={openCreate}>
+          <Button type="button" size="touch" className="hidden lg:inline-flex" onClick={openCreate}>
             Create Variation
           </Button>
         ) : null}
       </div>
 
-      {props.acceptedQuoteHref ? (
-        <p className="text-sm">
-          <Link
-            href={props.acceptedQuoteHref}
-            className="inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-          >
-            View accepted Quote
-          </Link>
-          <span className="text-muted-foreground"> The accepted Quote stays the contract baseline.</span>
-        </p>
+      {props.eligible ? (
+        <Button type="button" size="touch" className="order-2 w-full sm:w-auto lg:hidden" onClick={openCreate}>
+          Create Variation
+        </Button>
       ) : null}
 
       {!props.eligible ? (
-        <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none" data-variation-unavailable="true">
+        <p className="order-2 rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none" data-variation-unavailable="true">
           {props.reason}
         </p>
       ) : null}
 
-      {props.summary ? (
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-variation-summary="true">
-          <SummaryCard label="Original accepted contract" value={formatContractMoney(props.summary.originalAcceptedInclGst, currency)} />
-          <SummaryCard label="Accepted Variation adjustments, ex GST" value={formatSignedAdjustment(props.summary.acceptedAdjustmentExGst, currency)} />
-          <SummaryCard label="Revised accepted contract" value={formatContractMoney(props.summary.revisedAcceptedInclGst, currency)} />
-          <SummaryCard label="Issued or pending Variations — ex GST" value={formatSignedAdjustment(props.summary.pendingIssuedExGst, currency)} />
-          <SummaryCard label="Draft Variations" value={String(props.summary.draftCount)} />
-        </section>
-      ) : null}
-
-      {notice ? <p role="status" className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{notice}</p> : null}
-      {error && !createOpen && deleteTarget == null ? <p role="alert" className="rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
+      {notice ? <p role="status" className="order-2 rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{notice}</p> : null}
+      {error && !createOpen && deleteTarget == null ? <p role="alert" className="order-2 rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
 
       {props.eligible && props.rows.length === 0 ? (
-        <p className="rounded-xl border border-border/70 bg-card px-4 py-4 text-sm shadow-none">{VARIATION_EMPTY_LIST}</p>
+        <p className="order-3 rounded-xl border border-border/70 bg-card px-4 py-4 text-sm shadow-none lg:order-4">{VARIATION_EMPTY_LIST}</p>
       ) : null}
 
       {props.rows.length > 0 ? (
-        <ul className="space-y-3">
+        <ul className="order-3 space-y-3 lg:order-4">
           {props.rows.map((row) => (
             <li key={row.id} className="rounded-xl border border-border/70 bg-card p-4 text-sm shadow-none">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -259,6 +250,41 @@ export function VariationList(props: {
         </ul>
       ) : null}
 
+      {summaryRows.length > 0 ? (
+        <section className="order-4 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-none lg:hidden" data-variation-summary="compact" aria-label="Contract summary">
+          <h2 className="text-sm font-semibold">Contract summary</h2>
+          <dl className="mt-2">
+            {summaryRows.map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-3 border-t border-border/70 py-2 first:border-t-0">
+                <dt className="min-w-0 text-sm text-muted-foreground">{label}</dt>
+                <dd className="min-w-0 max-w-[55%] text-right text-sm font-medium break-words tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
+      {props.summary ? (
+        <section className="order-2 hidden gap-3 sm:grid-cols-2 lg:grid lg:grid-cols-3" data-variation-summary="true">
+          {summaryRows.map(([label, value]) => (
+            <SummaryCard key={label} label={label} value={value} />
+          ))}
+        </section>
+      ) : null}
+
+      {props.acceptedQuoteHref ? (
+        <p className="order-5 text-sm lg:order-3">
+          <Link
+            href={props.acceptedQuoteHref}
+            className="inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            View accepted Quote →
+          </Link>
+          <span className="mt-1 block text-muted-foreground">The accepted Quote remains the contract baseline.</span>
+        </p>
+      ) : null}
+      </div>
+
       <Dialog open={deleteTarget != null} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
         <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto">
           <DialogHeader>
@@ -280,7 +306,7 @@ export function VariationList(props: {
           <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Variation</DialogTitle>
-              <DialogDescription>Add the title and client-facing summary for a new draft.</DialogDescription>
+              <DialogDescription>Add the title and summary of change for a new draft.</DialogDescription>
             </DialogHeader>
             <form
               data-variation-create="true"
@@ -295,7 +321,7 @@ export function VariationList(props: {
                 <Input id="new-variation-title" className="min-h-11 text-base md:text-sm" value={title} onChange={(event) => setTitle(event.target.value)} required />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="new-variation-summary">Client-facing summary</Label>
+                <Label htmlFor="new-variation-summary">Summary of change</Label>
                 <textarea
                   id="new-variation-summary"
                   className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-base md:text-sm"
