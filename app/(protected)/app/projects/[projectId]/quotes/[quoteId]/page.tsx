@@ -68,7 +68,10 @@ export default async function QuotePage({ params }: QuotePageProps) {
         />
       </div>
 
-      <WorkspaceContainer innerClassName="py-6 print:max-w-none print:p-0">
+      <WorkspaceContainer
+        className="bg-muted/30"
+        innerClassName="bg-muted/30 pt-4 pb-6 lg:pt-6 print:max-w-none print:bg-white print:p-0"
+      >
         <div className="print:hidden">
           <SetupGuidanceServerBanner dimension="quote" />
         </div>

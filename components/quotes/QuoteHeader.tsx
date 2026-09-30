@@ -23,39 +23,39 @@ type QuoteHeaderProps = {
   timeZone?: string;
 };
 
-function buildMetaLine(quote: Quote, projectTitle: string): string {
-  const parts = [projectTitle];
-  if (quote.client_name) parts.push(quote.client_name);
-  if (quote.site_address) parts.push(quote.site_address);
-  return parts.join(" · ");
-}
-
 export function QuoteHeader({
   quote,
-  projectTitle,
   acceptance = null,
   isSaving,
   onSave,
+  hasUnsavedChanges = false,
   timeZone,
-}: QuoteHeaderProps) {
+}: QuoteHeaderProps & { hasUnsavedChanges?: boolean }) {
   const statusDef = getQuoteStatusDefinition(quote.status);
+  const workspaceTitle = formatQuoteWorkspaceTitle(quote.title);
+  const quoteIdentity = workspaceTitle.startsWith("Quote — ")
+    ? workspaceTitle.slice("Quote — ".length)
+    : null;
+  const context = [quote.client_name, quote.site_address].filter(Boolean).join(" · ");
 
   return (
-    <div className="space-y-2 border-b pb-4">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-              {formatQuoteWorkspaceTitle(quote.title)}
+            <h1 className="text-lg font-semibold leading-6 tracking-tight sm:text-xl">
+              Quote
             </h1>
             <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
           </div>
           <p className="text-sm font-medium text-foreground">
             {formatQuoteNumberRevision(quote)}
+            {quoteIdentity ? ` · ${quoteIdentity}` : ""}
           </p>
-          <p className="text-sm text-muted-foreground">
-            {buildMetaLine(quote, projectTitle)}
-          </p>
+          {context ? (
+            <p className="text-xs text-muted-foreground">{context}</p>
+          ) : null}
+          <p className="text-sm text-muted-foreground">{statusDef.description}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {quote.issue_date ? (
               <span>Issued {formatPricingDate(quote.issue_date)}</span>
@@ -76,13 +76,13 @@ export function QuoteHeader({
           </div>
         </div>
 
-        {onSave ? (
+        {onSave && hasUnsavedChanges ? (
           <Button
             type="button"
             variant="outline"
             disabled={isSaving}
             onClick={onSave}
-            className="shrink-0"
+            className="hidden shrink-0 md:inline-flex"
           >
             {isSaving ? (
               <>

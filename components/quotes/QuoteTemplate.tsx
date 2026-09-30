@@ -181,7 +181,7 @@ function QuoteItemsTable({
   columns: QuoteDisplayColumn[];
 }) {
   return (
-    <div className="max-sm:overflow-x-hidden sm:overflow-x-auto">
+    <div className="overflow-x-hidden">
       <table
         className="quote-template-table w-full table-fixed text-xs print:text-[9pt]"
         data-quote-line-columns={columns.join(",")}
@@ -581,18 +581,26 @@ export function QuoteTemplate({
                   ? rawSection
                   : null;
               return (
-                <section
+                <details
                   key={section.sectionTitle ?? "general"}
+                  open
                   className="quote-template-section break-inside-avoid-page"
+                  data-quote-work-area={section.sectionTitle ?? "general"}
                 >
-                  {section.sectionTitle ? (
-                    <h3
-                      className="mb-1 text-sm font-semibold text-neutral-900 print:text-[11pt]"
-                      style={brandAccent ? { color: brandAccent } : undefined}
-                    >
-                      {section.sectionTitle}
-                    </h3>
-                  ) : null}
+                  <summary className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 py-1 marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span className="min-w-0">
+                      <span
+                        className="block text-sm font-semibold text-neutral-900 print:text-[11pt]"
+                        style={brandAccent ? { color: brandAccent } : undefined}
+                      >
+                        {section.sectionTitle ?? "Work"}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        {section.items.length} visible
+                        {section.items.length === 1 ? " item" : " items"}
+                      </span>
+                    </span>
+                  </summary>
                   {sectionDescription ? (
                     <ClientFormattedText
                       className="mb-2 text-sm leading-relaxed text-neutral-600 print:mb-1.5 print:text-[9.5pt]"
@@ -605,7 +613,7 @@ export function QuoteTemplate({
                     display={presentation.display}
                     columns={presentation.columns}
                   />
-                </section>
+                </details>
               );
             })
           )}

@@ -12,6 +12,7 @@ type QuoteMobileActionBarProps = {
   isRevising?: boolean;
   isStatusPending?: boolean;
   canSave?: boolean;
+  hasUnsavedChanges?: boolean;
   onSave?: () => void;
   onPrint: () => void;
   onSendQuote?: () => void;
@@ -26,6 +27,7 @@ export function QuoteMobileActionBar({
   isRevising = false,
   isStatusPending = false,
   canSave = false,
+  hasUnsavedChanges = false,
   onSave,
   onPrint,
   onSendQuote,
@@ -44,7 +46,7 @@ export function QuoteMobileActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden",
+        "fixed inset-x-0 z-40 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]",
         className
       )}
     >
@@ -59,7 +61,7 @@ export function QuoteMobileActionBar({
         <Printer className="size-4" />
       </Button>
 
-      {canSave && onSave ? (
+      {canSave && hasUnsavedChanges && onSave ? (
         <Button
           type="button"
           variant={showSend ? "outline" : "default"}
@@ -73,7 +75,7 @@ export function QuoteMobileActionBar({
               Saving…
             </>
           ) : (
-            "Save quote"
+            "Save changes"
           )}
         </Button>
       ) : null}
@@ -107,25 +109,6 @@ export function QuoteMobileActionBar({
           onClick={onMarkAccepted}
         >
           Mark accepted manually
-        </Button>
-      ) : !canSave && !showSend && !showResend && !showMarkAccepted ? (
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-11 min-w-0 flex-1"
-          disabled
-        >
-          {quote.status === "accepted"
-            ? "Accepted"
-            : quote.status === "declined"
-              ? "Declined"
-              : quote.status === "viewed"
-                ? "Viewed"
-                : quote.status === "sent"
-                  ? "Sent"
-                  : quote.status === "superseded"
-                    ? "Superseded"
-                    : "View actions above"}
         </Button>
       ) : null}
     </div>

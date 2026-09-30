@@ -93,7 +93,7 @@ assert(
     migrations.includes("053_role_aware_rls_hardening.sql") &&
     migrations.includes("054_company_dna_v2_catalogue_seed.sql") &&
     migrations[migrations.length - 1] ===
-      "054_company_dna_v2_catalogue_seed.sql"
+      "080_project_document_delete.sql"
 );
 
 assert(
