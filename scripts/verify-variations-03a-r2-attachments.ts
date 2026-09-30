@@ -308,6 +308,14 @@ async function main(): Promise<void> {
       p_variation: draft.variationId, p_revision: draft.revisionId, p_item: line("Add a landing"),
     });
     if (item.ok !== true) throw new Error(item.error ?? "item");
+    const area = await call(userA, "create_draft_variation_work_area_v1", {
+      p_variation: draft.variationId, p_revision: draft.revisionId, p_name: "Landing", p_description: "Front landing",
+    });
+    const scoped = await call(userA, "assign_draft_variation_item_scope_v1", {
+      p_variation: draft.variationId, p_revision: draft.revisionId, p_item: item.itemId,
+      p_work_area: null, p_variation_work_area: area.workAreaId,
+    });
+    if (area.ok !== true || scoped.ok !== true) throw new Error(area.error ?? scoped.error ?? "work area");
 
     const signedOutUpload = await signedOut.storage.from(VARIATION_ATTACHMENT_BUCKET).upload(`${orgA}/guess.jpg`, jpeg, { contentType: "image/jpeg" });
     const crossUpload = await userB.storage.from(VARIATION_ATTACHMENT_BUCKET).upload(`${orgA}/${projectA}/guess.jpg`, jpeg, { contentType: "image/jpeg" });
@@ -466,9 +474,19 @@ async function main(): Promise<void> {
         Boolean(guessed.error)
     );
 
+    const ledgerBefore = await admin.from("accepted_commercial_snapshots").select("id, sell_ex_gst, gst_amount, sell_incl_gst").eq("project_id", projectA);
     const revised = await call(userA, "create_variation_revision_v1", { p_variation: draft.variationId, p_revision: draft.revisionId });
-    const copies = await admin.from("variation_attachments").select("id, display_filename, storage_object_path, source_attachment_id, frozen_at, issued_manifest").eq("variation_revision_id", revised.revisionId);
+    const revisedAgain = await call(userA, "create_variation_revision_v1", { p_variation: draft.variationId, p_revision: draft.revisionId });
+    const copies = await admin.from("variation_attachments").select("id, display_filename, visibility, storage_object_path, source_attachment_id, frozen_at, issued_manifest, linked_variation_item_id").eq("variation_revision_id", revised.revisionId);
     const copy = (copies.data ?? []).find((row) => row.display_filename === "north-elevation.jpg");
+    const internalCopy = (copies.data ?? []).find((row) => row.display_filename === "private-note.pdf");
+    const linkedItem = copy?.linked_variation_item_id
+      ? await admin.from("variation_items").select("id, revision_id, variation_work_area_id").eq("id", copy.linked_variation_item_id).maybeSingle()
+      : { data: null };
+    const copiedAreas = await admin.from("variation_work_areas").select("id, copied_from_id, name, revision_id").eq("revision_id", revised.revisionId);
+    const copiedArea = (copiedAreas.data ?? []).find((row) => row.copied_from_id === area.workAreaId);
+    const sourceArea = await admin.from("variation_work_areas").select("id, revision_id").eq("id", area.workAreaId).maybeSingle();
+    const ledgerAfter = await admin.from("accepted_commercial_snapshots").select("id, sell_ex_gst, gst_amount, sell_incl_gst").eq("project_id", projectA);
     const renamed = copy ? await call(userA, "update_draft_variation_attachment_v1", {
       p_attachment: copy.id, p_display_filename: "renamed-elevation.jpg", p_caption: "Updated caption", p_internal_description: null, p_linked_item: null, p_clear_link: true,
     }) : { ok: false };
@@ -479,10 +497,27 @@ async function main(): Promise<void> {
     check(
       "16 a new revision copies the reference without changing the issued file",
       revised.ok === true &&
+        revisedAgain.ok === true &&
+        revisedAgain.idempotent === true &&
+        revisedAgain.revisionId === revised.revisionId &&
+        revisedAgain.revisionNumber === revised.revisionNumber &&
+        (copies.data ?? []).length === 2 &&
+        copy?.id !== clientAttachmentId &&
+        copy?.visibility === "client" &&
         copy?.storage_object_path === manifest?.storageObjectPath &&
         copy?.source_attachment_id === clientAttachmentId &&
         copy?.frozen_at == null &&
         copy?.issued_manifest == null &&
+        copy?.linked_variation_item_id !== item.itemId &&
+        linkedItem.data?.revision_id === revised.revisionId &&
+        linkedItem.data?.variation_work_area_id === copiedArea?.id &&
+        internalCopy?.id !== internalId.data?.id &&
+        internalCopy?.visibility === "internal" &&
+        internalCopy?.linked_variation_item_id == null &&
+        copiedArea?.name === "Landing" &&
+        copiedArea?.id !== area.workAreaId &&
+        sourceArea.data?.revision_id === draft.revisionId &&
+        JSON.stringify(ledgerBefore.data ?? []) === JSON.stringify(ledgerAfter.data ?? []) &&
         renamed.ok === true &&
         issuedManifest?.displayFilename === "north-elevation.jpg" &&
         issuedManifest?.caption === "North elevation" &&
