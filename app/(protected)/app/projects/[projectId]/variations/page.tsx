@@ -33,7 +33,7 @@ export default async function VariationsPage({ params, searchParams }: PageProps
   if (!workspace.ok) notFound();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 border-b bg-background">
         <WorkspaceHeaderBar actions={<UserMenu />}>
           <ProjectWorkspaceHeader project={project} subtitle="Variations" />
@@ -53,9 +53,15 @@ export default async function VariationsPage({ params, searchParams }: PageProps
           statuses: workspace.rows.map((row) => row.status),
         }}
       />
-      <WorkspaceContainer innerClassName="py-6">
+      <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <VariationList
           projectId={projectId}
+          projectTitle={project.title}
+          acceptedQuoteHref={
+            quoteSummary?.status === "accepted"
+              ? `/app/projects/${projectId}/quotes/${quoteSummary.id}`
+              : null
+          }
           eligible={workspace.eligible}
           reason={workspace.reason}
           rows={workspace.rows}

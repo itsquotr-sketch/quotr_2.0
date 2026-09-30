@@ -190,7 +190,7 @@ export function VariationClientResponse(props: {
         </DialogContent>
       </Dialog>
       <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open) close(); }}>
-        <SheetContent side="bottom" data-variation-response-mode="sheet" className="h-[100dvh] max-h-[100dvh] overflow-y-auto">
+        <SheetContent side="bottom" data-variation-response-mode="sheet" className="h-[100dvh] max-h-[100dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>{description}</SheetDescription>

@@ -77,8 +77,8 @@ export function VariationDeliveryPanel(props: {
   }
 
   return (
-    <section className="rounded-2xl border bg-card p-4" data-variation-delivery="true">
-      <h2 className="text-base font-semibold">Delivery</h2>
+    <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-delivery="true">
+      <h2 className="text-base font-semibold">Send to the client</h2>
       {attempts.length === 0 && !sent ? <p className="mt-2 text-sm">Never sent</p> : null}
       <ul className="mt-2 space-y-1 text-sm">
         {attempts.map((row) => (
@@ -96,7 +96,7 @@ export function VariationDeliveryPanel(props: {
       {error && !open ? <p role="alert" className="mt-2 text-sm">{error}</p> : null}
       {props.blockedMessage ? <p role="alert" className="mt-3 text-sm">{props.blockedMessage}</p> : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" size="touch" onClick={openDialog} disabled={pending || Boolean(props.blockedMessage)}>
+        <Button type="button" className="hidden xl:inline-flex" size="touch" onClick={openDialog} disabled={pending || Boolean(props.blockedMessage)}>
           {latestSent || sent ? "Resend" : "Send to client"}
         </Button>
         {sent?.path ? (
@@ -104,6 +104,11 @@ export function VariationDeliveryPanel(props: {
             View client link
           </Button>
         ) : null}
+      </div>
+      <div className="fixed inset-x-0 z-40 border-t border-border bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+        <Button type="button" size="touch" className="w-full" onClick={openDialog} disabled={pending || Boolean(props.blockedMessage)}>
+          {latestSent || sent ? "Resend" : "Send to client"}
+        </Button>
       </div>
       <Dialog open={open} onOpenChange={(next) => { if (!pending) setOpen(next); }}>
         <DialogContent className="max-h-[min(92vh,720px)] w-[min(calc(100vw-0.75rem),480px)] overflow-y-auto">

@@ -33,7 +33,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
   if (!editor.ok) notFound();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 border-b bg-background print:hidden">
         <WorkspaceHeaderBar actions={<UserMenu />}>
           <ProjectWorkspaceHeader project={project} subtitle="Variations" />
@@ -55,7 +55,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           }}
         />
       </div>
-      <WorkspaceContainer className="min-h-0" innerClassName="py-6">
+      <WorkspaceContainer className="min-h-0 bg-muted/30" innerClassName="bg-muted/30 py-6">
         <VariationEditor
           key={`${editor.variation.id}:${editor.variation.status}:${editor.withdrawalReason ?? ""}`}
           projectId={projectId}

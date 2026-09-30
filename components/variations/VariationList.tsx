@@ -32,6 +32,8 @@ import type { VariationListRow, VariationListSummary } from "@/lib/variations/wo
 
 export function VariationList(props: {
   projectId: string;
+  projectTitle?: string | null;
+  acceptedQuoteHref?: string | null;
   eligible: boolean;
   reason: string | null;
   rows: VariationListRow[];
@@ -103,11 +105,14 @@ export function VariationList(props: {
   }
 
   return (
-    <div data-variation-list="true" className="min-w-0 space-y-6">
+    <div data-variation-list="true" className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Variations</h1>
-          <p className="text-sm text-muted-foreground">Changes to the agreed scope and price.</p>
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">Variations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Changes to the agreed scope and price.</p>
+          {props.projectTitle ? (
+            <p className="mt-1 text-sm text-muted-foreground">Project · {props.projectTitle}</p>
+          ) : null}
         </div>
         {props.eligible ? (
           <Button type="button" size="touch" onClick={openCreate}>
@@ -116,8 +121,20 @@ export function VariationList(props: {
         ) : null}
       </div>
 
+      {props.acceptedQuoteHref ? (
+        <p className="text-sm">
+          <Link
+            href={props.acceptedQuoteHref}
+            className="inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            View accepted Quote
+          </Link>
+          <span className="text-muted-foreground"> The accepted Quote stays the contract baseline.</span>
+        </p>
+      ) : null}
+
       {!props.eligible ? (
-        <p className="rounded-2xl border bg-card px-4 py-3 text-sm" data-variation-unavailable="true">
+        <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none" data-variation-unavailable="true">
           {props.reason}
         </p>
       ) : null}
@@ -132,59 +149,70 @@ export function VariationList(props: {
         </section>
       ) : null}
 
-      {notice ? <p role="status" className="text-sm text-muted-foreground">{notice}</p> : null}
+      {notice ? <p role="status" className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{notice}</p> : null}
+      {error && !createOpen && deleteTarget == null ? <p role="alert" className="rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
 
       {props.eligible && props.rows.length === 0 ? (
-        <p className="rounded-2xl border bg-card px-4 py-3 text-sm">{VARIATION_EMPTY_LIST}</p>
+        <p className="rounded-xl border border-border/70 bg-card px-4 py-4 text-sm shadow-none">{VARIATION_EMPTY_LIST}</p>
       ) : null}
 
       {props.rows.length > 0 ? (
         <ul className="space-y-3">
           {props.rows.map((row) => (
-            <li key={row.id} className="rounded-2xl border bg-card p-4 text-sm">
+            <li key={row.id} className="rounded-xl border border-border/70 bg-card p-4 text-sm shadow-none">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">Variation {row.variationNumber}</p>
-                  <p className="mt-1 break-words">{row.title}</p>
-                  <p className="mt-2 text-muted-foreground">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Variation {row.variationNumber}</p>
+                  <p className="mt-1 break-words text-base font-semibold leading-snug">{row.title}</p>
+                  <p className="mt-1 text-muted-foreground">
                     {row.revisionNumber == null ? "Current revision pending" : `Revision ${row.revisionNumber}`}
                   </p>
                 </div>
                 <Badge variant="outline">{row.deliveryLabel ?? row.statusLabel}</Badge>
               </div>
               {row.status === "accepted" || row.status === "rejected" ? (
-                <p className="mt-2 break-words text-muted-foreground" data-variation-list-scan="true">
+                <p className="mt-3 break-words text-muted-foreground" data-variation-list-scan="true">
                   {row.statusLabel}
                   {row.status === "accepted" && row.acceptedAt ? ` · ${row.acceptedAt}` : ""}
                   {row.status === "rejected" && row.declinedAt ? ` · ${row.declinedAt}` : ""}
                   {row.inclGst != null ? ` · ${formatSignedAdjustment(row.inclGst, currency)}` : ""}
                 </p>
               ) : null}
-              <dl className="mt-3 grid gap-1">
-                <div className="flex flex-wrap justify-between gap-3">
-                  <dt>Net adjustment ex GST</dt>
-                  <dd className="tabular-nums">
-                    {row.netExGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(row.netExGst, currency)}
-                  </dd>
-                </div>
-                {row.createdAt ? <div className="flex justify-between gap-3"><dt>Created</dt><dd>{row.createdAt}</dd></div> : null}
-                {row.issuedAt ? <div className="flex justify-between gap-3"><dt>Issued</dt><dd>{row.issuedAt}</dd></div> : null}
-                {row.withdrawnAt ? <div className="flex justify-between gap-3"><dt>Withdrawn</dt><dd>{row.withdrawnAt}</dd></div> : null}
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                <MoneyScan
+                  label="Net adjustment ex GST"
+                  value={row.netExGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(row.netExGst, currency)}
+                  attention={row.netExGst == null}
+                />
+                <MoneyScan
+                  label="GST"
+                  value={row.gst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(row.gst, currency)}
+                  attention={row.gst == null}
+                />
+                <MoneyScan
+                  label="Adjustment incl GST"
+                  value={row.inclGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(row.inclGst, currency)}
+                  attention={row.inclGst == null}
+                  prominent
+                />
+                {row.createdAt ? <MoneyScan label="Created" value={row.createdAt} /> : null}
+                {row.issuedAt ? <MoneyScan label="Issued" value={row.issuedAt} /> : null}
+                {row.withdrawnAt ? <MoneyScan label="Withdrawn" value={row.withdrawnAt} /> : null}
                 {row.status === "accepted" ? (
                   <>
-                    {row.acceptedAt ? <div className="flex justify-between gap-3"><dt>Accepted</dt><dd>{row.acceptedAt}</dd></div> : null}
-                    {row.responseSource ? <div className="flex justify-between gap-3"><dt>Source</dt><dd>{row.responseSource}</dd></div> : null}
-                    {row.responderName ? <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{row.responderName}</dd></div> : null}
-                    {row.inclGst != null ? <div className="flex justify-between gap-3"><dt>Adjustment applied</dt><dd className="tabular-nums">{formatSignedAdjustment(row.inclGst, currency)}</dd></div> : null}
-                    {row.revisedContractInclGst != null ? <div className="flex justify-between gap-3"><dt>Revised accepted contract</dt><dd className="tabular-nums">{formatContractMoney(row.revisedContractInclGst, currency)}</dd></div> : null}
+                    {row.acceptedAt ? <MoneyScan label="Accepted" value={row.acceptedAt} /> : null}
+                    {row.responseSource ? <MoneyScan label="Customer response" value={row.responseSource} /> : null}
+                    {row.responderName ? <MoneyScan label="Responder" value={row.responderName} /> : null}
+                    {row.inclGst != null ? <MoneyScan label="Adjustment applied" value={formatSignedAdjustment(row.inclGst, currency)} /> : null}
+                    {row.revisedContractInclGst != null ? <MoneyScan label="Revised accepted contract" value={formatContractMoney(row.revisedContractInclGst, currency)} /> : null}
                   </>
                 ) : null}
                 {row.status === "rejected" ? (
                   <>
-                    {row.declinedAt ? <div className="flex justify-between gap-3"><dt>Declined</dt><dd>{row.declinedAt}</dd></div> : null}
-                    {row.responseSource ? <div className="flex justify-between gap-3"><dt>Source</dt><dd>{row.responseSource}</dd></div> : null}
-                    {row.responderName ? <div className="flex justify-between gap-3"><dt>Responder</dt><dd>{row.responderName}</dd></div> : null}
-                    {row.declineReason ? <div className="flex justify-between gap-3"><dt>Reason</dt><dd className="break-words">{row.declineReason}</dd></div> : null}
+                    {row.declinedAt ? <MoneyScan label="Declined" value={row.declinedAt} /> : null}
+                    {row.responseSource ? <MoneyScan label="Customer response" value={row.responseSource} /> : null}
+                    {row.responderName ? <MoneyScan label="Responder" value={row.responderName} /> : null}
+                    {row.declineReason ? <MoneyScan label="Reason" value={row.declineReason} /> : null}
                   </>
                 ) : null}
               </dl>
@@ -264,13 +292,13 @@ export function VariationList(props: {
             >
               <div className="grid gap-1.5">
                 <Label htmlFor="new-variation-title">Title</Label>
-                <Input id="new-variation-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+                <Input id="new-variation-title" className="min-h-11 text-base md:text-sm" value={title} onChange={(event) => setTitle(event.target.value)} required />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="new-variation-summary">Client-facing summary</Label>
                 <textarea
                   id="new-variation-summary"
-                  className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm"
+                  className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-base md:text-sm"
                   value={summary}
                   onChange={(event) => setSummary(event.target.value)}
                 />
@@ -332,9 +360,20 @@ function CreateRevisionButton(props: {
 
 function SummaryCard(props: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border bg-card px-4 py-3">
+    <div className="min-w-0 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-none">
       <p className="text-xs text-muted-foreground">{props.label}</p>
-      <p className="mt-1 break-words text-sm font-medium tabular-nums">{props.value}</p>
+      <p className="mt-1 break-words text-sm font-semibold tabular-nums">{props.value}</p>
+    </div>
+  );
+}
+
+function MoneyScan(props: { label: string; value: string; attention?: boolean; prominent?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{props.label}</dt>
+      <dd className={`mt-0.5 break-words tabular-nums ${props.prominent ? "text-base font-semibold" : "font-medium"} ${props.attention ? "text-[var(--brand-orange)]" : ""}`}>
+        {props.value}
+      </dd>
     </div>
   );
 }

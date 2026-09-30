@@ -17,7 +17,8 @@ export default async function VariationResponseRecordPage({ params }: PageProps)
   const loaded = await loadInternalVariationResponseRecord(projectId, variationId);
   if (!loaded.ok) notFound();
   return (
-    <main className="mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 print:bg-white print:p-0">
+    <main className="min-h-dvh bg-neutral-100 print:bg-white">
+    <div className="mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6 print:bg-white print:p-0">
       <VariationPrintButton />
       <VariationResponseReceiptView receipt={loaded.receipt} backHref={loaded.backHref} />
       {loaded.manual ? (
@@ -32,6 +33,7 @@ export default async function VariationResponseRecordPage({ params }: PageProps)
           </dl>
         </aside>
       ) : null}
+    </div>
     </main>
   );
 }

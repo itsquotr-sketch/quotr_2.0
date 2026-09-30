@@ -50,7 +50,7 @@ export function VariationSupportingFiles(props: Props) {
     .filter((file) => file.revisionId === props.revisionId)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
   return (
-    <section className="min-w-0 rounded-2xl border bg-card p-4" data-variation-supporting="true">
+    <section className="min-w-0 rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-supporting="true">
       <h2 className="text-base font-semibold">Supporting information</h2>
       <div className="mt-4 grid gap-6">
         <FileGroup {...props} visibility="client" title="Client attachments" description="Visible to the client and included with this Variation." files={files.filter((file) => file.visibility === "client")} addLabel="Add photos or files" />

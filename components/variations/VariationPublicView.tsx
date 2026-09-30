@@ -42,7 +42,7 @@ export function VariationPublicView({
       : null;
 
   return (
-    <main className="mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 print:bg-white print:p-0">
+    <main className="mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-6 print:bg-white print:p-0">
       {clientEmail === "failed" ? (
         <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm text-red-700" data-variation-client-email="failed">
           Your response is recorded. The confirmation email could not be sent.

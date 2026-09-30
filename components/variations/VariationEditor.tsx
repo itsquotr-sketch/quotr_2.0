@@ -485,7 +485,7 @@ export function VariationEditor(props: EditorProps) {
   const omissionTotal = sumLines(viewing.items.filter((item) => item.itemType === "omission"));
 
   return (
-    <div data-variation-editor="true" data-editor-instance={editorInstance} className="min-w-0 space-y-6 overflow-x-hidden">
+    <div data-variation-editor="true" data-editor-instance={editorInstance} className={`min-w-0 space-y-6 overflow-x-hidden ${(draft || (current.status === "issued" && !historical)) ? "pb-28 xl:pb-0" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
@@ -530,11 +530,14 @@ export function VariationEditor(props: EditorProps) {
       ) : null}
       {historical ? <p className="rounded-xl border bg-card px-4 py-3 text-sm">This is an earlier revision. It is not the current proposal.</p> : null}
       {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
-      {saved ? <p role="status" className="text-sm text-muted-foreground">{saved}</p> : null}
+      {saved ? <p role="status" className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{saved}</p> : null}
 
-      <section className="rounded-2xl border bg-card p-4">
-        <h2 className="text-base font-semibold">Variation details</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{props.baseline.referenceLabel}</p>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
+      <div className="min-w-0 space-y-4" data-variation-customer-column="true">
+      <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none">
+        <h2 className="text-base font-semibold">Customer document</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Title, scope and notes the client can see. Variation {props.variation.variationNumber}.</p>
+        <p className="mt-3 text-sm text-muted-foreground">{props.baseline.referenceLabel}</p>
         {draft ? (
           <HeaderForm
             key={`${current.id}:${current.title}:${current.summary ?? ""}:${current.clientNotes ?? ""}:${current.internalNotes ?? ""}`}
@@ -567,7 +570,7 @@ export function VariationEditor(props: EditorProps) {
       </section>
 
       {scopeAreas.length > 0 ? (
-        <section className="rounded-2xl border bg-card p-4" data-variation-scope-groups="true">
+        <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-scope-groups="true">
           <h2 className="text-sm font-semibold">Scope</h2>
           <ul className="mt-2 space-y-2">
             {scopeAreas.map((area) => (
@@ -603,7 +606,7 @@ export function VariationEditor(props: EditorProps) {
           ) : null}
         </div>
         {viewing.items.length === 0 ? (
-          <p className="rounded-2xl border bg-card px-4 py-3 text-sm">No items yet. Add the scope and price changes included in this Variation.</p>
+          <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none">No items yet. Add the scope and price changes included in this Variation.</p>
         ) : null}
         {groups.map((group) => {
           const lead = group.kind === "single" ? group.item : group.remove;
@@ -612,7 +615,7 @@ export function VariationEditor(props: EditorProps) {
           const variationArea = scopeAreas.find((row) => row.id === lead.variationWorkAreaId);
           const area = variationArea ?? props.workAreas.find((row) => row.id === (lead.workAreaId ?? scope?.workAreaId));
           return (
-            <article key={lead.id} className="rounded-2xl border bg-card p-4 text-sm">
+            <article key={lead.id} className="rounded-2xl border border-border/70 bg-card p-4 text-sm shadow-none">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Badge variant="outline">{group.kind === "pair" ? "Substitution" : itemBadge(lead.itemType)}</Badge>
                 <p className="tabular-nums">{line == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(groupNet(group), currency)}</p>
@@ -666,8 +669,17 @@ export function VariationEditor(props: EditorProps) {
         />
       ) : null}
 
-      <section className="rounded-2xl border bg-card p-4" data-variation-commercial-summary="true">
-        <h2 className="text-base font-semibold">Commercial summary</h2>
+      <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none">
+        <h2 className="text-base font-semibold">Client document</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Internal notes, cost and margin stay off the client document.</p>
+        <Button type="button" className="mt-3" size="touch" variant="outline" onClick={() => setPreviewOpen(true)}>Preview client document</Button>
+      </section>
+      </div>
+
+      <aside className="min-w-0 space-y-4 xl:sticky xl:top-4" data-variation-internal-column="true">
+      <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-commercial-summary="true">
+        <h2 className="text-base font-semibold">Internal commercial summary</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Cost, margin and unresolved prices stay off the client document.</p>
         <dl className="mt-3 space-y-1 text-sm">
           <Row label="Addition total" value={additionTotal == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(additionTotal, currency)} />
           <Row label="Omission total" value={omissionTotal == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(omissionTotal, currency)} />
@@ -685,19 +697,22 @@ export function VariationEditor(props: EditorProps) {
       </section>
 
       {draft ? (
-        <section className="rounded-2xl border bg-card p-4" data-variation-readiness="true">
+        <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-readiness="true">
           <h2 className="text-base font-semibold">{readiness.ready ? VARIATION_READY_HEADING : VARIATION_NOT_READY_HEADING}</h2>
           {readiness.ready ? <p className="mt-2 text-sm">{VARIATION_READY_DETAIL}</p> : (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm" role="alert">
               {readiness.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
             </ul>
           )}
-          <Button className="mt-3" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
+          <Button className="mt-3 hidden xl:inline-flex" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
+          <div className="fixed inset-x-0 z-40 border-t border-border bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+            <Button className="w-full" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
+          </div>
         </section>
       ) : null}
 
       {props.response && (viewing.status === "accepted" || viewing.status === "rejected") ? (
-        <section className="min-w-0 rounded-2xl border bg-card p-4 text-sm" data-variation-response-summary="true">
+        <section className="min-w-0 rounded-xl border border-border/70 bg-card p-4 text-sm shadow-none" data-variation-response-summary="true">
           <h2 className="text-base font-semibold">Response</h2>
           <dl className="mt-3 space-y-1">
             <div className="flex flex-wrap justify-between gap-3"><dt>Outcome</dt><dd>{viewing.status === "accepted" ? "Accepted" : "Declined"}</dd></div>
@@ -771,17 +786,13 @@ export function VariationEditor(props: EditorProps) {
           {history.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-sm">
               <span className="min-w-0 break-words">Revision {row.revisionNumber} · {row.title} · {row.statusLabel} · {row.label}{row.issuedAt ? ` · Issued ${row.issuedAt}` : ""}{row.withdrawnAt ? ` · Withdrawn ${row.withdrawnAt}` : ""}{row.netExGst != null ? ` · ${formatSignedAdjustment(row.netExGst, currency)}` : ""}</span>
-              <Link className="underline" href={`/app/projects/${props.projectId}/variations/${variation.id}?revision=${row.id}`}>View</Link>
+              <Link className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" href={`/app/projects/${props.projectId}/variations/${variation.id}?revision=${row.id}`}>View</Link>
             </li>
           ))}
         </ul>
       </section>
-
-      <section>
-        <h2 className="text-base font-semibold">Client document</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Internal notes, cost and margin stay off the client document.</p>
-        <Button type="button" className="mt-3" size="touch" variant="outline" onClick={() => setPreviewOpen(true)}>Preview client document</Button>
-      </section>
+      </aside>
+      </div>
 
       {areaEditor ? (
         <WorkAreaEditDialog
@@ -1088,7 +1099,7 @@ function HeaderForm(props: {
     <form className="mt-4 grid gap-3" onSubmit={(event) => { event.preventDefault(); if (!dirty || props.pending) return; props.onSave({ title, summary, clientNotes, internalNotes }); }}>
       <div className="grid gap-1.5">
         <Label htmlFor="variation-title">Title</Label>
-        <Input id="variation-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+        <Input id="variation-title" className="min-h-11 text-base md:text-sm" value={title} onChange={(event) => setTitle(event.target.value)} required />
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="variation-summary">Client-facing summary</Label>
@@ -1098,9 +1109,9 @@ function HeaderForm(props: {
         <Label htmlFor="variation-client-notes">Client-facing notes</Label>
         <textarea id="variation-client-notes" className="min-h-16 w-full rounded-xl border bg-background px-3 py-2 text-sm" value={clientNotes} onChange={(event) => setClientNotes(event.target.value)} />
       </div>
-      <div className="grid gap-1.5" data-variation-internal-notes="true">
+      <div className="grid gap-1.5 rounded-xl border border-border/70 bg-muted/40 p-3" data-variation-internal-notes="true">
         <Label htmlFor="variation-internal-notes">Internal notes</Label>
-        <textarea id="variation-internal-notes" className="min-h-16 w-full rounded-xl border bg-background px-3 py-2 text-sm" value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} />
+        <textarea id="variation-internal-notes" className="min-h-16 w-full rounded-xl border bg-background px-3 py-2 text-base md:text-sm" value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} />
         <p className="text-xs text-muted-foreground">Internal notes stay off the client document.</p>
       </div>
       <Button type="submit" size="touch" disabled={props.pending || !dirty}>{props.pending ? "Saving…" : "Save details"}</Button>

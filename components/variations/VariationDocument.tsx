@@ -50,8 +50,8 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
           </div>
         </div>
         <div className="min-w-0 sm:shrink-0 sm:text-right">
-          <p className="text-sm font-semibold uppercase tracking-wide">Variation</p>
-          <p className="mt-1 text-sm">Variation {model.variationNumber}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Variation</p>
+          <p className="mt-1 text-2xl font-semibold tracking-tight">Variation {model.variationNumber}</p>
           <p className="text-sm">Revision {model.revisionNumber}</p>
           <Detail label="Issued" value={model.issueDateLabel} />
         </div>
@@ -156,7 +156,7 @@ export function VariationDocument({ model }: { model: VariationDocumentModel }) 
         ) : null}
       </section>
 
-      <section className="mt-6 break-inside-avoid border-t border-neutral-200 pt-4">
+      <section className="quote-template-totals mt-6 break-inside-avoid rounded-md border border-neutral-200 px-4 py-3">
         <h2 className="text-base font-semibold">Contract adjustment</h2>
         <dl className="mt-3 space-y-1 text-sm">
           <MoneyRow label="Net adjustment ex GST" value={model.netExLabel} />

@@ -40,7 +40,7 @@ export function VariationSupportingGallery({ files }: { files: VariationSupporti
                 </Button>
               ) : null}
               {file.downloadUrl ? (
-                <a className="inline-flex h-11 min-h-11 items-center rounded-2xl border px-4 text-sm font-medium focus-visible:ring-3 focus-visible:ring-neutral-400" href={file.downloadUrl}>
+                <a className="inline-flex h-11 min-h-11 items-center rounded-xl border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" href={file.downloadUrl}>
                   Download
                 </a>
               ) : null}
