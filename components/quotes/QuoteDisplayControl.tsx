@@ -43,7 +43,7 @@ export function QuoteDisplayControl({
         </p>
       </div>
       <fieldset
-        className="space-y-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5"
+        className="space-y-2 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
         disabled={disabled}
       >
         <legend className="sr-only">Client quote display</legend>

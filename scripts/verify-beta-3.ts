@@ -336,7 +336,12 @@ function main() {
   assert("pricing line tables are advanced/collapsed", workspace.includes("data-pricing-advanced-lines") && waSection.includes("useState(false)"));
   assert("pricing mobile bar exists", pricingMobile.includes("data-pricing-mobile-action-bar"));
   assert("public mobile accept bar is sticky", publicActions.includes('data-quote-public-actions="mobile"') && publicActions.includes("fixed inset-x-0 bottom-0"));
-  assert("contractor quote mobile send is primary", mobileBar.includes("Send quote") && quoteWorkspace.includes("Back to Pricing"));
+  assert(
+    "contractor quote mobile send is primary",
+    mobileBar.includes("Send quote") &&
+      projectNavigation.includes('title="Pricing"') &&
+      !quoteWorkspace.includes("Back to Pricing")
+  );
   assert("quote preview labelled for the client", quoteWorkspace.includes("What the client will see"));
 
   section("NAVIGATION / TERMINOLOGY");

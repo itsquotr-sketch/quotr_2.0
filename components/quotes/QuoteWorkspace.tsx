@@ -15,12 +15,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   canIssueQuoteDelivery,
   canMarkQuoteAccepted,
@@ -51,7 +56,9 @@ import { QuoteAcceptanceDetails } from "@/components/quotes/QuoteAcceptanceDetai
 import { QuoteSendSheet } from "@/components/quotes/QuoteSendSheet";
 import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import { formatQuoteDateTime } from "@/lib/quotes/display";
-import { quoteItemViewModel } from "@/lib/quotes/financial-view-model";
+import { quoteDocumentViewModel, quoteItemViewModel } from "@/lib/quotes/financial-view-model";
+import { arrayToTextList } from "@/lib/pricing/calculations";
+import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { groupQuoteItemsBySection } from "@/lib/quotes/mappers";
 import {
@@ -63,6 +70,8 @@ import { cn } from "@/lib/utils";
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
   template: ReactNode;
+  projectClientName?: string | null;
+  projectSiteAddress?: string | null;
 };
 
 function excerpt(value: string | null | undefined): string | null {
@@ -71,8 +80,18 @@ function excerpt(value: string | null | undefined): string | null {
   return text.length > 90 ? `${text.slice(0, 90)}…` : text;
 }
 
-export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
+function sameText(left: string | null | undefined, right: string | null | undefined) {
+  return (left?.trim() ?? "") === (right?.trim() ?? "");
+}
+
+export function QuoteWorkspace({
+  initialData,
+  template,
+  projectClientName = null,
+  projectSiteAddress = null,
+}: QuoteWorkspaceProps) {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const initiallyEditable = canMutateQuoteSnapshot(initialData.quote);
   const [viewMode, setViewMode] = useState<"review" | "preview">(
     initiallyEditable ? "review" : "preview"
@@ -85,6 +104,14 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const [sendOpen, setSendOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [assumptionText, setAssumptionText] = useState(() =>
+    arrayToTextList(initialData.quote.assumptions)
+  );
+  const [exclusionText, setExclusionText] = useState(() =>
+    arrayToTextList(initialData.quote.exclusions)
+  );
+  const [termsText, setTermsText] = useState(initialData.quote.terms ?? "");
+  const [notesText, setNotesText] = useState(initialData.quote.notes_to_client ?? "");
   const [openWorkAreas, setOpenWorkAreas] = useState<Record<string, boolean>>({});
   const quoteDraftRef = useRef<QuoteInput>({});
 
@@ -212,6 +239,11 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const clientMissing = !quote.client_name?.trim();
   const siteMissing = !quote.site_address?.trim();
   const clientContextMissing = clientMissing || siteMissing;
+  const projectDetailsDiffer =
+    isEditable &&
+    (!sameText(projectClientName, quote.client_name) ||
+      !sameText(projectSiteAddress, quote.site_address));
+  const quoteFinance = quoteDocumentViewModel(quote);
   const presentation = presentQuoteClientDocument(quote, items);
   const workAreas = groupQuoteItemsBySection(items);
   const visibleItemCount = items.filter((item) => item.visible !== false).length;
@@ -337,16 +369,6 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           onSave={isEditable ? handleSaveQuote : undefined}
           timeZone={displayTimeZone}
         />
-        {quote.pricing_document_id ? (
-          <p className="mt-2">
-            <Link
-              href={`/app/projects/${projectId}/pricing/${quote.pricing_document_id}`}
-              className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
-            >
-              Back to Pricing
-            </Link>
-          </p>
-        ) : null}
       </div>
 
       {sendLockActive ? (
@@ -467,30 +489,6 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </div>
       </div>
 
-      {isEditable && clientContextMissing ? (
-        <div
-          className="rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden"
-          role="status"
-          data-quote-client-warning="true"
-        >
-          <p>
-            Client or site details have not been added. You can still send this Quote, but review how it will appear to the recipient.
-          </p>
-          <Link
-            href={`/app/projects/${projectId}/information`}
-            className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
-          >
-            Edit project details
-          </Link>
-        </div>
-      ) : null}
-
-      {showReview ? (
-        <div className="print:hidden xl:hidden">
-          <QuoteSummaryPanel quote={quote} showActions={false} />
-        </div>
-      ) : null}
-
       <div className="space-y-3 print:hidden xl:hidden">{deliveryAndHistory}</div>
 
       <div
@@ -498,164 +496,171 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         data-quote-view={showReview ? (isEditable ? "finalise" : "details") : "preview"}
       >
         <div className="min-w-0 space-y-5">
-          <div className={cn("space-y-5 print:hidden", !showReview && "hidden")}>
-            {isEditable ? (
-              <section
-                id="quote-readiness"
-                className="scroll-mt-24 rounded-lg border border-border bg-card px-4 py-3"
-              >
-                <h2 className="text-base font-semibold">
-                  {clientContextMissing || visibleItemCount === 0
-                    ? "Before sending"
-                    : "Ready to send"}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  You choose the client name and email when you send. This draft can be sent.
-                </p>
-                {clientContextMissing || visibleItemCount === 0 ? (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {clientContextMissing ? (
-                      <li>
-                        <a className="underline-offset-4 hover:underline" href="#quote-client-context">
-                          Client and site · Needs attention
-                        </a>
-                      </li>
-                    ) : null}
-                    {visibleItemCount === 0 ? (
-                      <li>
-                        <a className="underline-offset-4 hover:underline" href="#quote-work-review">
-                          Visible items · Needs attention
-                        </a>
-                      </li>
-                    ) : null}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-sm">
-                    {visibleItemCount} visible {visibleItemCount === 1 ? "item" : "items"} · {presentationLabel}
+          <div
+            className={cn(
+              "divide-y divide-border/70 rounded-xl border border-border bg-card print:hidden",
+              !showReview && "hidden"
+            )}
+          >
+            <section id="quote-readiness" className="scroll-mt-24 px-4 py-4">
+              <h2 className="text-base font-semibold">
+                {isEditable ? "Before sending" : "Details"}
+              </h2>
+              {isEditable ? (
+                <>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt>Quote document</dt>
+                      <dd>{visibleItemCount === 0 ? "Needs attention" : "Ready"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Client on Quote</dt>
+                      <dd>{quote.client_name?.trim() || "Not added"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Site on Quote</dt>
+                      <dd>{quote.site_address?.trim() || "Not added"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Recipient</dt>
+                      <dd>Chosen when sending</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Terms</dt>
+                      <dd>{quote.terms?.trim() ? "Complete" : "Optional"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Total</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {quoteFinance.showGst
+                          ? `${quoteFinance.totalInclGstFormatted} incl. GST`
+                          : quoteFinance.totalInclGstFormatted}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    You choose the client name and email when you send.
+                    {projectClientEmail
+                      ? " The project email only fills that step."
+                      : ""}
                   </p>
-                )}
-              </section>
-            ) : (
-              <section className="rounded-lg border border-border bg-card px-4 py-3">
-                <h2 className="text-base font-semibold">Details</h2>
+                  {clientContextMissing ? (
+                    <div className="mt-3 text-sm" role="status" data-quote-client-warning="true">
+                      <p>
+                        This Quote can be sent. Review how missing client or site details will appear to the recipient. You can still send this Quote.
+                      </p>
+                      <Link
+                        href={`/app/projects/${projectId}/information#project-client-site`}
+                        className="mt-2 inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline"
+                      >
+                        Edit project client and site
+                      </Link>
+                    </div>
+                  ) : null}
+                  {projectDetailsDiffer ? (
+                    <p className="mt-3 text-sm text-muted-foreground" role="status">
+                      Project details have changed since this Quote was created. Update the Draft to use the latest details.
+                    </p>
+                  ) : null}
+                  {visibleItemCount === 0 ? (
+                    <p className="mt-3 text-sm">
+                      <a className="underline-offset-4 hover:underline" href="#quote-work-review">
+                        Visible items · Needs attention
+                      </a>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
                 <p className="mt-1 text-sm text-muted-foreground">
                   This issued snapshot is not edited here. Client preview shows the document that was sent.
                 </p>
-              </section>
-            )}
-
-            <section
-              id="quote-client-context"
-              className="scroll-mt-24 rounded-lg border border-border/60 bg-card px-4 py-3"
-            >
-              <h2 className="text-base font-semibold">Client and delivery</h2>
-              <dl className="mt-2 space-y-1 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">Client</dt>
-                  <dd>{quote.client_name?.trim() || "Not on this quote"}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted-foreground">Site</dt>
-                  <dd>{quote.site_address?.trim() || "Not on this quote"}</dd>
-                </div>
-              </dl>
-              <p className="mt-2 text-sm text-muted-foreground">
-                You choose the client name and email when you send.
-                {projectClientEmail
-                  ? " The project email only fills that step. It is not the quote recipient until you send."
-                  : ""}
-              </p>
+              )}
             </section>
 
-            <Card id="quote-edit-details" className="scroll-mt-24 border-border/60 shadow-none">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Quote details</CardTitle>
-                <CardDescription className="text-sm">
-                  Shown on the client document. Dates and scope are optional.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                {isEditable ? (
-                  <>
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="quote-title">Quote title</Label>
-                      <p className="text-xs text-muted-foreground">Optional label on the quote.</p>
-                      <Input
-                        id="quote-title"
-                        className="min-h-11 text-base md:text-sm"
-                        defaultValue={quote.title}
-                        onChange={(event) =>
-                          handleQuoteChange({ title: event.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="quote-issue-date">Issue date</Label>
-                      <Input
-                        id="quote-issue-date"
-                        className="min-h-11 text-base md:text-sm"
-                        type="date"
-                        defaultValue={quote.issue_date ?? ""}
-                        onChange={(event) =>
-                          handleQuoteChange({
-                            issue_date: event.target.value || null,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="quote-valid-until">Valid until</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Shown to the client. It does not block sending.
-                      </p>
-                      <Input
-                        id="quote-valid-until"
-                        className="min-h-11 text-base md:text-sm"
-                        type="date"
-                        defaultValue={quote.valid_until ?? ""}
-                        onChange={(event) =>
-                          handleQuoteChange({
-                            valid_until: event.target.value || null,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <Label htmlFor="quote-scope">Scope summary</Label>
-                      <p className="text-xs text-muted-foreground">Optional client-facing summary.</p>
-                      <Textarea
-                        id="quote-scope"
-                        className="text-base md:text-sm"
-                        rows={3}
-                        defaultValue={quote.scope_summary ?? ""}
-                        onChange={(event) =>
-                          handleQuoteChange({
-                            scope_summary: event.target.value || null,
-                          })
-                        }
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <dl className="space-y-2 text-sm sm:col-span-2">
-                    <div>
-                      <dt className="text-muted-foreground">Quote title</dt>
-                      <dd>{quote.title || "Not set"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Scope summary</dt>
-                      <dd>{quote.scope_summary?.trim() || "Optional · not added"}</dd>
-                    </div>
-                  </dl>
-                )}
-              </CardContent>
-            </Card>
+            <section id="quote-edit-details" className="scroll-mt-24 px-4 py-4">
+              <h2 className="text-base font-semibold">Quote details</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Shown on the client document. Dates and scope are optional.
+              </p>
+              {isEditable ? (
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="quote-title">Quote title</Label>
+                    <p className="min-h-8 text-xs text-muted-foreground">Optional label on the quote.</p>
+                    <Input
+                      id="quote-title"
+                      className="min-h-11 text-base md:text-sm"
+                      defaultValue={quote.title}
+                      onChange={(event) =>
+                        handleQuoteChange({ title: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="quote-issue-date">Issue date</Label>
+                    <p className="min-h-8 text-xs text-muted-foreground">Shown on the client Quote.</p>
+                    <Input
+                      id="quote-issue-date"
+                      className="min-h-11 text-base md:text-sm"
+                      type="date"
+                      defaultValue={quote.issue_date ?? ""}
+                      onChange={(event) =>
+                        handleQuoteChange({
+                          issue_date: event.target.value || null,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="quote-valid-until">Valid until</Label>
+                    <p className="min-h-8 text-xs text-muted-foreground">
+                      Shown to the client. Does not block sending.
+                    </p>
+                    <Input
+                      id="quote-valid-until"
+                      className="min-h-11 text-base md:text-sm"
+                      type="date"
+                      defaultValue={quote.valid_until ?? ""}
+                      onChange={(event) =>
+                        handleQuoteChange({
+                          valid_until: event.target.value || null,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="quote-scope">Scope summary</Label>
+                    <p className="min-h-8 text-xs text-muted-foreground">Optional client-facing summary.</p>
+                    <Textarea
+                      id="quote-scope"
+                      className="text-base md:text-sm"
+                      rows={3}
+                      defaultValue={quote.scope_summary ?? ""}
+                      onChange={(event) =>
+                        handleQuoteChange({
+                          scope_summary: event.target.value || null,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : (
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Quote title</dt>
+                    <dd>{quote.title || "Not set"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Scope summary</dt>
+                    <dd>{quote.scope_summary?.trim() || "Optional · not added"}</dd>
+                  </div>
+                </dl>
+              )}
+            </section>
 
-            <Card className="border-border/60 shadow-none">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Client presentation</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
+            <section className="px-4 py-4">
+              <h2 className="text-base font-semibold">Client presentation</h2>
+              <div className="mt-3 grid gap-4">
                 {isEditable ? (
                   <>
                     <QuotePresentationControl
@@ -674,10 +679,10 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                     {presentationLabel}. Client will see: {clientDisplaySummary}
                   </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            <section id="quote-work-review" className="scroll-mt-24 space-y-2">
+            <section id="quote-work-review" className="scroll-mt-24 space-y-2 px-4 py-4">
               <h2 className="text-base font-semibold">Scope and Work Areas</h2>
               <p className="text-sm text-muted-foreground">
                 {presentationLabel}. Hidden lines stay on the quote. They are not deleted.
@@ -720,7 +725,8 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                                 : "No client description · optional"}
                               {" · "}
                               {visible.length} visible
-                              {hidden.length > 0 ? ` · ${hidden.length} hidden` : ""}
+                              {hidden.length > 0 ? ` · ${hidden.length} hidden from the client` : ""}
+                              {" · Review"}
                             </span>
                           </span>
                           {presentation.mode === "grouped" && grouped ? (
@@ -730,79 +736,82 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                           ) : null}
                         </span>
                       </summary>
-                      <ul className="space-y-2 border-t border-border/60 px-4 py-3 text-sm">
+                      <div className="space-y-2 border-t border-border/60 px-4 py-3 text-sm">
+                        <p>
+                          {section.sectionDescription?.trim() ||
+                            "No client description. Optional. Update this draft from Pricing to bring in the latest client wording."}
+                        </p>
+                        <p className="text-muted-foreground">
+                          Hidden lines stay on the quote. They are not deleted.
+                        </p>
+                      <ul className="space-y-2">
                         {section.items.map((item) => {
                           const line = quoteItemViewModel(item);
                           return (
                             <li key={item.id} className="flex justify-between gap-3">
                               <span>
                                 {item.label}
-                                {item.visible === false ? " · Hidden" : ""}
+                                {item.visible === false ? " · Hidden from the client" : ""}
                               </span>
                               <span className="tabular-nums">{line.totalFormatted}</span>
                             </li>
                           );
                         })}
                       </ul>
+                      </div>
                     </details>
                   );
                 })
               )}
             </section>
 
-            <section id="quote-terms" className="scroll-mt-24 rounded-lg border border-border/60 bg-card">
-              <div className="px-4 py-3">
+            <section id="quote-terms" className="scroll-mt-24 px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
                 <h2 className="text-base font-semibold">Terms, assumptions and exclusions</h2>
-                <ul className="mt-2 space-y-1 text-sm">
-                  <li>Validity · {quote.valid_until ? "Complete" : "Optional"}</li>
-                  <li>
-                    Assumptions · {quote.assumptions.length > 0 ? `${quote.assumptions.length} added` : "Optional"}
-                    {excerpt(quote.assumptions[0]) ? ` · ${excerpt(quote.assumptions[0])}` : ""}
-                  </li>
-                  <li>
-                    Exclusions · {quote.exclusions.length > 0 ? `${quote.exclusions.length} added` : "Optional"}
-                  </li>
-                  <li>Quote terms · {quote.terms?.trim() ? "Complete" : "Optional"}</li>
-                  <li>Notes to client · {quote.notes_to_client?.trim() ? "Complete" : "Optional"}</li>
-                  {quote.inclusions.length > 0 ? (
-                    <li>Inclusions · {quote.inclusions.length} added</li>
-                  ) : null}
-                </ul>
-              </div>
-              {isEditable ? (
-                <details
-                  className="border-t border-border/60"
-                  onToggle={(event) =>
-                    setTermsOpen((event.currentTarget as HTMLDetailsElement).open)
-                  }
-                >
-                  <summary
-                    className="min-h-11 cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden"
+                {isEditable ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 shrink-0"
                     aria-expanded={termsOpen}
+                    onClick={() => setTermsOpen(true)}
                   >
-                    Edit terms and exclusions
-                  </summary>
-                  <QuoteTermsCard
-                    assumptions={quote.assumptions}
-                    exclusions={quote.exclusions}
-                    inclusions={quote.inclusions}
-                    terms={quote.terms}
-                    notesToClient={quote.notes_to_client}
-                    onChange={handleQuoteChange}
-                    bare
-                  />
-                </details>
-              ) : null}
+                    Edit
+                  </Button>
+                ) : null}
+              </div>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li className="flex justify-between gap-3">
+                  <span>Validity</span>
+                  <span>{quote.valid_until ? "Complete" : "Optional"}</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span>Assumptions</span>
+                  <span>
+                    {quote.assumptions.length > 0 ? `${quote.assumptions.length} added` : "Optional"}
+                    {excerpt(quote.assumptions[0]) ? ` · ${excerpt(quote.assumptions[0])}` : ""}
+                  </span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span>Exclusions</span>
+                  <span>{quote.exclusions.length > 0 ? `${quote.exclusions.length} added` : "Optional"}</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span>Quote terms</span>
+                  <span>{quote.terms?.trim() ? "Complete" : "Optional"}</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span>Notes to client</span>
+                  <span>{quote.notes_to_client?.trim() ? "Complete" : "Optional"}</span>
+                </li>
+                {quote.inclusions.length > 0 ? (
+                  <li className="flex justify-between gap-3">
+                    <span>Inclusions</span>
+                    <span>{quote.inclusions.length} added</span>
+                  </li>
+                ) : null}
+              </ul>
             </section>
-
-            {isEditable ? (
-              <section className="rounded-lg border border-border bg-card px-4 py-3">
-                <h2 className="text-base font-semibold">Final review</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Check Client preview, then send. The client name and email are confirmed in that step. The stored total does not change.
-                </p>
-              </section>
-            ) : null}
           </div>
 
           <div
@@ -859,6 +868,16 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         reviewLabel={reviewLabel}
         onShowReview={() => setViewMode("review")}
         onShowPreview={() => setViewMode("preview")}
+        onRefreshFromPricing={
+          canRefreshFromPricing ? handleRefreshFromPricing : undefined
+        }
+        refreshLabel={
+          canRefreshFromPricing
+            ? isDraftRefresh
+              ? "Update from Pricing"
+              : "Create revision"
+            : undefined
+        }
         onSendQuote={
           canIssueQuoteDelivery(quote.status)
             ? () => setSendOpen(true)
@@ -879,6 +898,69 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
+      {isEditable ? (
+        isDesktop ? (
+          <Dialog open={termsOpen} onOpenChange={setTermsOpen}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Terms, assumptions and exclusions</DialogTitle>
+              </DialogHeader>
+              {saveError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {saveError}
+                </p>
+              ) : null}
+              <QuoteTermsCard
+                assumptions={quote.assumptions}
+                exclusions={quote.exclusions}
+                inclusions={quote.inclusions}
+                terms={quote.terms}
+                notesToClient={quote.notes_to_client}
+                assumptionText={assumptionText}
+                exclusionText={exclusionText}
+                termsText={termsText}
+                notesText={notesText}
+                onAssumptionTextChange={setAssumptionText}
+                onExclusionTextChange={setExclusionText}
+                onTermsTextChange={setTermsText}
+                onNotesTextChange={setNotesText}
+                onChange={handleQuoteChange}
+                bare
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Sheet open={termsOpen} onOpenChange={setTermsOpen}>
+            <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Terms, assumptions and exclusions</SheetTitle>
+              </SheetHeader>
+              {saveError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {saveError}
+                </p>
+              ) : null}
+              <QuoteTermsCard
+                assumptions={quote.assumptions}
+                exclusions={quote.exclusions}
+                inclusions={quote.inclusions}
+                terms={quote.terms}
+                notesToClient={quote.notes_to_client}
+                assumptionText={assumptionText}
+                exclusionText={exclusionText}
+                termsText={termsText}
+                notesText={notesText}
+                onAssumptionTextChange={setAssumptionText}
+                onExclusionTextChange={setExclusionText}
+                onTermsTextChange={setTermsText}
+                onNotesTextChange={setNotesText}
+                onChange={handleQuoteChange}
+                bare
+              />
+            </SheetContent>
+          </Sheet>
+        )
+      ) : null}
       {canIssueQuoteDelivery(quote.status) ||
       canResendQuoteDelivery(quote.status) ? (
         <QuoteSendSheet

@@ -77,6 +77,8 @@ export default async function QuotePage({ params }: QuotePageProps) {
         </div>
         <QuoteWorkspace
           initialData={data}
+          projectClientName={project.client_name}
+          projectSiteAddress={project.site_address}
           template={
         <QuoteTemplate
           quote={data.quote}

@@ -63,7 +63,12 @@ export default async function ProjectInformationPage({
         />
       }
     >
-      <ProjectInformationWorkspace model={model} projectId={projectId} documents={documents} />
+      <ProjectInformationWorkspace
+        model={model}
+        project={project}
+        projectId={projectId}
+        documents={documents}
+      />
     </WorkspacePage>
   );
 }

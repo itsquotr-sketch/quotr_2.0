@@ -41,7 +41,7 @@ export function QuotePresentationControl({
     <div className="space-y-2 sm:col-span-2">
       <p className="text-sm font-medium">Client presentation</p>
       <div
-        className="grid gap-2 sm:grid-cols-3"
+        className="grid gap-1 sm:grid-cols-3 sm:gap-2"
         role="radiogroup"
         aria-label="Client quote presentation"
       >
@@ -55,18 +55,16 @@ export function QuotePresentationControl({
               disabled={disabled}
               aria-checked={selected}
               className={cn(
-                "min-h-11 rounded-lg border px-3 py-2 text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "min-h-11 rounded-md border px-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selected
-                  ? "border-foreground/40 bg-background font-semibold text-foreground shadow-sm"
-                  : "border-border bg-muted/30 text-muted-foreground",
+                  ? "border-foreground/30 bg-background font-semibold text-foreground"
+                  : "border-transparent text-muted-foreground",
                 disabled && "cursor-not-allowed opacity-60"
               )}
               onClick={() => onChange(option.value)}
             >
-              <span className="block">{option.label}</span>
-              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                {selected ? "Selected" : "Not selected"}
-              </span>
+              {option.label}
+              <span className="sr-only">{selected ? " selected" : " not selected"}</span>
             </button>
           );
         })}

@@ -32,6 +32,8 @@ const selectClassName = cn(
 
 type EditProjectDialogProps = {
   project: Project;
+  triggerLabel?: string;
+  triggerClassName?: string;
 };
 
 function projectToFormState(project: Project) {
@@ -47,7 +49,11 @@ function projectToFormState(project: Project) {
   };
 }
 
-export function EditProjectDialog({ project }: EditProjectDialogProps) {
+export function EditProjectDialog({
+  project,
+  triggerLabel = "Edit project",
+  triggerClassName,
+}: EditProjectDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(project.title);
@@ -121,10 +127,10 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        className={cn("min-h-11", triggerClassName)}
         onClick={() => handleOpenChange(true)}
       >
-        Edit project
+        {triggerLabel}
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -139,7 +145,10 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error ? (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p
+                className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
                 {error}
               </p>
             ) : null}

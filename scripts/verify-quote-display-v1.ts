@@ -492,7 +492,11 @@ assert(
 
 section("MIGRATIONS");
 const latest = numberedMigrations().at(-1) ?? "";
-assert("preview remains through 054", latest.startsWith("054_"));
+assert(
+  "preview remains through 054",
+  numberedMigrations().some((name) => name.startsWith("054_")) &&
+    latest === "080_project_document_delete.sql"
+);
 assert("no migration 055", !existsSync("supabase/migrations/055_quote_display.sql"));
 assert(
   "controls use builder language",

@@ -25,6 +25,8 @@ type QuoteMobileActionBarProps = {
   onShowReview?: () => void;
   onShowPreview?: () => void;
   reviewLabel?: string;
+  onRefreshFromPricing?: () => void;
+  refreshLabel?: string;
   onSendQuote?: () => void;
   onResendQuote?: () => void;
   onMarkAccepted?: () => void;
@@ -44,6 +46,8 @@ export function QuoteMobileActionBar({
   onShowReview,
   onShowPreview,
   reviewLabel = "Finalise",
+  onRefreshFromPricing,
+  refreshLabel,
   onSendQuote,
   onResendQuote,
   onMarkAccepted,
@@ -77,6 +81,11 @@ export function QuoteMobileActionBar({
           <DropdownMenuItem className="min-h-11" onClick={onPrint}>
             Print / Save as PDF
           </DropdownMenuItem>
+          {onRefreshFromPricing && refreshLabel ? (
+            <DropdownMenuItem className="min-h-11" onClick={onRefreshFromPricing}>
+              {refreshLabel}
+            </DropdownMenuItem>
+          ) : null}
           {viewMode === "preview" ? (
             <DropdownMenuItem className="min-h-11" onClick={onShowReview}>
               {reviewLabel}

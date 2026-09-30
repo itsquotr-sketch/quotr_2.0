@@ -21,6 +21,14 @@ type QuoteTermsCardProps = {
   notesToClient: string | null;
   onChange: (updates: QuoteInput) => void;
   bare?: boolean;
+  assumptionText?: string;
+  exclusionText?: string;
+  termsText?: string;
+  notesText?: string;
+  onAssumptionTextChange?: (value: string) => void;
+  onExclusionTextChange?: (value: string) => void;
+  onTermsTextChange?: (value: string) => void;
+  onNotesTextChange?: (value: string) => void;
 };
 
 export function QuoteTermsCard({
@@ -31,6 +39,14 @@ export function QuoteTermsCard({
   notesToClient,
   onChange,
   bare = false,
+  assumptionText,
+  exclusionText,
+  termsText,
+  notesText,
+  onAssumptionTextChange,
+  onExclusionTextChange,
+  onTermsTextChange,
+  onNotesTextChange,
 }: QuoteTermsCardProps) {
   const fields = (
     <div className="grid gap-4">
@@ -57,10 +73,13 @@ export function QuoteTermsCard({
           id="quote-assumptions"
           className="text-base md:text-sm"
           rows={4}
-          defaultValue={arrayToTextList(assumptions)}
-          onChange={(event) =>
-            onChange({ assumptions: textListToArray(event.target.value) })
-          }
+          {...(assumptionText !== undefined
+            ? { value: assumptionText }
+            : { defaultValue: arrayToTextList(assumptions) })}
+          onChange={(event) => {
+            onAssumptionTextChange?.(event.target.value);
+            onChange({ assumptions: textListToArray(event.target.value) });
+          }}
         />
       </div>
       <div className="space-y-1.5">
@@ -74,10 +93,13 @@ export function QuoteTermsCard({
           id="quote-exclusions"
           className="text-base md:text-sm"
           rows={4}
-          defaultValue={arrayToTextList(exclusions)}
-          onChange={(event) =>
-            onChange({ exclusions: textListToArray(event.target.value) })
-          }
+          {...(exclusionText !== undefined
+            ? { value: exclusionText }
+            : { defaultValue: arrayToTextList(exclusions) })}
+          onChange={(event) => {
+            onExclusionTextChange?.(event.target.value);
+            onChange({ exclusions: textListToArray(event.target.value) });
+          }}
         />
       </div>
       <div className="space-y-1.5">
@@ -91,10 +113,13 @@ export function QuoteTermsCard({
           id="quote-terms"
           className="text-base md:text-sm"
           rows={5}
-          defaultValue={terms ?? ""}
-          onChange={(event) =>
-            onChange({ terms: event.target.value || null })
-          }
+          {...(termsText !== undefined
+            ? { value: termsText }
+            : { defaultValue: terms ?? "" })}
+          onChange={(event) => {
+            onTermsTextChange?.(event.target.value);
+            onChange({ terms: event.target.value || null });
+          }}
         />
       </div>
       <div className="space-y-1.5">
@@ -105,10 +130,13 @@ export function QuoteTermsCard({
           id="quote-notes"
           className="text-base md:text-sm"
           rows={4}
-          defaultValue={notesToClient ?? ""}
-          onChange={(event) =>
-            onChange({ notes_to_client: event.target.value || null })
-          }
+          {...(notesText !== undefined
+            ? { value: notesText }
+            : { defaultValue: notesToClient ?? "" })}
+          onChange={(event) => {
+            onNotesTextChange?.(event.target.value);
+            onChange({ notes_to_client: event.target.value || null });
+          }}
         />
       </div>
     </div>

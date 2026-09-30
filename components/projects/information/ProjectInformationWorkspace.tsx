@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
+import type { Project } from "@/lib/projects/types";
 import { CapturedDetails } from "@/components/projects/information/CapturedDetails";
 import { ProjectDocumentsSection } from "@/components/projects/information/ProjectDocumentsSection";
 import { PROJECT_DOCUMENT_OWNERSHIP } from "@/components/projects/information/project-documents";
@@ -12,12 +14,14 @@ import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 
 type ProjectInformationWorkspaceProps = {
   model: ProjectInformationModel;
+  project: Project;
   projectId: string;
   documents: ProjectDocumentCentreModel;
 };
 
 export function ProjectInformationWorkspace({
   model,
+  project,
   projectId,
   documents,
 }: ProjectInformationWorkspaceProps) {
@@ -33,6 +37,22 @@ export function ProjectInformationWorkspace({
       <div className="mt-4 grid gap-3" data-project-information-cards>
         <InfoCard title="Overview">
           <FieldList fields={model.overview} columns="three" />
+          <div
+            id="project-client-site"
+            className="mt-4 scroll-mt-24 border-t border-border/70 pt-4"
+          >
+            <h4 className="text-sm font-semibold">Client and site</h4>
+            <p className="mt-1 text-sm text-muted-foreground">
+              These belong to the project. A draft quote keeps the client and
+              site it was created with until you update that draft.
+            </p>
+            <div className="mt-3">
+              <EditProjectDialog
+                project={project}
+                triggerLabel="Edit project client and site"
+              />
+            </div>
+          </div>
         </InfoCard>
         <InfoCard title="Job and site">
           {model.job.length > 0 ? (
