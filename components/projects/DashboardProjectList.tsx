@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { ProjectMobileCard } from "@/components/projects/ProjectMobileCard";
@@ -36,6 +36,7 @@ export function DashboardProjectList({
   initialSearch,
 }: DashboardProjectListProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const isDesktop = useIsDesktop();
@@ -62,11 +63,14 @@ export function DashboardProjectList({
       }
 
       const query = params.toString();
+      const base = pathname.startsWith("/app/projects")
+        ? "/app/projects"
+        : "/app/dashboard";
       startTransition(() => {
-        router.replace(query ? `/app/dashboard?${query}` : "/app/dashboard");
+        router.replace(query ? `${base}?${query}` : base);
       });
     },
-    [router, searchParams]
+    [pathname, router, searchParams]
   );
 
   const emptyTitle =

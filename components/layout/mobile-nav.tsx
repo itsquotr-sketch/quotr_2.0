@@ -29,8 +29,9 @@ export function MobileNav() {
               key={href}
               href={href}
               prefetch
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium transition-colors",
+                "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
                 isActive
                   ? "text-[var(--brand-orange)]"
                   : "text-muted-foreground"
@@ -42,7 +43,7 @@ export function MobileNav() {
           );
         })}
         <MobileMenuSheet
-          triggerClassName="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium text-muted-foreground"
+          triggerClassName="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
         />
       </div>
     </nav>

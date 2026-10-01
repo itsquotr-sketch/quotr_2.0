@@ -133,8 +133,10 @@ function main() {
   section("CONSUMERS");
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
   assert(
-    "dashboard header wires UserMenu/AccountMenu",
-    dashboard.includes("UserMenu") || dashboard.includes("AccountMenu")
+    "dashboard header leaves account to the shell",
+    read("components/layout/app-shell.tsx").includes("AccountMenu") &&
+      !dashboard.includes("<UserMenu") &&
+      !dashboard.includes("<AccountMenu")
   );
   const appSidebar = read("components/app-sidebar.tsx");
   assert(

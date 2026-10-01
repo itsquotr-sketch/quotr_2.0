@@ -7,6 +7,7 @@
  */
 import "server-only";
 
+import { deriveDashboardAttention, type DashboardAttentionItem } from "@/lib/dashboard/attention";
 import {
   deriveRecentActivity,
   type RecentActivityItem,
@@ -47,6 +48,7 @@ export type DashboardPageData = {
   readiness: CompanySetupReadiness;
   hasProjects: boolean;
   activity: RecentActivityItem[];
+  attention: DashboardAttentionItem[];
 };
 
 function summarizePipeline(
@@ -120,12 +122,14 @@ export async function loadDashboardPageData(options: {
 }): Promise<DashboardPageData> {
   const context = await getAuthOrgContext();
   if (!context) {
+    const readiness = await getCompanySetupReadiness();
     return {
       projects: [],
       summary: EMPTY_SUMMARY,
-      readiness: await getCompanySetupReadiness(),
+      readiness,
       hasProjects: false,
       activity: [],
+      attention: deriveDashboardAttention({ projects: [], readiness }),
     };
   }
 
@@ -265,12 +269,23 @@ export async function loadDashboardPageData(options: {
     if (picked) quoteByProject.set(projectId, picked);
   }
 
+  const commercialProjects: ProjectListItem[] = allProjects.map((project) => {
+    const estimate = estimateByProject.get(project.id);
+    return {
+      ...project,
+      has_estimate: Boolean(estimate),
+      estimate_is_stale: estimate?.is_stale ?? false,
+      pricing_summary: pricingByProject.get(project.id) ?? null,
+      quote_summary: quoteByProject.get(project.id) ?? null,
+    };
+  });
+
   let listed = applyProjectListFilter(
-    allProjects,
+    commercialProjects,
     options.filter,
     schema.lifecycleAvailable,
     schema.businessStatusAvailable
-  );
+  ) as ProjectListItem[];
   const search = options.search.trim().toLowerCase();
   if (search) {
     listed = listed.filter((project) => {
@@ -282,16 +297,7 @@ export async function loadDashboardPageData(options: {
     });
   }
 
-  const projects: ProjectListItem[] = listed.map((project) => {
-    const estimate = estimateByProject.get(project.id);
-    return {
-      ...project,
-      has_estimate: Boolean(estimate),
-      estimate_is_stale: estimate?.is_stale ?? false,
-      pricing_summary: pricingByProject.get(project.id) ?? null,
-      quote_summary: quoteByProject.get(project.id) ?? null,
-    };
-  });
+  const projects = listed;
 
   const titleById = new Map(
     allProjects.map((project) => [project.id, project.title ?? "Project"])
@@ -338,5 +344,9 @@ export async function loadDashboardPageData(options: {
     readiness,
     hasProjects,
     activity,
+    attention: deriveDashboardAttention({
+      projects: commercialProjects,
+      readiness,
+    }),
   };
 }

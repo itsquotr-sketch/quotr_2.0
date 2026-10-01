@@ -220,9 +220,10 @@ check(
 
 const dash = read("app/(protected)/app/dashboard/page.tsx");
 check(
-  "dashboard empty state uses org existence not filtered list",
-  dash.includes("organisationHasProjects") &&
+  "dashboard empty state uses loader existence not filtered list",
+  dash.includes("loadDashboardPageData") &&
     dash.includes("const isEmpty = !hasProjects") &&
+    !dash.includes("organisationHasProjects(") &&
     !dash.includes("const isEmpty = projects.length === 0")
 );
 check(
@@ -231,7 +232,7 @@ check(
 );
 check(
   "dashboard still lists projects when org has jobs",
-  dash.includes("DashboardProjectList") && dash.includes("hasProjects={!isEmpty}")
+  dash.includes("DashboardProjectList") && dash.includes("!hasProjects")
 );
 
 console.log("\n--- DECK BOARD WIDTH ---\n");

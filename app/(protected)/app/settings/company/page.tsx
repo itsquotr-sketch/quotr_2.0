@@ -1,10 +1,8 @@
 import { notFound, redirect } from "next/navigation";
-import { FormContainer } from "@/components/layout/page-containers";
+import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
-import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
 import { measureServerLoad } from "@/lib/perf/timing";
-import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettings } from "@/lib/settings/company-actions";
 import { getSetupState } from "@/lib/setup/actions";
@@ -28,7 +26,7 @@ export default async function CompanySettingsPage({
   const initialSection =
     parseCompanySettingsSection(params.section) ?? "overview";
 
-  const [settings, canEdit, display, setupState] = await Promise.all([
+  const [settings, canEdit, setupState] = await Promise.all([
     measureServerLoad("company-settings", () => getCompanySettings()),
     (async () => {
       const auth = await getAuthOrgContext();
@@ -41,7 +39,6 @@ export default async function CompanySettingsPage({
         })
       ).ok;
     })(),
-    getAuthDisplayProfile(),
     getSetupState(),
   ]);
 
@@ -53,20 +50,16 @@ export default async function CompanySettingsPage({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
-        description="Business details, tax, work types, and what appears on Quotes and Variations."
-        wrapDescription
-        actions={<UserMenu />}
+        description="Business details, tax, work types, and documents."
       />
-      <FormContainer>
+      <PageContainer innerClassName="py-4 sm:py-6">
         <CompanySettingsContent
           initialSettings={settings}
-          userEmail={display?.userEmail}
-          userFullName={display?.fullName}
           initialSection={initialSection}
           canEdit={canEdit}
           setupState={setupState}
         />
-      </FormContainer>
+      </PageContainer>
     </div>
   );
 }

@@ -171,12 +171,13 @@ check(
     companyPage.includes("await Promise.all([")
 );
 check(
-  "14. primary nav prefetches Dashboard/Rates/Company/Setup",
+  "14. primary nav prefetches Dashboard/Projects/Rates/Company",
   sidebar.includes("prefetch") &&
     sidebar.includes('href: "/app/dashboard"') &&
+    sidebar.includes('href: "/app/projects"') &&
     sidebar.includes('href: "/app/rates"') &&
     sidebar.includes('href: "/app/settings/company"') &&
-    sidebar.includes('href: "/app/setup"') &&
+    !sidebar.includes('href: "/app/setup"') &&
     mobileNav.includes("prefetch")
 );
 check(

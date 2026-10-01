@@ -75,22 +75,25 @@ assert(
 );
 
 section("DASHBOARD DISCLOSURE");
-const improve = read("components/setup/ImproveSetupCard.tsx");
-assert("Collapse control present", /Collapse/.test(improve));
-assert("Expand control present", improve.includes("Expand"));
-assert("no misleading Hide CTA", !/\bHide\b/.test(improve));
-assert(
-  "localStorage presentation preference",
-  improve.includes("localStorage") && improve.includes("quotr.setupGuidance.collapsed")
-);
-assert(
-  "hasProjects defaults collapsed",
-  improve.includes("hasProjects") && improve.includes("defaultCollapsed")
-);
+const prompt = read("components/setup/OptionalPersonalisationPrompt.tsx");
 const dash = read("app/(protected)/app/dashboard/page.tsx");
 assert(
-  "Dashboard passes hasProjects",
-  dash.includes("hasProjects={!isEmpty}")
+  "optional personalisation is dismissible",
+  prompt.includes("data-optional-personalisation") &&
+    prompt.includes("Not now") &&
+    prompt.includes("dismissOptionalPersonalisation")
+);
+assert(
+  "retired collapse card is not the dashboard surface",
+  !dash.includes("ImproveSetupCard") &&
+    !dash.includes("quotr.setupGuidance.collapsed")
+);
+assert(
+  "Dashboard uses loader hasProjects for the first-job state",
+  dash.includes("loadDashboardPageData") &&
+    dash.includes("const isEmpty = !hasProjects") &&
+    dash.includes('data-first-job-empty="true"') &&
+    !dash.includes("hasProjects={!isEmpty}")
 );
 
 section("DEEP LINKS");

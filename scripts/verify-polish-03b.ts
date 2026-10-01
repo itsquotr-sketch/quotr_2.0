@@ -60,8 +60,11 @@ check(
     !/label:\s*"Billing"/.test(sidebar)
 );
 check(
-  "mobile sheet does not list Billing as primary nav",
-  !mobileSheet.includes("/app/settings/billing")
+  "mobile menu lists Billing as an account destination",
+  mobileSheet.includes("/app/settings/billing") &&
+    read("components/layout/mobile-nav.tsx").includes("/app/dashboard") &&
+    read("components/layout/mobile-nav.tsx").includes("/app/rates") &&
+    !read("components/layout/mobile-nav.tsx").includes("/app/settings/billing")
 );
 check(
   "profile menu Billing remains",
@@ -76,9 +79,10 @@ check(
 check(
   "everyday sidebar items remain",
   sidebar.includes("/app/dashboard") &&
+    sidebar.includes("/app/projects") &&
     sidebar.includes("/app/rates") &&
     sidebar.includes("/app/settings/company") &&
-    sidebar.includes("/app/setup")
+    !sidebar.includes('href: "/app/setup"')
 );
 check(
   "billing permissions unchanged",
@@ -149,19 +153,20 @@ check(
 
 console.log("\n--- DASHBOARD ---\n");
 check(
-  "desktop workspace is a 12-column grid",
-  dash.includes("data-dashboard-workspace") &&
-    dash.includes("lg:grid-cols-12")
+  "desktop workspace leads with attention, then active work",
+  dash.includes("data-dashboard-attention") &&
+    dash.includes("data-dashboard-workspace") &&
+    dash.indexOf("data-dashboard-attention") < dash.indexOf("data-dashboard-projects")
 );
 check(
-  "Projects is the dominant column",
+  "Projects list is the active-work section",
   dash.includes("data-dashboard-projects") &&
-    (dash.includes("lg:col-span-8") || dash.includes("lg:col-span-9"))
+    dash.includes("Active work")
 );
 check(
-  "Recent Activity is the supporting column",
+  "Recent activity follows the project list when present",
   dash.includes("data-dashboard-activity") &&
-    (dash.includes("lg:col-span-4") || dash.includes("lg:col-span-3"))
+    dash.indexOf("data-dashboard-activity") > dash.indexOf("data-dashboard-projects")
 );
 const projectsIdx = dash.indexOf("data-dashboard-projects");
 const activityIdx = dash.indexOf("data-dashboard-activity");
@@ -170,9 +175,9 @@ check(
   projectsIdx >= 0 && activityIdx > projectsIdx
 );
 check(
-  "KPI then workspace (no Activity beside KPI)",
+  "workflow counts follow active work",
   dash.includes("data-dashboard-kpis") &&
-    dash.indexOf("data-dashboard-kpis") < dash.indexOf("data-dashboard-workspace") &&
+    dash.indexOf("data-dashboard-projects") < dash.indexOf("data-dashboard-kpis") &&
     !/lg:grid-cols-\[minmax\(0,1fr\)_minmax\(16rem,20rem\)\]/.test(dash)
 );
 check(
@@ -198,8 +203,10 @@ check(
     filterOptions.includes('label: "Archived"')
 );
 check(
-  "first-job logic unchanged",
-  dash.includes("organisationHasProjects") &&
+  "first-job logic uses loader existence",
+  dash.includes("const isEmpty = !hasProjects") &&
+    dash.includes("loadDashboardPageData") &&
+    !dash.includes("organisationHasProjects(") &&
     dash.includes('data-first-job-empty="true"') &&
     dash.includes("Start your first job")
 );
@@ -223,10 +230,10 @@ check(
     !activity.includes("listRecentActivity")
 );
 check(
-  "no extra dashboard fetch for layout",
-  dash.includes("listRecentActivity()") &&
-    dash.split("listRecentActivity()").length === 2 &&
-    dash.includes("Promise.all")
+  "dashboard reads activity from the unified loader",
+  dash.includes("loadDashboardPageData") &&
+    !dash.includes("listRecentActivity(") &&
+    read("lib/dashboard/load-dashboard-page.ts").includes("deriveRecentActivity")
 );
 check(
   "dashboard keeps existing page max-width",
@@ -259,9 +266,9 @@ check(
     !companyUi.includes("sticky bottom-0")
 );
 check(
-  "Company form uses a settings form max-width",
-  companyPage.includes("FormContainer") ||
-    companyPage.includes("max-w-[880px]")
+  "Company uses the workspace width",
+  companyPage.includes("<PageContainer") &&
+    !companyPage.includes("FormContainer")
 );
 check(
   "two-column pairs are sm+ only (mobile stacks)",

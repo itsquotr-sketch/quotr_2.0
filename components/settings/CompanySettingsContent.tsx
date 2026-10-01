@@ -39,8 +39,6 @@ import { cn } from "@/lib/utils";
 
 type CompanySettingsContentProps = {
   initialSettings: CompanySettings;
-  userEmail?: string;
-  userFullName?: string | null;
   /** Deep-link from Setup recommendations (`?section=`). */
   initialSection?: CompanySettingsSectionId;
   canEdit: boolean;
@@ -187,8 +185,6 @@ function CompanySectionPicker({
 
 export function CompanySettingsContent({
   initialSettings,
-  userEmail,
-  userFullName,
   initialSection = "overview",
   canEdit,
   setupState,
@@ -381,6 +377,7 @@ export function CompanySettingsContent({
   const timezoneLabel =
     ORG_TIMEZONE_CATALOGUE.find((option) => option.id === timezone)?.label ??
     (timezone || "Auckland / Wellington");
+  const logoPreview = /^https?:\/\//i.test(logoUrl.trim()) ? logoUrl.trim() : "";
   const australia = isAustralia(addressCountry);
   const setupLabel =
     setupState.settings?.onboarding_status === "completed"
@@ -451,70 +448,131 @@ export function CompanySettingsContent({
       ) : null}
 
       {activeSection === "overview" ? (
-        <section
-          className="space-y-4 rounded-xl border border-border/70 bg-card px-4 py-4"
-          data-company-overview
-        >
-          <div>
-            <h2 className="text-base font-semibold tracking-tight">{displayName}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {setupLabel}
-              {userEmail ? ` · Signed in as ${userFullName ?? userEmail}` : null}
-            </p>
+        <div className="grid gap-4 sm:grid-cols-2" data-company-overview>
+          <section className="space-y-4 rounded-xl border border-border/70 bg-card px-4 py-4">
+            <div className="flex items-start gap-3">
+              {logoPreview ? (
+                // Saved organisation logo. Decorative beside the name.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoPreview}
+                  alt=""
+                  className="size-12 shrink-0 rounded-md border border-border/70 bg-white object-contain p-1"
+                />
+              ) : (
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
+                  No logo
+                </div>
+              )}
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-semibold tracking-tight">
+                  {displayName}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">{setupLabel}</p>
+              </div>
+            </div>
+            {attention.length > 0 ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm">
+                  <span className="font-medium">{nextAction.label}.</span>{" "}
+                  <span className="text-muted-foreground">{nextAction.reason}</span>
+                </p>
+                <Button
+                  type="button"
+                  size="touch"
+                  className="h-11 min-h-11 w-full sm:w-auto"
+                  onClick={() => selectSection(nextAction.id)}
+                >
+                  {nextAction.label}
+                </Button>
+              </div>
+            ) : null}
+            <dl className="divide-y divide-border/60 border-t border-border/60">
+              <OverviewItem
+                label="Contact"
+                value={
+                  [contactEmail, contactPhone].filter(Boolean).join(" · ") ||
+                  "No contact details yet"
+                }
+                attention={!contactEmail.trim()}
+              />
+              <OverviewItem label="Country" value={addressCountry || "Not set"} />
+              <OverviewItem label="Currency" value={currency || "Not set"} />
+              <OverviewItem label="Timezone" value={timezoneLabel} />
+              <OverviewItem label="GST rate" value={`${defaultGstRate}%`} />
+              {gstNumber.trim() ? (
+                <OverviewItem label="GST number" value={gstNumber.trim()} />
+              ) : null}
+            </dl>
+          </section>
+          <div className="space-y-4">
+            <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold tracking-tight">Work types</h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="touch"
+                  className="h-11 min-h-11"
+                  onClick={() => selectSection("work")}
+                >
+                  Edit work types
+                </Button>
+              </div>
+              {enabledWork.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">None selected</p>
+              ) : (
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {enabledWork.slice(0, 8).map((area) => (
+                    <li
+                      key={area.id}
+                      className="rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-xs"
+                    >
+                      {area.label}
+                    </li>
+                  ))}
+                  {enabledWork.length > 8 ? (
+                    <li>
+                      <button
+                        type="button"
+                        className="inline-flex min-h-11 items-center rounded-full px-2.5 text-xs font-medium text-[var(--brand-orange)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                        onClick={() => selectSection("work")}
+                      >
+                        +{enabledWork.length - 8} more
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              )}
+            </section>
+            <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+              <h2 className="text-sm font-semibold tracking-tight">Documents</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Changes apply to new pricing and documents. Issued Quotes and
+                Variations keep the details saved on that document.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="touch"
+                  className="h-11 min-h-11 w-full sm:w-auto"
+                  onClick={() => selectSection("branding")}
+                >
+                  Branding
+                </Button>
+                <Button
+                  type="button"
+                  size="touch"
+                  className="h-11 min-h-11 w-full sm:w-auto"
+                  onClick={() => selectSection("documents")}
+                >
+                  Documents
+                </Button>
+              </div>
+            </section>
           </div>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <OverviewItem label="Document name" value={displayName} />
-            <OverviewItem
-              label="Contact"
-              value={
-                [contactEmail, contactPhone].filter(Boolean).join(" · ") ||
-                "No contact details yet"
-              }
-              attention={!contactEmail.trim()}
-            />
-            <OverviewItem
-              label="Country"
-              value={[addressCountry, currency, timezoneLabel]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-            <OverviewItem
-              label="GST rate"
-              value={`${defaultGstRate}%${gstNumber.trim() ? ` · ${gstNumber.trim()} on documents` : ""}`}
-            />
-            <OverviewItem
-              label="Work types"
-              value={
-                enabledWork.length > 0
-                  ? enabledWork.map((area) => area.label).join(", ")
-                  : "None selected"
-              }
-            />
-            <OverviewItem
-              label="Logo"
-              value={logoUrl.trim() ? "Logo saved" : "No logo yet"}
-            />
-          </dl>
-          <p className="text-sm text-muted-foreground">
-            Quotes and Variations show the trading name when it is set, otherwise
-            the legal name, otherwise the organisation name. GST on those
-            documents uses the GST rate, not the GST number.
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm">
-              <span className="font-medium">{nextAction.label}.</span>{" "}
-              <span className="text-muted-foreground">{nextAction.reason}</span>
-            </p>
-            <Button
-              type="button"
-              size="touch"
-              className="w-full sm:w-auto"
-              onClick={() => selectSection(nextAction.id)}
-            >
-              {nextAction.label}
-            </Button>
-          </div>
-        </section>
+        </div>
       ) : null}
 
       {activeSection === "business" ? (
@@ -1030,11 +1088,11 @@ function OverviewItem({
   attention?: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+    <div className="flex min-h-11 items-center justify-between gap-3 py-2">
+      <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
       <dd
         className={cn(
-          "mt-0.5 text-sm",
+          "min-w-0 text-right text-sm break-words",
           attention && "font-medium text-[var(--brand-orange)]"
         )}
       >

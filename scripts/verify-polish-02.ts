@@ -289,13 +289,14 @@ check(
     roleAllowsPermission("viewer", "billing.view")
 );
 check(
-  "Billing lives in the profile menu, not primary sidebar",
+  "Billing lives in the account menu and mobile menu, not the primary sidebar",
   accountMenu.includes("data-account-menu-billing") &&
     accountMenu.includes("/app/settings/billing") &&
     !read("components/app-sidebar.tsx").includes("/app/settings/billing") &&
-    !read("components/layout/mobile-menu-sheet.tsx").includes(
+    read("components/layout/mobile-menu-sheet.tsx").includes(
       "/app/settings/billing"
-    )
+    ) &&
+    !read("components/layout/mobile-nav.tsx").includes("/app/settings/billing")
 );
 
 console.log("\n--- COMPANY / RATES ---\n");

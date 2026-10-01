@@ -34,13 +34,15 @@ const ratesPage = read("app/(protected)/app/rates/page.tsx");
 const envExample = read(".env.local.example");
 
 check(
-  "1 mobile Dashboard marketing subtitle not rendered on mobile chrome",
-  dashboard.includes("compactOnMobile") &&
+  "1 Dashboard header stays visible and does not repeat the shell account control",
+  !dashboard.includes("compactOnMobile") &&
+    !dashboard.includes("<UserMenu") &&
     pageHeader.includes("compactOnMobile") &&
-    pageHeader.includes("max-md:hidden")
+    pageHeader.includes("max-md:hidden") &&
+    appShell.includes("AccountMenu")
 );
 check(
-  "2 large mobile Dashboard hero heading de-emphasised (sr-only + chrome hidden)",
+  "2 page header can still hide chrome, Dashboard keeps its title",
   pageHeader.includes('className="sr-only md:hidden"') &&
     dashboard.includes('title="Dashboard"')
 );
@@ -52,7 +54,8 @@ check(
 );
 check(
   "4 no duplicate mobile Dashboard profile in page header chrome",
-  dashboard.includes("compactOnMobile") &&
+  !dashboard.includes("<UserMenu") &&
+    !dashboard.includes("<AccountMenu") &&
     !/createClient/.test(dashboard)
 );
 check(
@@ -99,10 +102,11 @@ check(
   !/^[^#\n]*SCOPE_DISCOVERY_ENABLED\s*=\s*true/m.test(envExample)
 );
 check(
-  "14 Dashboard dropped duplicate auth+profile fetch (context-backed menu)",
+  "14 Dashboard dropped duplicate auth+profile fetch (shell account menu)",
   !dashboard.includes("createClient") &&
     !dashboard.includes("from(\"profiles\")") &&
-    dashboard.includes("<UserMenu")
+    !dashboard.includes("<UserMenu") &&
+    appShell.includes("AccountMenu")
 );
 check(
   "14b Rates hides page-header UserMenu on mobile (AppShell avatar)",

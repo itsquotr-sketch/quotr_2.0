@@ -20,14 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -58,6 +50,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
     role: string;
     name: string;
   } | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState("estimator");
   const roles = roleOptionCopy();
   const inviteRoleCopy = roles.find((option) => option.value === inviteRole);
@@ -118,28 +111,17 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
       <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-team-overview>
         <h2 className="text-base font-semibold tracking-tight">{view.title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{view.description}</p>
-        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">Active members</dt>
-            <dd className="mt-0.5 text-base font-semibold tabular-nums">{activeCount}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Pending invitations</dt>
-            <dd className="mt-0.5 text-base font-semibold tabular-nums">
-              {view.invitations.length}
-            </dd>
-          </div>
-          {view.usageLabel ? (
-            <div className="col-span-2 sm:col-span-1">
-              <dt className="text-xs text-muted-foreground">Seats</dt>
-              <dd className="mt-0.5 text-sm font-medium">{view.usageLabel}</dd>
-            </div>
-          ) : null}
-        </dl>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {[
+            `${activeCount} active`,
+            `${view.invitations.length} pending`,
+            view.usageLabel,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
         {view.pendingLabel ? (
-          <p className="mt-3 text-sm text-muted-foreground">{view.pendingLabel}</p>
-        ) : view.kind === "business" || view.kind === "custom" ? (
-          <p className="mt-3 text-sm text-muted-foreground">No invitations pending.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{view.pendingLabel}</p>
         ) : null}
         {view.extraUserPriceLabel ? (
           <p className="mt-2 text-sm text-muted-foreground">{view.extraUserPriceLabel}</p>
@@ -169,6 +151,19 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
 
       {view.kind === "business" || view.kind === "custom" ? (
         <>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-sm font-semibold tracking-tight">Active members</h2>
+            {view.canInvite ? (
+              <Button
+                type="button"
+                size="touch"
+                className="h-11 min-h-11 w-full sm:w-auto"
+                onClick={() => setInviteOpen(true)}
+              >
+                Invite member
+              </Button>
+            ) : null}
+          </div>
           <div className="overflow-hidden rounded-xl border border-border/70 bg-card" data-team-members>
             {view.members.map((member) => (
               <div
@@ -274,13 +269,13 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
           ) : null}
 
           {view.canInvite ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Invite someone</CardTitle>
-                <CardDescription>{SEAT_ADD_DISCLOSURE}</CardDescription>
-              </CardHeader>
-              <form action={inviteFormAction}>
-                <CardContent className="space-y-4">
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                <DialogHeader>
+                  <DialogTitle>Invite member</DialogTitle>
+                  <DialogDescription>{SEAT_ADD_DISCLOSURE}</DialogDescription>
+                </DialogHeader>
+                <form action={inviteFormAction} className="space-y-4">
                   {inviteState.error ? (
                     <p
                       role="alert"
@@ -329,14 +324,14 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                       </p>
                     ) : null}
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="h-11" disabled={invitePending}>
-                    {invitePending ? "Sending…" : "Send invitation"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
+                  <DialogFooter>
+                    <Button type="submit" className="h-11 min-h-11" disabled={invitePending}>
+                      {invitePending ? "Sending…" : "Send invitation"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           ) : view.kind === "business" || view.kind === "custom" ? (
             <p className="text-sm text-muted-foreground">
               Only the Owner can invite or remove people.

@@ -190,8 +190,10 @@ console.log("\n--- ACTIVITY ---\n");
 const dash = read("app/(protected)/app/dashboard/page.tsx");
 const activityCard = read("components/dashboard/RecentActivityCard.tsx");
 check(
-  "first-job empty state unchanged",
-  dash.includes("organisationHasProjects") &&
+  "first-job empty state uses loader existence",
+  dash.includes("const isEmpty = !hasProjects") &&
+    dash.includes("loadDashboardPageData") &&
+    !dash.includes("organisationHasProjects(") &&
     dash.includes('data-first-job-empty="true"') &&
     dash.includes("Start your first job")
 );
