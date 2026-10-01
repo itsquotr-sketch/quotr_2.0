@@ -10,8 +10,16 @@ import {
 } from "@/lib/team/actions";
 import { SEAT_ADD_DISCLOSURE, SEAT_REMOVE_DISCLOSURE } from "@/lib/billing/seat-change";
 import { roleOptionCopy, type TeamPageView } from "@/lib/team/team-page-view";
-import { ROLE_LABELS } from "@/lib/team/roles";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS, type MembershipRole } from "@/lib/team/roles";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -45,7 +53,39 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<{
+    membershipId: string;
+    role: string;
+    name: string;
+  } | null>(null);
+  const [inviteRole, setInviteRole] = useState("estimator");
   const roles = roleOptionCopy();
+  const inviteRoleCopy = roles.find((option) => option.value === inviteRole);
+  const activeCount = view.members.filter((member) => member.status === "active").length;
+  const removeTarget = view.members.find(
+    (member) => member.membershipId === confirmRemoveId
+  );
+
+  function requestRoleChange(
+    member: { membershipId: string; role: MembershipRole; fullName: string },
+    role: string
+  ) {
+    const rank: Record<string, number> = {
+      owner: 4,
+      admin: 3,
+      estimator: 2,
+      viewer: 1,
+    };
+    if ((rank[role] ?? 0) < (rank[member.role] ?? 0)) {
+      setPendingRole({
+        membershipId: member.membershipId,
+        role,
+        name: member.fullName,
+      });
+      return;
+    }
+    void onChangeRole(member.membershipId, role);
+  }
 
   async function onChangeRole(membershipId: string, role: string) {
     setError(null);
@@ -53,6 +93,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
     const result = await changeTeamMemberRole({ membershipId, role });
     if (result.error) setError(result.error);
     setBusyId(null);
+    setPendingRole(null);
   }
 
   async function onRemove(membershipId: string) {
@@ -73,29 +114,49 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{view.title}</CardTitle>
-          <CardDescription>{view.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {view.usageLabel ? <p>{view.usageLabel}</p> : null}
-          {view.pendingLabel ? (
-            <p className="text-muted-foreground">{view.pendingLabel}</p>
+    <div className="min-w-0 space-y-4 overflow-x-hidden" data-team-page>
+      <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-team-overview>
+        <h2 className="text-base font-semibold tracking-tight">{view.title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{view.description}</p>
+        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs text-muted-foreground">Active members</dt>
+            <dd className="mt-0.5 text-base font-semibold tabular-nums">{activeCount}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Pending invitations</dt>
+            <dd className="mt-0.5 text-base font-semibold tabular-nums">
+              {view.invitations.length}
+            </dd>
+          </div>
+          {view.usageLabel ? (
+            <div className="col-span-2 sm:col-span-1">
+              <dt className="text-xs text-muted-foreground">Seats</dt>
+              <dd className="mt-0.5 text-sm font-medium">{view.usageLabel}</dd>
+            </div>
           ) : null}
-          {view.extraUserPriceLabel ? (
-            <p className="text-muted-foreground">{view.extraUserPriceLabel}</p>
-          ) : null}
-        </CardContent>
-        {view.ctaHref ? (
-          <CardFooter>
-            <Button render={<Link href={view.ctaHref} />}>
-              {view.ctaLabel}
-            </Button>
-          </CardFooter>
+        </dl>
+        {view.pendingLabel ? (
+          <p className="mt-3 text-sm text-muted-foreground">{view.pendingLabel}</p>
+        ) : view.kind === "business" || view.kind === "custom" ? (
+          <p className="mt-3 text-sm text-muted-foreground">No invitations pending.</p>
         ) : null}
-      </Card>
+        {view.extraUserPriceLabel ? (
+          <p className="mt-2 text-sm text-muted-foreground">{view.extraUserPriceLabel}</p>
+        ) : null}
+        {view.ctaHref && view.ctaLabel ? (
+          <Button
+            render={<Link href={view.ctaHref} />}
+            size="touch"
+            className="mt-4 w-full sm:w-auto"
+          >
+            {view.ctaLabel}
+          </Button>
+        ) : null}
+        {view.kind === "builder" || view.kind === "trial" ? (
+          <p className="mt-3 text-sm">{view.emptyState}</p>
+        ) : null}
+      </section>
 
       {error ? (
         <p
@@ -108,120 +169,106 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
 
       {view.kind === "business" || view.kind === "custom" ? (
         <>
-          <div className="space-y-3">
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-card" data-team-members>
             {view.members.map((member) => (
-              <Card key={member.membershipId}>
-                <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{member.fullName}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {member.email}
-                    </p>
-                    {member.status === "pending_billing" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Waiting for payment. This person cannot open the company yet.
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {member.isOwner ||
-                    !view.canChangeRoles ||
-                    member.status === "pending_billing" ? (
-                      <span className="text-sm">
-                        {member.status === "pending_billing"
-                          ? "Joining"
-                          : ROLE_LABELS[member.role]}
-                      </span>
-                    ) : (
-                      <select
-                        className="h-10 rounded-md border border-input bg-background px-2 text-sm"
-                        value={member.role}
-                        disabled={busyId === member.membershipId}
-                        onChange={(event) =>
-                          void onChangeRole(member.membershipId, event.target.value)
-                        }
-                        aria-label={`Role for ${member.fullName}`}
-                      >
-                        {roles
-                          .filter((option) =>
-                            view.actorRole === "admin"
-                              ? option.value !== "admin"
-                              : true
-                          )
-                          .map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                      </select>
-                    )}
-                    {view.canRemove && !member.isOwner && !member.isSelf ? (
-                      confirmRemoveId === member.membershipId ? (
-                        <div className="flex flex-col gap-2 sm:max-w-xs">
-                          <p className="text-xs text-muted-foreground">
-                            {SEAT_REMOVE_DISCLOSURE}
-                          </p>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={busyId === member.membershipId}
-                              onClick={() => void onRemove(member.membershipId)}
-                            >
-                              Remove
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setConfirmRemoveId(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setConfirmRemoveId(member.membershipId)}
-                        >
-                          Remove
-                        </Button>
+              <div
+                key={member.membershipId}
+                className="grid grid-cols-1 gap-2 border-b border-border/60 px-4 py-3 last:border-0 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_9rem_auto] md:items-center"
+                data-team-member={member.membershipId}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{member.fullName}</p>
+                  <p className="truncate text-sm text-muted-foreground">{member.email}</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {member.status === "pending_billing"
+                    ? "Waiting for payment. This person cannot open the company yet."
+                    : member.isOwner
+                      ? "Owner. This role stays with the account."
+                      : ROLE_DESCRIPTIONS[member.role]}
+                </p>
+                {member.isOwner ||
+                !view.canChangeRoles ||
+                member.status === "pending_billing" ||
+                !roles.some(
+                  (option) =>
+                    option.value === member.role &&
+                    (view.actorRole === "admin" ? option.value !== "admin" : true)
+                ) ? (
+                  <p className="text-sm">
+                    {member.status === "pending_billing"
+                      ? "Joining"
+                      : ROLE_LABELS[member.role]}
+                  </p>
+                ) : (
+                  <select
+                    className="h-11 min-h-11 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                    value={member.role}
+                    disabled={busyId === member.membershipId}
+                    onChange={(event) =>
+                      requestRoleChange(member, event.target.value)
+                    }
+                    aria-label={`Role for ${member.fullName}`}
+                  >
+                    {roles
+                      .filter((option) =>
+                        view.actorRole === "admin" ? option.value !== "admin" : true
                       )
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
+                      .map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                  </select>
+                )}
+                {view.canRemove && !member.isOwner && !member.isSelf ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="touch"
+                    className="h-11 min-h-11"
+                    onClick={() => setConfirmRemoveId(member.membershipId)}
+                  >
+                    Remove
+                  </Button>
+                ) : (
+                  <span className="hidden md:block" />
+                )}
+              </div>
             ))}
             {view.members.length <= 1 && view.invitations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{view.emptyState}</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground">{view.emptyState}</p>
             ) : null}
           </div>
 
           {view.invitations.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <h2 className="text-sm font-medium">Pending invitations</h2>
               {view.invitations.map((invite) => (
-                <Card key={invite.invitationId}>
-                  <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">{invite.email}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {ROLE_LABELS[invite.role]} · pending
-                      </p>
-                    </div>
-                    {view.canInvite ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyId === invite.invitationId}
-                        onClick={() => void onCancelInvite(invite.invitationId)}
-                      >
-                        Cancel invite
-                      </Button>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                <div
+                  key={invite.invitationId}
+                  className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  data-team-invitation={invite.invitationId}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{invite.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {ROLE_LABELS[invite.role]} · pending · no access until accepted
+                    </p>
+                  </div>
+                  {view.canInvite ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="touch"
+                      className="h-11 min-h-11"
+                      disabled={busyId === invite.invitationId}
+                      onClick={() => void onCancelInvite(invite.invitationId)}
+                    >
+                      Cancel invite
+                    </Button>
+                  ) : null}
+                </div>
               ))}
             </div>
           ) : null}
@@ -266,15 +313,21 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                     <select
                       id="role"
                       name="role"
-                      defaultValue="estimator"
-                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={inviteRole}
+                      onChange={(event) => setInviteRole(event.target.value)}
+                      className="h-11 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
                     >
                       {roles.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label} — {option.description}
+                          {option.label}
                         </option>
                       ))}
                     </select>
+                    {inviteRoleCopy ? (
+                      <p className="text-xs text-muted-foreground">
+                        {inviteRoleCopy.description}
+                      </p>
+                    ) : null}
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -284,9 +337,90 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                 </CardFooter>
               </form>
             </Card>
+          ) : view.kind === "business" || view.kind === "custom" ? (
+            <p className="text-sm text-muted-foreground">
+              Only the Owner can invite or remove people.
+            </p>
           ) : null}
         </>
       ) : null}
+
+      <Dialog
+        open={confirmRemoveId != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRemoveId(null);
+        }}
+      >
+        <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          <DialogHeader>
+            <DialogTitle>
+              Remove {removeTarget?.fullName ?? "this person"}?
+            </DialogTitle>
+            <DialogDescription>{SEAT_REMOVE_DISCLOSURE}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="touch"
+              onClick={() => setConfirmRemoveId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="touch"
+              disabled={!confirmRemoveId || busyId === confirmRemoveId}
+              onClick={() => {
+                if (confirmRemoveId) void onRemove(confirmRemoveId);
+              }}
+            >
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pendingRole != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRole(null);
+        }}
+      >
+        <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          <DialogHeader>
+            <DialogTitle>Reduce this role?</DialogTitle>
+            <DialogDescription>
+              {pendingRole
+                ? `${pendingRole.name} will become ${ROLE_LABELS[pendingRole.role as MembershipRole] ?? pendingRole.role}. ${ROLE_DESCRIPTIONS[pendingRole.role as MembershipRole] ?? ""}`
+                : "This reduces what the person can do."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="touch"
+              onClick={() => setPendingRole(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="touch"
+              disabled={!pendingRole || busyId === pendingRole.membershipId}
+              onClick={() => {
+                if (pendingRole) {
+                  void onChangeRole(pendingRole.membershipId, pendingRole.role);
+                }
+              }}
+            >
+              Change role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

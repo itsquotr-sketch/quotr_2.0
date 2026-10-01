@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionCard } from "@/components/layout/section-card";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
 import { StatusMessage } from "@/components/layout/status-message";
@@ -21,10 +20,11 @@ import {
   updateCompanySettings,
 } from "@/lib/settings/company-actions";
 import { sanitizeBrandColour } from "@/lib/settings/branding";
-import type { CompanySettings } from "@/lib/settings/types";
+import type { CompanySettings, CompanySettingsInput } from "@/lib/settings/types";
 import { CompanyLogoField } from "@/components/settings/CompanyLogoField";
 import { WorkAreasStep } from "@/components/setup/WorkAreasStep";
 import type { SetupState } from "@/components/setup/types";
+import { getCompanyDisplayName } from "@/lib/quotes/display";
 import {
   isOrganisationBrandingPublicUrl,
   validateLegacyLogoUrl,
@@ -48,16 +48,32 @@ type CompanySettingsContentProps = {
 };
 
 const COMPANY_SECTION_LABELS: Record<CompanySettingsSectionId, string> = {
-  general: "General",
+  overview: "Overview",
+  business: "Business details",
+  address: "Address",
+  tax: "Tax",
   work: "Work types",
-  pricing: "Pricing defaults",
-  quotes: "Quotes",
+  branding: "Branding",
+  documents: "Documents",
 };
 
 const COMPANY_SECTIONS = COMPANY_SECTION_IDS.map((id) => ({
   id,
   label: COMPANY_SECTION_LABELS[id],
 }));
+
+function stored(value: string | null | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function sameText(current: string, saved: string | null | undefined): boolean {
+  return current.trim() === stored(saved);
+}
+
+function isAustralia(country: string): boolean {
+  const value = country.trim().toLowerCase();
+  return value === "australia" || value === "au";
+}
 
 function ColourField({
   id,
@@ -77,12 +93,12 @@ function ColourField({
   const safeColour = sanitizeBrandColour(value);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            "size-9 shrink-0 rounded-md border border-border/60",
+            "size-11 shrink-0 rounded-md border border-border/60",
             !safeColour && "bg-muted"
           )}
           style={safeColour ? { backgroundColor: safeColour } : undefined}
@@ -93,7 +109,7 @@ function ColourField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="font-mono text-sm"
+          className="h-11 min-h-11 font-mono text-sm"
           readOnly={readOnly}
         />
       </div>
@@ -109,9 +125,16 @@ function ColourField({
 
 function LockedInput({
   canEdit,
+  className,
   ...props
 }: React.ComponentProps<typeof Input> & { canEdit: boolean }) {
-  return <Input {...props} readOnly={!canEdit} />;
+  return (
+    <Input
+      {...props}
+      readOnly={!canEdit}
+      className={cn("h-11 min-h-11", className)}
+    />
+  );
 }
 
 function LockedTextarea({
@@ -121,32 +144,73 @@ function LockedTextarea({
   return <Textarea {...props} readOnly={!canEdit} />;
 }
 
+function CompanySectionPicker({
+  activeId,
+  onChange,
+}: {
+  activeId: CompanySettingsSectionId;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <>
+      <label className="grid gap-1.5 md:hidden" htmlFor="company-section">
+        <span className="text-xs font-medium text-muted-foreground">
+          Company section
+        </span>
+        <select
+          id="company-section"
+          data-company-section-select
+          aria-label="Company section"
+          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+          value={activeId}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          {COMPANY_SECTIONS.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <SettingsSectionNav
+        items={[...COMPANY_SECTIONS]}
+        activeId={activeId}
+        onChange={onChange}
+        label="Company sections"
+        touchTargets
+        wrap
+        className="hidden md:block"
+      />
+    </>
+  );
+}
+
 export function CompanySettingsContent({
   initialSettings,
   userEmail,
   userFullName,
-  initialSection = "general",
+  initialSection = "overview",
   canEdit,
   setupState,
 }: CompanySettingsContentProps) {
   const [settings, setSettings] = useState(initialSettings);
-  const [tradingName, setTradingName] = useState(settings.tradingName ?? "");
-  const [legalName, setLegalName] = useState(settings.legalName ?? "");
-  const [contactEmail, setContactEmail] = useState(settings.contactEmail ?? "");
-  const [contactPhone, setContactPhone] = useState(settings.contactPhone ?? "");
-  const [website, setWebsite] = useState(settings.website ?? "");
-  const [addressLine1, setAddressLine1] = useState(settings.addressLine1 ?? "");
-  const [addressLine2, setAddressLine2] = useState(settings.addressLine2 ?? "");
-  const [city, setCity] = useState(settings.city ?? "");
-  const [region, setRegion] = useState(settings.region ?? "");
-  const [timezone, setTimezone] = useState(settings.timezone ?? "");
-  const [postcode, setPostcode] = useState(settings.postcode ?? "");
+  const [tradingName, setTradingName] = useState(stored(settings.tradingName));
+  const [legalName, setLegalName] = useState(stored(settings.legalName));
+  const [contactEmail, setContactEmail] = useState(stored(settings.contactEmail));
+  const [contactPhone, setContactPhone] = useState(stored(settings.contactPhone));
+  const [website, setWebsite] = useState(stored(settings.website));
+  const [addressLine1, setAddressLine1] = useState(stored(settings.addressLine1));
+  const [addressLine2, setAddressLine2] = useState(stored(settings.addressLine2));
+  const [city, setCity] = useState(stored(settings.city));
+  const [region, setRegion] = useState(stored(settings.region));
+  const [timezone, setTimezone] = useState(stored(settings.timezone));
+  const [postcode, setPostcode] = useState(stored(settings.postcode));
   const [addressCountry, setAddressCountry] = useState(
     settings.addressCountry ?? "New Zealand"
   );
-  const [nzbn, setNzbn] = useState(settings.nzbn ?? "");
-  const [abn, setAbn] = useState(settings.abn ?? "");
-  const [gstNumber, setGstNumber] = useState(settings.gstNumber ?? "");
+  const [nzbn, setNzbn] = useState(stored(settings.nzbn));
+  const [abn, setAbn] = useState(stored(settings.abn));
+  const [gstNumber, setGstNumber] = useState(stored(settings.gstNumber));
   const [defaultGstRate, setDefaultGstRate] = useState(
     String(settings.defaultGstRate)
   );
@@ -165,12 +229,12 @@ export function CompanySettingsContent({
   const [defaultQuoteAssumptions, setDefaultQuoteAssumptions] = useState(
     settings.defaultQuoteAssumptions ?? DEFAULT_QUOTE_ASSUMPTIONS
   );
-  const [logoUrl, setLogoUrl] = useState(settings.logoUrl ?? "");
+  const [logoUrl, setLogoUrl] = useState(stored(settings.logoUrl));
   const [brandPrimaryColour, setBrandPrimaryColour] = useState(
-    settings.brandPrimaryColour ?? ""
+    stored(settings.brandPrimaryColour)
   );
   const [brandAccentColour, setBrandAccentColour] = useState(
-    settings.brandAccentColour ?? ""
+    stored(settings.brandAccentColour)
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -178,541 +242,804 @@ export function CompanySettingsContent({
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<CompanySettingsSectionId>(
-    () => parseCompanySettingsSection(initialSection) ?? "general"
+    () => parseCompanySettingsSection(initialSection) ?? "overview"
   );
 
-  function selectSection(id: string) {
-    const next = parseCompanySettingsSection(id) ?? "general";
-    setActiveSection(next);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("section", next);
-      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const raw = url.searchParams.get("section");
+    const parsed = parseCompanySettingsSection(raw);
+    if (raw && parsed && raw !== parsed) {
+      url.searchParams.set("section", parsed);
+      window.history.replaceState(
+        { companySection: parsed },
+        "",
+        `${url.pathname}${url.search}`
+      );
     }
+
+    function onPopState() {
+      const next =
+        parseCompanySettingsSection(
+          new URL(window.location.href).searchParams.get("section")
+        ) ?? "overview";
+      setActiveSection(next);
+    }
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function selectSection(id: string) {
+    const next = parseCompanySettingsSection(id) ?? "overview";
+    setActiveSection(next);
+    setError(null);
+    setSavedMessage(null);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("section") === next) return;
+    url.searchParams.set("section", next);
+    window.history.pushState(
+      { companySection: next },
+      "",
+      `${url.pathname}${url.search}`
+    );
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!canEdit) {
-      return;
-    }
+  async function persist(input: CompanySettingsInput) {
+    if (!canEdit) return;
     setError(null);
     setFieldErrors({});
     setSavedMessage(null);
     setSaving(true);
-
-    const result = await updateCompanySettings({
-      tradingName,
-      legalName,
-      contactEmail,
-      contactPhone,
-      website,
-      addressLine1,
-      addressLine2,
-      city,
-      region,
-      timezone: timezone || null,
-      postcode,
-      addressCountry,
-      nzbn,
-      abn,
-      gstNumber,
-      defaultGstRate: Number(defaultGstRate),
-      defaultQuoteValidityDays: Number(defaultQuoteValidityDays),
-      defaultPaymentTerms,
-      defaultQuoteTerms,
-      defaultQuoteExclusions,
-      defaultQuoteAssumptions,
-      logoUrl,
-      brandPrimaryColour,
-      brandAccentColour,
-    });
-
+    const result = await updateCompanySettings(input);
     setSaving(false);
 
     if (result.error) {
       setError(result.error);
       return;
     }
-
     if (result.fieldErrors) {
       setFieldErrors(result.fieldErrors);
       return;
     }
 
-    if (result.settings) {
-      setSettings(result.settings);
-      setSavedMessage("Company settings saved.");
-    } else {
-      const refreshed = await getCompanySettings();
-      if (refreshed) {
-        setSettings(refreshed);
-      }
-      setSavedMessage("Company settings saved.");
+    const next = result.settings ?? (await getCompanySettings());
+    if (next) {
+      setSettings(next);
+      setTradingName(stored(next.tradingName));
+      setLegalName(stored(next.legalName));
+      setContactEmail(stored(next.contactEmail));
+      setContactPhone(stored(next.contactPhone));
+      setWebsite(stored(next.website));
+      setAddressLine1(stored(next.addressLine1));
+      setAddressLine2(stored(next.addressLine2));
+      setCity(stored(next.city));
+      setRegion(stored(next.region));
+      setTimezone(stored(next.timezone));
+      setPostcode(stored(next.postcode));
+      setAddressCountry(next.addressCountry ?? "New Zealand");
+      setNzbn(stored(next.nzbn));
+      setAbn(stored(next.abn));
+      setGstNumber(stored(next.gstNumber));
+      setDefaultGstRate(String(next.defaultGstRate));
+      setDefaultQuoteValidityDays(String(next.defaultQuoteValidityDays));
+      setDefaultPaymentTerms(next.defaultPaymentTerms ?? DEFAULT_PAYMENT_TERMS);
+      setDefaultQuoteTerms(next.defaultQuoteTerms ?? DEFAULT_QUOTE_TERMS);
+      setDefaultQuoteExclusions(
+        next.defaultQuoteExclusions ?? DEFAULT_QUOTE_EXCLUSIONS
+      );
+      setDefaultQuoteAssumptions(
+        next.defaultQuoteAssumptions ?? DEFAULT_QUOTE_ASSUMPTIONS
+      );
+      setLogoUrl(stored(next.logoUrl));
+      setBrandPrimaryColour(stored(next.brandPrimaryColour));
+      setBrandAccentColour(stored(next.brandAccentColour));
     }
+    setSavedMessage("Company settings saved.");
   }
 
-  const displayName =
-    settings.tradingName?.trim() ||
-    settings.legalName?.trim() ||
-    settings.organisationName;
+  const businessDirty =
+    !sameText(tradingName, settings.tradingName) ||
+    !sameText(legalName, settings.legalName) ||
+    !sameText(contactEmail, settings.contactEmail) ||
+    !sameText(contactPhone, settings.contactPhone) ||
+    !sameText(website, settings.website);
+  const addressDirty =
+    !sameText(addressLine1, settings.addressLine1) ||
+    !sameText(addressLine2, settings.addressLine2) ||
+    !sameText(city, settings.city) ||
+    !sameText(region, settings.region) ||
+    !sameText(postcode, settings.postcode) ||
+    addressCountry.trim() !== (settings.addressCountry ?? "New Zealand").trim() ||
+    !sameText(timezone, settings.timezone);
+  const taxDirty =
+    !sameText(gstNumber, settings.gstNumber) ||
+    !sameText(nzbn, settings.nzbn) ||
+    !sameText(abn, settings.abn) ||
+    defaultGstRate.trim() !== String(settings.defaultGstRate);
+  const brandingDirty =
+    !sameText(logoUrl, settings.logoUrl) ||
+    !sameText(brandPrimaryColour, settings.brandPrimaryColour) ||
+    !sameText(brandAccentColour, settings.brandAccentColour);
+  const documentsDirty =
+    defaultQuoteValidityDays.trim() !== String(settings.defaultQuoteValidityDays) ||
+    defaultPaymentTerms !== (settings.defaultPaymentTerms ?? DEFAULT_PAYMENT_TERMS) ||
+    defaultQuoteTerms !== (settings.defaultQuoteTerms ?? DEFAULT_QUOTE_TERMS) ||
+    defaultQuoteExclusions !==
+      (settings.defaultQuoteExclusions ?? DEFAULT_QUOTE_EXCLUSIONS) ||
+    defaultQuoteAssumptions !==
+      (settings.defaultQuoteAssumptions ?? DEFAULT_QUOTE_ASSUMPTIONS);
 
-  if (activeSection === "work") {
+  const displayName = getCompanyDisplayName({
+    ...settings,
+    tradingName,
+    legalName,
+  });
+  const enabledWork = setupState.workAreas.filter((area) => area.enabled);
+  const currency = setupState.settings?.currency?.trim() || null;
+  const timezoneLabel =
+    ORG_TIMEZONE_CATALOGUE.find((option) => option.id === timezone)?.label ??
+    (timezone || "Auckland / Wellington");
+  const australia = isAustralia(addressCountry);
+  const setupLabel =
+    setupState.settings?.onboarding_status === "completed"
+      ? "Setup complete"
+      : setupState.settings?.onboarding_status === "in_progress"
+        ? "Setup in progress"
+        : "Setup not started";
+
+  const attention: Array<{
+    id: CompanySettingsSectionId;
+    label: string;
+    reason: string;
+  }> = [];
+  if (!contactEmail.trim()) {
+    attention.push({
+      id: "business",
+      label: "Add a contact email",
+      reason: "Quotes and Variations can show this address.",
+    });
+  }
+  if (!addressLine1.trim() || !city.trim()) {
+    attention.push({
+      id: "address",
+      label: "Add the business address",
+      reason: "Customer documents can show where the business is based.",
+    });
+  }
+  const nextAction = attention[0] ?? {
+    id: "documents" as const,
+    label: "Review document wording",
+    reason: "Payment terms and quote wording are copied into new documents.",
+  };
+
+  function saveFooter(dirty: boolean) {
+    if (!canEdit) return null;
     return (
-      <div className="space-y-6">
-        <SettingsSectionNav
-          items={[...COMPANY_SECTIONS]}
-          activeId={activeSection}
-          onChange={selectSection}
-        />
-        <WorkAreasStep state={setupState} mode="improve" />
-      </div>
+      <Card data-company-save-footer className="border-border/60 shadow-none">
+        <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            {savedMessage ? `${savedMessage} ` : null}
+            Changes apply to new pricing and quotes. Issued Quotes and
+            Variations keep the company details saved on that document.
+          </p>
+          <Button
+            type="submit"
+            disabled={saving || !dirty}
+            className="h-11 min-h-11 w-full sm:w-auto"
+          >
+            {saving ? "Saving…" : "Save company settings"}
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <Card className="border-border/60 bg-muted/20 shadow-none">
-        <CardContent className="flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{displayName}</p>
-            <p className="text-xs text-muted-foreground">
-              Signed in as {userFullName ?? "User"}
-              {userEmail ? ` · ${userEmail}` : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Link
-              href="/app/rates"
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              Rates
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-w-0 space-y-4 overflow-x-hidden" data-company-settings>
+      <CompanySectionPicker activeId={activeSection} onChange={selectSection} />
 
       {canEdit ? null : (
         <p className="text-sm text-muted-foreground">
           Only owners and admins can change company settings.
         </p>
       )}
-
       {error ? <StatusMessage variant="error">{error}</StatusMessage> : null}
-      {savedMessage ? (
+      {savedMessage && activeSection !== "work" ? (
         <StatusMessage variant="success">{savedMessage}</StatusMessage>
       ) : null}
 
-      <SettingsSectionNav
-        items={[...COMPANY_SECTIONS]}
-        activeId={activeSection}
-        onChange={selectSection}
-      />
+      {activeSection === "overview" ? (
+        <section
+          className="space-y-4 rounded-xl border border-border/70 bg-card px-4 py-4"
+          data-company-overview
+        >
+          <div>
+            <h2 className="text-base font-semibold tracking-tight">{displayName}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {setupLabel}
+              {userEmail ? ` · Signed in as ${userFullName ?? userEmail}` : null}
+            </p>
+          </div>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <OverviewItem label="Document name" value={displayName} />
+            <OverviewItem
+              label="Contact"
+              value={
+                [contactEmail, contactPhone].filter(Boolean).join(" · ") ||
+                "No contact details yet"
+              }
+              attention={!contactEmail.trim()}
+            />
+            <OverviewItem
+              label="Country"
+              value={[addressCountry, currency, timezoneLabel]
+                .filter(Boolean)
+                .join(" · ")}
+            />
+            <OverviewItem
+              label="GST rate"
+              value={`${defaultGstRate}%${gstNumber.trim() ? ` · ${gstNumber.trim()} on documents` : ""}`}
+            />
+            <OverviewItem
+              label="Work types"
+              value={
+                enabledWork.length > 0
+                  ? enabledWork.map((area) => area.label).join(", ")
+                  : "None selected"
+              }
+            />
+            <OverviewItem
+              label="Logo"
+              value={logoUrl.trim() ? "Logo saved" : "No logo yet"}
+            />
+          </dl>
+          <p className="text-sm text-muted-foreground">
+            Quotes and Variations show the trading name when it is set, otherwise
+            the legal name, otherwise the organisation name. GST on those
+            documents uses the GST rate, not the GST number.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <span className="font-medium">{nextAction.label}.</span>{" "}
+              <span className="text-muted-foreground">{nextAction.reason}</span>
+            </p>
+            <Button
+              type="button"
+              size="touch"
+              className="w-full sm:w-auto"
+              onClick={() => selectSection(nextAction.id)}
+            >
+              {nextAction.label}
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
-      {activeSection === "general" ? (
-      <SectionCard
-        title="General"
-        description="Company identity and address shown on quote previews. Personal Profile fields live under Account → Profile."
-      >
-        <div className="space-y-5" data-company-identity>
-          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="legal-name">Legal name</Label>
-              <LockedInput canEdit={canEdit}
-                id="legal-name"
-                value={legalName}
-                onChange={(event) => setLegalName(event.target.value)}
-                placeholder={settings.organisationName}
+      {activeSection === "business" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void persist({
+              tradingName,
+              legalName,
+              contactEmail,
+              contactPhone,
+              website,
+            });
+          }}
+        >
+          <SectionCard
+            title="Business details"
+            description="The trading name is the name on Quotes and Variations when it is set. Personal Profile fields live under Account → Profile."
+          >
+            <div className="space-y-5" data-company-identity>
+              <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="legal-name">Legal name</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="legal-name"
+                    value={legalName}
+                    onChange={(event) => setLegalName(event.target.value)}
+                    placeholder={settings.organisationName}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="trading-name">Trading name</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="trading-name"
+                    value={tradingName}
+                    onChange={(event) => setTradingName(event.target.value)}
+                    placeholder="Name shown to clients"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Shown on customer documents before the legal name.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-email">Email</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="contact-email"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(event) => setContactEmail(event.target.value)}
+                  />
+                  {fieldErrors.contactEmail?.[0] ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {fieldErrors.contactEmail[0]}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-phone">Phone</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="contact-phone"
+                    value={contactPhone}
+                    onChange={(event) => setContactPhone(event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="website">Website</Label>
+                <LockedInput
+                  canEdit={canEdit}
+                  id="website"
+                  value={website}
+                  onChange={(event) => setWebsite(event.target.value)}
+                  placeholder="https://"
+                />
+                <p className="text-xs text-muted-foreground">Optional.</p>
+              </div>
+            </div>
+          </SectionCard>
+          {saveFooter(businessDirty)}
+        </form>
+      ) : null}
+
+      {activeSection === "address" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void persist({
+              addressLine1,
+              addressLine2,
+              city,
+              region,
+              postcode,
+              addressCountry,
+              timezone: timezone || null,
+            });
+          }}
+        >
+          <SectionCard
+            title="Address and region"
+            description="Manual address entry. This address can appear on Quotes and Variations."
+          >
+            <div className="space-y-5" data-company-address>
+              <div className="space-y-1.5">
+                <Label htmlFor="address-line-1">Address line 1</Label>
+                <LockedInput
+                  canEdit={canEdit}
+                  id="address-line-1"
+                  value={addressLine1}
+                  onChange={(event) => setAddressLine1(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="address-line-2">Address line 2</Label>
+                <LockedInput
+                  canEdit={canEdit}
+                  id="address-line-2"
+                  value={addressLine2}
+                  onChange={(event) => setAddressLine2(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="city">City</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="city"
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="region">Region</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="region"
+                    value={region}
+                    onChange={(event) => setRegion(event.target.value)}
+                    placeholder="e.g. Auckland"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="postcode">Postcode</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="postcode"
+                    value={postcode}
+                    onChange={(event) => setPostcode(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="address-country">Country</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="address-country"
+                    value={addressCountry}
+                    onChange={(event) => setAddressCountry(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5" data-timezone-field>
+                <Label htmlFor="company-timezone">Timezone</Label>
+                <select
+                  id="company-timezone"
+                  value={timezone}
+                  onChange={(event) => setTimezone(event.target.value)}
+                  disabled={!canEdit}
+                  className="flex h-11 min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">
+                    Not set — times shown as Auckland / Wellington
+                  </option>
+                  {ORG_TIMEZONE_CATALOGUE.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.timezone?.[0] ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {fieldErrors.timezone[0]}
+                  </p>
+                ) : null}
+                <p
+                  className="pt-1 text-xs leading-relaxed text-muted-foreground"
+                  data-timezone-helper
+                >
+                  Used to show quote acceptance and send times in your local time.
+                  Changing this does not rewrite stored UTC evidence.
+                  {currency ? ` Currency stays ${currency}.` : ""}
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+          {saveFooter(addressDirty)}
+        </form>
+      ) : null}
+
+      {activeSection === "tax" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const gst = Number(defaultGstRate);
+            if (!Number.isFinite(gst) || gst < 0 || gst > 100) {
+              setFieldErrors({
+                defaultGstRate: ["Enter a GST rate from 0 to 100."],
+              });
+              setError(null);
+              return;
+            }
+            void persist({
+              gstNumber,
+              nzbn,
+              abn,
+              defaultGstRate: gst,
+            });
+          }}
+        >
+          <SectionCard
+            title="Tax and identifiers"
+            description="The GST rate is what Quotes and Variations calculate. The GST number is printed on documents and does not change that calculation."
+          >
+            <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="default-gst-rate">Default GST rate %</Label>
+                <LockedInput
+                  canEdit={canEdit}
+                  id="default-gst-rate"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={defaultGstRate}
+                  onChange={(event) => setDefaultGstRate(event.target.value)}
+                  required
+                />
+                {fieldErrors.defaultGstRate?.[0] ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {fieldErrors.defaultGstRate[0]}
+                  </p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  0% is valid. Quotes and Variations calculate GST from this rate.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="gst-number">GST number</Label>
+                <LockedInput
+                  canEdit={canEdit}
+                  id="gst-number"
+                  value={gstNumber}
+                  onChange={(event) => setGstNumber(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional document text. A number here does not mean GST
+                  registration is stored, and it does not change the rate.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {australia ? (
+                  <>
+                    <Label htmlFor="abn">ABN</Label>
+                    <LockedInput
+                      canEdit={canEdit}
+                      id="abn"
+                      value={abn}
+                      onChange={(event) => setAbn(event.target.value)}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Label htmlFor="nzbn">NZBN</Label>
+                    <LockedInput
+                      canEdit={canEdit}
+                      id="nzbn"
+                      value={nzbn}
+                      onChange={(event) => setNzbn(event.target.value)}
+                    />
+                  </>
+                )}
+                <p className="text-xs text-muted-foreground">Optional.</p>
+              </div>
+            </div>
+          </SectionCard>
+          {saveFooter(taxDirty)}
+        </form>
+      ) : null}
+
+      {activeSection === "work" ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Choose the work you usually price. Saving here uses the existing
+            work-type preferences and does not change which work an estimate
+            can include.
+          </p>
+          <WorkAreasStep state={setupState} mode="improve" />
+        </div>
+      ) : null}
+
+      {activeSection === "branding" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void persist({
+              logoUrl,
+              brandPrimaryColour,
+              brandAccentColour,
+            });
+          }}
+        >
+          <SectionCard
+            title="Branding"
+            description="Logo and colours appear on Quotes and Variations. Issued documents keep the branding saved with them."
+          >
+            <CompanyLogoField
+              logoUrl={logoUrl.trim() ? logoUrl : null}
+              readOnly={!canEdit}
+              onSettingsChange={(next) => {
+                setSettings(next);
+                setLogoUrl(stored(next.logoUrl));
+                setSavedMessage("Company settings saved.");
+              }}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColourField
+                id="brand-primary"
+                label="Primary colour"
+                value={brandPrimaryColour}
+                onChange={setBrandPrimaryColour}
+                placeholder="#1a1a1a"
+                readOnly={!canEdit}
+              />
+              <ColourField
+                id="brand-accent"
+                label="Accent colour"
+                value={brandAccentColour}
+                onChange={setBrandAccentColour}
+                placeholder="#2563eb"
+                readOnly={!canEdit}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="trading-name">Trading name</Label>
-              <LockedInput canEdit={canEdit}
-                id="trading-name"
-                value={tradingName}
-                onChange={(event) => setTradingName(event.target.value)}
-                placeholder="Name shown to clients"
+            {canEdit ? (
+              <details className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
+                <summary className="flex min-h-11 cursor-pointer items-center text-xs font-medium text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]">
+                  Advanced — legacy logo link
+                </summary>
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Prefer Upload logo above. A webpage link (for example an Imgur
+                    page) will not display on quotes — use a direct image file link
+                    only if you must.
+                  </p>
+                  <Label htmlFor="logo-url">Legacy logo URL</Label>
+                  <LockedInput
+                    canEdit={canEdit}
+                    id="logo-url"
+                    value={
+                      isOrganisationBrandingPublicUrl(
+                        logoUrl,
+                        process.env.NEXT_PUBLIC_SUPABASE_URL
+                      )
+                        ? ""
+                        : logoUrl
+                    }
+                    onChange={(event) => setLogoUrl(event.target.value)}
+                    placeholder="https://example.com/logo.png"
+                  />
+                  {(() => {
+                    const check = validateLegacyLogoUrl(
+                      isOrganisationBrandingPublicUrl(
+                        logoUrl,
+                        process.env.NEXT_PUBLIC_SUPABASE_URL
+                      )
+                        ? ""
+                        : logoUrl
+                    );
+                    if (!check.ok) {
+                      return (
+                        <p className="text-sm text-destructive" role="alert">
+                          {check.error}
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </details>
+            ) : null}
+          </SectionCard>
+          {saveFooter(brandingDirty)}
+        </form>
+      ) : null}
+
+      {activeSection === "documents" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const days = Number(defaultQuoteValidityDays);
+            if (!Number.isInteger(days) || days < 1 || days > 365) {
+              setFieldErrors({
+                defaultQuoteValidityDays: ["Enter a validity from 1 to 365 days."],
+              });
+              return;
+            }
+            void persist({
+              defaultQuoteValidityDays: days,
+              defaultPaymentTerms,
+              defaultQuoteTerms,
+              defaultQuoteExclusions,
+              defaultQuoteAssumptions,
+            });
+          }}
+        >
+          <SectionCard
+            title="Document defaults"
+            description="Validity and commercial wording copied into new quotes. Existing documents are not changed."
+          >
+            <div className="space-y-2">
+              <Label htmlFor="default-validity">Default quote validity (days)</Label>
+              <LockedInput
+                canEdit={canEdit}
+                id="default-validity"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                max="365"
+                step="1"
+                value={defaultQuoteValidityDays}
+                onChange={(event) =>
+                  setDefaultQuoteValidityDays(event.target.value)
+                }
+                required
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-email">Email</Label>
-              <LockedInput canEdit={canEdit}
-                id="contact-email"
-                type="email"
-                value={contactEmail}
-                onChange={(event) => setContactEmail(event.target.value)}
-              />
-              {fieldErrors.contactEmail?.[0] ? (
-                <p className="text-sm text-destructive">
-                  {fieldErrors.contactEmail[0]}
+              {fieldErrors.defaultQuoteValidityDays?.[0] ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {fieldErrors.defaultQuoteValidityDays[0]}
                 </p>
               ) : null}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="contact-phone">Phone</Label>
-              <LockedInput canEdit={canEdit}
-                id="contact-phone"
-                value={contactPhone}
-                onChange={(event) => setContactPhone(event.target.value)}
+            <div className="space-y-2">
+              <Label htmlFor="default-payment-terms">Payment terms</Label>
+              <LockedTextarea
+                canEdit={canEdit}
+                id="default-payment-terms"
+                value={defaultPaymentTerms}
+                onChange={(event) => setDefaultPaymentTerms(event.target.value)}
+                rows={2}
               />
             </div>
-          </div>
-          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="gst-number">GST number</Label>
-              <LockedInput canEdit={canEdit}
-                id="gst-number"
-                value={gstNumber}
-                onChange={(event) => setGstNumber(event.target.value)}
+            <div className="space-y-2">
+              <Label htmlFor="default-quote-terms">Quote terms</Label>
+              <LockedTextarea
+                canEdit={canEdit}
+                id="default-quote-terms"
+                value={defaultQuoteTerms}
+                onChange={(event) => setDefaultQuoteTerms(event.target.value)}
+                rows={3}
               />
             </div>
-            <div className="space-y-1.5">
-              {addressCountry.trim().toLowerCase() === "australia" ||
-              addressCountry.trim().toUpperCase() === "AU" ? (
-                <>
-                  <Label htmlFor="abn">ABN</Label>
-                  <LockedInput
-                    canEdit={canEdit}
-                    id="abn"
-                    value={abn}
-                    onChange={(event) => setAbn(event.target.value)}
-                  />
-                </>
-              ) : (
-                <>
-                  <Label htmlFor="nzbn">NZBN</Label>
-                  <LockedInput
-                    canEdit={canEdit}
-                    id="nzbn"
-                    value={nzbn}
-                    onChange={(event) => setNzbn(event.target.value)}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="website">Website</Label>
-            <LockedInput canEdit={canEdit}
-              id="website"
-              value={website}
-              onChange={(event) => setWebsite(event.target.value)}
-              placeholder="https://"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-5 border-t border-border/60 pt-6" data-company-address>
-          <p className="text-sm font-medium">Business address</p>
-          <div className="space-y-1.5">
-            <Label htmlFor="address-line-1">Address line 1</Label>
-            <LockedInput canEdit={canEdit}
-              id="address-line-1"
-              value={addressLine1}
-              onChange={(event) => setAddressLine1(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="address-line-2">Address line 2</Label>
-            <LockedInput canEdit={canEdit}
-              id="address-line-2"
-              value={addressLine2}
-              onChange={(event) => setAddressLine2(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="city">City</Label>
-              <LockedInput canEdit={canEdit}
-                id="city"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="region">Region</Label>
-              <LockedInput canEdit={canEdit}
-                id="region"
-                value={region}
-                onChange={(event) => setRegion(event.target.value)}
-                placeholder="e.g. Auckland"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="postcode">Postcode</Label>
-              <LockedInput canEdit={canEdit}
-                id="postcode"
-                value={postcode}
-                onChange={(event) => setPostcode(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="address-country">Country</Label>
-              <LockedInput canEdit={canEdit}
-                id="address-country"
-                value={addressCountry}
-                onChange={(event) => setAddressCountry(event.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5" data-timezone-field>
-            <Label htmlFor="company-timezone">Timezone</Label>
-            <select
-              id="company-timezone"
-              value={timezone}
-              onChange={(event) => setTimezone(event.target.value)}
-              disabled={!canEdit}
-              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-            >
-              <option value="">
-                Not set — times shown as Auckland / Wellington
-              </option>
-              {ORG_TIMEZONE_CATALOGUE.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.timezone?.[0] ? (
-              <p className="text-sm text-destructive">
-                {fieldErrors.timezone[0]}
+            <div className="space-y-2">
+              <Label htmlFor="default-exclusions">Default exclusions</Label>
+              <p className="text-[11px] text-muted-foreground">
+                One item per line when copied into pricing and quotes.
               </p>
-            ) : null}
-            <p className="pt-1 text-xs leading-relaxed text-muted-foreground" data-timezone-helper>
-              Used to show quote acceptance and send times in your local time.
-              Changing this does not rewrite stored UTC evidence.
-            </p>
-          </div>
-        </div>
-      </SectionCard>
-      ) : null}
-
-      {activeSection === "pricing" ? (
-      <SectionCard
-        title="Pricing defaults"
-        description="Tax defaults for new pricing documents. Labour rates, default margin, and material wastage live on Rates → Defaults."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="default-gst-rate">Default GST rate %</Label>
-            <LockedInput canEdit={canEdit}
-              id="default-gst-rate"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="100"
-              step="0.01"
-              value={defaultGstRate}
-              onChange={(event) => setDefaultGstRate(event.target.value)}
-              required
-              className="h-11"
-            />
-            {fieldErrors.defaultGstRate?.[0] ? (
-              <p className="text-sm text-destructive">
-                {fieldErrors.defaultGstRate[0]}
+              <LockedTextarea
+                canEdit={canEdit}
+                id="default-exclusions"
+                value={defaultQuoteExclusions}
+                onChange={(event) => setDefaultQuoteExclusions(event.target.value)}
+                rows={5}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="default-assumptions">Default assumptions</Label>
+              <p className="text-[11px] text-muted-foreground">
+                One item per line when copied into new documents.
               </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="default-validity-pricing">
-              Default quote validity (days)
-            </Label>
-            <LockedInput canEdit={canEdit}
-              id="default-validity-pricing"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="365"
-              step="1"
-              value={defaultQuoteValidityDays}
-              onChange={(event) =>
-                setDefaultQuoteValidityDays(event.target.value)
-              }
-              required
-              className="h-11"
-            />
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Set labour rates and default gross margin (20% standard) on{" "}
-          <Link
-            href="/app/rates"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Rates
-          </Link>
-          .
-        </p>
-      </SectionCard>
+              <LockedTextarea
+                canEdit={canEdit}
+                id="default-assumptions"
+                value={defaultQuoteAssumptions}
+                onChange={(event) =>
+                  setDefaultQuoteAssumptions(event.target.value)
+                }
+                rows={5}
+              />
+            </div>
+          </SectionCard>
+          {saveFooter(documentsDirty)}
+        </form>
       ) : null}
+    </div>
+  );
+}
 
-      {activeSection === "quotes" ? (
-      <>
-      <SectionCard
-        title="Quote defaults"
-        description="Validity and commercial wording copied into new quotes. Existing documents are not changed."
+function OverviewItem({
+  label,
+  value,
+  attention = false,
+}: {
+  label: string;
+  value: string;
+  attention?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "mt-0.5 text-sm",
+          attention && "font-medium text-[var(--brand-orange)]"
+        )}
       >
-        <div className="space-y-2">
-          <Label htmlFor="default-validity">Default quote validity (days)</Label>
-          <LockedInput canEdit={canEdit}
-            id="default-validity"
-            type="number"
-            inputMode="numeric"
-            min="1"
-            max="365"
-            step="1"
-            value={defaultQuoteValidityDays}
-            onChange={(event) =>
-              setDefaultQuoteValidityDays(event.target.value)
-            }
-            required
-            className="h-11"
-          />
-          {fieldErrors.defaultQuoteValidityDays?.[0] ? (
-            <p className="text-sm text-destructive">
-              {fieldErrors.defaultQuoteValidityDays[0]}
-            </p>
-          ) : null}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="default-payment-terms">Payment terms</Label>
-          <LockedTextarea canEdit={canEdit}
-            id="default-payment-terms"
-            value={defaultPaymentTerms}
-            onChange={(event) => setDefaultPaymentTerms(event.target.value)}
-            rows={2}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="default-quote-terms">Quote terms</Label>
-          <LockedTextarea canEdit={canEdit}
-            id="default-quote-terms"
-            value={defaultQuoteTerms}
-            onChange={(event) => setDefaultQuoteTerms(event.target.value)}
-            rows={3}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="default-exclusions">Default exclusions</Label>
-          <p className="text-[11px] text-muted-foreground">
-            One item per line when copied into pricing and quotes.
-          </p>
-          <LockedTextarea canEdit={canEdit}
-            id="default-exclusions"
-            value={defaultQuoteExclusions}
-            onChange={(event) => setDefaultQuoteExclusions(event.target.value)}
-            rows={5}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="default-assumptions">Default assumptions</Label>
-          <p className="text-[11px] text-muted-foreground">
-            One item per line when copied into new documents.
-          </p>
-          <LockedTextarea canEdit={canEdit}
-            id="default-assumptions"
-            value={defaultQuoteAssumptions}
-            onChange={(event) => setDefaultQuoteAssumptions(event.target.value)}
-            rows={5}
-          />
-        </div>
-      </SectionCard>
-      <SectionCard
-        title="Branding"
-        description="Your logo and colours appear on quotes."
-      >
-        <CompanyLogoField
-          logoUrl={logoUrl.trim() ? logoUrl : null}
-          readOnly={!canEdit}
-          onSettingsChange={(next) => {
-            setLogoUrl(next.logoUrl ?? "");
-            // Keep local form settings in sync when upload/remove returns full row.
-          }}
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ColourField
-            id="brand-primary"
-            label="Primary colour"
-            value={brandPrimaryColour}
-            onChange={setBrandPrimaryColour}
-            placeholder="#1a1a1a"
-            readOnly={!canEdit}
-          />
-          <ColourField
-            id="brand-accent"
-            label="Accent colour"
-            value={brandAccentColour}
-            onChange={setBrandAccentColour}
-            placeholder="#2563eb"
-            readOnly={!canEdit}
-          />
-        </div>
-        {canEdit ? (
-        <details className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
-          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-            Advanced — legacy logo link
-          </summary>
-          <div className="mt-3 space-y-2">
-            <p className="text-[11px] text-muted-foreground">
-              Prefer Upload logo above. A webpage link (for example an Imgur
-              page) will not display on quotes — use a direct image file link
-              only if you must.
-            </p>
-            <Label htmlFor="logo-url">Legacy logo URL</Label>
-            <LockedInput canEdit={canEdit}
-              id="logo-url"
-              value={
-                isOrganisationBrandingPublicUrl(
-                  logoUrl,
-                  process.env.NEXT_PUBLIC_SUPABASE_URL
-                )
-                  ? ""
-                  : logoUrl
-              }
-              onChange={(event) => setLogoUrl(event.target.value)}
-              placeholder="https://example.com/logo.png"
-            />
-            {(() => {
-              const check = validateLegacyLogoUrl(
-                isOrganisationBrandingPublicUrl(
-                  logoUrl,
-                  process.env.NEXT_PUBLIC_SUPABASE_URL
-                )
-                  ? ""
-                  : logoUrl
-              );
-              if (!check.ok) {
-                return (
-                  <p className="text-sm text-destructive" role="alert">
-                    {check.error}
-                  </p>
-                );
-              }
-              return null;
-            })()}
-          </div>
-        </details>
-        ) : null}
-      </SectionCard>
-      </>
-      ) : null}
-
-      {canEdit ? (
-      <Card
-        data-company-save-footer
-        className="border-border/60 shadow-none"
-      >
-        <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            {savedMessage ?? "Changes apply to new pricing and quotes."}
-          </p>
-          <Button type="submit" disabled={saving} className="h-10 w-full sm:w-auto">
-            {saving ? "Saving…" : "Save company settings"}
-          </Button>
-        </CardContent>
-      </Card>
-      ) : null}
-    </form>
+        {value}
+      </dd>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import { POST_SIGNUP_DESTINATION } from "../lib/auth/post-auth-navigation";
 import {
   SETUP_RECOMMENDATION_DESTINATIONS,
   getSetupRecommendationHref,
+  parseCompanySettingsSection,
   parseRatesSection,
 } from "../lib/setup/recommendation-destinations";
 import { computeCompanySetupReadiness } from "../lib/setup/readiness";
@@ -103,16 +104,18 @@ assert(
   getSetupRecommendationHref("labour_rate") === "/app/rates?section=core"
 );
 assert(
-  "work types → Setup work_areas",
-  getSetupRecommendationHref("work_types").includes("section=work_areas")
+  "work types → Company work types",
+  getSetupRecommendationHref("work_types") ===
+    "/app/settings/company?section=work"
 );
 assert(
   "calibrate → Rates calibration",
   getSetupRecommendationHref("calibrate") === "/app/rates?section=calibration"
 );
 assert(
-  "quote details → Company quotes",
-  getSetupRecommendationHref("company_contact").includes("section=quotes")
+  "company contact → Company business details",
+  getSetupRecommendationHref("company_contact") ===
+    "/app/settings/company?section=business"
 );
 const readiness = computeCompanySetupReadiness({
   accountReady: true,
@@ -166,6 +169,11 @@ const companyPage = read("app/(protected)/app/settings/company/page.tsx");
 assert(
   "Company settings page passes initialSection",
   companyPage.includes("initialSection={initialSection}")
+);
+assert(
+  "section=work_areas resolves to Company work types",
+  parseCompanySettingsSection("work_areas") === "work" &&
+    parseCompanySettingsSection("work") === "work"
 );
 
 section("CALIBRATION UX");

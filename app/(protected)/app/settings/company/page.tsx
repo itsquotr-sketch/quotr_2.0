@@ -26,7 +26,7 @@ export default async function CompanySettingsPage({
     redirect("/app/rates?section=defaults");
   }
   const initialSection =
-    parseCompanySettingsSection(params.section) ?? "general";
+    parseCompanySettingsSection(params.section) ?? "overview";
 
   const [settings, canEdit, display, setupState] = await Promise.all([
     measureServerLoad("company-settings", () => getCompanySettings()),
@@ -53,7 +53,8 @@ export default async function CompanySettingsPage({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
-        description="Company identity, address, tax, work types, quotes, and branding."
+        description="Business details, tax, work types, and what appears on Quotes and Variations."
+        wrapDescription
         actions={<UserMenu />}
       />
       <FormContainer>

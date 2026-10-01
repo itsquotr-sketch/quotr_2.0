@@ -46,27 +46,27 @@ export const SETUP_RECOMMENDATION_DESTINATIONS: Record<
   },
   region: {
     id: "region",
-    href: "/app/settings/company?section=general",
-    surface: "Company / General",
-    section: "general",
+    href: "/app/settings/company?section=address",
+    surface: "Company / Address",
+    section: "address",
   },
   company_name: {
     id: "company_name",
-    href: "/app/settings/company?section=quotes",
-    surface: "Company / Quotes",
-    section: "quotes",
+    href: "/app/settings/company?section=business",
+    surface: "Company / Business details",
+    section: "business",
   },
   company_contact: {
     id: "company_contact",
-    href: "/app/settings/company?section=quotes",
-    surface: "Company / Quotes",
-    section: "quotes",
+    href: "/app/settings/company?section=business",
+    surface: "Company / Business details",
+    section: "business",
   },
   company_address: {
     id: "company_address",
-    href: "/app/settings/company?section=general",
-    surface: "Company / General",
-    section: "general",
+    href: "/app/settings/company?section=address",
+    surface: "Company / Address",
+    section: "address",
   },
   calibrate: {
     id: "calibrate",
@@ -119,13 +119,25 @@ export function parseRatesSection(
 }
 
 export const COMPANY_SECTION_IDS = [
-  "general",
+  "overview",
+  "business",
+  "address",
+  "tax",
   "work",
-  "pricing",
-  "quotes",
+  "branding",
+  "documents",
 ] as const;
 
 export type CompanySettingsSectionId = (typeof COMPANY_SECTION_IDS)[number];
+
+/** Older Company links. Canonical generated links use the ids above. */
+const COMPANY_SECTION_ALIASES: Record<string, CompanySettingsSectionId> = {
+  "general": "business",
+  "pricing": "tax",
+  "quotes": "documents",
+  "work_areas": "work",
+  "work_types": "work",
+};
 
 export function parseCompanySettingsSection(
   value: string | null | undefined
@@ -135,6 +147,8 @@ export function parseCompanySettingsSection(
   if (trimmed === "advanced") {
     return null;
   }
+  const alias = COMPANY_SECTION_ALIASES[trimmed];
+  if (alias) return alias;
   return (COMPANY_SECTION_IDS as readonly string[]).includes(trimmed)
     ? (trimmed as CompanySettingsSectionId)
     : null;
