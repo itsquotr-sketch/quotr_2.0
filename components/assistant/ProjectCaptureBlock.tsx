@@ -120,8 +120,7 @@ export function ProjectCaptureBlock({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            What the client wants, or the work that is required. Quotr reads
-            this when analysing the job.
+            Describe the work the client wants.
           </p>
         </div>
         <Textarea
@@ -150,16 +149,10 @@ export function ProjectCaptureBlock({
             id="site-notes-heading"
             className="text-sm font-semibold text-foreground"
           >
-            <span className="sm:hidden">Site notes (optional)</span>
-            <span className="hidden sm:inline">Site notes</span>
+            Site notes
           </h4>
           <p className="text-xs text-muted-foreground">
-            Measurements, access, constraints or existing conditions. Quotr
-            also reads eligible site notes during analysis.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Internal project notes stay under Project information and are not
-            included in analysis.
+            Add measurements, access details or existing conditions.
           </p>
         </div>
         <div
@@ -248,10 +241,6 @@ export function ProjectCaptureBlock({
               ) : null}
             </div>
           ) : null}
-          <p className="text-xs text-muted-foreground" data-analysis-disclosure="true">
-            Quotr analyses the job description and site notes. Files are saved
-            with the project but are not read during analysis.
-          </p>
           <Button
             type="button"
             onClick={onAnalyse}

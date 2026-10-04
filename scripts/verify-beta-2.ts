@@ -134,7 +134,10 @@ function main() {
   assert("progress starts with reading job details", ANALYSE_JOB_PROGRESS_STEPS[0].includes("Reading your job details"));
   assert("retry CTA exists", capture.includes("data-analyse-retry") && capture.includes("Try again"));
   assert("brief retained on retry", capture.includes("Your job details are still here"));
-  assert("analyse helper explains outcome", capture.includes("identify the work involved"));
+  assert(
+    "analyse helper explains outcome",
+    shell.includes("Quotr uses the description and site notes to identify the work.")
+  );
   assert("placeholder is builder language", capture.includes("Kwila") || capture.includes("6 × 3m"));
   assert("instance insert skips equivalent type+name, not type alone", actions.includes("shouldInsertWorkAreaInstance") && actions.includes("existingWorkAreaInstanceKeys"));
 
@@ -148,7 +151,7 @@ function main() {
 
   section("CLARIFY");
   assert("question count is not a survey total", clarify.includes("important detail") && (clarify.includes("important details remaining") || clarify.includes("Just a couple")));
-  assert("why this matters is shown sparingly", clarify.includes("Why this matters") && clarify.includes("shouldShowWhyThisMatters"));
+  assert("why this matters is shown only with an explanation", clarify.includes("data-why-this-matters") && clarify.includes("shouldShowWhyThisMatters") && !clarify.includes(">Why this matters<"));
   assert("not sure explains assumption", valueField.includes("typical assumption") && valueField.includes("useQuotrAssumption"));
   assert("Included / Not included stay distinct from Not sure", clarify.includes("Not included") && valueField.includes("Not sure — use Quotr assumption") === false || ASSISTANT_ACTION_LABELS.useQuotrAssumption.includes("Not sure"));
   assert("Not included is not Not sure", !ASSISTANT_ACTION_LABELS.useQuotrAssumption.includes("Not included"));

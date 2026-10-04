@@ -15,7 +15,6 @@ import {
   usedForLabelsForFactKey,
   whyThisMattersForKey,
 } from "@/lib/assistant/presentation";
-import { ChevronDown } from "lucide-react";
 
 function chipValueMatches(
   option: string,
@@ -54,8 +53,6 @@ export function ScopeReviewFactRow({
     fact.rawValue as string | number | boolean
   );
   const [localError, setLocalError] = useState<string | null>(null);
-  const [whyOpen, setWhyOpen] = useState(false);
-
   const canEdit = editable && !fact.readOnly && Boolean(onSave);
   const sourceText = provenanceLabelForScopeSource(fact.sourceLabel, {
     hasManualOverride: fact.sourceLabel === "answered" && Boolean(fact.derivedNote),
@@ -122,26 +119,9 @@ export function ScopeReviewFactRow({
               </ul>
             ) : null}
             {why && shouldShowWhyThisMatters(fact.key) ? (
-              <div className="mt-1">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/80 underline-offset-2 hover:underline"
-                  aria-expanded={whyOpen}
-                  onClick={() => setWhyOpen((v) => !v)}
-                >
-                  Why this matters
-                  <ChevronDown
-                    className={cn(
-                      "size-3 transition-transform",
-                      whyOpen && "rotate-180"
-                    )}
-                    aria-hidden
-                  />
-                </button>
-                {whyOpen ? (
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{why}</p>
-                ) : null}
-              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground" data-why-this-matters>
+                {why}
+              </p>
             ) : null}
             {fact.conflictWarning ? (
               <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">

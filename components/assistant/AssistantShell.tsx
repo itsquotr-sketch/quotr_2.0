@@ -3281,7 +3281,7 @@ export function AssistantShell({
             subtitle={
               briefSubmitted
                 ? "What you told Quotr about the job."
-                : "Tell Quotr what you know. It will find the work involved."
+                : "Add what you know. Quotr uses the description and site notes to identify the work."
             }
             statusLabel={
               captureIsCurrent

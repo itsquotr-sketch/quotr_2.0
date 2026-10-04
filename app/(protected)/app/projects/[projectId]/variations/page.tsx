@@ -35,7 +35,7 @@ export default async function VariationsPage({ params, searchParams }: PageProps
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 border-b bg-background">
-        <WorkspaceHeaderBar actions={<UserMenu />}>
+        <WorkspaceHeaderBar actions={<UserMenu className="hidden md:inline-flex" />}>
           <ProjectWorkspaceHeader project={project} subtitle="Variations" />
         </WorkspaceHeaderBar>
       </header>

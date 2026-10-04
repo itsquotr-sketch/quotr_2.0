@@ -280,12 +280,11 @@ function main(): void {
   );
   check(
     "R1-005: required brief purpose copy present",
-    capture.includes("Quotr reads") &&
-      capture.includes("this when analysing the job")
+    capture.includes("Describe the work the client wants.")
   );
   check(
     "R1-005: required site notes purpose copy present",
-    capture.includes("also reads eligible site notes during analysis")
+    capture.includes("Add measurements, access details or existing conditions.")
   );
   check(
     "R1-005: SiteNotesCaptureCard hides duplicate heading",

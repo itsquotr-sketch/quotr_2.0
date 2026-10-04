@@ -198,7 +198,6 @@ function QuestionContextMeta({
   value: string | number | boolean | string[] | null | undefined;
   sourceLabel: string | null;
 }) {
-  const [whyOpen, setWhyOpen] = useState(false);
   const why = whyThisMattersForKey(question.key);
   const usedFor = usedForLabelsForFactKey(question.key);
   const scopeItem = relatedScopeItemLabel(question.key);
@@ -241,24 +240,9 @@ function QuestionContextMeta({
         </div>
       ) : null}
       {why && shouldShowWhyThisMatters(question.key) ? (
-        <div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 font-medium text-foreground/80 underline-offset-2 hover:underline"
-            aria-expanded={whyOpen}
-            onClick={() => setWhyOpen((v) => !v)}
-          >
-            Why this matters
-            <ChevronDown
-              className={cn(
-                "size-3.5 transition-transform",
-                whyOpen && "rotate-180"
-              )}
-              aria-hidden
-            />
-          </button>
-          {whyOpen ? <p className="mt-1 max-w-prose">{why}</p> : null}
-        </div>
+        <p className="max-w-prose" data-why-this-matters>
+          {why}
+        </p>
       ) : null}
     </div>
   );

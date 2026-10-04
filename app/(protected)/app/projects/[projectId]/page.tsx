@@ -130,7 +130,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     <WorkspacePage
       header={
         <WorkspaceHeaderBar
-          actions={<UserMenu />}
+          actions={<UserMenu className="hidden md:inline-flex" />}
         >
           <ProjectWorkspaceHeader project={project} />
         </WorkspaceHeaderBar>

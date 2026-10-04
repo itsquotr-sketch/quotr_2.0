@@ -394,7 +394,7 @@ check(
     "components/assistant/QuestionBlock.tsx",
     "groupQuestionsByPresentationCategory"
   ) &&
-    fileHas("components/assistant/QuestionBlock.tsx", "Why this matters") &&
+    fileHas("components/assistant/QuestionBlock.tsx", "data-why-this-matters") &&
     fileHas("components/assistant/QuestionBlock.tsx", "Used for")
 );
 check(

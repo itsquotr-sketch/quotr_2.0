@@ -145,7 +145,7 @@ export function ProjectSectionHeader({
         </div>
       </div>
 
-      <div className="grid gap-2 lg:hidden">
+      <div className="grid gap-1.5 lg:hidden">
         <label className="grid gap-1">
           <span className="text-xs leading-4 text-foreground/70">Project section</span>
           <span className="text-sm font-semibold leading-5" data-project-stage-current>
@@ -178,7 +178,7 @@ export function ProjectSectionHeader({
               </option>
             ))}
           </select>
-          <span className="text-xs leading-4 text-foreground/75" data-project-section-context>
+          <span className="sr-only" data-project-section-context>
             {activeDetail}
           </span>
         </label>

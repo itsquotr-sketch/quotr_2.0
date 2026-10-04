@@ -346,8 +346,7 @@ export function ProjectDocumentsSection({
         <div className="space-y-1">
           <h4 className="text-sm font-semibold text-foreground">Photos and files</h4>
           <p className="text-xs text-muted-foreground">
-            Stored with the project for reference. Quotr does not read them
-            during analysis.
+            Saved with the job for reference. Quotr does not analyse files yet.
           </p>
         </div>
         {centre.documentsUnavailable ? (

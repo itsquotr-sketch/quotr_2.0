@@ -59,7 +59,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
     <WorkspacePage
       header={
         <WorkspaceHeaderBar
-          actions={<UserMenu />}
+          actions={<UserMenu className="hidden md:inline-flex" />}
         >
           <ProjectWorkspaceHeader project={project} subtitle="Final pricing" />
         </WorkspaceHeaderBar>

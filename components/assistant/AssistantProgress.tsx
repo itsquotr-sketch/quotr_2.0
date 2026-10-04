@@ -57,7 +57,7 @@ export function AssistantProgress({
         <p className="truncate text-xs font-semibold">{stepLabel}</p>
       </div>
       <div
-        className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
+        className="mt-1 h-1 overflow-hidden rounded-full bg-muted"
         role="progressbar"
         aria-valuenow={Math.min(currentIdx + 1, totalSteps)}
         aria-valuemin={1}

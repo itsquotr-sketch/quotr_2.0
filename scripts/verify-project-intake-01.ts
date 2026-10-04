@@ -103,22 +103,21 @@ check("dialog title and action", dialog.includes("Start a job") && dialog.includ
 check(
   "job description and site notes stay separate analysis text",
   capture.includes("Job description") &&
-    capture.includes("Quotr reads") &&
-    capture.includes("eligible site notes") &&
+    capture.includes("Describe the work the client wants.") &&
+    capture.includes("Add measurements, access details or existing conditions.") &&
     capture.includes("SiteNotesCaptureCard") &&
     capture.includes('id="project-brief"')
 );
 check(
   "internal notes stay out of the analysis card",
-  capture.replace(/\s+/g, " ").includes(
-    "Internal project notes stay under Project information and are not included in analysis."
-  ) && !capture.includes('htmlFor="notes"')
+  !capture.includes('htmlFor="notes"') &&
+    !capture.includes("project_notes") &&
+    capture.includes("SiteNotesCaptureCard")
 );
 check(
-  "analysis disclosure excludes files",
-  capture.replace(/\s+/g, " ").includes(
-    "Quotr analyses the job description and site notes. Files are saved with the project but are not read during analysis."
-  )
+  "files are reference only and are not an analysis input",
+  documents.includes("Saved with the job for reference. Quotr does not analyse files yet.") &&
+    !capture.includes("Quotr analyses the job description and site notes")
 );
 check("analyse stays an explicit click", capture.includes("onClick={onAnalyse}") && capture.includes("Analyse job"));
 check(

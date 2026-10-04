@@ -47,7 +47,7 @@ export default async function ProjectInformationPage({
     <WorkspacePage
       contentClassName="bg-muted/30"
       header={
-        <WorkspaceHeaderBar actions={<UserMenu />}>
+        <WorkspaceHeaderBar actions={<UserMenu className="hidden md:inline-flex" />}>
           <ProjectWorkspaceHeader project={project} />
         </WorkspaceHeaderBar>
       }

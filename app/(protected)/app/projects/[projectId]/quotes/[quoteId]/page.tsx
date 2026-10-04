@@ -50,7 +50,7 @@ export default async function QuotePage({ params }: QuotePageProps) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden print:bg-white">
       <header className="shrink-0 border-b bg-background print:hidden">
         <WorkspaceHeaderBar
-          actions={<UserMenu />}
+          actions={<UserMenu className="hidden md:inline-flex" />}
         >
           <ProjectWorkspaceHeader project={project} subtitle="Client quote" />
         </WorkspaceHeaderBar>
