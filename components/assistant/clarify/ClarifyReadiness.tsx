@@ -15,6 +15,7 @@ import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateE
 import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-sync";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
 import { CeilingsPortionsPanel } from "@/components/assistant/refine/CeilingsPortionsPanel";
@@ -438,7 +439,7 @@ export function RefineEstimatePanel({
 
       {showFooter ? (
         <ActionFooter
-          className="-mx-1 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+          className={cn("-mx-1 md:bottom-0", mobileNavBottomClass)}
           data-refine-cta-bar=""
         >
           <div className="flex w-full flex-col gap-2 sm:flex-row">
@@ -580,7 +581,7 @@ export function ClarifyReadinessCard({
       ) : null}
 
       <ActionFooter
-        className="bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+        className={cn("md:bottom-0", mobileNavBottomClass)}
         innerClassName="flex-col sm:flex-row"
       >
         <Button

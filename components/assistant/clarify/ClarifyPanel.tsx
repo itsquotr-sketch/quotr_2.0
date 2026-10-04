@@ -14,6 +14,7 @@ import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnsw
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 import {
@@ -560,7 +561,7 @@ export function ClarifyPanel({
       ) : null}
 
       <ActionFooter
-        className="-mx-1 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+        className={cn("-mx-1 md:bottom-0", mobileNavBottomClass)}
         data-clarify-cta-bar=""
       >
         <div className="flex w-full flex-col gap-2 sm:flex-row">

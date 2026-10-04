@@ -45,6 +45,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           )
         }
         wrapDescription
+        hideActionsOnMobile
         actions={<NewProjectDialog intent={isEmpty ? "first-job" : "default"} />}
       />
       <PageContainer innerClassName="py-4 max-md:py-3 max-md:pb-4">

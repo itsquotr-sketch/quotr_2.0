@@ -26,6 +26,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
         title="Projects"
         description="Every job, with its current stage and the next step."
         wrapDescription
+        hideActionsOnMobile
         actions={<NewProjectDialog />}
       />
       <PageContainer innerClassName="max-md:py-3 max-md:pb-4">

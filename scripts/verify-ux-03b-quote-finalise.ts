@@ -114,7 +114,7 @@ check(
   "mobile actions keep one primary send and no new queries",
   mobile.includes("More actions") &&
     mobile.includes("Send quote") &&
-    mobile.includes("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]") &&
+    mobile.includes("mobileNavBottomClass") &&
     workspace.includes("overflow-x-hidden") &&
     page.includes("getQuoteWorkspaceDataWithContext") &&
     !page.includes("revalidatePath") &&

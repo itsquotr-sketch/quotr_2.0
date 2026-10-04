@@ -11,6 +11,8 @@ type PageHeaderProps = {
   compactOnMobile?: boolean;
   /** Let the subtitle wrap instead of truncating. Header grows with the copy. */
   wrapDescription?: boolean;
+  /** Hide header actions below the sidebar breakpoint. The mobile bar owns New project. */
+  hideActionsOnMobile?: boolean;
 };
 
 export function PageHeader({
@@ -19,6 +21,7 @@ export function PageHeader({
   actions,
   compactOnMobile = false,
   wrapDescription = false,
+  hideActionsOnMobile = false,
 }: PageHeaderProps) {
   return (
     <>
@@ -48,7 +51,14 @@ export function PageHeader({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-2",
+              hideActionsOnMobile && "hidden md:flex"
+            )}
+          >
+            {actions}
+          </div>
         ) : null}
       </header>
     </>

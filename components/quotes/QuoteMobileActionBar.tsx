@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import type { Quote } from "@/lib/quotes/types";
 import { canMarkQuoteAccepted } from "@/lib/quotes/transaction";
@@ -64,7 +65,8 @@ export function QuoteMobileActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 z-40 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]",
+        "fixed inset-x-0 z-40 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden md:bottom-0",
+        mobileNavBottomClass,
         className
       )}
     >

@@ -6,6 +6,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { deriveDashboardAttention } from "../lib/dashboard/attention";
 import { selectDashboardActiveProjects } from "../lib/dashboard/select-active-projects";
+import {
+  isDashboardRoute,
+  isNewProjectRoute,
+  isProjectsRoute,
+  isRatesRoute,
+} from "../components/layout/mobile-nav-metrics";
 import { defaultDashboardWorkTab } from "../lib/dashboard/work-panel";
 import {
   presentDashboardOverview,
@@ -64,16 +70,31 @@ check(
     sidebar.includes("whitespace-nowrap")
 );
 check(
-  "bottom navigation stays Dashboard, Rates, and Menu",
-  mobileNav.includes('href: "/app/dashboard"') &&
-    mobileNav.includes('href: "/app/rates"') &&
-    mobileNav.includes("MobileMenuSheet") &&
-    !mobileNav.includes('href: "/app/projects"') &&
-    mobileNav.includes('aria-current={isActive ? "page" : undefined}')
+  "bottom navigation is Dashboard, Projects, New, Rates, and Menu",
+  mobileNav.indexOf('href="/app/dashboard"') <
+    mobileNav.indexOf('href="/app/projects"') &&
+    mobileNav.indexOf('href="/app/projects"') <
+      mobileNav.indexOf("data-mobile-new-project") &&
+    mobileNav.indexOf("data-mobile-new-project") <
+      mobileNav.indexOf('href="/app/rates"') &&
+    mobileNav.indexOf('href="/app/rates"') < mobileNav.indexOf("<MobileMenuSheet") &&
+    mobileNav.includes('data-mobile-nav="five"') &&
+    mobileNav.includes('aria-label="New project"') &&
+    mobileNav.includes("NewProjectDialog") &&
+    mobileNav.includes("grid-cols-5") &&
+    mobileNav.includes("size-14") &&
+    mobileNav.includes("rounded-full") &&
+    !mobileNav.includes("speed dial")
 );
 check(
-  "mobile menu leads with Projects and closes after navigation",
-  menu.indexOf('"/app/projects"') < menu.indexOf('"/app/settings/company"') &&
+  "mobile menu is secondary destinations and closes after navigation",
+  !menu.includes('"/app/projects"') &&
+    !menu.includes('"/app/dashboard"') &&
+    !menu.includes('"/app/rates"') &&
+    menu.indexOf('"/app/settings/company"') <
+      menu.indexOf('"/app/settings/billing"') &&
+    menu.includes("Organisation") &&
+    menu.includes("Account") &&
     menu.includes("SheetTitle") &&
     menu.includes(">Menu<") &&
     menu.includes("setOpen(false)") &&
@@ -84,11 +105,10 @@ check(
     menu.includes("finalFocus") &&
     menu.includes('html.style.overflow = "hidden"') &&
     menu.includes("SidebarAccount") &&
-    !menu.includes('"/app/dashboard"') &&
-    !menu.includes('"/app/rates"') &&
+    menu.includes("aria-expanded={open}") &&
     menu.includes("safe-area-inset-bottom") &&
     menu.includes("min-h-11") &&
-    menu.includes('aria-current={isActive ? "page" : undefined}')
+    menu.includes('aria-current={open ? "page" : undefined}')
 );
 check(
   "mobile menu keeps account destinations and hides work while setup is incomplete",
@@ -360,7 +380,11 @@ check(
     overviewCounts.quotesSentCount === 1 &&
     overviewCounts.wonCount === 2 &&
     WORK_OVERVIEW_MEASURES.find((item) => item.key === "wonCount")?.context ===
-      "Includes archived" &&
+      "Accepted projects" &&
+    WORK_OVERVIEW_MEASURES.find((item) => item.key === "quotesSentCount")
+      ?.label === "Quotes out" &&
+    WORK_OVERVIEW_MEASURES.find((item) => item.key === "activeCount")?.context ===
+      "Current pipeline" &&
     loader.includes('if (status === "estimating" || status === "estimate_ready")') &&
     read("lib/projects/actions.ts").includes("function getDashboardPipelineSummary")
 );
@@ -434,8 +458,27 @@ check(
     menu.includes("showTeamNav") &&
     read("components/ui/sheet.tsx").includes("data-[side=right]:h-dvh") &&
     read("components/ui/sheet.tsx").includes("data-[side=right]:max-h-dvh") &&
-    read("components/layout/mobile-nav.tsx").includes('href: "/app/dashboard"') &&
-    read("components/layout/mobile-nav.tsx").includes('href: "/app/rates"')
+    read("components/layout/mobile-nav.tsx").includes('href="/app/dashboard"') &&
+    read("components/layout/mobile-nav.tsx").includes('href="/app/rates"') &&
+    read("app/(protected)/app/dashboard/page.tsx").includes("hideActionsOnMobile") &&
+    read("app/(protected)/app/projects/page.tsx").includes("hideActionsOnMobile") &&
+    read("components/layout/page-header.tsx").includes("hidden md:flex") &&
+    read("components/layout/app-shell.tsx").includes("mobileNavPaddingClass") &&
+    read("components/layout/mobile-nav-metrics.ts").includes(
+      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+    ) &&
+    isDashboardRoute("/app/dashboard") &&
+    !isDashboardRoute("/app/projects") &&
+    isProjectsRoute("/app/projects") &&
+    isProjectsRoute("/app/projects/job-1") &&
+    !isProjectsRoute("/app/projects/new") &&
+    isNewProjectRoute("/app/projects/new") &&
+    !isNewProjectRoute("/app/projects") &&
+    isRatesRoute("/app/rates") &&
+    isRatesRoute("/app/rates/core") &&
+    !isRatesRoute("/app/projects") &&
+    read("components/setup/OnboardingFrame.tsx").includes("No primary nav") &&
+    !read("components/setup/OnboardingFrame.tsx").includes("MobileNav")
 );
 
 check(

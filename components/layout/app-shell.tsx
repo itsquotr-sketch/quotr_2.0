@@ -7,6 +7,7 @@ import { TrialNoticeBanner } from "@/components/billing/TrialNoticeBanner";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { mobileNavPaddingClass } from "@/components/layout/mobile-nav-metrics";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { NotificationProvider } from "@/components/layout/notification-context";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
@@ -103,7 +104,7 @@ export function AppShell({
           <div
             className={
               showMobileNav
-                ? "flex min-h-0 flex-1 flex-col md:overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                ? `flex min-h-0 flex-1 flex-col md:overflow-hidden ${mobileNavPaddingClass}`
                 : "flex min-h-0 flex-1 flex-col md:overflow-hidden"
             }
           >

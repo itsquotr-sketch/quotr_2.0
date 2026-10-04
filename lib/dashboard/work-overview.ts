@@ -22,7 +22,7 @@ import { isActivePipelineStatus } from "@/lib/projects/status";
  *   filter. The shared pipeline counter still includes those archived rows.
  * wonCount — every won project, including archived. This is all-time accepted
  *   work, matching the shared wonCount and the Projects won filter. The card
- *   context says it includes archived so it is not read as current work.
+ *   says "Accepted projects" and does not describe the archive rule.
  *
  * quote_draft and lost stay on the Projects filters. They are not Dashboard cards.
  */
@@ -78,25 +78,25 @@ export const WORK_OVERVIEW_MEASURES: readonly WorkOverviewMeasure[] = [
   {
     key: "activeCount",
     label: "Active work",
-    context: "Not archived",
+    context: "Current pipeline",
     href: "/app/projects",
   },
   {
     key: "estimatingPricingCount",
     label: "Estimating & pricing",
-    context: "Not archived",
+    context: "Work being priced",
     href: null,
   },
   {
     key: "quotesSentCount",
-    label: "Quote sent",
-    context: "Not archived",
+    label: "Quotes out",
+    context: "Awaiting client response",
     href: "/app/projects?filter=quote_sent",
   },
   {
     key: "wonCount",
     label: "Won work",
-    context: "Includes archived",
+    context: "Accepted projects",
     href: "/app/projects?filter=won",
   },
 ];

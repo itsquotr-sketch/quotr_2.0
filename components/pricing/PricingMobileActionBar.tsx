@@ -11,11 +11,8 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import { Button } from "@/components/ui/button";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
-
-/** Matches AppShell MobileNav: h-14 + safe-area. Keep pricing CTAs above it. */
-const MOBILE_NAV_CLEARANCE =
-  "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]";
 
 type PricingMobileActionBarProps = {
   document: PricingDocument;
@@ -63,7 +60,7 @@ export function PricingMobileActionBar({
     <div
       className={cn(
         "fixed inset-x-0 z-40 border-t bg-background/95 backdrop-blur-sm md:hidden print:hidden",
-        MOBILE_NAV_CLEARANCE,
+        mobileNavBottomClass,
         className
       )}
       data-pricing-mobile-action-bar="true"

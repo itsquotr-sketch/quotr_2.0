@@ -461,7 +461,10 @@ check(
 check(
   33.1,
   "pricing mobile bar clears AppShell MobileNav",
-  pricingBar.includes("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]") &&
+  pricingBar.includes("mobileNavBottomClass") &&
+    read("components/layout/mobile-nav-metrics.ts").includes(
+      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+    ) &&
     !pricingBar.includes("fixed inset-x-0 bottom-0") &&
     pricingBar.includes('data-pricing-mobile-mark-reviewed="true"') &&
     pricingWorkspace.includes("onMarkReviewed={handleMarkReviewed}") &&

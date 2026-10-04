@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
-  Briefcase,
   Building2,
   CreditCard,
   LogOut,
@@ -12,6 +11,7 @@ import {
   UserRound,
   Users,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/actions";
 import { FeedbackLink } from "@/components/layout/feedback-link";
@@ -60,7 +60,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
     setOpen(false);
   }
 
-  function destination(href: string, label: string, icon: typeof Briefcase) {
+  function destination(href: string, label: string, icon: LucideIcon) {
     const isActive = pathname === href || pathname.startsWith(`${href}/`);
     const Icon = icon;
     return (
@@ -82,6 +82,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
             "size-4 shrink-0",
             isActive ? "text-[var(--brand-orange)]" : "text-muted-foreground"
           )}
+          aria-hidden
         />
         <span className="min-w-0 flex-1 text-left">{label}</span>
       </Link>
@@ -92,10 +93,15 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
     <Sheet modal open={open} onOpenChange={setOpen}>
       <SheetTrigger
         ref={triggerRef}
-        className={cn(triggerClassName)}
+        className={cn(
+          triggerClassName,
+          open && "text-[var(--brand-orange)]"
+        )}
         aria-label="Open menu"
+        aria-expanded={open}
+        aria-current={open ? "page" : undefined}
       >
-        <Menu className="size-5" />
+        <Menu className="size-5" strokeWidth={open ? 2.25 : 2} aria-hidden />
         <span>Menu</span>
       </SheetTrigger>
       <SheetContent
@@ -124,15 +130,20 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
         </SheetClose>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-3">
           {setupIncomplete ? null : (
-            <nav className="flex flex-col gap-1" aria-label="Work and organisation">
-              {destination("/app/projects", "Projects", Briefcase)}
+            <nav className="flex flex-col gap-1" aria-label="Organisation">
+              <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                Organisation
+              </p>
               {destination("/app/settings/company", "Company", Building2)}
               {showTeamNav
                 ? destination("/app/settings/team", "Team", Users)
                 : null}
             </nav>
           )}
-          <div className="mt-2 flex flex-col gap-1">
+          <div className="mt-4 flex flex-col gap-1">
+            <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+              Account
+            </p>
             {setupIncomplete
               ? null
               : destination("/app/settings/billing", "Billing", CreditCard)}
@@ -155,7 +166,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
                 });
               }}
             >
-              <LogOut className="size-4 shrink-0" />
+              <LogOut className="size-4 shrink-0" aria-hidden />
               <span>{pending ? "Signing out…" : "Sign out"}</span>
             </button>
           </div>
