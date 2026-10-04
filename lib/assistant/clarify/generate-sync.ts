@@ -30,7 +30,7 @@ export const GENERATE_STATUS_COPY = Object.freeze({
   saving: "Saving job details",
   readiness: "Checking estimate readiness",
   building: "Building your estimate",
-  extended: "Checking your job details and building the estimate…",
+  extended: "This can take up to a minute.",
 });
 
 export function canInitiateGenerateEstimate(params: {
@@ -55,14 +55,18 @@ export function remainingGenerateMinDisplayMs(
 
 export function generateStatusDetail(params: {
   readonly stage: GenerateEstimateStage;
-  readonly elapsedMs: number;
 }): string {
   if (params.stage === "saving") return GENERATE_STATUS_COPY.saving;
   if (params.stage === "readiness") return GENERATE_STATUS_COPY.readiness;
-  if (params.elapsedMs >= GENERATE_EXTENDED_COPY_MS) {
-    return GENERATE_STATUS_COPY.extended;
-  }
   return GENERATE_STATUS_COPY.building;
+}
+
+/** Honest wait note. It does not replace the stage the client already knows. */
+export function generateStatusSupporting(elapsedMs: number): string | null {
+  if (!Number.isFinite(elapsedMs) || elapsedMs < GENERATE_EXTENDED_COPY_MS) {
+    return null;
+  }
+  return GENERATE_STATUS_COPY.extended;
 }
 
 export function decideGenerateAfterSync(params: {

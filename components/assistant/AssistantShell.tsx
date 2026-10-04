@@ -46,6 +46,7 @@ import type {
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
+import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { RefineEstimatePanel } from "@/components/assistant/clarify/ClarifyReadiness";
 import {
   ProjectCaptureCollapsedSummary,
@@ -373,6 +374,7 @@ export function AssistantShell({
     string | null
   >(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateStartedAt, setRegenerateStartedAt] = useState(0);
   const [isSavingMargin, setIsSavingMargin] = useState(false);
   const [marginSaveLabel, setMarginSaveLabel] = useState<string | null>(null);
   const [marginOverlay, setMarginOverlay] = useState<MarginTotalsOverlay | null>(
@@ -1319,6 +1321,7 @@ export function AssistantShell({
         return;
       }
     }
+    setRegenerateStartedAt(Date.now());
     setIsRegenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
@@ -2717,6 +2720,9 @@ export function AssistantShell({
 
   return (
     <div data-project-id={project.id} className="w-full min-w-0">
+      {isRegenerating ? (
+        <GenerateEstimateStatus stage="building" startedAt={regenerateStartedAt} />
+      ) : null}
       <AssistantProgress
         currentStage={stage}
         preferProjectConditionsLabel={preferProjectConditionsAsk}

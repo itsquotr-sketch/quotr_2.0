@@ -8,6 +8,8 @@ type QuotrLoaderProps = {
   /** Optional second line. Omit when it would repeat the status. */
   supporting?: string;
   className?: string;
+  /** Optional stage marker for the estimate generation state. */
+  generateStage?: string;
 };
 
 /**
@@ -19,6 +21,7 @@ export function QuotrLoader({
   status,
   supporting,
   className,
+  generateStage,
 }: QuotrLoaderProps) {
   const mark = (
     <span
@@ -38,6 +41,7 @@ export function QuotrLoader({
         role="status"
         aria-live="polite"
         data-quotr-loader="compact"
+        data-generate-estimate-status={generateStage}
         className={cn(
           "inline-flex items-center justify-center gap-2",
           className
@@ -55,6 +59,7 @@ export function QuotrLoader({
       aria-live="polite"
       aria-atomic="true"
       data-quotr-loader="fullscreen"
+      data-generate-estimate-status={generateStage}
       className={cn(
         "fixed inset-0 z-50 flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-center",
         "pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]",

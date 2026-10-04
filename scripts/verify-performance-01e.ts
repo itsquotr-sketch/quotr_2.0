@@ -16,6 +16,7 @@ import {
   decideGenerateAfterSync,
   GENERATE_MIN_VISIBLE_MS,
   generateStatusDetail,
+  generateStatusSupporting,
   remainingGenerateMinDisplayMs,
 } from "../lib/assistant/clarify/generate-sync";
 import { composeEstimateReadiness } from "../lib/assistant/readiness/compose";
@@ -324,14 +325,15 @@ check(
 console.log("\n-- generating UX / a11y --");
 check(
   "generating UI uses real stages only",
-  statusUi.includes("aria-live") &&
-    statusUi.includes('role="status"') &&
-    generateStatusDetail({ stage: "saving", elapsedMs: 0 }) ===
-      "Saving job details" &&
-    generateStatusDetail({ stage: "readiness", elapsedMs: 0 }) ===
+  statusUi.includes("QuotrLoader") &&
+    read("components/brand/QuotrLoader.tsx").includes('role="status"') &&
+    read("components/brand/QuotrLoader.tsx").includes("aria-live") &&
+    generateStatusDetail({ stage: "saving" }) === "Saving job details" &&
+    generateStatusDetail({ stage: "readiness" }) ===
       "Checking estimate readiness" &&
-    generateStatusDetail({ stage: "building", elapsedMs: 0 }) ===
-      "Building your estimate"
+    generateStatusDetail({ stage: "building" }) === "Building your estimate" &&
+    generateStatusSupporting(0) == null &&
+    generateStatusSupporting(2000) === "This can take up to a minute."
 );
 check(
   "no fake percent / construction gimmick",

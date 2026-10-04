@@ -63,8 +63,7 @@ export const ASSISTANT_LOADING_COPY = Object.freeze({
   estimateGeneratingHeadline: "Generating your estimate",
   estimateSavingDetails: "Saving job details",
   estimateCheckingReadiness: "Checking estimate readiness",
-  estimateGeneratingExtended:
-    "Checking your job details and building the estimate…",
+  estimateGeneratingExtended: "This can take up to a minute.",
   estimateRecalculate: "Updating estimate…",
   includeExclude: "Updating scope…",
 } as const);
