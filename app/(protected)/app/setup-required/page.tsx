@@ -6,16 +6,15 @@ import {
   logout,
   type AuthActionState,
 } from "@/app/(auth)/actions";
-import { AuthContinue } from "@/components/auth/AuthContinue";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+} from "@/components/auth/AuthCard";
+import { AuthContinue } from "@/components/auth/AuthContinue";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -38,34 +37,21 @@ export default function SetupRequiredPage() {
 
   if (state.continueTo) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Company linked</CardTitle>
-          <CardDescription>
-            Taking you to company basics to finish getting started.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthContinue
-            continueTo={state.continueTo}
-            label="Opening company basics…"
-          />
-        </CardContent>
-      </Card>
+      <AuthContinue
+        continueTo={state.continueTo}
+        label="Preparing your account…"
+      />
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Finish account setup</CardTitle>
-        <CardDescription>
-          Your account is signed in, but it is not linked to a company yet.
-          Create your company to continue using Quotr.
-        </CardDescription>
-      </CardHeader>
+    <AuthCard>
+      <AuthCardHeader
+        title="Finish account setup"
+        description="Your account is signed in, but it is not linked to a company yet. Create your company to continue using Quotr."
+      />
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
-        <CardContent className="space-y-4">
+        <AuthCardContent>
           {state.error ? (
             <p
               role="alert"
@@ -84,6 +70,7 @@ export default function SetupRequiredPage() {
               placeholder="Alex Smith"
               required
               disabled={pending}
+              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.full_name} />
           </div>
@@ -97,6 +84,7 @@ export default function SetupRequiredPage() {
               placeholder="Smith Building Co."
               required
               disabled={pending}
+              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.organisation_name} />
           </div>
@@ -106,25 +94,27 @@ export default function SetupRequiredPage() {
             or contact support. Do not create a second company for an existing
             team account.
           </p>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Finishing setup…" : "Finish account setup"}
-          </Button>
-        </CardFooter>
+        </AuthCardContent>
+        <AuthCardFooter className="gap-3">
+          <AuthSubmitButton
+            pending={pending}
+            idle="Finish account setup"
+            pendingLabel="Preparing your account…"
+          />
+        </AuthCardFooter>
       </form>
-      <CardFooter className="border-t pt-(--card-spacing)">
+      <AuthCardFooter className="border-t pt-(--card-spacing)">
         <form action={logout} className="w-full">
           <Button
             type="submit"
             variant="ghost"
-            className="w-full"
+            className="h-11 w-full"
             disabled={pending}
           >
             Sign out
           </Button>
         </form>
-      </CardFooter>
-    </Card>
+      </AuthCardFooter>
+    </AuthCard>
   );
 }

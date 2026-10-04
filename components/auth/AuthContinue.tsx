@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { QuotrLoader } from "@/components/brand/QuotrLoader";
 import { isPostAuthContinuePath } from "@/lib/auth/post-auth-navigation";
 
 type AuthContinueProps = {
@@ -8,15 +9,19 @@ type AuthContinueProps = {
   continueTo?: string;
   /** Shown while the document navigation runs. */
   label?: string;
+  /** Optional second line. Omit when it repeats the label. */
+  supporting?: string;
 };
 
 /**
  * Completes auth with a hard document navigation so session cookies are
  * visible to the next full RSC request. Not a reload, timeout, or poll.
+ * The loader does not delay the redirect.
  */
 export function AuthContinue({
   continueTo,
-  label = "Opening Quotr…",
+  label = "Opening your workspace…",
+  supporting,
 }: AuthContinueProps) {
   useEffect(() => {
     if (!continueTo || !isPostAuthContinuePath(continueTo)) return;
@@ -28,12 +33,10 @@ export function AuthContinue({
   }
 
   return (
-    <p
-      role="status"
-      aria-live="polite"
-      className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
-    >
-      {label}
-    </p>
+    <QuotrLoader
+      variant="fullscreen"
+      status={label}
+      supporting={supporting}
+    />
   );
 }

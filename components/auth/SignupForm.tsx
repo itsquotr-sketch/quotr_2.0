@@ -7,16 +7,17 @@ import {
   type RecoveryActionState,
 } from "@/lib/auth/recovery-actions";
 import { signup, type AuthActionState } from "@/app/(auth)/actions";
-import { AuthContinue } from "@/components/auth/AuthContinue";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+  authTextLinkClass,
+} from "@/components/auth/AuthCard";
+import { AuthContinue } from "@/components/auth/AuthContinue";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -35,23 +36,25 @@ function ConfirmationPending({ email }: { email?: string }) {
   );
 
   return (
-    <Card>
-      <CardHeader className="pb-4 sm:pb-6">
-        <CardTitle className="text-xl">Check your email</CardTitle>
-        <CardDescription>
-          We&apos;ve sent a confirmation link
-          {email ? (
-            <>
-              {" "}
-              to <span className="font-medium text-foreground">{email}</span>
-            </>
-          ) : (
-            " to your email address"
-          )}
-          . Open the link to finish creating your Quotr account.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <AuthCard>
+      <AuthCardHeader
+        title="Check your email"
+        description={
+          <>
+            We&apos;ve sent a confirmation link
+            {email ? (
+              <>
+                {" "}
+                to <span className="font-medium text-foreground">{email}</span>
+              </>
+            ) : (
+              " to your email address"
+            )}
+            . Open the link to finish creating your Quotr account.
+          </>
+        }
+      />
+      <AuthCardContent>
         <p className="text-sm text-muted-foreground">
           After you confirm, you&apos;ll be signed in. If you were invited to a
           company, we&apos;ll take you back to the invitation.
@@ -73,25 +76,23 @@ function ConfirmationPending({ email }: { email?: string }) {
           </p>
         ) : null}
         {email ? (
-          <form action={resendAction} className="space-y-3">
+          <form action={resendAction}>
             <input type="hidden" name="email" value={email} />
-            <Button
-              type="submit"
+            <AuthSubmitButton
+              pending={resendPending}
+              idle="Resend confirmation email"
+              pendingLabel="Sending…"
               variant="outline"
-              className="h-11 w-full"
-              disabled={resendPending}
-            >
-              {resendPending ? "Sending…" : "Resend confirmation email"}
-            </Button>
+            />
           </form>
         ) : null}
-      </CardContent>
-      <CardFooter className="flex flex-col gap-3">
+      </AuthCardContent>
+      <AuthCardFooter>
         <Button render={<Link href="/login" />} className="h-11 w-full">
           Return to login
         </Button>
-      </CardFooter>
-    </Card>
+      </AuthCardFooter>
+    </AuthCard>
   );
 }
 
@@ -111,60 +112,46 @@ export function SignupForm(props: {
 
   if (state.continueTo) {
     return (
-      <Card>
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-xl">Account created</CardTitle>
-          <CardDescription>
-            {inviteToken
-              ? "Taking you back to your invitation."
-              : "Taking you to company basics to finish getting started."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthContinue
-            continueTo={state.continueTo}
-            label={inviteToken ? "Opening invitation…" : "Opening company basics…"}
-          />
-        </CardContent>
-      </Card>
+      <AuthContinue
+        continueTo={state.continueTo}
+        label="Preparing your account…"
+      />
     );
   }
 
   if (inviteToken && !invitedEmail) {
     return (
-      <Card>
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-xl">Invitation not found</CardTitle>
-          <CardDescription>
-            This invitation link is invalid, expired, or has already been used.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
+      <AuthCard>
+        <AuthCardHeader
+          title="Invitation not found"
+          description="This invitation link is invalid, expired, or has already been used."
+        />
+        <AuthCardFooter>
           <Button render={<Link href="/signup" />} className="h-11 w-full">
             Create your own company
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-4 sm:pb-6">
-        <CardTitle className="text-xl">
-          {inviteToken ? "Join this Quotr company" : "Create your Quotr account"}
-        </CardTitle>
-        <CardDescription>
-          {inviteToken
+    <AuthCard>
+      <AuthCardHeader
+        title={
+          inviteToken ? "Join this Quotr company" : "Create your Quotr account"
+        }
+        description={
+          inviteToken
             ? "Create your login. You will join the company that invited you — we will not create a second company."
-            : "Set up your company and start your first job."}
-        </CardDescription>
-      </CardHeader>
+            : "Set up your company and start your first job."
+        }
+      />
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
         {inviteToken ? (
           <input type="hidden" name="invite_token" value={inviteToken} />
         ) : null}
-        <CardContent className="space-y-4">
+        <AuthCardContent>
           {state.error ? (
             <p
               role="alert"
@@ -227,38 +214,34 @@ export function SignupForm(props: {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordField
               id="password"
               name="password"
-              type="password"
               autoComplete="new-password"
               placeholder="At least 8 characters"
               minLength={8}
               required
-              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.password} />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending
-              ? "Creating account…"
-              : inviteToken
-                ? "Create account and join"
-                : "Create account"}
-          </Button>
+        </AuthCardContent>
+        <AuthCardFooter>
+          <AuthSubmitButton
+            pending={pending}
+            idle={inviteToken ? "Create account and join" : "Create account"}
+            pendingLabel="Creating account…"
+          />
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
               href={inviteToken ? `/login?next=/invite/${inviteToken}` : "/login"}
-              className="font-medium text-foreground underline-offset-4 hover:underline"
+              className={authTextLinkClass}
             >
               Sign in
             </Link>
           </p>
-        </CardFooter>
+        </AuthCardFooter>
       </form>
-    </Card>
+    </AuthCard>
   );
 }

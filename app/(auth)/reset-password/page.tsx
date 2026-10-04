@@ -1,15 +1,13 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { ResetPasswordClient } from "@/components/auth/ResetPasswordClient";
 import { createClient } from "@/lib/supabase/server";
 import {
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardFooter,
+  AuthCardHeader,
+} from "@/components/auth/AuthCard";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 type ResetPasswordPageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -28,14 +26,12 @@ export default async function ResetPasswordPage({
 
   if (linkInvalid || !user) {
     return (
-      <Card>
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-xl">Reset link unavailable</CardTitle>
-          <CardDescription>
-            This password reset link is invalid or has expired.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-col gap-3">
+      <AuthCard>
+        <AuthCardHeader
+          title="Reset link unavailable"
+          description="This password reset link is invalid or has expired."
+        />
+        <AuthCardFooter className="gap-3">
           <Button
             render={<Link href="/forgot-password" />}
             className="h-11 w-full"
@@ -49,13 +45,19 @@ export default async function ResetPasswordPage({
           >
             Back to login
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
   return (
-    <Suspense fallback={<Card className="min-h-48 animate-pulse" />}>
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="min-h-48" />
+        </AuthCard>
+      }
+    >
       <ResetPasswordClient />
     </Suspense>
   );

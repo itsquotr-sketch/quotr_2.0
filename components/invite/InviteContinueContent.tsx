@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { acceptPendingInvitationForCurrentUser } from "@/lib/team/actions";
 import { SEAT_QUEUED_MESSAGE } from "@/lib/team/seat-queue";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+} from "@/components/auth/AuthCard";
 import { AuthContinue } from "@/components/auth/AuthContinue";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { Button } from "@/components/ui/button";
 import type { PublicInvitationView } from "@/lib/team/public-invite";
 import { ROLE_LABELS } from "@/lib/team/roles";
 
@@ -36,80 +35,68 @@ export function InviteContinueContent(props: {
   const [state, formAction, pending] = useActionState(acceptAction, {});
 
   if (state.continueTo) {
-    const waiting = Boolean(state.warning);
-    const queued = state.warning === SEAT_QUEUED_MESSAGE;
+    const warning = state.warning;
+    const queued = warning === SEAT_QUEUED_MESSAGE;
+    const label = !warning
+      ? "Opening your workspace…"
+      : queued
+        ? "Your seat is being activated"
+        : "Payment needs to finish";
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {queued
-              ? "Your seat is being activated"
-              : waiting
-                ? "Payment needs to finish"
-                : "You're in"}
-          </CardTitle>
-          <CardDescription>
-            {state.warning || "Taking you to Quotr."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthContinue
-            continueTo={state.continueTo}
-            label={waiting ? "Opening invitation status…" : "Opening Quotr…"}
-          />
-        </CardContent>
-      </Card>
+      <AuthContinue
+        continueTo={state.continueTo}
+        label={label}
+        supporting={warning && !queued ? warning : undefined}
+      />
     );
   }
 
   if (!props.signedIn) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign in to continue</CardTitle>
-          <CardDescription>
-            Open the invitation email and sign in with the invited address.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button render={<Link href="/login?next=/invite/continue" />} className="w-full">
+      <AuthCard>
+        <AuthCardHeader
+          title="Sign in to continue"
+          description="Open the invitation email and sign in with the invited address."
+        />
+        <AuthCardFooter>
+          <Button
+            render={<Link href="/login?next=/invite/continue" />}
+            className="h-11 w-full"
+          >
             Sign in
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
   if (props.kind === "multiple") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Open the invitation email</CardTitle>
-          <CardDescription>
-            More than one invitation is waiting for this email. Use the link in
-            the email for the company you want to join.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <AuthCard>
+        <AuthCardHeader
+          title="Open the invitation email"
+          description="More than one invitation is waiting for this email. Use the link in the email for the company you want to join."
+        />
+      </AuthCard>
     );
   }
 
   if (props.kind === "none" || !props.view) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No invitation found</CardTitle>
-          <CardDescription>
-            If you meant to create your own company, finish account setup.
-            If you were invited, use the link from your email.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-col gap-2">
-          <Button render={<Link href="/app/setup-required" />} className="w-full">
+      <AuthCard>
+        <AuthCardHeader
+          title="No invitation found"
+          description="If you meant to create your own company, finish account setup. If you were invited, use the link from your email."
+        />
+        <AuthCardFooter>
+          <Button
+            render={<Link href="/app/setup-required" />}
+            className="h-11 w-full"
+          >
             Finish account setup
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
@@ -118,21 +105,21 @@ export function InviteContinueContent(props: {
       state.warning === SEAT_QUEUED_MESSAGE ||
       props.view.waitKind === "queued";
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {queued
+      <AuthCard>
+        <AuthCardHeader
+          title={
+            queued
               ? "Your seat is being activated"
-              : "Your seat is not active yet"}
-          </CardTitle>
-          <CardDescription>
-            {state.warning ||
-              (queued
-                ? SEAT_QUEUED_MESSAGE
-                : "Your seat couldn't be activated because the account payment needs attention. You cannot open this company until payment succeeds.")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+              : "Your seat is not active yet"
+          }
+          description={
+            state.warning ||
+            (queued
+              ? SEAT_QUEUED_MESSAGE
+              : "Your seat couldn't be activated because the account payment needs attention. You cannot open this company until payment succeeds.")
+          }
+        />
+        <AuthCardContent>
           {state.error ? (
             <p
               role="alert"
@@ -141,27 +128,27 @@ export function InviteContinueContent(props: {
               {state.error}
             </p>
           ) : null}
-        </CardContent>
-        <CardFooter>
-          <form action={formAction} className="w-full">
-            <Button type="submit" className="h-11 w-full" disabled={pending}>
-              {pending ? "Checking…" : "Try again"}
-            </Button>
-          </form>
-        </CardFooter>
-      </Card>
+        </AuthCardContent>
+        <form action={formAction}>
+          <AuthCardFooter>
+            <AuthSubmitButton
+              pending={pending}
+              idle="Try again"
+              pendingLabel="Checking…"
+            />
+          </AuthCardFooter>
+        </form>
+      </AuthCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Join {props.view.organisationName}</CardTitle>
-        <CardDescription>
-          You were invited as {ROLE_LABELS[props.view.role]}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <AuthCard>
+      <AuthCardHeader
+        title={`Join ${props.view.organisationName}`}
+        description={`You were invited as ${ROLE_LABELS[props.view.role]}.`}
+      />
+      <AuthCardContent>
         {state.error ? (
           <p
             role="alert"
@@ -170,14 +157,16 @@ export function InviteContinueContent(props: {
             {state.error}
           </p>
         ) : null}
-      </CardContent>
-      <CardFooter>
-        <form action={formAction} className="w-full">
-          <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending ? "Joining…" : "Join company"}
-          </Button>
-        </form>
-      </CardFooter>
-    </Card>
+      </AuthCardContent>
+      <form action={formAction}>
+        <AuthCardFooter>
+          <AuthSubmitButton
+            pending={pending}
+            idle="Join company"
+            pendingLabel="Joining…"
+          />
+        </AuthCardFooter>
+      </form>
+    </AuthCard>
   );
 }

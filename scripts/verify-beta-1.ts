@@ -72,7 +72,7 @@ function main() {
 
   section("SIGNUP COPY");
   const signup = `${read("app/(auth)/signup/page.tsx")}\n${read("components/auth/SignupForm.tsx")}`;
-  const authLayout = read("app/(auth)/layout.tsx");
+  const authLayout = `${read("app/(auth)/layout.tsx")}\n${read("components/auth/AuthShell.tsx")}\n${read("lib/branding/assets.ts")}`;
   const authActions = read("app/(auth)/actions.ts");
   assert("signup label is Company name", /Company name/.test(signup));
   assert(

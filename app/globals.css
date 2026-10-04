@@ -180,6 +180,85 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .quotr-mark-ring,
+  .quotr-mark-stroke,
+  .quotr-mark-slash {
+    animation: none !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* Auth fields only. Other application forms keep the browser autofill. */
+[data-auth-shell] input:-webkit-autofill,
+[data-auth-shell] input:-webkit-autofill:hover,
+[data-auth-shell] input:-webkit-autofill:focus,
+[data-auth-shell] input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  border-color: var(--border);
+  box-shadow: 0 0 0 1000px var(--background) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+[data-auth-shell] input:autofill {
+  box-shadow: 0 0 0 1000px var(--background) inset;
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+}
+
+[data-auth-shell] .quotr-auth-password input {
+  padding-right: 4.5rem;
+}
+
+.quotr-mark-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(-8deg);
+  animation: quotr-ring-turn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.quotr-mark-stroke {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 18;
+  animation: quotr-ring-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.quotr-mark-slash {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: translate(2px, 2px);
+  animation:
+    quotr-slash-enter 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    quotr-slash-breathe 2.8s ease-in-out 0.75s infinite;
+}
+
+@keyframes quotr-ring-turn {
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes quotr-ring-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes quotr-slash-enter {
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes quotr-slash-breathe {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(0.75px, -0.75px);
+  }
 }
 
 @media print {

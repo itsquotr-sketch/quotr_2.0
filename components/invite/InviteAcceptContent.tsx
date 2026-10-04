@@ -6,16 +6,15 @@ import { acceptInvitation, retryOwnSeatActivation } from "@/lib/team/actions";
 import { ROLE_LABELS, type MembershipRole } from "@/lib/team/roles";
 import type { PublicInvitationView } from "@/lib/team/public-invite";
 import { SEAT_QUEUED_MESSAGE } from "@/lib/team/seat-queue";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+} from "@/components/auth/AuthCard";
 import { AuthContinue } from "@/components/auth/AuthContinue";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { Button } from "@/components/ui/button";
 
 type InviteAcceptState = {
   error?: string;
@@ -60,50 +59,35 @@ export function InviteAcceptContent(props: {
   );
 
   if (state.continueTo || retryState.continueTo) {
-    const waiting = Boolean(state.warning || retryState.warning);
-    const queued =
-      (state.warning ?? retryState.warning) === SEAT_QUEUED_MESSAGE;
+    const warning = state.warning || retryState.warning;
+    const queued = warning === SEAT_QUEUED_MESSAGE;
+    const label = !warning
+      ? "Opening your workspace…"
+      : queued
+        ? "Your seat is being activated"
+        : "Payment needs to finish";
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {queued
-              ? "Your seat is being activated"
-              : waiting
-                ? "Payment needs to finish"
-                : "You're in"}
-          </CardTitle>
-          <CardDescription>
-            {state.warning ||
-              retryState.warning ||
-              "Taking you to Quotr."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthContinue
-            continueTo={state.continueTo ?? retryState.continueTo ?? "/app/dashboard"}
-            label={waiting ? "Opening invitation status…" : "Opening Quotr…"}
-          />
-        </CardContent>
-      </Card>
+      <AuthContinue
+        continueTo={state.continueTo ?? retryState.continueTo ?? "/app/dashboard"}
+        label={label}
+        supporting={warning && !queued ? warning : undefined}
+      />
     );
   }
 
   if (!props.invitation) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Invitation not found</CardTitle>
-          <CardDescription>
-            This link is invalid, expired, or has already been used.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button render={<Link href="/login" />} className="w-full">
+      <AuthCard>
+        <AuthCardHeader
+          title="Invitation not found"
+          description="This link is invalid, expired, or has already been used."
+        />
+        <AuthCardFooter>
+          <Button render={<Link href="/login" />} className="h-11 w-full">
             Go to login
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
@@ -114,16 +98,12 @@ export function InviteAcceptContent(props: {
 
   if (props.invitation.status === "accepted") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            You&apos;re already in {props.invitation.organisationName}
-          </CardTitle>
-          <CardDescription>
-            This invitation has already been accepted.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
+      <AuthCard>
+        <AuthCardHeader
+          title={`You're already in ${props.invitation.organisationName}`}
+          description="This invitation has already been accepted."
+        />
+        <AuthCardFooter>
           <Button
             render={
               <Link
@@ -138,37 +118,31 @@ export function InviteAcceptContent(props: {
           >
             {props.signedIn ? "Open Quotr" : "Sign in"}
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
   if (expired && props.invitation.status !== "accepting") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>This invitation has expired</CardTitle>
-          <CardDescription>
-            Ask the Owner of {props.invitation.organisationName} to send a new
-            invitation.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <AuthCard>
+        <AuthCardHeader
+          title="This invitation has expired"
+          description={`Ask the Owner of ${props.invitation.organisationName} to send a new invitation.`}
+        />
+      </AuthCard>
     );
   }
 
   if (!props.signedIn) {
     const next = `/invite/${props.token}`;
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Join {props.invitation.organisationName}</CardTitle>
-          <CardDescription>
-            {props.invitation.inviterName} invited you as {roleLabel}. Sign in
-            or create an account with {props.invitation.emailDisplay} to join.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex flex-col gap-2">
+      <AuthCard>
+        <AuthCardHeader
+          title={`Join ${props.invitation.organisationName}`}
+          description={`${props.invitation.inviterName} invited you as ${roleLabel}. Sign in or create an account with ${props.invitation.emailDisplay} to join.`}
+        />
+        <AuthCardFooter className="gap-2">
           <Button
             render={<Link href={`/login?next=${encodeURIComponent(next)}`} />}
             className="h-11 w-full"
@@ -182,28 +156,28 @@ export function InviteAcceptContent(props: {
           >
             Create account
           </Button>
-        </CardFooter>
-      </Card>
+        </AuthCardFooter>
+      </AuthCard>
     );
   }
 
   if (props.invitation.status === "accepting") {
     const queued = props.invitation.waitKind === "queued";
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {queued
+      <AuthCard>
+        <AuthCardHeader
+          title={
+            queued
               ? "Your seat is being activated"
-              : "Your seat is not active yet"}
-          </CardTitle>
-          <CardDescription>
-            {queued
+              : "Your seat is not active yet"
+          }
+          description={
+            queued
               ? SEAT_QUEUED_MESSAGE
-              : "Your seat couldn't be activated because the account payment needs attention. You cannot open this company until payment succeeds."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+              : "Your seat couldn't be activated because the account payment needs attention. You cannot open this company until payment succeeds."
+          }
+        />
+        <AuthCardContent>
           {retryState.error || state.error ? (
             <p
               role="alert"
@@ -212,31 +186,27 @@ export function InviteAcceptContent(props: {
               {retryState.error ?? state.error}
             </p>
           ) : null}
-        </CardContent>
-        <CardFooter>
-          <form action={retryFormAction} className="w-full">
-            <Button
-              type="submit"
-              className="h-11 w-full"
-              disabled={retryPending}
-            >
-              {retryPending ? "Checking…" : "Try again"}
-            </Button>
-          </form>
-        </CardFooter>
-      </Card>
+        </AuthCardContent>
+        <form action={retryFormAction}>
+          <AuthCardFooter>
+            <AuthSubmitButton
+              pending={retryPending}
+              idle="Try again"
+              pendingLabel="Checking…"
+            />
+          </AuthCardFooter>
+        </form>
+      </AuthCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Join {props.invitation.organisationName}</CardTitle>
-        <CardDescription>
-          You were invited as {roleLabel}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <AuthCard>
+      <AuthCardHeader
+        title={`Join ${props.invitation.organisationName}`}
+        description={<>You were invited as {roleLabel}.</>}
+      />
+      <AuthCardContent>
         {state.error || retryState.error ? (
           <p
             role="alert"
@@ -250,27 +220,27 @@ export function InviteAcceptContent(props: {
             Signed in as {props.signedInEmail}
           </p>
         ) : null}
-      </CardContent>
-      <CardFooter className="flex flex-col gap-2">
+      </AuthCardContent>
+      <AuthCardFooter className="gap-2">
         <form action={formAction} className="w-full">
           <input type="hidden" name="token" value={props.token} />
-          <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending ? "Joining…" : "Join company"}
-          </Button>
+          <AuthSubmitButton
+            pending={pending}
+            idle="Join company"
+            pendingLabel="Joining…"
+          />
         </form>
         {state.error?.includes("payment") ? (
           <form action={retryFormAction} className="w-full">
-            <Button
-              type="submit"
+            <AuthSubmitButton
+              pending={retryPending}
+              idle="Try again"
+              pendingLabel="Checking…"
               variant="outline"
-              className="h-11 w-full"
-              disabled={retryPending}
-            >
-              {retryPending ? "Checking…" : "Try again"}
-            </Button>
+            />
           </form>
         ) : null}
-      </CardFooter>
-    </Card>
+      </AuthCardFooter>
+    </AuthCard>
   );
 }

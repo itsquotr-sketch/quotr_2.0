@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { QuotrLoader } from "@/components/brand/QuotrLoader";
 import { AppShell } from "@/components/layout/app-shell";
-import { QuotrLogo } from "@/components/layout/quotr-logo";
 import { OnboardingFrame } from "@/components/setup/OnboardingFrame";
 import { getOrgBillingState } from "@/lib/billing/server";
 import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
@@ -33,7 +35,23 @@ function isSetupRequiredPath(pathname: string | null): boolean {
   );
 }
 
-export default async function AppLayout({
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <QuotrLoader variant="fullscreen" status="Loading Quotr…" />
+      }
+    >
+      <AuthenticatedApp>{children}</AuthenticatedApp>
+    </Suspense>
+  );
+}
+
+async function AuthenticatedApp({
   children,
 }: {
   children: React.ReactNode;
@@ -57,14 +75,7 @@ export default async function AppLayout({
       redirect(SETUP_REQUIRED_PATH);
     }
 
-    return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-muted px-4 py-8">
-        <div className="mb-8 w-full max-w-sm text-center">
-          <QuotrLogo variant="wordmark" href={null} height={36} />
-        </div>
-        <div className="w-full max-w-sm">{children}</div>
-      </div>
-    );
+    return <AuthShell>{children}</AuthShell>;
   }
 
   if (onSetupRequired) {

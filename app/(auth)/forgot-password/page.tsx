@@ -6,15 +6,14 @@ import {
   requestPasswordReset,
   type RecoveryActionState,
 } from "@/lib/auth/recovery-actions";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+  authTextLinkClass,
+} from "@/components/auth/AuthCard";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -32,16 +31,13 @@ export default function ForgotPasswordPage() {
   );
 
   return (
-    <Card>
-      <CardHeader className="pb-4 sm:pb-6">
-        <CardTitle className="text-xl">Forgot password</CardTitle>
-        <CardDescription>
-          Enter your email and we&apos;ll send password reset instructions if an
-          account exists.
-        </CardDescription>
-      </CardHeader>
+    <AuthCard>
+      <AuthCardHeader
+        title="Forgot password"
+        description="Enter your email and we'll send password reset instructions if an account exists."
+      />
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
-        <CardContent className="space-y-4">
+        <AuthCardContent>
           {state.error ? (
             <p
               role="alert"
@@ -74,21 +70,20 @@ export default function ForgotPasswordPage() {
             />
             <FieldError messages={state.fieldErrors?.email} />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending ? "Sending…" : "Send reset link"}
-          </Button>
+        </AuthCardContent>
+        <AuthCardFooter>
+          <AuthSubmitButton
+            pending={pending}
+            idle="Send reset link"
+            pendingLabel="Sending…"
+          />
           <p className="text-center text-sm text-muted-foreground">
-            <Link
-              href="/login"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
+            <Link href="/login" className={authTextLinkClass}>
               Back to login
             </Link>
           </p>
-        </CardFooter>
+        </AuthCardFooter>
       </form>
-    </Card>
+    </AuthCard>
   );
 }

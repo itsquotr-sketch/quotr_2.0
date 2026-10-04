@@ -43,7 +43,7 @@ function main() {
   );
   assert(
     "Forgot password is secondary (muted) with usable tap target",
-    /text-muted-foreground/.test(login) && /min-h-9/.test(login)
+    /text-muted-foreground/.test(login) && /min-h-11/.test(login)
   );
   assert(
     "forgot-password page exists",

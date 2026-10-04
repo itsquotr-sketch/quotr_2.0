@@ -71,7 +71,7 @@ check(
     !logo.includes("/quotr-logo.svg")
 );
 check("placeholder SVG removed", !existsSync("public/quotr-logo.svg"));
-const authLayout = read("app/(auth)/layout.tsx");
+const authLayout = `${read("app/(auth)/layout.tsx")}\n${read("components/auth/AuthShell.tsx")}`;
 check(
   "Auth uses official wordmark",
   authLayout.includes('variant="wordmark"') &&

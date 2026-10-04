@@ -4,16 +4,16 @@ import Link from "next/link";
 import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { login, type AuthActionState } from "@/app/(auth)/actions";
-import { AuthContinue } from "@/components/auth/AuthContinue";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  AuthCard,
+  AuthCardContent,
+  AuthCardFooter,
+  AuthCardHeader,
+  authTextLinkClass,
+} from "@/components/auth/AuthCard";
+import { AuthContinue } from "@/components/auth/AuthContinue";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { PasswordField } from "@/components/auth/PasswordField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
@@ -42,29 +42,22 @@ function LoginForm() {
 
   if (state.continueTo) {
     return (
-      <Card>
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-xl">Signed in</CardTitle>
-          <CardDescription>Continuing to Quotr…</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthContinue continueTo={state.continueTo} label="Opening Quotr…" />
-        </CardContent>
-      </Card>
+      <AuthContinue
+        continueTo={state.continueTo}
+        label="Opening your workspace…"
+      />
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-4 sm:pb-6">
-        <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>
-          Sign in to your account to continue to your dashboard.
-        </CardDescription>
-      </CardHeader>
+    <AuthCard>
+      <AuthCardHeader
+        title="Welcome back"
+        description="Sign in to your account to continue to your dashboard."
+      />
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
         <input type="hidden" name="next" value={next} />
-        <CardContent className="space-y-4">
+        <AuthCardContent>
           {bannerError ? (
             <p
               role="alert"
@@ -90,48 +83,51 @@ function LoginForm() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <Label htmlFor="password">Password</Label>
               <Link
                 href="/forgot-password"
-                className="inline-flex min-h-9 shrink-0 items-center text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
               >
                 Forgot password?
               </Link>
             </div>
-            <Input
+            <PasswordField
               id="password"
               name="password"
-              type="password"
               autoComplete="current-password"
               required
-              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.password} />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending ? "Signing in…" : "Sign in"}
-          </Button>
+        </AuthCardContent>
+        <AuthCardFooter>
+          <AuthSubmitButton
+            pending={pending}
+            idle="Sign in"
+            pendingLabel="Signing in…"
+          />
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
+            <Link href="/signup" className={authTextLinkClass}>
               Create account
             </Link>
           </p>
-        </CardFooter>
+        </AuthCardFooter>
       </form>
-    </Card>
+    </AuthCard>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<Card className="min-h-48 animate-pulse" />}>
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="min-h-48" />
+        </AuthCard>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

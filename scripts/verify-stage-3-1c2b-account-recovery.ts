@@ -263,10 +263,10 @@ function main() {
         read("app/(auth)/forgot-password/page.tsx")
       )
   );
+  const authShell = `${read("app/(auth)/layout.tsx")}\n${read("components/auth/AuthShell.tsx")}`;
   assert(
     "auth layout uses safe-area / compact top",
-    /safe-area-inset-bottom/.test(read("app/(auth)/layout.tsx")) &&
-      /pt-6/.test(read("app/(auth)/layout.tsx"))
+    /safe-area-inset-bottom/.test(authShell) && /pt-6/.test(authShell)
   );
 
   section("BOUNDARIES");
