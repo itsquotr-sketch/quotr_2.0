@@ -5,6 +5,7 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import {
   resolveStoredPricingDocumentGstRate,
@@ -39,6 +40,23 @@ function revalidatePricingProjectPath(
 ) {
   revalidatePath(`/app/projects/${projectId}`);
   revalidatePath(`/app/projects/${projectId}/pricing/${pricingDocumentId}`);
+}
+
+/**
+ * Same application gate as the other Pricing mutations.
+ * `pricing.access` stays on create-from-estimate only.
+ */
+async function requirePricingEditPermission(auth: {
+  orgId: string;
+  user: { id: string };
+}): Promise<{ error: string } | null> {
+  const denied = await permissionDeniedError({
+    orgId: auth.orgId,
+    userId: auth.user.id,
+    permission: "pricing.edit",
+  });
+  if (!denied) return null;
+  return { error: denied.error };
 }
 
 async function loadRecalibrationContext(input: RecalibrationInput) {
@@ -251,6 +269,13 @@ export async function applyRecalibration(
     items?: PricingItem[];
   }
 > {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return { error: "Not authenticated." };
+  }
+  const denied = await requirePricingEditPermission(context);
+  if (denied) return denied;
+
   const loaded = await loadRecalibrationContext(input);
   if ("error" in loaded) {
     return { error: loaded.error };
@@ -468,6 +493,8 @@ export async function keepCurrentPricing(
   if (!context) {
     return { error: "Not authenticated." };
   }
+  const denied = await requirePricingEditPermission(context);
+  if (denied) return denied;
 
   const { supabase, orgId } = context;
   const { projectId, pricingDocumentId } = input;
