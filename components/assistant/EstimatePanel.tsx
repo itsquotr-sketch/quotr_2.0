@@ -757,6 +757,7 @@ export function EstimatePanel({
               {presentAssistantError("stale")}
             </p>
           </div>
+          {onRegenerate ? (
           <Button
             type="button"
             size="sm"
@@ -773,6 +774,7 @@ export function EstimatePanel({
               ASSISTANT_ACTION_LABELS.recalculateEstimate
             )}
           </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -808,11 +810,12 @@ export function EstimatePanel({
                     : `${unresolvedScopeImpactCount} suggested scope changes are still open in Scope Review. You can generate now, or review them first.`}
                 </p>
               ) : null}
+              {onGenerate ? (
               <Button
                 type="button"
                 className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
                 onClick={onGenerate}
-                disabled={isGenerating || !onGenerate}
+                disabled={isGenerating}
               >
                 {isGenerating ? (
                   <>
@@ -823,6 +826,7 @@ export function EstimatePanel({
                   ASSISTANT_ACTION_LABELS.estimateNow
                 )}
               </Button>
+              ) : null}
             </>
           ) : (
             <AssistantEmptyState

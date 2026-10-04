@@ -103,7 +103,7 @@ export function RefineEstimatePanel({
   const workAreaGroups = displayGroups.filter((group) => group.kind === "work_area");
   const projectGroup = displayGroups.find((group) => group.kind === "project_conditions");
   const showUpdate = Boolean(isStale && onUpdateEstimate);
-  const showFooter = showUpdate || canEstimateNow;
+  const showFooter = showUpdate || (canEstimateNow && Boolean(onEstimateNow));
 
   const isEditing = (row: RefineCandidate) => {
     if (editingId === undefined) {
@@ -580,6 +580,7 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
+      {onEstimateNow ? (
       <ActionFooter
         className={cn("md:bottom-0", mobileNavBottomClass)}
         innerClassName="flex-col sm:flex-row"
@@ -607,6 +608,7 @@ export function ClarifyReadinessCard({
           )}
         </Button>
       </ActionFooter>
+      ) : null}
     </div>
   );
 }

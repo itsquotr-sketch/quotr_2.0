@@ -99,6 +99,13 @@ export function memberCanEditProjects(
   return role != null && roleAllowsPermission(role, "projects.edit");
 }
 
+/** Read-only UI gate. Server actions and RLS remain the authority. */
+export function memberCanRunEstimates(
+  role: MembershipRole | null | undefined
+): boolean {
+  return role != null && roleAllowsPermission(role, "estimates.run");
+}
+
 export function isOrgPermission(value: string): value is OrgPermission {
   return (ORG_PERMISSIONS as readonly string[]).includes(value);
 }

@@ -331,11 +331,13 @@ export function ClarifyPanel({
     readinessEnoughToEstimate: readiness.enoughToEstimate === true,
     persistError,
   });
-  const showGenerate = canShowGenerateCta({
-    persistError,
-    canInitiateGenerate: readiness.canInitiateGenerate === true,
-    enoughToEstimate: readiness.enoughToEstimate === true,
-  });
+  const showGenerate =
+    Boolean(onEstimateNow) &&
+    canShowGenerateCta({
+      persistError,
+      canInitiateGenerate: readiness.canInitiateGenerate === true,
+      enoughToEstimate: readiness.enoughToEstimate === true,
+    });
 
   useEffect(() => {
     if (!returnFocusId || isGenerating) return;
@@ -583,7 +585,7 @@ export function ClarifyPanel({
                 ASSISTANT_ACTION_LABELS.estimateNow
               )}
             </Button>
-          ) : view.canEstimateNow ? (
+          ) : view.canEstimateNow && onEstimateNow ? (
             <Button
               type="button"
               variant="outline"

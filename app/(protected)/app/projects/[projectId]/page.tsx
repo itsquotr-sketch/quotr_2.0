@@ -26,7 +26,7 @@ import { projectSectionContext } from "@/lib/projects/project-information";
 import { readProjectDocumentsForJobDetails } from "@/lib/projects/document-centre";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { getOnboardingAccess } from "@/lib/setup/actions";
-import { memberCanEditProjects } from "@/lib/team/permissions";
+import { memberCanEditProjects, memberCanRunEstimates } from "@/lib/team/permissions";
 import { parseEstimateSection } from "@/lib/assistant/presentation/estimate-section";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
@@ -91,6 +91,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       quoteSummary,
       documents,
       canUploadFiles: memberCanEditProjects(onboardingAccess.role),
+      canRunEstimates: memberCanRunEstimates(onboardingAccess.role),
     };
   });
 
@@ -104,6 +105,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     quoteSummary,
     documents,
     canUploadFiles,
+    canRunEstimates,
   } = pageData;
 
   const hasEstimate = Boolean(assistantState.estimate);
@@ -158,6 +160,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
         scopeDiscoveryInitialResults={scopeDiscoveryInitialResults}
         documents={documents}
         canUploadFiles={canUploadFiles}
+        canRunEstimates={canRunEstimates}
         initialEstimateSection={parseEstimateSection(query.estimate)}
       />
       {hasEstimate || tabContext.hasEstimate ? (

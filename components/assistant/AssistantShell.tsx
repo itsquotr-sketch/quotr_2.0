@@ -228,6 +228,7 @@ type AssistantShellProps = {
   scopeDiscoveryInitialResults?: SafeResultsRead | null;
   documents?: ProjectDocumentCentreModel | null;
   canUploadFiles?: boolean;
+  canRunEstimates?: boolean;
   initialEstimateSection?: EstimatePresentationView;
 };
 
@@ -264,6 +265,7 @@ export function AssistantShell({
   scopeDiscoveryInitialResults = null,
   documents = null,
   canUploadFiles = false,
+  canRunEstimates = true,
   initialEstimateSection = "overview",
 }: AssistantShellProps) {
   const router = useRouter();
@@ -2739,10 +2741,12 @@ export function AssistantShell({
     included: card.included.map((item) => item.label),
     excluded: card.notIncluded.map((item) => item.label),
   }));
-  const estimateRegenerate = displayEstimateStale ? handleRegenerateEstimate : undefined;
+  const estimateRegenerate =
+    canRunEstimates && displayEstimateStale ? handleRegenerateEstimate : undefined;
   const estimateRegenerateLabel =
     estimateOverview.primary === "regenerate" ? estimateOverview.primaryLabel : undefined;
   const estimatePricing =
+    canRunEstimates &&
     estimateOverview.primary === "continue_pricing" &&
     !estimateOverview.pricingCreationBlocked &&
     estimateOverview.pricingEntry !== "blocked"
@@ -2840,6 +2844,7 @@ export function AssistantShell({
               isStale={displayEstimateStale}
               isRegenerating={updatingEstimate}
               pricingCtaEnabled={
+                canRunEstimates &&
                 !pricingSummary &&
                 (refineAfterEstimateOpen || builderReviewOpen)
               }
@@ -2857,7 +2862,9 @@ export function AssistantShell({
                   isRegenerating={updatingEstimate}
                   updateError={actionError}
                   onUpdateEstimate={
-                    displayEstimateStale ? handleRegenerateEstimate : undefined
+                    canRunEstimates && displayEstimateStale
+                      ? handleRegenerateEstimate
+                      : undefined
                   }
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
@@ -2882,15 +2889,15 @@ export function AssistantShell({
                   estimateId={generationProjection?.estimateId}
                   pricingDocumentId={pricingSummary?.id ?? null}
                   gstRate={initialState.defaultGstRate}
-                  showContinueToPricing={!pricingSummary && !displayEstimateStale}
+                  showContinueToPricing={
+                    canRunEstimates && !pricingSummary && !displayEstimateStale
+                  }
                   onBack={() => setBuilderReviewOpen(false)}
-                  onEditJob={() => {
-                    openEditJob(null);
-                  }}
-                  onRefine={refineView.hasCandidates ? () => {
+                  onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                  onRefine={canRunEstimates && refineView.hasCandidates ? () => {
                     openRefineAfterEstimate(null);
                   } : undefined}
-                  onImprove={(improvement) => {
+                  onImprove={canRunEstimates ? (improvement) => {
                     const candidates = [
                       ...refineView.highValue,
                       ...refineView.advanced,
@@ -2910,11 +2917,13 @@ export function AssistantShell({
                         match?.constraintKey ??
                         null
                     );
-                  }}
+                  } : undefined}
                   onUpdateEstimate={
-                    displayEstimateStale ? handleRegenerateEstimate : undefined
+                    canRunEstimates && displayEstimateStale
+                      ? handleRegenerateEstimate
+                      : undefined
                   }
-                  onChangeMaterial={(workAreaId) => {
+                  onChangeMaterial={canRunEstimates ? (workAreaId) => {
                     if (!workAreaId) return;
                     const workArea = displayWorkAreas.find((row) => row.id === workAreaId);
                     if (workArea?.type === "retaining_wall") {
@@ -2932,7 +2941,7 @@ export function AssistantShell({
                       workAreaId,
                       specFactKey: "deck.board_material",
                     });
-                  }}
+                  } : undefined}
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className="min-w-0 space-y-3 overflow-x-hidden">
@@ -2947,8 +2956,10 @@ export function AssistantShell({
                       focusWorkAreaId={focusWorkAreaId}
                       onFocusApplied={() => setFocusWorkAreaId(null)}
                       isRegenerating={updatingEstimate}
-                      onEditJob={() => openEditJob(null)}
-                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                      onReviewWorkArea={
+                        canRunEstimates ? () => openEditJob("job_plan") : undefined
+                      }
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
@@ -2958,8 +2969,10 @@ export function AssistantShell({
                       view={builderReviewView}
                       onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
-                      onEditJob={() => openEditJob(null)}
-                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                      onReviewWorkArea={
+                        canRunEstimates ? () => openEditJob("job_plan") : undefined
+                      }
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
@@ -2969,8 +2982,10 @@ export function AssistantShell({
                       view={builderReviewView}
                       onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
-                      onEditJob={() => openEditJob(null)}
-                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                      onReviewWorkArea={
+                        canRunEstimates ? () => openEditJob("job_plan") : undefined
+                      }
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
@@ -2979,8 +2994,10 @@ export function AssistantShell({
                     <AssumptionsChecks
                       view={builderReviewView}
                       isRegenerating={updatingEstimate}
-                      onEditJob={() => openEditJob(null)}
-                      onReviewWorkArea={() => openEditJob("job_plan")}
+                      onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                      onReviewWorkArea={
+                        canRunEstimates ? () => openEditJob("job_plan") : undefined
+                      }
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
@@ -2994,15 +3011,17 @@ export function AssistantShell({
                     pricingDocumentId={pricingSummary?.id ?? null}
                     isRegenerating={updatingEstimate}
                     onRegenerate={
-                      displayEstimateStale ? handleRegenerateEstimate : undefined
+                      canRunEstimates && displayEstimateStale
+                      ? handleRegenerateEstimate
+                      : undefined
                     }
                     onReviewEstimate={() => {
                       setEstimateView("work_areas");
                     }}
                     onViewWorkArea={openWorkArea}
-                    onEditJob={() => openEditJob(null)}
+                    onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
                     marginControl={
-                      !displayEstimateStale ? (
+                      canRunEstimates && !displayEstimateStale ? (
                         <span data-mobile-margin-edit="true">
                           <MarginEditControl
                             marginPercent={estimate.marginPercent}
@@ -3114,7 +3133,9 @@ export function AssistantShell({
               isRegenerating={updatingEstimate}
               onDone={closeEditJob}
               onUpdateEstimate={
-                displayEstimateStale ? handleRegenerateEstimate : undefined
+                canRunEstimates && displayEstimateStale
+                  ? handleRegenerateEstimate
+                  : undefined
               }
               jobPlan={
                 <JobPlanPanel
@@ -3414,7 +3435,7 @@ export function AssistantShell({
                 returnFocusId={generateReturnFocusId}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
-                onEstimateNow={handleGenerateEstimate}
+                onEstimateNow={canRunEstimates ? handleGenerateEstimate : undefined}
                 onNestedItemAction={(workAreaId, key, value, nestedItemId) =>
                   handleFactSave({
                     workAreaId,
@@ -3854,8 +3875,8 @@ export function AssistantShell({
               setBuilderReviewOpen(false);
               setBreakdownOpen(true);
             }}
-            onGenerate={handleGenerateEstimate}
-            onRegenerate={handleRegenerateEstimate}
+            onGenerate={canRunEstimates ? handleGenerateEstimate : undefined}
+            onRegenerate={canRunEstimates ? handleRegenerateEstimate : undefined}
             onMarginSave={undefined}
             onEditQuality={undefined}
             onReviewAttention={handleReviewAttention}
@@ -3868,7 +3889,7 @@ export function AssistantShell({
         estimate={estimate}
         open={breakdownOpen}
         onOpenChange={setBreakdownOpen}
-        onRegenerate={handleRegenerateEstimate}
+        onRegenerate={canRunEstimates ? handleRegenerateEstimate : undefined}
         isRegenerating={updatingEstimate}
         projectId={project.id}
       />

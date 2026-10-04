@@ -166,8 +166,7 @@ check(
   "10 Edit panels absent until Edit job",
   shell.includes("assistantMode === \"edit_job\"") &&
     shell.includes("<EditJobSurface") &&
-    (shell.includes("onEditJob={() => openEditJob(null)}") ||
-      shell.includes("onEditJob={() => openEditJob(\"job_plan\")}")) &&
+    shell.includes("onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}") &&
     editSurface.includes("data-assistant-surface=\"edit_job\"")
 );
 check(
