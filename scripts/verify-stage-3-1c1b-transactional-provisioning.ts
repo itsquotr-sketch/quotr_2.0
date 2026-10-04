@@ -247,7 +247,7 @@ function testStaticSecurity() {
     !/resetPasswordForEmail/.test(actions)
   );
 
-  const setupPage = read("app/(protected)/app/setup-required/page.tsx");
+  const setupPage = `${read("app/(protected)/app/setup-required/page.tsx")}\n${read("components/auth/SetupRequiredForm.tsx")}`;
   assert(
     "setup-required uses finishAccountSetup",
     setupPage.includes("finishAccountSetup")

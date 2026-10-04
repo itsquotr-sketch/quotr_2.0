@@ -18,7 +18,7 @@ import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { readSafeNext, getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import {
   buildAuthCallbackUrl,
-  getAuthSiteOrigin,
+  getAuthCallbackOrigin,
 } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 import { lookupPublicInvitation } from "@/lib/team/public-invite";
@@ -175,7 +175,7 @@ export async function signup(
   });
 
   const supabase = await createClient();
-  const origin = await getAuthSiteOrigin();
+  const origin = await getAuthCallbackOrigin();
   const emailRedirectTo = buildAuthCallbackUrl(
     origin,
     inviteToken ? `/invite/${inviteToken}` : POST_SIGNUP_DESTINATION

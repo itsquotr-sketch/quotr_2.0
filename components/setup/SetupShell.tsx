@@ -30,7 +30,6 @@ import {
   ratesSetupSummary,
   workAreasSummary,
 } from "@/lib/setup/completed-setup";
-import { improveRatesAndProductivityHref } from "@/lib/setup/optional-personalisation";
 import {
   onboardingFormEndPadding,
   onboardingFormScrollClass,
@@ -74,12 +73,6 @@ export function SetupShell({
 }: SetupShellProps) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
-  const improveHref = improveRatesAndProductivityHref({
-    preferredWorkAreaTypes: state.workAreas
-      .filter((area) => area.enabled)
-      .map((area) => area.work_area_type),
-    progress: [],
-  });
   const [section, setSection] = useState<ImproveSection>(
     () =>
       initialImproveSection ??
@@ -185,8 +178,8 @@ export function SetupShell({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
           compactOnMobile
-          title="Start your first job"
-          description="You can refine details as you go."
+          title="You're ready"
+          description="You can refine materials, labour and productivity later under Rates."
         />
         <FormContainer
           className={onboardingFormScrollClass}
@@ -194,7 +187,7 @@ export function SetupShell({
         >
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="job" />
-            <FirstRunReady improveHref={improveHref} />
+            <FirstRunReady />
           </div>
         </FormContainer>
       </div>

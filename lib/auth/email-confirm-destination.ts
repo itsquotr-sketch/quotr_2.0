@@ -48,11 +48,49 @@ export function fullNameFromUserMetadata(
   metadata: Record<string, unknown> | null | undefined,
   fallbackEmail?: string | null
 ): string {
-  if (metadata) {
-    const raw = metadata.full_name;
-    if (typeof raw === "string" && raw.trim()) return raw.trim();
-  }
+  return (
+    explicitFullNameFromUserMetadata(metadata) ??
+    fallbackDisplayName(fallbackEmail)
+  );
+}
+
+/** Signup `user_metadata.full_name` only. Email prefixes and placeholders are not stored values. */
+export function explicitFullNameFromUserMetadata(
+  metadata: Record<string, unknown> | null | undefined
+): string | null {
+  if (!metadata) return null;
+  const raw = metadata.full_name;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function fallbackDisplayName(fallbackEmail?: string | null): string {
   const email = fallbackEmail?.trim();
   if (email) return email.split("@")[0] ?? "Owner";
   return "Owner";
+}
+
+/**
+ * Self-service signup may create one organisation from verified metadata.
+ * Existing members and pending invitations must not get a second organisation.
+ */
+export function shouldProvisionSignupOrganisation(input: {
+  hasOrg: boolean;
+  pendingInvite: PendingInviteKind;
+  organisationName: string | null;
+  fullName: string | null;
+}): boolean {
+  return (
+    !input.hasOrg &&
+    input.pendingInvite === "none" &&
+    input.organisationName !== null &&
+    input.fullName !== null
+  );
+}
+
+/** Repair inputs use stored metadata. An empty string keeps the placeholder visible. */
+export function repairFieldValue(stored: string | null | undefined): string {
+  if (typeof stored !== "string") return "";
+  return stored.trim();
 }

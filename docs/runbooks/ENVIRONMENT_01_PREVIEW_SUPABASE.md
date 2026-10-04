@@ -71,6 +71,16 @@ http://localhost:3000/auth/callback
 https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback
 ```
 
+Signup confirmation on any other Preview branch must also allow that branch’s own callback. The shared Preview `NEXT_PUBLIC_SITE_URL` is the hardening alias above. If that alias is the Site URL and the signing-up branch is missing from Redirect URLs, Supabase rewrites `redirect_to` onto the Site URL. The account can confirm on `supabase.co` while the browser lands on the hardening deployment, where the PKCE verifier cookie is absent, and the old app shows “This confirmation link is invalid or has expired”.
+
+For the `ui/core-workflow-overhaul` Preview, add this Redirect URL and do not remove the entries above. Do not add Production.
+
+```
+https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/**
+```
+
+A code change cannot write this dashboard list. Auth emails from that deployment now use the request host (then `VERCEL_BRANCH_URL`, then `VERCEL_URL`) and do not substitute the hardening alias. The allow-list entry is still required or Supabase will ignore that `redirect_to`.
+
 Enable Email provider (signup / magic-link unused; password + confirm as today). Mirror Production **email confirmation** on/off so Preview signup behaviour matches current product — do this by **reading** Production Auth settings, not by changing Production.
 
 Do **not** edit Production Auth URLs.

@@ -414,10 +414,14 @@ function main() {
   const labourStep = read("components/setup/LabourCostsStep.tsx");
   const ratesNav = read("components/rates/RatesPageContent.tsx");
   assert(
-    "first job keeps the primary action and describes the optional path",
-    ready.includes("intent=\"first-job\"") &&
-      ready.includes("Improve my rates and productivity") &&
-      ready.includes("Optional — personalise material, labour and productivity rates")
+    "ready screen creates a project only after the form and offers the dashboard",
+    ready.includes('intent="first-job"') &&
+      ready.includes("Create your first project") &&
+      ready.includes("completeRequiredOnboarding") &&
+      ready.includes("Go to Dashboard") &&
+      ready.includes("later under Rates") &&
+      !ready.includes("Improve my rates and productivity") &&
+      !ready.includes("createProject")
   );
   assert(
     "labour step collects both costs and the default margin",

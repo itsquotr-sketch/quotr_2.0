@@ -15,7 +15,7 @@ import {
 import { newPasswordPairSchema } from "@/lib/auth/password";
 import {
   buildAuthCallbackUrl,
-  getAuthSiteOrigin,
+  getAuthCallbackOrigin,
 } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,7 +49,7 @@ export async function requestPasswordReset(
 
   const { email } = parsed.data;
   const supabase = await createClient();
-  const origin = await getAuthSiteOrigin();
+  const origin = await getAuthCallbackOrigin();
   const redirectTo = buildAuthCallbackUrl(origin, "/reset-password");
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -167,7 +167,7 @@ export async function resendSignupConfirmation(
   }
 
   const supabase = await createClient();
-  const origin = await getAuthSiteOrigin();
+  const origin = await getAuthCallbackOrigin();
   const emailRedirectTo = buildAuthCallbackUrl(origin, "/app/dashboard");
 
   const { error } = await supabase.auth.resend({

@@ -1,14 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import {
+  confirmationLoginPath,
+  decideConfirmationCallback,
+  decideFailedExchange,
+  type ConfirmationCallbackAction,
+} from "@/lib/auth/confirmation-link";
 import { createAuthCorrelationId, logAuthEvent } from "@/lib/auth/logging";
+import type { AuthErrorCategory } from "@/lib/auth/errors";
 import {
-  classifyAuthProviderError,
-  type AuthErrorCategory,
-} from "@/lib/auth/errors";
-import {
-  fullNameFromUserMetadata,
+  explicitFullNameFromUserMetadata,
   organisationNameFromUserMetadata,
   resolveEmailConfirmDestination,
+  shouldProvisionSignupOrganisation,
   type PendingInviteKind,
 } from "@/lib/auth/email-confirm-destination";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
@@ -32,21 +36,14 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
   const next = getSafeInternalPath(searchParams.get("next"));
+  const errorCode = searchParams.get("error_code");
+  const errorDescription =
+    searchParams.get("error_description") ?? searchParams.get("error");
 
   logAuthEvent({
     event: "confirmation_callback_started",
     correlationId,
   });
-
-  if (!code) {
-    logAuthEvent({
-      event: "confirmation_callback_failed",
-      category: "CONFIRMATION_LINK_INVALID",
-      correlationId,
-      elapsedMs: Date.now() - startedAt,
-    });
-    return redirectAuthError(origin, next, "CONFIRMATION_LINK_INVALID");
-  }
 
   let redirectResponse = NextResponse.redirect(new URL(next, origin));
 
@@ -71,17 +68,66 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    const category = classifyAuthProviderError(error.message, "callback");
+  if (!code) {
+    const {
+      data: { user: existingUser },
+    } = await supabase.auth.getUser();
+    const action = decideConfirmationCallback({
+      code,
+      next,
+      errorCode,
+      errorDescription,
+      hasConfirmedSession: Boolean(existingUser),
+    });
+    if (action.type === "continue" && existingUser) {
+      return finishConfirmedSession(
+        supabase,
+        existingUser,
+        next,
+        origin,
+        redirectResponse,
+        correlationId,
+        startedAt
+      );
+    }
     logAuthEvent({
       event: "confirmation_callback_failed",
-      category,
+      category: "CONFIRMATION_LINK_INVALID",
       correlationId,
       elapsedMs: Date.now() - startedAt,
     });
-    return redirectAuthError(origin, next, category);
+    return redirectConfirmationAction(origin, action);
+  }
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    const {
+      data: { user: existingUser },
+    } = await supabase.auth.getUser();
+    const action = decideFailedExchange({
+      next,
+      providerMessage: error.message,
+      hasConfirmedSession: Boolean(existingUser),
+    });
+    if (action.type === "continue" && existingUser) {
+      return finishConfirmedSession(
+        supabase,
+        existingUser,
+        next,
+        origin,
+        redirectResponse,
+        correlationId,
+        startedAt
+      );
+    }
+    logAuthEvent({
+      event: "confirmation_callback_failed",
+      category: "CONFIRMATION_LINK_INVALID",
+      correlationId,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return redirectConfirmationAction(origin, action);
   }
 
   const {
@@ -95,9 +141,34 @@ export async function GET(request: NextRequest) {
       correlationId,
       elapsedMs: Date.now() - startedAt,
     });
-    return redirectAuthError(origin, next, "CONFIRMATION_LINK_INVALID");
+    return redirectAuthError(origin, "CONFIRMATION_LINK_INVALID");
   }
 
+  return finishConfirmedSession(
+    supabase,
+    user,
+    next,
+    origin,
+    redirectResponse,
+    correlationId,
+    startedAt
+  );
+}
+
+type CallbackClient = ReturnType<typeof createServerClient>;
+type CallbackUser = NonNullable<
+  Awaited<ReturnType<CallbackClient["auth"]["getUser"]>>["data"]["user"]
+>;
+
+async function finishConfirmedSession(
+  supabase: CallbackClient,
+  user: CallbackUser,
+  next: string,
+  origin: string,
+  redirectResponse: NextResponse,
+  correlationId: string,
+  startedAt: number
+) {
   let destination = next;
   if (next.startsWith("/reset-password")) {
     destination = "/reset-password";
@@ -132,18 +203,24 @@ export async function GET(request: NextRequest) {
     }
 
     let provisioned = false;
-    const orgName = organisationNameFromUserMetadata(
-      user.user_metadata as Record<string, unknown>
-    );
-    if (!hasOrg && pendingInvite === "none" && orgName) {
+    const metadata = user.user_metadata as Record<string, unknown>;
+    const orgName = organisationNameFromUserMetadata(metadata);
+    const fullName = explicitFullNameFromUserMetadata(metadata);
+    if (
+      shouldProvisionSignupOrganisation({
+        hasOrg,
+        pendingInvite,
+        organisationName: orgName,
+        fullName,
+      }) &&
+      orgName &&
+      fullName
+    ) {
       const result = await provisionOrganisationForCurrentUser(
         supabase as never,
         {
           organisationName: orgName,
-          fullName: fullNameFromUserMetadata(
-            user.user_metadata as Record<string, unknown>,
-            user.email
-          ),
+          fullName,
           correlationId,
           userId: user.id,
           context: "signup",
@@ -163,7 +240,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Rebuild redirect to final destination while preserving session cookies.
   const finalResponse = NextResponse.redirect(new URL(destination, origin));
   redirectResponse.cookies.getAll().forEach((cookie) => {
     finalResponse.cookies.set(cookie);
@@ -179,18 +255,27 @@ export async function GET(request: NextRequest) {
   return finalResponse;
 }
 
-function redirectAuthError(
+function redirectConfirmationAction(
   origin: string,
-  next: string,
-  category: AuthErrorCategory
+  action: ConfirmationCallbackAction
 ) {
-  if (next.startsWith("/reset-password") || category === "RESET_LINK_INVALID") {
+  if (action.type === "recovery_invalid") {
+    return redirectAuthError(origin, "RESET_LINK_INVALID");
+  }
+  if (action.type === "login") {
+    const url = new URL(confirmationLoginPath(action.error), origin);
+    return NextResponse.redirect(url);
+  }
+  return redirectAuthError(origin, "CONFIRMATION_LINK_INVALID");
+}
+
+function redirectAuthError(origin: string, category: AuthErrorCategory) {
+  if (category === "RESET_LINK_INVALID") {
     const url = new URL("/reset-password", origin);
     url.searchParams.set("error", "invalid");
     return NextResponse.redirect(url);
   }
 
-  const url = new URL("/login", origin);
-  url.searchParams.set("error", "confirmation_invalid");
+  const url = new URL(confirmationLoginPath("confirmation_invalid"), origin);
   return NextResponse.redirect(url);
 }

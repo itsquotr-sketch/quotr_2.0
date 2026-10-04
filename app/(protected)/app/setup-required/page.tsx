@@ -1,120 +1,87 @@
-"use client";
-
-import { useActionState } from "react";
+import { redirect } from "next/navigation";
+import { SetupRequiredForm } from "@/components/auth/SetupRequiredForm";
 import {
-  finishAccountSetup,
-  logout,
-  type AuthActionState,
-} from "@/app/(auth)/actions";
-import {
-  AuthCard,
-  AuthCardContent,
-  AuthCardFooter,
-  AuthCardHeader,
-} from "@/components/auth/AuthCard";
-import { AuthContinue } from "@/components/auth/AuthContinue";
-import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-const initialState: AuthActionState = {};
-
-function FieldError({ messages }: { messages?: string[] }) {
-  if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
-}
+  explicitFullNameFromUserMetadata,
+  organisationNameFromUserMetadata,
+  repairFieldValue,
+  shouldProvisionSignupOrganisation,
+  type PendingInviteKind,
+} from "@/lib/auth/email-confirm-destination";
+import { createAuthCorrelationId } from "@/lib/auth/logging";
+import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
+import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Recovery for authenticated users without a valid company profile.
- * Calls the same transactional provisioning RPC as signup.
+ * Repair screen for a signed-in user with no organisation.
+ * Ordinary signup metadata is applied once here, then onboarding continues.
  */
-export default function SetupRequiredPage() {
-  const [state, formAction, pending] = useActionState(
-    finishAccountSetup,
-    initialState
-  );
+export default async function SetupRequiredPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (state.continueTo) {
-    return (
-      <AuthContinue
-        continueTo={state.continueTo}
-        label="Preparing your account…"
-      />
-    );
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.org_id) {
+    redirect(POST_SIGNUP_DESTINATION);
+  }
+
+  let pendingInvite: PendingInviteKind = "none";
+  const { data: pending } = await supabase.rpc(
+    "lookup_pending_invitation_for_current_user"
+  );
+  const row = Array.isArray(pending) ? pending[0] : pending;
+  const count = Number(row?.invite_count ?? 0);
+  if (count > 1) pendingInvite = "multiple";
+  else if (count === 1) pendingInvite = "one";
+
+  if (pendingInvite !== "none") {
+    redirect("/invite/continue");
+  }
+
+  const metadata = user.user_metadata as Record<string, unknown>;
+  const organisationName = organisationNameFromUserMetadata(metadata);
+  const fullName = explicitFullNameFromUserMetadata(metadata);
+
+  if (
+    shouldProvisionSignupOrganisation({
+      hasOrg: false,
+      pendingInvite,
+      organisationName,
+      fullName,
+    }) &&
+    organisationName &&
+    fullName
+  ) {
+    const provisioned = await provisionOrganisationForCurrentUser(supabase, {
+      organisationName,
+      fullName,
+      correlationId: createAuthCorrelationId(),
+      userId: user.id,
+      context: "signup",
+    });
+    if (provisioned.ok) {
+      redirect(POST_SIGNUP_DESTINATION);
+    }
+    if (provisioned.category === "INVITE_PENDING") {
+      redirect("/invite/continue");
+    }
   }
 
   return (
-    <AuthCard>
-      <AuthCardHeader
-        title="Finish account setup"
-        description="Your account is signed in, but it is not linked to a company yet. Create your company to continue using Quotr."
-      />
-      <form action={formAction} className="flex flex-col gap-(--card-spacing)">
-        <AuthCardContent>
-          {state.error ? (
-            <p
-              role="alert"
-              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {state.error}
-            </p>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full name</Label>
-            <Input
-              id="full_name"
-              name="full_name"
-              autoComplete="name"
-              placeholder="Alex Smith"
-              required
-              disabled={pending}
-              className="h-11"
-            />
-            <FieldError messages={state.fieldErrors?.full_name} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="organisation_name">Company name</Label>
-            <Input
-              id="organisation_name"
-              name="organisation_name"
-              autoComplete="organization"
-              placeholder="Smith Building Co."
-              required
-              disabled={pending}
-              className="h-11"
-            />
-            <FieldError messages={state.fieldErrors?.organisation_name} />
-          </div>
-
-          <p className="text-sm text-muted-foreground">
-            If you already belong to a company, ask your company owner for help
-            or contact support. Do not create a second company for an existing
-            team account.
-          </p>
-        </AuthCardContent>
-        <AuthCardFooter className="gap-3">
-          <AuthSubmitButton
-            pending={pending}
-            idle="Finish account setup"
-            pendingLabel="Preparing your account…"
-          />
-        </AuthCardFooter>
-      </form>
-      <AuthCardFooter className="border-t pt-(--card-spacing)">
-        <form action={logout} className="w-full">
-          <Button
-            type="submit"
-            variant="ghost"
-            className="h-11 w-full"
-            disabled={pending}
-          >
-            Sign out
-          </Button>
-        </form>
-      </AuthCardFooter>
-    </AuthCard>
+    <SetupRequiredForm
+      defaultFullName={repairFieldValue(fullName)}
+      defaultOrganisationName={repairFieldValue(organisationName)}
+    />
   );
 }

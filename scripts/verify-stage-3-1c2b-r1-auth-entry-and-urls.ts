@@ -173,8 +173,8 @@ function main() {
   const actions = read("app/(auth)/actions.ts");
   const recovery = read("lib/auth/recovery-actions.ts");
   assert(
-    "signup uses getAuthSiteOrigin + buildAuthCallbackUrl",
-    /getAuthSiteOrigin/.test(actions) && /buildAuthCallbackUrl/.test(actions)
+    "signup uses getAuthCallbackOrigin + buildAuthCallbackUrl",
+    /getAuthCallbackOrigin/.test(actions) && /buildAuthCallbackUrl/.test(actions)
   );
   assert(
     "password reset uses buildAuthCallbackUrl",

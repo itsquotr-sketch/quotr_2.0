@@ -199,8 +199,8 @@ assert(
     !quoteDeliverySrc.includes("Accept invitation")
 );
 assert(
-  "Auth actions still use getAuthSiteOrigin (SMTP path unchanged)",
-  /getAuthSiteOrigin/.test(authActionsSrc) &&
+  "Auth actions still use getAuthCallbackOrigin (SMTP path unchanged)",
+  /getAuthCallbackOrigin/.test(authActionsSrc) &&
     !authActionsSrc.includes("RESEND_TEAM_FROM_EMAIL") &&
     !authActionsSrc.includes("sendOrganisationInviteEmail")
 );

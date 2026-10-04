@@ -358,7 +358,7 @@ function main() {
   section("COMPLETION + DASHBOARD");
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
   const ready = read("components/setup/FirstRunReady.tsx");
-  assert("completion copy", /ready to price your first job/.test(ready));
+  assert("completion copy", /Create your first project/.test(ready));
   assert("completion Start first job", /intent="first-job"/.test(ready));
   assert("dashboard empty Start your first job", /Start your first job/.test(dashboard));
   assert(

@@ -14,11 +14,7 @@ import {
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { completeRequiredOnboarding } from "@/lib/setup/actions";
 
-type FirstRunReadyProps = {
-  improveHref: string;
-};
-
-export function FirstRunReady({ improveHref }: FirstRunReadyProps) {
+export function FirstRunReady() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -32,27 +28,29 @@ export function FirstRunReady({ improveHref }: FirstRunReadyProps) {
     return true;
   }
 
-  async function openOptional(href: string) {
+  async function goToDashboard() {
     setError(null);
     setLeaving(true);
     const ok = await finish();
     setLeaving(false);
     if (!ok) return;
-    router.push(href);
+    router.push("/app/dashboard");
   }
 
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl">You can price your first job</CardTitle>
+        <CardTitle className="text-xl">{"You're ready"}</CardTitle>
         <CardDescription>
-          Personalising rates and work areas can wait. It does not block this
-          job.
+          You can refine materials, labour and productivity later under Rates.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {error ? (
-          <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {error}
           </p>
         ) : null}
@@ -60,22 +58,25 @@ export function FirstRunReady({ improveHref }: FirstRunReadyProps) {
           Quotr will use the carpenter and labourer costs and the default
           gross margin you just entered.
         </p>
-        <p className="text-sm leading-snug text-muted-foreground">
-          Optional — personalise material, labour and productivity rates for
-          more accurate estimates. You can do this later.
-        </p>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-3 border-t sm:items-end">
-        <NewProjectDialog intent="first-job" beforeOpen={finish} />
-        <Button
+        <NewProjectDialog
+          intent="first-job"
+          beforeOpen={finish}
+          trigger={
+            <Button type="button" size="touch" className="w-full sm:w-auto">
+              Create your first project
+            </Button>
+          }
+        />
+        <button
           type="button"
-          variant="outline"
-          className="h-11 w-full sm:w-auto"
+          className="h-11 text-sm text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50"
           disabled={leaving}
-          onClick={() => void openOptional(improveHref)}
+          onClick={() => void goToDashboard()}
         >
-          Improve my rates and productivity
-        </Button>
+          Go to Dashboard
+        </button>
       </CardFooter>
     </Card>
   );

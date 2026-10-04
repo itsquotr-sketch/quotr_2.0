@@ -284,13 +284,13 @@ function main() {
 
   section("READY ACTIONS");
   const ready = read("components/setup/FirstRunReady.tsx");
-  assert("ready title", /ready to price your first job/.test(ready));
+  assert("ready title", /You're ready/.test(ready));
   assert("ready start first job", /intent="first-job"/.test(ready));
-  assert("ready go to dashboard", /Go to dashboard/.test(ready));
+  assert("ready go to dashboard", /Go to Dashboard/.test(ready));
   assert(
     "ready does not force calibration",
-    /standard rates/.test(ready) &&
-      /Personalise Quotr/.test(ready) &&
+    /later under Rates/.test(ready) &&
+      !/Improve my rates and productivity/.test(ready) &&
       !/Calibrate/.test(ready)
   );
 

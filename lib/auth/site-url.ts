@@ -121,7 +121,13 @@ function isEphemeralVercelOrigin(origin: string): boolean {
  * live domain.
  */
 export function resolveConfiguredSiteOrigin(
-  env: NodeJS.ProcessEnv = process.env
+  env: {
+    VERCEL_ENV?: string;
+    NEXT_PUBLIC_SITE_URL?: string;
+  } = {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  }
 ): string | null {
   const vercelEnv = env.VERCEL_ENV;
   const fromEnv = normalizeAuthSiteOrigin(env.NEXT_PUBLIC_SITE_URL);
@@ -152,8 +158,107 @@ export function resolveConfiguredSiteOrigin(
 }
 
 /**
- * Resolve the origin used when building signup/reset email redirectTo URLs
- * and application invite/quote links.
+ * Preview auth emails must return to the host that set the PKCE cookie.
+ * `NEXT_PUBLIC_SITE_URL` on shared Preview is the hardening alias, so it is
+ * not an auth callback origin unless the browser is already on that host.
+ * Invite and quote links still use {@link resolveConfiguredSiteOrigin}.
+ */
+export function resolveAuthEmailOrigin(input: {
+  vercelEnv: string | undefined;
+  requestOrigin: string | null;
+  branchHost: string | null;
+  deploymentHost: string | null;
+  configuredSiteUrl: string | null;
+}): string {
+  if (input.vercelEnv === "preview") {
+    const request = normalizeAuthSiteOrigin(input.requestOrigin);
+    if (request && isPreviewRequestOrigin(request)) return request;
+    const branch = originFromHost(input.branchHost, "https");
+    if (branch && isPreviewRequestOrigin(branch)) return branch;
+    const deployment = originFromHost(input.deploymentHost, "https");
+    if (deployment && isPreviewRequestOrigin(deployment)) return deployment;
+    return LOCAL_AUTH_SITE_ORIGIN;
+  }
+
+  const configured = resolveConfiguredSiteOrigin({
+    VERCEL_ENV: input.vercelEnv,
+    NEXT_PUBLIC_SITE_URL: input.configuredSiteUrl ?? undefined,
+  });
+  return configured ?? LOCAL_AUTH_SITE_ORIGIN;
+}
+
+export function originFromForwardedHost(
+  hostHeader: string | null | undefined,
+  protoHeader: string | null | undefined
+): string | null {
+  return originFromHost(hostHeader, protoHeader);
+}
+
+function originFromHost(
+  hostHeader: string | null | undefined,
+  protoHeader: string | null | undefined
+): string | null {
+  if (!hostHeader) return null;
+  const host = hostHeader.split(",")[0]?.trim();
+  if (!host || host.includes("/") || host.includes("@") || host.includes(" ")) {
+    return null;
+  }
+  const proto = (protoHeader?.split(",")[0]?.trim() || "https").toLowerCase();
+  if (proto !== "http" && proto !== "https") return null;
+  return normalizeAuthSiteOrigin(`${proto}://${host}`);
+}
+
+function isPreviewRequestOrigin(origin: string): boolean {
+  if (isLocalhostOrigin(origin)) return false;
+  try {
+    return new URL(origin).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Origin for signup confirmation, confirmation resend, and password recovery.
+ * On Preview this is the current request host, then the platform branch host,
+ * then the current deployment host. It does not substitute the shared
+ * hardening alias or a Production origin.
+ */
+export async function getAuthCallbackOrigin(): Promise<string> {
+  if (process.env.VERCEL_ENV === "preview") {
+    let requestOrigin: string | null = null;
+    try {
+      const headerStore = await headers();
+      const forwarded =
+        headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+      requestOrigin =
+        originFromForwardedHost(
+          forwarded,
+          headerStore.get("x-forwarded-proto")
+        ) ?? normalizeAuthSiteOrigin(headerStore.get("origin"));
+    } catch {
+      requestOrigin = null;
+    }
+    return resolveAuthEmailOrigin({
+      vercelEnv: "preview",
+      requestOrigin,
+      branchHost: process.env.VERCEL_BRANCH_URL ?? null,
+      deploymentHost: process.env.VERCEL_URL ?? null,
+      configuredSiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+    });
+  }
+
+  return resolveAuthEmailOrigin({
+    vercelEnv: process.env.VERCEL_ENV,
+    requestOrigin: null,
+    branchHost: null,
+    deploymentHost: null,
+    configuredSiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+  });
+}
+
+/**
+ * Resolve the origin used for application invite/quote links.
+ * Signup and recovery emails use {@link getAuthCallbackOrigin} instead.
  */
 export async function getAuthSiteOrigin(): Promise<string> {
   const configured = resolveConfiguredSiteOrigin();

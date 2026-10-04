@@ -4,6 +4,11 @@ import Link from "next/link";
 import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { login, type AuthActionState } from "@/app/(auth)/actions";
+import { loginConfirmationPresentation } from "@/lib/auth/confirmation-link";
+import {
+  resendSignupConfirmation,
+  type RecoveryActionState,
+} from "@/lib/auth/recovery-actions";
 import {
   AuthCard,
   AuthCardContent,
@@ -20,6 +25,7 @@ import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 
 const initialState: AuthActionState = {};
+const resendInitial: RecoveryActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
@@ -32,13 +38,15 @@ function LoginForm() {
   const linkError = searchParams.get("error");
   const [state, formAction, pending] = useActionState(login, initialState);
 
+  const confirmation = loginConfirmationPresentation(linkError);
   const bannerError =
     state.error ??
-    (linkError === "confirmation_invalid"
-      ? AUTH_USER_MESSAGES.CONFIRMATION_LINK_INVALID
-      : linkError === "reset_invalid"
-        ? AUTH_USER_MESSAGES.RESET_LINK_INVALID
-        : null);
+    (confirmation.tone === "error" ? confirmation.message : null) ??
+    (linkError === "reset_invalid"
+      ? AUTH_USER_MESSAGES.RESET_LINK_INVALID
+      : null);
+  const alreadyConfirmed =
+    !state.error && confirmation.tone === "calm" ? confirmation.message : null;
 
   if (state.continueTo) {
     return (
@@ -58,6 +66,14 @@ function LoginForm() {
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
         <input type="hidden" name="next" value={next} />
         <AuthCardContent>
+          {alreadyConfirmed ? (
+            <p
+              role="status"
+              className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground"
+            >
+              {alreadyConfirmed}
+            </p>
+          ) : null}
           {bannerError ? (
             <p
               role="alert"
@@ -66,7 +82,6 @@ function LoginForm() {
               {bannerError}
             </p>
           ) : null}
-
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -115,7 +130,51 @@ function LoginForm() {
           </p>
         </AuthCardFooter>
       </form>
+      {confirmation.showResend && !state.error ? (
+        <AuthCardContent>
+          <ConfirmationResend />
+        </AuthCardContent>
+      ) : null}
     </AuthCard>
+  );
+}
+
+function ConfirmationResend() {
+  const [resendState, resendAction, resendPending] = useActionState(
+    resendSignupConfirmation,
+    resendInitial
+  );
+
+  return (
+    <form action={resendAction} className="space-y-2">
+      <Label htmlFor="resend-email">Resend confirmation email</Label>
+      <Input
+        id="resend-email"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        placeholder="you@company.com"
+        required
+        className="h-11"
+      />
+      {resendState.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {resendState.error}
+        </p>
+      ) : null}
+      {resendState.success ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {resendState.success}
+        </p>
+      ) : null}
+      <AuthSubmitButton
+        pending={resendPending}
+        idle="Resend confirmation email"
+        pendingLabel="Sending…"
+        variant="outline"
+      />
+    </form>
   );
 }
 
