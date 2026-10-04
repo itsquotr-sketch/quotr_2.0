@@ -466,11 +466,11 @@ function main() {
     /Name the job/.test(dialog) && /Details come next/.test(dialog)
   );
   assert(
-    "create dialog collects only name, client and site",
+    "create dialog collects job name, customer choice and site",
     /htmlFor="project-title"/.test(dialog) &&
-      /htmlFor="client-name"/.test(dialog) &&
       /htmlFor="site-address"/.test(dialog) &&
-      !/htmlFor="client-email"/.test(dialog) &&
+      /No customer yet/.test(dialog) &&
+      /htmlFor="new-customer-name"/.test(dialog) &&
       !/htmlFor="project-brief"/.test(dialog) &&
       !/htmlFor="priority"/.test(dialog) &&
       !/htmlFor="due-date"/.test(dialog) &&

@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { updateProject } from "@/lib/projects/actions";
+import { getCustomerOption, listSelectableCustomers } from "@/lib/customers/actions";
+import type { CustomerOption } from "@/lib/customers/types";
+import { CustomerPicker } from "@/components/customers/CustomerPicker";
 import type { Project, ProjectPriority } from "@/lib/projects/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +49,9 @@ function projectToFormState(project: Project) {
     priority: project.priority,
     dueDate: project.due_date ?? "",
     notes: project.notes ?? "",
-  };
+    customerId: project.customer_id ?? null,
+    linkMode: project.customer_id ? "existing" : "none",
+  } as const;
 }
 
 export function EditProjectDialog({
@@ -64,6 +69,12 @@ export function EditProjectDialog({
   const [priority, setPriority] = useState<ProjectPriority>(project.priority);
   const [dueDate, setDueDate] = useState(project.due_date ?? "");
   const [notes, setNotes] = useState(project.notes ?? "");
+  const [linkMode, setLinkMode] = useState<"existing" | "none">(
+    project.customer_id ? "existing" : "none"
+  );
+  const [customerId, setCustomerId] = useState<string | null>(project.customer_id ?? null);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [linkedCustomer, setLinkedCustomer] = useState<CustomerOption | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [pending, setPending] = useState(false);
@@ -78,9 +89,32 @@ export function EditProjectDialog({
     setPriority(form.priority);
     setDueDate(form.dueDate);
     setNotes(form.notes);
+    setLinkMode(form.linkMode);
+    setCustomerId(form.customerId);
+    setLinkedCustomer(null);
     setError(null);
     setFieldErrors({});
   }
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void listSelectableCustomers().then((rows) => {
+      if (!cancelled) setCustomers(rows);
+    });
+    const currentId = project.customer_id;
+    if (!currentId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void getCustomerOption(currentId).then((customer) => {
+      if (!cancelled) setLinkedCustomer(customer);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, project.customer_id]);
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
@@ -94,6 +128,11 @@ export function EditProjectDialog({
     setError(null);
     setFieldErrors({});
     setPending(true);
+    if (linkMode === "existing" && !customerId) {
+      setError("Choose a customer, or select no linked customer.");
+      setPending(false);
+      return;
+    }
 
     const result = await updateProject(project.id, {
       title,
@@ -104,6 +143,7 @@ export function EditProjectDialog({
       priority,
       due_date: dueDate || undefined,
       notes: notes || undefined,
+      customer_id: linkMode === "existing" ? customerId : null,
     });
 
     setPending(false);
@@ -134,7 +174,7 @@ export function EditProjectDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit project details</DialogTitle>
             <DialogDescription>
@@ -169,6 +209,56 @@ export function EditProjectDialog({
 
             <div className="space-y-3">
               <p className="text-sm font-medium">Client / site details</p>
+              <p className="text-sm text-muted-foreground">
+                Changes here apply to this project only.
+              </p>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Linked customer</legend>
+                {linkedCustomer ? (
+                  <p className="text-sm" data-linked-customer>
+                    Linked to {linkedCustomer.name}
+                    {linkedCustomer.archived_at ? " (archived)" : ""}
+                    {linkedCustomer.email ? ` · ${linkedCustomer.email}` : ""}
+                  </p>
+                ) : null}
+                <div className="grid gap-2">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]">
+                    <input
+                      type="radio"
+                      name="edit-customer-link"
+                      checked={linkMode === "existing"}
+                      onChange={() => setLinkMode("existing")}
+                      className="size-4 accent-[var(--brand-orange)]"
+                    />
+                    <span>Existing customer</span>
+                  </label>
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]">
+                    <input
+                      type="radio"
+                      name="edit-customer-link"
+                      checked={linkMode === "none"}
+                      onChange={() => {
+                        setLinkMode("none");
+                        setCustomerId(null);
+                      }}
+                      className="size-4 accent-[var(--brand-orange)]"
+                    />
+                    <span>No linked customer</span>
+                  </label>
+                </div>
+                {linkMode === "existing" ? (
+                  <CustomerPicker
+                    customers={customers}
+                    selectedId={customerId}
+                    onSelect={(customer) => {
+                      setCustomerId(customer.id);
+                      setClientName(customer.name);
+                      setClientEmail(customer.email ?? "");
+                      setLinkedCustomer(customer);
+                    }}
+                  />
+                ) : null}
+              </fieldset>
               <div className="space-y-2">
                 <Label htmlFor="edit-client-name">Client name</Label>
                 <Input

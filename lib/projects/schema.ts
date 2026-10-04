@@ -47,3 +47,46 @@ export const projectDetailsSchema = z.object({
 });
 
 export type ProjectDetailsInput = z.infer<typeof projectDetailsSchema>;
+
+export const createProjectInputSchema = projectDetailsSchema
+  .extend({
+    customer_mode: z.enum(["none", "existing", "new"]).default("none"),
+    customer_id: z.string().uuid().optional(),
+    customer_phone: z
+      .string()
+      .trim()
+      .max(40, "Phone must be 40 characters or less")
+      .optional(),
+    creation_request_id: z.string().uuid().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.customer_mode === "existing" && !value.customer_id) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["customer_id"],
+        message: "Choose a customer",
+      });
+    }
+    if (value.customer_mode === "new") {
+      if (!value.client_name?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["client_name"],
+          message: "Customer name is required",
+        });
+      }
+      if (!value.creation_request_id) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["creation_request_id"],
+          message: "Start the job again",
+        });
+      }
+    }
+  });
+
+export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
+
+export const updateProjectDetailsSchema = projectDetailsSchema.extend({
+  customer_id: z.string().uuid().nullable().optional(),
+});

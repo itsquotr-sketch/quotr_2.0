@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import {
   hasClientEmailColumn,
+  hasCustomerIdColumn,
   isMissingLifecycleColumnsError,
   isMissingBusinessStatusColumnsError,
   mapLifecycleActionError,
@@ -150,6 +151,7 @@ export async function duplicateProject(projectId: string): Promise<never> {
   const { supabase, user, orgId } = context;
 
   const clientEmailAvailable = await hasClientEmailColumn(supabase);
+  const customerIdAvailable = await hasCustomerIdColumn(supabase);
 
   const { data: source, error: sourceError } = clientEmailAvailable
     ? await supabase
@@ -196,6 +198,19 @@ export async function duplicateProject(projectId: string): Promise<never> {
         }
       : {}),
     site_address: null,
+    ...(customerIdAvailable
+      ? {
+          customer_id: await (async () => {
+            const { data: link } = await supabase
+              .from("projects")
+              .select("customer_id")
+              .eq("id", projectId)
+              .eq("org_id", orgId)
+              .maybeSingle();
+            return link?.customer_id ?? null;
+          })(),
+        }
+      : {}),
     priority: source.priority,
     due_date: source.due_date,
     notes: source.notes,

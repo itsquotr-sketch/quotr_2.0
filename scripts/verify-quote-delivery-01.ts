@@ -735,10 +735,12 @@ assert(
 );
 
 assert(
-  "Project client_email is optional default only",
+  "Project client_email remains the quote send default",
   projectSchemaSrc.includes("client_email") &&
+    newProjectSrc.includes('htmlFor="new-customer-email"') &&
     !newProjectSrc.includes('htmlFor="client-email"') &&
     editProjectSrc.includes("edit-client-email") &&
+    editProjectSrc.includes("Changes here apply to this project only.") &&
     sendSheetSrc.includes("projectClientEmail") &&
     sendSheetSrc.includes("quote.client_name") &&
     /latest\?\.recipient_email \|\| projectClientEmail/.test(sendSheetSrc)

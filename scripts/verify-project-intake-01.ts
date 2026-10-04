@@ -45,18 +45,26 @@ const assistantActions = read("lib/assistant/actions.ts");
 
 check("title-only dialog still calls createProject", dialog.includes("createProject({"));
 check(
-  "optional client and site are submitted only when filled",
-  dialog.includes("...(client ? { client_name: client } : {})") &&
-    dialog.includes("...(site ? { site_address: site } : {})")
+  "optional site is submitted only when filled",
+  dialog.includes("...(site ? { site_address: site } : {})")
+);
+check(
+  "customer choice defaults to no customer and can create one with the job",
+  dialog.includes('value: "none"') &&
+    dialog.includes("No customer yet") &&
+    dialog.includes("Existing customer") &&
+    dialog.includes("New customer") &&
+    dialog.includes("creation_request_id: requestId.current") &&
+    dialog.includes("submitLock.current")
 );
 check("submit lock blocks a second create", dialog.includes("submitLock.current"));
 check(
-  "removed create fields are absent from the dialog",
-  !dialog.includes('htmlFor="client-email"') &&
-    !dialog.includes('htmlFor="project-brief"') &&
+  "job start does not collect brief, priority, due date or internal notes",
+  !dialog.includes('htmlFor="project-brief"') &&
     !dialog.includes('htmlFor="priority"') &&
     !dialog.includes('htmlFor="due-date"') &&
-    !dialog.includes('htmlFor="notes"')
+    !dialog.includes('htmlFor="notes"') &&
+    dialog.includes('htmlFor="new-customer-email"')
 );
 check(
   "removed fields remain on the edit dialog",

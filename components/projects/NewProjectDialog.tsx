@@ -1,8 +1,11 @@
 "use client";
 
-import { cloneElement, isValidElement, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
+import { CustomerPicker } from "@/components/customers/CustomerPicker";
 import { createProject } from "@/lib/projects/actions";
+import { listSelectableCustomers } from "@/lib/customers/actions";
+import type { CustomerOption } from "@/lib/customers/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+type CustomerMode = "none" | "existing" | "new";
 
 type NewProjectDialogProps = {
   trigger?: React.ReactElement<{ onClick?: React.MouseEventHandler }>;
@@ -28,6 +33,12 @@ type NewProjectDialogProps = {
   hideTrigger?: boolean;
 };
 
+const MODES: { value: CustomerMode; label: string }[] = [
+  { value: "existing", label: "Existing customer" },
+  { value: "new", label: "New customer" },
+  { value: "none", label: "No customer yet" },
+];
+
 export function NewProjectDialog({
   trigger,
   intent = "default",
@@ -39,8 +50,13 @@ export function NewProjectDialog({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = openProp ?? uncontrolledOpen;
   const [title, setTitle] = useState("");
-  const [clientName, setClientName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
+  const [customerMode, setCustomerMode] = useState<CustomerMode>("none");
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [denial, setDenial] = useState<{
     reasonCode?: string;
@@ -49,25 +65,44 @@ export function NewProjectDialog({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [pending, setPending] = useState(false);
   const submitLock = useRef(false);
+  const requestId = useRef(crypto.randomUUID());
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void listSelectableCustomers().then((rows) => {
+      if (!cancelled) setCustomers(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   function resetForm() {
     setTitle("");
-    setClientName("");
     setSiteAddress("");
+    setCustomerMode("none");
+    setSelectedCustomerId(null);
+    setNewName("");
+    setNewEmail("");
+    setNewPhone("");
     setError(null);
     setDenial(null);
     setFieldErrors({});
     setPending(false);
+    requestId.current = crypto.randomUUID();
   }
 
   function handleOpenChange(nextOpen: boolean) {
     if (pending) return;
     if (openProp === undefined) setUncontrolledOpen(nextOpen);
     onOpenChange?.(nextOpen);
-    if (!nextOpen) {
-      resetForm();
-    }
   }
+
+  const canSubmit =
+    title.trim().length > 0 &&
+    (customerMode !== "existing" || Boolean(selectedCustomerId)) &&
+    (customerMode !== "new" || newName.trim().length > 0);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -77,31 +112,54 @@ export function NewProjectDialog({
     setDenial(null);
     setFieldErrors({});
     setPending(true);
-
-    const client = clientName.trim();
     const site = siteAddress.trim();
 
-    const result = await createProject({
-      title,
-      ...(client ? { client_name: client } : {}),
-      ...(site ? { site_address: site } : {}),
-    });
+    try {
+      const result = await createProject({
+        title,
+        customer_mode: customerMode,
+        creation_request_id: requestId.current,
+        ...(site ? { site_address: site } : {}),
+        ...(customerMode === "existing" && selectedCustomerId
+          ? { customer_id: selectedCustomerId }
+          : {}),
+        ...(customerMode === "new"
+          ? {
+              client_name: newName.trim(),
+              ...(newEmail.trim() ? { client_email: newEmail.trim() } : {}),
+              ...(newPhone.trim() ? { customer_phone: newPhone.trim() } : {}),
+            }
+          : {}),
+      });
 
-    if (result?.error) {
-      setError(result.error);
-      if (result.reasonCode) {
-        setDenial({
-          reasonCode: result.reasonCode,
-          upgradeTarget: result.upgradeTarget,
-        });
+      if (result?.error) {
+        setError(result.error);
+        if (result.reasonCode) {
+          setDenial({
+            reasonCode: result.reasonCode,
+            upgradeTarget: result.upgradeTarget,
+          });
+        }
+        return;
       }
-      setPending(false);
-      submitLock.current = false;
-      return;
-    }
 
-    if (result?.fieldErrors) {
-      setFieldErrors(result.fieldErrors);
+      if (result?.fieldErrors) {
+        setFieldErrors(result.fieldErrors);
+        return;
+      }
+
+      resetForm();
+    } catch (caught: unknown) {
+      const digest =
+        caught && typeof caught === "object" && "digest" in caught
+          ? String((caught as { digest?: string }).digest ?? "")
+          : "";
+      if (digest.startsWith("NEXT_REDIRECT")) {
+        resetForm();
+        throw caught;
+      }
+      setError("Could not create the job. Please try again.");
+    } finally {
       setPending(false);
       submitLock.current = false;
     }
@@ -136,12 +194,12 @@ export function NewProjectDialog({
       )}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Start a job</DialogTitle>
             <DialogDescription>
-              Name the job. Add the client and site if you already know them.
-              Details come next.
+              Name the job. Details come next. Add a customer if you already
+              know who it is for.
             </DialogDescription>
           </DialogHeader>
 
@@ -170,58 +228,129 @@ export function NewProjectDialog({
                 required
                 maxLength={120}
                 autoComplete="off"
+                className="min-h-11"
               />
               {fieldErrors.title?.[0] ? (
                 <p className="text-sm text-destructive">{fieldErrors.title[0]}</p>
               ) : null}
             </div>
 
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Client and site (optional)</p>
-              <div className="space-y-2">
-                <Label htmlFor="client-name">Client</Label>
-                <Input
-                  id="client-name"
-                  value={clientName}
-                  onChange={(event) => setClientName(event.target.value)}
-                  placeholder="e.g. Jane Smith"
-                  maxLength={160}
-                  autoComplete="name"
-                />
-                {fieldErrors.client_name?.[0] ? (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.client_name[0]}
-                  </p>
-                ) : null}
+            <fieldset className="space-y-2" data-customer-choice>
+              <legend className="text-sm font-medium">Customer</legend>
+              <div className="grid gap-2">
+                {MODES.map((mode) => (
+                  <label
+                    key={mode.value}
+                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]"
+                  >
+                    <input
+                      type="radio"
+                      name="customer-mode"
+                      value={mode.value}
+                      checked={customerMode === mode.value}
+                      onChange={() => setCustomerMode(mode.value)}
+                      className="size-4 accent-[var(--brand-orange)]"
+                    />
+                    <span>{mode.label}</span>
+                  </label>
+                ))}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="site-address">Site</Label>
-                <Input
-                  id="site-address"
-                  value={siteAddress}
-                  onChange={(event) => setSiteAddress(event.target.value)}
-                  placeholder="e.g. 12 Example Rd, Auckland"
-                  maxLength={300}
-                  autoComplete="street-address"
-                />
-                {fieldErrors.site_address?.[0] ? (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.site_address[0]}
+
+              {customerMode === "existing" ? (
+                customers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No saved customers yet. Add a new customer instead.
                   </p>
-                ) : null}
-              </div>
+                ) : (
+                  <CustomerPicker
+                    customers={customers}
+                    selectedId={selectedCustomerId}
+                    onSelect={(customer) => setSelectedCustomerId(customer.id)}
+                  />
+                )
+              ) : null}
+
+              {customerMode === "new" ? (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-customer-name">Customer name</Label>
+                    <Input
+                      id="new-customer-name"
+                      value={newName}
+                      onChange={(event) => setNewName(event.target.value)}
+                      required
+                      maxLength={160}
+                      autoComplete="name"
+                      className="min-h-11"
+                    />
+                    {fieldErrors.client_name?.[0] ? (
+                      <p className="text-sm text-destructive">{fieldErrors.client_name[0]}</p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-customer-email">
+                      Email <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      id="new-customer-email"
+                      type="email"
+                      inputMode="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      maxLength={254}
+                      autoComplete="email"
+                      className="min-h-11"
+                    />
+                    {fieldErrors.client_email?.[0] ? (
+                      <p className="text-sm text-destructive">{fieldErrors.client_email[0]}</p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-customer-phone">
+                      Phone <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      id="new-customer-phone"
+                      type="tel"
+                      inputMode="tel"
+                      value={newPhone}
+                      onChange={(event) => setNewPhone(event.target.value)}
+                      maxLength={40}
+                      autoComplete="tel"
+                      className="min-h-11"
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </fieldset>
+
+            <div className="space-y-2">
+              <Label htmlFor="site-address">Site</Label>
+              <Input
+                id="site-address"
+                value={siteAddress}
+                onChange={(event) => setSiteAddress(event.target.value)}
+                placeholder="e.g. 12 Example Rd, Auckland"
+                maxLength={300}
+                autoComplete="street-address"
+                className="min-h-11"
+              />
+              {fieldErrors.site_address?.[0] ? (
+                <p className="text-sm text-destructive">{fieldErrors.site_address[0]}</p>
+              ) : null}
             </div>
 
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
+                size="touch"
                 onClick={() => handleOpenChange(false)}
                 disabled={pending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || !title.trim()}>
+              <Button type="submit" size="touch" disabled={pending || !canSubmit}>
                 {pending ? "Creating…" : "Create job"}
               </Button>
             </DialogFooter>

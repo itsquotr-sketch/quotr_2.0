@@ -5,18 +5,22 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
-import { projectDetailsSchema } from "@/lib/projects/schema";
+import { createProjectInputSchema, updateProjectDetailsSchema } from "@/lib/projects/schema";
+import { projectSnapshotFromCustomer } from "@/lib/customers/snapshot";
 import {
   applyProjectListFilter,
   clientEmailMigrationRequiredMessage,
   getProjectSelect,
   hasClientEmailColumn,
+  hasCustomerIdColumn,
   hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
   isMissingClientEmailColumnError,
+  isMissingCustomerIdColumnError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
   markClientEmailColumnUnavailable,
+  markCustomerIdColumnUnavailable,
   markLifecycleColumnsUnavailable,
   probeProjectSchemaColumns,
   withLifecycleDefaults,
@@ -55,6 +59,7 @@ export async function listProjects(
     lifecycleAvailable,
     businessStatusAvailable,
     clientEmailAvailable,
+    customerIdAvailable,
   } = await probeProjectSchemaColumns(context.supabase);
 
   let query = context.supabase
@@ -63,7 +68,8 @@ export async function listProjects(
       getProjectSelect(
         lifecycleAvailable,
         businessStatusAvailable,
-        clientEmailAvailable
+        clientEmailAvailable,
+        customerIdAvailable
       )
     )
     .order("created_at", { ascending: false });
@@ -105,6 +111,11 @@ export async function listProjects(
 
     if (isMissingClientEmailColumnError(error) && !retried) {
       markClientEmailColumnUnavailable();
+      return listProjects(options, true);
+    }
+
+    if (isMissingCustomerIdColumnError(error) && !retried) {
+      markCustomerIdColumnUnavailable();
       return listProjects(options, true);
     }
 
@@ -319,9 +330,9 @@ export async function getProject(projectId: string): Promise<Project> {
 }
 
 export async function createProject(
-  input: Parameters<typeof projectDetailsSchema.parse>[0]
+  input: Parameters<typeof createProjectInputSchema.parse>[0]
 ): Promise<ProjectActionState> {
-  const parsed = projectDetailsSchema.safeParse(input);
+  const parsed = createProjectInputSchema.safeParse(input);
 
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
@@ -345,61 +356,149 @@ export async function createProject(
   if (denied) return denied;
   const {
     title,
-    client_name,
-    client_email,
     site_address,
     brief_text,
     priority,
     due_date,
     notes,
+    customer_mode,
+    customer_id,
+    customer_phone,
+    creation_request_id,
   } = parsed.data;
-  const clientEmailValue = client_email || null;
   const clientEmailAvailable = await hasClientEmailColumn(supabase);
+  const customerIdAvailable = await hasCustomerIdColumn(supabase);
 
-  if (clientEmailValue && !clientEmailAvailable) {
+  if (customer_mode === "new") {
+    const customerName = parsed.data.client_name?.trim() ?? "";
+    const customerEmail = parsed.data.client_email?.trim() || null;
+    if (customerEmail && !clientEmailAvailable) {
+      return { error: clientEmailMigrationRequiredMessage() };
+    }
+    if (!customerIdAvailable) {
+      return { error: "Customers require a database update. Apply migration 083 first." };
+    }
+    const { data: projectId, error: rpcError } = await supabase.rpc(
+      "create_project_with_new_customer",
+      {
+        p_title: title,
+        p_customer_name: customerName,
+        p_customer_email: customerEmail,
+        p_customer_phone: customer_phone?.trim() || null,
+        p_site_address: site_address?.trim() || null,
+        p_creation_request_id: creation_request_id,
+      }
+    );
+    if (rpcError || !projectId) {
+      console.error("[createProject] customer transaction failed:", rpcError?.message);
+      return {
+        error: toUserError(rpcError, "createProject", USER_ERRORS.projectSaveFailed),
+      };
+    }
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/customers");
+    redirect(`/app/projects/${projectId}`);
+  }
+
+  let snapshotName: string | null = null;
+  let snapshotEmail: string | null = null;
+  let snapshotCustomerId: string | null = null;
+
+  if (customer_mode === "existing") {
+    if (!customerIdAvailable) {
+      return { error: "Customers require a database update. Apply migration 083 first." };
+    }
+    const { data: customer, error: customerError } = await supabase
+      .from("customers")
+      .select("id, name, email, archived_at")
+      .eq("id", customer_id ?? "")
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (customerError || !customer) {
+      return { error: "That customer could not be found." };
+    }
+    if (customer.archived_at) {
+      return {
+        error: "That customer is archived. Restore them before starting a job.",
+      };
+    }
+    const snapshot = projectSnapshotFromCustomer(customer);
+    snapshotName = snapshot.client_name;
+    snapshotEmail = snapshot.client_email;
+    snapshotCustomerId = customer.id;
+  }
+
+  if (snapshotEmail && !clientEmailAvailable) {
     return { error: clientEmailMigrationRequiredMessage() };
   }
 
+  if (
+    customerIdAvailable &&
+    creation_request_id
+  ) {
+    const { data: existing } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("creation_request_id", creation_request_id)
+      .maybeSingle();
+    if (existing?.id) {
+      revalidatePath("/app/dashboard");
+      redirect(`/app/projects/${existing.id}`);
+    }
+  }
+
+  const insertRow = {
+    org_id: orgId,
+    created_by: user.id,
+    title,
+    client_name: snapshotName,
+    ...(clientEmailAvailable ? { client_email: snapshotEmail } : {}),
+    ...(customerIdAvailable
+      ? {
+          customer_id: snapshotCustomerId,
+          ...(creation_request_id
+            ? { creation_request_id }
+            : {}),
+        }
+      : {}),
+    site_address: site_address || null,
+    brief_text: brief_text || null,
+    priority,
+    due_date: due_date || null,
+    notes: notes || null,
+    stage: "brief" as const,
+    quality_level: "unknown" as const,
+    status: "draft" as const,
+    business_status: "lead" as const,
+  };
+
   const { data: project, error } = await supabase
     .from("projects")
-    .insert({
-      org_id: orgId,
-      created_by: user.id,
-      title,
-      client_name: client_name || null,
-      ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
-      site_address: site_address || null,
-      brief_text: brief_text || null,
-      priority,
-      due_date: due_date || null,
-      notes: notes || null,
-      stage: "brief",
-      quality_level: "unknown",
-      status: "draft",
-      business_status: "lead",
-    })
+    .insert(insertRow)
     .select("id")
     .single();
 
   if (error || !project) {
+    if (error?.code === "23505" && creation_request_id && customerIdAvailable) {
+      const { data: existing } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("creation_request_id", creation_request_id)
+        .maybeSingle();
+      if (existing?.id) {
+        revalidatePath("/app/dashboard");
+        redirect(`/app/projects/${existing.id}`);
+      }
+    }
+
     if (isMissingBusinessStatusColumnsError(error)) {
+      const { business_status: omittedStatus, ...fallbackRow } = insertRow;
+      void omittedStatus;
       const { data: fallbackProject, error: fallbackError } = await supabase
         .from("projects")
-        .insert({
-          org_id: orgId,
-          created_by: user.id,
-          title,
-          client_name: client_name || null,
-          ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
-          site_address: site_address || null,
-          brief_text: brief_text || null,
-          priority,
-          due_date: due_date || null,
-          notes: notes || null,
-          stage: "brief",
-          quality_level: "unknown",
-          status: "draft",
-        })
+        .insert(fallbackRow)
         .select("id")
         .single();
 
@@ -430,9 +529,9 @@ export async function createProject(
 
 export async function updateProject(
   projectId: string,
-  input: Parameters<typeof projectDetailsSchema.parse>[0]
+  input: Parameters<typeof updateProjectDetailsSchema.parse>[0]
 ): Promise<ProjectActionState> {
-  const parsed = projectDetailsSchema.safeParse(input);
+  const parsed = updateProjectDetailsSchema.safeParse(input);
 
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
@@ -456,6 +555,7 @@ export async function updateProject(
   if (editDenied) return editDenied;
   const lifecycleAvailable = await hasLifecycleColumns(supabase);
   const clientEmailAvailable = await hasClientEmailColumn(supabase);
+  const customerIdAvailable = await hasCustomerIdColumn(supabase);
   const {
     title,
     client_name,
@@ -465,11 +565,37 @@ export async function updateProject(
     priority,
     due_date,
     notes,
+    customer_id,
   } = parsed.data;
   const clientEmailValue = client_email || null;
 
   if (clientEmailValue && !clientEmailAvailable) {
     return { error: clientEmailMigrationRequiredMessage() };
+  }
+
+  if (customer_id && customerIdAvailable) {
+    const { data: customer, error: customerError } = await supabase
+      .from("customers")
+      .select("id, archived_at")
+      .eq("id", customer_id)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (customerError || !customer) {
+      return { error: "That customer could not be found." };
+    }
+    if (customer.archived_at) {
+      const { data: current } = await supabase
+        .from("projects")
+        .select("customer_id")
+        .eq("id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle();
+      if (current?.customer_id !== customer_id) {
+        return {
+          error: "That customer is archived. Restore them before linking a project.",
+        };
+      }
+    }
   }
 
   let query = supabase
@@ -478,6 +604,9 @@ export async function updateProject(
       title,
       client_name: client_name || null,
       ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
+      ...(customerIdAvailable && customer_id !== undefined
+        ? { customer_id: customer_id }
+        : {}),
       site_address: site_address || null,
       brief_text: brief_text || null,
       priority,

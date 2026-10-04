@@ -10,9 +10,11 @@ import {
   getProjectSelect,
   isMissingBusinessStatusColumnsError,
   isMissingClientEmailColumnError,
+  isMissingCustomerIdColumnError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
   markClientEmailColumnUnavailable,
+  markCustomerIdColumnUnavailable,
   markLifecycleColumnsUnavailable,
   probeProjectSchemaColumns,
   withLifecycleDefaults,
@@ -28,6 +30,7 @@ export async function getProjectWithContext(
     lifecycleAvailable,
     businessStatusAvailable,
     clientEmailAvailable,
+    customerIdAvailable,
   } = await probeProjectSchemaColumns(context.supabase);
 
   let query = context.supabase
@@ -36,7 +39,8 @@ export async function getProjectWithContext(
       getProjectSelect(
         lifecycleAvailable,
         businessStatusAvailable,
-        clientEmailAvailable
+        clientEmailAvailable,
+        customerIdAvailable
       )
     )
     .eq("id", projectId)
@@ -61,6 +65,11 @@ export async function getProjectWithContext(
 
     if (isMissingClientEmailColumnError(error) && !retried) {
       markClientEmailColumnUnavailable();
+      return getProjectWithContext(context, projectId, true);
+    }
+
+    if (isMissingCustomerIdColumnError(error) && !retried) {
+      markCustomerIdColumnUnavailable();
       return getProjectWithContext(context, projectId, true);
     }
 

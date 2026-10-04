@@ -17,6 +17,8 @@ export type Project = {
   brief_text: string | null;
   client_name: string | null;
   client_email: string | null;
+  /** Directory link. Absent on rows loaded before the customer column existed. */
+  customer_id?: string | null;
   site_address: string | null;
   priority: ProjectPriority;
   due_date: string | null;

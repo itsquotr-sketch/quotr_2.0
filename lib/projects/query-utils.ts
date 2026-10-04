@@ -54,21 +54,24 @@ export function clientEmailMigrationRequiredMessage(): string {
 export function getProjectSelect(
   lifecycleAvailable: boolean,
   businessStatusAvailable: boolean,
-  clientEmailAvailable = false
+  clientEmailAvailable = false,
+  customerIdAvailable = false
 ): string {
   const base = clientEmailAvailable
     ? `${PROJECT_SELECT_BASE}, client_email`
     : PROJECT_SELECT_BASE;
 
+  const withCustomer = customerIdAvailable ? `${base}, customer_id` : base;
+
   if (!lifecycleAvailable) {
-    return base;
+    return withCustomer;
   }
 
   const lifecycleAndStatus = businessStatusAvailable
     ? `${PROJECT_SELECT_LIFECYCLE}, ${PROJECT_SELECT_BUSINESS_STATUS}`
     : PROJECT_SELECT_LIFECYCLE;
 
-  return `${base}, ${lifecycleAndStatus}`;
+  return `${withCustomer}, ${lifecycleAndStatus}`;
 }
 
 type SupabaseError = { message?: string; code?: string } | null;
@@ -100,6 +103,18 @@ export function isMissingClientEmailColumnError(error: SupabaseError): boolean {
     (error.code === "42703" ||
       error.code === "PGRST204" ||
       message.includes("does not exist"))
+  );
+}
+
+export function isMissingCustomerIdColumnError(error: SupabaseError): boolean {
+  if (!error) return false;
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    (message.includes("customer_id") || message.includes("creation_request_id")) &&
+    (error.code === "42703" ||
+      error.code === "PGRST204" ||
+      message.includes("does not exist") ||
+      message.includes("schema cache"))
   );
 }
 
@@ -148,6 +163,7 @@ export function withLifecycleDefaults(
     ...(row as Omit<
       Project,
       | "client_email"
+      | "customer_id"
       | "archived_at"
       | "deleted_at"
       | "duplicated_from_project_id"
@@ -158,6 +174,7 @@ export function withLifecycleDefaults(
       | "lost_at"
     >),
     client_email: (row.client_email as string | null | undefined) ?? null,
+    customer_id: (row.customer_id as string | null | undefined) ?? null,
     archived_at: (row.archived_at as string | null | undefined) ?? null,
     deleted_at: (row.deleted_at as string | null | undefined) ?? null,
     duplicated_from_project_id:
@@ -225,6 +242,7 @@ export function applyProjectListFilter(
 let lifecycleColumnsConfirmed = false;
 let businessStatusColumnsConfirmed = false;
 let clientEmailColumnConfirmed = false;
+let customerIdColumnConfirmed = false;
 
 export function markLifecycleColumnsUnavailable() {
   lifecycleColumnsConfirmed = false;
@@ -236,6 +254,10 @@ export function markBusinessStatusColumnsUnavailable() {
 
 export function markClientEmailColumnUnavailable() {
   clientEmailColumnConfirmed = false;
+}
+
+export function markCustomerIdColumnUnavailable() {
+  customerIdColumnConfirmed = false;
 }
 
 export async function hasLifecycleColumns(
@@ -319,16 +341,34 @@ export async function hasClientEmailColumn(
   return true;
 }
 
+export async function hasCustomerIdColumn(
+  supabase: Awaited<
+    ReturnType<typeof import("@/lib/supabase/server").createClient>
+  >
+): Promise<boolean> {
+  if (customerIdColumnConfirmed) return true;
+  const { error } = await supabase.from("projects").select("customer_id").limit(1);
+  if (!error) {
+    customerIdColumnConfirmed = true;
+    return true;
+  }
+  if (isMissingCustomerIdColumnError(error)) return false;
+  console.error("[hasCustomerIdColumn] probe failed:", error.message);
+  return true;
+}
+
 export function resetLifecycleColumnsCacheForTests() {
   lifecycleColumnsConfirmed = false;
   businessStatusColumnsConfirmed = false;
   clientEmailColumnConfirmed = false;
+  customerIdColumnConfirmed = false;
 }
 
 export type ProjectSchemaProbe = {
   lifecycleAvailable: boolean;
   businessStatusAvailable: boolean;
   clientEmailAvailable: boolean;
+  customerIdAvailable: boolean;
 };
 
 /**
@@ -341,16 +381,22 @@ export async function probeProjectSchemaColumns(
     ReturnType<typeof import("@/lib/supabase/server").createClient>
   >
 ): Promise<ProjectSchemaProbe> {
-  const [lifecycleAvailable, businessStatusAvailable, clientEmailAvailable] =
-    await Promise.all([
-      hasLifecycleColumns(supabase),
-      hasBusinessStatusColumns(supabase),
-      hasClientEmailColumn(supabase),
-    ]);
+  const [
+    lifecycleAvailable,
+    businessStatusAvailable,
+    clientEmailAvailable,
+    customerIdAvailable,
+  ] = await Promise.all([
+    hasLifecycleColumns(supabase),
+    hasBusinessStatusColumns(supabase),
+    hasClientEmailColumn(supabase),
+    hasCustomerIdColumn(supabase),
+  ]);
 
   return {
     lifecycleAvailable,
     businessStatusAvailable: lifecycleAvailable && businessStatusAvailable,
     clientEmailAvailable,
+    customerIdAvailable,
   };
 }
