@@ -455,7 +455,10 @@ check(
 check(
   33,
   "safe-area spacing",
-  pricingBar.includes("env(safe-area-inset-bottom)") &&
+  pricingBar.includes("mobileNavBottomClass") &&
+    read("components/layout/mobile-nav-metrics.ts").includes(
+      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+    ) &&
     pricingWorkspace.includes("env(safe-area-inset-bottom)")
 );
 check(

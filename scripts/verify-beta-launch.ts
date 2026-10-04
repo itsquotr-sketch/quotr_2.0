@@ -270,7 +270,13 @@ function main() {
     quoteBar.includes("safe-area-inset-bottom")
   );
   const pricingBar = read("components/pricing/PricingMobileActionBar.tsx");
-  assert("pricing mobile bar has safe-area", pricingBar.includes("safe-area-inset-bottom"));
+  assert(
+    "pricing mobile bar has safe-area",
+    pricingBar.includes("mobileNavBottomClass") &&
+      read("components/layout/mobile-nav-metrics.ts").includes(
+        "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+      )
+  );
   const pricingWorkspace = read("components/pricing/PricingWorkspace.tsx");
   assert(
     "pricing workspace reserves mobile bar space",
