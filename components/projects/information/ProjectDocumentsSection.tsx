@@ -892,7 +892,7 @@ function DraftRow({
         {formatAttachmentSize(draft.byteSize)}
       </p>
       {failed ? (
-        <p className="mt-2 text-sm leading-5" role="alert">Upload failed</p>
+        <p className="mt-2 text-sm leading-5" role="alert">{transfer.error}</p>
       ) : (
         <p className="mt-2 flex items-center gap-2 text-sm leading-5">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />

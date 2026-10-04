@@ -122,6 +122,14 @@ check(
 );
 check("analyse stays an explicit click", capture.includes("onClick={onAnalyse}") && capture.includes("Analyse job"));
 check(
+  "job description persists without analysis",
+  capture.includes("onBriefPersist") &&
+    read("components/assistant/AssistantShell.tsx").includes("saveJobDescription") &&
+    read("lib/projects/actions.ts").includes("export async function saveJobDescription") &&
+    read("lib/projects/actions.ts").includes("brief_text: trimmed || null") &&
+    !read("lib/projects/actions.ts").includes("extractFromBrief")
+);
+check(
   "analysis input is still brief plus notes",
   analysis.includes("export function buildInitialAnalysisInput") &&
     analysis.includes("Project brief:") &&

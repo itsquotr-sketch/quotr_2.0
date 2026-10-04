@@ -18,6 +18,7 @@ import { NO_WORK_AREAS_ERROR } from "@/lib/ai/analyse-job-contract";
 type ProjectCaptureBlockProps = {
   briefText: string;
   onBriefChange: (text: string) => void;
+  onBriefPersist?: (text: string) => void;
   projectId: string;
   initialNotes: ProjectNote[];
   totalNoteCount?: number;
@@ -55,6 +56,7 @@ export function buildProjectCaptureSummary(
 export function ProjectCaptureBlock({
   briefText,
   onBriefChange,
+  onBriefPersist,
   projectId,
   initialNotes,
   totalNoteCount,
@@ -126,6 +128,10 @@ export function ProjectCaptureBlock({
           id="project-brief"
           value={briefText}
           onChange={(event) => onBriefChange(event.target.value)}
+          onBlur={(event) => {
+            if (disabled || submitted) return;
+            onBriefPersist?.(event.target.value);
+          }}
           placeholder="e.g. Replace existing 6 × 3m deck. About 1m high. Kwila decking. Access down side of house."
           rows={4}
           disabled={disabled || submitted}

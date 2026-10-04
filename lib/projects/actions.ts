@@ -518,3 +518,47 @@ export async function updateProject(
 
   return { success: true };
 }
+
+/** Persist the job description only. Does not analyse or change stage. */
+export async function saveJobDescription(
+  projectId: string,
+  briefText: string
+): Promise<ProjectActionState> {
+  const trimmed = briefText.trim();
+  if (trimmed.length > 5000) {
+    return { fieldErrors: { brief_text: ["Brief must be 5000 characters or less"] } };
+  }
+
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return {
+      error:
+        "Your organisation profile could not be loaded. Try signing out and back in.",
+    };
+  }
+
+  const { supabase, orgId, user } = context;
+  const editDenied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (editDenied) return editDenied;
+
+  const lifecycleAvailable = await hasLifecycleColumns(supabase);
+  let query = supabase
+    .from("projects")
+    .update({ brief_text: trimmed || null })
+    .eq("id", projectId)
+    .eq("org_id", orgId);
+  if (lifecycleAvailable) query = query.is("deleted_at", null);
+
+  const { error } = await query;
+  if (error) {
+    return { error: toUserError(error, "saveJobDescription", USER_ERRORS.projectSaveFailed) };
+  }
+
+  revalidatePath(`/app/projects/${projectId}`);
+  return { success: true };
+}

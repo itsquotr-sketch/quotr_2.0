@@ -74,6 +74,7 @@ import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
 import { updateProjectFact } from "@/lib/assistant/fact-actions";
 import { beginQualitySpecEdit } from "@/lib/assistant/quality-edit";
 import { updateEstimateMargin } from "@/lib/assistant/margin-actions";
+import { saveJobDescription } from "@/lib/projects/actions";
 import {
   buildPendingMarginTotals,
   marginTotalsMatchEstimate,
@@ -870,6 +871,13 @@ export function AssistantShell({
     },
     [estimateNavProjection, project.id, router, settleCanonicalMutation]
   );
+
+  const persistJobDescription = useCallback((value: string) => {
+    const next = value.trim();
+    const current = project.briefText?.trim() ?? "";
+    if (next === current || pendingAction != null) return;
+    void saveJobDescription(project.id, value);
+  }, [pendingAction, project.briefText, project.id]);
 
   const handleAnalyseJob = useCallback(() => {
     if (pendingAction != null || actionLockRef.current) {
@@ -3212,6 +3220,7 @@ export function AssistantShell({
             <ProjectCaptureBlock
               briefText={briefText}
               onBriefChange={setBriefText}
+              onBriefPersist={briefSubmitted ? undefined : persistJobDescription}
               projectId={project.id}
               initialNotes={initialNotes}
               totalNoteCount={totalNoteCount}
