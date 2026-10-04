@@ -3228,6 +3228,10 @@ export function AssistantShell({
               onRetryAnalyse={handleAnalyseJob}
               documents={documents}
               canUploadFiles={canUploadFiles}
+              workAreas={displayWorkAreas}
+              onAddWorkArea={handleAddWorkArea}
+              isAddingWorkArea={isAddingWorkArea}
+              addWorkAreaError={addWorkAreaError}
             />
           </CollapsibleStageCard>
           )}

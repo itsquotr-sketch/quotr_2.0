@@ -15,6 +15,52 @@ import {
   isActiveCanonicalWorkAreaStatus,
 } from "@/lib/assistant/work-area-active";
 import { nextWorkAreaInstanceLabel } from "@/lib/work-areas/instances";
+import type { WorkAreaStatus } from "@/components/assistant/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const MANUAL_WORK_CONFIRMATION_ERROR =
+  "The work area was saved, but Quotr could not open work confirmation. Choose the same work area again to continue.";
+
+function asWorkAreaStatus(status: string): WorkAreaStatus {
+  if (status === "suggested" || status === "confirmed" || status === "excluded") {
+    return status;
+  }
+  return "confirmed";
+}
+
+async function openWorkConfirmationFromBrief(
+  supabase: SupabaseClient,
+  orgId: string,
+  projectId: string,
+  stage: string
+): Promise<string | null> {
+  if (stage !== "brief") return null;
+
+  const { data: areas, error: readError } = await supabase
+    .from("work_areas")
+    .select("id, status")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId);
+
+  if (readError) return MANUAL_WORK_CONFIRMATION_ERROR;
+
+  const active = (areas ?? []).filter((row) =>
+    isActiveCanonicalWorkAreaStatus(String(row.status ?? ""))
+  );
+  if (active.length === 0) {
+    return "Add a supported work area before continuing.";
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ stage: "confirm_work_areas" })
+    .eq("id", projectId)
+    .eq("org_id", orgId)
+    .eq("stage", "brief");
+
+  if (error) return MANUAL_WORK_CONFIRMATION_ERROR;
+  return null;
+}
 
 const CATALOGUE_BY_TYPE = new Map(
   SCOPE_CATALOGUE.map((item) => [item.type, item])
@@ -74,6 +120,43 @@ export async function addWorkAreaToProject(input: {
 
   if (!project) {
     return { error: "Project not found." };
+  }
+
+  if (project.stage === "brief") {
+    const { data: sameType } = await supabase
+      .from("work_areas")
+      .select("id, type, name, status")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .eq("type", workAreaType)
+      .neq("status", "excluded");
+
+    const existing = (sameType ?? []).find((row) =>
+      isActiveCanonicalWorkAreaStatus(String(row.status ?? ""))
+    );
+    if (existing) {
+      const stageError = await openWorkConfirmationFromBrief(
+        supabase,
+        orgId,
+        projectId,
+        project.stage
+      );
+      if (stageError) return { error: stageError };
+      await markEstimateStaleWithContext(context, projectId);
+      revalidateProjectPath(projectId);
+      return {
+        success: true,
+        workArea: {
+          id: existing.id,
+          type: workAreaType,
+          name: existing.name,
+          status: asWorkAreaStatus(String(existing.status ?? "confirmed")),
+          aiConfidence: 0,
+          summary: catalogueItem.description,
+          quoteDescription: null,
+        },
+      };
+    }
   }
 
   const { data: existingAreas } = await supabase
@@ -170,6 +253,14 @@ export async function addWorkAreaToProject(input: {
   if (ensureResult.error) {
     return { error: ensureResult.error };
   }
+
+  const stageError = await openWorkConfirmationFromBrief(
+    supabase,
+    orgId,
+    projectId,
+    project.stage
+  );
+  if (stageError) return { error: stageError };
 
   await markEstimateStaleWithContext(context, projectId);
   revalidateProjectPath(projectId);

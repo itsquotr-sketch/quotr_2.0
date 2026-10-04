@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
+import type { WorkArea } from "@/components/assistant/types";
 import { SiteNotesCaptureCard } from "@/components/project-notes/SiteNotesCaptureCard";
 import { ProjectDocumentsSection } from "@/components/projects/information/ProjectDocumentsSection";
 import { AnalyseNotesSection } from "@/components/project-notes/AnalyseNotesSection";
@@ -11,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
+import { NO_WORK_AREAS_ERROR } from "@/lib/ai/analyse-job-contract";
 
 type ProjectCaptureBlockProps = {
   briefText: string;
@@ -28,6 +31,12 @@ type ProjectCaptureBlockProps = {
   onRetryAnalyse?: () => void;
   documents?: ProjectDocumentCentreModel | null;
   canUploadFiles?: boolean;
+  workAreas?: WorkArea[];
+  onAddWorkArea?: (
+    workAreaType: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  isAddingWorkArea?: boolean;
+  addWorkAreaError?: string | null;
 };
 
 export function buildProjectCaptureSummary(
@@ -58,7 +67,14 @@ export function ProjectCaptureBlock({
   onRetryAnalyse,
   documents = null,
   canUploadFiles = false,
+  workAreas = [],
+  onAddWorkArea,
+  isAddingWorkArea = false,
+  addWorkAreaError = null,
 }: ProjectCaptureBlockProps) {
+  const [addWorkAreaOpen, setAddWorkAreaOpen] = useState(false);
+  const manualRecovery =
+    analyseError === NO_WORK_AREAS_ERROR && onAddWorkArea != null;
   const briefIncluded = briefText.trim().length > 0;
   const [progressElapsedMs, setProgressElapsedMs] = useState(0);
   const analyseStartedAt = useRef<number | null>(null);
@@ -196,6 +212,34 @@ export function ProjectCaptureBlock({
                   Your job details are still here.
                 </p>
               </div>
+              {manualRecovery ? (
+                <div className="space-y-2" data-manual-work-area-recovery="true">
+                  <p className="text-sm text-foreground">
+                    Quotr did not identify a supported work area. Add one to
+                    continue.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 min-h-11 w-full sm:w-auto"
+                    onClick={() => setAddWorkAreaOpen(true)}
+                    disabled={disabled || isAddingWorkArea}
+                  >
+                    Add a work area
+                  </Button>
+                  <AddWorkAreaDialog
+                    open={addWorkAreaOpen}
+                    onOpenChange={setAddWorkAreaOpen}
+                    workAreas={workAreas}
+                    isSaving={isAddingWorkArea}
+                    error={addWorkAreaError}
+                    onAdd={async (workAreaType) => {
+                      const out = await onAddWorkArea(workAreaType);
+                      if (out.success) setAddWorkAreaOpen(false);
+                    }}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
           <p className="text-xs text-muted-foreground" data-analysis-disclosure="true">
