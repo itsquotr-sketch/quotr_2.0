@@ -101,14 +101,14 @@ export function CustomerFormDialog({
         {triggerLabel ?? title}
       </Button>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
               Customer details help fill new projects. Existing projects and issued documents keep their saved details.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
             {error ? (
               <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                 {error}
@@ -179,10 +179,10 @@ export function CustomerFormDialog({
               ) : null}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" size="touch" onClick={() => handleOpenChange(false)} disabled={pending}>
+              <Button type="button" variant="outline" size="touch" className="w-full sm:w-auto" onClick={() => handleOpenChange(false)} disabled={pending}>
                 Cancel
               </Button>
-              <Button type="submit" size="touch" disabled={pending || !name.trim()}>
+              <Button type="submit" size="touch" className="w-full sm:w-auto" disabled={pending || !name.trim()}>
                 {pending ? "Saving…" : mode === "create" ? "Save customer" : "Save changes"}
               </Button>
             </DialogFooter>
@@ -218,7 +218,7 @@ export function ArchiveCustomerButton({ customer }: { customer: Customer }) {
         Archive
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[calc(100dvh-1rem)] overflow-y-auto sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Archive {customer.name}?</DialogTitle>
             <DialogDescription>
@@ -230,10 +230,10 @@ export function ArchiveCustomerButton({ customer }: { customer: Customer }) {
             <p className="text-sm text-destructive" role="alert">{error}</p>
           ) : null}
           <DialogFooter>
-            <Button type="button" variant="outline" size="touch" onClick={() => setOpen(false)} disabled={pending}>
+            <Button type="button" variant="outline" size="touch" className="w-full sm:w-auto" onClick={() => setOpen(false)} disabled={pending}>
               Cancel
             </Button>
-            <Button type="button" variant="destructive" size="touch" onClick={() => void confirmArchive()} disabled={pending}>
+            <Button type="button" variant="destructive" size="touch" className="w-full sm:w-auto" onClick={() => void confirmArchive()} disabled={pending}>
               {pending ? "Archiving…" : "Archive customer"}
             </Button>
           </DialogFooter>

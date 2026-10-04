@@ -8,6 +8,7 @@ import type { CustomerOption } from "@/lib/customers/types";
 import { CustomerPicker } from "@/components/customers/CustomerPicker";
 import type { Project, ProjectPriority } from "@/lib/projects/types";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 const PRIORITY_OPTIONS: { value: ProjectPriority; label: string }[] = [
   { value: "low", label: "Low" },
@@ -223,7 +223,12 @@ export function EditProjectDialog({
                   </p>
                 ) : null}
                 <div className="grid gap-2">
-                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]">
+                  <label className={cn(
+                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2",
+                    linkMode === "existing"
+                      ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+                      : "border-border bg-background"
+                  )}>
                     <input
                       type="radio"
                       name="edit-customer-link"
@@ -231,9 +236,14 @@ export function EditProjectDialog({
                       onChange={() => setLinkMode("existing")}
                       className="size-4 accent-[var(--brand-orange)]"
                     />
-                    <span>Existing customer</span>
+                    <span className={linkMode === "existing" ? "font-semibold" : "font-medium"}>Existing customer</span>
                   </label>
-                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]">
+                  <label className={cn(
+                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2",
+                    linkMode === "none"
+                      ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+                      : "border-border bg-background"
+                  )}>
                     <input
                       type="radio"
                       name="edit-customer-link"
@@ -244,7 +254,7 @@ export function EditProjectDialog({
                       }}
                       className="size-4 accent-[var(--brand-orange)]"
                     />
-                    <span>No linked customer</span>
+                    <span className={linkMode === "none" ? "font-semibold" : "font-medium"}>No linked customer</span>
                   </label>
                 </div>
                 {linkMode === "existing" ? (

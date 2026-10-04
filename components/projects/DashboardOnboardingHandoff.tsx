@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 
@@ -17,18 +17,22 @@ export function DashboardOnboardingHandoff({
 }) {
   const [open, setOpen] = useState(openNewProject);
   const [showConsentNote] = useState(consentUnsaved);
-  const consumed = useRef(false);
+  const [checkedQuery, setCheckedQuery] = useState(false);
 
-  useEffect(() => {
-    if (consumed.current) return;
-    if (!openNewProject && !consentUnsaved) return;
-    consumed.current = true;
+  if (!checkedQuery && typeof window !== "undefined") {
+    const requested = new URL(window.location.href).searchParams.get("newProject") === "1";
+    setCheckedQuery(true);
+    if (!requested) setOpen(false);
+  }
+
+  useLayoutEffect(() => {
     const url = new URL(window.location.href);
+    if (!url.searchParams.has("newProject") && !url.searchParams.has("consent")) return;
     url.searchParams.delete("newProject");
     url.searchParams.delete("consent");
-    const next = `${url.pathname}${url.search}`;
+    const next = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState(window.history.state, "", next);
-  }, [openNewProject, consentUnsaved]);
+  }, []);
 
   return (
     <>

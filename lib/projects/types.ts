@@ -54,6 +54,8 @@ export type ProjectActionState = {
   upgradeTarget?: UpgradeTarget;
   fieldErrors?: Record<string, string[]>;
   success?: boolean;
+  /** Present only after a project row exists. The dialog navigates. */
+  projectId?: string;
 };
 
 export type DashboardPipelineSummary = {

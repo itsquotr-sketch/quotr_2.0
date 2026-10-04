@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -397,7 +397,7 @@ export async function createProject(
     }
     revalidatePath("/app/dashboard");
     revalidatePath("/app/customers");
-    redirect(`/app/projects/${projectId}`);
+    return { projectId };
   }
 
   let snapshotName: string | null = null;
@@ -444,7 +444,7 @@ export async function createProject(
       .maybeSingle();
     if (existing?.id) {
       revalidatePath("/app/dashboard");
-      redirect(`/app/projects/${existing.id}`);
+      return { projectId: existing.id };
     }
   }
 
@@ -489,7 +489,7 @@ export async function createProject(
         .maybeSingle();
       if (existing?.id) {
         revalidatePath("/app/dashboard");
-        redirect(`/app/projects/${existing.id}`);
+        return { projectId: existing.id };
       }
     }
 
@@ -514,7 +514,7 @@ export async function createProject(
       }
 
       revalidatePath("/app/dashboard");
-      redirect(`/app/projects/${fallbackProject.id}`);
+      return { projectId: fallbackProject.id };
     }
 
     console.error("[createProject] insert failed:", error?.message);
@@ -524,7 +524,7 @@ export async function createProject(
   }
 
   revalidatePath("/app/dashboard");
-  redirect(`/app/projects/${project.id}`);
+  return { projectId: project.id };
 }
 
 export async function updateProject(

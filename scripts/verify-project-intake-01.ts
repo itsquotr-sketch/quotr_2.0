@@ -89,7 +89,11 @@ check(
     actions.includes('status: "draft"') &&
     actions.includes('business_status: "lead"') &&
     actions.includes('quality_level: "unknown"') &&
-    actions.includes("redirect(`/app/projects/${project.id}`)")
+    actions.includes("return { projectId: project.id }") &&
+    !actions.slice(actions.indexOf("export async function createProject"), actions.indexOf("export async function updateProject")).includes("redirect(") &&
+    dialog.includes("router.push(destination)") &&
+    dialog.includes("setPendingDestination(destination)") &&
+    dialog.includes('finalFocus={() => restoreFocusRef.current}')
 );
 check(
   "server create permission is unchanged",

@@ -1,12 +1,14 @@
 "use client";
 
-import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { CustomerPicker } from "@/components/customers/CustomerPicker";
 import { createProject } from "@/lib/projects/actions";
 import { listSelectableCustomers } from "@/lib/customers/actions";
 import type { CustomerOption } from "@/lib/customers/types";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -64,8 +66,14 @@ export function NewProjectDialog({
   } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [pending, setPending] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<string | null>(null);
+  const [closedAfterCreate, setClosedAfterCreate] = useState(false);
   const submitLock = useRef(false);
   const requestId = useRef(crypto.randomUUID());
+  const restoreFocusRef = useRef(true);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
@@ -78,7 +86,18 @@ export function NewProjectDialog({
     };
   }, [open]);
 
-  function resetForm() {
+  function forgetNewProjectTrigger() {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("newProject")) return;
+    url.searchParams.delete("newProject");
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", next);
+  }
+
+  const arrived = pendingDestination !== null && pathname === pendingDestination;
+  if (arrived) {
+    setPendingDestination(null);
+    setClosedAfterCreate(true);
     setTitle("");
     setSiteAddress("");
     setCustomerMode("none");
@@ -90,13 +109,32 @@ export function NewProjectDialog({
     setDenial(null);
     setFieldErrors({});
     setPending(false);
+    if (openProp === undefined) setUncontrolledOpen(false);
+  }
+
+  const dialogOpen = !closedAfterCreate && !arrived && (openProp ?? uncontrolledOpen);
+
+  useEffect(() => {
+    if (!closedAfterCreate) return;
+    submitLock.current = false;
     requestId.current = crypto.randomUUID();
+  }, [closedAfterCreate]);
+
+  function openDialog() {
+    if (pending || pendingDestination) return;
+    setClosedAfterCreate(false);
+    if (openProp === undefined) setUncontrolledOpen(true);
+    onOpenChange?.(true);
   }
 
   function handleOpenChange(nextOpen: boolean) {
-    if (pending) return;
-    if (openProp === undefined) setUncontrolledOpen(nextOpen);
-    onOpenChange?.(nextOpen);
+    if (pending || pendingDestination) return;
+    if (!nextOpen) restoreFocusRef.current = true;
+    if (nextOpen) openDialog();
+    else {
+      if (openProp === undefined) setUncontrolledOpen(false);
+      onOpenChange?.(false);
+    }
   }
 
   const canSubmit =
@@ -106,8 +144,9 @@ export function NewProjectDialog({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (submitLock.current) return;
+    if (submitLock.current || pendingDestination) return;
     submitLock.current = true;
+    let handedOff = false;
     setError(null);
     setDenial(null);
     setFieldErrors({});
@@ -148,20 +187,26 @@ export function NewProjectDialog({
         return;
       }
 
-      resetForm();
-    } catch (caught: unknown) {
-      const digest =
-        caught && typeof caught === "object" && "digest" in caught
-          ? String((caught as { digest?: string }).digest ?? "")
-          : "";
-      if (digest.startsWith("NEXT_REDIRECT")) {
-        resetForm();
-        throw caught;
+      if (!result?.projectId) {
+        setError("Could not create the job. Please try again.");
+        return;
       }
+
+      const destination = `/app/projects/${result.projectId}`;
+      restoreFocusRef.current = false;
+      forgetNewProjectTrigger();
+      handedOff = true;
+      setPendingDestination(destination);
+      startTransition(() => {
+        router.push(destination);
+      });
+    } catch {
       setError("Could not create the job. Please try again.");
     } finally {
-      setPending(false);
-      submitLock.current = false;
+      if (!handedOff) {
+        setPending(false);
+        submitLock.current = false;
+      }
     }
   }
 
@@ -173,7 +218,7 @@ export function NewProjectDialog({
             trigger.props.onClick?.(event);
             void (async () => {
               if (beforeOpen && !(await beforeOpen())) return;
-              handleOpenChange(true);
+              openDialog();
             })();
           },
         } as React.Attributes)
@@ -184,7 +229,7 @@ export function NewProjectDialog({
           onClick={() => {
             void (async () => {
               if (beforeOpen && !(await beforeOpen())) return;
-              handleOpenChange(true);
+              openDialog();
             })();
           }}
           className="w-full sm:w-auto"
@@ -193,8 +238,11 @@ export function NewProjectDialog({
         </Button>
       )}
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
+      <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+        <DialogContent
+          finalFocus={() => restoreFocusRef.current}
+          className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain sm:max-w-lg"
+        >
           <DialogHeader>
             <DialogTitle>Start a job</DialogTitle>
             <DialogDescription>
@@ -238,22 +286,32 @@ export function NewProjectDialog({
             <fieldset className="space-y-2" data-customer-choice>
               <legend className="text-sm font-medium">Customer</legend>
               <div className="grid gap-2">
-                {MODES.map((mode) => (
-                  <label
-                    key={mode.value}
-                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]"
-                  >
-                    <input
-                      type="radio"
-                      name="customer-mode"
-                      value={mode.value}
-                      checked={customerMode === mode.value}
-                      onChange={() => setCustomerMode(mode.value)}
-                      className="size-4 accent-[var(--brand-orange)]"
-                    />
-                    <span>{mode.label}</span>
-                  </label>
-                ))}
+                {MODES.map((mode) => {
+                  const selected = customerMode === mode.value;
+                  return (
+                    <label
+                      key={mode.value}
+                      data-customer-mode={mode.value}
+                      data-selected={selected ? "true" : "false"}
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2",
+                        selected
+                          ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+                          : "border-border bg-background"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="customer-mode"
+                        value={mode.value}
+                        checked={selected}
+                        onChange={() => setCustomerMode(mode.value)}
+                        className="size-4 accent-[var(--brand-orange)]"
+                      />
+                      <span className={selected ? "font-semibold" : "font-medium"}>{mode.label}</span>
+                    </label>
+                  );
+                })}
               </div>
 
               {customerMode === "existing" ? (

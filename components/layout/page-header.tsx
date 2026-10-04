@@ -1,3 +1,4 @@
+import { LAYOUT_MAX_WIDTH } from "@/components/layout/page-containers";
 import { cn } from "@/lib/utils";
 
 type PageHeaderProps = {
@@ -13,6 +14,8 @@ type PageHeaderProps = {
   wrapDescription?: boolean;
   /** Hide header actions below the sidebar breakpoint. The mobile bar owns New project. */
   hideActionsOnMobile?: boolean;
+  /** Use the same max width and padding as PageContainer so the title lines up with the page. */
+  alignWithContent?: boolean;
 };
 
 export function PageHeader({
@@ -22,6 +25,7 @@ export function PageHeader({
   compactOnMobile = false,
   wrapDescription = false,
   hideActionsOnMobile = false,
+  alignWithContent = false,
 }: PageHeaderProps) {
   return (
     <>
@@ -30,11 +34,20 @@ export function PageHeader({
       ) : null}
       <header
         className={cn(
-          "flex shrink-0 flex-col gap-3 border-b bg-background px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
-          wrapDescription ? "sm:min-h-14 sm:py-3" : "sm:h-14 sm:py-0",
+          "shrink-0 border-b bg-background px-4 sm:px-6",
+          alignWithContent && "lg:px-8",
+          wrapDescription || alignWithContent ? "py-4 sm:py-3" : "py-4 sm:h-14 sm:py-0",
           compactOnMobile && "max-md:hidden"
         )}
       >
+        <div
+          className={cn(
+            "flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+            alignWithContent && "mx-auto",
+            alignWithContent && LAYOUT_MAX_WIDTH.page,
+            wrapDescription && "sm:min-h-14"
+          )}
+        >
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">
             {title}
@@ -60,6 +73,7 @@ export function PageHeader({
             {actions}
           </div>
         ) : null}
+        </div>
       </header>
     </>
   );

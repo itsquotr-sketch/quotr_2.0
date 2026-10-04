@@ -29,13 +29,14 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         title="Customers"
         description="Save customer details for faster project setup."
         wrapDescription
+        alignWithContent
         actions={
           !archived && canCreate ? (
             <CustomerFormDialog mode="create" triggerLabel="New customer" />
           ) : null
         }
       />
-      <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
+      <PageContainer innerClassName="py-4 sm:py-6">
         <CustomersDirectory
           customers={customers}
           archived={archived}

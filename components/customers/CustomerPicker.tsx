@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CustomerOption } from "@/lib/customers/types";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type CustomerPickerProps = {
@@ -19,10 +21,13 @@ export function CustomerPicker({
   disabled = false,
 }: CustomerPickerProps) {
   const listId = useId();
+  const inputId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const focusSearchRef = useRef(false);
 
   const selected = customers.find((customer) => customer.id === selectedId) ?? null;
   const matches = useMemo(() => {
@@ -51,18 +56,56 @@ export function CustomerPicker({
     onSelect(customer);
     setQuery("");
     setOpen(false);
+    setReplacing(false);
     setActiveIndex(0);
+  }
+
+  if (selected && !replacing) {
+    return (
+      <div
+        ref={rootRef}
+        className="rounded-lg border border-[var(--brand-orange)] bg-[var(--brand-orange-muted)] px-3 py-3"
+        data-selected-customer
+      >
+        <p className="font-semibold">{selected.name}</p>
+        {selected.email ? <p className="mt-1 text-sm text-foreground">{selected.email}</p> : null}
+        {selected.phone ? <p className="mt-1 text-sm text-foreground">{selected.phone}</p> : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="touch"
+          className="mt-3"
+          disabled={disabled}
+          onClick={() => {
+            focusSearchRef.current = true;
+            setReplacing(true);
+            setQuery("");
+            setOpen(true);
+          }}
+        >
+          Change customer
+        </Button>
+      </div>
+    );
   }
 
   return (
     <div ref={rootRef} className="space-y-2">
+      <Label htmlFor={inputId}>Search customers</Label>
       <Input
+        id={inputId}
+        ref={(node) => {
+          if (node && focusSearchRef.current) {
+            focusSearchRef.current = false;
+            node.focus();
+          }
+        }}
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
         aria-autocomplete="list"
-        value={open ? query : selected?.name ?? ""}
-        placeholder="Search customers"
+        value={query}
+        placeholder="Search by name, email or phone"
         disabled={disabled}
         className="min-h-11"
         autoComplete="off"
@@ -88,6 +131,7 @@ export function CustomerPicker({
             choose(matches[activeIndex]);
           } else if (event.key === "Escape") {
             setOpen(false);
+            if (selected) setReplacing(false);
           }
         }}
       />
@@ -122,13 +166,6 @@ export function CustomerPicker({
             ))
           )}
         </ul>
-      ) : null}
-      {selected ? (
-        <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm" data-selected-customer>
-          <p className="font-medium">{selected.name}</p>
-          {selected.email ? <p className="text-muted-foreground">{selected.email}</p> : null}
-          {selected.phone ? <p className="text-muted-foreground">{selected.phone}</p> : null}
-        </div>
       ) : null}
     </div>
   );

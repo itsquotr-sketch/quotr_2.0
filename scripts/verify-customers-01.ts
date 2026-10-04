@@ -125,7 +125,27 @@ function staticMain() {
   section("UI");
   assert("page heading and copy", page.includes("Customers") && page.includes("Save customer details for faster project setup."));
   assert("viewer gates", page.includes("memberCanCreateProjects") && page.includes("memberCanEditProjects"));
-  assert("search and archive disclosure", directory.includes("Search name, email or phone") && directory.includes("Show archived"));
+  assert(
+    "search and archive disclosure",
+    directory.includes("Search name, email or phone") &&
+      directory.includes("Show archived") &&
+      directory.includes('type="checkbox"')
+  );
+  assert(
+    "job handoff closes after the project id",
+    dialog.includes("result?.projectId") &&
+      dialog.includes("router.push(destination)") &&
+      dialog.includes("forgetNewProjectTrigger") &&
+      dialog.includes("closedAfterCreate") &&
+      !dialog.includes("NEXT_REDIRECT")
+  );
+  assert(
+    "selected customer is one panel",
+    read("components/customers/CustomerPicker.tsx").includes("Search customers") &&
+      read("components/customers/CustomerPicker.tsx").includes("Search by name, email or phone") &&
+      read("components/customers/CustomerPicker.tsx").includes("Change customer") &&
+      read("components/customers/CustomerPicker.tsx").includes("data-selected-customer")
+  );
   assert("desktop list and mobile cards", directory.includes('data-customer-list="aligned"') && directory.includes('data-customer-list="stacked"') && directory.includes("md:hidden") && directory.includes("md:block"));
   assert("sidebar places Customers after Projects and before Rates", (() => {
     const projects = sidebar.indexOf('label: "Projects"');

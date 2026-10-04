@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { filterCustomers } from "@/lib/customers/search";
 import type { Customer } from "@/lib/customers/types";
 import {
@@ -18,10 +18,8 @@ type CustomersDirectoryProps = {
   canEdit: boolean;
 };
 
-function contactLine(customer: Customer): string | null {
-  const parts = [customer.email, customer.phone].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
+const CUSTOMER_GRID =
+  "grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_11.5rem] items-center gap-3";
 
 function CustomerActions({
   customer,
@@ -53,6 +51,7 @@ export function CustomersDirectory({
   canCreate,
   canEdit,
 }: CustomersDirectoryProps) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const visible = useMemo(
     () => filterCustomers(customers, search),
@@ -75,16 +74,21 @@ export function CustomersDirectory({
             data-customer-search
           />
         </label>
-        <Link
-          href={archived ? "/app/customers" : "/app/customers?archived=1"}
-          className="inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-        >
-          {archived ? "Show active customers" : "Show archived"}
-        </Link>
+        <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg px-2 outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)]">
+          <input
+            type="checkbox"
+            checked={archived}
+            onChange={() => {
+              router.push(archived ? "/app/customers" : "/app/customers?archived=1");
+            }}
+            className="size-4 accent-[var(--brand-orange)]"
+          />
+          <span className="text-sm font-medium">Show archived</span>
+        </label>
       </div>
 
       {emptyDirectory ? (
-        <div className="rounded-xl border bg-background px-4 py-10 text-center">
+        <div className="rounded-xl border border-border/70 bg-card px-4 py-10 text-center">
           <p className="text-base font-medium">
             {archived ? "No archived customers" : "No customers yet"}
           </p>
@@ -102,15 +106,15 @@ export function CustomersDirectory({
       ) : null}
 
       {emptySearch ? (
-        <p className="rounded-xl border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border/70 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
           No customers match that search.
         </p>
       ) : null}
 
       {visible.length > 0 ? (
         <>
-          <div className="hidden overflow-hidden rounded-xl border bg-background md:block" data-customer-list="aligned">
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_auto] gap-3 border-b px-4 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card md:block" data-customer-list="aligned">
+            <div className={`${CUSTOMER_GRID} border-b px-4 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase`}>
               <span>Name</span>
               <span>Email</span>
               <span>Phone</span>
@@ -120,40 +124,38 @@ export function CustomersDirectory({
               {visible.map((customer) => (
                 <li
                   key={customer.id}
-                  className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_auto] items-center gap-3 border-b px-4 py-2 last:border-b-0"
+                  className={`${CUSTOMER_GRID} border-b px-4 py-2 last:border-b-0`}
                   data-customer-row
                 >
-                  <p className="truncate font-medium">{customer.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">{customer.email ?? "—"}</p>
-                  <p className="truncate text-sm text-muted-foreground">{customer.phone ?? "—"}</p>
+                  <p className="min-w-0 truncate font-medium">{customer.name}</p>
+                  <p className="min-w-0 truncate text-sm text-muted-foreground">{customer.email ?? ""}</p>
+                  <p className="min-w-0 truncate text-sm text-muted-foreground">{customer.phone ?? ""}</p>
                   <CustomerActions customer={customer} archived={archived} canEdit={canEdit} />
                 </li>
               ))}
             </ul>
           </div>
           <ul className="flex flex-col gap-3 md:hidden" data-customer-list="stacked">
-            {visible.map((customer) => {
-              const contact = contactLine(customer);
-              return (
-                <li
-                  key={customer.id}
-                  className="rounded-xl border bg-background px-4 py-3"
-                  data-customer-row
-                >
-                  <div className="flex min-w-0 flex-col gap-3">
-                    <div className="min-w-0">
-                      <p className="break-words text-base font-medium">{customer.name}</p>
-                      {contact ? (
-                        <p className="mt-0.5 break-words text-sm text-muted-foreground">{contact}</p>
-                      ) : (
-                        <p className="mt-0.5 text-sm text-muted-foreground">No email or phone</p>
-                      )}
-                    </div>
-                    <CustomerActions customer={customer} archived={archived} canEdit={canEdit} />
+            {visible.map((customer) => (
+              <li
+                key={customer.id}
+                className="min-w-0 rounded-xl border border-border/70 bg-card px-4 py-3"
+                data-customer-row
+              >
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-base font-medium">{customer.name}</p>
+                    {customer.email ? (
+                      <p className="mt-1 break-words text-sm text-muted-foreground">{customer.email}</p>
+                    ) : null}
+                    {customer.phone ? (
+                      <p className="mt-1 break-words text-sm text-muted-foreground">{customer.phone}</p>
+                    ) : null}
                   </div>
-                </li>
-              );
-            })}
+                  <CustomerActions customer={customer} archived={archived} canEdit={canEdit} />
+                </div>
+              </li>
+            ))}
           </ul>
         </>
       ) : null}
