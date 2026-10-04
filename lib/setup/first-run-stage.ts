@@ -3,8 +3,9 @@
  *
  * Field authority resumes an unfinished organisation at the first missing
  * answer: basics, address, tax, work, labour, then ready.
- * Address and tax still open the current company form until the six-step
- * screens exist.
+ * Each stage has its own screen. Earlier canonical URLs stay open so Back
+ * and review edits keep saved answers. Later stages stay closed until the
+ * first incomplete step is done.
  *
  * Finished organisations stay out of the gate when status or step is
  * `completed`. `rates` and `review` are not completion. The migration
@@ -145,48 +146,56 @@ export function resolveProtectedOnboardingAccess(input: {
   return { lockNavigation: true, redirectTo: null };
 }
 
+export const ONBOARDING_SHELL_MODES = [
+  "basics",
+  "address",
+  "tax",
+  "work",
+  "labour",
+  "ready",
+] as const;
+
+export type OnboardingShellMode = (typeof ONBOARDING_SHELL_MODES)[number];
+
+export function canonicalOnboardingMode(
+  value: string | undefined
+): OnboardingShellMode | null {
+  return ONBOARDING_SHELL_MODES.find((mode) => mode === value) ?? null;
+}
+
+function onboardingModeIndex(mode: OnboardingShellMode): number {
+  return ONBOARDING_SHELL_MODES.indexOf(mode);
+}
+
 /**
- * Redirect when the requested setup mode does not match the current stage.
- * Address and tax use their own mode values. The current screen still
- * renders the combined company form for those modes.
- * Finished organisations leave the wizard entirely.
+ * Earlier canonical steps stay open. A later mode, or any non-canonical
+ * mode, returns to the first incomplete step. A finished organisation can
+ * open a canonical step to review it and is not sent back into the gate.
  */
 export function setupModeRedirect(
   requestedMode: string | undefined,
   stage: FirstRunStage
 ): string | null {
+  const requested = canonicalOnboardingMode(requestedMode);
   if (stage === "done") {
-    return "/app/dashboard";
+    return requested ? null : "/app/dashboard";
   }
-
-  const expected =
-    stage === "basics"
-      ? "basics"
-      : stage === "address"
-        ? "address"
-        : stage === "tax"
-          ? "tax"
-          : stage === "work"
-            ? "work"
-            : stage === "labour"
-              ? "labour"
-              : stage === "ready"
-                ? "ready"
-                : null;
-  if (!expected) return null;
-  if (requestedMode !== expected) return firstRunForcedPath(stage);
+  if (!requested) return firstRunForcedPath(stage);
+  if (onboardingModeIndex(requested) > onboardingModeIndex(stage)) {
+    return firstRunForcedPath(stage);
+  }
   return null;
 }
 
 export function setupShellMode(
   requestedMode: string | undefined,
   stage: FirstRunStage
-): "basics" | "work" | "labour" | "ready" {
-  const mode = requestedMode ?? stage;
-  if (mode === "work" || stage === "work") return "work";
-  if (mode === "labour" || stage === "labour") return "labour";
-  if (mode === "ready" || stage === "ready") return "ready";
-  return "basics";
+): OnboardingShellMode {
+  const requested = canonicalOnboardingMode(requestedMode);
+  if (stage === "done") return requested ?? "ready";
+  if (!requested) return stage;
+  if (onboardingModeIndex(requested) > onboardingModeIndex(stage)) return stage;
+  return requested;
 }
 
 /** Cross-tenant onboarding writes are rejected when the org ids differ. */

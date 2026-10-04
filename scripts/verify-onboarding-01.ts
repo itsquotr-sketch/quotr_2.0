@@ -428,7 +428,7 @@ function main() {
     labourStep.includes("Carpenter internal cost per hour") &&
       labourStep.includes("Labourer internal cost per hour") &&
       labourStep.includes("Default target gross margin %") &&
-      labourStep.includes("not client")
+      labourStep.includes("not the client charge-out rate")
   );
   assert("Rates navigation includes Calibration", ratesNav.includes('label: "Calibration"'));
 

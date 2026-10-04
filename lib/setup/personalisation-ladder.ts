@@ -63,7 +63,7 @@ const WORK_STEP: PersonalisationStep = {
   title: "What work does your company normally do?",
   reason: "Tell Quotr the jobs you usually price so calibration and rates match your work first.",
   cta: "Choose your work",
-  href: "/app/setup?mode=improve&section=work_areas",
+  href: "/app/settings/company",
 };
 
 const CALIBRATE_STEP: PersonalisationStep = {

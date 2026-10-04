@@ -17,7 +17,12 @@ import {
 } from "@/lib/setup/actions";
 import { SCOPE_CATALOGUE, SCOPE_CATEGORIES } from "@/lib/scopes/catalogue";
 import { getFirstRunPrimaryWorkAreas } from "@/lib/setup/first-run-work-areas";
+import {
+  FIRST_RUN_LABOUR_PATH,
+  FIRST_RUN_TAX_PATH,
+} from "@/lib/setup/first-run-stage";
 import { ScopeSelectionCard } from "./ScopeSelectionCard";
+import { OnboardingActions, OnboardingSurface } from "./OnboardingSurface";
 import type { SetupState } from "./types";
 
 export type WorkAreasStepMode = "first-run" | "improve";
@@ -117,7 +122,7 @@ export function WorkAreasStep({
     }
 
     if (isFirstRun) {
-      router.replace("/app/setup?mode=labour");
+      router.push(FIRST_RUN_LABOUR_PATH);
       return;
     }
 
@@ -127,6 +132,68 @@ export function WorkAreasStep({
         : "Preferences cleared. Quotr can still estimate any supported work type."
     );
     onSaved?.();
+  }
+
+  if (isFirstRun) {
+    return (
+      <OnboardingSurface
+        mode="work"
+        title="Work you price"
+        description="Choose the work you price most often. You can still use every supported work type later."
+      >
+        <form data-onboarding-form onSubmit={handleSubmit}>
+          {error ? (
+            <p
+              role="alert"
+              data-onboarding-field-error="selections"
+              className="mb-3 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          ) : null}
+          <div className="space-y-4" role="group" aria-label="Work you price">
+            {scopesByCategory.map(({ category, scopes }) => (
+              <section key={category} className="space-y-1.5">
+                <h2 className="text-sm font-medium text-foreground">{category}</h2>
+                <div className="space-y-1.5">
+                  {scopes.map((scope) => {
+                    const selected = selections[scope.type] ?? false;
+                    return (
+                      <label
+                        key={scope.type}
+                        className={[
+                          "flex min-h-[3.25rem] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2",
+                          "focus-within:ring-2 focus-within:ring-ring",
+                          selected
+                            ? "border-foreground bg-neutral-50"
+                            : "border-border bg-white",
+                        ].join(" ")}
+                      >
+                        <input
+                          type="checkbox"
+                          className="size-4 shrink-0"
+                          checked={selected}
+                          onChange={(event) =>
+                            setSelections((prev) => ({
+                              ...prev,
+                              [scope.type]: event.target.checked,
+                            }))
+                          }
+                        />
+                        <span className="min-w-0 break-words text-sm leading-snug">
+                          {scope.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+          <OnboardingActions backHref={FIRST_RUN_TAX_PATH} pending={saving} />
+        </form>
+      </OnboardingSurface>
+    );
   }
 
   return (

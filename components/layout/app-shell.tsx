@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppSidebarNav } from "@/components/app-sidebar";
 import { TrialNoticeBanner } from "@/components/billing/TrialNoticeBanner";
+import { IncompleteSetupNotice } from "@/components/setup/IncompleteSetupNotice";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -21,6 +22,8 @@ type AppShellProps = {
   tradingName?: string | null;
   setupIncomplete?: boolean;
   incompleteSetupNotice?: boolean;
+  incompleteSetupCategories?: string[];
+  incompleteSetupReviewHref?: string | null;
   showTeamNav?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
   billingNotice?: TrialBannerNotice | null;
@@ -39,6 +42,8 @@ export function AppShell({
   tradingName,
   setupIncomplete = false,
   incompleteSetupNotice = false,
+  incompleteSetupCategories = [],
+  incompleteSetupReviewHref = null,
   showTeamNav = false,
   deploymentLabel = null,
   billingNotice = null,
@@ -103,6 +108,12 @@ export function AppShell({
           </div>
           {billingNotice && !pathname?.startsWith("/app/settings/billing") ? (
             <TrialNoticeBanner notice={billingNotice} />
+          ) : null}
+          {incompleteSetupNotice && !pathname?.startsWith("/app/setup") ? (
+            <IncompleteSetupNotice
+              categories={incompleteSetupCategories}
+              reviewHref={incompleteSetupReviewHref}
+            />
           ) : null}
           <div
             className={

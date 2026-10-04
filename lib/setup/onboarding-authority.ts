@@ -256,6 +256,30 @@ export function deriveIncompleteSetup(
   );
 }
 
+const NOTICE_CATEGORY_LABELS: Record<OnboardingFieldId, string> = {
+  basics: "business",
+  address: "address",
+  gst: "GST",
+  work: "work types",
+  carpenter: "labour costs",
+  labourer: "labour costs",
+  margin: "labour costs",
+};
+
+/** Category names only. Values such as tax identifiers are not included. */
+export function incompleteSetupCategoryLabels(
+  snapshot: OnboardingAuthoritySnapshot
+): string[] {
+  const fields = classifyOnboardingFields(snapshot);
+  const labels: string[] = [];
+  for (const item of RESUME_ORDER) {
+    if (fields[item.id] === "satisfied") continue;
+    const label = NOTICE_CATEGORY_LABELS[item.id];
+    if (!labels.includes(label)) labels.push(label);
+  }
+  return labels;
+}
+
 export function assessRequiredOnboarding(
   snapshot: OnboardingAuthoritySnapshot
 ): OnboardingAssessment {

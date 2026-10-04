@@ -20,6 +20,7 @@ import {
   firstRunForcedPath,
   resolveFirstRunStage,
   resolveProtectedOnboardingAccess,
+  setupModeRedirect,
   setupShellMode,
 } from "../lib/setup/first-run-stage";
 import {
@@ -98,9 +99,11 @@ function main(): void {
       firstRunForcedPath("ready") === FIRST_RUN_READY_PATH
   );
   assert(
-    "address and tax still use the current company form",
-    setupShellMode("address", "address") === "basics" &&
-      setupShellMode("tax", "tax") === "basics"
+    "address and tax open their own screens",
+    setupShellMode("address", "address") === "address" &&
+      setupShellMode("tax", "tax") === "tax" &&
+      setupShellMode("basics", "tax") === "basics" &&
+      setupModeRedirect("ready", "tax") === FIRST_RUN_TAX_PATH
   );
 
   const rates = canonicalCompletionBackfill("in_progress", "rates");

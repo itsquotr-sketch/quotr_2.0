@@ -280,9 +280,11 @@ function main() {
   );
   assert(
     "ready shell does not pass an improve branch",
-    setupShell.includes("<FirstRunReady />") &&
+    setupShell.includes("<FirstRunReady") &&
       !setupShell.includes("improveHref") &&
-      setupShell.includes("later under Rates")
+      !setupShell.includes("Improve Quotr") &&
+      !setupShell.includes("mode=improve") &&
+      ready.includes("later under Rates")
   );
 
   const login = read("app/(auth)/login/page.tsx");

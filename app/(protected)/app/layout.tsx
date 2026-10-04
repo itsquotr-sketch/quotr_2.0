@@ -146,6 +146,12 @@ async function AuthenticatedApp({
       tradingName={display?.tradingName}
       setupIncomplete={false}
       incompleteSetupNotice={onboardingAccess.incompleteSetupNotice}
+      incompleteSetupCategories={onboardingAccess.noticeCategories}
+      incompleteSetupReviewHref={
+        onboardingAccess.role === "owner" || onboardingAccess.role === "admin"
+          ? onboardingAccess.noticeReviewPath
+          : null
+      }
       showTeamNav={showTeamNav}
       deploymentLabel={internalDeploymentLabel()}
       billingNotice={billingNotice}

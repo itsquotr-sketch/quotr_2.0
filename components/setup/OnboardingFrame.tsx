@@ -1,4 +1,3 @@
-import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
@@ -12,11 +11,8 @@ type OnboardingFrameProps = {
 };
 
 /**
- * Focused shell while required onboarding is unfinished. No primary nav.
- *
- * Root `body` is `md:h-dvh md:overflow-hidden`, so the document cannot scroll.
- * This frame takes that same viewport height. The step form is the only
- * scrollport (see FormContainer). The header stays in flow above it.
+ * Focused setup shell. The page scrolls with the keyboard. Back and
+ * Continue stay in the form, so they do not cover fields.
  */
 export function OnboardingFrame({
   children,
@@ -37,19 +33,21 @@ export function OnboardingFrame({
         deploymentLabel,
       }}
     >
-      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background">
-        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4">
-          <div className="flex min-w-0 items-center gap-2">
+      <div
+        className="flex h-dvh flex-col overflow-y-auto bg-[#f6f5f2]"
+        style={{
+          paddingTop: "max(1rem, env(safe-area-inset-top))",
+          paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+          paddingLeft: "max(1rem, env(safe-area-inset-left))",
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
+        }}
+      >
+        <div className="m-auto w-full min-w-0 max-w-xl py-4">
+          <div className="mb-5">
             <QuotrLogo variant="wordmark" href={null} height={22} />
-            {deploymentLabel ? (
-              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {deploymentLabel}
-              </span>
-            ) : null}
           </div>
-          <AccountMenu />
-        </header>
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          {children}
+        </div>
       </div>
     </AppUserProvider>
   );

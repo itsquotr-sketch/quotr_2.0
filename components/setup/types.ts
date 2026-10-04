@@ -31,6 +31,8 @@ export type OrganisationSettings = {
   onboarding_step: SetupStep;
   onboarding_completed_at: string | null;
   trading_name?: string | null;
+  legal_name?: string | null;
+  website?: string | null;
   address_line_1?: string | null;
   address_line_2?: string | null;
   city?: string | null;
@@ -135,4 +137,6 @@ export type ActionResult = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
   success?: boolean;
+  /** First incomplete canonical step when completion is refused. */
+  resumePath?: string;
 };

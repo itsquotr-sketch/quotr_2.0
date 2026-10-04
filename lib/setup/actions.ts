@@ -41,6 +41,7 @@ import {
   parseRequiredTargetMargin,
 } from "@/lib/setup/pricing-basics";
 import {
+  firstRunForcedPath,
   onboardingMutationIsTenantScoped,
   resolveFirstRunStage,
   type FirstRunStage,
@@ -49,6 +50,7 @@ import {
   assessRequiredOnboarding,
   deriveIncompleteSetup,
   gstRegistrationPersistence,
+  incompleteSetupCategoryLabels,
   isCanonicalOnboardingComplete,
   resolveLabourOnboardingWrite,
   type LabourOnboardingChoice,
@@ -58,7 +60,11 @@ import {
   CARPENTER_LABOUR_RATE_KEY,
   LABOURER_LABOUR_RATE_KEY,
 } from "@/lib/estimate/labour-trade-mapping";
-import { parseRequiredCompanyProfile } from "@/lib/setup/tax-identifier";
+import {
+  normalizeAbn,
+  normalizeNzGstNumber,
+  parseRequiredCompanyProfile,
+} from "@/lib/setup/tax-identifier";
 import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
 import { toUserError } from "@/lib/errors/user-message";
 
@@ -156,6 +162,10 @@ export type OnboardingAccessState = {
   stage: FirstRunStage;
   /** Derived for the later incomplete-setup notice. Does not lock navigation. */
   incompleteSetupNotice: boolean;
+  /** Missing categories only. Never tax identifiers or other stored values. */
+  noticeCategories: string[];
+  /** Canonical step for an owner or admin review. Null when nothing is missing. */
+  noticeReviewPath: string | null;
   role: MembershipRole | null;
 };
 
@@ -217,7 +227,13 @@ function authorityFromSettings(
 async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
   const context = await getAuthOrgContext();
   if (!context) {
-    return { stage: "basics", incompleteSetupNotice: false, role: null };
+    return {
+      stage: "basics",
+      incompleteSetupNotice: false,
+      noticeCategories: [],
+      noticeReviewPath: null,
+      role: null,
+    };
   }
 
   const [settings, preferredWorkAreas, labourRates, role] = await Promise.all([
@@ -246,6 +262,8 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
   const onboardingStatus = settings?.onboarding_status as string | null | undefined;
   const onboardingStep = settings?.onboarding_step as string | null | undefined;
 
+  const incompleteSetupNotice = deriveIncompleteSetup(authority);
+  const reviewStage = assessRequiredOnboarding(authority).stage;
   return {
     stage: resolveFirstRunStage({
       onboardingStatus,
@@ -253,7 +271,11 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
       hasPrimaryWorkAreas,
       authority,
     }),
-    incompleteSetupNotice: deriveIncompleteSetup(authority),
+    incompleteSetupNotice,
+    noticeCategories: incompleteSetupNotice
+      ? incompleteSetupCategoryLabels(authority)
+      : [],
+    noticeReviewPath: incompleteSetupNotice ? firstRunForcedPath(reviewStage) : null,
     role,
   };
 }
@@ -1160,6 +1182,280 @@ export async function saveRequiredLabourCosts(input: {
   return { success: true };
 }
 
+function optionalText(value: string | undefined, max: number): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  return trimmed.slice(0, max);
+}
+
+function websiteValue(value: string | undefined): string | null | "invalid" {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  if (/\s/.test(trimmed) || trimmed.length > 200) return "invalid";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (!url.hostname.includes(".")) return "invalid";
+    return url.toString();
+  } catch {
+    return "invalid";
+  }
+}
+
+/**
+ * Step 1. Writes identity fields only. Does not touch address, GST, NZBN, or completion.
+ */
+export async function saveBusinessIdentity(input: {
+  tradingName?: string;
+  legalName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  country?: string;
+}): Promise<ActionResult> {
+  const fieldErrors: Record<string, string[]> = {};
+  const tradingName = input.tradingName?.trim() ?? "";
+  const email = input.contactEmail?.trim() ?? "";
+  const phone = input.contactPhone?.trim() ?? "";
+  const countryCode = normalizeCountryCode(input.country);
+  const website = websiteValue(input.website);
+  if (!tradingName) fieldErrors.tradingName = ["Enter the trading name."];
+  if (tradingName.length > 160) {
+    fieldErrors.tradingName = ["Trading name must be 160 characters or fewer."];
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    fieldErrors.contactEmail = ["Enter a business email address."];
+  }
+  const phoneDigits = phone.replace(/\D/g, "");
+  if (phoneDigits.length < 6 || phone.length > 40) {
+    fieldErrors.contactPhone = ["Enter a phone number."];
+  }
+  if (countryCode !== "NZ" && countryCode !== "AU") {
+    fieldErrors.country = ["Choose New Zealand or Australia."];
+  }
+  if (website === "invalid") {
+    fieldErrors.website = ["Enter a website address, or leave it blank."];
+  }
+  const legalName = optionalText(input.legalName, 160);
+  if ((input.legalName?.trim().length ?? 0) > 160) {
+    fieldErrors.legalName = ["Legal name must be 160 characters or fewer."];
+  }
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  if (countryCode !== "NZ" && countryCode !== "AU") return { fieldErrors };
+  if (website === "invalid") return { fieldErrors };
+
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
+
+  const country = getCountryOption(countryCode);
+  const { data: existing } = await context.supabase
+    .from("organisation_settings")
+    .select("onboarding_status, timezone")
+    .eq("org_id", context.orgId)
+    .maybeSingle();
+  const timezone =
+    (typeof existing?.timezone === "string" && existing.timezone) ||
+    defaultTimezoneForCountry({ country: countryCode }) ||
+    "";
+  const payload: Record<string, unknown> = {
+    trading_name: tradingName,
+    legal_name: legalName,
+    contact_email: email,
+    contact_phone: phone,
+    website: website,
+    country: countryCode,
+    currency: country?.suggestedCurrency ?? (countryCode === "AU" ? "AUD" : "NZD"),
+    address_country: countryCode === "AU" ? "Australia" : "New Zealand",
+    ...(timezone ? { timezone } : {}),
+  };
+  if (existing?.onboarding_status !== "completed") {
+    payload.onboarding_status = "in_progress";
+  }
+  const { error } = await context.supabase
+    .from("organisation_settings")
+    .update(payload)
+    .eq("org_id", context.orgId);
+  if (error) return setupDbError(error);
+  revalidatePath("/app/setup");
+  revalidatePath("/app/settings/company");
+  return { success: true };
+}
+
+/**
+ * Step 2. Writes the stored address fields only. Country stays the step 1 value.
+ */
+export async function saveBusinessAddress(input: {
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  region?: string;
+  postcode?: string;
+}): Promise<ActionResult> {
+  const fieldErrors: Record<string, string[]> = {};
+  const addressLine1 = input.addressLine1?.trim() ?? "";
+  const city = input.city?.trim() ?? "";
+  const region = input.region?.trim() ?? "";
+  const postcode = input.postcode?.trim() ?? "";
+  if (!addressLine1) fieldErrors.addressLine1 = ["Enter the street address."];
+  if (!city) fieldErrors.city = ["Enter the city or town."];
+  if (!region) fieldErrors.region = ["Enter the region or state."];
+  if (!/^\d{4}$/.test(postcode)) {
+    fieldErrors.postcode = ["Enter a four-digit postcode."];
+  }
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
+
+  const { data: existing } = await context.supabase
+    .from("organisation_settings")
+    .select("country, onboarding_status")
+    .eq("org_id", context.orgId)
+    .maybeSingle();
+  const countryCode = normalizeCountryCode(
+    typeof existing?.country === "string" ? existing.country : null
+  );
+  if (countryCode !== "NZ" && countryCode !== "AU") {
+    return { error: "Choose New Zealand or Australia on the business step first." };
+  }
+  const payload: Record<string, unknown> = {
+    address_line_1: addressLine1,
+    address_line_2: optionalText(input.addressLine2, 160),
+    city,
+    region,
+    postcode,
+    address_country: countryCode === "AU" ? "Australia" : "New Zealand",
+  };
+  if (existing?.onboarding_status !== "completed") {
+    payload.onboarding_status = "in_progress";
+  }
+  const { error } = await context.supabase
+    .from("organisation_settings")
+    .update(payload)
+    .eq("org_id", context.orgId);
+  if (error) return setupDbError(error);
+  revalidatePath("/app/setup");
+  revalidatePath("/app/settings/company");
+  return { success: true };
+}
+
+/**
+ * Step 3. Uses gst_registered only. Never writes NZBN.
+ * Not registered stores a zero rate and clears the GST number and ABN.
+ */
+export async function saveGstRegistration(input: {
+  registered?: string | null;
+  taxIdentifier?: string;
+}): Promise<ActionResult> {
+  const choice = input.registered?.trim() ?? "";
+  if (choice !== "yes" && choice !== "no") {
+    return {
+      fieldErrors: {
+        registered: ["Choose whether the business is registered for GST."],
+      },
+    };
+  }
+
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
+
+  const { data: existing } = await context.supabase
+    .from("organisation_settings")
+    .select("country, onboarding_status")
+    .eq("org_id", context.orgId)
+    .maybeSingle();
+  const countryCode = normalizeCountryCode(
+    typeof existing?.country === "string" ? existing.country : null
+  );
+  if (countryCode !== "NZ" && countryCode !== "AU") {
+    return { error: "Choose New Zealand or Australia on the business step first." };
+  }
+  const country = getCountryOption(countryCode);
+  const registered = choice === "yes";
+  let gstNumber: string | null = null;
+  let abn: string | null = null;
+  if (registered && countryCode === "NZ") {
+    gstNumber = normalizeNzGstNumber(input.taxIdentifier ?? "");
+    if (!gstNumber) {
+      return {
+        fieldErrors: {
+          taxIdentifier: ["Enter an 8 or 9 digit GST number."],
+        },
+      };
+    }
+  }
+  if (registered && countryCode === "AU") {
+    abn = normalizeAbn(input.taxIdentifier ?? "");
+    if (!abn) {
+      return {
+        fieldErrors: {
+          taxIdentifier: ["Enter a valid 11-digit ABN."],
+        },
+      };
+    }
+  }
+  const registration = gstRegistrationPersistence({
+    registered,
+    countryCode,
+    gstNumber,
+    abn,
+    suggestedRate: country?.suggestedGstPercent ?? (countryCode === "AU" ? 10 : 15),
+  });
+  const payload: Record<string, unknown> = {
+    gst_registered: registration.gst_registered,
+    default_gst_rate: registration.default_gst_rate,
+    gst_number: registration.gst_number,
+    abn: registration.abn,
+  };
+  if (existing?.onboarding_status !== "completed") {
+    payload.onboarding_status = "in_progress";
+  }
+  const { error } = await context.supabase
+    .from("organisation_settings")
+    .update(payload)
+    .eq("org_id", context.orgId);
+  if (error) return setupDbError(error);
+  revalidatePath("/app/setup");
+  revalidatePath("/app/settings/company");
+  return { success: true };
+}
+
+/**
+ * Optional product-update choice. A failure here must not block completion.
+ * Source is always onboarding.
+ */
+export async function recordOnboardingMarketingConsent(
+  consent: boolean
+): Promise<ActionResult> {
+  if (consent !== true) return { success: true };
+  const context = await getSetupAuthContext();
+  if (!context) return MISSING_ORG_ERROR;
+  const { error } = await context.supabase.rpc("set_own_marketing_consent", {
+    p_consent: true,
+    p_source: "onboarding",
+  });
+  if (error) return { error: "Could not save product updates." };
+  return { success: true };
+}
+
 /** Single completion event. Safe to call again. Does not require marketing consent. */
 export async function completeRequiredOnboarding(): Promise<ActionResult> {
   const context = await getSetupAuthContext();
@@ -1177,8 +1473,12 @@ export async function completeRequiredOnboarding(): Promise<ActionResult> {
   if (isCanonicalOnboardingComplete(loaded.status, loaded.step)) {
     return { success: true };
   }
-  if (!assessRequiredOnboarding(loaded.authority).readyToComplete) {
-    return { error: "Finish the required setup steps first." };
+  const assessment = assessRequiredOnboarding(loaded.authority);
+  if (!assessment.readyToComplete) {
+    return {
+      error: "Finish the required setup steps first.",
+      resumePath: firstRunForcedPath(assessment.stage) ?? undefined,
+    };
   }
 
   return writeCanonicalOnboardingCompletion(context);
