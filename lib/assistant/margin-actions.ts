@@ -13,6 +13,7 @@ import { getDefaultMarginPercent } from "@/lib/estimate/rates";
 import { stampSellAuthorityOnNotes } from "@/lib/estimate/line-item-metadata";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { DEFAULT_ORGANISATION_SETTINGS } from "@/lib/settings/default-organisation-settings";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const updateMarginSchema = z.object({
   projectId: z.string().uuid(),
@@ -37,6 +38,15 @@ export async function updateEstimateMargin(
   }
 
   const { supabase, orgId } = context;
+
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: context.user.id,
+    permission: "estimates.run",
+    entitlement: "estimates.create",
+  });
+  if (denied) return denied;
+
   const { projectId, targetMarginPercent } = parsed.data;
 
   const ownedProject = await assertOrgOwnsActiveProject(context, projectId);

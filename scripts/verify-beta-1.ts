@@ -511,6 +511,25 @@ function main() {
   assert("Viewer cannot run estimates", !roleAllowsPermission("viewer", "estimates.run"));
   assert("Viewer cannot edit pricing", !roleAllowsPermission("viewer", "pricing.edit"));
   assert("Viewer cannot send quotes", !roleAllowsPermission("viewer", "quotes.send"));
+  assert(
+    "Owner, admin, and estimator can run estimates",
+    roleAllowsPermission("owner", "estimates.run") &&
+      roleAllowsPermission("admin", "estimates.run") &&
+      roleAllowsPermission("estimator", "estimates.run")
+  );
+  const marginActions = read("lib/assistant/margin-actions.ts");
+  const marginGate = marginActions.indexOf('permission: "estimates.run"');
+  const marginEstimateRead = marginActions.indexOf('.from("estimates")');
+  const marginLineRead = marginActions.indexOf('.from("estimate_line_items")');
+  assert(
+    "updateEstimateMargin requires estimates.run and estimates.create before any estimate read",
+    marginActions.includes("permissionDeniedError({") &&
+      marginActions.includes('entitlement: "estimates.create"') &&
+      marginGate > 0 &&
+      marginEstimateRead > marginGate &&
+      marginLineRead > marginGate &&
+      marginActions.includes("applyMarginToAmounts")
+  );
   const projectActions = read("lib/projects/actions.ts");
   assert(
     "listProjects does not require write permission",
