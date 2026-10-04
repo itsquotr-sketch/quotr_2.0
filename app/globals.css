@@ -182,10 +182,17 @@
   }
   .quotr-mark-ring,
   .quotr-mark-stroke,
-  .quotr-mark-slash {
+  .quotr-mark-slash,
+  .quotr-mark-track {
     animation: none !important;
     transform: none !important;
-    stroke-dashoffset: 0 !important;
+  }
+  .quotr-mark-ring,
+  .quotr-mark-track {
+    visibility: hidden !important;
+  }
+  .quotr-mark-rest {
+    visibility: visible !important;
   }
 }
 
@@ -211,53 +218,35 @@
   padding-right: 4.5rem;
 }
 
+.quotr-mark {
+  overflow: visible;
+}
+
+.quotr-mark-track {
+  stroke-opacity: 0.18;
+}
+
 .quotr-mark-ring {
   transform-box: fill-box;
   transform-origin: center;
-  transform: rotate(-8deg);
-  animation: quotr-ring-turn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: quotr-ring-turn 1.1s linear infinite;
 }
 
 .quotr-mark-stroke {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 18;
-  animation: quotr-ring-draw 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  stroke-dasharray: 128 35;
+}
+
+.quotr-mark-rest {
+  visibility: hidden;
 }
 
 .quotr-mark-slash {
-  transform-box: fill-box;
-  transform-origin: center;
-  transform: translate(2px, 2px);
-  animation:
-    quotr-slash-enter 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-    quotr-slash-breathe 2.8s ease-in-out 0.75s infinite;
+  transform: none;
 }
 
 @keyframes quotr-ring-turn {
   to {
-    transform: rotate(0deg);
-  }
-}
-
-@keyframes quotr-ring-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes quotr-slash-enter {
-  to {
-    transform: translate(0, 0);
-  }
-}
-
-@keyframes quotr-slash-breathe {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(0.75px, -0.75px);
+    transform: rotate(360deg);
   }
 }
 

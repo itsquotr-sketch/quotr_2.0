@@ -79,13 +79,27 @@ assert(
   /prefers-reduced-motion:\s*reduce/.test(css) &&
     css.includes(".quotr-mark-ring") &&
     css.includes("animation: none !important") &&
-    css.includes("stroke-dashoffset: 0 !important")
+    /prefers-reduced-motion:\s*reduce[\s\S]*\.quotr-mark-rest\s*\{[^}]*visibility:\s*visible/.test(
+      css
+    ) &&
+    mark.includes("quotr-mark-rest")
 );
 assert(
-  "mark animation settles without a spinner loop",
-  css.includes("quotr-ring-draw") &&
-    css.includes("quotr-slash-enter") &&
-    css.includes("quotr-slash-breathe") &&
+  "black arc rotates and the orange stroke stays still",
+  css.includes("transform-box: fill-box") &&
+    css.includes("transform-origin: center") &&
+    /@keyframes quotr-ring-turn[\s\S]*rotate\(360deg\)/.test(css) &&
+    /\.quotr-mark-ring\s*\{[^}]*animation:\s*quotr-ring-turn\s+1\.1s\s+linear\s+infinite/.test(
+      css
+    ) &&
+    css.includes("stroke-dasharray: 128 35") &&
+    css.includes("quotr-mark-track") &&
+    mark.includes("<circle") &&
+    mark.includes("<path") &&
+    mark.includes("<line") &&
+    !css.includes("quotr-slash-breathe") &&
+    !css.includes("quotr-slash-enter") &&
+    !/\.quotr-mark-slash\s*\{[^}]*animation/.test(css) &&
     !css.includes("quotr-spin")
 );
 
