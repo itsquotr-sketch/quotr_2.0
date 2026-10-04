@@ -169,9 +169,9 @@ function LineRows({ lines }: { lines: readonly WorkAreaBreakdownLine[] }) {
       </div>
       <ul>
         {lines.map((line) => (
-          <li
+            <li
             key={line.id}
-            className="grid gap-1 border-t border-border/70 py-3 lg:grid-cols-[minmax(0,1.5fr)_5.5rem_4rem_8rem_6.5rem_7rem] lg:items-start lg:gap-3"
+            className="grid grid-cols-1 gap-1 border-t border-border/70 py-3 lg:grid-cols-[minmax(0,1.5fr)_5.5rem_4rem_8rem_6.5rem_7rem] lg:items-start lg:gap-3"
             data-work-area-line={line.id}
             data-pricing-required={line.pricingRequired ? "true" : "false"}
           >

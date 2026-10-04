@@ -3006,7 +3006,7 @@ export function AssistantShell({
                 <>
                   <EstimateOverview
                     model={estimateOverview}
-                    projectId={project.id}
+                    projectId={canRunEstimates ? project.id : undefined}
                     estimateId={generationProjection?.estimateId}
                     pricingDocumentId={pricingSummary?.id ?? null}
                     isRegenerating={updatingEstimate}

@@ -11,6 +11,7 @@ import type {
   EstimateOverviewAction,
   EstimateOverviewModel,
 } from "@/lib/assistant/presentation/estimate-overview";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 
 const actionButtonClassName = "h-11 min-h-11 w-full sm:w-auto";
@@ -149,6 +150,10 @@ export function EstimateOverview({
     model.pricingAttention.length > 0 ||
     model.accuracy.length > 0 ||
     model.rates.length > 0;
+  const showPrimaryAction =
+    (model.primary === "complete_details" && Boolean(onCompleteDetails)) ||
+    (model.primary === "regenerate" && Boolean(onRegenerate)) ||
+    (model.primary === "continue_pricing" && Boolean(projectId));
   if (
     !showCommercial &&
     !showActionCentre &&
@@ -162,7 +167,13 @@ export function EstimateOverview({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 overflow-x-hidden" data-estimate-overview>
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-4 overflow-x-hidden",
+        showPrimaryAction && "max-md:pb-28"
+      )}
+      data-estimate-overview
+    >
       <header className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Estimate</h1>
         <p
@@ -328,7 +339,15 @@ export function EstimateOverview({
       </section>
       ) : null}
 
-      <div className="order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div
+        className={cn(
+          "order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
+          showPrimaryAction &&
+            "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:py-3",
+          showPrimaryAction && mobileNavBottomClass
+        )}
+        data-estimate-primary-actions={showPrimaryAction ? "pinned" : "flow"}
+      >
         {model.primary === "complete_details" && onCompleteDetails ? (
           <Button
             type="button"
@@ -381,6 +400,8 @@ export function EstimateOverview({
             />
           </div>
         ) : null}
+      </div>
+      <div className="order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         {onReviewEstimate ? (
           <Button
             type="button"
