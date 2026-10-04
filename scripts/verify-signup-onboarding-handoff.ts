@@ -271,8 +271,10 @@ function main() {
     ready.includes("Create your first project") &&
       ready.includes("Go to Dashboard") &&
       ready.includes("completeRequiredOnboarding") &&
-      ready.includes('intent="first-job"') &&
+      ready.includes('router.replace') &&
+      ready.includes("newProject") &&
       ready.includes("later under Rates") &&
+      !ready.includes("NewProjectDialog") &&
       !ready.includes("Improve my rates and productivity") &&
       !ready.includes("Improve Quotr") &&
       !ready.includes("mode=improve") &&

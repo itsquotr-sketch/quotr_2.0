@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import {
   completeRequiredOnboarding,
   recordOnboardingMarketingConsent,
 } from "@/lib/setup/actions";
+import { formatOnboardingAddress } from "@/lib/setup/format-onboarding-address";
 import {
   FIRST_RUN_ADDRESS_PATH,
   FIRST_RUN_BASICS_PATH,
@@ -42,7 +42,7 @@ function ReviewRow({
       </div>
       <Link
         href={href}
-        className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 shrink-0 items-center px-1 text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         Edit
       </Link>
@@ -53,22 +53,21 @@ function ReviewRow({
 export function FirstRunReady({ state }: { state: SetupState }) {
   const router = useRouter();
   const settings = state.settings;
-  const [productUpdates, setProductUpdates] = useState(false);
+  const [productUpdates, setProductUpdates] = useState(state.marketingConsent === true);
   const [error, setError] = useState<string | null>(null);
+  const [consentNote, setConsentNote] = useState<string | null>(null);
   const [resumePath, setResumePath] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"project" | "dashboard" | null>(null);
+  const pendingRef = useRef(false);
   const work = state.workAreas.filter((area) => area.enabled).map((area) => area.label);
-  const address = [
+  const address = formatOnboardingAddress([
     settings?.address_line_1,
     settings?.address_line_2,
     settings?.city,
     settings?.region,
     settings?.postcode,
     settings?.address_country,
-  ]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(", ");
+  ]);
   const gst =
     settings?.gst_registered === true
       ? "Registered"
@@ -80,31 +79,38 @@ export function FirstRunReady({ state }: { state: SetupState }) {
       ? `${settings.default_margin_percent}%`
       : "Not set";
 
-  async function finish(): Promise<boolean> {
+  async function finish(destination: "dashboard" | "project") {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPendingAction(destination);
     setError(null);
+    setConsentNote(null);
     setResumePath(null);
+    let consentFailed = false;
     if (productUpdates) {
       try {
-        await recordOnboardingMarketingConsent(true);
+        const consent = await recordOnboardingMarketingConsent(true);
+        consentFailed = Boolean(consent.error);
       } catch {
-        // Product updates are optional and must not block completion.
+        consentFailed = true;
       }
     }
     const result = await completeRequiredOnboarding();
     if (result.error) {
       setError(result.error);
       setResumePath(result.resumePath ?? null);
-      return false;
+      if (consentFailed) {
+        setConsentNote("Product updates were not saved. You can update this later.");
+      }
+      pendingRef.current = false;
+      setPendingAction(null);
+      return;
     }
-    return true;
-  }
-
-  async function goToDashboard() {
-    setLeaving(true);
-    const ok = await finish();
-    setLeaving(false);
-    if (!ok) return;
-    router.push("/app/dashboard");
+    const params = new URLSearchParams();
+    if (destination === "project") params.set("newProject", "1");
+    if (consentFailed) params.set("consent", "unsaved");
+    const query = params.toString();
+    router.replace(query ? `/app/dashboard?${query}` : "/app/dashboard");
   }
 
   return (
@@ -142,15 +148,21 @@ export function FirstRunReady({ state }: { state: SetupState }) {
         />
         <ReviewRow title="Target margin" detail={margin} href={FIRST_RUN_LABOUR_PATH} />
       </div>
-      <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+      <label className="mt-4 flex min-h-11 w-full cursor-pointer items-center gap-3 py-2 text-sm leading-snug">
         <input
           type="checkbox"
-          className="mt-1 size-4 shrink-0"
+          className="size-4 shrink-0"
           checked={productUpdates}
+          disabled={pendingAction !== null}
           onChange={(event) => setProductUpdates(event.target.checked)}
         />
-        <span>Send me product updates and practical Quotr tips.</span>
+        <span>Send me occasional product updates and practical Quotr tips. Unsubscribe anytime.</span>
       </label>
+      {consentNote ? (
+        <p role="status" className="mt-3 text-sm text-muted-foreground">
+          {consentNote}
+        </p>
+      ) : null}
       {error ? (
         <div role="alert" className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <p>{error}</p>
@@ -162,22 +174,21 @@ export function FirstRunReady({ state }: { state: SetupState }) {
         </div>
       ) : null}
       <div className="mt-6 flex flex-col items-stretch gap-2">
-        <NewProjectDialog
-          intent="first-job"
-          beforeOpen={finish}
-          trigger={
-            <Button type="button" className="min-h-11 w-full">
-              Create your first project
-            </Button>
-          }
-        />
+        <Button
+          type="button"
+          className="min-h-11 w-full"
+          disabled={pendingAction !== null}
+          onClick={() => void finish("project")}
+        >
+          {pendingAction === "project" ? "Finishing setup…" : "Create your first project"}
+        </Button>
         <button
           type="button"
           className="inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          disabled={leaving}
-          onClick={() => void goToDashboard()}
+          disabled={pendingAction !== null}
+          onClick={() => void finish("dashboard")}
         >
-          Go to Dashboard
+          {pendingAction === "dashboard" ? "Finishing setup…" : "Go to Dashboard"}
         </button>
       </div>
     </OnboardingSurface>

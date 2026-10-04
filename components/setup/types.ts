@@ -82,6 +82,11 @@ export type SetupState = {
   settings: OrganisationSettings | null;
   workAreas: OrganisationWorkArea[];
   rates: OrganisationRate[];
+  /**
+   * True when this person has opted in. False when they explicitly opted out.
+   * Null when no choice has been stored.
+   */
+  marketingConsent?: boolean | null;
 };
 
 /** Minimum first-run company basics (Stage 3.1C.3 / ONBOARDING-01). */

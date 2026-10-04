@@ -676,6 +676,7 @@ export async function getSetupState(): Promise<SetupState> {
       settings: null,
       workAreas: [],
       rates: [],
+      marketingConsent: null,
     };
   }
 
@@ -683,7 +684,7 @@ export async function getSetupState(): Promise<SetupState> {
   const cachedSettings = await loadOrganisationSettingsRow(orgId);
   const settingsRow = cachedSettings ?? (await ensureDefaultSettings(supabase, orgId));
 
-  const [{ data: workAreas }, { data: rates }] = await Promise.all([
+  const [{ data: workAreas }, { data: rates }, { data: profile }] = await Promise.all([
     supabase
       .from("organisation_work_areas")
       .select(
@@ -698,7 +699,19 @@ export async function getSetupState(): Promise<SetupState> {
       )
       .eq("org_id", orgId)
       .eq("active", true),
+    supabase
+      .from("profiles")
+      .select("marketing_consent, marketing_consent_source")
+      .eq("id", context.user.id)
+      .maybeSingle(),
   ]);
+  const consentSource = profile?.marketing_consent_source;
+  const marketingConsent =
+    profile?.marketing_consent === true
+      ? true
+      : typeof consentSource === "string" && consentSource.length > 0
+        ? false
+        : null;
 
   return {
     organisationName,
@@ -711,6 +724,7 @@ export async function getSetupState(): Promise<SetupState> {
       markup_percent:
         rate.markup_percent != null ? Number(rate.markup_percent) : null,
     })),
+    marketingConsent,
   };
 }
 

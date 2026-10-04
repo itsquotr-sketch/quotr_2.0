@@ -35,14 +35,23 @@ type NewProjectDialogProps = {
   intent?: "default" | "first-job";
   /** Return false to keep the dialog closed. */
   beforeOpen?: () => Promise<boolean>;
+  /** Controlled open state for the post-setup handoff. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render no trigger. The dialog opens only through controlled state. */
+  hideTrigger?: boolean;
 };
 
 export function NewProjectDialog({
   trigger,
   intent = "default",
   beforeOpen,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
 }: NewProjectDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -76,7 +85,8 @@ export function NewProjectDialog({
   }
 
   function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
+    if (openProp === undefined) setUncontrolledOpen(nextOpen);
+    onOpenChange?.(nextOpen);
     if (!nextOpen) {
       resetForm();
     }
@@ -121,13 +131,13 @@ export function NewProjectDialog({
 
   return (
     <>
-      {trigger && isValidElement(trigger) ? (
+      {hideTrigger ? null : trigger && isValidElement(trigger) ? (
         cloneElement(trigger, {
           onClick: (event: React.MouseEvent) => {
             trigger.props.onClick?.(event);
             void (async () => {
               if (beforeOpen && !(await beforeOpen())) return;
-              setOpen(true);
+              handleOpenChange(true);
             })();
           },
         } as React.Attributes)
@@ -138,7 +148,7 @@ export function NewProjectDialog({
           onClick={() => {
             void (async () => {
               if (beforeOpen && !(await beforeOpen())) return;
-              setOpen(true);
+              handleOpenChange(true);
             })();
           }}
           className="w-full sm:w-auto"
@@ -148,7 +158,7 @@ export function NewProjectDialog({
       )}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {intent === "first-job" ? "Start a job" : "Create project"}

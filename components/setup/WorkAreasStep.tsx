@@ -165,7 +165,7 @@ export function WorkAreasStep({
                           "flex min-h-[3.25rem] cursor-pointer items-center gap-3 rounded-lg border px-3 py-2",
                           "focus-within:ring-2 focus-within:ring-ring",
                           selected
-                            ? "border-foreground bg-neutral-50"
+                            ? "border-foreground bg-neutral-100 font-medium"
                             : "border-border bg-white",
                         ].join(" ")}
                       >

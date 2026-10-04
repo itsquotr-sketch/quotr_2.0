@@ -415,11 +415,12 @@ function main() {
   const ratesNav = read("components/rates/RatesPageContent.tsx");
   assert(
     "ready screen creates a project only after the form and offers the dashboard",
-    ready.includes('intent="first-job"') &&
-      ready.includes("Create your first project") &&
+    ready.includes("Create your first project") &&
       ready.includes("completeRequiredOnboarding") &&
       ready.includes("Go to Dashboard") &&
+      ready.includes('router.replace') &&
       ready.includes("later under Rates") &&
+      !ready.includes("NewProjectDialog") &&
       !ready.includes("Improve my rates and productivity") &&
       !ready.includes("createProject")
   );

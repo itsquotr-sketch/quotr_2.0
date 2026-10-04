@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { POST_SIGNUP_DESTINATION } from "../lib/auth/post-auth-navigation";
 import { shouldProvisionSignupOrganisation } from "../lib/auth/email-confirm-destination";
+import { formatOnboardingAddress } from "../lib/setup/format-onboarding-address";
 import { parseRequiredTargetMargin } from "../lib/setup/pricing-basics";
 import {
   FIRST_RUN_ADDRESS_PATH,
@@ -198,20 +199,60 @@ function main(): void {
   assert(
     "marketing consent is optional and sourced from onboarding",
     actions.includes('p_source: "onboarding"') &&
-      ready.includes("Send me product updates and practical Quotr tips.") &&
+      ready.includes(
+        "Send me occasional product updates and practical Quotr tips. Unsubscribe anytime."
+      ) &&
+      ready.includes("marketingConsent === true") &&
+      ready.includes("min-h-11 w-full cursor-pointer") &&
       ready.includes("recordOnboardingMarketingConsent") &&
+      ready.includes("if (productUpdates)") &&
+      ready.includes("Product updates were not saved. You can update this later.") &&
       !actions.slice(actions.indexOf("export async function completeRequiredOnboarding")).includes(
         "marketing_consent"
-      )
+      ) &&
+      !actions.includes("loops")
   );
   assert(
     "both final actions complete onboarding and do not create a project",
     ready.includes("completeRequiredOnboarding") &&
-      ready.includes("beforeOpen={finish}") &&
-      ready.includes("goToDashboard") &&
+      ready.includes('finish("project")') &&
+      ready.includes('finish("dashboard")') &&
+      ready.includes("pendingRef") &&
+      ready.includes('router.replace') &&
+      ready.includes('params.set("newProject", "1")') &&
       ready.includes("Create your first project") &&
       ready.includes("Go to Dashboard") &&
+      !ready.includes("NewProjectDialog") &&
       !ready.includes("createProject")
+  );
+  const handoff = read("components/projects/DashboardOnboardingHandoff.tsx");
+  const dashboard = read("app/(protected)/app/dashboard/page.tsx");
+  const addressParts = [
+    "14a Garadice Road",
+    "Rothesay Bay",
+    "Auckland",
+    "Auckland",
+    "0630",
+    "New Zealand",
+  ];
+  assert(
+    "the project dialog opens only after Dashboard replaces setup",
+    handoff.includes('intent="first-job"') &&
+      handoff.includes("hideTrigger") &&
+      handoff.includes("history.replaceState") &&
+      handoff.includes('url.searchParams.delete("newProject")') &&
+      dashboard.includes("DashboardOnboardingHandoff") &&
+      dashboard.includes('params.newProject === "1"') &&
+      !handoff.includes("createProject")
+  );
+  assert(
+    "adjacent duplicate address parts are display-only",
+    formatOnboardingAddress(addressParts) ===
+      "14a Garadice Road, Rothesay Bay, Auckland, 0630, New Zealand" &&
+      formatOnboardingAddress(["Auckland", "Wellington", "Auckland"]) ===
+        "Auckland, Wellington, Auckland" &&
+      addressParts[2] === "Auckland" &&
+      addressParts[3] === "Auckland"
   );
 
   const owner = resolveProtectedOnboardingAccess({

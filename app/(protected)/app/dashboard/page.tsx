@@ -5,6 +5,7 @@ import { DashboardWorkPanel } from "@/components/dashboard/DashboardWorkPanel";
 import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
+import { DashboardOnboardingHandoff } from "@/components/projects/DashboardOnboardingHandoff";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { loadDashboardPageData } from "@/lib/dashboard/load-dashboard-page";
 import { selectDashboardActiveProjects } from "@/lib/dashboard/select-active-projects";
@@ -12,7 +13,7 @@ import { presentDashboardOverview } from "@/lib/dashboard/work-overview";
 import { measureServerLoad } from "@/lib/perf/timing";
 
 type DashboardPageProps = {
-  searchParams: Promise<{ filter?: string; q?: string }>;
+  searchParams: Promise<{ filter?: string; q?: string; newProject?: string; consent?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -49,6 +50,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         actions={<NewProjectDialog intent={isEmpty ? "first-job" : "default"} />}
       />
       <PageContainer innerClassName="py-4 max-md:py-3 max-md:pb-4">
+        <DashboardOnboardingHandoff
+          openNewProject={params.newProject === "1"}
+          consentUnsaved={params.consent === "unsaved"}
+        />
         <div
           className="space-y-3 lg:space-y-4"
           data-has-projects={hasProjects ? "true" : "false"}
