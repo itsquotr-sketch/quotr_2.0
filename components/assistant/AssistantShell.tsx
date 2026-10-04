@@ -6,6 +6,7 @@ import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { StepperNav } from "@/components/assistant/StepperNav";
 import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
+import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
@@ -218,6 +219,8 @@ type AssistantShellProps = {
   /** Server-authoritative Scope Discovery flag — never from client env. */
   scopeDiscoveryEnabled?: boolean;
   scopeDiscoveryInitialResults?: SafeResultsRead | null;
+  documents?: ProjectDocumentCentreModel | null;
+  canUploadFiles?: boolean;
 };
 
 type PendingAction =
@@ -251,6 +254,8 @@ export function AssistantShell({
   quoteSummary = null,
   scopeDiscoveryEnabled = false,
   scopeDiscoveryInitialResults = null,
+  documents = null,
+  canUploadFiles = false,
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
@@ -3221,6 +3226,8 @@ export function AssistantShell({
                   : null
               }
               onRetryAnalyse={handleAnalyseJob}
+              documents={documents}
+              canUploadFiles={canUploadFiles}
             />
           </CollapsibleStageCard>
           )}

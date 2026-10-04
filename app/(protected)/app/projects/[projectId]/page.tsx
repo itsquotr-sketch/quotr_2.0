@@ -23,7 +23,10 @@ import {
 } from "@/lib/pricing/pricing-loaders";
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
+import { readProjectDocumentsForJobDetails } from "@/lib/projects/document-centre";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
+import { getOnboardingAccess } from "@/lib/setup/actions";
+import { memberCanEditProjects } from "@/lib/team/permissions";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
@@ -59,6 +62,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       pricingSummary,
       quoteSummary,
       tabContext,
+      documents,
+      onboardingAccess,
     ] = await Promise.all([
       getProjectWithContext(auth, projectId),
       getAssistantStateWithContext(auth, projectId),
@@ -69,6 +74,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       getProjectWorkspaceTabContextWithContext(auth, projectId, {
         pricingSummaryPromise,
       }),
+      readProjectDocumentsForJobDetails(auth.supabase, projectId, auth.orgId),
+      getOnboardingAccess(),
     ]);
 
     return {
@@ -79,6 +86,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       pricingSummary,
       tabContext,
       quoteSummary,
+      documents,
+      canUploadFiles: memberCanEditProjects(onboardingAccess.role),
     };
   });
 
@@ -90,6 +99,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     pricingSummary,
     tabContext,
     quoteSummary,
+    documents,
+    canUploadFiles,
   } = pageData;
 
   const hasEstimate = Boolean(assistantState.estimate);
@@ -142,6 +153,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         quoteSummary={quoteSummary}
         scopeDiscoveryEnabled={scopeDiscoveryEnabled}
         scopeDiscoveryInitialResults={scopeDiscoveryInitialResults}
+        documents={documents}
+        canUploadFiles={canUploadFiles}
       />
       {hasEstimate || tabContext.hasEstimate ? (
         <div className="mt-3" data-post-estimate-guidance="true">

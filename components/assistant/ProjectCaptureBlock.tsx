@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SiteNotesCaptureCard } from "@/components/project-notes/SiteNotesCaptureCard";
+import { ProjectDocumentsSection } from "@/components/projects/information/ProjectDocumentsSection";
 import { AnalyseNotesSection } from "@/components/project-notes/AnalyseNotesSection";
 import { AnalysisProgressBanner } from "@/components/assistant/AnalysisProgressBanner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectNote } from "@/lib/project-notes/types";
+import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
 
 type ProjectCaptureBlockProps = {
@@ -24,6 +26,8 @@ type ProjectCaptureBlockProps = {
   submitted?: boolean;
   analyseError?: string | null;
   onRetryAnalyse?: () => void;
+  documents?: ProjectDocumentCentreModel | null;
+  canUploadFiles?: boolean;
 };
 
 export function buildProjectCaptureSummary(
@@ -52,6 +56,8 @@ export function ProjectCaptureBlock({
   submitted = false,
   analyseError = null,
   onRetryAnalyse,
+  documents = null,
+  canUploadFiles = false,
 }: ProjectCaptureBlockProps) {
   const briefIncluded = briefText.trim().length > 0;
   const [progressElapsedMs, setProgressElapsedMs] = useState(0);
@@ -147,6 +153,15 @@ export function ProjectCaptureBlock({
           />
         </div>
       </section>
+
+      {documents ? (
+        <ProjectDocumentsSection
+          projectId={projectId}
+          centre={documents}
+          variant="capture"
+          canUpload={canUploadFiles}
+        />
+      ) : null}
 
       {submitted ? (
         <AnalyseNotesSection

@@ -105,9 +105,14 @@ const CONTROL = "inline-flex min-h-11 items-center justify-center rounded-md bor
 export function ProjectDocumentsSection({
   projectId,
   centre,
+  variant = "centre",
+  canUpload = true,
 }: {
   projectId: string;
   centre: ProjectDocumentCentreModel;
+  /** Capture is a second view of the same documents. Management stays on Project information. */
+  variant?: "centre" | "capture";
+  canUpload?: boolean;
 }) {
   const [documents, setDocuments] = useState(centre.documents);
   const [drafts, setDrafts] = useState<DraftCard[]>([]);
@@ -332,6 +337,153 @@ export function ProjectDocumentsSection({
   }
 
   const noProjectFiles = documents.length === 0 && drafts.length === 0 && !centre.documentsUnavailable;
+
+  if (variant === "capture") {
+    const listed = documents.filter((document) => !document.archived);
+    const names = listed.slice(0, 5);
+    return (
+      <section className="space-y-2" data-job-details-files="true">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold text-foreground">Photos and files</h4>
+          <p className="text-xs text-muted-foreground">
+            Stored with the project for reference. Quotr does not read them
+            during analysis.
+          </p>
+        </div>
+        {centre.documentsUnavailable ? (
+          <p className="text-sm text-destructive" role="alert">
+            Files could not be loaded. The job description is unchanged.
+          </p>
+        ) : listed.length === 0 && drafts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No files yet.</p>
+        ) : (
+          <ul className="space-y-1">
+            {names.map((document) => {
+              const current = currentReadyVersion(document);
+              return (
+                <li key={document.id} className="break-words text-sm leading-5">
+                  {current?.displayFilename || document.title}
+                </li>
+              );
+            })}
+            {listed.length > names.length ? (
+              <li className="text-sm text-muted-foreground">
+                {listed.length - names.length} more in Project information
+              </li>
+            ) : null}
+          </ul>
+        )}
+        {drafts.length > 0 ? (
+          <ul>
+            {drafts.map((draft) => (
+              <DraftRow
+                key={draft.localId}
+                draft={draft}
+                transfer={transfers[draft.localId] ?? { progress: null, error: null }}
+                onRetry={() => void retryDraft(draft)}
+                onRemove={() => void removeDraft(draft)}
+              />
+            ))}
+          </ul>
+        ) : null}
+        {fileAlert ? (
+          <p className="text-sm text-destructive" role="alert">{fileAlert}</p>
+        ) : null}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {canUpload ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 min-h-11 w-full sm:w-auto"
+              onClick={() => {
+                rememberFocus();
+                setVisibility("internal");
+                setNote("");
+                setFiles([]);
+                setChooser({ documentId: null, category: "photos", title: "" });
+              }}
+            >
+              Add files
+            </Button>
+          ) : null}
+          <Link
+            href={`/app/projects/${projectId}/information#project-documents`}
+            className="inline-flex h-11 min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
+          >
+            Manage files in Project information
+          </Link>
+        </div>
+        <ResponsivePanel
+          open={chooser != null}
+          narrow={narrow}
+          title="Upload files"
+          description="Each file becomes its own project document. JPG, PNG, PDF, DOCX or XLSX up to 15 MB."
+          onOpenChange={(open) => {
+            if (!open) {
+              setChooser(null);
+              restoreFocus();
+            }
+          }}
+        >
+          {chooser ? (
+            <form
+              className="grid gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const chosen = files;
+                if (chosen.length === 0) return;
+                const options = { ...chooser, visibility, note };
+                setChooser(null);
+                beginUploads(chosen, options);
+              }}
+            >
+              <div className="grid gap-1">
+                <Label htmlFor="job-details-document-files">Files</Label>
+                <input
+                  id="job-details-document-files"
+                  type="file"
+                  accept={ACCEPT}
+                  multiple
+                  className="min-h-11 w-full min-w-0 text-base md:text-sm"
+                  onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="job-details-document-category">Category</Label>
+                <select
+                  id="job-details-document-category"
+                  aria-label="File category"
+                  value={chooser.category}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (!isProjectDocumentCategory(value)) return;
+                    setChooser({ ...chooser, category: value });
+                  }}
+                  className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base md:text-sm"
+                >
+                  {PROJECT_DOCUMENT_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{projectDocumentCategoryLabel(category)}</option>
+                  ))}
+                </select>
+              </div>
+              <fieldset className="grid gap-2">
+                <legend className="text-sm font-medium">Visibility</legend>
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <input type="radio" name="job-details-document-visibility" checked={visibility === "internal"} onChange={() => setVisibility("internal")} />
+                  Internal
+                </label>
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <input type="radio" name="job-details-document-visibility" checked={visibility === "shareable"} onChange={() => setVisibility("shareable")} />
+                  Shareable
+                </label>
+              </fieldset>
+              <Button type="submit" className="h-11 min-h-11" disabled={files.length === 0}>Start upload</Button>
+            </form>
+          ) : null}
+        </ResponsivePanel>
+      </section>
+    );
+  }
 
   return (
     <div className="min-w-0" data-project-documents-centre="true">

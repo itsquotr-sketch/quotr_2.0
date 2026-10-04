@@ -19,6 +19,18 @@ const ATTACHMENT_COLUMNS =
  * Estimate, Pricing, Quote and Variation pages must not call this.
  * Signed URLs are minted later, when someone chooses View or Download.
  */
+/**
+ * Same project documents as Project information, for the Job details summary.
+ * Does not mint signed URLs. Full management stays on Project information.
+ */
+export async function readProjectDocumentsForJobDetails(
+  supabase: SupabaseClient,
+  projectId: string,
+  orgId: string
+): Promise<ProjectDocumentCentreModel> {
+  return readProjectDocumentCentre(supabase, projectId, orgId);
+}
+
 export async function readProjectDocumentCentre(
   supabase: SupabaseClient,
   projectId: string,

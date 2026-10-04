@@ -92,6 +92,13 @@ export function memberCanCreateProjects(
   return role != null && roleAllowsPermission(role, "projects.create");
 }
 
+/** Read-only UI gate for project edits, including document upload controls. */
+export function memberCanEditProjects(
+  role: MembershipRole | null | undefined
+): boolean {
+  return role != null && roleAllowsPermission(role, "projects.edit");
+}
+
 export function isOrgPermission(value: string): value is OrgPermission {
   return (ORG_PERMISSIONS as readonly string[]).includes(value);
 }
