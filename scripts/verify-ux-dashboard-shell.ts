@@ -15,6 +15,7 @@ import { isRequiredOnboardingAllowedPath } from "../lib/setup/first-run-stage";
 import type { CompanySetupReadiness } from "../lib/setup/readiness";
 import type { ProjectListItem } from "../lib/projects/types";
 import { getProjectNextAction } from "../lib/projects/next-action";
+import { applyProjectListFilter } from "../lib/projects/query-utils";
 
 let passed = 0;
 let failed = 0;
@@ -362,6 +363,59 @@ check(
       "Includes archived" &&
     loader.includes('if (status === "estimating" || status === "estimate_ready")') &&
     read("lib/projects/actions.ts").includes("function getDashboardPipelineSummary")
+);
+const quoteSentRows = [
+  listProject({ id: "sent-open", business_status: "quote_sent" }),
+  listProject({
+    id: "sent-archived",
+    business_status: "quote_sent",
+    archived_at: "2026-01-01T00:00:00.000Z",
+  }),
+  listProject({ id: "won-open", business_status: "won" }),
+  listProject({
+    id: "won-archived",
+    business_status: "won",
+    archived_at: "2026-01-01T00:00:00.000Z",
+  }),
+  listProject({
+    id: "lost-archived",
+    business_status: "lost",
+    archived_at: "2026-01-01T00:00:00.000Z",
+  }),
+  listProject({
+    id: "lead-archived",
+    business_status: "lead",
+    archived_at: "2026-01-01T00:00:00.000Z",
+  }),
+];
+const quoteSentDestination = applyProjectListFilter(
+  quoteSentRows,
+  "quote_sent",
+  true,
+  true
+);
+check(
+  "quote sent card count matches the non-archived quote sent destination",
+  presentDashboardOverview(quoteSentRows).quotesSentCount ===
+    quoteSentDestination.length &&
+    quoteSentDestination.map((project) => project.id).join(",") === "sent-open" &&
+    WORK_OVERVIEW_MEASURES.find((item) => item.key === "quotesSentCount")?.href ===
+      "/app/projects?filter=quote_sent" &&
+    applyProjectListFilter(quoteSentRows, "won", true, true)
+      .map((project) => project.id)
+      .sort()
+      .join(",") === "won-archived,won-open" &&
+    applyProjectListFilter(quoteSentRows, "lost", true, true)
+      .map((project) => project.id)
+      .join(",") === "lost-archived" &&
+    applyProjectListFilter(quoteSentRows, "lead", true, true)
+      .map((project) => project.id)
+      .join(",") === "lead-archived" &&
+    applyProjectListFilter(quoteSentRows, "archived", true, true).some(
+      (project) => project.id === "sent-archived"
+    ) &&
+    read("lib/projects/actions.ts").includes('filter === "quote_sent"') &&
+    read("lib/projects/actions.ts").includes('query.is("archived_at", null)')
 );
 const registerGrid = read("lib/projects/register-columns.ts");
 check(

@@ -17,9 +17,9 @@ import { isActivePipelineStatus } from "@/lib/projects/status";
  * estimatingPricingCount — non-archived estimating or estimate_ready.
  *   Differs from the shared counter, which includes archived rows.
  *   No single Projects filter covers both statuses, so the card has no link.
- * quotesSentCount — non-archived quote_sent. Differs from the shared counter
- *   and from the Projects quote_sent filter, which still includes archived
- *   quote-sent rows.
+ * quotesSentCount — non-archived quote_sent. The Projects quote_sent filter
+ *   uses the same rule. Archived quote-sent projects stay on the Archived
+ *   filter. The shared pipeline counter still includes those archived rows.
  * wonCount — every won project, including archived. This is all-time accepted
  *   work, matching the shared wonCount and the Projects won filter. The card
  *   context says it includes archived so it is not read as current work.

@@ -84,6 +84,9 @@ export async function listProjects(
       isBusinessStatus(filter)
     ) {
       query = query.eq("business_status", filter);
+      if (filter === "quote_sent") {
+        query = query.is("archived_at", null);
+      }
     }
   }
 

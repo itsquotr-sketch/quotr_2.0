@@ -208,6 +208,12 @@ export function applyProjectListFilter(
     }
 
     if (isBusinessStatus(filter)) {
+      // Quote sent is current work. Archived quote-sent projects stay on
+      // the Archived filter. Won, Lost, and the other status filters still
+      // include archived rows.
+      if (filter === "quote_sent" && isArchived) {
+        return false;
+      }
       return project.business_status === filter;
     }
 

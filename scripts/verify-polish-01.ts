@@ -210,6 +210,27 @@ check(
   "lost filter shows declined job",
   applyProjectListFilter([lost, draft], "lost", true, true)[0]?.id === lost.id
 );
+const archivedQuote = projectRow("quote_sent", {
+  id: "archived-quote",
+  archived_at: "2026-02-01T00:00:00.000Z",
+});
+const openQuote = projectRow("quote_sent", { id: "open-quote" });
+const archivedWon = projectRow("won", {
+  id: "archived-won",
+  archived_at: "2026-02-01T00:00:00.000Z",
+});
+check(
+  "quote sent filter is non-archived, and won plus archived stay available",
+  applyProjectListFilter([openQuote, archivedQuote], "quote_sent", true, true).map(
+    (project) => project.id
+  ).join(",") === "open-quote" &&
+    applyProjectListFilter([archivedWon], "won", true, true)[0]?.id ===
+      "archived-won" &&
+    applyProjectListFilter([archivedQuote, archivedWon], "archived", true, true)
+      .map((project) => project.id)
+      .sort()
+      .join(",") === "archived-quote,archived-won"
+);
 check(
   "lifecycle labels exist",
   getBusinessStatusDefinition("estimating").label === "Estimating" &&
