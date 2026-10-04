@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
-import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
@@ -608,7 +608,7 @@ export async function createPricingFromEstimate(input: {
         visible_on_quote: true,
         optional: false,
         sort_order: lineItem.sort_order ?? index,
-        notes_internal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
+        notes_internal: values.notesInternal,
       });
     }
   }
