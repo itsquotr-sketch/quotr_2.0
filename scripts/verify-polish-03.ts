@@ -82,7 +82,7 @@ check(
   "expanded sidebar uses wordmark on light backing",
   sidebar.includes('variant="wordmark"') &&
     sidebar.includes("bg-white") &&
-    /w-\[232px\]/.test(sidebar)
+    /w-56/.test(sidebar)
 );
 const appShell = read("components/layout/app-shell.tsx");
 check(
@@ -262,11 +262,12 @@ check(
     activityCard.includes("formatActivityWhen")
 );
 check(
-  "empty activity copy, no demo rows",
+  "empty activity stays defined and is not rendered as a card",
   read("lib/dashboard/derive-recent-activity.ts").includes(
     "No activity yet. Your recent estimates and quotes will appear here."
   ) &&
-    activityCard.includes("RECENT_ACTIVITY_EMPTY") &&
+    activityCard.includes("if (visible.length === 0) return null") &&
+    dash.includes("activity.length > 0") &&
     !activityCard.includes("Smith Deck")
 );
 check(

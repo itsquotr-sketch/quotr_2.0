@@ -89,7 +89,7 @@ export function AccountMenu({
             "size-9 shrink-0 items-center justify-center rounded-full hover:bg-muted/70",
           // Sidebar / panel: entire account row is the hit target
           showIdentity && "min-h-11 w-full rounded-lg px-2 py-1.5 text-left",
-          isSidebar && "hover:bg-sidebar-accent",
+          isSidebar && "hover:bg-white/[0.04] focus-visible:ring-offset-[#141311]",
           variant === "panel" && "hover:bg-muted",
           className
         )}

@@ -231,8 +231,8 @@ check(
   dash.includes("Start your first job") && dash.includes('data-first-job-empty="true"')
 );
 check(
-  "dashboard still lists projects when org has jobs",
-  dash.includes("DashboardProjectList") && dash.includes("!hasProjects")
+  "dashboard shows a capped active list when the org has jobs",
+  dash.includes("DashboardActiveProjects") && dash.includes("!hasProjects")
 );
 
 console.log("\n--- DECK BOARD WIDTH ---\n");

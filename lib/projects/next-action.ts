@@ -48,3 +48,20 @@ export function getProjectNextAction(project: ProjectListItem): string {
       return "Analyse project";
   }
 }
+
+/** Destination for the existing next-action label. Does not add actions. */
+export function getProjectNextActionHref(project: ProjectListItem): string {
+  const projectHref = `/app/projects/${project.id}`;
+
+  if (project.archived_at) return projectHref;
+  if (project.business_status === "won" || project.business_status === "lost") {
+    return projectHref;
+  }
+  if (project.quote_summary) {
+    return `/app/projects/${project.id}/quotes/${project.quote_summary.id}`;
+  }
+  if (project.pricing_summary) {
+    return `/app/projects/${project.id}/pricing/${project.pricing_summary.id}`;
+  }
+  return projectHref;
+}

@@ -29,10 +29,10 @@ export function NotificationBell({ variant = "header" }: NotificationBellProps) 
     >
       <DropdownMenuTrigger
         className={cn(
-          "relative inline-flex size-9 items-center justify-center rounded-lg outline-none",
+          "relative inline-flex items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
           isSidebar
-            ? "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            : "text-foreground hover:bg-muted"
+            ? "size-11 text-white/70 hover:bg-white/[0.06] hover:text-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#141311]"
+            : "size-9 text-foreground hover:bg-muted"
         )}
         aria-label={
           unreadCount > 0

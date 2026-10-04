@@ -1,77 +1,53 @@
 import Link from "next/link";
+import { WORK_OVERVIEW_MEASURES } from "@/lib/dashboard/work-overview";
 import type { DashboardPipelineSummary } from "@/lib/projects/types";
-import type { ProjectListFilter } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
 type StatusCountRowProps = {
   summary: DashboardPipelineSummary;
-  activeFilter?: ProjectListFilter;
   className?: string;
 };
 
-const STATUS_ITEMS: {
-  key: keyof DashboardPipelineSummary;
-  label: string;
-  /** Shorter label for dense mobile KPI tiles */
-  shortLabel?: string;
-  filter: ProjectListFilter;
-}[] = [
-  { key: "activeCount", label: "Active", filter: "active" },
-  {
-    key: "estimatingPricingCount",
-    label: "Estimating / Pricing",
-    shortLabel: "Estimating",
-    filter: "estimating",
-  },
-  { key: "quoteDraftCount", label: "Quote draft", shortLabel: "Draft", filter: "quote_draft" },
-  { key: "quotesSentCount", label: "Quote sent", shortLabel: "Sent", filter: "quote_sent" },
-  { key: "wonCount", label: "Won", filter: "won" },
-  { key: "lostCount", label: "Lost", filter: "lost" },
-];
-
-function buildFilterHref(filter: ProjectListFilter): string {
-  if (filter === "all") {
-    return "/app/dashboard";
-  }
-  return `/app/dashboard?filter=${filter}`;
-}
-
-export function StatusCountRow({
-  summary,
-  activeFilter = "all",
-  className,
-}: StatusCountRowProps) {
+export function StatusCountRow({ summary, className }: StatusCountRowProps) {
   return (
     <div
-      className={cn(
-        "grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-6",
-        className
-      )}
+      className={cn("grid grid-cols-2 gap-2 lg:grid-cols-4", className)}
+      data-dashboard-overview="four"
     >
-      {STATUS_ITEMS.map((item) => {
-        const isActive =
-          activeFilter === item.filter ||
-          (item.filter === "active" && activeFilter === "active");
-        const mobileLabel = item.shortLabel ?? item.label;
+      {WORK_OVERVIEW_MEASURES.map((item) => {
+        const body = (
+          <>
+            <p className="text-[11px] font-medium leading-tight text-muted-foreground">
+              {item.label}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
+              {summary[item.key]}
+            </p>
+            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{item.context}</p>
+          </>
+        );
+        const cardClass = cn(
+          "flex min-h-11 flex-col rounded-xl border border-border/70 bg-card px-3 py-2.5 outline-none",
+          item.href &&
+            "hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+        );
+
+        if (!item.href) {
+          return (
+            <div key={item.key} className={cardClass} data-overview-key={item.key}>
+              {body}
+            </div>
+          );
+        }
 
         return (
           <Link
             key={item.key}
-            href={buildFilterHref(item.filter)}
-            className={cn(
-              "flex h-full min-h-11 flex-col justify-between rounded-lg border px-2.5 py-1.5 transition-[border-color,background-color,box-shadow] sm:min-h-[4.25rem] sm:px-3 sm:py-2.5",
-              isActive
-                ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/50 shadow-[inset_0_0_0_1px_oklch(0.705_0.213_47.604/0.2)]"
-                : "border-border/60 bg-card hover:border-border hover:bg-muted/20"
-            )}
+            href={item.href}
+            className={cardClass}
+            data-overview-key={item.key}
           >
-            <p className="text-[10px] font-medium leading-tight text-muted-foreground sm:text-[11px]">
-              <span className="sm:hidden">{mobileLabel}</span>
-              <span className="hidden sm:inline">{item.label}</span>
-            </p>
-            <p className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
-              {summary[item.key]}
-            </p>
+            {body}
           </Link>
         );
       })}

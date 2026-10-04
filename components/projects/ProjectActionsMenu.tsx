@@ -100,7 +100,7 @@ export function ProjectActionsMenu({
         <DropdownMenu>
           {variant === "card" ? (
             <DropdownMenuTrigger
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 md:size-8"
               aria-label="Project actions"
               disabled={isPending}
               onClick={(event) => event.preventDefault()}

@@ -332,7 +332,7 @@ export async function loadDashboardPageData(options: {
           ? String(row.superseded_by_quote_id)
           : null,
     })),
-    limit: 8,
+    limit: 5,
   }).map((item) => ({
     ...item,
     projectTitle: titleById.get(item.projectId) ?? item.projectTitle,

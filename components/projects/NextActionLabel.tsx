@@ -43,7 +43,7 @@ export function NextActionLabel({
       </span>
       {!muted ? (
         <ArrowRight
-          className="size-3.5 shrink-0 text-[var(--brand-orange)]"
+          className="size-3.5 shrink-0 text-muted-foreground"
           aria-hidden
         />
       ) : null}

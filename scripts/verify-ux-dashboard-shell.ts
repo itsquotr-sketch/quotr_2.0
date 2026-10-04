@@ -5,9 +5,12 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { deriveDashboardAttention } from "../lib/dashboard/attention";
+import { selectDashboardActiveProjects } from "../lib/dashboard/select-active-projects";
+import { WORK_OVERVIEW_MEASURES } from "../lib/dashboard/work-overview";
 import { isRequiredOnboardingAllowedPath } from "../lib/setup/first-run-stage";
 import type { CompanySetupReadiness } from "../lib/setup/readiness";
 import type { ProjectListItem } from "../lib/projects/types";
+import { getProjectNextAction } from "../lib/projects/next-action";
 
 let passed = 0;
 let failed = 0;
@@ -106,14 +109,59 @@ check(
     read("components/dashboard/DashboardAttention.tsx").includes("Nothing needs attention")
 );
 check(
-  "dashboard recomposes attention, active work, counts, and existing activity",
-  dash.includes("data-dashboard-attention") &&
-    dash.includes("Active work") &&
-    dash.includes("data-dashboard-kpis") &&
-    dash.includes("data-dashboard-activity") &&
-    dash.indexOf("data-dashboard-attention") < dash.indexOf("data-dashboard-projects") &&
-    dash.indexOf("data-dashboard-projects") < dash.indexOf("data-dashboard-kpis") &&
-    !dash.includes("<UserMenu")
+  "sidebar matches the prototype width, black surface, and labelled sections",
+  sidebar.includes("w-56") &&
+    sidebar.includes("bg-[#141311]") &&
+    sidebar.includes('label="Work"') &&
+    sidebar.includes('label="Organisation"') &&
+    sidebar.includes("whitespace-nowrap") &&
+    sidebar.includes('variant="wordmark"') &&
+    sidebar.includes("bg-white") &&
+    sidebar.includes("Notifications") &&
+    sidebar.includes("FeedbackLink") &&
+    sidebar.includes("SidebarAccount")
+);
+check(
+  "dashboard recomposes a four-measure overview, then a 2/3 and 1/3 working area",
+  dash.includes("data-dashboard-kpis") &&
+    dash.includes("data-dashboard-grid") &&
+    dash.includes("lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]") &&
+    dash.indexOf("data-dashboard-kpis") < dash.indexOf("data-dashboard-grid") &&
+    dash.includes("order-2") &&
+    dash.includes("order-1") &&
+    dash.includes("order-3") &&
+    !dash.includes("<UserMenu") &&
+    !dash.includes("DashboardProjectList")
+);
+check(
+  "phone stack is attention, then active projects, then activity",
+  dash.indexOf("order-1") < dash.indexOf("order-2") &&
+    dash.indexOf("order-2") < dash.indexOf("order-3") &&
+    dash.includes("activity.length > 0") &&
+    read("components/dashboard/RecentActivityCard.tsx").includes(
+      "if (visible.length === 0) return null"
+    )
+);
+check(
+  "active projects and attention are capped",
+  read("components/dashboard/DashboardActiveProjects.tsx").includes(
+    "DASHBOARD_ACTIVE_PROJECT_PHONE_LIMIT"
+  ) &&
+    read("components/dashboard/DashboardActiveProjects.tsx").includes("max-lg:hidden") &&
+    read("components/dashboard/DashboardAttention.tsx").includes("const DESKTOP_CAP = 5") &&
+    read("components/dashboard/DashboardAttention.tsx").includes("const PHONE_CAP = 3") &&
+    read("components/dashboard/DashboardAttention.tsx").includes("View all")
+);
+check(
+  "projects register keeps search, filters, and a bounded first page",
+  read("app/(protected)/app/projects/page.tsx").includes(
+    'params.filter ? parseProjectListFilter(params.filter) : "active"'
+  ) &&
+    read("components/projects/DashboardProjectList.tsx").includes("Search projects") &&
+    read("components/projects/DashboardProjectList.tsx").includes("DASHBOARD_FILTER_OPTIONS") &&
+    read("components/projects/DashboardProjectList.tsx").includes("PROJECT_REGISTER_PAGE_SIZE = 24") &&
+    read("components/projects/DashboardProjectList.tsx").includes("Load more") &&
+    read("components/projects/DashboardProjectList.tsx").includes("/app/projects")
 );
 check(
   "company overview is split and does not repeat the signed-in name",
@@ -156,6 +204,94 @@ const readiness = {
     },
   ],
 } as unknown as CompanySetupReadiness;
+
+check(
+  "four overview measures use the existing pipeline counts",
+  WORK_OVERVIEW_MEASURES.map((item) => item.key).join(",") ===
+    "activeCount,estimatingPricingCount,quotesSentCount,wonCount" &&
+    WORK_OVERVIEW_MEASURES.every((item) => item.key !== "quoteDraftCount") &&
+    !WORK_OVERVIEW_MEASURES.some((item) => item.key === "lostCount") &&
+    read("components/projects/StatusCountRow.tsx").includes("grid-cols-2") &&
+    read("components/projects/StatusCountRow.tsx").includes("lg:grid-cols-4")
+);
+
+function listProject(
+  partial: Partial<ProjectListItem> & Pick<ProjectListItem, "id">
+): ProjectListItem {
+  return {
+    title: partial.title ?? "Job",
+    brief_text: null,
+    client_name: null,
+    client_email: null,
+    site_address: null,
+    priority: "normal",
+    due_date: null,
+    notes: null,
+    stage: "brief",
+    quality_level: "standard",
+    status: "active",
+    business_status: "lead",
+    status_updated_at: null,
+    lost_reason: null,
+    won_at: null,
+    lost_at: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    archived_at: null,
+    deleted_at: null,
+    duplicated_from_project_id: null,
+    has_estimate: false,
+    estimate_is_stale: false,
+    pricing_summary: null,
+    quote_summary: null,
+    ...partial,
+  };
+}
+
+const olderLead = listProject({
+  id: "older",
+  created_at: "2026-01-01T00:00:00.000Z",
+});
+const newerLead = listProject({
+  id: "newer",
+  status_updated_at: "2026-03-01T00:00:00.000Z",
+  created_at: "2026-01-02T00:00:00.000Z",
+});
+const acceptedQuote = listProject({
+  id: "accepted",
+  business_status: "quote_draft",
+  status_updated_at: "2026-04-01T00:00:00.000Z",
+  quote_summary: {
+    id: "q-accepted",
+    status: "accepted",
+    pricing_document_id: null,
+    created_at: "2026-04-01T00:00:00.000Z",
+    revision_number: 1,
+  },
+});
+const won = listProject({
+  id: "won",
+  business_status: "won",
+  status_updated_at: "2026-05-01T00:00:00.000Z",
+});
+const archived = listProject({
+  id: "archived",
+  archived_at: "2026-05-02T00:00:00.000Z",
+  status_updated_at: "2026-05-02T00:00:00.000Z",
+});
+
+const selected = selectDashboardActiveProjects(
+  [won, archived, acceptedQuote, olderLead, newerLead],
+  8
+);
+
+check(
+  "dashboard project selection prefers a next action, then recency, and skips closed work",
+  selected.total === 3 &&
+    selected.projects.map((project) => project.id).join(",") ===
+      "newer,older,accepted" &&
+    getProjectNextAction(acceptedQuote) === "View quote" &&
+    getProjectNextAction(newerLead) === "Analyse project"
+);
 
 const sent = {
   id: "p1",

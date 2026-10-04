@@ -43,22 +43,23 @@ const primaryNavMatch = ratesPage.match(
 const primaryNavBody = primaryNavMatch?.[1] ?? "";
 
 check(
-  "1 KPI remains 2-col on mobile",
-  /grid-cols-2/.test(statusRow) && /gap-1\.5/.test(statusRow)
+  "1 overview remains 2-col below the desktop row",
+  /grid-cols-2/.test(statusRow) && /lg:grid-cols-4/.test(statusRow)
 );
 check(
-  "1b KPI compact mobile padding",
-  /py-1\.5/.test(statusRow) && /min-h-11/.test(statusRow)
+  "1b overview cards keep a 44px target",
+  /min-h-11/.test(statusRow) && /px-3/.test(statusRow)
 );
 check(
-  "1c KPI count size responsive",
-  /text-lg/.test(statusRow) && /sm:text-xl/.test(statusRow)
+  "1c overview count stays prominent",
+  /text-2xl/.test(statusRow) && /tabular-nums/.test(statusRow)
 );
 check(
-  "1d KPI filter links retained",
-  statusRow.includes('filter: "active"') &&
-    statusRow.includes('filter: "estimating"') &&
-    statusRow.includes("buildFilterHref")
+  "1d exact filters link, combined estimating count does not invent a filter",
+  statusRow.includes('href={item.href}') &&
+    read("lib/dashboard/work-overview.ts").includes('href: "/app/projects"') &&
+    read("lib/dashboard/work-overview.ts").includes("quotesSentCount") &&
+    read("lib/dashboard/work-overview.ts").includes("href: null")
 );
 
 check(
@@ -99,10 +100,10 @@ check(
 );
 
 check(
-  "5 filter URL updateParams retained",
+  "5 filter URL updateParams retained on the projects register",
   projectList.includes('params.set("filter"') &&
     projectList.includes('params.delete("filter")') &&
-    projectList.includes("/app/dashboard")
+    projectList.includes("/app/projects")
 );
 
 check(

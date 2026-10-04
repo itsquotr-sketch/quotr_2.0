@@ -59,8 +59,8 @@ check(
     !/createClient/.test(dashboard)
 );
 check(
-  "5 KPI grid remains compact 2-column",
-  /grid-cols-2/.test(statusRow) && /gap-1\.5/.test(statusRow)
+  "5 overview stays a compact 2-column grid on small screens",
+  /grid-cols-2/.test(statusRow) && /lg:grid-cols-4/.test(statusRow)
 );
 check(
   "6 Status dropdown remains canonical mobile filter",
@@ -80,9 +80,10 @@ check(
     dashboard.includes("NewProjectDialog")
 );
 check(
-  "9 project list remains reachable",
-  dashboard.includes("DashboardProjectList") &&
-    projectList.includes("ProjectMobileCard")
+  "9 project register remains on Projects and the dashboard keeps a capped list",
+  read("app/(protected)/app/projects/page.tsx").includes("DashboardProjectList") &&
+    projectList.includes("ProjectMobileCard") &&
+    dashboard.includes("DashboardActiveProjects")
 );
 check(
   "10 no commercial/rate resolver rewrite in DEMO-R7 surfaces",
@@ -114,8 +115,7 @@ check(
 );
 check(
   "14c Dashboard mobile content density tightened",
-  dashboard.includes("max-md:py-3") &&
-    dashboard.includes("space-y-4 md:space-y-6")
+  dashboard.includes("max-md:py-3") && dashboard.includes("space-y-4")
 );
 
 console.log(`\n=== DEMO-R7 Results: ${passed} passed, ${failed} failed ===`);

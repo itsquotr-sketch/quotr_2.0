@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { BusinessStatusBadge } from "@/components/projects/BusinessStatusBadge";
-import { NextActionLabel } from "@/components/projects/NextActionLabel";
-import { PriorityBadge } from "@/components/projects/ProjectMeta";
 import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
-import { getStatusStripColor } from "@/components/projects/status-strip";
-import { formatDueDate, formatProjectDate } from "@/lib/projects/format";
+import { getProjectNextActionHref } from "@/lib/projects/next-action";
+import { projectPlace } from "@/lib/projects/list-presentation";
 import type { DashboardProjectListItem } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
@@ -23,57 +20,43 @@ export function ProjectMobileCard({
   const isClosedStatus =
     project.business_status === "won" || project.business_status === "lost";
   const isArchived = Boolean(project.archived_at);
-  const stripColor = getStatusStripColor(
-    project.business_status,
-    isArchived
-  );
-
-  const clientLine = [project.client_name, project.site_address]
-    .filter(Boolean)
-    .join(" · ");
-
-  const dateLabel = project.due_date
-    ? `Due ${formatDueDate(project.due_date)}`
-    : `Updated ${formatProjectDate(project.created_at)}`;
+  const place = projectPlace(project);
 
   return (
     <div
       className={cn(
-        "relative flex overflow-hidden rounded-lg border border-border/60 bg-card transition-[border-color,background-color] active:bg-muted/20",
+        "border-b border-border/70 px-3 py-2 last:border-b-0",
         (isClosedStatus || isArchived) && "opacity-80"
       )}
     >
-      <div className={cn("absolute inset-y-0 left-0 w-1", stripColor)} />
-      <Link
-        href={`/app/projects/${project.id}`}
-        prefetch={prefetch}
-        className="flex min-w-0 flex-1 flex-col gap-2.5 py-3.5 pl-4 pr-2"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold leading-snug">{project.title}</p>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground/40" />
-        </div>
-        {clientLine ? (
-          <p className="text-xs text-muted-foreground">{clientLine}</p>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
-          <BusinessStatusBadge
-            status={project.business_status}
-            muted={isClosedStatus || isArchived}
-          />
-          <PriorityBadge priority={project.priority} />
-        </div>
-        <NextActionLabel
-          action={project.nextAction}
-          compact
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          href={`/app/projects/${project.id}`}
+          prefetch={prefetch}
+          className="min-w-0 flex-1 truncate text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+        >
+          {project.title}
+        </Link>
+        <BusinessStatusBadge
+          status={project.business_status}
           muted={isClosedStatus || isArchived}
+          className="text-[10px]"
         />
-        <p className="text-[11px] text-muted-foreground">{dateLabel}</p>
-      </Link>
-      <div
-        className="flex shrink-0 items-start pt-2 pr-1"
-        onClick={(event) => event.stopPropagation()}
-      >
+      </div>
+      {place ? (
+        <p className="truncate text-xs text-muted-foreground">
+          {isArchived ? `${place} · Archived` : place}
+        </p>
+      ) : isArchived ? (
+        <p className="truncate text-xs text-muted-foreground">Archived</p>
+      ) : null}
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          href={getProjectNextActionHref(project)}
+          className="inline-flex min-h-11 min-w-0 items-center text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+        >
+          <span className="truncate">{project.nextAction}</span>
+        </Link>
         <ProjectActionsMenu project={project} variant="card" />
       </div>
     </div>

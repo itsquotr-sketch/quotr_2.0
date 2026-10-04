@@ -101,15 +101,15 @@ check(
   "sidebar uses official wordmark in a light chip",
   sidebar.includes('variant="wordmark"') &&
     sidebar.includes("bg-white") &&
-    /h-\[18px\]/.test(sidebar) &&
+    /h-\[22px\]/.test(sidebar) &&
     !sidebar.includes("object-fill") &&
-    /w-\[232px\]/.test(sidebar)
+    /w-56/.test(sidebar)
 );
 check(
-  "wordmark sits with PREVIEW as one header unit",
+  "deployment label sits under the wordmark",
   sidebar.includes("deploymentLabel") &&
-    /gap-2\.5/.test(sidebar) &&
-    /items-center/.test(sidebar)
+    sidebar.includes("tracking-[0.14em]") &&
+    sidebar.includes("uppercase")
 );
 check(
   "mobile header uses compact square icon",
@@ -153,36 +153,31 @@ check(
 
 console.log("\n--- DASHBOARD ---\n");
 check(
-  "desktop workspace leads with attention, then active work",
-  dash.includes("data-dashboard-attention") &&
-    dash.includes("data-dashboard-workspace") &&
-    dash.indexOf("data-dashboard-attention") < dash.indexOf("data-dashboard-projects")
+  "workflow overview is four measures above the working grid",
+  dash.includes("data-dashboard-kpis") &&
+    dash.indexOf("data-dashboard-kpis") < dash.indexOf("data-dashboard-grid") &&
+    /lg:grid-cols-\[minmax\(0,2fr\)_minmax\(18rem,1fr\)\]/.test(dash)
 );
 check(
   "Projects list is the active-work section",
-  dash.includes("data-dashboard-projects") &&
-    dash.includes("Active work")
+  dash.includes("DashboardActiveProjects") &&
+    read("components/dashboard/DashboardActiveProjects.tsx").includes("Active projects") &&
+    read("components/dashboard/DashboardActiveProjects.tsx").includes("data-dashboard-projects")
 );
 check(
-  "Recent activity follows the project list when present",
+  "Recent activity sits in the working area when present",
   dash.includes("data-dashboard-activity") &&
-    dash.indexOf("data-dashboard-activity") > dash.indexOf("data-dashboard-projects")
-);
-const projectsIdx = dash.indexOf("data-dashboard-projects");
-const activityIdx = dash.indexOf("data-dashboard-activity");
-check(
-  "mobile stack order is Projects then Activity",
-  projectsIdx >= 0 && activityIdx > projectsIdx
+    dash.includes("activity.length > 0") &&
+    dash.indexOf("order-3") > dash.indexOf("order-2")
 );
 check(
-  "workflow counts follow active work",
-  dash.includes("data-dashboard-kpis") &&
-    dash.indexOf("data-dashboard-projects") < dash.indexOf("data-dashboard-kpis") &&
-    !/lg:grid-cols-\[minmax\(0,1fr\)_minmax\(16rem,20rem\)\]/.test(dash)
+  "mobile stack order is attention, projects, then activity",
+  dash.indexOf("order-1") < dash.indexOf("order-2") &&
+    dash.indexOf("order-2") < dash.indexOf("order-3")
 );
 check(
-  "KPI is 2-column on small screens and 6 on desktop",
-  kpi.includes("grid-cols-2") && kpi.includes("lg:grid-cols-6")
+  "overview is 2-column on small screens and 4 on desktop",
+  kpi.includes("grid-cols-2") && kpi.includes("lg:grid-cols-4")
 );
 check(
   "Projects workspace groups search, filters, and list",
@@ -222,10 +217,10 @@ check(
     prompt.includes("sm:flex-row")
 );
 check(
-  "activity is presentation-only with internal scroll",
+  "activity is a capped timeline",
   activity.includes("formatActivityWhen") &&
-    activity.includes("max-h-[min(36rem,70vh)]") &&
-    activity.includes("overflow-y-auto") &&
+    activity.includes('data-activity-cap={DESKTOP_CAP}') &&
+    activity.includes("if (visible.length === 0) return null") &&
     activity.includes("aria-label") &&
     !activity.includes("listRecentActivity")
 );

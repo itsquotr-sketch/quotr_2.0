@@ -9,8 +9,6 @@ export type DashboardAttentionItem = {
   href: string;
 };
 
-const ATTENTION_LIMIT = 6;
-
 function projectContext(project: ProjectListItem): string {
   const title = project.title?.trim() || "Project";
   const place = project.client_name?.trim() || project.site_address?.trim();
@@ -20,6 +18,10 @@ function projectContext(project: ProjectListItem): string {
 /**
  * Actionable dashboard rows from projects and readiness already loaded
  * for the page. Does not query estimates, quotes, or variations again.
+ *
+ * Order: required setup, sent or viewed quotes, draft quotes,
+ * declined or expired quotes, stale estimates, then open pricing.
+ * The command centre caps what it shows; this list is the full order.
  */
 export function deriveDashboardAttention(input: {
   projects: ProjectListItem[];
@@ -52,7 +54,7 @@ export function deriveDashboardAttention(input: {
     action: string,
     href: string
   ) {
-    if (seenProjects.has(project.id) || items.length >= ATTENTION_LIMIT) return;
+    if (seenProjects.has(project.id)) return;
     seenProjects.add(project.id);
     items.push({
       id: `project-${project.id}`,
@@ -128,5 +130,5 @@ export function deriveDashboardAttention(input: {
     );
   }
 
-  return items.slice(0, ATTENTION_LIMIT);
+  return items;
 }

@@ -14,14 +14,14 @@ type ProjectsPageProps = {
 
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const params = await searchParams;
-  const filter = parseProjectListFilter(params.filter);
+  const filter = params.filter ? parseProjectListFilter(params.filter) : "active";
   const search = params.q?.trim() ?? "";
   const { projects } = await measureServerLoad("projects", () =>
     loadDashboardPageData({ filter, search })
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <PageHeader
         title="Projects"
         description="Every job, with its current stage and the next step."
@@ -31,6 +31,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
       <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
         <Suspense fallback={null}>
           <DashboardProjectList
+            key={`${filter}:${search}`}
             projects={projects.map((project) => ({
               ...project,
               nextAction: getProjectNextAction(project),
