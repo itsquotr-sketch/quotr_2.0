@@ -110,9 +110,9 @@ check(
 );
 check(
   "internal notes stay out of the analysis card",
-  capture.includes("Internal project notes") &&
-    capture.includes("are not included in analysis") &&
-    !capture.includes('htmlFor="notes"')
+  capture.replace(/\s+/g, " ").includes(
+    "Internal project notes stay under Project information and are not included in analysis."
+  ) && !capture.includes('htmlFor="notes"')
 );
 check(
   "analysis disclosure excludes files",
@@ -170,8 +170,8 @@ check(
   "work action clears the mobile nav and desktop bottom",
   jobPlan.includes("mobileNavBottomClass") &&
     jobPlan.includes("md:bottom-0") &&
-    jobPlan.includes("Looks right") === false &&
-    jobPlan.includes("ASSISTANT_ACTION_LABELS.looksRight")
+    jobPlan.includes("ASSISTANT_ACTION_LABELS.looksRight") &&
+    !jobPlan.includes("sticky bottom-0")
 );
 
 if (failed > 0) {

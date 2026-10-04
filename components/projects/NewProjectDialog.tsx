@@ -58,11 +58,10 @@ export function NewProjectDialog({
     setDenial(null);
     setFieldErrors({});
     setPending(false);
-    submitLock.current = false;
   }
 
   function handleOpenChange(nextOpen: boolean) {
-    if (pending || submitLock.current) return;
+    if (pending) return;
     if (openProp === undefined) setUncontrolledOpen(nextOpen);
     onOpenChange?.(nextOpen);
     if (!nextOpen) {
