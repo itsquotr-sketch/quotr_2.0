@@ -8,7 +8,7 @@ export const mobileNavPaddingClass =
   "pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-0";
 
 export const mobileNavBottomClass =
-  "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]";
+  "max-md:bottom-[calc(5.75rem+env(safe-area-inset-bottom))]";
 
 export function isDashboardRoute(pathname: string | null): boolean {
   return pathname === "/app/dashboard";

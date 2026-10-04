@@ -179,3 +179,71 @@ export function controlTypeForCandidate(
 ): ClarifyControlType {
   return clarifyControlType(candidate);
 }
+
+/**
+ * Required answers selected locally, including the last answer still held
+ * while its save is in flight. This only decides whether Create estimate
+ * is shown. Generation still uses the persisted readiness path.
+ */
+export function optimisticResolvedCandidateIds(params: {
+  readonly resolvedIds: ReadonlySet<string>;
+  readonly heldPendingId?: string | null;
+  readonly heldValue?: string | number | boolean | string[] | null;
+}): Set<string> {
+  const ids = new Set(params.resolvedIds);
+  if (params.heldPendingId && params.heldValue != null && params.heldValue !== "") {
+    ids.add(params.heldPendingId);
+  }
+  return ids;
+}
+
+export function localAnswersCompleteForGenerate(params: {
+  readonly remainingRequiredCount: number;
+  readonly candidates: readonly ClarifyCandidate[];
+  readonly resolvedIds: ReadonlySet<string>;
+  readonly heldPendingId?: string | null;
+  readonly heldValue?: string | number | boolean | string[] | null;
+  readonly blocksEstimate: boolean;
+  readonly persistError?: string | null;
+}): boolean {
+  if (params.persistError) return false;
+  const remaining = effectiveRemainingRequiredCount({
+    remainingRequiredCount: params.remainingRequiredCount,
+    candidates: params.candidates,
+    locallyResolvedIds: optimisticResolvedCandidateIds({
+      resolvedIds: params.resolvedIds,
+      heldPendingId: params.heldPendingId,
+      heldValue: params.heldValue,
+    }),
+  });
+  return remaining === 0;
+}
+
+/** First Create estimate press while a save may still be in flight. */
+export function clarifyGenerateIntentAction(params: {
+  readonly savesPending: boolean;
+  readonly alreadyQueued: boolean;
+  readonly alreadyGenerating: boolean;
+  readonly persistError: boolean;
+}): "ignore" | "queue" | "generate" {
+  if (params.alreadyGenerating || params.alreadyQueued || params.persistError) {
+    return "ignore";
+  }
+  if (params.savesPending) return "queue";
+  return "generate";
+}
+
+/**
+ * Continuation after a queued press. A failed or incomplete save cancels.
+ * A successful local completion generates once through the existing action.
+ */
+export function clarifyQueuedGenerateAction(params: {
+  readonly intentQueued: boolean;
+  readonly savesPending: boolean;
+  readonly persistError: boolean;
+  readonly localAnswersComplete: boolean;
+}): "wait" | "cancel" | "generate" {
+  if (!params.intentQueued || params.savesPending) return "wait";
+  if (params.persistError || !params.localAnswersComplete) return "cancel";
+  return "generate";
+}

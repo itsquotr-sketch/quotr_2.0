@@ -349,8 +349,11 @@ check(
 );
 check(
   "01C Saving indicators hide once Generate is primary",
-  panel.includes("!isGenerating && (pendingIds.length > 0 || isSaving)") &&
-    readinessUi.includes("isSaving && !isGenerating")
+  panel.includes("!isGenerating && !continuePending") &&
+    panel.includes("finishingAnswers") &&
+    readinessUi.includes("isGenerating") &&
+    readinessUi.includes("ASSISTANT_LOADING_COPY.estimateGenerate") &&
+    !panel.includes("Saving the last answer")
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

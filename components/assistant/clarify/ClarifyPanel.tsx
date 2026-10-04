@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -23,14 +22,16 @@ import {
 } from "@/lib/assistant/clarify/question-contract";
 import {
   canShowGenerateCta,
+  clarifyGenerateIntentAction,
   clarifyPersistResultFailed,
+  clarifyQueuedGenerateAction,
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
+  localAnswersCompleteForGenerate,
   shouldHoldClarifyQuestionUntilPersist,
   shouldIgnoreDuplicateClarifyActivation,
 } from "@/lib/assistant/clarify/interaction";
 import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-sync";
-import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -83,7 +84,6 @@ function ClarifyQuestion({
   onAnswerValue?: ClarifyPanelProps["onAnswerValue"];
   onContinueMulti?: () => void;
 }) {
-  const [whyOpen, setWhyOpen] = useState(false);
   const whyKey = candidate.factKey ?? candidate.constraintKey ?? candidate.questionKey;
   const whyText =
     candidate.askClass === "HARD_MINIMUM" ||
@@ -114,19 +114,10 @@ function ClarifyQuestion({
       >
         {candidate.question}
       </p>
-      {showWhy ? (
-        <div data-why-this-matters>
-          <button
-            type="button"
-            className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:underline"
-            onClick={() => setWhyOpen((open) => !open)}
-          >
-            Why this matters
-          </button>
-          {whyOpen && whyText ? (
-            <p className="mt-1 text-xs text-muted-foreground">{whyText}</p>
-          ) : null}
-        </div>
+      {showWhy && whyText ? (
+        <p className="text-xs text-muted-foreground" data-why-this-matters>
+          {whyText}
+        </p>
       ) : null}
       <ClarifyAnswerControl
         candidate={candidate}
@@ -178,6 +169,10 @@ export function ClarifyPanel({
   >({});
   const continueLockRef = useRef(false);
   const pendingLockRef = useRef<Set<string>>(new Set());
+  const generateIntentRef = useRef(false);
+  const queueFailedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const [finishingAnswers, setFinishingAnswers] = useState(false);
 
   const locallyResolvedIds = useMemo(() => new Set(resolvedIds), [resolvedIds]);
   const remaining = effectiveRemainingRequiredCount({
@@ -254,6 +249,32 @@ export function ClarifyPanel({
     setHeldPendingId((current) => (current === candidateId ? null : current));
   };
 
+  const settleQueuedGenerate = (failed: boolean) => {
+    if (failed) queueFailedRef.current = true;
+    if (!generateIntentRef.current) {
+      queueFailedRef.current = false;
+      return;
+    }
+    if (
+      pendingLockRef.current.size > 0 ||
+      continueLockRef.current
+    ) {
+      return;
+    }
+    const failedAny = queueFailedRef.current;
+    queueFailedRef.current = false;
+    const action = clarifyQueuedGenerateAction({
+      intentQueued: true,
+      savesPending: false,
+      persistError: failedAny,
+      localAnswersComplete: !failedAny,
+    });
+    if (action === "wait") return;
+    generateIntentRef.current = false;
+    setFinishingAnswers(false);
+    if (action === "generate" && mountedRef.current) onEstimateNow?.();
+  };
+
   const wrapBoolean: ClarifyPanelProps["onAnswerBoolean"] = (
     candidate,
     presentation
@@ -280,16 +301,23 @@ export function ClarifyPanel({
     } else {
       advance(candidate);
     }
+    let failed = false;
     void Promise.resolve(onAnswerBoolean?.(candidate, presentation))
       .then((result) => {
-        if (clarifyPersistResultFailed(result)) {
+        failed = clarifyPersistResultFailed(result);
+        if (failed) {
           rollbackFailedClarifyPersist(candidate);
         } else if (hold) {
           advance(candidate);
         }
       })
+      .catch(() => {
+        failed = true;
+        rollbackFailedClarifyPersist(candidate);
+      })
       .finally(() => {
         endPending(candidate.id);
+        settleQueuedGenerate(failed);
       });
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
@@ -311,16 +339,23 @@ export function ClarifyPanel({
     } else {
       advance(candidate);
     }
+    let failed = false;
     void Promise.resolve(onAnswerValue?.(candidate, value))
       .then((result) => {
-        if (clarifyPersistResultFailed(result)) {
+        failed = clarifyPersistResultFailed(result);
+        if (failed) {
           rollbackFailedClarifyPersist(candidate);
         } else if (hold) {
           advance(candidate);
         }
       })
+      .catch(() => {
+        failed = true;
+        rollbackFailedClarifyPersist(candidate);
+      })
       .finally(() => {
         endPending(candidate.id);
+        settleQueuedGenerate(failed);
       });
   };
 
@@ -331,13 +366,47 @@ export function ClarifyPanel({
     readinessEnoughToEstimate: readiness.enoughToEstimate === true,
     persistError,
   });
-  const showGenerate =
-    Boolean(onEstimateNow) &&
-    canShowGenerateCta({
-      persistError,
-      canInitiateGenerate: readiness.canInitiateGenerate === true,
-      enoughToEstimate: readiness.enoughToEstimate === true,
+  const savesPending =
+    pendingIds.length > 0 || continuePending || Boolean(isSaving);
+  const localAnswersComplete = localAnswersCompleteForGenerate({
+    remainingRequiredCount: view.remainingRequiredCount ?? view.visibleCount,
+    candidates: view.candidates,
+    resolvedIds: locallyResolvedIds,
+    heldPendingId,
+    heldValue: heldPendingId ? localValues[heldPendingId] : null,
+    blocksEstimate: readiness.blocksEstimate === true,
+    persistError,
+  });
+  const authoritativeGenerate = canShowGenerateCta({
+    persistError,
+    canInitiateGenerate: readiness.canInitiateGenerate === true,
+    enoughToEstimate: readiness.enoughToEstimate === true,
+  });
+  const showCreateEstimate =
+    Boolean(onEstimateNow) && (localAnswersComplete || authoritativeGenerate);
+
+  const requestCreateEstimate = () => {
+    const action = clarifyGenerateIntentAction({
+      savesPending: pendingIds.length > 0 || continuePending,
+      alreadyQueued: generateIntentRef.current || finishingAnswers,
+      alreadyGenerating: Boolean(isGenerating),
+      persistError: Boolean(persistError),
     });
+    if (action === "ignore") return;
+    if (action === "queue") {
+      generateIntentRef.current = true;
+      setFinishingAnswers(true);
+      return;
+    }
+    onEstimateNow?.();
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!returnFocusId || isGenerating) return;
@@ -349,7 +418,7 @@ export function ClarifyPanel({
     }
   }, [isGenerating, returnFocusId]);
 
-  if (showReady) {
+  if (showReady && !finishingAnswers && !savesPending) {
     return (
       <div className="space-y-3">
         <PersistError error={persistError} />
@@ -383,7 +452,7 @@ export function ClarifyPanel({
 
   return (
     <div
-      className="space-y-4 overflow-x-hidden pb-2 md:space-y-6"
+      className="max-w-[880px] space-y-4 overflow-x-hidden pb-2 md:space-y-5"
       data-clarify-panel
       data-details-complete-capture="true"
       data-clarify-count={view.visibleCount}
@@ -398,7 +467,9 @@ export function ClarifyPanel({
       <p className="text-sm text-muted-foreground" data-clarify-progress>
         {countCopy}
       </p>
-      <PersistError error={persistError} />
+      {showCreateEstimate || visibleGroups.length === 0 ? (
+        <PersistError error={persistError} />
+      ) : null}
       {generateNotice && !persistError ? (
         <p className="text-sm font-medium" role="status">
           {generateNotice}
@@ -459,7 +530,13 @@ export function ClarifyPanel({
                         key={candidate.id}
                         candidate={candidate}
                         value={localValues[candidate.id] ?? candidate.currentValue ?? null}
-                        persistError={persistError}
+                        persistError={
+                          persistError &&
+                          (pendingIds.includes(candidate.id) ||
+                            heldPendingId === candidate.id)
+                            ? persistError
+                            : null
+                        }
                         pending={pendingIds.includes(candidate.id)}
                         continuePending={
                           continuePending && candidate.id === heldMultiId
@@ -491,15 +568,21 @@ export function ClarifyPanel({
                                 continueLockRef.current = true;
                                 setContinuePending(true);
                                 advance(candidate);
+                                let failed = false;
                                 void Promise.resolve(
                                   onAnswerValue?.(candidate, set)
                                 ).then((result) => {
-                                  if (clarifyPersistResultFailed(result)) {
+                                  failed = clarifyPersistResultFailed(result);
+                                  if (failed) {
                                     rollbackFailedClarifyPersist(candidate);
                                   }
+                                }).catch(() => {
+                                  failed = true;
+                                  rollbackFailedClarifyPersist(candidate);
                                 }).finally(() => {
                                   continueLockRef.current = false;
                                   setContinuePending(false);
+                                  settleQueuedGenerate(failed);
                                 });
                               }
                             : undefined
@@ -528,7 +611,13 @@ export function ClarifyPanel({
                   key={candidate.id}
                   candidate={candidate}
                   value={localValues[candidate.id] ?? candidate.currentValue ?? null}
-                  persistError={persistError}
+                  persistError={
+                    persistError &&
+                    (pendingIds.includes(candidate.id) ||
+                      heldPendingId === candidate.id)
+                      ? persistError
+                      : null
+                  }
                   pending={pendingIds.includes(candidate.id)}
                   disabled={isGenerating}
                   focused={returnFocusId === candidate.id}
@@ -541,61 +630,51 @@ export function ClarifyPanel({
         </section>
       ) : null}
 
-      {visibleGroups.length === 0 ? (
-        <div className="space-y-3" data-clarify-waiting>
-          {!isGenerating && (pendingIds.length > 0 || isSaving) ? (
-            <div data-clarify-save-status>
-              <SaveStatusIndicator status="saving" isSaving />
-            </div>
-          ) : null}
-          <p className="text-sm text-muted-foreground">
-            {isGenerating
-              ? "Quotr is generating your estimate."
-              : readiness.enoughToEstimate || view.enoughToEstimate || pendingIds.length > 0
-              ? "Saving the last answer…"
-              : "A few more details are still needed before this estimate can be built."}
-          </p>
-        </div>
-      ) : !isGenerating && pendingIds.length > 0 ? (
-        <div className="min-h-5" data-clarify-save-status>
-          <SaveStatusIndicator status="saving" isSaving />
-        </div>
+      {visibleGroups.length === 0 && !showCreateEstimate && !savesPending ? (
+        <p className="text-sm text-muted-foreground" data-clarify-waiting>
+          A few more details are still needed before this estimate can be built.
+        </p>
       ) : null}
 
       <ActionFooter
         className={cn("-mx-1 md:bottom-0", mobileNavBottomClass)}
         data-clarify-cta-bar=""
       >
-        <div className="flex w-full flex-col gap-2 sm:flex-row">
-          {showGenerate ? (
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+          {showCreateEstimate ? (
             <Button
               type="button"
-              className="min-h-11 w-full"
+              className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
-              disabled={isGenerating}
-              aria-disabled={isGenerating ? true : undefined}
-              onClick={onEstimateNow}
+              data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
+              disabled={finishingAnswers || isGenerating}
+              aria-disabled={finishingAnswers || isGenerating ? true : undefined}
+              onClick={requestCreateEstimate}
             >
-              {isGenerating ? (
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                  {ASSISTANT_ACTION_LABELS.generateEstimate}
-                </span>
-              ) : (
-                ASSISTANT_ACTION_LABELS.estimateNow
-              )}
+              {finishingAnswers
+                ? ASSISTANT_ACTION_LABELS.finishingAnswers
+                : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
           ) : view.canEstimateNow && onEstimateNow ? (
             <Button
               type="button"
               variant="outline"
-              className="min-h-11 w-full"
+              className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-estimate-assumptions
-              disabled={isSaving || isGenerating}
+              disabled={isSaving || isGenerating || finishingAnswers}
               onClick={onEstimateNow}
             >
               {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}
             </Button>
+          ) : null}
+          {savesPending && !finishingAnswers && !isGenerating && !continuePending ? (
+            <p
+              className="text-sm text-muted-foreground sm:ml-auto"
+              role="status"
+              data-clarify-save-status
+            >
+              {ASSISTANT_ACTION_LABELS.savingAnswer}
+            </p>
           ) : null}
         </div>
       </ActionFooter>

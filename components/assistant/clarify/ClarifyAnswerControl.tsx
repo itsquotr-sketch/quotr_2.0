@@ -1,9 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
-import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import {
   booleanChoiceOptions,
@@ -46,7 +45,6 @@ export function ClarifyAnswerControl({
   const control = clarifyControlType(candidate);
   const booleanOptions = booleanChoiceOptions(candidate);
   const multiSelectedCount = Array.isArray(value) ? value.length : 0;
-  const showSaving = !disabled && (pending || Boolean(continuePending));
 
   if (control === "BOOLEAN") {
     return (
@@ -72,11 +70,6 @@ export function ClarifyAnswerControl({
             );
           }}
         />
-        {showSaving ? (
-          <div className="flex h-5 items-center">
-            <SaveStatusIndicator status="saving" isSaving />
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -112,14 +105,7 @@ export function ClarifyAnswerControl({
             }
             onClick={onContinueMulti}
           >
-            {continuePending ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                Saving…
-              </span>
-            ) : (
-              "Continue"
-            )}
+            {continuePending ? ASSISTANT_ACTION_LABELS.savingAnswer : "Continue"}
           </Button>
         ) : null}
       </div>
@@ -148,11 +134,6 @@ export function ClarifyAnswerControl({
             onAnswerValue?.(candidate, picked ?? "");
           }}
         />
-        {showSaving ? (
-          <div className="flex h-5 items-center">
-            <SaveStatusIndicator status="saving" isSaving />
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -166,11 +147,6 @@ export function ClarifyAnswerControl({
         disabled={disabled}
         onSubmit={(next) => onAnswerValue?.(candidate, next)}
       />
-      {showSaving ? (
-        <div className="flex h-5 items-center">
-          <SaveStatusIndicator status="saving" isSaving />
-        </div>
-      ) : null}
     </div>
   );
 }

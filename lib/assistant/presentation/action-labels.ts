@@ -36,6 +36,8 @@ export const ASSISTANT_ACTION_LABELS = Object.freeze({
   analyseAgain: "Try again",
   analyseScope: "Analyse scope",
   saving: "Saving…",
+  savingAnswer: "Saving answer…",
+  finishingAnswers: "Finishing answers…",
   saved: "Saved",
   couldNotSave: "Could not save",
   retry: "Try again",

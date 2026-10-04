@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
-import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
 import { createCeilingPortionId } from "@/lib/estimate/ceilings-portions";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -492,7 +490,7 @@ export function ClarifyReadinessCard({
 }) {
   return (
     <div
-      className="space-y-4 overflow-x-hidden"
+      className="max-w-[880px] space-y-4 overflow-x-hidden"
       data-clarify-panel
       data-clarify-readiness
       data-clarify-empty="true"
@@ -574,12 +572,6 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
-      {isSaving && !isGenerating ? (
-        <div data-clarify-save-status>
-          <SaveStatusIndicator status="saving" isSaving />
-        </div>
-      ) : null}
-
       {onEstimateNow ? (
       <ActionFooter
         className={cn("md:bottom-0", mobileNavBottomClass)}
@@ -587,25 +579,19 @@ export function ClarifyReadinessCard({
       >
         <Button
           type="button"
-          className="min-h-11 w-full"
+          className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-clarify-primary-cta
-          disabled={isGenerating || readiness.blocksEstimate}
-          aria-disabled={isGenerating || readiness.blocksEstimate ? true : undefined}
+          disabled={isGenerating || isSaving || readiness.blocksEstimate}
+          aria-disabled={
+            isGenerating || isSaving || readiness.blocksEstimate ? true : undefined
+          }
           onClick={onEstimateNow}
         >
-          {isGenerating ? (
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              {ASSISTANT_LOADING_COPY.estimateGenerate}
-            </span>
-          ) : isSaving ? (
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              {ASSISTANT_ACTION_LABELS.saving}
-            </span>
-          ) : (
-            ASSISTANT_ACTION_LABELS.generateEstimate
-          )}
+          {isGenerating
+            ? ASSISTANT_LOADING_COPY.estimateGenerate
+            : isSaving
+              ? ASSISTANT_ACTION_LABELS.finishingAnswers
+              : ASSISTANT_ACTION_LABELS.generateEstimate}
         </Button>
       </ActionFooter>
       ) : null}

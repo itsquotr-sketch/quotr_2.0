@@ -59,17 +59,21 @@ check(
     indicator.includes("ASSISTANT_ACTION_LABELS.saving")
 );
 check(
-  "ClarifyAnswerControl wires SaveStatusIndicator + pending",
-  control.includes("SaveStatusIndicator") &&
-    control.includes("pending={pending}") &&
-    control.includes("if (pending) return")
+  "ClarifyAnswerControl keeps one pending guard without a second saving line",
+  control.includes("pending={pending}") &&
+    control.includes("if (pending) return") &&
+    !control.includes("SaveStatusIndicator") &&
+    !control.includes("Loader2")
 );
 check(
   "ClarifyPanel tracks pending ids and holds the last question",
   panel.includes("heldPendingId") &&
     panel.includes("shouldHoldClarifyQuestionUntilPersist") &&
     panel.includes("beginPending") &&
-    panel.includes("SaveStatusIndicator")
+    panel.includes("savingAnswer") &&
+    panel.includes("finishingAnswers") &&
+    !panel.includes("Saving the last answer") &&
+    !panel.includes("SaveStatusIndicator")
 );
 check(
   "single-select pending helper ignores repeats",
@@ -250,9 +254,10 @@ check(
   generateSrc.includes("evaluateGenerateEstimatePermission")
 );
 check(
-  "ClarifyReadiness uses SaveStatusIndicator while saving",
-  readiness.includes("SaveStatusIndicator") &&
-    readiness.includes("ASSISTANT_LOADING_COPY.estimateGenerate")
+  "ClarifyReadiness uses one finishing label, then the generate screen",
+  readiness.includes("finishingAnswers") &&
+    readiness.includes("ASSISTANT_LOADING_COPY.estimateGenerate") &&
+    !readiness.includes("SaveStatusIndicator")
 );
 check(
   "no backend persistence files edited by 01C-1 shape",

@@ -89,10 +89,13 @@ export function OptionSelect({
             data-option-selected={selected ? "true" : "false"}
             className={cn(
               "w-full min-w-0 rounded-xl border px-4 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              compact ? "min-h-10 py-2.5" : "min-h-11 py-3",
+              "min-h-11 py-2.5",
               selected
                 ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
                 : "border-border bg-background hover:bg-muted/40",
+              pending &&
+                selected &&
+                "border-dashed border-primary/70 bg-primary/5",
               disabled && "pointer-events-none opacity-70"
             )}
             onClick={() => {
@@ -125,11 +128,6 @@ export function OptionSelect({
           </button>
         );
       })}
-      {pending ? (
-        <span className="sr-only" data-option-pending-label>
-          Saving…
-        </span>
-      ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
