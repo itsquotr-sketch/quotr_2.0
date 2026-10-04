@@ -269,25 +269,6 @@ export function AssistantShell({
   initialEstimateSection = "overview",
 }: AssistantShellProps) {
   const router = useRouter();
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get(ESTIMATE_SECTION_PARAM);
-    const view = parseEstimateSection(raw);
-    const canonical = estimateSectionQuery(view);
-    if ((raw ?? null) !== canonical) {
-      const url = new URL(window.location.href);
-      if (canonical) url.searchParams.set(ESTIMATE_SECTION_PARAM, canonical);
-      else url.searchParams.delete(ESTIMATE_SECTION_PARAM);
-      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    }
-    function onPop() {
-      setEstimateViewState(
-        parseEstimateSection(new URLSearchParams(window.location.search).get(ESTIMATE_SECTION_PARAM))
-      );
-    }
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
   const actionLockRef = useRef(false);
   const generationRequestSeqRef = useRef(0);
   const appliedGenerationRef = useRef<AppliedEstimateGeneration | null>(null);
@@ -457,7 +438,32 @@ export function AssistantShell({
     if (nextHref !== currentHref) {
       window.history.pushState({ estimateSection: view }, "", nextHref);
     }
-  }, []);
+  }, [setEstimateViewState]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get(ESTIMATE_SECTION_PARAM);
+    const view = parseEstimateSection(raw);
+    const canonical = estimateSectionQuery(view);
+    if ((raw ?? null) !== canonical) {
+      const url = new URL(window.location.href);
+      if (canonical) url.searchParams.set(ESTIMATE_SECTION_PARAM, canonical);
+      else url.searchParams.delete(ESTIMATE_SECTION_PARAM);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      );
+    }
+    function onPop() {
+      setEstimateViewState(
+        parseEstimateSection(
+          new URLSearchParams(window.location.search).get(ESTIMATE_SECTION_PARAM)
+        )
+      );
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [setEstimateViewState]);
   const openWorkArea = useCallback((workAreaId: string) => {
     if (!workAreaId) return;
     setFocusWorkAreaId(workAreaId);

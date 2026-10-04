@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { EstimatePresentationView } from "@/lib/assistant/presentation/estimate-section";
 import { PrepareFinalPricingButton, OpenFinalPricingLink } from "@/components/pricing/PrepareFinalPricingButton";
 import { Button } from "@/components/ui/button";
@@ -255,36 +255,33 @@ export function WorkAreaBreakdown({
 }: WorkAreaBreakdownProps) {
   const model: WorkAreaBreakdownModel = projectWorkAreaBreakdown(view, scope);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
-  const openedAttention = useRef(false);
-  const headings = useRef(new Map<string, HTMLHeadingElement>());
+  const [openedAttention, setOpenedAttention] = useState(false);
+  const [appliedFocus, setAppliedFocus] = useState<string | null>(null);
+  const focusedHeading = useRef<string | null>(null);
+  const firstAttention = model.cards.find((card) => card.attention.length > 0)?.id ?? null;
 
-  useEffect(() => {
-    if (openedAttention.current || focusWorkAreaId) return;
-    const first = model.cards.find((card) => card.attention.length > 0);
-    if (!first) return;
-    openedAttention.current = true;
-    setOpenIds(new Set([first.id]));
-  }, [focusWorkAreaId, model.cards]);
-
-  useEffect(() => {
-    if (!focusWorkAreaId) return;
-    const card = model.cards.find((row) => row.id === focusWorkAreaId);
-    if (!card) return;
+  if (!openedAttention && !focusWorkAreaId && firstAttention) {
+    setOpenedAttention(true);
+    setOpenIds(new Set([firstAttention]));
+  }
+  if (focusWorkAreaId && appliedFocus !== focusWorkAreaId) {
+    setAppliedFocus(focusWorkAreaId);
     setOpenIds((current) => {
-      if (current.has(card.id)) return current;
+      if (current.has(focusWorkAreaId)) return current;
       const next = new Set(current);
-      next.add(card.id);
+      next.add(focusWorkAreaId);
       return next;
     });
-    const heading = headings.current.get(card.id);
-    heading?.focus();
+  }
+
+  function focusHeading(id: string, node: HTMLHeadingElement | null) {
+    if (!node || focusWorkAreaId !== id || focusedHeading.current === id) return;
+    focusedHeading.current = id;
+    node.focus();
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    heading?.scrollIntoView({
-      block: "start",
-      behavior: reduce ? "auto" : "smooth",
-    });
+    node.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
     onFocusApplied?.();
-  }, [focusWorkAreaId, model.cards, onFocusApplied]);
+  }
 
   function toggle(id: string) {
     setOpenIds((current) => {
@@ -353,10 +350,7 @@ export function WorkAreaBreakdown({
               <h3
                 id={`work-area-${card.id}`}
                 tabIndex={-1}
-                ref={(node) => {
-                  if (node) headings.current.set(card.id, node);
-                  else headings.current.delete(card.id);
-                }}
+                ref={(node) => focusHeading(card.id, node)}
                 className="px-4 pt-3 text-base font-semibold leading-snug break-words outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
               >
                 {card.name}
