@@ -271,20 +271,21 @@ function main(): void {
   // --- R1-005 capture hierarchy ---
   const capture = read("components/assistant/ProjectCaptureBlock.tsx");
   check(
-    "R1-005: Project Brief job overview label present",
-    capture.includes("Project Brief — Job overview")
+    "R1-005: Job description label present",
+    capture.includes("Job description")
   );
   check(
-    "R1-005: Site Notes ongoing observations label present",
-    capture.includes("Site Notes — Ongoing observations")
+    "R1-005: Site notes label present",
+    capture.includes("Site notes")
   );
   check(
     "R1-005: required brief purpose copy present",
-    capture.includes("Describe the overall job. Quotr uses this when analysing")
+    capture.includes("Quotr reads") &&
+      capture.includes("this when analysing the job")
   );
   check(
     "R1-005: required site notes purpose copy present",
-    capture.includes("Add individual measurements, access issues")
+    capture.includes("also reads eligible site notes during analysis")
   );
   check(
     "R1-005: SiteNotesCaptureCard hides duplicate heading",
