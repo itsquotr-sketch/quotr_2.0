@@ -126,6 +126,7 @@ function staticMain() {
   assert("page heading and copy", page.includes("Customers") && page.includes("Save customer details for faster project setup."));
   assert("viewer gates", page.includes("memberCanCreateProjects") && page.includes("memberCanEditProjects"));
   assert("search and archive disclosure", directory.includes("Search name, email or phone") && directory.includes("Show archived"));
+  assert("desktop list and mobile cards", directory.includes('data-customer-list="aligned"') && directory.includes('data-customer-list="stacked"') && directory.includes("md:hidden") && directory.includes("md:block"));
   assert("sidebar places Customers after Projects and before Rates", (() => {
     const projects = sidebar.indexOf('label: "Projects"');
     const customers = sidebar.indexOf('label: "Customers"');

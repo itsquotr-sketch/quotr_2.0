@@ -201,6 +201,7 @@ export function EditProjectDialog({
                 onChange={(event) => setTitle(event.target.value)}
                 required
                 maxLength={120}
+                className="min-h-11"
               />
               {fieldErrors.title?.[0] ? (
                 <p className="text-sm text-destructive">{fieldErrors.title[0]}</p>
@@ -265,8 +266,9 @@ export function EditProjectDialog({
                   id="edit-client-name"
                   value={clientName}
                   onChange={(event) => setClientName(event.target.value)}
-                  maxLength={160}
-                />
+                maxLength={160}
+                className="min-h-11"
+              />
                 {fieldErrors.client_name?.[0] ? (
                   <p className="text-sm text-destructive">
                     {fieldErrors.client_name[0]}
@@ -288,6 +290,7 @@ export function EditProjectDialog({
                   value={clientEmail}
                   onChange={(event) => setClientEmail(event.target.value)}
                   maxLength={254}
+                  className="min-h-11"
                 />
                 {fieldErrors.client_email?.[0] ? (
                   <p className="text-sm text-destructive">
@@ -302,6 +305,7 @@ export function EditProjectDialog({
                   value={siteAddress}
                   onChange={(event) => setSiteAddress(event.target.value)}
                   maxLength={300}
+                  className="min-h-11"
                 />
                 {fieldErrors.site_address?.[0] ? (
                   <p className="text-sm text-destructive">
