@@ -8,6 +8,8 @@ import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCar
 import { DashboardOnboardingHandoff } from "@/components/projects/DashboardOnboardingHandoff";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { loadDashboardPageData } from "@/lib/dashboard/load-dashboard-page";
+import { getOnboardingAccess } from "@/lib/setup/actions";
+import { memberCanCreateProjects } from "@/lib/team/permissions";
 import { selectDashboardActiveProjects } from "@/lib/dashboard/select-active-projects";
 import { presentDashboardOverview } from "@/lib/dashboard/work-overview";
 import { measureServerLoad } from "@/lib/perf/timing";
@@ -25,10 +27,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect(`/app/projects?${legacyQuery.toString()}`);
   }
 
-  const { projects, hasProjects, activity, attention } =
-    await measureServerLoad("dashboard", () =>
-      loadDashboardPageData({ filter: "all", search: "" })
-    );
+  const [{ projects, hasProjects, activity, attention }, onboardingAccess] =
+    await Promise.all([
+      measureServerLoad("dashboard", () =>
+        loadDashboardPageData({ filter: "all", search: "" })
+      ),
+      getOnboardingAccess(),
+    ]);
+  const canCreateProject = memberCanCreateProjects(onboardingAccess.role);
 
   const isEmpty = !hasProjects;
   const active = selectDashboardActiveProjects(projects);
@@ -47,11 +53,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         }
         wrapDescription
         hideActionsOnMobile
-        actions={<NewProjectDialog intent={isEmpty ? "first-job" : "default"} />}
+        actions={
+          canCreateProject ? (
+            <NewProjectDialog intent={isEmpty ? "first-job" : "default"} />
+          ) : null
+        }
       />
       <PageContainer innerClassName="py-4 max-md:py-3 max-md:pb-4">
         <DashboardOnboardingHandoff
-          openNewProject={params.newProject === "1"}
+          openNewProject={canCreateProject && params.newProject === "1"}
           consentUnsaved={params.consent === "unsaved"}
         />
         <div
@@ -67,12 +77,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 Start your first job
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Add the job name and what you know. You can price it once the
-                project exists.
+                Name the job now. You can add the work details on the next
+                screen.
               </p>
-              <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <NewProjectDialog intent="first-job" />
-              </div>
+              {canCreateProject ? (
+                <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                  <NewProjectDialog intent="first-job" />
+                </div>
+              ) : null}
             </div>
           ) : (
             <>

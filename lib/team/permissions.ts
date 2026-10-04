@@ -82,6 +82,16 @@ export function roleAllowsPermission(
   return ROLE_PERMISSIONS[role].has(permission);
 }
 
+/**
+ * Read-only UI gate. Uses the same role matrix as server mutations.
+ * Callers must still enforce `projects.create` on the server.
+ */
+export function memberCanCreateProjects(
+  role: MembershipRole | null | undefined
+): boolean {
+  return role != null && roleAllowsPermission(role, "projects.create");
+}
+
 export function isOrgPermission(value: string): value is OrgPermission {
   return (ORG_PERMISSIONS as readonly string[]).includes(value);
 }

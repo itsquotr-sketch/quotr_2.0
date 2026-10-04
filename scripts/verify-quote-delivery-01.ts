@@ -737,8 +737,7 @@ assert(
 assert(
   "Project client_email is optional default only",
   projectSchemaSrc.includes("client_email") &&
-    (newProjectSrc.includes("Client email") ||
-      newProjectSrc.includes('htmlFor="client-email"')) &&
+    !newProjectSrc.includes('htmlFor="client-email"') &&
     editProjectSrc.includes("edit-client-email") &&
     sendSheetSrc.includes("projectClientEmail") &&
     sendSheetSrc.includes("quote.client_name") &&

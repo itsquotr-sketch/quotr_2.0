@@ -10,6 +10,7 @@ import {
   isProjectsRoute,
   isRatesRoute,
 } from "@/components/layout/mobile-nav-metrics";
+import { useAppUser } from "@/components/layout/app-user-context";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const itemClass =
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { canCreateProject } = useAppUser();
   const newCurrent = isNewProjectRoute(pathname);
 
   return (
@@ -41,32 +43,38 @@ export function MobileNav() {
         />
         <div className="relative flex h-[4.5rem] min-w-0 flex-col items-center justify-center gap-1 px-0.5">
           <div className="relative h-[22px] w-full shrink-0">
-            <NewProjectDialog
-              trigger={
-                <button
-                  type="button"
-                  aria-label="New project"
-                  aria-current={newCurrent ? "page" : undefined}
-                  data-mobile-new-project
-                  className={cn(
-                    "absolute bottom-0 left-1/2 z-10 inline-flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--brand-orange)] text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    newCurrent && "ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                  )}
-                >
-                  <Plus className="size-7" strokeWidth={2.5} aria-hidden />
-                </button>
-              }
-            />
+            {canCreateProject ? (
+              <NewProjectDialog
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="New project"
+                    aria-current={newCurrent ? "page" : undefined}
+                    data-mobile-new-project
+                    className={cn(
+                      "absolute bottom-0 left-1/2 z-10 inline-flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--brand-orange)] text-white shadow-md outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      newCurrent && "ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                    )}
+                  >
+                    <Plus className="size-7" strokeWidth={2.5} aria-hidden />
+                  </button>
+                }
+              />
+            ) : null}
           </div>
-          <span
-            className={cn(
-              "max-w-full truncate text-[9px] font-medium leading-none tracking-tight min-[360px]:text-[10px]",
-              newCurrent ? "text-[var(--brand-orange)]" : "text-muted-foreground"
-            )}
-            aria-hidden
-          >
-            New
-          </span>
+          {canCreateProject ? (
+            <span
+              className={cn(
+                "max-w-full truncate text-[9px] font-medium leading-none tracking-tight min-[360px]:text-[10px]",
+                newCurrent ? "text-[var(--brand-orange)]" : "text-muted-foreground"
+              )}
+              aria-hidden
+            >
+              New
+            </span>
+          ) : (
+            <span className="sr-only">New project unavailable</span>
+          )}
         </div>
         <NavLink
           href="/app/rates"

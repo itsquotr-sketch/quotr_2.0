@@ -31,12 +31,14 @@ type DashboardProjectListProps = {
   projects: DashboardProjectListItem[];
   initialFilter: ProjectListFilter;
   initialSearch: string;
+  canCreateProject?: boolean;
 };
 
 export function DashboardProjectList({
   projects,
   initialFilter,
   initialSearch,
+  canCreateProject = false,
 }: DashboardProjectListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -172,7 +174,9 @@ export function DashboardProjectList({
           title={emptyTitle}
           description={emptyDescription}
           action={
-            initialFilter === "active" && !initialSearch.trim() ? (
+            canCreateProject &&
+            initialFilter === "active" &&
+            !initialSearch.trim() ? (
               <NewProjectDialog trigger={<Button size="touch">New project</Button>} />
             ) : undefined
           }

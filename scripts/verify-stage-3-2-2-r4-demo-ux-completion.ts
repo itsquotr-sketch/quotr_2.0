@@ -199,8 +199,8 @@ function main(): void {
     "8 Site Notes empty mobile state is compact",
     notes.includes('data-site-notes-composer="collapsed"') &&
       notes.includes("+ Add site notes") &&
-      createDialog.includes("data-create-notes-collapsed") &&
-      createDialog.includes("+ Add notes")
+      !createDialog.includes("data-create-notes-collapsed") &&
+      !createDialog.includes('htmlFor="notes"')
   );
 
   check(

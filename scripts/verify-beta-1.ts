@@ -373,10 +373,25 @@ function main() {
   const dialog = read("components/projects/NewProjectDialog.tsx");
   assert("create dialog Job name", /Job name/.test(dialog));
   assert(
-    "plans not required helper",
-    /Plans, photos and full details aren/.test(dialog)
+    "create dialog asks for the name now",
+    /Name the job/.test(dialog) && /Details come next/.test(dialog)
   );
-  assert("priority collapsed behind more details", /Priority, due date, or notes/.test(dialog));
+  assert(
+    "create dialog collects only name, client and site",
+    /htmlFor="project-title"/.test(dialog) &&
+      /htmlFor="client-name"/.test(dialog) &&
+      /htmlFor="site-address"/.test(dialog) &&
+      !/htmlFor="client-email"/.test(dialog) &&
+      !/htmlFor="project-brief"/.test(dialog) &&
+      !/htmlFor="priority"/.test(dialog) &&
+      !/htmlFor="due-date"/.test(dialog) &&
+      !/htmlFor="notes"/.test(dialog)
+  );
+  assert("create dialog submits Create job", /Create job/.test(dialog));
+  assert(
+    "create dialog title is Start a job",
+    /<DialogTitle>Start a job<\/DialogTitle>/.test(dialog)
+  );
 
   section("PLAN TRUTH");
   const billingUi = read("components/billing/BillingPageContent.tsx");

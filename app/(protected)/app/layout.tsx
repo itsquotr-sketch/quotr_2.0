@@ -17,6 +17,7 @@ import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getFirstRunStage, getOnboardingAccess } from "@/lib/setup/actions";
 import { resolveProtectedOnboardingAccess } from "@/lib/setup/first-run-stage";
+import { memberCanCreateProjects } from "@/lib/team/permissions";
 import { lookupPendingInvitationForCurrentUser } from "@/lib/team/public-invite";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
@@ -156,6 +157,7 @@ async function AuthenticatedApp({
       deploymentLabel={internalDeploymentLabel()}
       billingNotice={billingNotice}
       displayTimezone={display?.timezone ?? null}
+      canCreateProject={memberCanCreateProjects(onboardingAccess.role)}
     >
       {children}
     </AppShell>

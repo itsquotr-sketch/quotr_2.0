@@ -28,6 +28,7 @@ type AppShellProps = {
   deploymentLabel?: "Local" | "Preview" | null;
   billingNotice?: TrialBannerNotice | null;
   displayTimezone?: string | null;
+  canCreateProject?: boolean;
 };
 
 function isQuotePrintRoute(pathname: string | null): boolean {
@@ -48,6 +49,7 @@ export function AppShell({
   deploymentLabel = null,
   billingNotice = null,
   displayTimezone = null,
+  canCreateProject = false,
 }: AppShellProps) {
   const pathname = usePathname();
 
@@ -73,6 +75,7 @@ export function AppShell({
         showTeamNav,
         deploymentLabel,
         displayTimezone,
+        canCreateProject,
       }}
     >
       <NotificationProvider>

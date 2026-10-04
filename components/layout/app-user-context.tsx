@@ -16,6 +16,11 @@ export type AppUserContextValue = {
   /** Required onboarding is unfinished. Hide routes that would leave it. */
   onboardingLocked?: boolean;
   showTeamNav?: boolean;
+  /**
+   * Server-derived from the membership role. Hides create controls only.
+   * `createProject` still enforces permission and billing.
+   */
+  canCreateProject?: boolean;
   /** Internal operator label. Never render on public Quote pages. */
   deploymentLabel?: "Local" | "Preview" | null;
   /** IANA timezone for in-app timestamp display. */
