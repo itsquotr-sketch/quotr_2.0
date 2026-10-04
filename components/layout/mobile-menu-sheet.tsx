@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
+  BookUser,
   Building2,
   CreditCard,
   LogOut,
@@ -129,6 +130,14 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
           <X className="size-4" />
         </SheetClose>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-3">
+          {setupIncomplete ? null : (
+            <nav className="mb-4 flex flex-col gap-1" aria-label="Work">
+              <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                Work
+              </p>
+              {destination("/app/customers", "Customers", BookUser)}
+            </nav>
+          )}
           {setupIncomplete ? null : (
             <nav className="flex flex-col gap-1" aria-label="Organisation">
               <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">

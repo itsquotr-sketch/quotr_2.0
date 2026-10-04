@@ -52,9 +52,10 @@ const onboarding = read("components/setup/OnboardingFrame.tsx");
 console.log("=== Dashboard and shell IA ===\n");
 
 check(
-  "desktop primary order is Dashboard, Projects, Rates",
+  "desktop primary order is Dashboard, Projects, Customers, Rates",
   sidebar.indexOf('href: "/app/dashboard"') < sidebar.indexOf('href: "/app/projects"') &&
-    sidebar.indexOf('href: "/app/projects"') < sidebar.indexOf('href: "/app/rates"') &&
+    sidebar.indexOf('href: "/app/projects"') < sidebar.indexOf('href: "/app/customers"') &&
+    sidebar.indexOf('href: "/app/customers"') < sidebar.indexOf('href: "/app/rates"') &&
     sidebar.indexOf("Organisation") > sidebar.indexOf('href: "/app/rates"')
 );
 check(
