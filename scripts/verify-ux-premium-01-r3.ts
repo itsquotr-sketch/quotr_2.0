@@ -457,7 +457,7 @@ check(
   "safe-area spacing",
   pricingBar.includes("mobileNavBottomClass") &&
     read("components/layout/mobile-nav-metrics.ts").includes(
-      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+      "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
     ) &&
     pricingWorkspace.includes("env(safe-area-inset-bottom)")
 );
@@ -466,7 +466,7 @@ check(
   "pricing mobile bar clears AppShell MobileNav",
   pricingBar.includes("mobileNavBottomClass") &&
     read("components/layout/mobile-nav-metrics.ts").includes(
-      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+      "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
     ) &&
     !pricingBar.includes("fixed inset-x-0 bottom-0") &&
     pricingBar.includes('data-pricing-mobile-mark-reviewed="true"') &&

@@ -101,7 +101,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
         aria-expanded={open}
         aria-current={open ? "page" : undefined}
       >
-        <Menu className="size-5" strokeWidth={open ? 2.25 : 2} aria-hidden />
+        <Menu className="size-[22px] shrink-0" strokeWidth={open ? 2.25 : 2} aria-hidden />
         <span>Menu</span>
       </SheetTrigger>
       <SheetContent

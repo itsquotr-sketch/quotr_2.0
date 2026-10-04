@@ -82,6 +82,11 @@ check(
     mobileNav.includes('aria-label="New project"') &&
     mobileNav.includes("NewProjectDialog") &&
     mobileNav.includes("grid-cols-5") &&
+    mobileNav.includes("min-w-0") &&
+    mobileNav.includes("h-[4.5rem]") &&
+    mobileNav.includes("justify-center") &&
+    mobileNav.includes("gap-1") &&
+    mobileNav.includes("size-[22px]") &&
     mobileNav.includes("size-14") &&
     mobileNav.includes("rounded-full") &&
     !mobileNav.includes("speed dial")
@@ -465,8 +470,13 @@ check(
     read("components/layout/page-header.tsx").includes("hidden md:flex") &&
     read("components/layout/app-shell.tsx").includes("mobileNavPaddingClass") &&
     read("components/layout/mobile-nav-metrics.ts").includes(
-      "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+      "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
     ) &&
+    read("components/quotes/QuoteMobileActionBar.tsx").includes("mobileNavBottomClass") &&
+    read("components/variations/VariationEditor.tsx").includes("mobileNavBottomClass") &&
+    read("components/variations/VariationDeliveryPanel.tsx").includes("mobileNavBottomClass") &&
+    read("components/pricing/PricingMobileActionBar.tsx").includes("mobileNavBottomClass") &&
+    read("components/assistant/clarify/ClarifyPanel.tsx").includes("mobileNavBottomClass") &&
     isDashboardRoute("/app/dashboard") &&
     !isDashboardRoute("/app/projects") &&
     isProjectsRoute("/app/projects") &&

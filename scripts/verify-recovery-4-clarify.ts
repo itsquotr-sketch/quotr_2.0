@@ -480,7 +480,10 @@ check(
     progress.includes("Step {Math.min(currentIdx + 1, totalSteps)}") &&
     panel.includes("overflow-x-hidden") &&
     panel.includes("min-h-11") &&
-    panel.includes("safe-area-inset-bottom") &&
+    panel.includes("mobileNavBottomClass") &&
+    read("components/layout/mobile-nav-metrics.ts").includes(
+      "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
+    ) &&
     !panel.includes("<table")
 );
 check(

@@ -274,7 +274,7 @@ function main() {
     "pricing mobile bar has safe-area",
     pricingBar.includes("mobileNavBottomClass") &&
       read("components/layout/mobile-nav-metrics.ts").includes(
-        "bottom-[calc(5rem+env(safe-area-inset-bottom))]"
+        "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
       )
   );
   const pricingWorkspace = read("components/pricing/PricingWorkspace.tsx");
