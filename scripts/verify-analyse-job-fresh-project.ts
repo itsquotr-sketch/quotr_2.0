@@ -188,11 +188,18 @@ try {
 }
 check("parse failure fixture throws locally (no second Claude call)", parseFailed);
 
+const saveBriefPersist = saveFn.replace(/\s+/g, " ");
 check(
   "WA/fact/stage DB failures return { error } in saveBrief",
-  saveFn.includes("return { error: insertError.message }") &&
-    saveFn.includes("return { error: factsError.message }") &&
-    saveFn.includes("return { error: stageError.message }")
+  saveBriefPersist.includes("const failPersist = async (") &&
+    saveBriefPersist.includes("return { error: UNKNOWN_ANALYSIS_ERROR }") &&
+    saveBriefPersist.includes('return failPersist( "persist_work_areas"') &&
+    saveBriefPersist.includes('return failPersist( "persist_facts"') &&
+    saveBriefPersist.includes('return failPersist( "persist_stage"') &&
+    saveBriefPersist.includes("rollbackThisAttemptSuggestedWorkAreas") &&
+    !saveFn.includes("return { error: insertError.message }") &&
+    !saveFn.includes("return { error: factsError.message }") &&
+    !saveFn.includes("return { error: stageError.message }")
 );
 check(
   "canonical load failure does not fail the mutation",

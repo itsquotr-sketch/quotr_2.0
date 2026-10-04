@@ -34,7 +34,8 @@ import { DEFAULT_MARGIN_PERCENT } from "../lib/estimate/constants";
 import { roleAllowsPermission } from "../lib/team/permissions";
 import {
   FIRST_RUN_BASICS_PATH,
-  FIRST_RUN_PRICING_PATH,
+  FIRST_RUN_LABOUR_PATH,
+  FIRST_RUN_READY_PATH,
   FIRST_RUN_WORK_PATH,
   firstRunForcedPath,
   resolveFirstRunStage,
@@ -194,19 +195,19 @@ function main() {
     }) === "work"
   );
   assert(
-    "company saved with work is Pricing Basics",
+    "company saved with work resumes at labour",
     resolveFirstRunStage({
       onboardingStatus: "in_progress",
       onboardingStep: "work_areas",
       hasPrimaryWorkAreas: true,
-    }) === "pricing"
+    }) === "labour"
   );
   assert(
-    "pricing visited (rates) is ready",
+    "historical rates step is unfinished and resumes at basics",
     resolveFirstRunStage({
       onboardingStatus: "in_progress",
       onboardingStep: "rates",
-    }) === "ready"
+    }) === "basics"
   );
   assert(
     "completed onboarding is done",
@@ -216,50 +217,53 @@ function main() {
     }) === "done"
   );
   assert(
-    "legacy review step is done",
+    "historical review step is unfinished and resumes at basics",
     resolveFirstRunStage({
       onboardingStatus: "in_progress",
       onboardingStep: "review",
-    }) === "done"
+    }) === "basics"
   );
   assert(
-    "company save + mode=basics resumes work not dashboard",
-    setupModeRedirect("basics", "work") === FIRST_RUN_WORK_PATH
+    "earlier basics stays open and a non-canonical request returns to work",
+    setupModeRedirect("basics", "work") === null &&
+      setupModeRedirect("pricing", "work") === FIRST_RUN_WORK_PATH
   );
   assert(
-    "work complete + mode=work resumes pricing",
-    setupModeRedirect("work", "pricing") === FIRST_RUN_PRICING_PATH
+    "work stays open while labour is next, and ready cannot skip labour",
+    setupModeRedirect("work", "labour") === null &&
+      setupModeRedirect("ready", "labour") === FIRST_RUN_LABOUR_PATH
   );
   assert(
-    "pricing skip/save + mode=pricing stays on pricing",
-    setupModeRedirect("pricing", "ready") === null
+    "retired pricing mode returns to the current ready step",
+    setupModeRedirect("pricing", "ready") === FIRST_RUN_READY_PATH
   );
   assert(
-    "pricing skip/save + mode=ready stays on ready",
+    "ready step stays on ready",
     setupModeRedirect("ready", "ready") === null &&
       setupShellMode("ready", "ready") === "ready"
   );
   assert(
-    "unfinished pricing cannot open ready",
-    setupModeRedirect("ready", "pricing") === FIRST_RUN_PRICING_PATH
+    "unfinished labour cannot open ready",
+    setupModeRedirect("ready", "labour") === FIRST_RUN_LABOUR_PATH
   );
   assert(
-    "unfinished work cannot open pricing",
-    setupModeRedirect("pricing", "work") === FIRST_RUN_WORK_PATH
+    "unfinished work cannot open labour",
+    setupModeRedirect("labour", "work") === FIRST_RUN_WORK_PATH
   );
   assert(
-    "unfinished company cannot open pricing",
-    setupModeRedirect("pricing", "basics") === FIRST_RUN_BASICS_PATH
+    "unfinished company cannot open labour",
+    setupModeRedirect("labour", "basics") === FIRST_RUN_BASICS_PATH
   );
   assert(
-    "existing done user on basics goes to dashboard",
-    setupModeRedirect("basics", "done") === "/app/dashboard"
+    "finished organisation can review basics and a non-canonical mode goes to dashboard",
+    setupModeRedirect("basics", "done") === null &&
+      setupModeRedirect("pricing", "done") === "/app/dashboard"
   );
   assert(
-    "layout forces work then pricing until visited",
+    "layout forces work then labour then ready until completed",
     firstRunForcedPath("work") === FIRST_RUN_WORK_PATH &&
-      firstRunForcedPath("pricing") === FIRST_RUN_PRICING_PATH &&
-      firstRunForcedPath("ready") === null &&
+      firstRunForcedPath("labour") === FIRST_RUN_LABOUR_PATH &&
+      firstRunForcedPath("ready") === FIRST_RUN_READY_PATH &&
       firstRunForcedPath("done") === null
   );
   const setupPage = read("app/(protected)/app/setup/page.tsx");
@@ -269,7 +273,11 @@ function main() {
     !/!basicsNeeded && modeParam === "basics"/.test(setupPage)
   );
   const layout = read("app/(protected)/app/layout.tsx");
-  assert("layout resumes unfinished first-run", /firstRunForcedPath/.test(layout));
+  assert(
+    "layout resumes unfinished first-run",
+    /resolveProtectedOnboardingAccess/.test(layout) &&
+      /firstRunForcedPath\(input\.stage\)/.test(read("lib/setup/first-run-stage.ts"))
+  );
   assert(
     "ordinary owner callback still avoids invite",
     resolveEmailConfirmDestination({
@@ -290,8 +298,10 @@ function main() {
     }) === "/invite/abc"
   );
   assert(
-    "pricing skip persists via onboarding_step rates",
-    /onboarding_step: "rates"/.test(read("lib/setup/actions.ts"))
+    "work save advances to labour and completion writes completed",
+    /onboarding_step: "labour"/.test(read("lib/setup/actions.ts")) &&
+      /onboarding_step: "completed"/.test(read("lib/setup/actions.ts")) &&
+      !/onboarding_step: "rates"/.test(read("lib/setup/actions.ts"))
   );
 
   section("GST REGISTERED");
@@ -359,7 +369,14 @@ function main() {
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
   const ready = read("components/setup/FirstRunReady.tsx");
   assert("completion copy", /Create your first project/.test(ready));
-  assert("completion Start first job", /intent="first-job"/.test(ready));
+  assert(
+    "completion hands the first job to the dashboard",
+    /params\.set\("newProject", "1"\)/.test(ready) &&
+      /Create your first project/.test(ready) &&
+      !/NewProjectDialog/.test(ready) &&
+      !/Start first job/.test(ready) &&
+      /intent="first-job"/.test(read("components/projects/DashboardOnboardingHandoff.tsx"))
+  );
   assert("dashboard empty Start your first job", /Start your first job/.test(dashboard));
   assert(
     "dashboard empty hides KPI tiles",
