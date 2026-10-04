@@ -8,6 +8,11 @@ export type AppUserContextValue = {
   organisationName?: string | null;
   tradingName?: string | null;
   setupIncomplete?: boolean;
+  /**
+   * Required answers are still missing. For the later notice only.
+   * Completed organisations stay in the app while this is true.
+   */
+  incompleteSetupNotice?: boolean;
   /** Required onboarding is unfinished. Hide routes that would leave it. */
   onboardingLocked?: boolean;
   showTeamNav?: boolean;

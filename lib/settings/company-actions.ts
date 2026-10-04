@@ -329,13 +329,6 @@ export async function updateCompanySettings(
   }
   if (data.nzbn !== undefined) update.nzbn = data.nzbn;
   if (data.abn !== undefined) update.abn = data.abn;
-  const savedCountry = (data.addressCountry ?? "").trim().toLowerCase();
-  if (
-    (savedCountry === "australia" || savedCountry === "au") &&
-    data.abn !== undefined
-  ) {
-    update.nzbn = null;
-  }
   if (data.gstNumber !== undefined) update.gst_number = data.gstNumber;
   if (data.defaultGstRate !== undefined) {
     update.default_gst_rate = data.defaultGstRate;

@@ -20,6 +20,7 @@ type AppShellProps = {
   organisationName?: string | null;
   tradingName?: string | null;
   setupIncomplete?: boolean;
+  incompleteSetupNotice?: boolean;
   showTeamNav?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
   billingNotice?: TrialBannerNotice | null;
@@ -37,6 +38,7 @@ export function AppShell({
   organisationName,
   tradingName,
   setupIncomplete = false,
+  incompleteSetupNotice = false,
   showTeamNav = false,
   deploymentLabel = null,
   billingNotice = null,
@@ -62,6 +64,7 @@ export function AppShell({
         organisationName,
         tradingName,
         setupIncomplete,
+        incompleteSetupNotice,
         showTeamNav,
         deploymentLabel,
         displayTimezone,

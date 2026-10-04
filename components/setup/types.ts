@@ -39,6 +39,10 @@ export type OrganisationSettings = {
   gst_number?: string | null;
   nzbn?: string | null;
   abn?: string | null;
+  /** Null means the GST question has not been answered. */
+  gst_registered?: boolean | null;
+  carpenter_onboarding_choice?: "company" | "quotr_benchmark" | null;
+  labourer_onboarding_choice?: "company" | "quotr_benchmark" | null;
   prefer_user_rates: boolean;
   allow_benchmark_rates: boolean;
   show_profit_in_estimates: boolean;

@@ -15,12 +15,8 @@ import {
 import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { getFirstRunStage } from "@/lib/setup/actions";
-import {
-  firstRunForcedPath,
-  isRequiredOnboardingAllowedPath,
-  requiredOnboardingLocksNavigation,
-} from "@/lib/setup/first-run-stage";
+import { getFirstRunStage, getOnboardingAccess } from "@/lib/setup/actions";
+import { resolveProtectedOnboardingAccess } from "@/lib/setup/first-run-stage";
 import { lookupPendingInvitationForCurrentUser } from "@/lib/team/public-invite";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
@@ -82,21 +78,22 @@ async function AuthenticatedApp({
     redirect("/app/dashboard");
   }
 
-  const [display, firstRunStage, billingState] = await Promise.all([
+  const [display, firstRunStage, onboardingAccess, billingState] = await Promise.all([
     getAuthDisplayProfile(),
     getFirstRunStage(),
+    getOnboardingAccess(),
     getOrgBillingState(auth.orgId).catch(() => null),
   ]);
 
-  const onboardingLocked = requiredOnboardingLocksNavigation(firstRunStage);
-  const forcedSetup = firstRunForcedPath(firstRunStage);
-  if (
-    onboardingLocked &&
-    forcedSetup &&
-    !isRequiredOnboardingAllowedPath(pathname)
-  ) {
-    redirect(forcedSetup);
+  const onboardingAccessDecision = resolveProtectedOnboardingAccess({
+    stage: firstRunStage,
+    role: onboardingAccess.role,
+    pathname,
+  });
+  if (onboardingAccessDecision.redirectTo) {
+    redirect(onboardingAccessDecision.redirectTo);
   }
+  const onboardingLocked = onboardingAccessDecision.lockNavigation;
 
   if (onboardingLocked) {
     return (
@@ -148,6 +145,7 @@ async function AuthenticatedApp({
       organisationName={display?.organisationName}
       tradingName={display?.tradingName}
       setupIncomplete={false}
+      incompleteSetupNotice={onboardingAccess.incompleteSetupNotice}
       showTeamNav={showTeamNav}
       deploymentLabel={internalDeploymentLabel()}
       billingNotice={billingNotice}

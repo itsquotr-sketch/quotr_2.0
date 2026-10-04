@@ -322,12 +322,19 @@ function main() {
     }) === "done" && firstRunForcedPath("done") === null
   );
   assert(
-    "legacy rates step is not sent back through setup",
+    "new rates step is not a completion shortcut",
     resolveFirstRunStage({
       onboardingStatus: "in_progress",
       onboardingStep: "rates",
       hasPrimaryWorkAreas: true,
-    }) === "done"
+    }) !== "done"
+  );
+  assert(
+    "new review step is not a completion shortcut",
+    resolveFirstRunStage({
+      onboardingStatus: "in_progress",
+      onboardingStep: "review",
+    }) !== "done"
   );
   assert(
     "direct project route is blocked during setup",
@@ -431,10 +438,12 @@ function main() {
       !labourSave.includes('.from("variations")')
   );
   assert(
-    "ABN is stored on abn",
-    actions.includes("payload.abn = value.abn") &&
-      actions.includes("payload.nzbn = null") &&
-      !actions.includes("payload.nzbn = value.nzbn")
+    "GST choice clears GST number and ABN without writing NZBN",
+    actions.includes("gst_registered: registration.gst_registered") &&
+      actions.includes("abn: registration.abn") &&
+      actions.includes("gst_number: registration.gst_number") &&
+      !actions.includes("nzbn: null") &&
+      !actions.includes("nzbn = null")
   );
   assert(
     "onboarding writes use the authenticated org",
@@ -449,7 +458,11 @@ function main() {
   );
 
   const layout = read("app/(protected)/app/layout.tsx");
-  assert("layout enforces the allow-list", layout.includes("isRequiredOnboardingAllowedPath"));
+  assert(
+    "layout uses role-aware onboarding access",
+    layout.includes("resolveProtectedOnboardingAccess") &&
+      read("lib/setup/first-run-stage.ts").includes("isRequiredOnboardingAllowedPath")
+  );
   assert("focused frame replaces primary nav", layout.includes("OnboardingFrame"));
   assert("sidebar has no Setup item", !read("components/app-sidebar.tsx").includes('href: "/app/setup"'));
   assert("mobile menu has no Setup item", !read("components/layout/mobile-menu-sheet.tsx").includes('href: "/app/setup"'));

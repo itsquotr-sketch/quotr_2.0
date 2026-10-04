@@ -1,22 +1,35 @@
 /**
- * Required first-run stage (ONBOARDING-01).
+ * Required first-run stage.
  *
- * New organisations:
- *   not_started / company → company profile
- *   work_areas, no enabled work → work types
- *   labour → carpenter and labourer internal costs
- *   ready → start the first job (still inside the focused gate)
- *   completed → app
+ * Field authority resumes an unfinished organisation at the first missing
+ * answer: basics, address, tax, work, labour, then ready.
+ * Address and tax still open the current company form until the six-step
+ * screens exist.
  *
- * Finished organisations stay out of the gate:
- *   onboarding_status completed, or step completed / review / rates.
- *   `rates` is the previous "pricing visited" marker. Do not treat it as
- *   the new ready screen, or existing companies are sent through setup again.
+ * Finished organisations stay out of the gate when status or step is
+ * `completed`. `rates` and `review` are not completion. The migration
+ * canonicalises those historical rows before this rule is deployed.
  */
 
-export type FirstRunStage = "basics" | "work" | "labour" | "ready" | "done";
+import type { MembershipRole } from "@/lib/team/roles";
+import {
+  assessRequiredOnboarding,
+  isCanonicalOnboardingComplete,
+  type OnboardingAuthoritySnapshot,
+} from "@/lib/setup/onboarding-authority";
+
+export type FirstRunStage =
+  | "basics"
+  | "address"
+  | "tax"
+  | "work"
+  | "labour"
+  | "ready"
+  | "done";
 
 export const FIRST_RUN_BASICS_PATH = "/app/setup?mode=basics";
+export const FIRST_RUN_ADDRESS_PATH = "/app/setup?mode=address";
+export const FIRST_RUN_TAX_PATH = "/app/setup?mode=tax";
 export const FIRST_RUN_WORK_PATH = "/app/setup?mode=work";
 export const FIRST_RUN_LABOUR_PATH = "/app/setup?mode=labour";
 export const FIRST_RUN_READY_PATH = "/app/setup?mode=ready";
@@ -26,31 +39,35 @@ export type FirstRunStageInput = {
   onboardingStep: string | null | undefined;
   /** True when organisation_work_areas has at least one enabled row. */
   hasPrimaryWorkAreas?: boolean;
+  /**
+   * When present, resume follows the stored answers. Omitted only by
+   * step-only callers. The protected layout always supplies it.
+   */
+  authority?: OnboardingAuthoritySnapshot | null;
 };
 
-const GRANDFATHERED_STEPS = new Set(["completed", "review", "rates"]);
-
 export function resolveFirstRunStage(input: FirstRunStageInput): FirstRunStage {
+  if (
+    isCanonicalOnboardingComplete(input.onboardingStatus, input.onboardingStep)
+  ) {
+    return "done";
+  }
+
+  if (input.authority) {
+    return assessRequiredOnboarding(input.authority).stage;
+  }
+
   const status = input.onboardingStatus ?? "not_started";
   const step = input.onboardingStep ?? "company";
   const hasWork = input.hasPrimaryWorkAreas === true;
 
-  if (status === "completed" || GRANDFATHERED_STEPS.has(step)) {
-    return "done";
-  }
-
   if (step === "ready") return "ready";
   if (step === "labour") return "labour";
+  if (status === "not_started" || step === "company") return "basics";
+  if (step === "work_areas") return hasWork ? "labour" : "work";
 
-  if (status === "not_started" || step === "company") {
-    return "basics";
-  }
-
-  if (step === "work_areas") {
-    return hasWork ? "labour" : "work";
-  }
-
-  return "done";
+  // rates, review, and unknown steps are unfinished. They do not open the app.
+  return "basics";
 }
 
 export function firstRunIsComplete(stage: FirstRunStage): boolean {
@@ -61,9 +78,11 @@ export function requiredOnboardingLocksNavigation(stage: FirstRunStage): boolean
   return stage !== "done";
 }
 
-/** Forced resume path while required onboarding is unfinished. */
+/** Forced resume path while the owner is still inside required setup. */
 export function firstRunForcedPath(stage: FirstRunStage): string | null {
   if (stage === "basics") return FIRST_RUN_BASICS_PATH;
+  if (stage === "address") return FIRST_RUN_ADDRESS_PATH;
+  if (stage === "tax") return FIRST_RUN_TAX_PATH;
   if (stage === "work") return FIRST_RUN_WORK_PATH;
   if (stage === "labour") return FIRST_RUN_LABOUR_PATH;
   if (stage === "ready") return FIRST_RUN_READY_PATH;
@@ -85,8 +104,51 @@ export function isRequiredOnboardingAllowedPath(pathname: string | null): boolea
   return false;
 }
 
+export function isCompanySetupWizardPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const path = pathname.split("?")[0] || pathname;
+  return path === "/app/setup";
+}
+
+export type OnboardingAccessDecision = {
+  lockNavigation: boolean;
+  redirectTo: string | null;
+};
+
+/**
+ * Owner is forced through unfinished setup.
+ * Admin may enter the app and may open setup, and is not trapped.
+ * Estimator and Viewer enter the app and are not sent into the company form.
+ * A completed organisation is never redirected, for every role.
+ * An unknown role is not trapped: only a known owner is forced.
+ */
+export function resolveProtectedOnboardingAccess(input: {
+  stage: FirstRunStage;
+  role: MembershipRole | null;
+  pathname: string | null;
+}): OnboardingAccessDecision {
+  if (input.stage === "done") {
+    return { lockNavigation: false, redirectTo: null };
+  }
+
+  if (input.role !== "owner") {
+    if (isCompanySetupWizardPath(input.pathname) && input.role !== "admin") {
+      return { lockNavigation: false, redirectTo: "/app/dashboard" };
+    }
+    return { lockNavigation: false, redirectTo: null };
+  }
+
+  const forced = firstRunForcedPath(input.stage);
+  if (forced && !isRequiredOnboardingAllowedPath(input.pathname)) {
+    return { lockNavigation: true, redirectTo: forced };
+  }
+  return { lockNavigation: true, redirectTo: null };
+}
+
 /**
  * Redirect when the requested setup mode does not match the current stage.
+ * Address and tax use their own mode values. The current screen still
+ * renders the combined company form for those modes.
  * Finished organisations leave the wizard entirely.
  */
 export function setupModeRedirect(
@@ -97,26 +159,22 @@ export function setupModeRedirect(
     return "/app/dashboard";
   }
 
-  if (stage === "basics") {
-    if (requestedMode && requestedMode !== "basics") return FIRST_RUN_BASICS_PATH;
-    return null;
-  }
-
-  if (stage === "work") {
-    if (requestedMode !== "work") return FIRST_RUN_WORK_PATH;
-    return null;
-  }
-
-  if (stage === "labour") {
-    if (requestedMode !== "labour") return FIRST_RUN_LABOUR_PATH;
-    return null;
-  }
-
-  if (stage === "ready") {
-    if (requestedMode !== "ready") return FIRST_RUN_READY_PATH;
-    return null;
-  }
-
+  const expected =
+    stage === "basics"
+      ? "basics"
+      : stage === "address"
+        ? "address"
+        : stage === "tax"
+          ? "tax"
+          : stage === "work"
+            ? "work"
+            : stage === "labour"
+              ? "labour"
+              : stage === "ready"
+                ? "ready"
+                : null;
+  if (!expected) return null;
+  if (requestedMode !== expected) return firstRunForcedPath(stage);
   return null;
 }
 
@@ -124,9 +182,10 @@ export function setupShellMode(
   requestedMode: string | undefined,
   stage: FirstRunStage
 ): "basics" | "work" | "labour" | "ready" {
-  if (stage === "work" || requestedMode === "work") return "work";
-  if (stage === "labour" || requestedMode === "labour") return "labour";
-  if (stage === "ready" || requestedMode === "ready") return "ready";
+  const mode = requestedMode ?? stage;
+  if (mode === "work" || stage === "work") return "work";
+  if (mode === "labour" || stage === "labour") return "labour";
+  if (mode === "ready" || stage === "ready") return "ready";
   return "basics";
 }
 

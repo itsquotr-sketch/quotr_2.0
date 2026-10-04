@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { completeSetup } from "@/lib/setup/actions";
+import { completeRequiredOnboarding } from "@/lib/setup/actions";
 import type { SetupState } from "./types";
 
 type ReviewStepProps = {
@@ -44,7 +44,7 @@ export function ReviewStep({ state, onBack, onComplete }: ReviewStepProps) {
     setError(null);
     setSaving(true);
 
-    const result = await completeSetup();
+    const result = await completeRequiredOnboarding();
     setSaving(false);
 
     if (result.error) {

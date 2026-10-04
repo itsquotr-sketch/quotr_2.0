@@ -115,6 +115,14 @@ async function loadMembershipRole(input: {
   return loadMembershipRoleCached(input.orgId, input.userId);
 }
 
+/** Request-scoped role for read-only routing. Mutations still call requireOrgPermission. */
+export async function getRequestMembershipRole(input: {
+  orgId: string;
+  userId: string;
+}): Promise<MembershipRole | null> {
+  return loadMembershipRole(input);
+}
+
 function isMissingMembershipRelation(
   message: string | undefined,
   code?: string

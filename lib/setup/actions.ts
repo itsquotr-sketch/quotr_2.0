@@ -10,7 +10,11 @@ import {
 import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
-import { permissionDeniedError } from "@/lib/team/permission-server";
+import {
+  getRequestMembershipRole,
+  permissionDeniedError,
+} from "@/lib/team/permission-server";
+import type { MembershipRole } from "@/lib/team/roles";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import type { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -42,13 +46,19 @@ import {
   type FirstRunStage,
 } from "@/lib/setup/first-run-stage";
 import {
+  assessRequiredOnboarding,
+  deriveIncompleteSetup,
+  gstRegistrationPersistence,
+  isCanonicalOnboardingComplete,
+  resolveLabourOnboardingWrite,
+  type LabourOnboardingChoice,
+  type OnboardingAuthoritySnapshot,
+} from "@/lib/setup/onboarding-authority";
+import {
   CARPENTER_LABOUR_RATE_KEY,
   LABOURER_LABOUR_RATE_KEY,
 } from "@/lib/estimate/labour-trade-mapping";
-import {
-  parseRequiredCompanyProfile,
-  parseRequiredHourlyCost,
-} from "@/lib/setup/tax-identifier";
+import { parseRequiredCompanyProfile } from "@/lib/setup/tax-identifier";
 import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
 import { toUserError } from "@/lib/errors/user-message";
 
@@ -142,17 +152,75 @@ export async function needsCompanyBasics(): Promise<boolean> {
   return stage === "basics";
 }
 
+export type OnboardingAccessState = {
+  stage: FirstRunStage;
+  /** Derived for the later incomplete-setup notice. Does not lock navigation. */
+  incompleteSetupNotice: boolean;
+  role: MembershipRole | null;
+};
+
 export async function getFirstRunStage(): Promise<FirstRunStage> {
-  return getFirstRunStageCached();
+  return (await getOnboardingAccessCached()).stage;
 }
 
-async function getFirstRunStageUncached(): Promise<FirstRunStage> {
+export async function getOnboardingAccess(): Promise<OnboardingAccessState> {
+  return getOnboardingAccessCached();
+}
+
+function readLabourChoice(value: unknown): LabourOnboardingChoice | null {
+  return value === "company" || value === "quotr_benchmark" ? value : null;
+}
+
+function positiveLabourCost(
+  rows: Array<{ item_key?: string | null; cost_rate?: number | null; active?: boolean | null }>,
+  itemKey: string
+): boolean {
+  return rows.some(
+    (row) =>
+      row.item_key === itemKey &&
+      row.active !== false &&
+      row.cost_rate != null &&
+      Number(row.cost_rate) > 0
+  );
+}
+
+function authorityFromSettings(
+  settings: Record<string, unknown> | null,
+  hasPrimaryWorkAreas: boolean,
+  labourRates: Array<{ item_key?: string | null; cost_rate?: number | null; active?: boolean | null }>
+): OnboardingAuthoritySnapshot {
+  const margin = Number(settings?.default_margin_percent);
+  const gstRate = Number(settings?.default_gst_rate);
+  return {
+    tradingName: typeof settings?.trading_name === "string" ? settings.trading_name : null,
+    country: typeof settings?.country === "string" ? settings.country : null,
+    addressLine1: typeof settings?.address_line_1 === "string" ? settings.address_line_1 : null,
+    city: typeof settings?.city === "string" ? settings.city : null,
+    postcode: typeof settings?.postcode === "string" ? settings.postcode : null,
+    gstRegistered:
+      settings?.gst_registered === true || settings?.gst_registered === false
+        ? settings.gst_registered
+        : null,
+    gstNumber: typeof settings?.gst_number === "string" ? settings.gst_number : null,
+    abn: typeof settings?.abn === "string" ? settings.abn : null,
+    nzbn: typeof settings?.nzbn === "string" ? settings.nzbn : null,
+    defaultGstRate: Number.isFinite(gstRate) ? gstRate : null,
+    hasPrimaryWorkAreas,
+    carpenterChoice: readLabourChoice(settings?.carpenter_onboarding_choice),
+    carpenterHasPositiveCost: positiveLabourCost(labourRates, CARPENTER_LABOUR_RATE_KEY),
+    labourerChoice: readLabourChoice(settings?.labourer_onboarding_choice),
+    labourerHasPositiveCost: positiveLabourCost(labourRates, LABOURER_LABOUR_RATE_KEY),
+    marginPercent: Number.isFinite(margin) ? margin : null,
+  };
+}
+
+async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
   const context = await getAuthOrgContext();
   if (!context) {
-    return "basics";
+    return { stage: "basics", incompleteSetupNotice: false, role: null };
   }
 
-  const [settings, { data: preferredWorkAreas }] = await Promise.all([
+  const [settings, preferredWorkAreas, labourRates, role] = await Promise.all([
     loadOrganisationSettingsRow(context.orgId),
     context.supabase
       .from("organisation_work_areas")
@@ -160,18 +228,79 @@ async function getFirstRunStageUncached(): Promise<FirstRunStage> {
       .eq("org_id", context.orgId)
       .eq("enabled", true)
       .limit(1),
+    context.supabase
+      .from("rates")
+      .select("item_key, cost_rate, active")
+      .eq("org_id", context.orgId)
+      .eq("rate_type", "labour")
+      .in("item_key", [CARPENTER_LABOUR_RATE_KEY, LABOURER_LABOUR_RATE_KEY]),
+    getRequestMembershipRole({ orgId: context.orgId, userId: context.user.id }),
   ]);
 
-  return resolveFirstRunStage({
-    onboardingStatus: settings?.onboarding_status as string | null | undefined,
-    onboardingStep: settings?.onboarding_step as string | null | undefined,
-    hasPrimaryWorkAreas: (preferredWorkAreas?.length ?? 0) > 0,
-  });
+  const hasPrimaryWorkAreas = (preferredWorkAreas.data?.length ?? 0) > 0;
+  const authority = authorityFromSettings(
+    settings,
+    hasPrimaryWorkAreas,
+    labourRates.data ?? []
+  );
+  const onboardingStatus = settings?.onboarding_status as string | null | undefined;
+  const onboardingStep = settings?.onboarding_step as string | null | undefined;
+
+  return {
+    stage: resolveFirstRunStage({
+      onboardingStatus,
+      onboardingStep,
+      hasPrimaryWorkAreas,
+      authority,
+    }),
+    incompleteSetupNotice: deriveIncompleteSetup(authority),
+    role,
+  };
 }
 
-const getFirstRunStageCached: () => Promise<FirstRunStage> = cache(
-  getFirstRunStageUncached
+const getOnboardingAccessCached: () => Promise<OnboardingAccessState> = cache(
+  loadOnboardingAccessUncached
 );
+
+async function loadFreshOnboardingAuthority(): Promise<{
+  status: string | null;
+  step: string | null;
+  authority: OnboardingAuthoritySnapshot;
+} | null> {
+  const context = await getSetupAuthContext();
+  if (!context) return null;
+  const [settingsResult, workResult, labourResult] = await Promise.all([
+    context.supabase
+      .from("organisation_settings")
+      .select(
+        "onboarding_status, onboarding_step, trading_name, country, address_line_1, city, postcode, gst_registered, gst_number, abn, nzbn, default_gst_rate, default_margin_percent, carpenter_onboarding_choice, labourer_onboarding_choice"
+      )
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+    context.supabase
+      .from("organisation_work_areas")
+      .select("work_area_type")
+      .eq("org_id", context.orgId)
+      .eq("enabled", true)
+      .limit(1),
+    context.supabase
+      .from("rates")
+      .select("item_key, cost_rate, active")
+      .eq("org_id", context.orgId)
+      .eq("rate_type", "labour")
+      .in("item_key", [CARPENTER_LABOUR_RATE_KEY, LABOURER_LABOUR_RATE_KEY]),
+  ]);
+  const settings = (settingsResult.data ?? null) as Record<string, unknown> | null;
+  return {
+    status: (settings?.onboarding_status as string | null | undefined) ?? null,
+    step: (settings?.onboarding_step as string | null | undefined) ?? null,
+    authority: authorityFromSettings(
+      settings,
+      (workResult.data?.length ?? 0) > 0,
+      labourResult.data ?? []
+    ),
+  };
+}
 
 const companyBasicsSchema = z.object({
   currency: z
@@ -372,6 +501,14 @@ export async function saveRequiredCompanyProfile(
     user.email ||
     null;
 
+  const registration = gstRegistrationPersistence({
+    registered: value.gstRegistered,
+    countryCode: value.countryCode,
+    gstNumber: value.gstNumber,
+    abn: value.abn,
+    suggestedRate: value.defaultGstRate,
+  });
+
   const payload: Record<string, unknown> = {
     org_id: orgId,
     trading_name: value.tradingName,
@@ -383,8 +520,10 @@ export async function saveRequiredCompanyProfile(
     postcode: value.postcode,
     region: value.region,
     address_country: value.addressCountry,
-    default_gst_rate: value.defaultGstRate,
-    gst_number: value.gstNumber,
+    gst_registered: registration.gst_registered,
+    default_gst_rate: registration.default_gst_rate,
+    gst_number: registration.gst_number,
+    abn: registration.abn,
     contact_email: contactEmail,
     ...(timezone ? { timezone } : {}),
     ...(shouldAdvance
@@ -394,11 +533,6 @@ export async function saveRequiredCompanyProfile(
         }
       : {}),
   };
-
-  if (value.countryCode === "AU") {
-    payload.abn = value.abn;
-    payload.nzbn = null;
-  }
 
   const { error } = await supabase
     .from("organisation_settings")
@@ -426,9 +560,8 @@ const pricingBasicsSchema = z.object({
  * Optional first-run pricing basics.
  * Labour writes labour.carpenter.hour cost_rate (sell left unset so margin applies).
  * Margin writes organisation_settings.default_margin_percent.
- * Skip leaves benchmarks allowed and 20% default margin.
- * Skip still writes onboarding_step = rates so returning users are not
- * sent back to Pricing Basics.
+ * Skip leaves benchmarks allowed and the stored margin untouched.
+ * It does not write a completion step.
  */
 export async function savePricingBasics(input: {
   labourCost?: string | number | null;
@@ -503,22 +636,6 @@ export async function savePricingBasics(input: {
     if (error) {
       return { error: "Could not save your target margin. Please try again." };
     }
-  }
-
-  const { data: settings } = await supabase
-    .from("organisation_settings")
-    .select("onboarding_status")
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  if (settings?.onboarding_status !== "completed") {
-    await supabase
-      .from("organisation_settings")
-      .update({
-        onboarding_status: "in_progress",
-        onboarding_step: "rates",
-      })
-      .eq("org_id", orgId);
   }
 
   revalidatePath("/app/setup");
@@ -882,23 +999,6 @@ export async function saveStarterRates(input: {
     }
   }
 
-  const { data: settings } = await supabase
-    .from("organisation_settings")
-    .select("onboarding_status")
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  if (settings?.onboarding_status !== "completed") {
-    const { error: settingsError } = await supabase
-      .from("organisation_settings")
-      .update({ onboarding_step: "review" })
-      .eq("org_id", orgId);
-
-    if (settingsError) {
-      return setupDbError(settingsError);
-    }
-  }
-
   revalidatePath("/app/setup");
   revalidatePath("/app/rates");
   revalidatePath("/app/dashboard");
@@ -906,22 +1006,17 @@ export async function saveStarterRates(input: {
   return {};
 }
 
-export async function completeSetup(): Promise<ActionResult> {
-  const context = await getSetupAuthContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
-  }
-
-  const { supabase, orgId } = context;
-
-  const { error } = await supabase
+async function writeCanonicalOnboardingCompletion(
+  context: SetupAuthContext
+): Promise<ActionResult> {
+  const { error } = await context.supabase
     .from("organisation_settings")
     .update({
       onboarding_status: "completed",
       onboarding_step: "completed",
       onboarding_completed_at: new Date().toISOString(),
     })
-    .eq("org_id", orgId);
+    .eq("org_id", context.orgId);
 
   if (error) {
     return setupDbError(error);
@@ -930,6 +1025,11 @@ export async function completeSetup(): Promise<ActionResult> {
   revalidatePath("/app/setup");
   revalidatePath("/app/dashboard");
   return { success: true };
+}
+
+/** Legacy entry. Completes only through completeRequiredOnboarding. */
+export async function completeSetup(): Promise<ActionResult> {
+  return completeRequiredOnboarding();
 }
 
 async function upsertInternalLabourCost(params: {
@@ -971,10 +1071,20 @@ async function upsertInternalLabourCost(params: {
 export async function saveRequiredLabourCosts(input: {
   carpenterCost?: string | number | null;
   labourerCost?: string | number | null;
+  carpenterChoice?: string | null;
+  labourerChoice?: string | null;
   targetMarginPercent?: string | number | null;
 }): Promise<ActionResult> {
-  const carpenter = parseRequiredHourlyCost(input.carpenterCost, "carpenter");
-  const labourer = parseRequiredHourlyCost(input.labourerCost, "labourer");
+  const carpenter = resolveLabourOnboardingWrite({
+    choice: input.carpenterChoice,
+    cost: input.carpenterCost,
+    label: "carpenter",
+  });
+  const labourer = resolveLabourOnboardingWrite({
+    choice: input.labourerChoice,
+    cost: input.labourerCost,
+    label: "labourer",
+  });
   const margin = parseRequiredTargetMargin(input.targetMarginPercent);
   const fieldErrors: Record<string, string[]> = {};
   if (!carpenter.ok) fieldErrors.carpenterCost = [carpenter.error];
@@ -999,25 +1109,29 @@ export async function saveRequiredLabourCosts(input: {
 
   if (!carpenter.ok || !labourer.ok || !margin.ok) return { fieldErrors };
 
-  const carpenterError = await upsertInternalLabourCost({
-    supabase: context.supabase,
-    orgId,
-    itemKey: CARPENTER_LABOUR_RATE_KEY,
-    trade: "carpenter",
-    label: "Carpenter / builder",
-    costRate: carpenter.costRate,
-  });
-  if (carpenterError) return carpenterError;
+  if (carpenter.writeRate) {
+    const carpenterError = await upsertInternalLabourCost({
+      supabase: context.supabase,
+      orgId,
+      itemKey: CARPENTER_LABOUR_RATE_KEY,
+      trade: "carpenter",
+      label: "Carpenter / builder",
+      costRate: carpenter.costRate,
+    });
+    if (carpenterError) return carpenterError;
+  }
 
-  const labourerError = await upsertInternalLabourCost({
-    supabase: context.supabase,
-    orgId,
-    itemKey: LABOURER_LABOUR_RATE_KEY,
-    trade: "labourer",
-    label: "Labourer",
-    costRate: labourer.costRate,
-  });
-  if (labourerError) return labourerError;
+  if (labourer.writeRate) {
+    const labourerError = await upsertInternalLabourCost({
+      supabase: context.supabase,
+      orgId,
+      itemKey: LABOURER_LABOUR_RATE_KEY,
+      trade: "labourer",
+      label: "Labourer",
+      costRate: labourer.costRate,
+    });
+    if (labourerError) return labourerError;
+  }
 
   const { data: settings } = await context.supabase
     .from("organisation_settings")
@@ -1027,6 +1141,8 @@ export async function saveRequiredLabourCosts(input: {
 
   const settingsUpdate: Record<string, unknown> = {
     default_margin_percent: margin.marginPercent,
+    carpenter_onboarding_choice: carpenter.choice,
+    labourer_onboarding_choice: labourer.choice,
   };
   if (settings?.onboarding_status !== "completed") {
     settingsUpdate.onboarding_status = "in_progress";
@@ -1044,18 +1160,28 @@ export async function saveRequiredLabourCosts(input: {
   return { success: true };
 }
 
-/** Marks required onboarding finished. Safe to call again. */
+/** Single completion event. Safe to call again. Does not require marketing consent. */
 export async function completeRequiredOnboarding(): Promise<ActionResult> {
   const context = await getSetupAuthContext();
   if (!context) return MISSING_ORG_ERROR;
 
-  const stage = await getFirstRunStageUncached();
-  if (stage === "done") return { success: true };
-  if (stage !== "ready") {
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
+
+  const loaded = await loadFreshOnboardingAuthority();
+  if (!loaded) return MISSING_ORG_ERROR;
+  if (isCanonicalOnboardingComplete(loaded.status, loaded.step)) {
+    return { success: true };
+  }
+  if (!assessRequiredOnboarding(loaded.authority).readyToComplete) {
     return { error: "Finish the required setup steps first." };
   }
 
-  return completeSetup();
+  return writeCanonicalOnboardingCompletion(context);
 }
 
 export async function dismissOptionalPersonalisation(): Promise<ActionResult> {
