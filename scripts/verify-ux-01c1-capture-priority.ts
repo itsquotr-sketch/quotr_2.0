@@ -99,14 +99,14 @@ check(
   shell.includes("<EstimateOverview") &&
     shell.includes("onReviewEstimate={() => {") &&
     shell.includes("setBuilderReviewOpen(true)") &&
-    overview.includes("Ready for Pricing") &&
-    overview.includes("No required issues remain.") &&
+    overview.includes("Estimate ready") &&
+    overview.includes("data-estimate-missing-prices") &&
     overview.includes('data-estimate-overview-disclosure') &&
     overview.includes('marker="assumptions"') &&
     overview.includes('marker="benchmark"') &&
     overview.includes('data-estimate-overview-primary="continue_pricing"') &&
     overview.includes("Pricing Required") &&
-    overview.includes("Needs attention in Pricing")
+    overview.includes("data-estimate-missing-prices")
 );
 
 check(

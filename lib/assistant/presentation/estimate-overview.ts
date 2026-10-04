@@ -19,9 +19,16 @@ import {
   inferDisplayCostKnown,
 } from "@/lib/financial-presentation/format";
 
-/** Visible estimate boundary already used by the estimator. */
+/** Visible estimate boundary. This is not a client document. */
 export const ESTIMATE_OVERVIEW_BOUNDARY_COPY =
-  "This is an internal working estimate, not a client quote.";
+  "Internal working estimate · not shown to the client";
+
+export function estimateMissingPriceNotice(count: number): string {
+  if (count === 1) {
+    return "1 item still needs a price. Complete this in Pricing.";
+  }
+  return `${count} items still need prices. Complete these in Pricing.`;
+}
 
 /** Shown when category dollars are rounded independently of the direct-cost dollar. */
 export const ESTIMATE_OVERVIEW_ROUNDED_NOTE =
@@ -621,9 +628,7 @@ export function projectEstimateOverview(
       ? "Incomplete"
       : status === "stale"
         ? "Stale"
-        : status === "pricing_required"
-          ? "Pricing Required"
-          : "Current";
+        : "Estimate ready";
   const statusDetail =
     status === "incomplete"
       ? input.detailsOutstanding
@@ -632,9 +637,10 @@ export function projectEstimateOverview(
       : status === "stale"
         ? STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
-          ? input.review?.overview.partialEstimateLabel?.trim() ||
-            "Some items still require pricing."
-          : "This estimate is current.";
+          ? pricingRequired.length > 0
+            ? estimateMissingPriceNotice(pricingRequired.length)
+            : "Some items still need prices. Complete these in Pricing."
+          : "Estimate ready";
 
   const primary: EstimateOverviewPrimary = !input.hasEstimate
     ? input.detailsOutstanding

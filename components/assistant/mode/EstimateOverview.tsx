@@ -131,10 +131,6 @@ export function EstimateOverview({
     model.pricingAttention.length > 0 ||
     model.accuracy.length > 0 ||
     model.rates.length > 0;
-  const blockerRepeatsStatus = model.required.some((item) => item.title === model.statusDetail);
-  const showQuietStatus =
-    (model.status === "stale" || model.status === "incomplete") && !blockerRepeatsStatus;
-
   if (
     !showCommercial &&
     !showActionCentre &&
@@ -149,6 +145,24 @@ export function EstimateOverview({
 
   return (
     <div className="flex min-w-0 flex-col gap-4 overflow-x-hidden" data-estimate-overview>
+      <header className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Estimate</h1>
+        <p
+          className="mt-1 text-sm font-medium text-foreground"
+          data-estimate-overview-status={model.status}
+        >
+          {model.statusLabel}
+        </p>
+        {model.status === "pricing_required" ? (
+          <p className="mt-1 text-sm leading-6 text-foreground/80" data-estimate-missing-prices>
+            {model.statusDetail}
+          </p>
+        ) : model.status === "stale" || model.status === "incomplete" ? (
+          <p className="mt-1 text-sm leading-6 text-foreground/75">
+            {model.statusDetail}
+          </p>
+        ) : null}
+      </header>
       {showCommercial ? (
       <section className="order-1 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-commercial data-mobile-commercial-overview="true">
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
@@ -183,19 +197,6 @@ export function EstimateOverview({
             </p>
           ) : null}
         </Stat>
-
-        {showQuietStatus ? (
-          <p
-            className="mt-3 text-sm leading-6 text-foreground/75"
-            data-estimate-overview-status={model.status}
-          >
-            {model.statusDetail}
-          </p>
-        ) : (
-          <p className="sr-only" data-estimate-overview-status={model.status}>
-            {model.statusLabel}
-          </p>
-        )}
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {direct ? (
@@ -274,10 +275,12 @@ export function EstimateOverview({
       {showActionCentre ? (
       <section className="order-2 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-actions>
         <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
-        {readyForPricing ? (
+        {readyForPricing && model.pricingAttention.length === 0 ? (
           <div className="mt-3" data-estimate-overview-ready="true">
-            <h3 className="text-sm font-semibold text-foreground">Ready for Pricing</h3>
-            <p className="mt-1 text-sm text-foreground/75">No required issues remain.</p>
+            <h3 className="text-sm font-semibold text-foreground">Estimate ready</h3>
+            <p className="mt-1 text-sm text-foreground/75">
+              Continue to Pricing when you are ready to prepare the client price.
+            </p>
           </div>
         ) : showRequiredList ? (
           <div className="mt-3" data-estimate-overview-blockers="true">
@@ -290,7 +293,7 @@ export function EstimateOverview({
         ) : null}
         {model.pricingAttention.length > 0 ? (
           <div className="mt-3 border-t border-border/70 pt-3" data-estimate-overview-pricing-attention="true">
-            <h3 className="text-sm font-semibold text-foreground/80">Needs attention in Pricing</h3>
+            <h3 className="text-sm font-semibold text-foreground/80">Pricing Required</h3>
             <ActionItems items={model.pricingAttention} />
           </div>
         ) : null}

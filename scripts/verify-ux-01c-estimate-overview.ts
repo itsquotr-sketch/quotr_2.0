@@ -122,7 +122,7 @@ check("2 readiness blocker is required and blocks Pricing", incomplete.required.
 const current = projectEstimateOverview(input({}));
 check("3 current estimate can continue to Pricing", current.status === "current" && current.primary === "continue_pricing" && current.pricingEntry === "create" && !current.pricingCreationBlocked);
 check("3 current sell shows ex GST, GST, and incl GST", current.sell.presentation === "current" && current.sell.exGst === "$1,000" && current.sell.gst === "$150" && current.sell.inclGst === "$1,150");
-check("3 boundary copy stays an estimate, not a quote", current.sell.boundaryCopy === ESTIMATE_OVERVIEW_BOUNDARY_COPY && current.sell.boundaryCopy.includes("not a client quote"));
+check("3 boundary copy stays an estimate, not a quote", current.sell.boundaryCopy === ESTIMATE_OVERVIEW_BOUNDARY_COPY && current.sell.boundaryCopy.includes("not shown to the client"));
 
 const stale = projectEstimateOverview(input({ isStale: true }));
 check("4 stale says inputs changed and is not current money", stale.status === "stale" && /latest job details/i.test(stale.statusDetail) && stale.sell.presentation === "previous" && stale.composition.length === 0);
@@ -173,6 +173,7 @@ const pricingRequired = projectEstimateOverview(
 check("5 Pricing Required stays unresolved with no invented money", pricingRequired.status === "pricing_required" && pricingRequired.sell.presentation === "unresolved" && pricingRequired.sell.exGst == null && pricingRequired.composition.length === 0);
 check("5 Pricing Required needs attention and does not block Pricing", pricingRequired.requiredCount === 0 && pricingRequired.pricingAttentionCount === 1 && pricingRequired.pricingAttention[0]?.title === "Manufactured gate" && pricingRequired.pricingAttention[0]?.blocksPricing === false && pricingRequired.pricingAttention[0]?.money == null && pricingRequired.pricingAttention[0]?.group === "pricing_attention");
 check("5 Pricing Required does not add a new Pricing-creation block", !pricingRequired.pricingCreationBlocked && pricingRequired.pricingEntry === "create");
+check("5 missing prices stay Estimate ready and name the count", pricingRequired.statusLabel === "Estimate ready" && pricingRequired.statusDetail === "1 item still needs a price. Complete this in Pricing.");
 
 const known = projectEstimateOverview(input({}));
 check("6 known material cost is shown", known.composition.some((row) => row.id === "materials" && row.value === "$400"));
@@ -288,8 +289,8 @@ check("Pricing Required work area is counted without a dollar amount", pricingRe
 
 const linkSource = read("components/pricing/PrepareFinalPricingButton.tsx");
 check("R1 no duplicate commercial summary on the Estimate page", !componentSource.includes("Commercial Overview") && shellSource.includes('assistantMode === "estimate_ready" && "grid-cols-1"') && !/estimate_ready"\s*&&\s*\n\s*"lg:grid-cols-\[minmax\(0,1fr\)_380px\]"/.test(shellSource) && shellSource.includes('assistantMode === "planning" ? (') && shellSource.includes("compactCommercialSidebar={false}"));
-check("R1 zero blockers say Ready for Pricing", componentSource.includes("Ready for Pricing") && componentSource.includes("No required issues remain.") && !componentSource.includes("Required items are listed below"));
-check("R1 Pricing Required wording does not say it blocks Pricing", componentSource.includes("Needs attention in Pricing") && componentSource.includes('data-estimate-overview-pricing-attention="true"'));
+check("R1 zero blockers say Estimate ready", componentSource.includes("Estimate ready") && componentSource.includes("data-estimate-overview-ready") && !componentSource.includes("Required items are listed below") && !componentSource.includes("Ready for Pricing"));
+check("R1 Pricing Required wording does not say it blocks Pricing", componentSource.includes("Pricing Required") && componentSource.includes("data-estimate-missing-prices") && componentSource.includes('data-estimate-overview-pricing-attention="true"'));
 check("R1 optional assumptions and benchmarks are collapsed disclosures", componentSource.includes("<details") && !componentSource.includes("<details open") && componentSource.includes("data-estimate-overview-disclosure") && componentSource.includes('marker="assumptions"') && componentSource.includes('marker="benchmark"') && componentSource.includes("assumptionSummary"));
 check("R1 action labels keep existing destinations", componentSource.includes("View work area breakdown") && componentSource.includes("editJobDetails") && componentSource.includes("label={model.primaryLabel}") && linkSource.includes("pricing/${pricingDocumentId}") && linkSource.includes('label = "Open Pricing"') && shellSource.includes("setBuilderReviewOpen(true)") && shellSource.includes("openEditJob(null)"));
 check("R1 only Continue to Pricing uses the orange primary", componentSource.includes("pricingPrimaryClassName") && componentSource.includes("var(--brand-orange)") && componentSource.includes('data-estimate-overview-primary="continue_pricing"'));
