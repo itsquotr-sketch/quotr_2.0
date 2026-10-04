@@ -69,7 +69,7 @@ const reviewHandler = shell.slice(
 
 check(
   "1 Overview remains the default",
-  shell.includes('useState<EstimatePresentationView>("overview")') &&
+  shell.includes("initialEstimateSection = \"overview\"") &&
     shell.includes("data-estimate-view={estimateView}") &&
     breakdown.includes("data-estimate-view-tab={item.id}") &&
     breakdown.includes('id: "overview", label: "Overview"')

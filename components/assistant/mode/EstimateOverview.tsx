@@ -30,6 +30,7 @@ type EstimateOverviewProps = {
   onReviewEstimate?: () => void;
   onEditJob?: () => void;
   onViewBreakdown?: () => void;
+  onViewWorkArea?: (workAreaId: string) => void;
   marginControl?: ReactNode;
   marginSaveIndicator?: ReactNode;
 };
@@ -53,7 +54,13 @@ function Stat({
   );
 }
 
-function ActionItems({ items }: { items: readonly EstimateOverviewAction[] }) {
+function ActionItems({
+  items,
+  onViewWorkArea,
+}: {
+  items: readonly EstimateOverviewAction[];
+  onViewWorkArea?: (workAreaId: string) => void;
+}) {
   return (
     <ul className="mt-1">
       {items.map((item) => (
@@ -71,6 +78,16 @@ function ActionItems({ items }: { items: readonly EstimateOverviewAction[] }) {
           ) : null}
           {item.workAreaName ? (
             <p className="mt-1 text-sm text-foreground/75">{item.workAreaName}</p>
+          ) : null}
+          {item.workAreaId && onViewWorkArea ? (
+            <button
+              type="button"
+              className="mt-2 inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
+              data-estimate-view-work-area={item.workAreaId}
+              onClick={() => onViewWorkArea(item.workAreaId as string)}
+            >
+              View work area
+            </button>
           ) : null}
         </li>
       ))}
@@ -112,6 +129,7 @@ export function EstimateOverview({
   onReviewEstimate,
   onEditJob,
   onViewBreakdown,
+  onViewWorkArea,
   marginControl,
   marginSaveIndicator,
 }: EstimateOverviewProps) {
@@ -288,13 +306,13 @@ export function EstimateOverview({
             <p className="mt-1 text-sm font-medium tabular-nums text-foreground" data-estimate-overview-required-count>
               {model.requiredCount}
             </p>
-            <ActionItems items={model.required} />
+            <ActionItems items={model.required} onViewWorkArea={onViewWorkArea} />
           </div>
         ) : null}
         {model.pricingAttention.length > 0 ? (
           <div className="mt-3 border-t border-border/70 pt-3" data-estimate-overview-pricing-attention="true">
             <h3 className="text-sm font-semibold text-foreground/80">Pricing Required</h3>
-            <ActionItems items={model.pricingAttention} />
+            <ActionItems items={model.pricingAttention} onViewWorkArea={onViewWorkArea} />
           </div>
         ) : null}
         <CollapsedNotice

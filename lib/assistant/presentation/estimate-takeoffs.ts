@@ -31,6 +31,7 @@ type PlacedLine = {
   readonly line: BuilderReviewPricedLine;
   readonly group: BuilderReviewLineGroup | null;
   readonly workArea: string;
+  readonly workAreaId: string | null;
   readonly portion: string | null;
   readonly shared: boolean;
 };
@@ -53,6 +54,8 @@ export type TakeoffRow = {
   readonly productivitySource: string | null;
   readonly hourlyRateSource: string | null;
   readonly workArea: string;
+  /** Present only when the source work area already has a stable id. */
+  readonly workAreaId: string | null;
   readonly portion: string | null;
   readonly quantity: string | null;
   readonly unit: string | null;
@@ -272,6 +275,7 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     productivitySource: labour ? line.productivityLabel : null,
     hourlyRateSource: labour ? sourceLabel(line, required) : null,
     workArea: placed.workArea,
+    workAreaId: placed.workAreaId,
     portion: placed.portion,
     quantity: line.quantity == null ? null : formatQuantity(line.quantity),
     unit: line.unit,
@@ -317,6 +321,7 @@ function placeLines(view: BuilderReviewView): PlacedLine[] {
           line,
           group,
           workArea: area.workAreaName,
+          workAreaId: area.workAreaId,
           portion: group.label || "Shared",
           shared: true,
         });
@@ -333,6 +338,7 @@ function placeLines(view: BuilderReviewView): PlacedLine[] {
             line,
             group,
             workArea: area.workAreaName,
+            workAreaId: area.workAreaId,
             portion: portion.label,
             shared: false,
           });
@@ -357,6 +363,7 @@ function pushCategoryLines(
         line,
         group: null,
         workArea: area.workAreaName,
+        workAreaId: area.workAreaId,
         portion: null,
         shared: false,
       });
@@ -368,6 +375,7 @@ function pushCategoryLines(
           line,
           group,
           workArea: area.workAreaName,
+          workAreaId: area.workAreaId,
           portion: group.label,
           shared: false,
         });

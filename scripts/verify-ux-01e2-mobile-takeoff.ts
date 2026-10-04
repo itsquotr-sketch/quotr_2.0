@@ -35,7 +35,7 @@ const tabBlock = control.slice(
 
 check(
   "1 mobile dropdown replaces the tabs",
-  selectBlock.includes("lg:hidden") &&
+  selectBlock.includes("md:hidden") &&
     selectBlock.includes("Estimate view") &&
     selectBlock.includes("data-estimate-view-dropdown") &&
     selectBlock.includes('id: "overview"') === false &&
@@ -48,7 +48,7 @@ check(
 check(
   "2 desktop tabs remain",
   tabBlock.includes("hidden") &&
-    tabBlock.includes("lg:flex") &&
+    tabBlock.includes("md:flex") &&
     control.includes("data-estimate-view-tab={item.id}") &&
     control.includes('role="tablist"')
 );
@@ -64,8 +64,8 @@ check(
 check(
   "4 no mobile horizontal tab scroller remains",
   tabBlock.includes("hidden") &&
-    tabBlock.includes("lg:flex") &&
-    selectBlock.includes("lg:hidden") &&
+    tabBlock.includes("md:flex") &&
+    selectBlock.includes("md:hidden") &&
     !selectBlock.includes("overflow-x-auto")
 );
 

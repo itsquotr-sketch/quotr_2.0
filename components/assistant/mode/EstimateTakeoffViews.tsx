@@ -38,6 +38,7 @@ type TakeoffActions = {
   onRegenerate?: () => void;
   regenerateLabel?: string;
   pricing?: PricingRoute | null;
+  onViewWorkArea?: (workAreaId: string) => void;
 };
 
 function Actions({
@@ -220,16 +221,38 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ViewWorkAreaButton({
+  workAreaId,
+  onViewWorkArea,
+}: {
+  workAreaId: string | null;
+  onViewWorkArea?: (workAreaId: string) => void;
+}) {
+  if (!workAreaId || !onViewWorkArea) return null;
+  return (
+    <button
+      type="button"
+      className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
+      data-takeoff-view-work-area={workAreaId}
+      onClick={() => onViewWorkArea(workAreaId)}
+    >
+      View work area
+    </button>
+  );
+}
+
 function CompactTakeoffRow({
   row,
   kind,
   open,
   onToggle,
+  onViewWorkArea,
 }: {
   row: TakeoffRow;
   kind: "materials" | "labour";
   open: boolean;
   onToggle: () => void;
+  onViewWorkArea?: (workAreaId: string) => void;
 }) {
   const materials = kind === "materials";
   const title = materials ? (row.product ?? row.description) : (row.activity ?? row.description);
@@ -315,6 +338,7 @@ function CompactTakeoffRow({
               {TAKEOFF_PRICING_EXPLANATION}
             </p>
           ) : null}
+          <ViewWorkAreaButton workAreaId={row.workAreaId} onViewWorkArea={onViewWorkArea} />
           <p className="text-sm leading-5 text-foreground/75 min-[420px]:col-span-2">
             {materials
               ? "Change physical quantities in Work Area details. Complete commercial prices in Pricing."
@@ -329,9 +353,11 @@ function CompactTakeoffRow({
 function TakeoffRows({
   rows,
   kind,
+  onViewWorkArea,
 }: {
   rows: readonly TakeoffRow[];
   kind: "materials" | "labour";
+  onViewWorkArea?: (workAreaId: string) => void;
 }) {
   const materials = kind === "materials";
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -389,6 +415,7 @@ function TakeoffRows({
                 kind={kind}
                 open={open}
                 onToggle={() => toggle(row.id)}
+                onViewWorkArea={onViewWorkArea}
               />
               <div className="hidden lg:contents">
                 <IdentityCell row={row} kind={kind} />
@@ -427,6 +454,9 @@ function TakeoffRows({
                     {TAKEOFF_PRICING_EXPLANATION}
                   </p>
                 ) : null}
+                <div className={cn("hidden lg:block", materials ? "lg:col-span-7" : "lg:col-span-8")}>
+                  <ViewWorkAreaButton workAreaId={row.workAreaId} onViewWorkArea={onViewWorkArea} />
+                </div>
               </div>
             </li>
           );
@@ -566,7 +596,11 @@ function TakeoffBoard({
                 data-takeoff-group={group.workArea}
               >
                 <h3 className="text-base font-semibold leading-snug break-words">{group.workArea}</h3>
-                <TakeoffRows rows={group.rows} kind={kind} />
+                <TakeoffRows
+                  rows={group.rows}
+                  kind={kind}
+                  onViewWorkArea={actions.onViewWorkArea}
+                />
               </section>
             ))
           )}

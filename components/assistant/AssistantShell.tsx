@@ -19,6 +19,11 @@ import {
   type EstimatePresentationView,
 } from "@/components/assistant/mode/WorkAreaBreakdown";
 import {
+  ESTIMATE_SECTION_PARAM,
+  estimateSectionQuery,
+  parseEstimateSection,
+} from "@/lib/assistant/presentation/estimate-section";
+import {
   AssumptionsChecks,
   LabourTakeoff,
   MaterialsTakeoff,
@@ -223,6 +228,7 @@ type AssistantShellProps = {
   scopeDiscoveryInitialResults?: SafeResultsRead | null;
   documents?: ProjectDocumentCentreModel | null;
   canUploadFiles?: boolean;
+  initialEstimateSection?: EstimatePresentationView;
 };
 
 type PendingAction =
@@ -258,8 +264,28 @@ export function AssistantShell({
   scopeDiscoveryInitialResults = null,
   documents = null,
   canUploadFiles = false,
+  initialEstimateSection = "overview",
 }: AssistantShellProps) {
   const router = useRouter();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get(ESTIMATE_SECTION_PARAM);
+    const view = parseEstimateSection(raw);
+    const canonical = estimateSectionQuery(view);
+    if ((raw ?? null) !== canonical) {
+      const url = new URL(window.location.href);
+      if (canonical) url.searchParams.set(ESTIMATE_SECTION_PARAM, canonical);
+      else url.searchParams.delete(ESTIMATE_SECTION_PARAM);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+    function onPop() {
+      setEstimateViewState(
+        parseEstimateSection(new URLSearchParams(window.location.search).get(ESTIMATE_SECTION_PARAM))
+      );
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const actionLockRef = useRef(false);
   const generationRequestSeqRef = useRef(0);
   const appliedGenerationRef = useRef<AppliedEstimateGeneration | null>(null);
@@ -413,7 +439,28 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
-  const [estimateView, setEstimateView] = useState<EstimatePresentationView>("overview");
+  const [estimateView, setEstimateViewState] = useState<EstimatePresentationView>(
+    initialEstimateSection
+  );
+  const [focusWorkAreaId, setFocusWorkAreaId] = useState<string | null>(null);
+  const setEstimateView = useCallback((view: EstimatePresentationView) => {
+    setEstimateViewState(view);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const next = estimateSectionQuery(view);
+    if (next) url.searchParams.set(ESTIMATE_SECTION_PARAM, next);
+    else url.searchParams.delete(ESTIMATE_SECTION_PARAM);
+    const nextHref = `${url.pathname}${url.search}${url.hash}`;
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextHref !== currentHref) {
+      window.history.pushState({ estimateSection: view }, "", nextHref);
+    }
+  }, []);
+  const openWorkArea = useCallback((workAreaId: string) => {
+    if (!workAreaId) return;
+    setFocusWorkAreaId(workAreaId);
+    setEstimateView("work_areas");
+  }, [setEstimateView]);
   const [builderReviewCompleted, setBuilderReviewCompleted] = useState(false);
   const [refineAfterEstimateOpen, setRefineAfterEstimateOpen] = useState(false);
   const [refineAfterEstimateFocusKey, setRefineAfterEstimateFocusKey] = useState<
@@ -2897,6 +2944,8 @@ export function AssistantShell({
                     <WorkAreaBreakdown
                       view={builderReviewView}
                       scope={estimateScope}
+                      focusWorkAreaId={focusWorkAreaId}
+                      onFocusApplied={() => setFocusWorkAreaId(null)}
                       isRegenerating={updatingEstimate}
                       onEditJob={() => openEditJob(null)}
                       onReviewWorkArea={() => openEditJob("job_plan")}
@@ -2907,6 +2956,7 @@ export function AssistantShell({
                   ) : estimateView === "materials" && builderReviewView ? (
                     <MaterialsTakeoff
                       view={builderReviewView}
+                      onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
                       onEditJob={() => openEditJob(null)}
                       onReviewWorkArea={() => openEditJob("job_plan")}
@@ -2917,6 +2967,7 @@ export function AssistantShell({
                   ) : estimateView === "labour" && builderReviewView ? (
                     <LabourTakeoff
                       view={builderReviewView}
+                      onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
                       onEditJob={() => openEditJob(null)}
                       onReviewWorkArea={() => openEditJob("job_plan")}
@@ -2948,6 +2999,7 @@ export function AssistantShell({
                     onReviewEstimate={() => {
                       setEstimateView("work_areas");
                     }}
+                    onViewWorkArea={openWorkArea}
                     onEditJob={() => openEditJob(null)}
                     marginControl={
                       !displayEstimateStale ? (

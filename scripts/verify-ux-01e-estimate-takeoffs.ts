@@ -150,7 +150,7 @@ const overview = read("components/assistant/mode/EstimateOverview.tsx");
 
 check(
   "1 all five views, Overview default",
-  shell.includes('useState<EstimatePresentationView>("overview")') &&
+  shell.includes("initialEstimateSection = \"overview\"") &&
     shell.includes("data-estimate-view={estimateView}") &&
     control.includes('id: "overview", label: "Overview"') &&
     control.includes('id: "work_areas", label: "By work area"') &&
@@ -485,7 +485,8 @@ check(
     takeoff.includes("[overflow-wrap:anywhere]") &&
     takeoff.includes("data-takeoff-search") &&
     control.includes("data-estimate-view-scroll") &&
-    control.includes("overflow-x-auto") &&
+    control.includes("md:flex") &&
+    control.includes("flex-wrap") &&
     control.includes("overflow-x-hidden") &&
     shell.includes('className="min-w-0 space-y-3 overflow-x-hidden"')
 );

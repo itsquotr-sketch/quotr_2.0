@@ -27,6 +27,7 @@ import { readProjectDocumentsForJobDetails } from "@/lib/projects/document-centr
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { memberCanEditProjects } from "@/lib/team/permissions";
+import { parseEstimateSection } from "@/lib/assistant/presentation/estimate-section";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
@@ -40,11 +41,13 @@ export const runtime = "nodejs";
 
 type ProjectPageProps = {
   params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ estimate?: string }>;
 };
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
+export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
   await connection();
   const { projectId } = await params;
+  const query = await searchParams;
 
   const pageData = await measureServerLoad("project", async () => {
     const auth = await requireAuthOrgContext();
@@ -155,6 +158,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         scopeDiscoveryInitialResults={scopeDiscoveryInitialResults}
         documents={documents}
         canUploadFiles={canUploadFiles}
+        initialEstimateSection={parseEstimateSection(query.estimate)}
       />
       {hasEstimate || tabContext.hasEstimate ? (
         <div className="mt-3" data-post-estimate-guidance="true">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { EstimatePresentationView } from "@/lib/assistant/presentation/estimate-section";
 import { PrepareFinalPricingButton, OpenFinalPricingLink } from "@/components/pricing/PrepareFinalPricingButton";
 import { Button } from "@/components/ui/button";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
@@ -20,12 +21,7 @@ const pricingClassName =
   "h-11 min-h-11 w-full bg-[var(--brand-orange)] text-sm text-white hover:bg-[var(--brand-orange)]/90 focus-visible:ring-[var(--brand-orange)] lg:w-auto";
 const primaryActionClassName = "sm:col-span-2 lg:col-span-1";
 
-export type EstimatePresentationView =
-  | "overview"
-  | "work_areas"
-  | "materials"
-  | "labour"
-  | "checks";
+export type { EstimatePresentationView };
 
 type PricingRoute = {
   projectId: string;
@@ -44,6 +40,8 @@ type WorkAreaBreakdownProps = {
   onRegenerate?: () => void;
   regenerateLabel?: string;
   pricing?: PricingRoute | null;
+  focusWorkAreaId?: string | null;
+  onFocusApplied?: () => void;
 };
 
 export function EstimateViewControl({
@@ -62,7 +60,7 @@ export function EstimateViewControl({
   ];
   return (
     <div className="min-w-0 max-w-full overflow-x-hidden" data-estimate-view-control>
-    <label data-estimate-view-select className="grid gap-1 lg:hidden">
+    <label data-estimate-view-select className="grid gap-1 md:hidden">
       <span className="text-xs leading-4 text-foreground/70">Estimate view</span>
       <select
         value={view}
@@ -82,7 +80,7 @@ export function EstimateViewControl({
       role="tablist"
       aria-label="Estimate view"
       data-estimate-view-scroll
-      className="hidden max-w-full gap-1 overflow-x-auto overscroll-x-contain border-b border-border lg:flex"
+      className="hidden max-w-full flex-wrap gap-1 border-b border-border md:flex"
     >
       {items.map((item) => {
         const selected = view === item.id;
@@ -94,7 +92,7 @@ export function EstimateViewControl({
             aria-selected={selected}
             data-estimate-view-tab={item.id}
             className={cn(
-              "min-h-11 shrink-0 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]",
+              "min-h-11 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]",
               selected
                 ? "border-b-2 border-[var(--brand-orange)] font-medium text-foreground"
                 : "text-muted-foreground"
@@ -252,9 +250,41 @@ export function WorkAreaBreakdown({
   onRegenerate,
   regenerateLabel = "Regenerate estimate",
   pricing = null,
+  focusWorkAreaId = null,
+  onFocusApplied,
 }: WorkAreaBreakdownProps) {
   const model: WorkAreaBreakdownModel = projectWorkAreaBreakdown(view, scope);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
+  const openedAttention = useRef(false);
+  const headings = useRef(new Map<string, HTMLHeadingElement>());
+
+  useEffect(() => {
+    if (openedAttention.current || focusWorkAreaId) return;
+    const first = model.cards.find((card) => card.attention.length > 0);
+    if (!first) return;
+    openedAttention.current = true;
+    setOpenIds(new Set([first.id]));
+  }, [focusWorkAreaId, model.cards]);
+
+  useEffect(() => {
+    if (!focusWorkAreaId) return;
+    const card = model.cards.find((row) => row.id === focusWorkAreaId);
+    if (!card) return;
+    setOpenIds((current) => {
+      if (current.has(card.id)) return current;
+      const next = new Set(current);
+      next.add(card.id);
+      return next;
+    });
+    const heading = headings.current.get(card.id);
+    heading?.focus();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    heading?.scrollIntoView({
+      block: "start",
+      behavior: reduce ? "auto" : "smooth",
+    });
+    onFocusApplied?.();
+  }, [focusWorkAreaId, model.cards, onFocusApplied]);
 
   function toggle(id: string) {
     setOpenIds((current) => {
@@ -320,7 +350,17 @@ export function WorkAreaBreakdown({
               data-work-area-card={card.name}
               data-work-area-readiness={card.readiness}
             >
-              <h3 className="sr-only">{card.name}</h3>
+              <h3
+                id={`work-area-${card.id}`}
+                tabIndex={-1}
+                ref={(node) => {
+                  if (node) headings.current.set(card.id, node);
+                  else headings.current.delete(card.id);
+                }}
+                className="px-4 pt-3 text-base font-semibold leading-snug break-words outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
+              >
+                {card.name}
+              </h3>
               <button
                 type="button"
                 className="flex min-h-11 w-full items-start gap-3 px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
@@ -329,12 +369,17 @@ export function WorkAreaBreakdown({
                 onClick={() => toggle(card.id)}
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block break-words text-base font-semibold leading-snug">{card.name}</span>
-                  <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 xl:grid-cols-6">
+                  <span className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 xl:grid-cols-6">
                     <span className="min-w-0">
                       <span className="block text-xs text-foreground/70">Readiness</span>
                       <span className="block font-medium">{card.readiness}</span>
                     </span>
+                    {card.attention.length > 0 ? (
+                      <span className="min-w-0" data-work-area-pricing-count={card.id}>
+                        <span className="block text-xs text-foreground/70">Pricing Required</span>
+                        <span className="block font-medium tabular-nums">{card.attention.length}</span>
+                      </span>
+                    ) : null}
                     {card.directCost ? (
                       <span className="min-w-0">
                         <span className="block text-xs text-foreground/70">Direct cost</span>

@@ -64,6 +64,8 @@ export type EstimateOverviewAction = {
   readonly title: string;
   readonly detail: string | null;
   readonly workAreaName: string | null;
+  /** Stable work-area id when the review already has one. */
+  readonly workAreaId: string | null;
   readonly group: EstimateOverviewActionGroup;
   readonly kind: EstimateOverviewActionKind;
   /** True only for readiness blockers that already stop Pricing. */
@@ -130,6 +132,7 @@ type OverviewLineGroup = {
 };
 
 type OverviewWorkArea = {
+  readonly workAreaId?: string | null;
   readonly workAreaName: string;
   readonly partialEstimateLabel?: string | null;
   readonly categories: readonly {
@@ -215,13 +218,15 @@ function action(
   detail: string | null,
   workAreaName: string | null,
   blocksPricing: boolean,
-  kind: EstimateOverviewActionKind
+  kind: EstimateOverviewActionKind,
+  workAreaId: string | null = null
 ): EstimateOverviewAction {
   return {
     id,
     title,
     detail,
     workAreaName,
+    workAreaId,
     group,
     kind,
     blocksPricing,
@@ -274,7 +279,8 @@ function collectPricingRequired(
     id: string,
     title: string,
     workAreaName: string | null,
-    detail: string | null
+    detail: string | null,
+    workAreaId: string | null = null
   ) => {
     const key = normalizeKey(`${workAreaName ?? ""}:${title}`);
     if (!title.trim() || seen.has(key)) return;
@@ -287,7 +293,8 @@ function collectPricingRequired(
         detail,
         workAreaName,
         false,
-        "pricing_attention"
+        "pricing_attention",
+        workAreaId
       )
     );
   };
@@ -305,7 +312,8 @@ function collectPricingRequired(
         `pricing:${group.id}`,
         group.label,
         area.workAreaName,
-        "Pricing Required"
+        "Pricing Required",
+        area.workAreaId ?? null
       );
       for (const child of group.children) countedChildren.add(child.id);
     }
@@ -317,7 +325,8 @@ function collectPricingRequired(
           `pricing:${line.id}`,
           line.label,
           area.workAreaName,
-          "Pricing Required"
+          "Pricing Required",
+          area.workAreaId ?? null
         );
       }
     }
@@ -330,7 +339,8 @@ function collectPricingRequired(
         `pricing:area:${normalizeKey(area.workAreaName)}`,
         area.partialEstimateLabel,
         area.workAreaName,
-        "Pricing Required"
+        "Pricing Required",
+        area.workAreaId ?? null
       );
     }
   }
