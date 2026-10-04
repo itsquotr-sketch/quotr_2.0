@@ -25,6 +25,10 @@ import {
   shouldAskGstRegisteredQuestion,
 } from "../lib/setup/gst-registered";
 import {
+  backfillGstRegistered,
+  gstRegistrationPersistence,
+} from "../lib/setup/onboarding-authority";
+import {
   ONBOARDING_LABOUR_RATE,
   parseOptionalLabourCost,
   parseOptionalTargetMargin,
@@ -327,7 +331,75 @@ function main() {
   );
   const basics = read("components/setup/CompanyBasicsStep.tsx");
   assert("basics asks GST registered", /Are you GST registered/.test(basics));
-  assert("no new gst_registered column", !/gst_registered:/.test(read("lib/setup/actions.ts")));
+  const gstStep = read("components/setup/GstRegistrationStep.tsx");
+  const gstActions = read("lib/setup/actions.ts");
+  const gstMigration = read("supabase/migrations/081_unified_onboarding_authority.sql");
+  const gstSave = gstActions.slice(gstActions.indexOf("export async function saveGstRegistration"));
+  const clearedGst = gstRegistrationPersistence({
+    registered: false,
+    countryCode: "NZ",
+    gstNumber: "123456789",
+    abn: "51824753556",
+    suggestedRate: 15,
+  });
+  const registeredGst = gstRegistrationPersistence({
+    registered: true,
+    countryCode: "NZ",
+    gstNumber: "123456789",
+    abn: null,
+    suggestedRate: 15,
+  });
+  assert(
+    "nullable gst_registered field exists",
+    /add column if not exists gst_registered boolean/.test(gstMigration) &&
+      /gst_registered is null/.test(gstMigration)
+  );
+  assert(
+    "onboarding uses explicit gst_registered rather than the GST rate",
+    gstStep.includes("settings?.gst_registered === true") &&
+      gstStep.includes('settings?.gst_registered === false ? "no" : ""') &&
+      !gstStep.includes("gstRegisteredFromRate") &&
+      !gstStep.includes("default_gst_rate") &&
+      /gstRegistered:\s*settings\?\.gst_registered === true \|\| settings\?\.gst_registered === false/.test(
+        gstActions
+      )
+  );
+  assert(
+    "null gst_registered means unanswered",
+    gstStep.includes('settings?.gst_registered === false ? "no" : ""') &&
+      backfillGstRegistered({
+        onboardingStatus: "completed",
+        onboardingStep: "completed",
+        gstNumber: null,
+        abn: null,
+        defaultGstRate: 15,
+      }) === null
+  );
+  assert(
+    "false writes a zero rate and clears GST number and ABN without clearing NZBN",
+    clearedGst.gst_registered === false &&
+      clearedGst.default_gst_rate === 0 &&
+      clearedGst.gst_number === null &&
+      clearedGst.abn === null &&
+      !("nzbn" in clearedGst) &&
+      gstSave.includes("gst_number: registration.gst_number") &&
+      gstSave.includes("abn: registration.abn") &&
+      !gstSave.includes("nzbn")
+  );
+  assert(
+    "true requires the relevant country identifier",
+    registeredGst.gst_registered === true &&
+      gstSave.includes("Enter an 8 or 9 digit GST number.") &&
+      gstSave.includes("Enter a valid 11-digit ABN.")
+  );
+  assert(
+    "completed legacy organisations are not re-gated when GST backfill is unknown",
+    resolveFirstRunStage({
+      onboardingStatus: "completed",
+      onboardingStep: "completed",
+      authority: { gstRegistered: null } as never,
+    }) === "done"
+  );
 
   section("LABOUR + MARGIN AUTHORITY");
   assert(
