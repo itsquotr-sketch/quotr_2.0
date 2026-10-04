@@ -12,6 +12,8 @@ import type {
   JobPlanView,
 } from "@/lib/assistant/job-plan/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type { JobPlanConstraintWrite } from "@/components/assistant/job-plan/quick-spec-editors";
@@ -167,7 +169,10 @@ export function JobPlanPanel({
 
       {showCtaBar ? (
         <div
-          className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className={cn(
+            "sticky z-10 -mx-1 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] md:bottom-0",
+            mobileNavBottomClass
+          )}
           data-job-plan-cta-bar
           data-action-footer="true"
         >
