@@ -165,15 +165,15 @@ check(
     read("components/dashboard/DashboardActiveProjects.tsx").includes("data-dashboard-projects")
 );
 check(
-  "Recent activity sits in the working area when present",
+  "Recent activity sits in the shared working panel",
   dash.includes("data-dashboard-activity") &&
-    dash.includes("activity.length > 0") &&
-    dash.indexOf("order-3") > dash.indexOf("order-2")
+    dash.includes("DashboardWorkPanel") &&
+    !dash.includes("order-3") &&
+    read("components/dashboard/DashboardWorkPanel.tsx").includes('value="activity"')
 );
 check(
-  "mobile stack order is attention, projects, then activity",
-  dash.indexOf("order-1") < dash.indexOf("order-2") &&
-    dash.indexOf("order-2") < dash.indexOf("order-3")
+  "mobile stack is the shared panel, then active projects",
+  dash.indexOf("order-1") < dash.indexOf("order-2") && !dash.includes("order-3")
 );
 check(
   "overview is 2-column on small screens and 4 on desktop",

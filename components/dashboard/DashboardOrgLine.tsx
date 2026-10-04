@@ -2,10 +2,19 @@
 
 import { useAppUser } from "@/components/layout/app-user-context";
 
-export function DashboardOrgLine() {
+const DASHBOARD_SENTENCE =
+  "What needs attention, what is moving, and where to continue.";
+
+export function DashboardHeaderSubtitle() {
   const { tradingName, organisationName } = useAppUser();
   const name = tradingName?.trim() || organisationName?.trim();
-  if (!name) return null;
+  if (!name) return DASHBOARD_SENTENCE;
 
-  return <p className="text-sm text-muted-foreground">{name}</p>;
+  return (
+    <>
+      {name}
+      {" · "}
+      {DASHBOARD_SENTENCE}
+    </>
+  );
 }

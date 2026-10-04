@@ -1,8 +1,8 @@
 import { StatusCountRow } from "@/components/projects/StatusCountRow";
-import type { DashboardPipelineSummary } from "@/lib/projects/types";
+import type { DashboardOverviewCounts } from "@/lib/dashboard/work-overview";
 
 type DashboardSummaryCardsProps = {
-  summary: DashboardPipelineSummary;
+  summary: DashboardOverviewCounts;
 };
 
 export function DashboardSummaryCards({ summary }: DashboardSummaryCardsProps) {

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsDesktop, useMediaQuery } from "@/lib/hooks/use-media-query";
+import { PROJECT_REGISTER_GRID } from "@/lib/projects/register-columns";
 import {
   DASHBOARD_FILTER_OPTIONS,
   isLifecycleArchiveFilter,
@@ -192,7 +193,12 @@ export function DashboardProjectList({
             ) : null}
           </div>
           {showColumns ? (
-            <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_6.5rem_minmax(8rem,11rem)_2.75rem] gap-3 border-b border-border/70 px-3 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <div
+              className={cn(
+                PROJECT_REGISTER_GRID,
+                "border-b border-border/70 px-3 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+              )}
+            >
               <span>Project</span>
               <span>Stage</span>
               <span>Updated</span>
@@ -218,7 +224,7 @@ export function DashboardProjectList({
             )}
           </div>
           {remaining > 0 ? (
-            <div className="border-t border-border/70 px-3 py-2">
+            <div className="border-t border-border/70 px-3 py-2 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <Button
                 type="button"
                 variant="outline"

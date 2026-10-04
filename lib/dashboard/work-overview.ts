@@ -1,29 +1,74 @@
-import type { DashboardPipelineSummary } from "@/lib/projects/types";
+import { isActivePipelineStatus } from "@/lib/projects/status";
 
 /**
- * Four Dashboard measures. Counts are the existing summarizePipeline fields.
- * Definitions (do not reinterpret):
+ * Dashboard-only presentation counts.
  *
- * activeCount — non-archived projects whose business_status is in
- *   ACTIVE_PIPELINE_STATUSES: lead, site_visit, scoping, estimating,
- *   estimate_ready, quote_draft, quote_sent.
- * estimatingPricingCount — business_status estimating or estimate_ready.
- *   Archived rows are included. There is no single projects-register filter
- *   for both statuses, so this card has no destination.
- * quotesSentCount — business_status quote_sent ("Quote sent" /
- *   "Quote has been sent to the client"). This is not a separate
- *   "awaiting response" status. Archived rows are included.
- * wonCount — business_status won ("Client accepted the work").
- *   Archived rows are included.
+ * summarizePipeline (lib/dashboard/load-dashboard-page.ts) and
+ * getDashboardPipelineSummary (lib/projects/actions.ts) are unchanged.
+ * Those shared counters include archived rows for estimating, estimate_ready,
+ * quote_sent, and won. Only their activeCount already excludes archived work.
  *
- * quote_draft and lost stay in the summary type and on the Projects filters.
- * They are not top-level Dashboard cards.
+ * These figures are derived from the project rows the Dashboard has already
+ * loaded. They do not change lifecycle authority or the Projects filters.
+ *
+ * activeCount — non-archived projects in ACTIVE_PIPELINE_STATUSES
+ *   (lead, site_visit, scoping, estimating, estimate_ready, quote_draft,
+ *   quote_sent). Matches the shared activeCount.
+ * estimatingPricingCount — non-archived estimating or estimate_ready.
+ *   Differs from the shared counter, which includes archived rows.
+ *   No single Projects filter covers both statuses, so the card has no link.
+ * quotesSentCount — non-archived quote_sent. Differs from the shared counter
+ *   and from the Projects quote_sent filter, which still includes archived
+ *   quote-sent rows.
+ * wonCount — every won project, including archived. This is all-time accepted
+ *   work, matching the shared wonCount and the Projects won filter. The card
+ *   context says it includes archived so it is not read as current work.
+ *
+ * quote_draft and lost stay on the Projects filters. They are not Dashboard cards.
  */
+export type DashboardOverviewCounts = {
+  activeCount: number;
+  estimatingPricingCount: number;
+  quotesSentCount: number;
+  wonCount: number;
+};
+
+export function presentDashboardOverview(
+  projects: ReadonlyArray<{
+    business_status?: string | null;
+    archived_at?: string | null;
+  }>
+): DashboardOverviewCounts {
+  const counts: DashboardOverviewCounts = {
+    activeCount: 0,
+    estimatingPricingCount: 0,
+    quotesSentCount: 0,
+    wonCount: 0,
+  };
+
+  for (const project of projects) {
+    const status = project.business_status ?? "";
+    const archived = Boolean(project.archived_at);
+
+    if (!archived && isActivePipelineStatus(status)) {
+      counts.activeCount += 1;
+    }
+    if (!archived && (status === "estimating" || status === "estimate_ready")) {
+      counts.estimatingPricingCount += 1;
+    }
+    if (!archived && status === "quote_sent") {
+      counts.quotesSentCount += 1;
+    }
+    if (status === "won") {
+      counts.wonCount += 1;
+    }
+  }
+
+  return counts;
+}
+
 export type WorkOverviewMeasure = {
-  key: keyof Pick<
-    DashboardPipelineSummary,
-    "activeCount" | "estimatingPricingCount" | "quotesSentCount" | "wonCount"
-  >;
+  key: keyof DashboardOverviewCounts;
   label: string;
   context: string;
   href: string | null;
@@ -33,25 +78,25 @@ export const WORK_OVERVIEW_MEASURES: readonly WorkOverviewMeasure[] = [
   {
     key: "activeCount",
     label: "Active work",
-    context: "Lead through quote sent",
+    context: "Not archived",
     href: "/app/projects",
   },
   {
     key: "estimatingPricingCount",
     label: "Estimating & pricing",
-    context: "Estimating and estimate ready",
+    context: "Not archived",
     href: null,
   },
   {
     key: "quotesSentCount",
     label: "Quote sent",
-    context: "Sent to the client",
+    context: "Not archived",
     href: "/app/projects?filter=quote_sent",
   },
   {
     key: "wonCount",
     label: "Won work",
-    context: "Client accepted the work",
+    context: "Includes archived",
     href: "/app/projects?filter=won",
   },
 ];

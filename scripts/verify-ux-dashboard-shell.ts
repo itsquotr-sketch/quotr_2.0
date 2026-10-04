@@ -6,7 +6,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { deriveDashboardAttention } from "../lib/dashboard/attention";
 import { selectDashboardActiveProjects } from "../lib/dashboard/select-active-projects";
-import { WORK_OVERVIEW_MEASURES } from "../lib/dashboard/work-overview";
+import { defaultDashboardWorkTab } from "../lib/dashboard/work-panel";
+import {
+  presentDashboardOverview,
+  WORK_OVERVIEW_MEASURES,
+} from "../lib/dashboard/work-overview";
 import { isRequiredOnboardingAllowedPath } from "../lib/setup/first-run-stage";
 import type { CompanySetupReadiness } from "../lib/setup/readiness";
 import type { ProjectListItem } from "../lib/projects/types";
@@ -73,6 +77,14 @@ check(
     menu.includes(">Menu<") &&
     menu.includes("setOpen(false)") &&
     menu.includes("overflow-y-auto") &&
+    menu.includes('height: "100dvh"') &&
+    menu.includes("max-h-dvh") &&
+    menu.includes('position: "fixed"') &&
+    menu.includes("finalFocus") &&
+    menu.includes('html.style.overflow = "hidden"') &&
+    menu.includes("SidebarAccount") &&
+    !menu.includes('"/app/dashboard"') &&
+    !menu.includes('"/app/rates"') &&
     menu.includes("safe-area-inset-bottom") &&
     menu.includes("min-h-11") &&
     menu.includes('aria-current={isActive ? "page" : undefined}')
@@ -106,7 +118,7 @@ check(
     dash.includes("Start your first job") &&
     !dash.includes("organisationHasProjects(") &&
     dash.includes("Nothing needs attention") === false &&
-    read("components/dashboard/DashboardAttention.tsx").includes("Nothing needs attention")
+    read("components/dashboard/DashboardWorkPanel.tsx").includes("Nothing needs attention")
 );
 check(
   "sidebar matches the prototype width, black surface, and labelled sections",
@@ -129,15 +141,16 @@ check(
     dash.indexOf("data-dashboard-kpis") < dash.indexOf("data-dashboard-grid") &&
     dash.includes("order-2") &&
     dash.includes("order-1") &&
-    dash.includes("order-3") &&
+    !dash.includes("order-3") &&
+    dash.includes("DashboardWorkPanel") &&
+    !dash.includes("<RecentActivityCard") &&
     !dash.includes("<UserMenu") &&
     !dash.includes("DashboardProjectList")
 );
 check(
-  "phone stack is attention, then active projects, then activity",
+  "phone stack is the shared panel, then active projects",
   dash.indexOf("order-1") < dash.indexOf("order-2") &&
-    dash.indexOf("order-2") < dash.indexOf("order-3") &&
-    dash.includes("activity.length > 0") &&
+    !dash.includes("order-3") &&
     read("components/dashboard/RecentActivityCard.tsx").includes(
       "if (visible.length === 0) return null"
     )
@@ -148,9 +161,9 @@ check(
     "DASHBOARD_ACTIVE_PROJECT_PHONE_LIMIT"
   ) &&
     read("components/dashboard/DashboardActiveProjects.tsx").includes("max-lg:hidden") &&
-    read("components/dashboard/DashboardAttention.tsx").includes("const DESKTOP_CAP = 5") &&
-    read("components/dashboard/DashboardAttention.tsx").includes("const PHONE_CAP = 3") &&
-    read("components/dashboard/DashboardAttention.tsx").includes("View all")
+    read("components/dashboard/DashboardWorkPanel.tsx").includes("const DESKTOP_CAP = 5") &&
+    read("components/dashboard/DashboardWorkPanel.tsx").includes("const PHONE_CAP = 3") &&
+    read("components/dashboard/DashboardWorkPanel.tsx").includes("View all")
 );
 check(
   "projects register keeps search, filters, and a bounded first page",
@@ -309,6 +322,67 @@ const attention = deriveDashboardAttention({
   projects: [sent],
   readiness,
 });
+
+const panel = read("components/dashboard/DashboardWorkPanel.tsx");
+check(
+  "attention and activity share one accessible tab panel",
+  panel.includes("Tabs.List") &&
+    panel.includes("Tabs.Tab") &&
+    panel.includes("Tabs.Panel") &&
+    panel.includes("keepMounted") &&
+    panel.includes('value="attention"') &&
+    panel.includes('value="activity"') &&
+    panel.includes('aria-label="Needs attention and recent activity"') &&
+    !dash.includes("order-3") &&
+    !existsSync("components/dashboard/DashboardAttention.tsx")
+);
+check(
+  "default tab follows attention, then activity, then the attention empty state",
+  defaultDashboardWorkTab(2, 3) === "attention" &&
+    defaultDashboardWorkTab(0, 3) === "activity" &&
+    defaultDashboardWorkTab(0, 0) === "attention"
+);
+const overviewCounts = presentDashboardOverview([
+  { business_status: "lead", archived_at: null },
+  { business_status: "estimating", archived_at: null },
+  { business_status: "estimating", archived_at: "2026-01-01" },
+  { business_status: "estimate_ready", archived_at: null },
+  { business_status: "quote_sent", archived_at: null },
+  { business_status: "quote_sent", archived_at: "2026-01-01" },
+  { business_status: "won", archived_at: null },
+  { business_status: "won", archived_at: "2026-01-01" },
+]);
+check(
+  "dashboard presentation counts exclude archived current work and keep all-time won",
+  overviewCounts.activeCount === 4 &&
+    overviewCounts.estimatingPricingCount === 2 &&
+    overviewCounts.quotesSentCount === 1 &&
+    overviewCounts.wonCount === 2 &&
+    WORK_OVERVIEW_MEASURES.find((item) => item.key === "wonCount")?.context ===
+      "Includes archived" &&
+    loader.includes('if (status === "estimating" || status === "estimate_ready")') &&
+    read("lib/projects/actions.ts").includes("function getDashboardPipelineSummary")
+);
+const registerGrid = read("lib/projects/register-columns.ts");
+check(
+  "projects header and rows share one grid",
+  registerGrid.includes("minmax(0,1fr)") &&
+    registerGrid.includes("minmax(13rem,15rem)") &&
+    read("components/projects/ProjectRow.tsx").includes("PROJECT_REGISTER_GRID") &&
+    read("components/projects/DashboardProjectList.tsx").includes("PROJECT_REGISTER_GRID") &&
+    read("components/projects/ProjectRow.tsx").includes("whitespace-nowrap text-sm")
+);
+check(
+  "mobile menu is fixed to the viewport and restores focus",
+  menu.includes('height: "100dvh"') &&
+    menu.includes("maxHeight: \"100dvh\"") &&
+    menu.includes("finalFocus={triggerRef}") &&
+    menu.includes("showTeamNav") &&
+    read("components/ui/sheet.tsx").includes("data-[side=right]:h-dvh") &&
+    read("components/ui/sheet.tsx").includes("data-[side=right]:max-h-dvh") &&
+    read("components/layout/mobile-nav.tsx").includes('href: "/app/dashboard"') &&
+    read("components/layout/mobile-nav.tsx").includes('href: "/app/rates"')
+);
 
 check(
   "attention keeps required setup and a sent quote, and skips recommended setup",

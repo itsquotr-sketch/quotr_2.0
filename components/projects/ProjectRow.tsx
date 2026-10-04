@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { BusinessStatusBadge } from "@/components/projects/BusinessStatusBadge";
-import { NextActionLabel } from "@/components/projects/NextActionLabel";
 import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
 import { getStatusStripColor } from "@/components/projects/status-strip";
 import { formatProjectDate } from "@/lib/projects/format";
+import { PROJECT_REGISTER_GRID } from "@/lib/projects/register-columns";
 import { getProjectNextActionHref } from "@/lib/projects/next-action";
 import {
   projectCurrentState,
@@ -32,7 +32,8 @@ export function ProjectRow({ project, prefetch = true }: ProjectRowProps) {
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_7.5rem_6.5rem_minmax(8rem,11rem)_2.75rem] items-center gap-3 border-b border-border/70 px-3 py-1.5 last:border-b-0",
+        PROJECT_REGISTER_GRID,
+        "border-b border-border/70 px-3 py-1.5 last:border-b-0",
         (isClosedStatus || isArchived) && "opacity-80"
       )}
     >
@@ -62,17 +63,21 @@ export function ProjectRow({ project, prefetch = true }: ProjectRowProps) {
         muted={isClosedStatus || isArchived}
         className="w-fit text-[10px]"
       />
-      <p className="truncate text-xs text-muted-foreground">{updated}</p>
+      <p className="whitespace-nowrap text-xs text-muted-foreground">{updated}</p>
       <Link
         href={getProjectNextActionHref(project)}
-        className="inline-flex min-h-11 min-w-0 items-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+        className={cn(
+          "inline-flex min-h-11 items-center whitespace-nowrap text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
+          isClosedStatus || isArchived
+            ? "text-muted-foreground"
+            : "font-medium text-foreground"
+        )}
       >
-        <NextActionLabel
-          action={project.nextAction}
-          muted={isClosedStatus || isArchived}
-        />
+        {project.nextAction}
       </Link>
-      <ProjectActionsMenu project={project} variant="card" />
+      <div className="justify-self-end">
+        <ProjectActionsMenu project={project} variant="card" />
+      </div>
     </div>
   );
 }

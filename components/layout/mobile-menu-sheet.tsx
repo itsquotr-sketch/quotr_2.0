@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   Briefcase,
   Building2,
@@ -40,12 +40,27 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
   const [pending, startTransition] = useTransition();
   const pathname = usePathname();
   const { setupIncomplete, showTeamNav } = useAppUser();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, [open]);
 
   function close() {
     setOpen(false);
   }
 
-  function destination(href: string, label: string, icon: typeof Briefcase, prominent = false) {
+  function destination(href: string, label: string, icon: typeof Briefcase) {
     const isActive = pathname === href || pathname.startsWith(`${href}/`);
     const Icon = icon;
     return (
@@ -57,7 +72,6 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
         onClick={close}
         className={cn(
           rowClass,
-          prominent ? "text-base" : "text-sm",
           isActive
             ? "bg-[var(--brand-orange-muted)] text-foreground"
             : "text-foreground hover:bg-muted"
@@ -69,51 +83,56 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
             isActive ? "text-[var(--brand-orange)]" : "text-muted-foreground"
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        <span className="min-w-0 flex-1 text-left">{label}</span>
       </Link>
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger className={cn(triggerClassName)} aria-label="Open menu">
+    <Sheet modal open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        ref={triggerRef}
+        className={cn(triggerClassName)}
+        aria-label="Open menu"
+      >
         <Menu className="size-5" />
         <span>Menu</span>
       </SheetTrigger>
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="h-dvh w-full max-w-sm gap-0 overflow-hidden p-0 sm:max-w-sm"
+        finalFocus={triggerRef}
+        data-mobile-menu="viewport"
+        className="top-0 right-0 bottom-0 flex h-dvh max-h-dvh w-full max-w-sm flex-col gap-0 overflow-hidden p-0 sm:max-w-sm"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          height: "100dvh",
+          maxHeight: "100dvh",
+        }}
       >
-        <SheetHeader className="shrink-0 border-b px-4 py-3 pr-14 text-left">
+        <SheetHeader className="relative shrink-0 border-b px-4 py-3 pr-16 pt-[max(0.75rem,env(safe-area-inset-top))] text-left">
           <SheetTitle>Menu</SheetTitle>
         </SheetHeader>
         <SheetClose
-          className="absolute top-2 right-2 inline-flex size-11 items-center justify-center rounded-md outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+          className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-2 inline-flex size-11 items-center justify-center rounded-md outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
           aria-label="Close menu"
         >
           <X className="size-4" />
         </SheetClose>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-3">
           {setupIncomplete ? null : (
             <nav className="flex flex-col gap-1" aria-label="Work and organisation">
-              <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Work
-              </p>
-              {destination("/app/projects", "Projects", Briefcase, true)}
-              <p className="mt-3 px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Organisation
-              </p>
+              {destination("/app/projects", "Projects", Briefcase)}
               {destination("/app/settings/company", "Company", Building2)}
               {showTeamNav
                 ? destination("/app/settings/team", "Team", Users)
                 : null}
             </nav>
           )}
-          <div className="mt-4 flex flex-col gap-1">
-            <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Account
-            </p>
+          <div className="mt-2 flex flex-col gap-1">
             {setupIncomplete
               ? null
               : destination("/app/settings/billing", "Billing", CreditCard)}
@@ -140,7 +159,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
               <span>{pending ? "Signing out…" : "Sign out"}</span>
             </button>
           </div>
-          <div className="mt-4 border-t pt-3">
+          <div className="mt-auto shrink-0 border-t pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <SidebarAccount />
           </div>
         </div>

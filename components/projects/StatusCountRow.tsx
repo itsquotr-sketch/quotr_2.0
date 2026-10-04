@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { WORK_OVERVIEW_MEASURES } from "@/lib/dashboard/work-overview";
-import type { DashboardPipelineSummary } from "@/lib/projects/types";
+import type { DashboardOverviewCounts } from "@/lib/dashboard/work-overview";
 import { cn } from "@/lib/utils";
 
 type StatusCountRowProps = {
-  summary: DashboardPipelineSummary;
+  summary: DashboardOverviewCounts;
   className?: string;
 };
 
 export function StatusCountRow({ summary, className }: StatusCountRowProps) {
   return (
     <div
-      className={cn("grid grid-cols-2 gap-2 lg:grid-cols-4", className)}
+      className={cn(
+        "grid grid-cols-2 items-stretch gap-3 lg:grid-cols-4 lg:gap-4",
+        className
+      )}
       data-dashboard-overview="four"
     >
       {WORK_OVERVIEW_MEASURES.map((item) => {
@@ -27,7 +30,7 @@ export function StatusCountRow({ summary, className }: StatusCountRowProps) {
           </>
         );
         const cardClass = cn(
-          "flex min-h-11 flex-col rounded-xl border border-border/70 bg-card px-3 py-2.5 outline-none",
+          "flex h-full min-h-11 flex-col rounded-xl border border-border/70 bg-card px-3 py-2.5 outline-none",
           item.href &&
             "hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
         );

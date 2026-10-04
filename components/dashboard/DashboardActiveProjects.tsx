@@ -29,8 +29,12 @@ export function DashboardActiveProjects({
   const shownPhone = Math.min(DASHBOARD_ACTIVE_PROJECT_PHONE_LIMIT, total);
 
   return (
-    <section aria-labelledby="dashboard-active-projects-heading" data-dashboard-projects>
-      <div className="flex items-end justify-between gap-3">
+    <section
+      className="overflow-hidden rounded-xl border border-border/70 bg-card"
+      aria-labelledby="dashboard-active-projects-heading"
+      data-dashboard-projects
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2">
         <div className="min-w-0">
           <h2
             id="dashboard-active-projects-heading"
@@ -58,11 +62,11 @@ export function DashboardActiveProjects({
       </div>
 
       {projects.length === 0 ? (
-        <p className="mt-2 rounded-xl border border-border/70 bg-card px-3 py-3 text-sm text-muted-foreground">
+        <p className="px-3 py-3 text-sm text-muted-foreground">
           No active projects. Won, lost, and archived work stays in Projects.
         </p>
       ) : (
-        <ul className="mt-2 overflow-hidden rounded-xl border border-border/70 bg-card">
+        <ul>
           {projects.map((project, index) => (
             <ActiveProjectRow
               key={project.id}
@@ -98,11 +102,11 @@ function ActiveProjectRow({
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/app/projects/${project.id}`}
-              className="min-w-0 truncate text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+              className="min-w-0 flex-1 truncate text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
             >
               {project.title}
             </Link>
-            <BusinessStatusBadge status={project.business_status} className="text-[10px]" />
+            <BusinessStatusBadge status={project.business_status} className="shrink-0 text-[10px]" />
           </div>
           {place ? (
             <p className="truncate text-xs text-muted-foreground">{place}</p>
@@ -111,7 +115,7 @@ function ActiveProjectRow({
           <div className="flex items-center justify-between gap-2">
             <Link
               href={href}
-              className="inline-flex min-h-11 min-w-0 items-center text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+              className="inline-flex min-h-11 min-w-0 items-center text-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
             >
               <span className="truncate">{action}</span>
             </Link>
@@ -126,7 +130,7 @@ function ActiveProjectRow({
           <div className="min-w-0">
             <Link
               href={`/app/projects/${project.id}`}
-              className="block truncate text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+              className="block truncate text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
             >
               {project.title}
             </Link>
@@ -140,11 +144,13 @@ function ActiveProjectRow({
         <p className="truncate text-xs text-muted-foreground">{updated}</p>
         <Link
           href={href}
-          className="inline-flex min-h-11 min-w-0 items-center text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+          className="inline-flex min-h-11 min-w-0 items-center text-sm font-semibold underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
         >
           <span className="truncate">{action}</span>
         </Link>
-        <ProjectActionsMenu project={project} variant="card" />
+        <div className="justify-self-end">
+          <ProjectActionsMenu project={project} variant="card" />
+        </div>
       </div>
     </li>
   );

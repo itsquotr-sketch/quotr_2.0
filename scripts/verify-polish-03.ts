@@ -267,13 +267,14 @@ check(
     "No activity yet. Your recent estimates and quotes will appear here."
   ) &&
     activityCard.includes("if (visible.length === 0) return null") &&
-    dash.includes("activity.length > 0") &&
+    !dash.includes("<RecentActivityCard") &&
+    !dash.includes("order-3") &&
     !activityCard.includes("Smith Deck")
 );
 check(
   "New Project CTA not displaced",
   dash.includes("<NewProjectDialog intent={isEmpty ? \"first-job\" : \"default\"} />") &&
-    dash.includes("<RecentActivityCard")
+    dash.includes("<DashboardWorkPanel")
 );
 
 console.log("\n--- CONCRETE ---\n");

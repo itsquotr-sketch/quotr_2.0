@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 type PageHeaderProps = {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
   /**
    * DEMO-R7: on mobile, hide visual chrome (title/description/actions).
