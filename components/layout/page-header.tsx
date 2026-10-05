@@ -36,7 +36,7 @@ export function PageHeader({
         className={cn(
           "shrink-0 border-b bg-background px-4 sm:px-6",
           alignWithContent && "lg:px-8",
-          wrapDescription || alignWithContent ? "py-4 sm:py-3" : "py-4 sm:h-14 sm:py-0",
+          wrapDescription || alignWithContent ? "py-4 sm:py-3" : "py-4 sm:min-h-14 sm:py-0",
           compactOnMobile && "max-md:hidden"
         )}
       >
@@ -49,14 +49,12 @@ export function PageHeader({
           )}
         >
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">
-            {title}
-          </h1>
+          <h1 className="quotr-page-title">{title}</h1>
           {description ? (
             <p
               className={cn(
-                "mt-0.5 text-sm text-muted-foreground",
-                wrapDescription ? "whitespace-normal" : "truncate"
+                "quotr-page-subtitle",
+                wrapDescription ? "whitespace-normal" : "sm:truncate"
               )}
             >
               {description}

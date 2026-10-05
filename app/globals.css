@@ -92,6 +92,19 @@
   --quotr-card-pad: 1rem;
   --quotr-row-gap: 0.5rem;
   --quotr-action-gap: 0.5rem;
+  /* Opt-in type scale. Utilities below consume these; nothing applies them globally. */
+  --quotr-font-page-title: 1.125rem;
+  --quotr-font-page-title-sm: 1.25rem;
+  --quotr-font-section-title: 1rem;
+  --quotr-font-body: 0.875rem;
+  --quotr-font-subtitle: 0.875rem;
+  --quotr-font-label: 0.75rem;
+  --quotr-font-register: 0.6875rem;
+  --quotr-font-badge: 0.75rem;
+  --quotr-font-button: 0.875rem;
+  --quotr-font-money: 1.125rem;
+  --quotr-tracking-page-title: -0.015em;
+  --quotr-tracking-register: 0.06em;
 }
 
 .dark {
@@ -166,6 +179,77 @@
     font-weight: 600;
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Shared page title: 18px below sm, 20px from sm. Wrap; do not truncate. */
+  .quotr-page-title {
+    font-size: var(--quotr-font-page-title);
+    font-weight: 600;
+    letter-spacing: var(--quotr-tracking-page-title);
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  @media (min-width: 40rem) {
+    .quotr-page-title {
+      font-size: var(--quotr-font-page-title-sm);
+    }
+  }
+
+  .quotr-page-subtitle {
+    margin-top: 0.125rem;
+    font-size: var(--quotr-font-subtitle);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  .quotr-section-title {
+    font-size: var(--quotr-font-section-title);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .quotr-type-body {
+    font-size: var(--quotr-font-body);
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .quotr-type-label {
+    font-size: var(--quotr-font-label);
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .quotr-register-header {
+    font-size: var(--quotr-font-register);
+    font-weight: 500;
+    letter-spacing: var(--quotr-tracking-register);
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .quotr-type-badge {
+    font-size: var(--quotr-font-badge);
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  .quotr-type-button {
+    font-size: var(--quotr-font-button);
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  .quotr-money-total {
+    font-size: var(--quotr-font-money);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
   }
 }
 

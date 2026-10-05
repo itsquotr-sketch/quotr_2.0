@@ -15,7 +15,7 @@ import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { cn } from "@/lib/utils";
 
 const itemClass =
-  "flex h-[4.5rem] w-full min-h-11 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[9px] font-medium leading-none tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand-orange)] min-[360px]:text-[10px]";
+  "flex h-[4.5rem] w-full min-h-11 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[11px] font-medium leading-none whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand-orange)] min-[360px]:text-xs";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -65,7 +65,7 @@ export function MobileNav() {
           {canCreateProject ? (
             <span
               className={cn(
-                "max-w-full truncate text-[9px] font-medium leading-none tracking-tight min-[360px]:text-[10px]",
+                "max-w-full whitespace-nowrap text-center text-[11px] font-medium leading-none min-[360px]:text-xs",
                 newCurrent ? "text-[var(--brand-orange)]" : "text-muted-foreground"
               )}
               aria-hidden
@@ -110,7 +110,7 @@ function NavLink({
       )}
     >
       <Icon className="size-[22px] shrink-0" strokeWidth={active ? 2.25 : 2} aria-hidden />
-      <span className="max-w-full truncate">{label}</span>
+      <span className="max-w-full whitespace-nowrap text-center">{label}</span>
     </Link>
   );
 }
