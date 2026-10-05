@@ -110,10 +110,15 @@ check(
 );
 check(
   "one primary action follows the existing status",
-  header.includes("Quote") &&
-    header.includes("</h1>") &&
+  /<h2[^>]*>\s*Quote\s*<\/h2>/.test(header) &&
+    !header.includes("<h1") &&
+    header.includes("text-lg font-semibold leading-6 tracking-tight sm:text-xl") &&
     header.includes("statusDef.label") &&
     header.includes("hasUnsavedChanges") &&
+    page.includes("<ProjectWorkspaceHeader") &&
+    read("components/projects/ProjectHeader.tsx").includes(
+      '<h1 className="min-w-0 text-lg font-semibold tracking-tight break-words sm:text-xl">'
+    ) &&
     summary.includes("Send quote") &&
     workspace.includes("overflow-x-hidden") &&
     template.includes("data-quote-work-area") &&
