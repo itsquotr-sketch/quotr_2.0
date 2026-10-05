@@ -267,8 +267,8 @@ export const deckScope: ScopeDefinition = {
     },
     {
       key: "deck.concrete_to_supports",
-      label: "Concrete to supports",
-      questionText: "Is concrete included at piles or posts?",
+      label: "Concrete post footings",
+      questionText: "Are concrete post footings included?",
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,

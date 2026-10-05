@@ -12,6 +12,7 @@ import type {
 } from "../lib/assistant/builder-review";
 import {
   CARPENTER_LABOUR_RATE_KEY,
+  GENERAL_LABOUR_RATE_KEY,
   LABOURER_LABOUR_RATE_KEY,
 } from "../lib/estimate/labour-trade-mapping";
 import {
@@ -242,6 +243,18 @@ const labourer = line({
   itemKey: LABOURER_LABOUR_RATE_KEY,
   sourceCategory: "labour",
 });
+const general = line({
+  id: "general",
+  label: "Site clean",
+  category: "LABOUR",
+  recommendedCost: 40,
+  quantity: 1,
+  unit: "hr",
+  labourHours: 1,
+  costRate: 40,
+  itemKey: GENERAL_LABOUR_RATE_KEY,
+  sourceCategory: "labour",
+});
 const labour = projectLabourTakeoff(
   view({
     areas: [
@@ -251,7 +264,7 @@ const labour = projectLabourTakeoff(
         workAreaType: "deck",
         cost: 560,
         sell: 700,
-        categories: [category("LABOUR", "Labour", [install, guessed, labourer])],
+        categories: [category("LABOUR", "Labour", [install, guessed, labourer, general])],
       },
     ],
   })
@@ -259,6 +272,7 @@ const labour = projectLabourTakeoff(
 const installRow = labour.groups[0]?.rows.find((row) => row.id === "install");
 const guessedRow = labour.groups[0]?.rows.find((row) => row.id === "guess");
 const labourerRow = labour.groups[0]?.rows.find((row) => row.id === "labourer");
+const generalRow = labour.groups[0]?.rows.find((row) => row.id === "general");
 
 check(
   "4 worker type comes from the stored labour key",
@@ -272,14 +286,18 @@ check(
   guessedRow?.workerType == null &&
     guessedRow?.pricedUsing == null &&
     guessedRow?.activity === "Labourer strip-out" &&
-    installRow?.workerType == null &&
-    installRow?.activity === "Decking installation"
+    installRow?.activity === "Decking installation" &&
+    installRow?.workerType === "Carpenter"
 );
 
 check(
-  "6 carpenter fallback is a pricing note",
-  installRow?.pricedUsing === "Priced using Carpenter labour cost" &&
-    installRow.workerType !== "Carpenter"
+  "6 carpenter labour role replaces the redundant pricing phrase",
+  installRow?.pricedUsing == null &&
+    installRow.workerType === "Carpenter" &&
+    generalRow?.workerType === "General labour" &&
+    generalRow.pricedUsing == null &&
+    installRow.hours === "6.00 hrs" &&
+    installRow.total === "$400"
 );
 
 check(
@@ -462,7 +480,8 @@ check(
     takeoff.includes("overflow-x-hidden") &&
     takeoff.includes("lg:grid") &&
     takeoff.includes("lg:sr-only") &&
-    takeoff.includes("Worker type not specified") &&
+    takeoff.includes("Labour role") &&
+    takeoff.includes("Not specified") &&
     takeoff.includes("min-h-11") &&
     breakdown.includes("View breakdown") &&
     breakdown.includes("aria-expanded={open}") &&

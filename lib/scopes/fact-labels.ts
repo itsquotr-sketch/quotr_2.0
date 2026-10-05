@@ -109,7 +109,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "deck.pile_or_post_count": "Piles/posts count",
   "deck.substructure_condition": "Substructure condition",
   "deck.steps_included": "Steps",
-  "deck.concrete_to_supports": "Concrete to supports",
+  "deck.concrete_to_supports": "Concrete post footings",
   "deck.concrete_bags_per_hole": "Concrete bags per hole",
   "fence.finish_required": "Fence finish",
   "fence.finish_type": "Finish type",

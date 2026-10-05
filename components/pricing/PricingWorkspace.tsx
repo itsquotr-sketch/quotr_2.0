@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ChevronDown } from "lucide-react";
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PricingBulkToolbar } from "@/components/pricing/PricingBulkToolbar";
@@ -11,7 +12,9 @@ import { PricingHeader } from "@/components/pricing/PricingHeader";
 import {
   PricingAttention,
   PricingStatusNote,
+  pricingRequiredItems,
 } from "@/components/pricing/PricingReadiness";
+import { cn } from "@/lib/utils";
 import { mobileWorkflowContentPadClass } from "@/components/layout/mobile-nav-metrics";
 import { PricingMobileActionBar } from "@/components/pricing/PricingMobileActionBar";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
@@ -68,6 +71,12 @@ export function PricingWorkspace({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<PricingGroupBy>("work_area");
   const [openRequest, setOpenRequest] = useState<string | null>(null);
+  const [openRequestNonce, setOpenRequestNonce] = useState(0);
+  const [workAreaPricingOpen, setWorkAreaPricingOpen] = useState(true);
+  const revealedWorkAreaRef = useRef<string | null | undefined>(undefined);
+  const [revealedWorkAreaId, setRevealedWorkAreaId] = useState<
+    string | null | undefined
+  >(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -110,6 +119,36 @@ export function PricingWorkspace({
     setItems(initialData.items);
     setWorkAreas(initialData.workAreas);
   }, [initialData]);
+
+  // Local disclosure only. The media-query callback records the first
+  // Pricing Required area once. It does not save, recalculate, or call the server.
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const rememberFirstRequiredArea = () => {
+      if (revealedWorkAreaRef.current !== undefined) return;
+      if (!media.matches) return;
+      if (!canEditPricing || document.status !== "draft" || workAreas.length === 0) return;
+      const first = pricingRequiredItems(items)[0];
+      if (!first) {
+        revealedWorkAreaRef.current = null;
+        return;
+      }
+      const id = first.work_area_id ?? null;
+      revealedWorkAreaRef.current = id;
+      setRevealedWorkAreaId(id);
+    };
+    const frame = window.requestAnimationFrame(rememberFirstRequiredArea);
+    media.addEventListener("change", rememberFirstRequiredArea);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      media.removeEventListener("change", rememberFirstRequiredArea);
+    };
+  }, [canEditPricing, document.status, workAreas.length, items]);
+
+  const unresolvedPriceCount = useMemo(
+    () => pricingRequiredItems(items).length,
+    [items]
+  );
 
   const groupedSections = useMemo(
     () => groupPricingItems(items, workAreas, groupBy),
@@ -426,8 +465,10 @@ export function PricingWorkspace({
   };
 
   const jumpToSection = (sectionId: string) => {
+    setWorkAreaPricingOpen(true);
     setGroupBy("work_area");
     setOpenRequest(sectionId);
+    setOpenRequestNonce((current) => current + 1);
     window.setTimeout(() => {
       globalThis.document.getElementById(sectionId)?.scrollIntoView({
         behavior: "smooth",
@@ -505,11 +546,39 @@ export function PricingWorkspace({
         <div className="min-w-0 space-y-5">
           <details
             className="rounded-xl border border-border/60 bg-card shadow-none"
-            open
+            open={workAreaPricingOpen}
             data-pricing-work-area-adjustments
+            data-pricing-work-area-open={workAreaPricingOpen ? "true" : "false"}
+            data-pricing-unresolved-count={unresolvedPriceCount}
+            onToggle={(event) => {
+              setWorkAreaPricingOpen(event.currentTarget.open);
+            }}
           >
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
-              Adjust Work Area prices
+            <summary className="cursor-pointer list-none px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]">
+              <span className="flex items-start gap-2">
+                <ChevronDown
+                  aria-hidden
+                  className={cn(
+                    "mt-1 size-4 shrink-0 text-muted-foreground transition-transform",
+                    !workAreaPricingOpen && "-rotate-90"
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-base font-semibold leading-snug">Work Area pricing</span>
+                    {unresolvedPriceCount > 0 ? (
+                      <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                        {unresolvedPriceCount} Pricing required
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block text-sm leading-5 text-foreground/75">
+                    {canEditPricing
+                      ? "Review and edit prices for each Work Area."
+                      : "Review prices for each Work Area."}
+                  </span>
+                </span>
+              </span>
             </summary>
             <div className="space-y-4 border-t border-border/60 p-3">
             {items.length === 0 ? (
@@ -568,6 +637,13 @@ export function PricingWorkspace({
                 onAddItem={handleAddItem}
                 showAddItem={groupBy === "work_area"}
                 openRequest={openRequest}
+                openRequestNonce={openRequestNonce}
+                initiallyRevealed={
+                  canEditPricing &&
+                  groupBy === "work_area" &&
+                  revealedWorkAreaId !== undefined &&
+                  (section.workArea?.id ?? null) === revealedWorkAreaId
+                }
                 documentStatus={document.status}
                 canEdit={canEditPricing}
               />

@@ -173,9 +173,9 @@ function IdentityCell({ row, kind }: { row: TakeoffRow; kind: "materials" | "lab
   if (kind === "labour") {
     return (
       <div className="min-w-0">
-        <p className="text-sm text-foreground/70 lg:sr-only">Worker type</p>
+        <p className="text-sm text-foreground/70">Labour role</p>
         <p className="break-words text-sm" data-worker-type={row.id}>
-          {row.workerType ?? "Worker type not specified"}
+          {row.workerType ?? "Not specified"}
         </p>
         {row.pricedUsing ? (
           <p className="mt-1 break-words text-sm text-foreground/80" data-priced-using={row.id}>
@@ -287,7 +287,7 @@ function CompactTakeoffRow({
           ) : null}
           {!materials ? (
             <span className="mt-0.5 block text-sm leading-5 text-foreground/80">
-              {row.workerType ?? "Worker type not specified"}
+              Labour role: {row.workerType ?? "Not specified"}
             </span>
           ) : null}
           {!materials && row.pricedUsing ? (
@@ -322,7 +322,7 @@ function CompactTakeoffRow({
             </>
           ) : (
             <>
-              <Detail label="Worker type" value={row.workerType ?? "Worker type not specified"} />
+              <Detail label="Labour role" value={row.workerType ?? "Not specified"} />
               <Detail label="Activity" value={row.activity ?? row.description} />
               <Detail label="Hours" value={row.hours ?? "—"} />
               <Detail label="Productivity basis" value={row.productivityBasis ?? "—"} />

@@ -44,6 +44,8 @@ type PricingWorkAreaSectionProps = {
   onAddItem: (workAreaId: string | null) => Promise<{ error?: string }>;
   showAddItem?: boolean;
   openRequest?: string | null;
+  openRequestNonce?: number;
+  initiallyRevealed?: boolean;
   sectionKey?: string;
   documentStatus?: PricingDocumentStatus;
   canEdit?: boolean;
@@ -64,12 +66,16 @@ export function PricingWorkAreaSection({
   onAddItem,
   showAddItem = true,
   openRequest = null,
+  openRequestNonce = 0,
+  initiallyRevealed = false,
   sectionKey = "section",
   documentStatus,
   canEdit = true,
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(false);
-  const [handledRequest, setHandledRequest] = useState<string | null>(null);
+  const [handledNonce, setHandledNonce] = useState<number | null>(null);
+  const [userChoseExpansion, setUserChoseExpansion] = useState(false);
+  const [appliedInitialReveal, setAppliedInitialReveal] = useState(false);
   const [openLineId, setOpenLineId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const desktopLines = useMediaQuery("(min-width: 1024px)");
@@ -98,8 +104,18 @@ export function PricingWorkAreaSection({
     requiredCount > 0
       ? `${requiredCount} Pricing required`
       : "Priced";
-  if (openRequest && openRequest === sectionId && handledRequest !== openRequest) {
-    setHandledRequest(openRequest);
+  if (initiallyRevealed && !userChoseExpansion && !appliedInitialReveal) {
+    setAppliedInitialReveal(true);
+    setExpanded(true);
+  }
+
+  if (
+    openRequest &&
+    openRequest === sectionId &&
+    openRequestNonce > 0 &&
+    handledNonce !== openRequestNonce
+  ) {
+    setHandledNonce(openRequestNonce);
     setExpanded(true);
   }
 
@@ -121,7 +137,10 @@ export function PricingWorkAreaSection({
         <button
           type="button"
           className="flex min-h-11 min-w-0 flex-1 items-start gap-2 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]"
-          onClick={() => setExpanded((prev) => !prev)}
+          onClick={() => {
+            setUserChoseExpansion(true);
+            setExpanded((prev) => !prev);
+          }}
           aria-expanded={expanded}
           aria-controls={`${sectionId}-lines`}
         >

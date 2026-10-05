@@ -139,6 +139,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "flooring.portion.other_description": "Flooring description",
   "flooring.portion.specialist_kind": "Specialist flooring",
   "deck.step_width_m": "Step width",
+  "deck.concrete_to_supports": "Concrete post footings",
   site_access: "Site access",
   high_level_access: "High-level access",
   material_carry_distance: "Carry distance",

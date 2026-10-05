@@ -105,7 +105,7 @@ const DECK_CHECK_COPY: Record<
     question: "Is full-height deck skirting / screening included?",
   },
   "deck.concrete_to_supports": {
-    question: "Include concrete to piles or posts?",
+    question: "Include concrete post footings?",
   },
 };
 

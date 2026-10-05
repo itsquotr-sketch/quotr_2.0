@@ -142,18 +142,19 @@ check(
 
 console.log("\n--- PRICING ---\n");
 check(
-  "Adjust Work Area prices expanded by default",
-  /<details[\s\S]{0,400}\bopen\b[\s\S]{0,200}data-pricing-work-area-adjustments/.test(
-    pricingWorkspace
-  ) ||
-    /data-pricing-work-area-adjustments[\s\S]{0,200}\bopen\b/.test(
-      pricingWorkspace
-    )
+  "Work Area pricing expanded by default",
+  pricingWorkspace.includes(
+    "const [workAreaPricingOpen, setWorkAreaPricingOpen] = useState(true)"
+  ) &&
+    pricingWorkspace.includes("open={workAreaPricingOpen}") &&
+    pricingWorkspace.includes("data-pricing-work-area-adjustments")
 );
 check(
-  "Adjust Work Area prices is a details disclosure (collapsible)",
+  "Work Area pricing is a details disclosure (collapsible)",
   pricingWorkspace.includes("<details") &&
-    pricingWorkspace.includes("Adjust Work Area prices")
+    pricingWorkspace.includes("Work Area pricing") &&
+    pricingWorkspace.includes("setWorkAreaPricingOpen") &&
+    pricingWorkspace.includes("Review and edit prices for each Work Area.")
 );
 check(
   "duplicate Project identity block absent on Pricing",

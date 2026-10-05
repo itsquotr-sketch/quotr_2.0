@@ -292,7 +292,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const concrete = booleanItem({
       id: "concrete_to_supports",
       workAreaId: id,
-      label: "Concrete to supports",
+      label: "Concrete post footings",
       factKey: "deck.concrete_to_supports",
       facts,
       briefText: context.briefText,

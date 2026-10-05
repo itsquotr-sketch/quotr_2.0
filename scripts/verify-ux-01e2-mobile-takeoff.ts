@@ -81,7 +81,8 @@ check(
   "6 collapsed rows keep identity, quantity or hours, and cost",
   takeoff.includes("row.product ?? row.description") &&
     takeoff.includes("row.activity ?? row.description") &&
-    takeoff.includes("Worker type not specified") &&
+    takeoff.includes("Labour role") &&
+    takeoff.includes("Not specified") &&
     takeoff.includes("row.pricedUsing") &&
     takeoff.includes("quantity") &&
     takeoff.includes("labourSummary") &&

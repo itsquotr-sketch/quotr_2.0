@@ -227,10 +227,10 @@ function labourRateIdentity(itemKey: string | null | undefined): {
     return { workerType: "Apprentice", pricedUsing: null };
   }
   if (itemKey === CARPENTER_LABOUR_RATE_KEY) {
-    return { workerType: null, pricedUsing: "Priced using Carpenter labour cost" };
+    return { workerType: "Carpenter", pricedUsing: null };
   }
   if (itemKey === GENERAL_LABOUR_RATE_KEY) {
-    return { workerType: null, pricedUsing: "Priced using General labour cost" };
+    return { workerType: "General labour", pricedUsing: null };
   }
   return { workerType: null, pricedUsing: null };
 }

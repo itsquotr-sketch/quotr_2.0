@@ -192,6 +192,9 @@ export function presentCalculatorAssumptionLine(
   facts?: readonly Pick<EstimateFact, "key" | "source" | "value">[] | null
 ): string | null {
   const trimmed = line.trim();
+  if (trimmed.startsWith("Concrete to supports uses ")) {
+    return `Concrete post footings uses ${trimmed.slice("Concrete to supports uses ".length)}`;
+  }
   if (WALL_TYPE_ROLLUP_LINE.test(trimmed)) return null;
   const match = trimmed.match(JOB_SCOPE_CALCULATOR_LINE);
   if (!match) return line;
