@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import type { PricingDocument, PricingItem } from "@/lib/pricing/types";
@@ -124,11 +123,7 @@ export function PricingMobileActionBar({
                   disabled={isSaving || isReviewing}
                   onClick={onSaveDocument}
                 >
-                  {isSaving ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    "Save changes"
-                  )}
+                  {isSaving ? "Saving…" : "Save changes"}
                 </Button>
               ) : null}
             </>
@@ -142,11 +137,7 @@ export function PricingMobileActionBar({
                   disabled={isSaving}
                   onClick={onSaveDocument}
                 >
-                  {isSaving ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    "Save changes"
-                  )}
+                  {isSaving ? "Saving…" : "Save changes"}
                 </Button>
               ) : null}
               <CreateQuoteButton

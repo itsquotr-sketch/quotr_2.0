@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -152,7 +151,7 @@ export function VariationClientResponse(props: {
       )}
       {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
       <Button type="submit" className="h-11 w-full" disabled={pending} data-variation-response-submit="true">
-        {pending ? <><Loader2 className="size-4 animate-spin" /> Saving…</> : mode === "accept" ? "Confirm acceptance" : "Confirm decline"}
+        {pending ? "Saving…" : mode === "accept" ? "Confirm acceptance" : "Confirm decline"}
       </Button>
     </form>
   );

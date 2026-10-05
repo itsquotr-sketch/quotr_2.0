@@ -392,8 +392,8 @@ export function ProductivityByWorkArea({
                               })?.calibrationTaskKey,
                             })}
                             className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                              "h-11 min-h-11 lg:h-8 lg:min-h-8"
+                              buttonVariants({ variant: "outline", size: "touch" }),
+                              "lg:h-8 lg:min-h-8"
                             )}
                             data-company-dna-rates-cta
                           >
@@ -403,8 +403,8 @@ export function ProductivityByWorkArea({
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="h-11 min-h-11 lg:h-8 lg:min-h-8"
+                          size="touch"
+                          className="lg:h-8 lg:min-h-8"
                           onClick={() =>
                             setDnaTasksOpen((prev) => ({
                               ...prev,
@@ -790,8 +790,8 @@ function DnaTaskRow(params: {
           <Link
             href={`/app/setup/dna/${encodeURIComponent(params.row.task.calibrationTaskKey)}`}
             className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "h-11 min-h-11 lg:h-8 lg:min-h-8"
+              buttonVariants({ variant: "outline", size: "touch" }),
+              "lg:h-8 lg:min-h-8"
             )}
           >
             {calibrated ? DNA_RECALIBRATE : DNA_CALIBRATE}
@@ -800,8 +800,8 @@ function DnaTaskRow(params: {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="h-11 min-h-11 lg:h-8 lg:min-h-8"
+              size="touch"
+              className="lg:h-8 lg:min-h-8"
               disabled={params.resetting === params.row.task.calibrationTaskKey}
               onClick={() => params.onReset(params.row.task.calibrationTaskKey)}
             >

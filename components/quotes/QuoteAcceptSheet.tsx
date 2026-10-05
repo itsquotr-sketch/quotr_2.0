@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -181,7 +180,7 @@ export function QuoteAcceptSheet({
       data-quote-accept-submit="true"
       onClick={submit}
     >
-      {isPending ? <Loader2 className="size-4 animate-spin" /> : "Accept quote"}
+      {isPending ? "Accepting…" : "Accept quote"}
     </Button>
   );
 

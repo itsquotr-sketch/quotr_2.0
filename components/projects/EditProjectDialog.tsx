@@ -167,6 +167,7 @@ export function EditProjectDialog({
       <Button
         type="button"
         variant="outline"
+        size="touch"
         className={cn("min-h-11", triggerClassName)}
         onClick={() => handleOpenChange(true)}
       >
@@ -399,12 +400,13 @@ export function EditProjectDialog({
               <Button
                 type="button"
                 variant="outline"
+                size="touch"
                 onClick={() => setOpen(false)}
                 disabled={pending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || !title.trim()}>
+              <Button type="submit" size="touch" disabled={pending || !title.trim()}>
                 {pending ? "Saving…" : "Save changes"}
               </Button>
             </DialogFooter>

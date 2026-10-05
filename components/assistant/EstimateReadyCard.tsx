@@ -266,8 +266,8 @@ export function EstimateReadyCard({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="h-11 min-h-11 shrink-0 px-3 text-xs sm:h-7 sm:min-h-7"
+                    size="touch"
+                    className="shrink-0 px-3 text-xs sm:h-7 sm:min-h-7 sm:gap-1"
                     onClick={() => onReviewAttention(item)}
                   >
                     Review

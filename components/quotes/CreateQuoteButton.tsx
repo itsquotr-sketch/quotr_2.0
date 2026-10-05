@@ -33,13 +33,12 @@ export function CreateQuoteButton({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null>(null);
 
-  const prominent = presentation === "bar" || isReviewed;
-
   if (quoteSummary) {
     return (
       <Button
         type="button"
-        className={cn("w-full", prominent && "h-11 min-h-11")}
+        size="touch"
+        className="h-11 min-h-11 w-full"
         render={
           <Link href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`} />
         }
@@ -70,9 +69,9 @@ export function CreateQuoteButton({
     <div className="space-y-2">
       <Button
         type="button"
+        size="touch"
         className={cn(
-          "w-full",
-          prominent && "h-11 min-h-11",
+          "h-11 min-h-11 w-full",
           isReviewed && presentation !== "bar" && "font-semibold"
         )}
         disabled={!isReviewed || isPending || Boolean(quoteBlockedReason)}

@@ -151,10 +151,10 @@ function ScopeRow({
         >
           <Button
             type="button"
-            size="sm"
+            size="touch"
             variant="outline"
             className={cn(
-              "min-h-11 flex-1 px-3 sm:min-h-8 sm:flex-none",
+              "min-h-11 flex-1 px-3 sm:h-8 sm:min-h-8 sm:flex-none sm:gap-1",
               includedSelected
                 ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/20"
                 : "hover:bg-muted/40"
@@ -172,10 +172,10 @@ function ScopeRow({
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="touch"
             variant="outline"
             className={cn(
-              "min-h-11 flex-1 border px-3 sm:min-h-8 sm:flex-none",
+              "min-h-11 flex-1 border px-3 sm:h-8 sm:min-h-8 sm:flex-none sm:gap-1",
               excludedSelected
                 ? "border-border bg-muted font-medium text-foreground ring-1 ring-border"
                 : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -421,9 +421,9 @@ export function JobPlanWorkAreaCardView({
           {hiddenIncludedCount > 0 ? (
             <Button
               type="button"
-              size="sm"
+              size="touch"
               variant="ghost"
-              className="mt-1"
+              className="mt-1 sm:h-8 sm:min-h-8"
               onClick={() => setShowAllIncluded(true)}
             >
               View all {card.included.length} items
@@ -535,8 +535,9 @@ export function JobPlanWorkAreaCardView({
         <div className="mt-2">
           <Button
             type="button"
-            size="sm"
+            size="touch"
             variant="ghost"
+            className="sm:h-8 sm:min-h-8"
             data-job-plan-edit
             aria-expanded={editOpen}
             aria-label="Edit scope and specification"

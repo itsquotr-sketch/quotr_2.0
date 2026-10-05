@@ -98,8 +98,7 @@ export function JobPlanPanel({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="min-h-11"
+            size="touch"
             data-job-plan-add-work-area
             onClick={() => setAddOpen(true)}
           >

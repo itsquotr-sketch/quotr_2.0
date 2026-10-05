@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPricingDate } from "@/lib/pricing/format";
@@ -80,18 +79,12 @@ export function QuoteHeader({
           <Button
             type="button"
             variant="outline"
+            size="touch"
             disabled={isSaving}
             onClick={onSave}
             className="hidden shrink-0 md:inline-flex"
           >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-1.5 size-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save changes"
-            )}
+            {isSaving ? "Saving…" : "Save changes"}
           </Button>
         ) : null}
       </div>

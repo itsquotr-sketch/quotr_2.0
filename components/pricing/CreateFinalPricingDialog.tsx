@@ -92,6 +92,7 @@ export function CreateFinalPricingDialog({
           <Button
             type="button"
             variant="ghost"
+            size="touch"
             disabled={isPending}
             onClick={() => onOpenChange(false)}
           >
@@ -99,6 +100,7 @@ export function CreateFinalPricingDialog({
           </Button>
           <Button
             type="button"
+            size="touch"
             disabled={isPending}
             data-pricing-create-pending={isPending ? "true" : undefined}
             onClick={handleCreate}

@@ -452,12 +452,13 @@ export function RateEditDialog({
           <Button
             type="button"
             variant="outline"
+            size="touch"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave} disabled={saving}>
+          <Button type="button" size="touch" onClick={handleSave} disabled={saving}>
             {saving ? "Saving…" : "Save rate"}
           </Button>
         </DialogFooter>

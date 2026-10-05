@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -108,14 +108,7 @@ export function QuoteMobileActionBar({
           disabled={busy}
           onClick={onSave}
         >
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Saving…
-            </>
-          ) : (
-            "Save changes"
-          )}
+          {isSaving ? "Saving…" : "Save changes"}
         </Button>
       ) : null}
       {showSend ? (

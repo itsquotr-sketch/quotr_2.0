@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -343,13 +342,11 @@ export function QuoteSendSheet({
         data-quote-send-submit="true"
         onClick={submit}
       >
-        {isPending ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : mode === "resend" ? (
-          "Resend quote"
-        ) : (
-          "Send quote"
-        )}
+        {isPending
+          ? "Sending…"
+          : mode === "resend"
+            ? "Resend quote"
+            : "Send quote"}
       </Button>
       {needsFinalizeId ? (
         <Button

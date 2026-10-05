@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getPricingStatusDefinition } from "@/lib/pricing/status";
@@ -42,18 +41,13 @@ export function PricingHeader({
         {onSaveDocument && hasUnsavedChanges ? (
           <Button
             type="button"
+            variant="outline"
+            size="touch"
             disabled={isSaving || actionsLocked}
             onClick={onSaveDocument}
             className="hidden shrink-0 md:inline-flex"
           >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-1.5 size-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save changes"
-            )}
+            {isSaving ? "Saving…" : "Save changes"}
           </Button>
         ) : null}
       </div>

@@ -235,7 +235,7 @@ export function MaterialWastageDefaultsSection({
         </CardContent>
         {readOnly ? null : (
           <CardFooter className="border-t">
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" size="touch" disabled={saving}>
               {saving ? "Saving…" : "Save wastage defaults"}
             </Button>
           </CardFooter>

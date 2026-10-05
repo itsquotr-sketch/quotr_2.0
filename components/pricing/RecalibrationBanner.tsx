@@ -122,9 +122,8 @@ export function RecalibrationBanner({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              size="sm"
+              size="touch"
               variant="outline"
-              className="h-11 min-h-11"
               onClick={handlePreviewOpen}
               disabled={isPending || latestEstimateIsStale}
             >
@@ -132,9 +131,8 @@ export function RecalibrationBanner({
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="touch"
               variant="ghost"
-              className="h-11 min-h-11"
               onClick={handleKeepCurrent}
               disabled={isPending}
             >

@@ -149,8 +149,8 @@ export function PricingWorkAreaSection({
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="h-11 min-h-11 shrink-0"
+            size="touch"
+            className="shrink-0"
             disabled={isPending}
             onClick={handleAdd}
           >
