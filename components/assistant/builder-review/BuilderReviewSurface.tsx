@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EstimateCategoryHeader } from "@/components/ui/estimate-category-header";
 import { StatusPill } from "@/components/ui/status-pill";
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { formatLabourHours } from "@/lib/estimate/builder-presentation-format";
 import type {
   BuilderReviewImprovement,
@@ -144,10 +144,10 @@ export function BuilderReviewSurface({
             </p>
             {gst.showGst ? (
               <p className="mt-1 text-sm" data-builder-review-gst>
-                {formatCurrency(gst.inclGst)} incl GST
+                {formatCurrencyCents(gst.inclGst)} incl GST
                 <span className="text-muted-foreground">
                   {" "}
-                  · {formatCurrency(gst.gstAmount)} GST
+                  · {formatCurrencyCents(gst.gstAmount)} GST
                 </span>
               </p>
             ) : null}

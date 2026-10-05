@@ -162,7 +162,7 @@ function main() {
     review.includes("init[wa.workAreaName] = true")
   );
   assert(
-    "Review GST uses presentEstimateGst (no formula change)",
+    "Review GST uses presentEstimateGst",
     review.includes("presentEstimateGst") &&
       presentEstimateGst(1000, 15).inclGst === 1150
   );

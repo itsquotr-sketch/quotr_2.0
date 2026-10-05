@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import {
   attentionShowsReviewButton,
@@ -175,10 +175,10 @@ export function EstimateReadyCard({
             </p>
             {gst.showGst ? (
               <p className="mt-1 text-sm text-foreground" data-estimate-gst>
-                {formatCurrency(gst.inclGst)} incl GST
+                {formatCurrencyCents(gst.inclGst)} incl GST
                 <span className="text-muted-foreground">
                   {" "}
-                  · {formatCurrency(gst.gstAmount)} GST
+                  · {formatCurrencyCents(gst.gstAmount)} GST
                 </span>
               </p>
             ) : null}

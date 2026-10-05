@@ -7,7 +7,10 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { formatCurrencyCents } from "../components/assistant/format";
 import { presentEstimateGst, ESTIMATE_RANGE_EXPLANATION } from "../lib/assistant/presentation/gst-display";
+import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
+import { calculateAuthoritativeQuoteTotals } from "../lib/quotes/quote-commercial-engine-adapter";
 import { isTechnicalErrorText, toUserError } from "../lib/errors/user-message";
 import { isUnsafeErrorText } from "../lib/assistant/presentation/error-messages";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "../lib/assistant/presentation/action-labels";
@@ -37,6 +40,24 @@ function assert(label: string, ok: boolean) {
 
 function read(rel: string): string {
   return readFileSync(join(process.cwd(), rel), "utf8");
+}
+
+function sameDocumentGst(sell: number, rate: number): boolean {
+  const estimate = presentEstimateGst(sell, rate);
+  const pricing = calculateAuthoritativeDocumentTotals(
+    [{ total_cost: sell, total_sell: sell, cost_known: true }],
+    rate
+  );
+  const quote = calculateAuthoritativeQuoteTotals([{ total: sell, visible: true }], rate);
+  return (
+    estimate.showGst &&
+    pricing.ok &&
+    quote.ok &&
+    estimate.gstAmount === pricing.totals.gstAmount &&
+    estimate.inclGst === pricing.totals.totalInclGst &&
+    estimate.gstAmount === quote.totals.gstAmount &&
+    estimate.inclGst === quote.totals.totalInclGst
+  );
 }
 
 function section(title: string) {
@@ -163,8 +184,28 @@ function main() {
 
   section("ESTIMATE READY");
   assert("range explanation is rate-settings, not AI", ESTIMATE_RANGE_EXPLANATION.includes("rate settings") && !ESTIMATE_RANGE_EXPLANATION.toLowerCase().includes("confidence interval"));
-  assert("GST hidden at 0%", presentEstimateGst(10000, 0).showGst === false && presentEstimateGst(10000, 0).inclGst === 10000);
+  assert("GST hidden at 0%", presentEstimateGst(10000, 0).showGst === false && presentEstimateGst(10000, 0).gstAmount === 0 && presentEstimateGst(10000, 0).inclGst === 10000);
+  assert("GST hidden when rate is missing", presentEstimateGst(10000, null).showGst === false && presentEstimateGst(10000, null).inclGst === 10000);
   assert("GST shown at 15%", presentEstimateGst(10000, 15).showGst === true && presentEstimateGst(10000, 15).gstAmount === 1500 && presentEstimateGst(10000, 15).inclGst === 11500);
+  const fractional = presentEstimateGst(10.01, 15);
+  assert("fractional-cent GST uses F-GST", fractional.gstAmount === 1.5 && fractional.inclGst === 11.51);
+  const australia = presentEstimateGst(13457.81, 10);
+  assert("AU 10% GST matches the cent document", australia.gstAmount === 1345.78 && australia.inclGst === 14803.59);
+  const kwila = presentEstimateGst(13457.81, 15);
+  assert(
+    "Kwila NZ 15% GST matches Pricing and Quote",
+    kwila.gstAmount === 2018.67 &&
+      kwila.inclGst === 15476.48 &&
+      formatCurrencyCents(kwila.gstAmount) === "$2,018.67" &&
+      formatCurrencyCents(kwila.inclGst) === "$15,476.48" &&
+      sameDocumentGst(13457.81, 15) &&
+      sameDocumentGst(13457.81, 10) &&
+      sameDocumentGst(10.01, 15)
+  );
+  assert(
+    "Estimate GST display does not round to the nearest dollar",
+    !read("lib/assistant/presentation/gst-display.ts").includes("Math.round")
+  );
   assert("ready card shows incl GST", readyCard.includes("incl GST") && readyCard.includes("data-estimate-gst"));
   assert("ready card shows work area totals", readyCard.includes("data-estimate-work-area-totals"));
   assert("ready card shows assumptions", readyCard.includes("data-estimate-ready-assumptions"));

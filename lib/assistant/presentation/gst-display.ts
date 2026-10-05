@@ -1,8 +1,11 @@
 /**
  * BETA-2 — Estimate GST presentation only.
  * Does not change sell-from-cost, margin, or persisted estimate money.
- * GST is applied for display from organisation_settings.default_gst_rate.
+ * GST is applied for display from organisation_settings.default_gst_rate
+ * through the commercial engine's document F-GST rule.
  */
+
+import { calculateDocumentAggregate } from "@/lib/commercial-engine";
 
 export const ESTIMATE_RANGE_EXPLANATION =
   "Indicative range based on your current rate settings.";
@@ -25,13 +28,45 @@ export function presentEstimateGst(
       ? gstRatePercent
       : 0;
   const showGst = rate > 0;
-  const gstAmount = showGst ? Math.round(sell * (rate / 100)) : 0;
+  if (!showGst) {
+    return {
+      gstRate: rate,
+      exGst: sell,
+      gstAmount: 0,
+      inclGst: sell,
+      showGst: false,
+    };
+  }
+
+  const aggregate = calculateDocumentAggregate({
+    inclusion_rule: "all",
+    gst_rate_percent: rate,
+    lines: [
+      {
+        total_cost: 0,
+        total_sell: sell,
+        included_in_total: true,
+        visible: true,
+        cost_known: false,
+      },
+    ],
+  });
+  if (!aggregate.ok || aggregate.gst_amount == null || aggregate.total_incl_gst == null) {
+    return {
+      gstRate: rate,
+      exGst: sell,
+      gstAmount: 0,
+      inclGst: sell,
+      showGst: false,
+    };
+  }
+
   return {
     gstRate: rate,
     exGst: sell,
-    gstAmount,
-    inclGst: sell + gstAmount,
-    showGst,
+    gstAmount: aggregate.gst_amount,
+    inclGst: aggregate.total_incl_gst,
+    showGst: true,
   };
 }
 

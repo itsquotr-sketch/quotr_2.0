@@ -7,7 +7,7 @@
  * Pricing gate.
  */
 
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
 import type { CommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import {
@@ -486,8 +486,8 @@ function sellPresentation(input: {
       presentation: "previous",
       label: "Previous estimate",
       exGst: formatCurrency(gst.exGst),
-      gst: gst.showGst ? formatCurrency(gst.gstAmount) : null,
-      inclGst: gst.showGst ? formatCurrency(gst.inclGst) : null,
+      gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
+      inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
       boundaryCopy,
     };
   }
@@ -495,8 +495,8 @@ function sellPresentation(input: {
     presentation: "current",
     label: "Recommended client sell",
     exGst: formatCurrency(gst.exGst),
-    gst: gst.showGst ? formatCurrency(gst.gstAmount) : null,
-    inclGst: gst.showGst ? formatCurrency(gst.inclGst) : null,
+    gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
+    inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
     boundaryCopy,
   };
 }

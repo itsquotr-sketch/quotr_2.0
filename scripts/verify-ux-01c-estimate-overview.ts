@@ -121,7 +121,9 @@ check("2 readiness blocker is required and blocks Pricing", incomplete.required.
 
 const current = projectEstimateOverview(input({}));
 check("3 current estimate can continue to Pricing", current.status === "current" && current.primary === "continue_pricing" && current.pricingEntry === "create" && !current.pricingCreationBlocked);
-check("3 current sell shows ex GST, GST, and incl GST", current.sell.presentation === "current" && current.sell.exGst === "$1,000" && current.sell.gst === "$150" && current.sell.inclGst === "$1,150");
+check("3 current sell shows ex GST, GST, and incl GST", current.sell.presentation === "current" && current.sell.exGst === "$1,000" && current.sell.gst === "$150.00" && current.sell.inclGst === "$1,150.00");
+const kwilaSell = projectEstimateOverview(input({ estimate: money(13457.81, 10766.43) }));
+check("3 Kwila GST and incl GST stay in cents", kwilaSell.sell.exGst === "$13,458" && kwilaSell.sell.gst === "$2,018.67" && kwilaSell.sell.inclGst === "$15,476.48");
 check("3 boundary copy stays an estimate, not a quote", current.sell.boundaryCopy === ESTIMATE_OVERVIEW_BOUNDARY_COPY && current.sell.boundaryCopy.includes("not shown to the client"));
 
 const stale = projectEstimateOverview(input({ isStale: true }));

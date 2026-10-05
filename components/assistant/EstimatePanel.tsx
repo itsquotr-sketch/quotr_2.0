@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import {
   formatCurrency,
+  formatCurrencyCents,
   formatCurrencyRange,
 } from "@/components/assistant/format";
 import { estimateDocumentViewModel } from "@/lib/estimate/financial-view-model";
@@ -1089,7 +1090,7 @@ export function EstimatePanel({
               </p>
               {presentEstimateGst(estimate.recommendedSell, defaultGstRate).showGst ? (
                 <p className="mt-1 text-xs text-muted-foreground" data-estimate-gst>
-                  {formatCurrency(
+                  {formatCurrencyCents(
                     presentEstimateGst(estimate.recommendedSell, defaultGstRate).inclGst
                   )}{" "}
                   incl GST
