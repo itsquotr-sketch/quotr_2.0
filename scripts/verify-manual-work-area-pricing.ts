@@ -24,8 +24,12 @@ import {
   MANUAL_PRICING_NOTICE_BODY,
   MANUAL_PRICING_NOTICE_TITLE,
   MANUAL_PRICING_QUOTE_BLOCK,
+  MANUAL_WORK_AREA_LINE_MARKER,
   buildManualWorkAreaPricingItemRow,
+  copyEnteredManualPrices,
+  decideManualPricingHandoff,
   manualScopeSellOmitsBlankCost,
+  pricingRowsForOpenManualHandoff,
   isManualPricingWorkAreaType,
   manualWorkAreaPersistence,
   partitionWorkAreasByCalculator,
@@ -89,6 +93,7 @@ const parsed = parseLineItemNotes(notes);
 check("unpriced notes stay Pricing Required", parsed.metadata.rateSourceType === "missing");
 check("internal notes do not claim a sell authority", !notes.includes("sellAuthority") && !/benchmark/i.test(notes));
 check("client description is the scope only", row.client_description === SCOPE && !String(row.client_description).includes("__quotr"));
+check("manual line carries the uniqueness marker", notes.includes(MANUAL_WORK_AREA_LINE_MARKER));
 check("blank sell is stored as zero pending, not a completed price", row.total_sell === 0 && row.unit_sell === null && row.quantity === 1 && row.unit === "item");
 
 function asItem(overrides: Partial<PricingItem>): PricingItem {
@@ -179,20 +184,41 @@ const quoteItems = mapPricingItemsToQuoteItems(
   new Map([["wa", SCOPE]])
 );
 check(
-  "quote carries the scope and price",
+  "quote shows the manual scope once, on the section",
   quoteItems.length === 1 &&
     quoteItems[0]?.label === "Concreting" &&
     quoteItems[0]?.section_title === "Concreting" &&
     quoteItems[0]?.section_description === SCOPE &&
-    quoteItems[0]?.description === SCOPE &&
+    quoteItems[0]?.description == null &&
     quoteItems[0]?.total === 1000 &&
     quoteItems[0]?.quantity === 1 &&
     quoteItems[0]?.unit === "item"
 );
+const supportedLine = mapPricingItemsToQuoteItems(
+  [asItem({
+    id: "deck-line",
+    work_area_id: "deck",
+    client_label: "Decking",
+    client_description: "140 mm hardwood boards",
+    total_sell: 18218.38,
+    quantity: 282.85,
+    unit: "lm",
+  })],
+  new Map([["deck", "Deck"]]),
+  new Map([["deck", "Supply and install the deck."]])
+);
+check(
+  "a supported line keeps its own description",
+  supportedLine[0]?.description === "140 mm hardwood boards" &&
+    supportedLine[0]?.section_description === "Supply and install the deck." &&
+    supportedLine[0]?.total === 18218.38 &&
+    supportedLine[0]?.quantity === 282.85
+);
 check(
   "quote line hides internal pricing notes",
-  !String(quoteItems[0]?.description).includes("Pricing required") &&
-    !String(quoteItems[0]?.description).includes("rateSourceType") &&
+  quoteItems[0]?.description == null &&
+    !String(quoteItems[0]?.section_description).includes("Pricing required") &&
+    !String(quoteItems[0]?.section_description).includes("rateSourceType") &&
     !String(quoteItems[0]?.section_description).includes("sellAuthority")
 );
 const totals = calculateQuoteBaseTotalsFromItems(quoteItems, 15, "manual-pricing-gst");
@@ -345,9 +371,90 @@ check(
 );
 check(
   "a repeated continue reuses the same manual area and null-estimate draft",
-  pricingActions.includes('.eq("quote_description", persisted.quoteDescription)') &&
+  pricingActions.includes("claimConfirmedManualWorkArea") &&
+    pricingActions.includes("claimOpenManualPricingDocument") &&
+    pricingActions.includes("claimManualWorkAreaPricingLine") &&
     pricingActions.includes('.is("estimate_id", null)') &&
     pricingActions.includes('existingDoc?.status === "converted_to_quote"')
+);
+const claimSource = readFileSync("lib/work-areas/manual-continuation-claim.ts", "utf8");
+check(
+  "same manual scope is reused from the unique key",
+  claimSource.includes('.eq("quote_description", row.quote_description)') &&
+    claimSource.includes("isUniqueViolation")
+);
+const openManual = {
+  id: "manual-doc",
+  status: "draft",
+  estimate_id: null,
+  created_at: "2026-10-06T00:00:00.000Z",
+};
+check(
+  "an open manual Pricing document receives the later supported area",
+  decideManualPricingHandoff([openManual]).action === "fold_into_open"
+);
+check(
+  "a reviewed manual document is folded and sent back for review",
+  decideManualPricingHandoff([{ ...openManual, status: "reviewed" }]).action ===
+    "fold_into_open" &&
+    decideManualPricingHandoff([{ ...openManual, status: "reviewed" }]).action ===
+      "fold_into_open"
+);
+const reviewed = decideManualPricingHandoff([{ ...openManual, status: "reviewed" }]);
+check(
+  "folding a reviewed document resets review without touching a quote",
+  reviewed.action === "fold_into_open" && reviewed.action && reviewed.resetReview === true
+);
+check(
+  "a converted manual document is not rewritten",
+  decideManualPricingHandoff([{ ...openManual, status: "converted_to_quote" }]).action ===
+    "new_after_quote"
+);
+check(
+  "supported-only Pricing still creates its own document",
+  decideManualPricingHandoff([
+    { id: "deck-doc", status: "draft", estimate_id: "estimate-1", created_at: "2026-10-06T00:00:00.000Z" },
+  ]).action === "create_new"
+);
+const keptPrice = copyEnteredManualPrices({
+  incomingRows: [row],
+  pricedItems: [{
+    work_area_id: "wa",
+    notes_internal: notes,
+    total_sell: 1000,
+    unit_sell: 1000,
+    total_cost: 0,
+    unit_cost: null,
+    quantity: 1,
+    unit: "item",
+    client_description: SCOPE,
+    gross_profit: 0,
+    margin_percent: 0,
+    markup_percent: 0,
+  }],
+});
+check(
+  "a later document copies the entered manual price",
+  keptPrice[0]?.total_sell === 1000 && keptPrice[0]?.client_description === SCOPE
+);
+const foldedRows = pricingRowsForOpenManualHandoff({
+  existingItems: [{ work_area_id: "wa", notes_internal: notes }],
+  incomingRows: [
+    row,
+    { ...row, work_area_id: "deck", source_estimate_line_item_id: "line-1", total_sell: 18218.38 },
+  ],
+});
+check(
+  "folding keeps the priced manual line and adds the calculated line",
+  foldedRows.length === 1 && foldedRows[0]?.source_estimate_line_item_id === "line-1"
+);
+check(
+  "job plan copy no longer calls a manual area an estimate",
+    readFileSync("components/assistant/job-plan/JobPlanWorkAreaCard.tsx", "utf8").includes("from this job?") &&
+    readFileSync("components/assistant/job-plan/JobPlanWorkAreaCard.tsx", "utf8").includes("from this estimate?") &&
+    readFileSync("components/assistant/job-plan/JobPlanPanel.tsx", "utf8").includes(
+      "If Quotr cannot calculate it, describe the scope and enter your price in Pricing."
+    )
 );
 check(
   "quote creation copies a snapshot instead of reading Pricing live",

@@ -21,6 +21,7 @@ export function isManualScopePricingRequiredNote(
 export function buildManualScopePricingNotes(params: {
   readonly title: string;
   readonly description?: string | null;
+  readonly lineMarker?: string | null;
 }): string {
   const desc = params.description?.trim();
   const parts = [
@@ -29,6 +30,10 @@ export function buildManualScopePricingNotes(params: {
   ];
   if (desc) {
     parts.push(desc);
+  }
+  const marker = params.lineMarker?.trim();
+  if (marker) {
+    parts.push(marker);
   }
   return (
     buildPersistedLineItemNotes({

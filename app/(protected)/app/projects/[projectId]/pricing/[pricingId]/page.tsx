@@ -20,16 +20,28 @@ import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { memberCanEditPricing } from "@/lib/team/permissions";
+import {
+  MANUAL_PRICING_AFTER_QUOTE_NOTICE,
+  MANUAL_PRICING_FOLD_NOTICE,
+} from "@/lib/work-areas/manual-pricing-route";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 type PricingPageProps = {
   params: Promise<{ projectId: string; pricingId: string }>;
+  searchParams: Promise<{ handoff?: string }>;
 };
 
-export default async function PricingPage({ params }: PricingPageProps) {
+export default async function PricingPage({ params, searchParams }: PricingPageProps) {
   await connection();
   const { projectId, pricingId } = await params;
+  const { handoff } = await searchParams;
+  const handoffNotice =
+    handoff === "fold"
+      ? MANUAL_PRICING_FOLD_NOTICE
+      : handoff === "after-quote"
+        ? MANUAL_PRICING_AFTER_QUOTE_NOTICE
+        : null;
 
   const pageData = await measureServerLoad("pricing", async () => {
     const auth = await requireAuthOrgContext();
@@ -87,6 +99,14 @@ export default async function PricingPage({ params }: PricingPageProps) {
       contentClassName="bg-muted/30"
     >
       <SetupGuidanceServerBanner dimension="pricing" />
+      {handoffNotice ? (
+        <p
+          className="mb-4 rounded-md border bg-background px-3 py-2 text-sm text-foreground"
+          data-manual-pricing-handoff={handoff}
+        >
+          {handoffNotice}
+        </p>
+      ) : null}
       <PricingWorkspace
         initialData={data}
         quoteSummary={quoteSummaryForDoc}

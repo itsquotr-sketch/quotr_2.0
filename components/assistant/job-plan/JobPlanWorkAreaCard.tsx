@@ -23,6 +23,7 @@ import type {
 } from "@/lib/assistant/job-plan/types";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
 import { PREMIUM } from "@/lib/ui/premium";
 
 const INCLUDED_PREVIEW_LIMIT = 6;
@@ -334,11 +335,15 @@ export function JobPlanWorkAreaCardView({
         >
           <DialogContent showCloseButton>
             <DialogHeader>
-              <DialogTitle>Remove {card.name} from this estimate?</DialogTitle>
+              <DialogTitle>
+                {workAreaTypeHasDetailedCalculator(card.workAreaType)
+                  ? `Remove ${card.name} from this estimate?`
+                  : `Remove ${card.name} from this job?`}
+              </DialogTitle>
               <DialogDescription>
-                This only removes {card.name} from this project estimate. It
-                does not change your company work preferences. You can add it
-                back later.
+                {workAreaTypeHasDetailedCalculator(card.workAreaType)
+                  ? `This only removes ${card.name} from this project estimate. It does not change your company work preferences. You can add it back later.`
+                  : `This removes ${card.name} from this job. It does not change your company work preferences. You can add it back later.`}
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -375,7 +380,11 @@ export function JobPlanWorkAreaCardView({
                   });
                 }}
               >
-                {isRemoving ? "Removing…" : "Remove from estimate"}
+                {isRemoving
+                  ? "Removing…"
+                  : workAreaTypeHasDetailedCalculator(card.workAreaType)
+                    ? "Remove from estimate"
+                    : "Remove from job"}
               </Button>
             </div>
             {removeError ? (

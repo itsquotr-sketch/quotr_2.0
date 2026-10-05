@@ -66,10 +66,19 @@ import {
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
 import {
+  attachEstimateLinesToOpenManualPricing,
+  claimConfirmedManualWorkArea,
+  claimManualWorkAreaPricingLine,
+  claimOpenManualPricingDocument,
+} from "@/lib/work-areas/manual-continuation-claim";
+import {
   buildManualWorkAreaPricingItemRow,
+  copyEnteredManualPrices,
+  decideManualPricingHandoff,
   manualScopeSellOmitsBlankCost,
   manualWorkAreaPersistence,
   manualWorkAreaScopeText,
+  pricingRowsForOpenManualHandoff,
   unresolvedManualPricingQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
 import {
@@ -757,6 +766,33 @@ export async function createPricingFromEstimate(input: {
   }
   const documentTotals = documentTotalsResult.totals;
 
+  const { data: manualPricingDocs } = await supabase
+    .from("pricing_documents")
+    .select("id, status, estimate_id, created_at")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .is("estimate_id", null)
+    .order("created_at", { ascending: false });
+  const manualHandoff = decideManualPricingHandoff(manualPricingDocs ?? []);
+  let pricingHandoffQuery: "fold" | "after-quote" | null = null;
+
+  if (manualHandoff.action === "new_after_quote") {
+    const { data: issuedItems } = await supabase
+      .from("pricing_items")
+      .select(
+        "work_area_id, notes_internal, total_sell, unit_sell, total_cost, unit_cost, quantity, unit, client_description, gross_profit, margin_percent, markup_percent"
+      )
+      .eq("pricing_document_id", manualHandoff.sourceDocumentId)
+      .eq("org_id", orgId);
+    const copied = copyEnteredManualPrices({
+      incomingRows: pricingItemRows,
+      pricedItems: issuedItems ?? [],
+    });
+    pricingItemRows.length = 0;
+    pricingItemRows.push(...copied);
+    pricingHandoffQuery = "after-quote";
+  }
+
   const requirementSnapshotId =
     (estimate.latest_requirement_snapshot_id as string | null) ?? null;
 
@@ -792,6 +828,63 @@ export async function createPricingFromEstimate(input: {
       internal_notes: internalNotes,
       created_by: user.id,
   };
+
+  if (manualHandoff.action === "fold_into_open") {
+    const { data: openItems, error: openItemsError } = await supabase
+      .from("pricing_items")
+      .select("work_area_id, notes_internal, sort_order")
+      .eq("pricing_document_id", manualHandoff.documentId)
+      .eq("org_id", orgId);
+    if (openItemsError) {
+      return {
+        error: toUserError(openItemsError, "pricing-manual-handoff", PRICING_SAVE_FAILED),
+      };
+    }
+    const rowsToAdd = pricingRowsForOpenManualHandoff({
+      existingItems: openItems ?? [],
+      incomingRows: pricingItemRows,
+    });
+    let sortBase =
+      (openItems ?? []).reduce(
+        (max, row) => Math.max(max, Number(row.sort_order ?? 0)),
+        -1
+      ) + 1;
+    for (const row of rowsToAdd) {
+      row.sort_order = sortBase++;
+    }
+    const attached = await attachEstimateLinesToOpenManualPricing(supabase, {
+      orgId,
+      documentId: manualHandoff.documentId,
+      estimateId: estimate.id as string,
+      requirementSnapshotId,
+      resetReview: manualHandoff.resetReview,
+      scopeSummary: buildScopeSummaryFromWorkAreas(
+        workAreaNames,
+        project.brief_text
+      ),
+      rows: rowsToAdd,
+    });
+    if (!attached.ok) {
+      return {
+        error: toUserError(
+          { message: attached.message },
+          "pricing-manual-handoff",
+          PRICING_SAVE_FAILED
+        ),
+      };
+    }
+    await recalculateAndPersistDocumentTotals(
+      supabase,
+      orgId,
+      manualHandoff.documentId,
+      createGst.recalculationGstRate,
+      false
+    );
+    revalidatePricingDashboard(projectId, manualHandoff.documentId);
+    redirect(
+      `/app/projects/${projectId}/pricing/${manualHandoff.documentId}?handoff=fold`
+    );
+  }
 
   let insertDocError: { message: string } | null = null;
   let pricingDocument: { id: string } | null = null;
@@ -897,7 +990,11 @@ export async function createPricingFromEstimate(input: {
   }
 
   revalidatePricingDashboard(projectId, pricingDocumentId);
-  redirect(`/app/projects/${projectId}/pricing/${pricingDocumentId}`);
+  redirect(
+    pricingHandoffQuery
+      ? `/app/projects/${projectId}/pricing/${pricingDocumentId}?handoff=${pricingHandoffQuery}`
+      : `/app/projects/${projectId}/pricing/${pricingDocumentId}`
+  );
 }
 
 export async function updatePricingDocument(
@@ -2237,42 +2334,33 @@ export async function continueManualWorkToPricing(input: {
     });
     if (!persisted.ok) return { error: persisted.error };
 
-    const { data: existingMatch } = await supabase
+    const { data: sortRows } = await supabase
       .from("work_areas")
-      .select("id")
+      .select("sort_order")
       .eq("project_id", projectId)
       .eq("org_id", orgId)
-      .eq("type", persisted.type)
-      .eq("status", "confirmed")
-      .eq("name", persisted.name)
-      .eq("quote_description", persisted.quoteDescription)
-      .limit(1)
-      .maybeSingle();
-    if (!existingMatch) {
-      const { data: sortRows } = await supabase
-        .from("work_areas")
-        .select("sort_order")
-        .eq("project_id", projectId)
-        .eq("org_id", orgId)
-        .order("sort_order", { ascending: false })
-        .limit(1);
-      const nextSort = (sortRows?.[0]?.sort_order ?? 0) + 1;
-      const { error: insertError } = await supabase.from("work_areas").insert({
-        org_id: orgId,
-        project_id: projectId,
-        type: persisted.type,
-        name: persisted.name,
-        status: persisted.status,
-        ai_confidence: null,
-        summary: persisted.summary,
-        quote_description: persisted.quoteDescription,
-        sort_order: nextSort,
-      });
-      if (insertError) {
-        return {
-          error: toUserError(insertError, "manual-work-area", "Could not save this work."),
-        };
-      }
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const nextSort = (sortRows?.[0]?.sort_order ?? 0) + 1;
+    const claimedArea = await claimConfirmedManualWorkArea(supabase, {
+      org_id: orgId,
+      project_id: projectId,
+      type: persisted.type,
+      name: persisted.name,
+      status: persisted.status,
+      ai_confidence: null,
+      summary: persisted.summary,
+      quote_description: persisted.quoteDescription,
+      sort_order: nextSort,
+    });
+    if ("error" in claimedArea) {
+      return {
+        error: toUserError(
+          claimedArea.error.message,
+          "manual-work-area",
+          "Could not save this work."
+        ),
+      };
     }
   }
 
@@ -2360,44 +2448,44 @@ export async function continueManualWorkToPricing(input: {
       orgDefaults,
     });
     const terms = resolveTermsForSnapshot(null, orgDefaults);
-    const { data: created, error: createError } = await supabase
-      .from("pricing_documents")
-      .insert({
-        org_id: orgId,
-        project_id: projectId,
-        estimate_id: null,
-        title: `Final pricing — ${project.title}`,
-        status: "draft",
-        client_name: project.client_name,
-        site_address: project.site_address,
-        pricing_date: todayIsoDate(),
-        valid_until: addDaysIsoDate(orgDefaults.defaultQuoteValidityDays),
-        subtotal_cost: 0,
-        subtotal_sell: 0,
-        gross_profit: 0,
-        margin_percent: 0,
-        markup_percent: 0,
-        gst_rate: gstRate,
-        gst_amount: 0,
-        total_incl_gst: 0,
-        scope_summary: buildScopeSummaryFromWorkAreas(
-          manualAreas.map((area) => String(area.name)),
-          project.brief_text
-        ),
-        assumptions,
-        exclusions,
-        terms,
-        internal_notes: null,
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-    if (createError || !created) {
+    const claimedDocument = await claimOpenManualPricingDocument(supabase, {
+      org_id: orgId,
+      project_id: projectId,
+      estimate_id: null,
+      title: `Final pricing — ${project.title}`,
+      status: "draft",
+      client_name: project.client_name,
+      site_address: project.site_address,
+      pricing_date: todayIsoDate(),
+      valid_until: addDaysIsoDate(orgDefaults.defaultQuoteValidityDays),
+      subtotal_cost: 0,
+      subtotal_sell: 0,
+      gross_profit: 0,
+      margin_percent: 0,
+      markup_percent: 0,
+      gst_rate: gstRate,
+      gst_amount: 0,
+      total_incl_gst: 0,
+      scope_summary: buildScopeSummaryFromWorkAreas(
+        manualAreas.map((area) => String(area.name)),
+        project.brief_text
+      ),
+      assumptions,
+      exclusions,
+      terms,
+      internal_notes: null,
+      created_by: user.id,
+    });
+    if ("error" in claimedDocument) {
       return {
-        error: toUserError(createError, "manual-pricing-document", "Failed to create pricing."),
+        error: toUserError(
+          claimedDocument.error.message,
+          "manual-pricing-document",
+          "Failed to create pricing."
+        ),
       };
     }
-    pricingDocumentId = created.id;
+    pricingDocumentId = claimedDocument.id;
   }
 
   if (!pricingDocumentId) {
@@ -2420,10 +2508,9 @@ export async function continueManualWorkToPricing(input: {
       (max, row) => Math.max(max, Number(row.sort_order ?? 0)),
       -1
     ) + 1;
-  const rows = [];
   for (const area of manualAreas) {
     if (covered.has(String(area.id))) continue;
-    rows.push({
+    const claimedLine = await claimManualWorkAreaPricingLine(supabase, {
       ...buildManualWorkAreaPricingItemRow({
         orgId,
         projectId,
@@ -2434,12 +2521,13 @@ export async function continueManualWorkToPricing(input: {
       }),
       pricing_document_id: pricingDocumentId,
     });
-  }
-  if (rows.length > 0) {
-    const { error: itemsError } = await supabase.from("pricing_items").insert(rows);
-    if (itemsError) {
+    if ("error" in claimedLine) {
       return {
-        error: toUserError(itemsError, "manual-pricing-items", PRICING_SAVE_FAILED),
+        error: toUserError(
+          claimedLine.error.message,
+          "manual-pricing-items",
+          PRICING_SAVE_FAILED
+        ),
       };
     }
   }

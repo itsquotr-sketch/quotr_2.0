@@ -160,15 +160,22 @@ export function mapPricingItemsToQuoteItems(
         }
       }
 
+      const sectionText = sanitizeClientNarrativeBlock(sectionDescription);
+      const lineText = resolveQuoteItemDescription(item);
+      const lineRepeatsSection =
+        Boolean(sectionText?.trim()) &&
+        Boolean(lineText?.trim()) &&
+        sectionText?.trim() === lineText?.trim();
+
       return {
         pricing_item_id: item.id,
         work_area_id: item.work_area_id,
         section_title: item.work_area_id
           ? (workAreaNames.get(item.work_area_id) ?? null)
           : null,
-        section_description: sanitizeClientNarrativeBlock(sectionDescription),
+        section_description: sectionText,
         label: resolveQuoteItemLabel(item),
-        description: resolveQuoteItemDescription(item),
+        description: lineRepeatsSection ? null : lineText,
         ...ensureQuoteItemQuantityUnit({
           quantity: item.quantity,
           unit: item.unit,

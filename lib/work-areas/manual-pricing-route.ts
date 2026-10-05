@@ -23,6 +23,15 @@ export const MANUAL_PRICING_QUOTE_BLOCK =
 export const MANUAL_ESTIMATE_SKIPPED_MESSAGE =
   "Quotr cannot build a detailed estimate for this work. Continue with manual pricing and enter your price.";
 
+/** Marks the one Pricing line for a manual work area. Scope-item stubs do not use it. */
+export const MANUAL_WORK_AREA_LINE_MARKER = "__quotr_manual_work_area_line__:true";
+
+export const MANUAL_PRICING_FOLD_NOTICE =
+  "Calculated work was added to this Pricing document. The price you entered is unchanged. Review the combined Pricing before creating a Quote.";
+
+export const MANUAL_PRICING_AFTER_QUOTE_NOTICE =
+  "This is a new Pricing document because a Quote was already created. That Quote was not changed. The price you entered was copied here.";
+
 export function isManualPricingWorkAreaType(type: string): boolean {
   return !workAreaTypeHasDetailedCalculator(type);
 }
@@ -129,8 +138,117 @@ export function buildManualWorkAreaPricingItemRow(params: {
     notes_internal: buildManualScopePricingNotes({
       title: name,
       description: scope,
+      lineMarker: MANUAL_WORK_AREA_LINE_MARKER,
     }),
   };
+}
+
+export type ManualPricingHandoffDocument = {
+  id: string;
+  status: string;
+  estimate_id: string | null;
+  created_at?: string | null;
+};
+
+/**
+ * After a manual price exists, a later supported area must not open a second
+ * active Pricing document or zero the entered price. A document already
+ * converted to a Quote stays untouched.
+ */
+export function decideManualPricingHandoff(
+  documents: readonly ManualPricingHandoffDocument[]
+):
+  | { action: "create_new" }
+  | { action: "fold_into_open"; documentId: string; resetReview: boolean }
+  | { action: "new_after_quote"; sourceDocumentId: string } {
+  const manual = documents
+    .filter((document) => document.estimate_id == null)
+    .slice()
+    .sort((a, b) =>
+      String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""))
+    );
+  const open = manual.find(
+    (document) => document.status === "draft" || document.status === "reviewed"
+  );
+  if (open) {
+    return {
+      action: "fold_into_open",
+      documentId: open.id,
+      resetReview: open.status === "reviewed",
+    };
+  }
+  const issued = manual.find(
+    (document) => document.status === "converted_to_quote"
+  );
+  if (issued) {
+    return { action: "new_after_quote", sourceDocumentId: issued.id };
+  }
+  return { action: "create_new" };
+}
+
+export function pricingRowsForOpenManualHandoff(input: {
+  existingItems: readonly {
+    work_area_id?: string | null;
+    notes_internal?: string | null;
+  }[];
+  incomingRows: readonly Record<string, unknown>[];
+}): Record<string, unknown>[] {
+  const covered = new Set(
+    input.existingItems
+      .filter((item) => isManualScopePricingRequiredNote(item.notes_internal))
+      .map((item) => String(item.work_area_id ?? ""))
+  );
+  return input.incomingRows.filter((row) => {
+    if (row.source_estimate_line_item_id) return true;
+    return !covered.has(String(row.work_area_id ?? ""));
+  });
+}
+
+type PricedManualLine = {
+  work_area_id?: string | null;
+  notes_internal?: string | null;
+  total_sell?: number | null;
+  unit_sell?: number | null;
+  total_cost?: number | null;
+  unit_cost?: number | null;
+  quantity?: number | null;
+  unit?: string | null;
+  client_description?: string | null;
+  gross_profit?: number | null;
+  margin_percent?: number | null;
+  markup_percent?: number | null;
+};
+
+/** Copy an entered manual sell onto a new draft. Does not invent a cost. */
+export function copyEnteredManualPrices(input: {
+  incomingRows: readonly Record<string, unknown>[];
+  pricedItems: readonly PricedManualLine[];
+}): Record<string, unknown>[] {
+  const byArea = new Map<string, PricedManualLine>();
+  for (const item of input.pricedItems) {
+    if (!isManualScopePricingRequiredNote(item.notes_internal)) continue;
+    const sell = Number(item.total_sell ?? 0);
+    if (!Number.isFinite(sell) || sell <= 0 || !item.work_area_id) continue;
+    byArea.set(String(item.work_area_id), item);
+  }
+  return input.incomingRows.map((row) => {
+    if (row.source_estimate_line_item_id) return { ...row };
+    const priced = byArea.get(String(row.work_area_id ?? ""));
+    if (!priced) return { ...row };
+    return {
+      ...row,
+      quantity: priced.quantity ?? row.quantity,
+      unit: priced.unit ?? row.unit,
+      unit_cost: priced.unit_cost ?? null,
+      unit_sell: priced.unit_sell ?? null,
+      total_cost: priced.total_cost ?? 0,
+      total_sell: priced.total_sell ?? 0,
+      gross_profit: priced.gross_profit ?? 0,
+      margin_percent: priced.margin_percent ?? 0,
+      markup_percent: priced.markup_percent ?? 0,
+      client_description: priced.client_description ?? row.client_description,
+    };
+  });
 }
 
 export function unresolvedManualPricingQuoteBlock(

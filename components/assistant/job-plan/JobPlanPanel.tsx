@@ -111,7 +111,9 @@ export function JobPlanPanel({
     return (
       <div className="space-y-3 overflow-x-hidden" data-job-plan-panel>
         <p className="text-sm text-muted-foreground">
-          Analyse the job first, then confirm the Work Areas.
+          {onAddManualWork
+            ? "Add a Work Area. If Quotr cannot calculate it, describe the scope and enter your price in Pricing."
+            : "Analyse the job first, then confirm the Work Areas."}
         </p>
         {onAddWorkArea ? (
           <Button
