@@ -32,7 +32,7 @@ export function DashboardWorkPanel({
 
   return (
     <section
-      className="overflow-hidden rounded-xl border border-border/70 bg-card"
+      className="overflow-hidden rounded-xl border border-border/60 bg-card"
       data-dashboard-work-panel
       data-dashboard-attention
     >

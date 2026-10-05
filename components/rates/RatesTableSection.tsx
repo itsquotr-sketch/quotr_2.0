@@ -333,7 +333,7 @@ export function RatesTableSection({
 
   return (
     <>
-      <Card className="border-border/60 shadow-none">
+      <Card className="rounded-xl border-border/60 shadow-none ring-0">
         <CardHeader className="flex flex-col items-start justify-between gap-3 space-y-0 sm:flex-row sm:gap-4">
           <div>
             <CardTitle className="text-base">{title}</CardTitle>

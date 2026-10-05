@@ -88,7 +88,7 @@ export function QuoteSummaryPanel({
 
   return (
     <Card
-      className="h-auto border-border/60 shadow-none [--card-spacing:--spacing(3)]"
+      className="h-auto rounded-xl border-border/60 shadow-none ring-0 [--card-spacing:--spacing(3)]"
       data-quote-commercial-summary="true"
     >
       <CardHeader className="gap-1 pb-2">

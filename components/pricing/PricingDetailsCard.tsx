@@ -42,7 +42,7 @@ export function PricingDetailsCard({
 }: PricingDetailsCardProps) {
   if (readOnly) {
     return (
-      <Card className="border-border/60 shadow-none">
+      <Card className="border-0 bg-transparent p-0 shadow-none ring-0 rounded-none [--card-spacing:0]">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Pricing details</CardTitle>
           <CardDescription className="text-xs">
@@ -67,7 +67,7 @@ export function PricingDetailsCard({
   }
 
   return (
-    <Card className="border-border/60 shadow-none">
+    <Card className="border-0 bg-transparent p-0 shadow-none ring-0 rounded-none [--card-spacing:0]">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Pricing details</CardTitle>
         <CardDescription className="text-xs">

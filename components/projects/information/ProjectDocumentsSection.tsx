@@ -957,7 +957,7 @@ function FileCard({
   actions: ReactNode;
 }) {
   return (
-    <li className="min-w-0 rounded-lg border border-border/70 bg-card px-3 py-2" data-project-document-row={document.id}>
+    <li className="min-w-0 rounded-xl border border-border/60 bg-card px-3 py-2" data-project-document-row={document.id}>
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="break-words text-sm font-medium leading-5">{document.title}</p>

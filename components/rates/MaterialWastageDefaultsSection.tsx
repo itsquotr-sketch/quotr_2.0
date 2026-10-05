@@ -95,7 +95,7 @@ export function MaterialWastageDefaultsSection({
   }
 
   return (
-    <Card className="border-border/60 shadow-none" data-rates-wastage-defaults>
+    <Card className="rounded-xl border-border/60 shadow-none ring-0" data-rates-wastage-defaults>
       <CardHeader>
         <CardTitle>Material wastage defaults</CardTitle>
         <CardDescription>

@@ -101,7 +101,7 @@ export function DashboardProjectList({
   const remaining = projects.length - visibleProjects.length;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
       <div className="space-y-3 border-b border-border/70 p-3">
         <form
           className="relative min-w-0"

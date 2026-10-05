@@ -38,7 +38,7 @@ export function PricingTermsCard({
   );
 
   return (
-    <Card className="border-border/60 shadow-none">
+    <Card className="border-0 bg-transparent p-0 shadow-none ring-0 rounded-none [--card-spacing:0]">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Terms, assumptions & notes</CardTitle>
         <CardDescription className="text-xs">

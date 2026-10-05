@@ -328,7 +328,7 @@ export function MaterialsByProductFamily({
             return (
               <section
                 key={category.categoryId}
-                className="rounded-lg border border-border/60"
+                className="rounded-xl border border-border/60 bg-card shadow-none"
                 data-materials-category={category.categoryId}
               >
                 <h3 className="m-0">

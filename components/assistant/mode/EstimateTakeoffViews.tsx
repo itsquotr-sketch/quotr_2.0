@@ -530,7 +530,7 @@ function TakeoffBoard({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff={marker}>
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-lg font-semibold leading-6">{title}</h2>
         <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-4">
           <Stat label={lineCountLabel} value={String(lineCount)} />
@@ -554,7 +554,7 @@ function TakeoffBoard({
       <Actions {...actions} />
 
       {lineCount === 0 ? (
-        <p className="rounded-xl border border-border/70 bg-card px-4 py-4 text-sm" data-takeoff-empty>
+        <p className="rounded-xl border border-border/60 bg-card px-4 py-4 text-sm" data-takeoff-empty>
           {emptyMessage}
         </p>
       ) : (
@@ -585,14 +585,14 @@ function TakeoffBoard({
             </select>
           </div>
           {visible.length === 0 ? (
-            <p className="rounded-xl border border-border/70 bg-card px-4 py-4 text-sm" data-takeoff-no-match>
+            <p className="rounded-xl border border-border/60 bg-card px-4 py-4 text-sm" data-takeoff-no-match>
               No lines match this search.
             </p>
           ) : (
             visible.map((group) => (
               <section
                 key={group.workArea}
-                className="rounded-xl border border-border/70 bg-card px-4 py-3"
+                className="rounded-xl border border-border/60 bg-card px-4 py-3"
                 data-takeoff-group={group.workArea}
               >
                 <h3 className="text-base font-semibold leading-snug break-words">{group.workArea}</h3>
@@ -706,7 +706,7 @@ export function AssumptionsChecks({
   const model = projectAssumptionsReview(view);
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff="checks">
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-lg font-semibold leading-6">{model.title}</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat label="Requires attention" value={String(model.attentionCount)} />
@@ -717,7 +717,7 @@ export function AssumptionsChecks({
       </section>
       <Actions {...actions} />
       {model.empty ? (
-        <p className="rounded-xl border border-border/70 bg-card px-4 py-4 text-sm" data-takeoff-empty>
+        <p className="rounded-xl border border-border/60 bg-card px-4 py-4 text-sm" data-takeoff-empty>
           No assumptions or checks on this estimate.
         </p>
       ) : (
@@ -725,7 +725,7 @@ export function AssumptionsChecks({
           {model.groups.map((group) => (
             <details
               key={group.id}
-              className="rounded-xl border border-border/70 bg-card px-4 py-2"
+              className="rounded-xl border border-border/60 bg-card px-4 py-2"
               data-review-group={group.name}
             >
               <summary className="min-h-11 cursor-pointer rounded-sm py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-orange)]">

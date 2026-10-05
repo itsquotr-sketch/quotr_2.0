@@ -44,7 +44,7 @@ export function RatesCalibrationAccess({
             <h3 className="text-xs font-medium text-muted-foreground">
               {group.title}
             </h3>
-            <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-card">
+            <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/60 bg-card">
               {group.rows.map((row) => (
                 <li
                   key={row.workAreaType}

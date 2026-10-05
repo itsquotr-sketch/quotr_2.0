@@ -88,7 +88,7 @@ export function CustomersDirectory({
       </div>
 
       {emptyDirectory ? (
-        <div className="rounded-xl border border-border/70 bg-card px-4 py-10 text-center">
+        <div className="rounded-xl border border-border/60 bg-card px-4 py-10 text-center">
           <p className="text-base font-medium">
             {archived ? "No archived customers" : "No customers yet"}
           </p>
@@ -106,14 +106,14 @@ export function CustomersDirectory({
       ) : null}
 
       {emptySearch ? (
-        <p className="rounded-xl border border-border/70 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border/60 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
           No customers match that search.
         </p>
       ) : null}
 
       {visible.length > 0 ? (
         <>
-          <div className="hidden overflow-hidden rounded-xl border border-border/70 bg-card md:block" data-customer-list="aligned">
+          <div className="hidden overflow-hidden rounded-xl border border-border/60 bg-card md:block" data-customer-list="aligned">
             <div className={`${CUSTOMER_GRID} border-b px-4 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase`}>
               <span>Name</span>
               <span>Email</span>
@@ -139,7 +139,7 @@ export function CustomersDirectory({
             {visible.map((customer) => (
               <li
                 key={customer.id}
-                className="min-w-0 rounded-xl border border-border/70 bg-card px-4 py-3"
+                className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-3"
                 data-customer-row
               >
                 <div className="flex min-w-0 flex-col gap-3">

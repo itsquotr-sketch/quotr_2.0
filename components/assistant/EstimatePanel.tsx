@@ -1515,13 +1515,11 @@ export function EstimatePanel({
     <Card
       ref={panelRootRef}
       className={cn(
-        "overflow-hidden border-border/60 bg-card transition-[box-shadow,border-color] duration-200 ease-out",
+        "overflow-hidden rounded-xl border-border/60 bg-card shadow-none ring-0 transition-[border-color,background-color] duration-200 ease-out",
         QUICK_ESTIMATE_STICKY_CLASS,
         isActiveStage
-          ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
-          : estimate
-            ? "border-[var(--brand-orange-muted)]/60 shadow-md ring-1 ring-[var(--brand-orange)]/15"
-            : "shadow-sm"
+          ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+          : undefined
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
       data-compact-commercial-sidebar={compactCommercialSidebar ? "true" : "false"}

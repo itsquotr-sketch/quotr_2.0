@@ -53,7 +53,7 @@ export function RatesCalibrationPanel({
 
   return (
     <div className="space-y-4" data-rates-calibration-panel>
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-base font-semibold tracking-tight">
           What calibration changes
         </h2>
@@ -89,7 +89,7 @@ export function RatesCalibrationPanel({
         </dl>
       </section>
 
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-sm font-semibold">Needs attention</h2>
         {gaps.length === 0 && attentionAreas.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">

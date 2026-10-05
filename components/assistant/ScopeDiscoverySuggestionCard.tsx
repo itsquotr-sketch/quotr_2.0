@@ -80,7 +80,7 @@ export function ScopeDiscoverySuggestionCard({
   return (
     <article
       className={cn(
-        "rounded-lg border border-border/70 bg-card px-3 py-3",
+        "rounded-xl border border-border/60 bg-card px-3 py-3",
         isDismissed && "opacity-70"
       )}
       data-suggestion-id={suggestion.suggestionId}

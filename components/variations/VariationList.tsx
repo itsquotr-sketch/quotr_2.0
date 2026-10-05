@@ -135,22 +135,22 @@ export function VariationList(props: {
       ) : null}
 
       {!props.eligible ? (
-        <p className="order-2 rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none" data-variation-unavailable="true">
+        <p className="order-2 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm shadow-none" data-variation-unavailable="true">
           {props.reason}
         </p>
       ) : null}
 
-      {notice ? <p role="status" className="order-2 rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{notice}</p> : null}
+      {notice ? <p role="status" className="order-2 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm">{notice}</p> : null}
       {error && !createOpen && deleteTarget == null ? <p role="alert" className="order-2 rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
 
       {props.eligible && props.rows.length === 0 ? (
-        <p className="order-3 rounded-xl border border-border/70 bg-card px-4 py-4 text-sm shadow-none lg:order-4">{VARIATION_EMPTY_LIST}</p>
+        <p className="order-3 rounded-xl border border-border/60 bg-card px-4 py-4 text-sm shadow-none lg:order-4">{VARIATION_EMPTY_LIST}</p>
       ) : null}
 
       {props.rows.length > 0 ? (
         <ul className="order-3 space-y-3 lg:order-4">
           {props.rows.map((row) => (
-            <li key={row.id} className="rounded-xl border border-border/70 bg-card p-4 text-sm shadow-none">
+            <li key={row.id} className="rounded-xl border border-border/60 bg-card p-4 text-sm shadow-none">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Variation {row.variationNumber}</p>
@@ -251,7 +251,7 @@ export function VariationList(props: {
       ) : null}
 
       {summaryRows.length > 0 ? (
-        <section className="order-4 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-none lg:hidden" data-variation-summary="compact" aria-label="Contract summary">
+        <section className="order-4 rounded-xl border border-border/60 bg-card px-4 py-3 shadow-none lg:hidden" data-variation-summary="compact" aria-label="Contract summary">
           <h2 className="text-sm font-semibold">Contract summary</h2>
           <dl className="mt-2">
             {summaryRows.map(([label, value]) => (
@@ -386,7 +386,7 @@ function CreateRevisionButton(props: {
 
 function SummaryCard(props: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-none">
+    <div className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-3 shadow-none">
       <p className="text-xs text-muted-foreground">{props.label}</p>
       <p className="mt-1 break-words text-sm font-semibold tabular-nums">{props.value}</p>
     </div>

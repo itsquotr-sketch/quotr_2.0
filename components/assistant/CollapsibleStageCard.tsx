@@ -119,11 +119,11 @@ export function CollapsibleStageCard({
       data-stage-active={isActive ? "true" : "false"}
       data-stage-expanded={isExpanded ? "true" : "false"}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground motion-safe:transition-[box-shadow,border-color,background-color,opacity] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
+        "rounded-xl border bg-card text-card-foreground shadow-none motion-safe:transition-[border-color,background-color,opacity] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
         cardVariantStyles[statusVariant],
         isActive
-          ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
-          : "shadow-none",
+          ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+          : "border-border/60",
         !isActive && !isExpanded && "opacity-[0.88]",
         isActive && isExpanded && "pb-0.5",
         className

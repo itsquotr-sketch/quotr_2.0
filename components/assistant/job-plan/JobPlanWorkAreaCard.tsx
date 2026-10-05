@@ -275,7 +275,7 @@ export function JobPlanWorkAreaCardView({
       data-work-area-id={card.workAreaId}
       data-work-area-type={card.workAreaType}
       aria-labelledby={headingId}
-      className="rounded-xl border border-border/70 bg-card px-4 py-3.5"
+      className="rounded-xl border border-border/60 bg-card px-4 py-3.5"
     >
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">

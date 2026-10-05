@@ -214,7 +214,8 @@ check(
   "active stage elevation retained",
   fileHas(CARD, "data-stage-active") &&
     fileHas(CARD, "isActive") &&
-    fileHas(CARD, "shadow-md")
+    fileHas(CARD, "bg-[var(--brand-orange-muted)]") &&
+    !fileHas(CARD, "shadow-md")
 );
 check(
   "completed stages quieter when collapsed",

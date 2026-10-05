@@ -114,7 +114,7 @@ export function PricingWorkAreaSection({
   return (
     <section
       id={sectionId}
-      className="scroll-mt-4 overflow-hidden rounded-xl border border-border bg-card"
+      className="scroll-mt-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-none"
       data-pricing-work-area={sectionName}
     >
       <div className="flex items-start gap-2 px-3 py-2 sm:px-4">

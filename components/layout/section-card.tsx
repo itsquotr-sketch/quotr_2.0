@@ -24,7 +24,7 @@ export function SectionCard({
   className,
 }: SectionCardProps) {
   return (
-    <Card className={cn("border-border/60 shadow-none", className)}>
+    <Card className={cn("rounded-xl border-border/60 shadow-none ring-0", className)}>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}

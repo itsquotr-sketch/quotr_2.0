@@ -374,7 +374,7 @@ export function QuoteWorkspace({
 
       {sendLockActive ? (
         <div
-          className="rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden"
+          className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm print:hidden"
           role="status"
         >
           <p className="font-medium">This quote cannot be edited while it is being sent.</p>
@@ -386,7 +386,7 @@ export function QuoteWorkspace({
         </div>
       ) : isSuperseded && latestRevisionQuoteId ? (
         <div
-          className="rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden"
+          className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm print:hidden"
           role="status"
         >
           <p className="font-medium">This quote has been superseded.</p>
@@ -404,7 +404,7 @@ export function QuoteWorkspace({
       ) : (quote.status === "sent" || quote.status === "viewed") &&
         deliveries[0] ? (
         <div
-          className="rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden"
+          className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm print:hidden"
           data-quote-send-success
           role="status"
         >
@@ -419,14 +419,14 @@ export function QuoteWorkspace({
         </div>
       ) : !isEditable ? (
         <div
-          className="rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden"
+          className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm print:hidden"
           role="status"
           data-quote-readonly-reason
         >
           <p>{assertQuoteSnapshotMutable(quote)}</p>
         </div>
       ) : pricingChangedAfterQuote ? (
-        <div className="space-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm print:hidden" role="status">
+        <div className="space-y-2 rounded-xl border border-border/60 bg-card px-4 py-3 text-sm print:hidden" role="status">
           <p>
             Pricing has changed since this quote was created. This snapshot stays unchanged until you update it.
           </p>
@@ -456,7 +456,7 @@ export function QuoteWorkspace({
         aria-label="Quote workspace view"
         data-quote-view-control="true"
       >
-        <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-1">
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-card p-1">
           <button
             type="button"
             role="tab"
@@ -464,7 +464,7 @@ export function QuoteWorkspace({
             className={cn(
               "min-h-11 rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               showReview
-                ? "bg-background font-semibold text-foreground shadow-sm"
+                ? "bg-background font-semibold text-foreground"
                 : "text-muted-foreground"
             )}
             onClick={() => setViewMode("review")}
@@ -479,7 +479,7 @@ export function QuoteWorkspace({
             className={cn(
               "min-h-11 rounded-md px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               !showReview
-                ? "bg-background font-semibold text-foreground shadow-sm"
+                ? "bg-background font-semibold text-foreground"
                 : "text-muted-foreground"
             )}
             onClick={() => setViewMode("preview")}
@@ -499,7 +499,7 @@ export function QuoteWorkspace({
         <div className="min-w-0 space-y-5">
           <div
             className={cn(
-              "divide-y divide-border/70 rounded-xl border border-border bg-card print:hidden",
+              "divide-y divide-border/60 rounded-xl border border-border/60 bg-card shadow-none print:hidden",
               !showReview && "hidden"
             )}
           >
@@ -701,7 +701,7 @@ export function QuoteWorkspace({
                   return (
                     <details
                       key={areaKey}
-                      className="rounded-lg border border-border/60 bg-card"
+                      className="rounded-xl border border-border/60 bg-card"
                       onToggle={(event) => {
                         const open = (event.currentTarget as HTMLDetailsElement).open;
                         setOpenWorkAreas((current) =>
@@ -817,7 +817,7 @@ export function QuoteWorkspace({
 
           <div
             className={cn(
-              "rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4",
+              "rounded-xl border border-border/60 bg-card p-3 shadow-none sm:p-4",
               showReview ? "hidden print:block print:border-0 print:bg-transparent print:p-0 print:shadow-none" : "print:border-0 print:bg-transparent print:p-0 print:shadow-none"
             )}
             data-quote-customer-preview="true"

@@ -196,7 +196,7 @@ export function EstimateOverview({
         ) : null}
       </header>
       {showCommercial ? (
-      <section className="order-1 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-commercial data-mobile-commercial-overview="true">
+      <section className="order-1 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-commercial data-mobile-commercial-overview="true">
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
           {sell.presentation === "unresolved" ? (
             <p className="text-lg font-medium" data-estimate-overview-sell="unresolved">
@@ -305,7 +305,7 @@ export function EstimateOverview({
       ) : null}
 
       {showActionCentre ? (
-      <section className="order-2 rounded-xl border border-border/70 bg-card px-4 py-4" data-estimate-overview-actions>
+      <section className="order-2 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-actions>
         <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
         {readyForPricing && model.pricingAttention.length === 0 ? (
           <div className="mt-3" data-estimate-overview-ready="true">

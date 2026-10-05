@@ -414,7 +414,7 @@ export function CompanySettingsContent({
   function saveFooter(dirty: boolean) {
     if (!canEdit) return null;
     return (
-      <Card data-company-save-footer className="border-border/60 shadow-none">
+      <Card data-company-save-footer className="rounded-xl border-border/60 shadow-none ring-0">
         <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             {savedMessage ? `${savedMessage} ` : null}
@@ -449,7 +449,7 @@ export function CompanySettingsContent({
 
       {activeSection === "overview" ? (
         <div className="grid gap-4 sm:grid-cols-2" data-company-overview>
-          <section className="space-y-4 rounded-xl border border-border/70 bg-card px-4 py-4">
+          <section className="space-y-4 rounded-xl border border-border/60 bg-card px-4 py-4">
             <div className="flex items-start gap-3">
               {logoPreview ? (
                 // Saved organisation logo. Decorative beside the name.
@@ -506,7 +506,7 @@ export function CompanySettingsContent({
             </dl>
           </section>
           <div className="space-y-4">
-            <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+            <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold tracking-tight">Work types</h2>
                 <Button
@@ -526,7 +526,7 @@ export function CompanySettingsContent({
                   {enabledWork.slice(0, 8).map((area) => (
                     <li
                       key={area.id}
-                      className="rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-xs"
+                      className="rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-xs"
                     >
                       {area.label}
                     </li>
@@ -545,7 +545,7 @@ export function CompanySettingsContent({
                 </ul>
               )}
             </section>
-            <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+            <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
               <h2 className="text-sm font-semibold tracking-tight">Documents</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 Changes apply to new pricing and documents. Issued Quotes and

@@ -28,7 +28,7 @@ export function PricingGroupControl({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <div
-        className="inline-flex rounded-lg border border-border/70 bg-muted/30 p-0.5"
+        className="inline-flex rounded-xl border border-border/60 bg-muted/30 p-0.5"
         role="group"
         aria-label="Group pricing items"
       >
@@ -39,7 +39,7 @@ export function PricingGroupControl({
             className={cn(
               "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
               value === option.value
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
             aria-pressed={value === option.value}

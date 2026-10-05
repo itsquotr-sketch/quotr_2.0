@@ -25,7 +25,7 @@ export function PricingAttention({ items, onJump }: PricingAttentionProps) {
   const sectionId = pricingWorkAreaDomId(first?.work_area_id ?? null);
 
   return (
-    <section className="rounded-xl border border-border bg-card px-4 py-3" data-pricing-attention="true">
+    <section className="rounded-xl border border-border/60 bg-card px-4 py-3 shadow-none" data-pricing-attention="true">
       <h2 className="text-base font-semibold leading-snug">Pricing required</h2>
       <p className="mt-1 text-sm leading-5 text-foreground/80">
         {required.length === 1

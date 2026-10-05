@@ -27,7 +27,7 @@ export function PricingBulkToolbar({
   }
 
   return (
-    <div className="sticky top-[3.25rem] z-30 flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
+    <div className="sticky top-[3.25rem] z-30 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-none">
       <p className="text-sm font-medium">
         {selectedCount} selected
       </p>

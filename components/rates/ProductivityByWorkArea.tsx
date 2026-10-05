@@ -320,7 +320,7 @@ export function ProductivityByWorkArea({
             return (
               <section
                 key={group.workAreaType}
-                className="rounded-lg border border-border/60"
+                className="rounded-xl border border-border/60 bg-card shadow-none"
                 data-productivity-work-area={group.workAreaType}
                 data-productivity-generation={dna?.generation}
               >

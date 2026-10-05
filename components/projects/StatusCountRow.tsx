@@ -30,7 +30,7 @@ export function StatusCountRow({ summary, className }: StatusCountRowProps) {
           </>
         );
         const cardClass = cn(
-          "flex h-full min-h-11 flex-col rounded-xl border border-border/70 bg-card px-3 py-2.5 outline-none",
+          "flex h-full min-h-11 flex-col rounded-xl border border-border/60 bg-card px-3 py-2.5 outline-none",
           item.href &&
             "hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
         );

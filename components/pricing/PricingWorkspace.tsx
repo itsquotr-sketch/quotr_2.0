@@ -504,7 +504,7 @@ export function PricingWorkspace({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-5">
           <details
-            className="rounded-lg border border-border/60 bg-card"
+            className="rounded-xl border border-border/60 bg-card shadow-none"
             open
             data-pricing-work-area-adjustments
           >
@@ -586,7 +586,7 @@ export function PricingWorkspace({
             onApplyFinalSell={handleApplyFinalSell}
           />
 
-          <details className="rounded-lg border border-border/60 bg-card" data-pricing-quote-details>
+          <details className="rounded-xl border border-border/60 bg-card shadow-none" data-pricing-quote-details>
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
               Quote details
             </summary>
@@ -604,7 +604,7 @@ export function PricingWorkspace({
             </div>
           </details>
 
-          <details className="rounded-lg border border-border/60 bg-card">
+          <details className="rounded-xl border border-border/60 bg-card shadow-none">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
               Terms and exclusions
             </summary>
@@ -623,7 +623,7 @@ export function PricingWorkspace({
           {/* Desktop/tablet review control; mobile uses PricingMobileActionBar CTA. */}
           {document.status === "reviewed" ? (
             <div
-              className="rounded-xl border border-border bg-card px-4 py-3"
+              className="rounded-xl border border-border/60 bg-card shadow-none px-4 py-3"
               data-pricing-reviewed-status="true"
             >
               <p className="text-sm font-medium tracking-tight">Pricing reviewed</p>

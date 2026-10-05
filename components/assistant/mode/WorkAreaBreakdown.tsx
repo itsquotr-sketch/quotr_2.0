@@ -294,7 +294,7 @@ export function WorkAreaBreakdown({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-work-area-breakdown>
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-work-area-summary>
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4" data-work-area-summary>
         <h2 className="text-lg font-semibold leading-6">{model.title}</h2>
         <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-4">
           <Stat
@@ -343,7 +343,7 @@ export function WorkAreaBreakdown({
           return (
             <section
               key={card.id}
-              className="overflow-hidden rounded-xl border border-border/70 bg-card"
+              className="overflow-hidden rounded-xl border border-border/60 bg-card"
               data-work-area-card={card.name}
               data-work-area-readiness={card.readiness}
             >
@@ -463,7 +463,7 @@ export function WorkAreaBreakdown({
                   {card.portions.map((portion) => (
                     <section
                       key={portion.id}
-                      className="rounded-lg border border-border/70 px-3 py-3"
+                      className="rounded-xl bg-muted/25 px-3 py-3"
                       data-work-area-portion={portion.id}
                     >
                       <h4 className="text-sm font-semibold break-words">{portion.label}</h4>

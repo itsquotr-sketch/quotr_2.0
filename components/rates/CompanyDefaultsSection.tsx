@@ -98,7 +98,7 @@ export function CompanyDefaultsSection({
   }
 
   return (
-    <Card className="border-border/60 shadow-none">
+    <Card className="rounded-xl border-border/60 shadow-none ring-0">
       <CardHeader>
         <CardTitle className="text-base">Company defaults</CardTitle>
         <CardDescription>

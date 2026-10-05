@@ -30,7 +30,7 @@ export function DashboardActiveProjects({
 
   return (
     <section
-      className="overflow-hidden rounded-xl border border-border/70 bg-card"
+      className="overflow-hidden rounded-xl border border-border/60 bg-card"
       aria-labelledby="dashboard-active-projects-heading"
       data-dashboard-projects
     >

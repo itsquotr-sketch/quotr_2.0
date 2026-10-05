@@ -543,7 +543,7 @@ export function VariationEditor(props: EditorProps) {
         </DropdownMenu>
       </div>
       {draft && !readiness.ready ? (
-        <section className="rounded-xl border border-border/70 bg-card px-4 py-3 shadow-none" data-variation-readiness-summary="true">
+        <section className="rounded-xl border border-border/60 bg-card px-4 py-3 shadow-none" data-variation-readiness-summary="true">
           <h2 className="text-sm font-semibold">{VARIATION_NOT_READY_HEADING}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {readiness.blockers.length} outstanding {readiness.blockers.length === 1 ? "requirement" : "requirements"}
@@ -573,11 +573,11 @@ export function VariationEditor(props: EditorProps) {
       ) : null}
       {historical ? <p className="rounded-xl border bg-card px-4 py-3 text-sm">This is an earlier revision. It is not the current proposal.</p> : null}
       {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-card px-4 py-3 text-sm">{error}</p> : null}
-      {saved ? <p role="status" className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm">{saved}</p> : null}
+      {saved ? <p role="status" className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm">{saved}</p> : null}
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
       <div className="contents xl:block xl:min-w-0 xl:space-y-4" data-variation-customer-column="true">
-      <section id="variation-customer-details" className="order-1 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-none xl:order-none">
+      <section id="variation-customer-details" className="order-1 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 shadow-none xl:order-none">
         <h2 className="text-base font-semibold">Customer document</h2>
         <p className="mt-1 text-sm text-muted-foreground">Title, scope and notes the client can see. Variation {props.variation.variationNumber}.</p>
         <p className="mt-3 text-sm text-muted-foreground">{props.baseline.referenceLabel}</p>
@@ -613,7 +613,7 @@ export function VariationEditor(props: EditorProps) {
       </section>
 
       {scopeAreas.length > 0 ? (
-        <section className="order-2 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-none xl:order-none" data-variation-scope-groups="true">
+        <section className="order-2 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 shadow-none xl:order-none" data-variation-scope-groups="true">
           <h2 className="text-sm font-semibold">Scope</h2>
           <ul className="mt-2 space-y-2">
             {scopeAreas.map((area) => (
@@ -649,7 +649,7 @@ export function VariationEditor(props: EditorProps) {
           ) : null}
         </div>
         {viewing.items.length === 0 ? (
-          <p className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm shadow-none">No items yet. Add the scope and price changes included in this Variation.</p>
+          <p className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm shadow-none">No items yet. Add the scope and price changes included in this Variation.</p>
         ) : null}
         {groups.map((group) => {
           const lead = group.kind === "single" ? group.item : group.remove;
@@ -658,7 +658,7 @@ export function VariationEditor(props: EditorProps) {
           const variationArea = scopeAreas.find((row) => row.id === lead.variationWorkAreaId);
           const area = variationArea ?? props.workAreas.find((row) => row.id === (lead.workAreaId ?? scope?.workAreaId));
           return (
-            <article key={lead.id} className="rounded-2xl border border-border/70 bg-card p-4 text-sm shadow-none">
+            <article key={lead.id} className="rounded-xl border border-border/60 bg-card p-4 text-sm shadow-none">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Badge variant="outline">{group.kind === "pair" ? "Substitution" : itemBadge(lead.itemType)}</Badge>
                 <p className="tabular-nums">{line == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(groupNet(group), currency)}</p>
@@ -714,7 +714,7 @@ export function VariationEditor(props: EditorProps) {
         </div>
       ) : null}
 
-      <section className="order-6 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-none xl:order-none">
+      <section className="order-6 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 shadow-none xl:order-none">
         <h2 className="text-base font-semibold">Client document</h2>
         <p className="mt-1 text-sm text-muted-foreground">Internal notes, cost and margin stay off the client document.</p>
         <Button type="button" className="mt-3" size="touch" variant="outline" onClick={() => setPreviewOpen(true)}>Preview client document</Button>
@@ -722,7 +722,7 @@ export function VariationEditor(props: EditorProps) {
       </div>
 
       <aside className="contents xl:sticky xl:top-4 xl:block xl:min-w-0 xl:space-y-4" data-variation-internal-column="true">
-      <section className="order-4 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-none xl:order-none" data-variation-commercial-summary="true">
+      <section className="order-4 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 shadow-none xl:order-none" data-variation-commercial-summary="true">
         <h2 className="text-base font-semibold">Internal commercial summary</h2>
         <p className="mt-1 text-sm text-muted-foreground">Cost, margin and unresolved prices stay off the client document.</p>
         <dl className="mt-3 space-y-1 text-sm">
@@ -742,7 +742,7 @@ export function VariationEditor(props: EditorProps) {
       </section>
 
       {draft ? (
-        <section className="order-4 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 shadow-none xl:order-none" data-variation-readiness="true">
+        <section className="order-4 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 shadow-none xl:order-none" data-variation-readiness="true">
           <h2 className="text-base font-semibold">{readiness.ready ? VARIATION_READY_HEADING : VARIATION_NOT_READY_HEADING}</h2>
           {readiness.ready ? <p className="mt-2 text-sm">{VARIATION_READY_DETAIL}</p> : (
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm" role="alert">
@@ -757,7 +757,7 @@ export function VariationEditor(props: EditorProps) {
       ) : null}
 
       {props.response && (viewing.status === "accepted" || viewing.status === "rejected") ? (
-        <section className="order-4 min-w-0 scroll-mt-24 rounded-xl border border-border/70 bg-card p-4 text-sm shadow-none xl:order-none" data-variation-response-summary="true">
+        <section className="order-4 min-w-0 scroll-mt-24 rounded-xl border border-border/60 bg-card p-4 text-sm shadow-none xl:order-none" data-variation-response-summary="true">
           <h2 className="text-base font-semibold">Response</h2>
           <dl className="mt-3 space-y-1">
             <div className="flex flex-wrap justify-between gap-3"><dt>Outcome</dt><dd>{viewing.status === "accepted" ? "Accepted" : "Declined"}</dd></div>

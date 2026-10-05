@@ -84,7 +84,7 @@ export function VariationDeliveryPanel(props: {
   }
 
   return (
-    <section className="rounded-xl border border-border/70 bg-card p-4 shadow-none" data-variation-delivery="true">
+    <section className="rounded-xl border border-border/60 bg-card p-4 shadow-none" data-variation-delivery="true">
       <h2 className="text-base font-semibold">Send to the client</h2>
       {attempts.length === 0 && !sent ? <p className="mt-2 text-sm">Never sent</p> : null}
       <ul className="mt-2 space-y-1 text-sm">

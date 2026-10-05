@@ -108,7 +108,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-team-page>
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4" data-team-overview>
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4" data-team-overview>
         <h2 className="text-base font-semibold tracking-tight">{view.title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{view.description}</p>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -164,7 +164,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
               </Button>
             ) : null}
           </div>
-          <div className="overflow-hidden rounded-xl border border-border/70 bg-card" data-team-members>
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-card" data-team-members>
             {view.members.map((member) => (
               <div
                 key={member.membershipId}
@@ -242,7 +242,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
               {view.invitations.map((invite) => (
                 <div
                   key={invite.invitationId}
-                  className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                   data-team-invitation={invite.invitationId}
                 >
                   <div className="min-w-0">

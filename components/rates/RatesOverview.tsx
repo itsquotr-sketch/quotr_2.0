@@ -25,7 +25,7 @@ export function RatesOverview({ state, onOpenSection }: RatesOverviewProps) {
 
   return (
     <div className="space-y-4" data-rates-overview>
-      <section className="rounded-xl border border-border/70 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-base font-semibold tracking-tight">Your rate book</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Company rates you have set, Quotr benchmarks still in use, and rates
@@ -76,7 +76,7 @@ export function RatesOverview({ state, onOpenSection }: RatesOverviewProps) {
         </div>
       </section>
 
-      <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-card">
+      <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/60 bg-card">
         {summary.sections.map((section) => {
           const line = coverageLine(section);
           return (
@@ -123,7 +123,7 @@ export function RatesOverview({ state, onOpenSection }: RatesOverviewProps) {
             <button
               key={id}
               type="button"
-              className="min-h-11 rounded-full border border-border/70 bg-card px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+              className="min-h-11 rounded-full border border-border/60 bg-card px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
               onClick={() => onOpenSection(id)}
             >
               {label}
