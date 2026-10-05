@@ -465,9 +465,8 @@ export function PricingWorkspace({
       />
 
       {quoteSummary != null ? (
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          A quote already exists. Changing this price does not change a sent
-          quote. Create a revision if you need to send an updated quote.
+        <p className="text-xs leading-relaxed text-muted-foreground md:hidden">
+          The Quote is a separate snapshot. Changes to Pricing will not update it.
         </p>
       ) : null}
 

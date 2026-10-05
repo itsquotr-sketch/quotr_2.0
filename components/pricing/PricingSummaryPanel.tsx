@@ -133,44 +133,45 @@ export function PricingSummaryPanel({
           )}
         </div>
 
-        <div
-          className={cn(
-            "hidden lg:block",
-            isReviewed &&
-              !quoteSummary &&
-              !quoteBlockedReason &&
-              "rounded-lg border border-border bg-muted/30 p-3"
-          )}
-          data-pricing-desktop-quote-cta={
-            quoteSummary
-              ? "open"
-              : isReviewed && !quoteBlockedReason
-                ? "create"
-                : "blocked"
-          }
-        >
-          {isReviewed && !quoteSummary && !quoteBlockedReason ? (
-            <p className="mb-2.5 text-sm font-medium tracking-tight">
-              Next: Create quote
-            </p>
-          ) : null}
-          <CreateQuoteButton
-            projectId={projectId}
-            pricingDocumentId={document.id}
-            isReviewed={isReviewed}
-            quoteSummary={quoteSummary}
-            quoteBlockedReason={quoteBlockedReason}
-          />
-          {quoteSummary ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Open the client quote created from this pricing.
-            </p>
-          ) : isReviewed && !quoteBlockedReason ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Create a client-facing quote from this pricing.
-            </p>
-          ) : null}
-        </div>
+        {compact ? null : (
+          <div
+            className={cn(
+              isReviewed &&
+                !quoteSummary &&
+                !quoteBlockedReason &&
+                "rounded-lg border border-border bg-muted/30 p-3"
+            )}
+            data-pricing-desktop-quote-cta={
+              quoteSummary
+                ? "open"
+                : isReviewed && !quoteBlockedReason
+                  ? "create"
+                  : "blocked"
+            }
+          >
+            {isReviewed && !quoteSummary && !quoteBlockedReason ? (
+              <p className="mb-2.5 text-sm font-medium tracking-tight">
+                Next: Create quote
+              </p>
+            ) : null}
+            <CreateQuoteButton
+              projectId={projectId}
+              pricingDocumentId={document.id}
+              isReviewed={isReviewed}
+              quoteSummary={quoteSummary}
+              quoteBlockedReason={quoteBlockedReason}
+            />
+            {quoteSummary ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                The Quote is a separate snapshot. Changes to Pricing will not update it.
+              </p>
+            ) : isReviewed && !quoteBlockedReason ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Create a client-facing quote from this pricing.
+              </p>
+            ) : null}
+          </div>
+        )}
         {pricingChangedAfterQuote ? (
           <p className="text-xs text-amber-800 dark:text-amber-200">
           Existing quotes are not updated automatically. Create a revision if

@@ -133,6 +133,17 @@ check(
     !workspace.includes("overflow-x-auto")
 );
 check(
+  "10 quote action is in the summary from md and only in the mobile bar below md",
+  summary.includes("data-pricing-desktop-quote-cta") &&
+    !summary.includes("hidden lg:block") &&
+    summary.includes("compact ? null") &&
+    workspace.includes('className="md:hidden"') &&
+    workspace.includes("PricingMobileActionBar") &&
+    read("components/pricing/PricingMobileActionBar.tsx").includes("md:hidden") &&
+    summary.includes("The Quote is a separate snapshot. Changes to Pricing will not update it.") &&
+    workspace.includes("The Quote is a separate snapshot. Changes to Pricing will not update it.")
+);
+check(
   "9 stored document view model still formats money",
   typeof pricingDocumentViewModel(document).subtotalSellFormatted === "string" &&
     summary.includes("tabular-nums") &&
