@@ -92,7 +92,7 @@ function ColourField({
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label className="text-xs" htmlFor={id}>{label}</Label>
       <div className="flex items-center gap-2">
         <span
           className={cn(
@@ -107,7 +107,7 @@ function ColourField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="h-11 min-h-11 font-mono text-sm"
+          className="h-11 min-h-11 font-mono text-base md:text-sm"
           readOnly={readOnly}
         />
       </div>
@@ -159,7 +159,7 @@ function CompanySectionPicker({
           id="company-section"
           data-company-section-select
           aria-label="Company section"
-          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
           value={activeId}
           onChange={(event) => onChange(event.target.value)}
         >
@@ -596,7 +596,7 @@ export function CompanySettingsContent({
             <div className="space-y-5" data-company-identity>
               <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="legal-name">Legal name</Label>
+                  <Label className="text-xs" htmlFor="legal-name">Legal name</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="legal-name"
@@ -606,7 +606,7 @@ export function CompanySettingsContent({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="trading-name">Trading name</Label>
+                  <Label className="text-xs" htmlFor="trading-name">Trading name</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="trading-name"
@@ -619,7 +619,7 @@ export function CompanySettingsContent({
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="contact-email">Email</Label>
+                  <Label className="text-xs" htmlFor="contact-email">Email</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="contact-email"
@@ -634,7 +634,7 @@ export function CompanySettingsContent({
                   ) : null}
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="contact-phone">Phone</Label>
+                  <Label className="text-xs" htmlFor="contact-phone">Phone</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="contact-phone"
@@ -644,7 +644,7 @@ export function CompanySettingsContent({
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="website">Website</Label>
+                <Label className="text-xs" htmlFor="website">Website</Label>
                 <LockedInput
                   canEdit={canEdit}
                   id="website"
@@ -682,7 +682,7 @@ export function CompanySettingsContent({
           >
             <div className="space-y-5" data-company-address>
               <div className="space-y-1.5">
-                <Label htmlFor="address-line-1">Address line 1</Label>
+                <Label className="text-xs" htmlFor="address-line-1">Address line 1</Label>
                 <LockedInput
                   canEdit={canEdit}
                   id="address-line-1"
@@ -691,7 +691,7 @@ export function CompanySettingsContent({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="address-line-2">Address line 2</Label>
+                <Label className="text-xs" htmlFor="address-line-2">Address line 2</Label>
                 <LockedInput
                   canEdit={canEdit}
                   id="address-line-2"
@@ -701,7 +701,7 @@ export function CompanySettingsContent({
               </div>
               <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="city">City</Label>
+                  <Label className="text-xs" htmlFor="city">City</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="city"
@@ -710,7 +710,7 @@ export function CompanySettingsContent({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="region">Region</Label>
+                  <Label className="text-xs" htmlFor="region">Region</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="region"
@@ -720,7 +720,7 @@ export function CompanySettingsContent({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="postcode">Postcode</Label>
+                  <Label className="text-xs" htmlFor="postcode">Postcode</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="postcode"
@@ -729,7 +729,7 @@ export function CompanySettingsContent({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="address-country">Country</Label>
+                  <Label className="text-xs" htmlFor="address-country">Country</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="address-country"
@@ -740,13 +740,13 @@ export function CompanySettingsContent({
                 </div>
               </div>
               <div className="space-y-1.5" data-timezone-field>
-                <Label htmlFor="company-timezone">Timezone</Label>
+                <Label className="text-xs" htmlFor="company-timezone">Timezone</Label>
                 <select
                   id="company-timezone"
                   value={timezone}
                   onChange={(event) => setTimezone(event.target.value)}
                   disabled={!canEdit}
-                  className="flex h-11 min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-11 min-h-11 w-full rounded-xl border border-border/80 bg-transparent px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:text-sm"
                 >
                   <option value="">
                     Not set — times shown as Auckland / Wellington
@@ -804,7 +804,7 @@ export function CompanySettingsContent({
           >
             <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="default-gst-rate">Default GST rate %</Label>
+                <Label className="text-xs" htmlFor="default-gst-rate">Default GST rate %</Label>
                 <LockedInput
                   canEdit={canEdit}
                   id="default-gst-rate"
@@ -827,7 +827,7 @@ export function CompanySettingsContent({
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="gst-number">GST number</Label>
+                <Label className="text-xs" htmlFor="gst-number">GST number</Label>
                 <LockedInput
                   canEdit={canEdit}
                   id="gst-number"
@@ -842,7 +842,7 @@ export function CompanySettingsContent({
               <div className="space-y-1.5">
                 {australia ? (
                   <>
-                    <Label htmlFor="abn">ABN</Label>
+                    <Label className="text-xs" htmlFor="abn">ABN</Label>
                     <LockedInput
                       canEdit={canEdit}
                       id="abn"
@@ -852,7 +852,7 @@ export function CompanySettingsContent({
                   </>
                 ) : (
                   <>
-                    <Label htmlFor="nzbn">NZBN</Label>
+                    <Label className="text-xs" htmlFor="nzbn">NZBN</Label>
                     <LockedInput
                       canEdit={canEdit}
                       id="nzbn"
@@ -934,7 +934,7 @@ export function CompanySettingsContent({
                     page) will not display on quotes — use a direct image file link
                     only if you must.
                   </p>
-                  <Label htmlFor="logo-url">Legacy logo URL</Label>
+                  <Label className="text-xs" htmlFor="logo-url">Legacy logo URL</Label>
                   <LockedInput
                     canEdit={canEdit}
                     id="logo-url"
@@ -1001,7 +1001,7 @@ export function CompanySettingsContent({
             description="Validity and commercial wording copied into new quotes. Existing documents are not changed."
           >
             <div className="space-y-2">
-              <Label htmlFor="default-validity">Default quote validity (days)</Label>
+              <Label className="text-xs" htmlFor="default-validity">Default quote validity (days)</Label>
               <LockedInput
                 canEdit={canEdit}
                 id="default-validity"
@@ -1023,7 +1023,7 @@ export function CompanySettingsContent({
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="default-payment-terms">Payment terms</Label>
+              <Label className="text-xs" htmlFor="default-payment-terms">Payment terms</Label>
               <LockedTextarea
                 canEdit={canEdit}
                 id="default-payment-terms"
@@ -1033,7 +1033,7 @@ export function CompanySettingsContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="default-quote-terms">Quote terms</Label>
+              <Label className="text-xs" htmlFor="default-quote-terms">Quote terms</Label>
               <LockedTextarea
                 canEdit={canEdit}
                 id="default-quote-terms"
@@ -1043,7 +1043,7 @@ export function CompanySettingsContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="default-exclusions">Default exclusions</Label>
+              <Label className="text-xs" htmlFor="default-exclusions">Default exclusions</Label>
               <p className="text-[11px] text-muted-foreground">
                 One item per line when copied into pricing and quotes.
               </p>
@@ -1056,7 +1056,7 @@ export function CompanySettingsContent({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="default-assumptions">Default assumptions</Label>
+              <Label className="text-xs" htmlFor="default-assumptions">Default assumptions</Label>
               <p className="text-[11px] text-muted-foreground">
                 One item per line when copied into new documents.
               </p>

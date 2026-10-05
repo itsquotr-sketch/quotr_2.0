@@ -114,8 +114,8 @@ export function CustomerFormDialog({
                 {error}
               </p>
             ) : null}
-            <div className="space-y-2">
-              <Label htmlFor={`${mode}-customer-name`}>Customer name</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`${mode}-customer-name`}>Customer name</Label>
               <Input
                 id={`${mode}-customer-name`}
                 value={name}
@@ -126,11 +126,11 @@ export function CustomerFormDialog({
                 className={fieldClass}
               />
               {fieldErrors.name?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.name[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.name[0]}</p>
               ) : null}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${mode}-customer-email`}>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`${mode}-customer-email`}>
                 Email <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
               <Input
@@ -144,11 +144,11 @@ export function CustomerFormDialog({
                 className={fieldClass}
               />
               {fieldErrors.email?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.email[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.email[0]}</p>
               ) : null}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${mode}-customer-phone`}>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`${mode}-customer-phone`}>
                 Phone <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
               <Input
@@ -162,11 +162,11 @@ export function CustomerFormDialog({
                 className={fieldClass}
               />
               {fieldErrors.phone?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.phone[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.phone[0]}</p>
               ) : null}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${mode}-customer-notes`}>Internal notes</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`${mode}-customer-notes`}>Internal notes</Label>
               <Textarea
                 id={`${mode}-customer-notes`}
                 value={notes}
@@ -175,7 +175,7 @@ export function CustomerFormDialog({
                 rows={3}
               />
               {fieldErrors.notes?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.notes[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.notes[0]}</p>
               ) : null}
             </div>
             <DialogFooter>
@@ -265,7 +265,7 @@ export function RestoreCustomerButton({ customerId }: { customerId: string }) {
       <Button type="button" variant="outline" size="touch" onClick={() => void restore()} disabled={pending}>
         {pending ? "Restoring…" : "Restore"}
       </Button>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
     </div>
   );
 }

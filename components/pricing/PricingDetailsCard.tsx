@@ -80,7 +80,7 @@ export function PricingDetailsCard({
           <Label htmlFor="pricing-title" className="text-xs">Title</Label>
           <Input
             id="pricing-title"
-            className="h-8"
+            className="h-11 md:h-8"
             defaultValue={title}
             onChange={(event) => onChange({ title: event.target.value })}
           />
@@ -91,7 +91,7 @@ export function PricingDetailsCard({
           </Label>
           <Input
             id="pricing-client-name"
-            className="h-8"
+            className="h-11 md:h-8"
             value={clientName ?? ""}
             placeholder="Client name"
             onChange={(event) =>
@@ -105,7 +105,7 @@ export function PricingDetailsCard({
           </Label>
           <Input
             id="pricing-site-address"
-            className="h-8"
+            className="h-11 md:h-8"
             value={siteAddress ?? ""}
             placeholder="Site address"
             onChange={(event) =>
@@ -124,7 +124,7 @@ export function PricingDetailsCard({
           <Input
             id="pricing-valid-until"
             type="date"
-            className="h-8"
+            className="h-11 md:h-8"
             defaultValue={validUntil ?? ""}
             onChange={(event) =>
               onChange({ valid_until: event.target.value || null })

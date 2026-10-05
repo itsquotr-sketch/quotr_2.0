@@ -203,7 +203,7 @@ export function RateEditDialog({
 
         <div className="space-y-4 py-2">
           {error ? (
-            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {error}
             </p>
           ) : null}
@@ -230,7 +230,7 @@ export function RateEditDialog({
                     cost_rate: event.target.value,
                   }))
                 }
-                className="pl-7"
+                className="h-11 pl-7 text-right tabular-nums"
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -262,7 +262,7 @@ export function RateEditDialog({
                     inputMode="numeric"
                     value={crewSize}
                     onChange={(event) => setCrewSize(event.target.value)}
-                    className="h-8"
+                    className="h-11 text-right tabular-nums"
                   />
                 </div>
                 <div className="space-y-1">
@@ -277,7 +277,7 @@ export function RateEditDialog({
                     inputMode="decimal"
                     value={elapsedHours}
                     onChange={(event) => setElapsedHours(event.target.value)}
-                    className="h-8"
+                    className="h-11 text-right tabular-nums"
                   />
                 </div>
                 <div className="space-y-1">
@@ -294,7 +294,7 @@ export function RateEditDialog({
                     onChange={(event) =>
                       setQuantityCompleted(event.target.value)
                     }
-                    className="h-8"
+                    className="h-11 text-right tabular-nums"
                   />
                 </div>
               </div>
@@ -406,7 +406,7 @@ export function RateEditDialog({
                         sellMode: "explicit_override",
                       }))
                     }
-                    className="pl-7"
+                    className="h-11 pl-7 text-right tabular-nums"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

@@ -65,7 +65,7 @@ export function ScopeDiscoveryDismissDialog({
             Reason (optional)
           </span>
           <select
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="flex h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
             value={reasonCode}
             disabled={isSaving}
             onChange={(event) =>

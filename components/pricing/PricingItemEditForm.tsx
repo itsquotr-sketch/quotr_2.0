@@ -185,9 +185,9 @@ export function PricingItemEditForm({
       </p>
       <p className="text-xs font-medium text-muted-foreground">Line</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Client label</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs">Client label</Label>
+          <Input className="h-11 md:h-8"
             value={form.client_label}
             onChange={(event) =>
               setForm((current) => ({
@@ -197,9 +197,9 @@ export function PricingItemEditForm({
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label>Internal label</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs">Internal label</Label>
+          <Input className="h-11 md:h-8"
             value={form.internal_label}
             onChange={(event) =>
               setForm((current) => ({
@@ -209,10 +209,10 @@ export function PricingItemEditForm({
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label>Item type</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Item type</Label>
           <select
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            className="flex h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-8 md:text-sm"
             value={form.item_type}
             onChange={(event) =>
               setForm((current) => ({
@@ -228,8 +228,8 @@ export function PricingItemEditForm({
             ))}
           </select>
         </div>
-        <div className="space-y-2">
-          <Label>Delivery method</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Delivery method</Label>
           <select
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             value={form.delivery_method}
@@ -251,9 +251,9 @@ export function PricingItemEditForm({
 
         {calculationMode === "productivity_labour" ? (
           <>
-            <div className="space-y-2">
-              <Label>Scope quantity</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">Scope quantity</Label>
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.01"
                 value={form.quantity ?? ""}
@@ -265,9 +265,9 @@ export function PricingItemEditForm({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Scope unit</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">Scope unit</Label>
+              <Input className="h-11 md:h-8"
                 value={form.unit ?? ""}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -277,14 +277,14 @@ export function PricingItemEditForm({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">
                 Productivity
                 {form.productivity_unit
                   ? ` (hrs/${form.productivity_unit})`
                   : ""}
               </Label>
-              <Input
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.0001"
                 value={form.productivity_rate ?? ""}
@@ -296,9 +296,9 @@ export function PricingItemEditForm({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Calculated hours</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">Calculated hours</Label>
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.01"
                 value={form.calculated_quantity ?? ""}
@@ -313,9 +313,9 @@ export function PricingItemEditForm({
           </>
         ) : calculationMode === "quantity_rate" ? (
           <>
-            <div className="space-y-2">
-              <Label>Qty</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qty</Label>
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.01"
                 value={form.quantity ?? ""}
@@ -327,9 +327,9 @@ export function PricingItemEditForm({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">Unit</Label>
+              <Input className="h-11 md:h-8"
                 value={form.unit ?? ""}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -344,9 +344,9 @@ export function PricingItemEditForm({
           <>
             {form.quantity != null || form.unit ? (
               <>
-                <div className="space-y-2">
-                  <Label>Display quantity</Label>
-                  <Input
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Display quantity</Label>
+                  <Input className="h-11 text-right tabular-nums md:h-8"
                     type="number"
                     step="0.01"
                     value={form.quantity ?? ""}
@@ -358,9 +358,9 @@ export function PricingItemEditForm({
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Display unit</Label>
-                  <Input
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Display unit</Label>
+                  <Input className="h-11 md:h-8"
                     value={form.unit ?? ""}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -377,9 +377,9 @@ export function PricingItemEditForm({
 
         {calculationMode !== "lump_sum" ? (
           <>
-            <div className="space-y-2">
-              <Label>{displayUnitCostLabel}</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">{displayUnitCostLabel}</Label>
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.01"
                 value={form.unit_cost ?? ""}
@@ -391,9 +391,9 @@ export function PricingItemEditForm({
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>{displayUnitSellLabel}</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs">{displayUnitSellLabel}</Label>
+              <Input className="h-11 text-right tabular-nums md:h-8"
                 type="number"
                 step="0.01"
                 value={form.unit_sell ?? ""}
@@ -408,9 +408,9 @@ export function PricingItemEditForm({
           </>
         ) : null}
 
-        <div className="space-y-2">
-          <Label>Total cost</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs">Total cost</Label>
+          <Input className="h-11 text-right tabular-nums md:h-8"
             type="number"
             step="0.01"
             value={form.total_cost ?? 0}
@@ -422,9 +422,9 @@ export function PricingItemEditForm({
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label>Total charge</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs">Total charge</Label>
+          <Input className="h-11 text-right tabular-nums md:h-8"
             type="number"
             step="0.01"
             value={form.total_sell ?? 0}
@@ -469,8 +469,8 @@ export function PricingItemEditForm({
         </div>
 
         <p className="text-xs font-medium text-muted-foreground sm:col-span-2">Quote</p>
-        <div className="space-y-2 sm:col-span-2">
-          <Label>Client description</Label>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-xs">Client description</Label>
           <Textarea
             rows={2}
             value={form.client_description ?? ""}
@@ -482,8 +482,8 @@ export function PricingItemEditForm({
             }
           />
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label>Client notes</Label>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-xs">Client notes</Label>
           <Textarea
             rows={2}
             value={form.notes_client ?? ""}
@@ -498,7 +498,7 @@ export function PricingItemEditForm({
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2 text-sm">
           <Checkbox
             checked={form.visible_on_quote}
             onCheckedChange={(checked) =>
@@ -510,7 +510,7 @@ export function PricingItemEditForm({
           />
           Visible on quote
         </label>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2 text-sm">
           <Checkbox
             checked={form.optional}
             onCheckedChange={(checked) =>

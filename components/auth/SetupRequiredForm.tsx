@@ -22,7 +22,7 @@ const initialState: AuthActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 /**
@@ -67,8 +67,8 @@ export function SetupRequiredForm({
             </p>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full name</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="full_name">Full name</Label>
             <Input
               id="full_name"
               name="full_name"
@@ -82,8 +82,8 @@ export function SetupRequiredForm({
             <FieldError messages={state.fieldErrors?.full_name} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="organisation_name">Company name</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="organisation_name">Company name</Label>
             <Input
               id="organisation_name"
               name="organisation_name"

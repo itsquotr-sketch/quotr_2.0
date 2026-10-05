@@ -71,11 +71,11 @@ export function DeckQuickSpecEditor({
   return (
     <div className="grid gap-3">
       <Group title="Decking">
-        <div className="space-y-1">
-          <Label htmlFor={`deck-material-${workAreaId}`}>Deck board material</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`deck-material-${workAreaId}`}>Deck board material</Label>
           <select
             id={`deck-material-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={material}
             onChange={(event) =>
               onSpecFact?.({
@@ -94,9 +94,9 @@ export function DeckQuickSpecEditor({
             <option value="Composite">Composite</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`deck-width-${workAreaId}`}>Board width (mm)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`deck-width-${workAreaId}`}>Board width (mm)</Label>
+          <Input className="h-11 md:h-9"
             id={`deck-width-${workAreaId}`}
             type="number"
             inputMode="numeric"
@@ -114,9 +114,9 @@ export function DeckQuickSpecEditor({
             }}
           />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`deck-height-${workAreaId}`}>Height (m)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`deck-height-${workAreaId}`}>Height (m)</Label>
+          <Input className="h-11 md:h-9"
             id={`deck-height-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -146,11 +146,11 @@ export function DeckQuickSpecEditor({
             Estimating assumptions for pricing. Not a structural design.
           </p>
           <div className="mt-3 grid gap-3">
-          <div className="space-y-1">
-            <Label htmlFor={`deck-joist-${workAreaId}`}>Joists</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-joist-${workAreaId}`}>Joists</Label>
             <select
               id={`deck-joist-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={joist}
               onChange={(event) =>
                 onSpecFact?.({
@@ -167,11 +167,11 @@ export function DeckQuickSpecEditor({
               <option value="140x45">140×45 H3.2</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`deck-bearer-${workAreaId}`}>Bearers</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-bearer-${workAreaId}`}>Bearers</Label>
             <select
               id={`deck-bearer-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={bearer}
               onChange={(event) =>
                 onSpecFact?.({
@@ -188,11 +188,11 @@ export function DeckQuickSpecEditor({
               <option value="190x45">190×45 H3.2</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`deck-post-${workAreaId}`}>Piles / posts</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-post-${workAreaId}`}>Piles / posts</Label>
             <select
               id={`deck-post-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={support}
               onChange={(event) =>
                 onSpecFact?.({
@@ -218,11 +218,11 @@ export function DeckQuickSpecEditor({
 
       {fascia ? (
         <Group title="Fascia">
-          <div className="space-y-1">
-            <Label htmlFor={`deck-fascia-${workAreaId}`}>Fascia material</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-fascia-${workAreaId}`}>Fascia material</Label>
             <select
               id={`deck-fascia-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={fasciaMaterial}
               onChange={(event) =>
                 onSpecFact?.({
@@ -249,9 +249,9 @@ export function DeckQuickSpecEditor({
           <p className="text-xs text-muted-foreground">
             Quotr assumes evenly spaced steps based on the deck height.
           </p>
-          <div className="space-y-1">
-            <Label htmlFor={`deck-step-count-${workAreaId}`}>Number of steps</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-step-count-${workAreaId}`}>Number of steps</Label>
+            <Input className="h-11 md:h-9"
               id={`deck-step-count-${workAreaId}`}
               type="number"
               inputMode="numeric"
@@ -273,9 +273,9 @@ export function DeckQuickSpecEditor({
               }}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`deck-step-width-${workAreaId}`}>Step width (m)</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-step-width-${workAreaId}`}>Step width (m)</Label>
+            <Input className="h-11 md:h-9"
               id={`deck-step-width-${workAreaId}`}
               type="number"
               inputMode="decimal"

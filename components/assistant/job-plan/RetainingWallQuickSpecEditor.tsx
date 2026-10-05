@@ -135,11 +135,11 @@ export function RetainingWallQuickSpecEditor({
   return (
     <div className="grid gap-3" data-rw-quick-spec>
       <Group title="Wall">
-        <div className="space-y-1">
-          <Label htmlFor={`rw-material-${workAreaId}`}>Wall type</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-material-${workAreaId}`}>Wall type</Label>
           <select
             id={`rw-material-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={material}
             onChange={(event) =>
               onSpecFact?.({
@@ -157,9 +157,9 @@ export function RetainingWallQuickSpecEditor({
             <option value="Masonry">Masonry</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`rw-length-${workAreaId}`}>Length (m)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-length-${workAreaId}`}>Length (m)</Label>
+          <Input className="h-11 md:h-9"
             id={`rw-length-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -180,9 +180,9 @@ export function RetainingWallQuickSpecEditor({
         </div>
         {raking ? (
           <>
-            <div className="space-y-1">
-              <Label htmlFor={`rw-high-${workAreaId}`}>High-end height (m)</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`rw-high-${workAreaId}`}>High-end height (m)</Label>
+              <Input className="h-11 md:h-9"
                 id={`rw-high-${workAreaId}`}
                 type="number"
                 inputMode="decimal"
@@ -201,9 +201,9 @@ export function RetainingWallQuickSpecEditor({
                 }}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor={`rw-low-${workAreaId}`}>Low-end height (m)</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`rw-low-${workAreaId}`}>Low-end height (m)</Label>
+              <Input className="h-11 md:h-9"
                 id={`rw-low-${workAreaId}`}
                 type="number"
                 inputMode="decimal"
@@ -224,9 +224,9 @@ export function RetainingWallQuickSpecEditor({
             </div>
           </>
         ) : (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-height-${workAreaId}`}>Height (m)</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-height-${workAreaId}`}>Height (m)</Label>
+            <Input className="h-11 md:h-9"
               id={`rw-height-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -250,11 +250,11 @@ export function RetainingWallQuickSpecEditor({
 
       {system === "TIMBER_RETAINING_WALL" ? (
         <Group title="Timber">
-          <div className="space-y-1">
-            <Label htmlFor={`rw-boards-${workAreaId}`}>Face boards</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-boards-${workAreaId}`}>Face boards</Label>
             <select
               id={`rw-boards-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={faceBoard}
               onChange={(event) =>
                 onSpecFact?.({
@@ -271,11 +271,11 @@ export function RetainingWallQuickSpecEditor({
               <option value="200×50 H4">200×50 H4</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-pile-material-${workAreaId}`}>Post / pile material</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-pile-material-${workAreaId}`}>Post / pile material</Label>
             <select
               id={`rw-pile-material-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={pileMaterial || RW_PILE_MATERIAL_H5_SED}
               onChange={(event) =>
                 onSpecFact?.({
@@ -302,11 +302,11 @@ export function RetainingWallQuickSpecEditor({
 
       {system === "CONCRETE_SLEEPER_WALL" ? (
         <Group title="Concrete sleeper">
-          <div className="space-y-1">
-            <Label htmlFor={`rw-sleeper-length-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-sleeper-length-${workAreaId}`}>
               Sleeper length (m)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-sleeper-length-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -326,11 +326,11 @@ export function RetainingWallQuickSpecEditor({
               }}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-sleeper-face-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-sleeper-face-${workAreaId}`}>
               Sleeper face height (m)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-sleeper-face-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -360,11 +360,11 @@ export function RetainingWallQuickSpecEditor({
 
       {system === "CONCRETE_MASONRY_WALL" ? (
         <Group title="Concrete masonry / Besser">
-          <div className="space-y-1">
-            <Label htmlFor={`rw-block-series-${workAreaId}`}>Block type</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-block-series-${workAreaId}`}>Block type</Label>
             <select
               id={`rw-block-series-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={
                 jobPlanString(facts, workAreaId, "retaining_wall.block_series") ??
                 ""
@@ -384,13 +384,13 @@ export function RetainingWallQuickSpecEditor({
               <option value="150-series">150 mm concrete masonry</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-block-method-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-block-method-${workAreaId}`}>
               Blockwork delivery
             </Label>
             <select
               id={`rw-block-method-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={
                 jobPlanString(
                   facts,
@@ -420,13 +420,13 @@ export function RetainingWallQuickSpecEditor({
           )
             ?.toLowerCase()
             .includes("subcontract") ? (
-            <div className="space-y-1">
-              <Label htmlFor={`rw-block-sub-scope-${workAreaId}`}>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`rw-block-sub-scope-${workAreaId}`}>
                 Subcontractor provides
               </Label>
               <select
                 id={`rw-block-sub-scope-${workAreaId}`}
-                className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
                 value={
                   jobPlanString(
                     facts,
@@ -452,11 +452,11 @@ export function RetainingWallQuickSpecEditor({
               </select>
             </div>
           ) : null}
-          <div className="space-y-1">
-            <Label htmlFor={`rw-footing-w-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-footing-w-${workAreaId}`}>
               Footing width (m)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-footing-w-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -479,11 +479,11 @@ export function RetainingWallQuickSpecEditor({
               }}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-footing-d-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-footing-d-${workAreaId}`}>
               Footing depth (m)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-footing-d-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -506,13 +506,13 @@ export function RetainingWallQuickSpecEditor({
               }}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-wp-req-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-wp-req-${workAreaId}`}>
               Retaining-side waterproofing
             </Label>
             <select
               id={`rw-wp-req-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={yesNo(
                 jobPlanBoolean(
                   facts,
@@ -535,13 +535,13 @@ export function RetainingWallQuickSpecEditor({
               <option value="No">No</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`rw-wp-method-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-wp-method-${workAreaId}`}>
               Waterproofing method
             </Label>
             <select
               id={`rw-wp-method-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={
                 jobPlanString(
                   facts,
@@ -573,11 +573,11 @@ export function RetainingWallQuickSpecEditor({
       ) : null}
 
       <Group title="Drainage / excavation">
-        <div className="space-y-1">
-          <Label htmlFor={`rw-drainage-${workAreaId}`}>Drainage / novacoil</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-drainage-${workAreaId}`}>Drainage / novacoil</Label>
           <select
             id={`rw-drainage-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={yesNo(drainage)}
             onChange={(event) =>
               onSpecFact?.({
@@ -595,13 +595,13 @@ export function RetainingWallQuickSpecEditor({
           </select>
         </div>
         {drainage === true ? (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-drainage-sock-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-drainage-sock-${workAreaId}`}>
               Drain coil sock required?
             </Label>
             <select
               id={`rw-drainage-sock-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={drainageSock}
               onChange={(event) =>
                 onSpecFact?.({
@@ -620,11 +620,11 @@ export function RetainingWallQuickSpecEditor({
             </select>
           </div>
         ) : null}
-        <div className="space-y-1">
-          <Label htmlFor={`rw-backfill-${workAreaId}`}>Backfill</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-backfill-${workAreaId}`}>Backfill</Label>
           <select
             id={`rw-backfill-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={yesNo(backfill)}
             onChange={(event) =>
               onSpecFact?.({
@@ -641,11 +641,11 @@ export function RetainingWallQuickSpecEditor({
             <option value="No">No</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`rw-excavation-${workAreaId}`}>Excavation</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-excavation-${workAreaId}`}>Excavation</Label>
           <select
             id={`rw-excavation-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={yesNo(excavation)}
             onChange={(event) =>
               onSpecFact?.({
@@ -663,13 +663,13 @@ export function RetainingWallQuickSpecEditor({
           </select>
         </div>
         {excavation === true ? (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-digger-access-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-digger-access-${workAreaId}`}>
               Can a mini excavator / digger access the work area?
             </Label>
             <select
               id={`rw-digger-access-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={diggerAccess}
               onChange={(event) =>
                 onSpecFact?.({
@@ -689,13 +689,13 @@ export function RetainingWallQuickSpecEditor({
           </div>
         ) : null}
         {excavation === true ? (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-spoil-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-spoil-${workAreaId}`}>
               Will excavated spoil need to be removed from site?
             </Label>
             <select
               id={`rw-spoil-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={
                 spoilRemoval === true
                   ? "Yes"
@@ -720,13 +720,13 @@ export function RetainingWallQuickSpecEditor({
           </div>
         ) : null}
         {excavation === true && spoilRemoval === true && excavationVolume != null ? (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-spoil-portion-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-spoil-portion-${workAreaId}`}>
               How much of the excavated material needs to leave site?
             </Label>
             <select
               id={`rw-spoil-portion-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={
                 /^all/i.test(spoilPortion)
                   ? "All"
@@ -756,11 +756,11 @@ export function RetainingWallQuickSpecEditor({
         {excavation === true &&
         spoilRemoval === true &&
         (excavationVolume == null || /^some/i.test(spoilPortion)) ? (
-          <div className="space-y-1">
-            <Label htmlFor={`rw-spoil-volume-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-spoil-volume-${workAreaId}`}>
               Estimated spoil removal volume (m³)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-spoil-volume-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -796,11 +796,11 @@ export function RetainingWallQuickSpecEditor({
       </Group>
 
       <Group title="Site conditions">
-        <div className="space-y-1">
-          <Label htmlFor={`rw-access-${workAreaId}`}>Access</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-access-${workAreaId}`}>Access</Label>
           <select
             id={`rw-access-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={siteAccess}
             onChange={(event) =>
               onConstraint?.({
@@ -818,11 +818,11 @@ export function RetainingWallQuickSpecEditor({
             <option value="Very poor">Very poor</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`rw-carry-${workAreaId}`}>Carry distance</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`rw-carry-${workAreaId}`}>Carry distance</Label>
           <select
             id={`rw-carry-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={carryDistance}
             onChange={(event) =>
               onConstraint?.({
@@ -852,11 +852,11 @@ export function RetainingWallQuickSpecEditor({
         <div className="mt-3 grid gap-3">
           {system === "TIMBER_RETAINING_WALL" ? (
             <>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-spacing-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-spacing-${workAreaId}`}>
                   Target pile spacing (m)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-spacing-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -876,11 +876,11 @@ export function RetainingWallQuickSpecEditor({
                   }}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-embedment-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-embedment-${workAreaId}`}>
                   Pile embedment (m)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-embedment-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -900,11 +900,11 @@ export function RetainingWallQuickSpecEditor({
                   }}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-hole-dia-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-hole-dia-${workAreaId}`}>
                   Post-hole diameter (mm)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-hole-dia-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -939,11 +939,11 @@ export function RetainingWallQuickSpecEditor({
           ) : null}
           {system === "CONCRETE_SLEEPER_WALL" ? (
             <>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-sleeper-spacing-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-sleeper-spacing-${workAreaId}`}>
                   Target post spacing (m)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-sleeper-spacing-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -963,11 +963,11 @@ export function RetainingWallQuickSpecEditor({
                   }}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-sleeper-embedment-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-sleeper-embedment-${workAreaId}`}>
                   Post embedment (m)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-sleeper-embedment-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -987,11 +987,11 @@ export function RetainingWallQuickSpecEditor({
                   }}
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor={`rw-sleeper-hole-dia-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`rw-sleeper-hole-dia-${workAreaId}`}>
                   Post-hole diameter (mm)
                 </Label>
-                <Input
+                <Input className="h-11 md:h-9"
                   id={`rw-sleeper-hole-dia-${workAreaId}`}
                   type="number"
                   inputMode="decimal"
@@ -1024,11 +1024,11 @@ export function RetainingWallQuickSpecEditor({
               </div>
             </>
           ) : null}
-          <div className="space-y-1">
-            <Label htmlFor={`rw-excavation-volume-${workAreaId}`}>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`rw-excavation-volume-${workAreaId}`}>
               Bulk excavation volume (m³)
             </Label>
-            <Input
+            <Input className="h-11 md:h-9"
               id={`rw-excavation-volume-${workAreaId}`}
               type="number"
               inputMode="decimal"

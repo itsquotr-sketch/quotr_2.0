@@ -20,7 +20,7 @@ import type { DashboardProjectListItem, ProjectListFilter } from "@/lib/projects
 import { cn } from "@/lib/utils";
 
 const filterSelectClassName = cn(
-  "h-11 min-h-11 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none transition-[color,box-shadow]",
+  "h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-base outline-none transition-[color,box-shadow]",
   "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30",
   "disabled:cursor-not-allowed disabled:opacity-50"
 );

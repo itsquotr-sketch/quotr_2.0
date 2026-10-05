@@ -106,7 +106,7 @@ export function QuoteAcceptSheet({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="quote-accept-name">Your name</Label>
-        <Input
+        <Input className="h-11 min-h-11"
           id="quote-accept-name"
           value={signerName}
           autoComplete="name"
@@ -115,7 +115,7 @@ export function QuoteAcceptSheet({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="quote-accept-email">Your email</Label>
-        <Input
+        <Input className="h-11 min-h-11"
           id="quote-accept-email"
           type="email"
           inputMode="email"
@@ -124,7 +124,7 @@ export function QuoteAcceptSheet({
           onChange={(event) => setSignerEmail(event.target.value)}
         />
       </div>
-      <label className="flex items-start gap-3 text-sm leading-relaxed">
+      <label className="flex min-h-11 items-start gap-3 text-sm leading-relaxed">
         <input
           type="checkbox"
           className="mt-1 size-4 shrink-0"

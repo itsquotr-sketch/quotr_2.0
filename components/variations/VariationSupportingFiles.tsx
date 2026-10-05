@@ -469,7 +469,7 @@ function FileCard(props: {
                   <Label htmlFor={`caption-${props.file.id}`}>Caption</Label>
                   <Input id={`caption-${props.file.id}`} className="h-11" value={caption} onChange={(event) => setCaption(event.target.value)} onBlur={() => void props.onSave({ ...patch, caption })} />
                   <Label htmlFor={`link-${props.file.id}`}>Linked Variation item</Label>
-                  <select id={`link-${props.file.id}`} className="h-11 min-h-11 w-full rounded-xl border bg-background px-3 text-sm" value={link} onChange={(event) => { setLink(event.target.value); void props.onSave({ ...patch, linkedVariationItemId: event.target.value || null }); }}>
+                  <select id={`link-${props.file.id}`} className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm" value={link} onChange={(event) => { setLink(event.target.value); void props.onSave({ ...patch, linkedVariationItemId: event.target.value || null }); }}>
                     <option value="">No linked item</option>
                     {props.items.map((item) => <option key={item.id} value={item.id}>{item.clientDescription}</option>)}
                   </select>

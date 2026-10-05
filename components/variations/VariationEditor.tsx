@@ -1515,7 +1515,7 @@ function ComponentEditor(props: {
             <Label htmlFor={`component-category-${draft.key}`}>Cost category</Label>
             <select
               id={`component-category-${draft.key}`}
-              className="h-11 rounded-xl border bg-background px-3 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm"
               value={draft.category}
               onChange={(event) => {
                 const category = event.target.value as VariationCostCategory;
@@ -1550,7 +1550,7 @@ function ComponentEditor(props: {
           ) : (
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium">Cost source</legend>
-              <label className="flex min-h-11 items-center gap-2 text-sm">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2 has-[:checked]:border-[var(--brand-orange)] has-[:checked]:bg-[var(--brand-orange-muted)] border-border bg-background">
                 <input
                   type="radio"
                   name={`cost-source-${draft.key}`}
@@ -1559,7 +1559,7 @@ function ComponentEditor(props: {
                 />
                 Enter manually
               </label>
-              <label className="flex min-h-11 items-center gap-2 text-sm">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2 has-[:checked]:border-[var(--brand-orange)] has-[:checked]:bg-[var(--brand-orange-muted)] border-border bg-background">
                 <input
                   type="radio"
                   name={`cost-source-${draft.key}`}
@@ -1733,7 +1733,7 @@ function PricingMethodCards(props: {
             type="button"
             role="radio"
             aria-checked={selected}
-            className={`min-h-11 rounded-xl border px-3 py-3 text-left ${selected ? "border-foreground bg-muted" : "bg-background"}`}
+            className={`min-h-11 rounded-xl border px-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 ${selected ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]" : "border-border bg-background"}`}
             onClick={() => props.onChange(option.value)}
           >
             <span className="block text-sm font-medium">{option.title}</span>
@@ -2008,7 +2008,7 @@ function ItemDialog(props: {
                     role="radio"
                     aria-checked={selected}
                     disabled={disabled}
-                    className={`min-h-11 rounded-xl border px-3 py-2 text-left ${selected ? "border-foreground bg-muted" : "bg-background"} disabled:opacity-60`}
+                    className={`min-h-11 rounded-xl border px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 ${selected ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]" : "border-border bg-background"} disabled:opacity-60`}
                     onClick={() => { setKind(value); setProvenance("pricing_required"); }}
                   >
                     <span className="block text-sm font-medium">{label}</span>
@@ -2048,7 +2048,7 @@ function ItemDialog(props: {
           ) : <Field id="item-description" label="Client-facing description" value={description} onChange={setDescription} />}
           <div className="grid gap-1.5">
             <Label htmlFor="item-scope">Link to accepted scope (optional)</Label>
-            <select id="item-scope" className="h-11 rounded-xl border bg-background px-3 text-sm" value={scopeId} onChange={(event) => {
+            <select id="item-scope" className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm" value={scopeId} onChange={(event) => {
               const next = event.target.value;
               setScopeId(next);
               const line = props.scopeLines.find((row) => row.id === next);
@@ -2060,7 +2060,7 @@ function ItemDialog(props: {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="item-area">Link to work area (optional)</Label>
-            <select id="item-area" className="h-11 rounded-xl border bg-background px-3 text-sm" value={workAreaChoice} onChange={(event) => {
+            <select id="item-area" className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm" value={workAreaChoice} onChange={(event) => {
               if (event.target.value === "__create") {
                 setCreatingArea(true);
                 setAreaError(null);
@@ -2343,8 +2343,8 @@ function WorkAreaEditDialog(props: {
 function Field(props: { id: string; label: string; value: string; onChange: (value: string) => void; numeric?: boolean }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={props.id}>{props.label}</Label>
-      <Input id={props.id} inputMode={props.numeric ? "decimal" : undefined} value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <Label className="text-xs" htmlFor={props.id}>{props.label}</Label>
+      <Input id={props.id} inputMode={props.numeric ? "decimal" : undefined} value={props.value} onChange={(event) => props.onChange(event.target.value)} className={props.numeric ? "h-11 text-right tabular-nums" : "h-11"} />
     </div>
   );
 }

@@ -112,7 +112,7 @@ export function PricingDecisionCard({
       ) : (
       <div className="space-y-3" data-pricing-final-price-control>
         <div className="flex flex-col gap-2">
-          <label className="flex min-h-11 items-center gap-2 text-sm">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2 has-[:checked]:border-[var(--brand-orange)] has-[:checked]:bg-[var(--brand-orange-muted)] border-border bg-background">
             <input
               type="radio"
               name="pricing-final-mode"
@@ -122,7 +122,7 @@ export function PricingDecisionCard({
             />
             Use Quotr recommendation
           </label>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2 has-[:checked]:border-[var(--brand-orange)] has-[:checked]:bg-[var(--brand-orange-muted)] border-border bg-background">
             <input
               type="radio"
               name="pricing-final-mode"

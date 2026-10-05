@@ -238,7 +238,7 @@ export function RequiredCompanyProfileStep({ state }: { state: SetupState }) {
               {(["yes", "no"] as const).map((choice) => (
                 <label
                   key={choice}
-                  className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm has-[:checked]:border-ring has-[:checked]:ring-3 has-[:checked]:ring-ring/50"
+                  className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm outline-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2 has-[:checked]:border-[var(--brand-orange)] has-[:checked]:bg-[var(--brand-orange-muted)]"
                 >
                   <input
                     type="radio"

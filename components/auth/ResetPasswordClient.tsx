@@ -19,7 +19,7 @@ const initialState: RecoveryActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 export function ResetPasswordClient() {
@@ -49,8 +49,8 @@ export function ResetPasswordClient() {
             </p>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="new_password">New password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="new_password">New password</Label>
             <PasswordField
               id="new_password"
               name="new_password"
@@ -62,8 +62,8 @@ export function ResetPasswordClient() {
             <FieldError messages={state.fieldErrors?.new_password} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm_password">Confirm new password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="confirm_password">Confirm new password</Label>
             <PasswordField
               id="confirm_password"
               name="confirm_password"

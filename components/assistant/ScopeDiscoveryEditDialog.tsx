@@ -133,7 +133,7 @@ export function ScopeDiscoveryEditDialog({
               <span className="text-xs font-medium text-muted-foreground">
                 Title
               </span>
-              <Input
+              <Input className="h-11 min-h-11"
                 value={draft.title}
                 onChange={(event) =>
                   updateDraft({ title: event.target.value })
@@ -149,7 +149,7 @@ export function ScopeDiscoveryEditDialog({
                 {isScopeItem ? "Scope item type" : "Work area type"}
               </span>
               {isScopeItem ? (
-                <Input
+                <Input className="h-11 min-h-11"
                   value={draft.workAreaType}
                   onChange={(event) =>
                     updateDraft({ workAreaType: event.target.value })
@@ -160,7 +160,7 @@ export function ScopeDiscoveryEditDialog({
                 />
               ) : (
                 <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="flex h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
                   value={draft.workAreaType}
                   disabled={isSaving}
                   onChange={(event) =>

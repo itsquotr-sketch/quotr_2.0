@@ -29,7 +29,7 @@ const resendInitial: RecoveryActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 function LoginForm() {
@@ -82,8 +82,8 @@ function LoginForm() {
               {bannerError}
             </p>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="email">Email</Label>
             <Input
               id="email"
               name="email"
@@ -97,9 +97,9 @@ function LoginForm() {
             <FieldError messages={state.fieldErrors?.email} />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <Label htmlFor="password">Password</Label>
+              <Label className="text-xs" htmlFor="password">Password</Label>
               <Link
                 href="/forgot-password"
                 className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
@@ -146,8 +146,8 @@ function ConfirmationResend() {
   );
 
   return (
-    <form action={resendAction} className="space-y-2">
-      <Label htmlFor="resend-email">Resend confirmation email</Label>
+    <form action={resendAction} className="space-y-1.5">
+      <Label className="text-xs" htmlFor="resend-email">Resend confirmation email</Label>
       <Input
         id="resend-email"
         name="email"

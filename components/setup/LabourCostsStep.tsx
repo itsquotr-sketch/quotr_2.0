@@ -40,9 +40,11 @@ function storedChoice(value: string | null | undefined): LabourChoice {
 
 function choiceCardClass(selected: boolean) {
   return [
-    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm",
-    "focus-within:ring-2 focus-within:ring-ring",
-    selected ? "border-foreground bg-neutral-50" : "border-border bg-white",
+    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none",
+    "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2",
+    selected
+      ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
+      : "border-border bg-background",
   ].join(" ");
 }
 

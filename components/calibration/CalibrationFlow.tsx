@@ -462,7 +462,7 @@ export function CalibrationFlow({
                     if (question.kind === "confidence") {
                       return (
                         <div key={question.id} className="space-y-2">
-                          <Label>{question.label}</Label>
+                          <Label className="text-xs">{question.label}</Label>
                           <div className="flex flex-wrap gap-2">
                             {(["low", "medium", "high"] as const).map(
                               (level) => (
@@ -486,7 +486,7 @@ export function CalibrationFlow({
                     if (question.kind === "text") {
                       return (
                         <div key={question.id} className="space-y-2">
-                          <Label htmlFor={question.id}>
+                          <Label className="text-xs" htmlFor={question.id}>
                             {question.label}
                             {question.optional ? (
                               <span className="ml-1 text-muted-foreground">
@@ -494,7 +494,7 @@ export function CalibrationFlow({
                               </span>
                             ) : null}
                           </Label>
-                          <Input
+                          <Input className="h-11 md:h-9"
                             id={question.id}
                             value={values[question.id] ?? ""}
                             onChange={(event) =>
@@ -509,7 +509,7 @@ export function CalibrationFlow({
                     }
                     return (
                       <div key={question.id} className="space-y-2">
-                        <Label htmlFor={question.id}>
+                        <Label className="text-xs" htmlFor={question.id}>
                           {question.label}
                           {question.optional ? (
                             <span className="ml-1 text-muted-foreground">
@@ -535,7 +535,9 @@ export function CalibrationFlow({
                             step="0.01"
                             inputMode="decimal"
                             className={
-                              question.unit === "$" ? "pl-7" : undefined
+                              question.unit === "$"
+                                ? "h-11 pl-7 text-right tabular-nums md:h-9"
+                                : "h-11 text-right tabular-nums md:h-9"
                             }
                             placeholder={
                               question.unit === "hours"

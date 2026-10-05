@@ -166,7 +166,7 @@ export function RatesPageContent({
           id="rates-section"
           data-rates-section-select
           aria-label="Rates section"
-          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+          className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-card px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm"
           value={
             RATES_SECTIONS.some((section) => section.id === navActive)
               ? navActive

@@ -136,7 +136,7 @@ export function QuestionField({
             onChange={(e) =>
               onChange(e.target.value === "" ? "" : Number(e.target.value))
             }
-            className="max-w-[140px]"
+            className="h-11 min-h-11 max-w-[140px]"
           />
           {question.unit ? (
             <span className="text-sm text-muted-foreground">{question.unit}</span>
@@ -180,7 +180,7 @@ export function QuestionField({
     case "text":
     default:
       return (
-        <Input
+        <Input className="h-11 min-h-11"
           value={value === null || value === undefined ? "" : String(value)}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}

@@ -116,7 +116,7 @@ export function AddManualScopeItemForm({
         Add under{" "}
         <span className="font-medium text-foreground">{workAreaName}</span>
       </p>
-      <Input
+      <Input className="h-11 min-h-11"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Scope item name"

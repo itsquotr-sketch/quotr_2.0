@@ -167,7 +167,7 @@ export function SiteNoteCard({
                 onChange={(event) =>
                   setNoteType(event.target.value as ProjectNoteType)
                 }
-                className="flex h-9 w-full rounded-xl border border-transparent bg-input/50 px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+                className="flex h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               >
                 {PROJECT_NOTE_TYPE_OPTIONS.map((type) => (
                   <option key={type} value={type}>

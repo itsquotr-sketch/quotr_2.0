@@ -16,7 +16,7 @@ const initialState: ProfileActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 function Alert({
@@ -83,8 +83,8 @@ export function ProfilePageContent({
             <Alert tone="success">{profileState.success}</Alert>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full name</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="full_name">Full name</Label>
             <Input
               id="full_name"
               name="full_name"
@@ -92,19 +92,19 @@ export function ProfilePageContent({
               autoComplete="name"
               required
               disabled={profilePending}
-              className="h-10"
+              className="h-11 md:h-9"
             />
             <FieldError messages={profileState.fieldErrors?.full_name} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="email">Email address</Label>
             <Input
               id="email"
               value={email}
               readOnly
               disabled
-              className="h-10"
+              className="h-11 md:h-9"
             />
             <p className="text-xs text-muted-foreground">
               Email changes require a confirmation flow and will be available
@@ -113,24 +113,24 @@ export function ProfilePageContent({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="role">Role</Label>
               <Input
                 id="role"
                 value={role}
                 readOnly
                 disabled
-                className="h-10 capitalize"
+                className="h-11 capitalize md:h-9"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="organisation">Organisation</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="organisation">Organisation</Label>
               <Input
                 id="organisation"
                 value={organisationName}
                 readOnly
                 disabled
-                className="h-10"
+                className="h-11 md:h-9"
               />
             </div>
           </div>
@@ -166,8 +166,8 @@ export function ProfilePageContent({
             <Alert tone="success">{passwordState.success}</Alert>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="current_password">Current password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="current_password">Current password</Label>
             <Input
               id="current_password"
               name="current_password"
@@ -175,13 +175,13 @@ export function ProfilePageContent({
               autoComplete="current-password"
               required
               disabled={passwordPending}
-              className="h-10"
+              className="h-11 md:h-9"
             />
             <FieldError messages={passwordState.fieldErrors?.current_password} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="new_password">New password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="new_password">New password</Label>
             <Input
               id="new_password"
               name="new_password"
@@ -190,13 +190,13 @@ export function ProfilePageContent({
               required
               minLength={8}
               disabled={passwordPending}
-              className="h-10"
+              className="h-11 md:h-9"
             />
             <FieldError messages={passwordState.fieldErrors?.new_password} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm_password">Confirm new password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="confirm_password">Confirm new password</Label>
             <Input
               id="confirm_password"
               name="confirm_password"
@@ -205,7 +205,7 @@ export function ProfilePageContent({
               required
               minLength={8}
               disabled={passwordPending}
-              className="h-10"
+              className="h-11 md:h-9"
             />
             <FieldError
               messages={passwordState.fieldErrors?.confirm_password}

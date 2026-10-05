@@ -260,14 +260,14 @@ export function NewProjectDialog({
                   upgradeTarget={denial.upgradeTarget}
                 />
               ) : (
-                <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                   {error}
                 </p>
               )
             ) : null}
 
-            <div className="space-y-2">
-              <Label htmlFor="project-title">Job name</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="project-title">Job name</Label>
               <Input
                 id="project-title"
                 value={title}
@@ -279,11 +279,11 @@ export function NewProjectDialog({
                 className="min-h-11"
               />
               {fieldErrors.title?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.title[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.title[0]}</p>
               ) : null}
             </div>
 
-            <fieldset className="space-y-2" data-customer-choice>
+            <fieldset className="space-y-1.5" data-customer-choice>
               <legend className="text-sm font-medium">Customer</legend>
               <div className="grid gap-2">
                 {MODES.map((mode) => {
@@ -330,8 +330,8 @@ export function NewProjectDialog({
 
               {customerMode === "new" ? (
                 <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-customer-name">Customer name</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="new-customer-name">Customer name</Label>
                     <Input
                       id="new-customer-name"
                       value={newName}
@@ -342,11 +342,11 @@ export function NewProjectDialog({
                       className="min-h-11"
                     />
                     {fieldErrors.client_name?.[0] ? (
-                      <p className="text-sm text-destructive">{fieldErrors.client_name[0]}</p>
+                      <p className="text-sm text-destructive" role="alert">{fieldErrors.client_name[0]}</p>
                     ) : null}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-customer-email">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="new-customer-email">
                       Email <span className="font-normal text-muted-foreground">(optional)</span>
                     </Label>
                     <Input
@@ -360,11 +360,11 @@ export function NewProjectDialog({
                       className="min-h-11"
                     />
                     {fieldErrors.client_email?.[0] ? (
-                      <p className="text-sm text-destructive">{fieldErrors.client_email[0]}</p>
+                      <p className="text-sm text-destructive" role="alert">{fieldErrors.client_email[0]}</p>
                     ) : null}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-customer-phone">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="new-customer-phone">
                       Phone <span className="font-normal text-muted-foreground">(optional)</span>
                     </Label>
                     <Input
@@ -382,8 +382,8 @@ export function NewProjectDialog({
               ) : null}
             </fieldset>
 
-            <div className="space-y-2">
-              <Label htmlFor="site-address">Site</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="site-address">Site</Label>
               <Input
                 id="site-address"
                 value={siteAddress}
@@ -394,7 +394,7 @@ export function NewProjectDialog({
                 className="min-h-11"
               />
               {fieldErrors.site_address?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.site_address[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.site_address[0]}</p>
               ) : null}
             </div>
 

@@ -111,7 +111,7 @@ export function CompanyDefaultsSection({
       <form onSubmit={handleSubmit} className="flex flex-col gap-(--card-spacing)">
         <CardContent className="space-y-3">
           {error ? (
-            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {error}
             </p>
           ) : null}
@@ -123,8 +123,8 @@ export function CompanyDefaultsSection({
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1">
-              <Label htmlFor="default-margin">Company gross margin %</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="default-margin">Company gross margin %</Label>
               <Input
                 id="default-margin"
                 type="number"
@@ -135,19 +135,20 @@ export function CompanyDefaultsSection({
                 onChange={(event) => setMargin(event.target.value)}
                 disabled={readOnly}
                 required
+                className="h-11 text-right tabular-nums md:h-9"
               />
               <p className="text-xs text-muted-foreground">
                 Used to recommend charge-out from your cost rates (0–95%).
               </p>
               {fieldErrors.default_margin_percent?.[0] ? (
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive" role="alert">
                   {fieldErrors.default_margin_percent[0]}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="default-contingency">Default contingency %</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="default-contingency">Default contingency %</Label>
               <Input
                 id="default-contingency"
                 type="number"
@@ -158,16 +159,17 @@ export function CompanyDefaultsSection({
                 onChange={(event) => setContingency(event.target.value)}
                 disabled={readOnly}
                 required
+                className="h-11 text-right tabular-nums md:h-9"
               />
               {fieldErrors.default_contingency_percent?.[0] ? (
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive" role="alert">
                   {fieldErrors.default_contingency_percent[0]}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="budget-factor">Budget factor</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="budget-factor">Budget factor</Label>
               <Input
                 id="budget-factor"
                 type="number"
@@ -178,16 +180,17 @@ export function CompanyDefaultsSection({
                 onChange={(event) => setBudgetFactor(event.target.value)}
                 disabled={readOnly}
                 required
+                className="h-11 text-right tabular-nums md:h-9"
               />
               {fieldErrors.budget_rate_factor?.[0] ? (
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive" role="alert">
                   {fieldErrors.budget_rate_factor[0]}
                 </p>
               ) : null}
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="premium-factor">Premium factor</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="premium-factor">Premium factor</Label>
               <Input
                 id="premium-factor"
                 type="number"
@@ -198,9 +201,10 @@ export function CompanyDefaultsSection({
                 onChange={(event) => setPremiumFactor(event.target.value)}
                 disabled={readOnly}
                 required
+                className="h-11 text-right tabular-nums md:h-9"
               />
               {fieldErrors.premium_rate_factor?.[0] ? (
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive" role="alert">
                   {fieldErrors.premium_rate_factor[0]}
                 </p>
               ) : null}
@@ -208,7 +212,7 @@ export function CompanyDefaultsSection({
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-start gap-2">
+            <div className="flex min-h-11 items-center gap-2">
               <Checkbox
                 id="prefer-user-rates"
                 checked={preferUserRates}
@@ -218,7 +222,7 @@ export function CompanyDefaultsSection({
                 }
               />
               <div>
-                <Label htmlFor="prefer-user-rates" className="font-normal">
+                <Label className="text-xs font-normal" htmlFor="prefer-user-rates">
                   Use my rates where available
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -227,7 +231,7 @@ export function CompanyDefaultsSection({
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
+            <div className="flex min-h-11 items-center gap-2">
               <Checkbox
                 id="allow-benchmark-rates"
                 checked={allowBenchmarkRates}
@@ -237,7 +241,7 @@ export function CompanyDefaultsSection({
                 }
               />
               <div>
-                <Label htmlFor="allow-benchmark-rates" className="font-normal">
+                <Label className="text-xs font-normal" htmlFor="allow-benchmark-rates">
                   Allow benchmark fallback rates
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -247,7 +251,7 @@ export function CompanyDefaultsSection({
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
+            <div className="flex min-h-11 items-center gap-2">
               <Checkbox
                 id="show-profit"
                 checked={showProfit}
@@ -255,7 +259,7 @@ export function CompanyDefaultsSection({
                 onCheckedChange={(checked) => setShowProfit(checked === true)}
               />
               <div>
-                <Label htmlFor="show-profit" className="font-normal">
+                <Label className="text-xs font-normal" htmlFor="show-profit">
                   Show profit in estimates
                 </Label>
               </div>

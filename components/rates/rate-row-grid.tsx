@@ -22,7 +22,7 @@ export const productivityRateColumns =
 
 /** Search, selects, and secondary filter buttons share one control height. */
 export const ratesFilterControlClass =
-  "box-border h-11 min-h-11 w-full max-w-full rounded-xl border border-border/80 bg-background px-3 py-0 text-sm leading-none outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 lg:h-9 lg:min-h-9 lg:w-auto";
+  "box-border h-11 min-h-11 w-full max-w-full rounded-xl border border-border/80 bg-background px-3 py-0 text-base leading-none outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 md:text-sm lg:h-9 lg:min-h-9 lg:w-auto";
 
 export const ratesFilterRowClass =
   "grid grid-cols-1 items-center gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center";

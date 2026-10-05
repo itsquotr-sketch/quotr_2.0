@@ -120,11 +120,11 @@ export function FenceQuickSpecEditor({
   return (
     <div className="grid gap-3" data-fence-quick-spec>
       <Group title="Fence">
-        <div className="space-y-1">
-          <Label htmlFor={`fence-system-${workAreaId}`}>Fence type</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-system-${workAreaId}`}>Fence type</Label>
           <select
             id={`fence-system-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={systemSelectValue}
             onChange={(event) =>
               onSpecFact?.({
@@ -144,9 +144,9 @@ export function FenceQuickSpecEditor({
             ))}
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`fence-length-${workAreaId}`}>Length (m)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-length-${workAreaId}`}>Length (m)</Label>
+          <Input className="h-11 md:h-9"
             id={`fence-length-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -165,9 +165,9 @@ export function FenceQuickSpecEditor({
             }}
           />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`fence-height-${workAreaId}`}>Height (m)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-height-${workAreaId}`}>Height (m)</Label>
+          <Input className="h-11 md:h-9"
             id={`fence-height-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -190,11 +190,11 @@ export function FenceQuickSpecEditor({
 
       {isTimberFenceSystem(system) ? (
         <Group title="Timber">
-          <div className="space-y-1">
-            <Label htmlFor={`fence-species-${workAreaId}`}>Visible timber</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-species-${workAreaId}`}>Visible timber</Label>
             <select
               id={`fence-species-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={species}
               onChange={(event) =>
                 onSpecFact?.({
@@ -213,11 +213,11 @@ export function FenceQuickSpecEditor({
               <option value="Hardwood">Hardwood</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`fence-thickness-${workAreaId}`}>Board section</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-thickness-${workAreaId}`}>Board section</Label>
             <select
               id={`fence-thickness-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={thickness}
               onChange={(event) =>
                 onSpecFact?.({
@@ -235,9 +235,9 @@ export function FenceQuickSpecEditor({
             </select>
           </div>
           {system === "TIMBER_HORIZONTAL_SLAT" ? (
-            <div className="space-y-1">
-              <Label htmlFor={`fence-gap-${workAreaId}`}>Slat gap (mm)</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-gap-${workAreaId}`}>Slat gap (mm)</Label>
+              <Input className="h-11 md:h-9"
                 id={`fence-gap-${workAreaId}`}
                 type="number"
                 inputMode="numeric"
@@ -259,11 +259,11 @@ export function FenceQuickSpecEditor({
             </div>
           ) : null}
           {system === "TIMBER_HORIZONTAL_SLAT" ? (
-            <div className="space-y-1">
-              <Label htmlFor={`fence-courses-${workAreaId}`}>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-courses-${workAreaId}`}>
                 Horizontal slat course count
               </Label>
-              <Input
+              <Input className="h-11 md:h-9"
                 id={`fence-courses-${workAreaId}`}
                 type="number"
                 inputMode="numeric"
@@ -285,11 +285,11 @@ export function FenceQuickSpecEditor({
             </div>
           ) : null}
           {system === "TIMBER_VERTICAL_PALING" ? (
-            <div className="space-y-1">
-              <Label htmlFor={`fence-paling-gap-${workAreaId}`}>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-paling-gap-${workAreaId}`}>
                 Gap between vertical palings (mm)
               </Label>
-              <Input
+              <Input className="h-11 md:h-9"
                 id={`fence-paling-gap-${workAreaId}`}
                 type="number"
                 inputMode="numeric"
@@ -310,11 +310,11 @@ export function FenceQuickSpecEditor({
               />
             </div>
           ) : null}
-          <div className="space-y-1">
-            <Label htmlFor={`fence-capping-${workAreaId}`}>Top capping</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-capping-${workAreaId}`}>Top capping</Label>
             <select
               id={`fence-capping-${workAreaId}`}
-              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
               value={capping}
               onChange={(event) =>
                 onSpecFact?.({
@@ -331,9 +331,9 @@ export function FenceQuickSpecEditor({
               <option value="No">No</option>
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`fence-spacing-${workAreaId}`}>Max post centres (m)</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-spacing-${workAreaId}`}>Max post centres (m)</Label>
+            <Input className="h-11 md:h-9"
               id={`fence-spacing-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -355,9 +355,9 @@ export function FenceQuickSpecEditor({
           </div>
           {system === "TIMBER_VERTICAL_PALING" ? (
             <>
-            <div className="space-y-1">
-              <Label htmlFor={`fence-rails-${workAreaId}`}>Rail count override</Label>
-              <Input
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-rails-${workAreaId}`}>Rail count override</Label>
+              <Input className="h-11 md:h-9"
                 id={`fence-rails-${workAreaId}`}
                 type="number"
                 inputMode="numeric"
@@ -377,11 +377,11 @@ export function FenceQuickSpecEditor({
                 }}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor={`fence-rail-section-${workAreaId}`}>Fence rail section</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-rail-section-${workAreaId}`}>Fence rail section</Label>
               <select
                 id={`fence-rail-section-${workAreaId}`}
-                className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
                 value={railSection}
                 onChange={(event) =>
                   onSpecFact?.({
@@ -409,11 +409,11 @@ export function FenceQuickSpecEditor({
       {isModularFenceSystem(system) ? (
         <Group title="Modular sections">
           {system === "METAL_SLAT_MODULAR" ? (
-            <div className="space-y-1">
-              <Label htmlFor={`fence-metal-${workAreaId}`}>Metal</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-metal-${workAreaId}`}>Metal</Label>
               <select
                 id={`fence-metal-${workAreaId}`}
-                className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
                 value={metal}
                 onChange={(event) =>
                   onSpecFact?.({
@@ -431,9 +431,9 @@ export function FenceQuickSpecEditor({
               </select>
             </div>
           ) : null}
-          <div className="space-y-1">
-            <Label htmlFor={`fence-section-w-${workAreaId}`}>Section width (m)</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-section-w-${workAreaId}`}>Section width (m)</Label>
+            <Input className="h-11 md:h-9"
               id={`fence-section-w-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -453,9 +453,9 @@ export function FenceQuickSpecEditor({
               }}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`fence-section-n-${workAreaId}`}>Section count override</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-section-n-${workAreaId}`}>Section count override</Label>
+            <Input className="h-11 md:h-9"
               id={`fence-section-n-${workAreaId}`}
               type="number"
               inputMode="numeric"
@@ -479,9 +479,9 @@ export function FenceQuickSpecEditor({
       ) : null}
 
       <Group title="Posts & holes">
-        <div className="space-y-1">
-          <Label htmlFor={`fence-embed-${workAreaId}`}>Post embedment (m)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-embed-${workAreaId}`}>Post embedment (m)</Label>
+          <Input className="h-11 md:h-9"
             id={`fence-embed-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -501,9 +501,9 @@ export function FenceQuickSpecEditor({
             }}
           />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`fence-hole-${workAreaId}`}>Hole diameter (mm)</Label>
-          <Input
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-hole-${workAreaId}`}>Hole diameter (mm)</Label>
+          <Input className="h-11 md:h-9"
             id={`fence-hole-${workAreaId}`}
             type="number"
             inputMode="numeric"
@@ -527,11 +527,11 @@ export function FenceQuickSpecEditor({
 
       {isTimberFenceSystem(system) ? (
       <Group title="Gate">
-        <div className="space-y-1">
-          <Label htmlFor={`fence-gate-${workAreaId}`}>Gate included</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-gate-${workAreaId}`}>Gate included</Label>
           <select
             id={`fence-gate-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={yesNo(gate)}
             onChange={(event) =>
               onSpecFact?.({
@@ -550,9 +550,9 @@ export function FenceQuickSpecEditor({
         </div>
         {gate === true ? (
           <>
-          <div className="space-y-1">
-            <Label htmlFor={`fence-gate-w-${workAreaId}`}>Gate width (m)</Label>
-            <Input
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`fence-gate-w-${workAreaId}`}>Gate width (m)</Label>
+            <Input className="h-11 md:h-9"
               id={`fence-gate-w-${workAreaId}`}
               type="number"
               inputMode="decimal"
@@ -572,11 +572,11 @@ export function FenceQuickSpecEditor({
                 }}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor={`fence-gate-pos-${workAreaId}`}>Gate position</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`fence-gate-pos-${workAreaId}`}>Gate position</Label>
               <select
                 id={`fence-gate-pos-${workAreaId}`}
-                className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
                 value={gatePosition}
                 onChange={(event) =>
                   onSpecFact?.({
@@ -599,13 +599,13 @@ export function FenceQuickSpecEditor({
               </select>
             </div>
             {capping === "Yes" ? (
-              <div className="space-y-1">
-                <Label htmlFor={`fence-gate-cap-${workAreaId}`}>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor={`fence-gate-cap-${workAreaId}`}>
                   Gate matches fence capping
                 </Label>
                 <select
                   id={`fence-gate-cap-${workAreaId}`}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                  className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
                   value={gateCapping}
                   onChange={(event) =>
                     onSpecFact?.({
@@ -630,11 +630,11 @@ export function FenceQuickSpecEditor({
 
       {isModularFenceSystem(system) ? (
       <Group title="Gate">
-        <div className="space-y-1">
-          <Label htmlFor={`fence-modular-gate-${workAreaId}`}>Gate requested</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-modular-gate-${workAreaId}`}>Gate requested</Label>
           <select
             id={`fence-modular-gate-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={yesNo(modularGate)}
             onChange={(event) =>
               onSpecFact?.({
@@ -660,11 +660,11 @@ export function FenceQuickSpecEditor({
       ) : null}
 
       <Group title="Access / carry">
-        <div className="space-y-1">
-          <Label htmlFor={`fence-access-${workAreaId}`}>Site access</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-access-${workAreaId}`}>Site access</Label>
           <select
             id={`fence-access-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={siteAccess}
             onChange={(event) =>
               onConstraint?.({
@@ -682,11 +682,11 @@ export function FenceQuickSpecEditor({
             <option value="Very poor">Very poor</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`fence-carry-${workAreaId}`}>Material carry</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs" htmlFor={`fence-carry-${workAreaId}`}>Material carry</Label>
           <select
             id={`fence-carry-${workAreaId}`}
-            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
             value={carryDistance}
             onChange={(event) =>
               onConstraint?.({

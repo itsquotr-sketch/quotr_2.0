@@ -26,7 +26,7 @@ const resendInitial: RecoveryActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 function ConfirmationPending({ email }: { email?: string }) {
@@ -161,8 +161,8 @@ export function SignupForm(props: {
             </p>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full name</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="full_name">Full name</Label>
             <Input
               id="full_name"
               name="full_name"
@@ -175,8 +175,8 @@ export function SignupForm(props: {
           </div>
 
           {inviteToken ? null : (
-            <div className="space-y-2">
-              <Label htmlFor="organisation_name">Company name</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="organisation_name">Company name</Label>
               <Input
                 id="organisation_name"
                 name="organisation_name"
@@ -189,8 +189,8 @@ export function SignupForm(props: {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="email">Email</Label>
             <Input
               id="email"
               name="email"
@@ -212,8 +212,8 @@ export function SignupForm(props: {
             <FieldError messages={state.fieldErrors?.email} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="password">Password</Label>
             <PasswordField
               id="password"
               name="password"

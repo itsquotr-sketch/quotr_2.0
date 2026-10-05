@@ -90,7 +90,7 @@ export function AddWorkAreaDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Input
+        <Input className="h-11 min-h-11"
           placeholder="Search work areas…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}

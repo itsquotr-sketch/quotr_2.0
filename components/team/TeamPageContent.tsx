@@ -197,7 +197,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                   </p>
                 ) : (
                   <select
-                    className="h-11 min-h-11 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                    className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm"
                     value={member.role}
                     disabled={busyId === member.membershipId}
                     onChange={(event) =>
@@ -292,8 +292,8 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                       {inviteState.warning ?? "Invitation sent."}
                     </p>
                   ) : null}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       name="email"
@@ -303,14 +303,14 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                       placeholder="name@company.co.nz"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="role">Role</Label>
                     <select
                       id="role"
                       name="role"
                       value={inviteRole}
                       onChange={(event) => setInviteRole(event.target.value)}
-                      className="h-11 min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                      className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm"
                     >
                       {roles.map((option) => (
                         <option key={option.value} value={option.value}>

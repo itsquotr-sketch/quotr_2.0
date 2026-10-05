@@ -525,7 +525,7 @@ export function ProjectDocumentsSection({
           aria-label="Category"
           value={categoryFilter}
           onChange={(event) => setCategoryFilter(event.target.value)}
-          className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-sm"
+          className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base sm:text-sm"
         >
           <option value="all">All categories</option>
           {PROJECT_DOCUMENT_CATEGORIES.map((category) => (

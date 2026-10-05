@@ -139,7 +139,7 @@ export function CompanyDnaTaskFlow({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="dna-crew">Crew</Label>
+            <Label className="text-xs" htmlFor="dna-crew">Crew</Label>
             <Input
               id="dna-crew"
               type="number"
@@ -168,7 +168,7 @@ export function CompanyDnaTaskFlow({
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="dna-hours">Time</Label>
+            <Label className="text-xs" htmlFor="dna-hours">Time</Label>
             <Input
               id="dna-hours"
               type="number"

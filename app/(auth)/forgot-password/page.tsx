@@ -21,7 +21,7 @@ const initialState: RecoveryActionState = {};
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-destructive">{messages[0]}</p>;
+  return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
 export default function ForgotPasswordPage() {
@@ -55,8 +55,8 @@ export default function ForgotPasswordPage() {
             </p>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor="email">Email address</Label>
             <Input
               id="email"
               name="email"

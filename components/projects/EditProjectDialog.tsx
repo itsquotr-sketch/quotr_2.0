@@ -30,7 +30,7 @@ const PRIORITY_OPTIONS: { value: ProjectPriority; label: string }[] = [
 ];
 
 const selectClassName = cn(
-  "h-8 w-full rounded-2xl border border-transparent bg-input/50 px-2.5 py-1 text-sm transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+  "h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
 );
 
 type EditProjectDialogProps = {
@@ -194,8 +194,8 @@ export function EditProjectDialog({
               </p>
             ) : null}
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-project-title">Project title</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="edit-project-title">Project title</Label>
               <Input
                 id="edit-project-title"
                 value={title}
@@ -205,7 +205,7 @@ export function EditProjectDialog({
                 className="min-h-11"
               />
               {fieldErrors.title?.[0] ? (
-                <p className="text-sm text-destructive">{fieldErrors.title[0]}</p>
+                <p className="text-sm text-destructive" role="alert">{fieldErrors.title[0]}</p>
               ) : null}
             </div>
 
@@ -214,7 +214,7 @@ export function EditProjectDialog({
               <p className="text-sm text-muted-foreground">
                 Changes here apply to this project only.
               </p>
-              <fieldset className="space-y-2">
+              <fieldset className="space-y-1.5">
                 <legend className="text-sm font-medium">Linked customer</legend>
                 {linkedCustomer ? (
                   <p className="text-sm" data-linked-customer>
@@ -271,8 +271,8 @@ export function EditProjectDialog({
                   />
                 ) : null}
               </fieldset>
-              <div className="space-y-2">
-                <Label htmlFor="edit-client-name">Client name</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="edit-client-name">Client name</Label>
                 <Input
                   id="edit-client-name"
                   value={clientName}
@@ -281,13 +281,13 @@ export function EditProjectDialog({
                 className="min-h-11"
               />
                 {fieldErrors.client_name?.[0] ? (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive" role="alert">
                     {fieldErrors.client_name[0]}
                   </p>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-client-email">
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="edit-client-email">
                   Client email{" "}
                   <span className="font-normal text-muted-foreground">
                     (optional)
@@ -304,13 +304,13 @@ export function EditProjectDialog({
                   className="min-h-11"
                 />
                 {fieldErrors.client_email?.[0] ? (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive" role="alert">
                     {fieldErrors.client_email[0]}
                   </p>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-site-address">Site address</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="edit-site-address">Site address</Label>
                 <Input
                   id="edit-site-address"
                   value={siteAddress}
@@ -319,15 +319,15 @@ export function EditProjectDialog({
                   className="min-h-11"
                 />
                 {fieldErrors.site_address?.[0] ? (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive" role="alert">
                     {fieldErrors.site_address[0]}
                   </p>
                 ) : null}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-project-brief">Brief / description</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="edit-project-brief">Brief / description</Label>
               <Textarea
                 id="edit-project-brief"
                 value={briefText}
@@ -336,7 +336,7 @@ export function EditProjectDialog({
                 maxLength={5000}
               />
               {fieldErrors.brief_text?.[0] ? (
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-destructive" role="alert">
                   {fieldErrors.brief_text[0]}
                 </p>
               ) : null}
@@ -347,8 +347,8 @@ export function EditProjectDialog({
             <div className="space-y-3">
               <p className="text-sm font-medium">Internal details</p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-priority">Priority</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs" htmlFor="edit-priority">Priority</Label>
                   <select
                     id="edit-priority"
                     value={priority}
@@ -364,23 +364,24 @@ export function EditProjectDialog({
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-due-date">Due date</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs" htmlFor="edit-due-date">Due date</Label>
                   <Input
                     id="edit-due-date"
                     type="date"
                     value={dueDate}
                     onChange={(event) => setDueDate(event.target.value)}
+                    className="min-h-11"
                   />
                   {fieldErrors.due_date?.[0] ? (
-                    <p className="text-sm text-destructive">
+                    <p className="text-sm text-destructive" role="alert">
                       {fieldErrors.due_date[0]}
                     </p>
                   ) : null}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-notes">Notes</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="edit-notes">Notes</Label>
                 <Textarea
                   id="edit-notes"
                   value={notes}
@@ -389,7 +390,7 @@ export function EditProjectDialog({
                   maxLength={5000}
                 />
                 {fieldErrors.notes?.[0] ? (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm text-destructive" role="alert">
                     {fieldErrors.notes[0]}
                   </p>
                 ) : null}

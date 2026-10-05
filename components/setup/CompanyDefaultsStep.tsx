@@ -107,8 +107,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Input
+              <Label className="text-xs" htmlFor="currency">Currency</Label>
+              <Input className="h-11 md:h-9"
                 id="currency"
                 value={currency}
                 onChange={(event) => setCurrency(event.target.value)}
@@ -120,8 +120,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
+              <Label className="text-xs" htmlFor="country">Country</Label>
+              <Input className="h-11 md:h-9"
                 id="country"
                 value={country}
                 onChange={(event) => setCountry(event.target.value)}
@@ -135,8 +135,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="region">Region (optional)</Label>
-            <Input
+            <Label className="text-xs" htmlFor="region">Region (optional)</Label>
+            <Input className="h-11 md:h-9"
               id="region"
               value={region}
               onChange={(event) => setRegion(event.target.value)}
@@ -146,8 +146,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="margin">Default margin %</Label>
-              <Input
+              <Label className="text-xs" htmlFor="margin">Default margin %</Label>
+              <Input className="h-11 md:h-9"
                 id="margin"
                 type="number"
                 min="0"
@@ -164,8 +164,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contingency">Default contingency %</Label>
-              <Input
+              <Label className="text-xs" htmlFor="contingency">Default contingency %</Label>
+              <Input className="h-11 md:h-9"
                 id="contingency"
                 type="number"
                 min="0"
@@ -185,8 +185,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="budget-factor">Budget rate factor</Label>
-              <Input
+              <Label className="text-xs" htmlFor="budget-factor">Budget rate factor</Label>
+              <Input className="h-11 md:h-9"
                 id="budget-factor"
                 type="number"
                 min="0.001"
@@ -206,8 +206,8 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="premium-factor">Premium rate factor</Label>
-              <Input
+              <Label className="text-xs" htmlFor="premium-factor">Premium rate factor</Label>
+              <Input className="h-11 md:h-9"
                 id="premium-factor"
                 type="number"
                 min="1"

@@ -55,10 +55,10 @@ export function QuotePresentationControl({
               disabled={disabled}
               aria-checked={selected}
               className={cn(
-                "min-h-11 rounded-md border px-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "min-h-11 rounded-lg border px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2",
                 selected
-                  ? "border-foreground/30 bg-background font-semibold text-foreground"
-                  : "border-transparent text-muted-foreground",
+                  ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)] font-semibold text-foreground"
+                  : "border-border bg-background text-muted-foreground",
                 disabled && "cursor-not-allowed opacity-60"
               )}
               onClick={() => onChange(option.value)}

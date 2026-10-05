@@ -300,7 +300,7 @@ export function CompanyDnaDeckTaskFlow({
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="dna-crew">Crew</Label>
+                <Label className="text-xs" htmlFor="dna-crew">Crew</Label>
                 <Input
                   id="dna-crew"
                   type="number"
@@ -319,7 +319,7 @@ export function CompanyDnaDeckTaskFlow({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dna-clock-hours">Hours</Label>
+                <Label className="text-xs" htmlFor="dna-clock-hours">Hours</Label>
                 <Input
                   id="dna-clock-hours"
                   type="number"
@@ -338,7 +338,7 @@ export function CompanyDnaDeckTaskFlow({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="dna-minutes">Minutes</Label>
+                <Label className="text-xs" htmlFor="dna-minutes">Minutes</Label>
                 <select
                   id="dna-minutes"
                   value={minutes}
