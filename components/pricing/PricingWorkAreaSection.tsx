@@ -11,7 +11,10 @@ import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { pricingWorkAreaDomId } from "@/components/pricing/PricingReadiness";
 import { presentPricingSectionTotals } from "@/lib/pricing/presentation-section-totals";
 import { formatPricingMoney } from "@/lib/pricing/format";
-import { PRICING_TABLE_HEADER_CLASS } from "@/lib/pricing/table-layout";
+import {
+  PRICING_TABLE_HEADER_CLASS,
+  PRICING_TABLE_HEADER_READONLY_CLASS,
+} from "@/lib/pricing/table-layout";
 import type {
   PricingDocumentStatus,
   PricingItem,
@@ -43,6 +46,7 @@ type PricingWorkAreaSectionProps = {
   openRequest?: string | null;
   sectionKey?: string;
   documentStatus?: PricingDocumentStatus;
+  canEdit?: boolean;
 };
 
 export function PricingWorkAreaSection({
@@ -62,6 +66,7 @@ export function PricingWorkAreaSection({
   openRequest = null,
   sectionKey = "section",
   documentStatus,
+  canEdit = true,
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [handledRequest, setHandledRequest] = useState<string | null>(null);
@@ -140,45 +145,59 @@ export function PricingWorkAreaSection({
             </p>
           </div>
         </button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn("h-11 min-h-11 shrink-0", !showAddItem && "hidden")}
-          disabled={isPending}
-          onClick={handleAdd}
-        >
-          <Plus className="mr-1 size-3.5" />
-          <span className="hidden sm:inline">Add item</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        {showAddItem && canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-11 min-h-11 shrink-0"
+            disabled={isPending}
+            onClick={handleAdd}
+          >
+            <Plus className="mr-1 size-3.5" />
+            <span className="hidden sm:inline">Add item</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        ) : null}
       </div>
 
       {expanded ? (
         <div id={`${sectionId}-lines`}>
           {workArea ? (
             <div className="border-b border-border/60 px-3 py-3 sm:px-4">
-              <WorkAreaQuoteDescriptionEditor
-                projectId={projectId}
-                workAreaId={workArea.id}
-                workAreaName={workArea.name}
-                initialDescription={workArea.quote_description}
-                onSaved={(description) =>
-                  onQuoteDescriptionSaved?.(workArea.id, description)
-                }
-              />
+              {canEdit ? (
+                <WorkAreaQuoteDescriptionEditor
+                  projectId={projectId}
+                  workAreaId={workArea.id}
+                  workAreaName={workArea.name}
+                  initialDescription={workArea.quote_description}
+                  onSaved={(description) =>
+                    onQuoteDescriptionSaved?.(workArea.id, description)
+                  }
+                />
+              ) : (
+                <p className="whitespace-pre-wrap text-sm">
+                  {workArea.quote_description?.trim()
+                    ? workArea.quote_description
+                    : "No client description yet."}
+                </p>
+              )}
             </div>
           ) : null}
 
-          <div className={PRICING_TABLE_HEADER_CLASS}>
-            <span />
+          <div
+            className={
+              canEdit ? PRICING_TABLE_HEADER_CLASS : PRICING_TABLE_HEADER_READONLY_CLASS
+            }
+          >
+            {canEdit ? <span /> : null}
             <span className="min-w-0">Item</span>
             <span className="min-w-0">Category</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Cost</span>
             <span className="text-right">Client sell</span>
             <span className="text-right">Source</span>
-            <span className="text-right">Actions</span>
+            {canEdit ? <span className="text-right">Actions</span> : null}
           </div>
 
           <div
@@ -209,6 +228,7 @@ export function PricingWorkAreaSection({
                 onSaveItem={onSaveItem}
                 onDuplicateItem={onDuplicateItem}
                 onDeleteItem={onDeleteItem}
+                canEdit={canEdit}
               />
             ))}
           </div>

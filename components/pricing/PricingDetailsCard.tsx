@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PricingReadOnlyValue } from "@/components/pricing/PricingReadOnlyValue";
 import { formatPricingDate } from "@/lib/pricing/format";
 import type { PricingDocumentInput } from "@/lib/pricing/types";
 
@@ -20,6 +21,7 @@ type PricingDetailsCardProps = {
   pricingDate: string | null;
   validUntil: string | null;
   scopeSummary: string | null;
+  readOnly?: boolean;
   onChange: (updates: PricingDocumentInput) => void;
 };
 
@@ -35,8 +37,35 @@ export function PricingDetailsCard({
   pricingDate,
   validUntil,
   scopeSummary,
+  readOnly = false,
   onChange,
 }: PricingDetailsCardProps) {
+  if (readOnly) {
+    return (
+      <Card className="border-border/60 shadow-none">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Pricing details</CardTitle>
+          <CardDescription className="text-xs">
+            Client and site details update the project record. Draft pricing keeps
+            a matching snapshot; issued quotes retain their own snapshot.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <PricingReadOnlyValue label="Title" value={title} />
+          </div>
+          <PricingReadOnlyValue label="Client" value={clientName} />
+          <PricingReadOnlyValue label="Site address" value={siteAddress} />
+          <PricingReadOnlyValue label="Pricing date" value={formatPricingDate(pricingDate)} />
+          <PricingReadOnlyValue label="Valid until" value={formatPricingDate(validUntil)} />
+          <div className="sm:col-span-2">
+            <PricingReadOnlyValue label="Scope summary" value={scopeSummary} />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-border/60 shadow-none">
       <CardHeader className="pb-2">

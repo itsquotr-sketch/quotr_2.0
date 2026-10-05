@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pricingDocumentViewModel, pricingItemViewModel } from "../lib/pricing/financial-view-model";
+import { memberCanEditPricing } from "../lib/team/permissions";
 import type { PricingDocument, PricingItem } from "../lib/pricing/types";
 
 const root = join(__dirname, "..");
@@ -136,7 +137,7 @@ check(
   "10 quote action is in the summary from md and only in the mobile bar below md",
   summary.includes("data-pricing-desktop-quote-cta") &&
     !summary.includes("hidden lg:block") &&
-    summary.includes("compact ? null") &&
+    summary.includes("compact || (!canEdit && !quoteSummary) ? null") &&
     workspace.includes('className="md:hidden"') &&
     workspace.includes("PricingMobileActionBar") &&
     read("components/pricing/PricingMobileActionBar.tsx").includes("md:hidden") &&
@@ -151,5 +152,21 @@ check(
     summary.includes("Client sell incl GST")
 );
 
+check(
+  "11 viewers read pricing without mutation controls",
+  page.includes("getOnboardingAccess") &&
+    page.includes("memberCanEditPricing(access.role)") &&
+    workspace.includes("canEditPricing") &&
+    workspace.includes("readOnly={!canEditPricing}") &&
+    workspace.includes("canEdit={canEditPricing}") &&
+    !memberCanEditPricing("viewer") &&
+    !memberCanEditPricing(null) &&
+    memberCanEditPricing("owner") &&
+    memberCanEditPricing("admin") &&
+    memberCanEditPricing("estimator") &&
+    read("components/pricing/PricingDecisionCard.tsx").includes("readOnly") &&
+    read("components/pricing/PricingItemRow.tsx").includes("canEdit") &&
+    read("components/pricing/PricingMobileActionBar.tsx").includes("canEdit || quoteSummary")
+);
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

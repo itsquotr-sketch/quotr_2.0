@@ -25,6 +25,7 @@ type PricingMobileActionBarProps = {
   onMarkReviewed?: () => Promise<void>;
   reviewLabel?: string | null;
   onRecalibrate?: () => void;
+  canEdit?: boolean;
   className?: string;
 };
 
@@ -40,6 +41,7 @@ export function PricingMobileActionBar({
   onMarkReviewed,
   reviewLabel = null,
   onRecalibrate,
+  canEdit = true,
   className,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
@@ -70,11 +72,20 @@ export function PricingMobileActionBar({
               : view.subtotalSellFormatted}
           </p>
         </div>
+        {canEdit || quoteSummary ? (
         <div
           className="flex w-full flex-col gap-2"
           data-pricing-mobile-actions="true"
         >
-          {needsRecalibration && onRecalibrate ? (
+          {!canEdit ? (
+            <CreateQuoteButton
+              projectId={projectId}
+              pricingDocumentId={document.id}
+              isReviewed={isReviewed}
+              quoteSummary={quoteSummary}
+              presentation="bar"
+            />
+          ) : needsRecalibration && onRecalibrate ? (
             <Button
               type="button"
               variant="outline"
@@ -149,6 +160,7 @@ export function PricingMobileActionBar({
             </>
           )}
         </div>
+        ) : null}
       </div>
     </div>
   );

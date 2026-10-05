@@ -23,6 +23,7 @@ type PricingItemListItemProps = {
   ) => Promise<{ error?: string }>;
   onDuplicateItem: (itemId: string) => Promise<{ error?: string }>;
   onDeleteItem: (itemId: string) => Promise<{ error?: string }>;
+  canEdit?: boolean;
 };
 
 function PricingItemListItemComponent({
@@ -37,6 +38,7 @@ function PricingItemListItemComponent({
   onSaveItem,
   onDuplicateItem,
   onDeleteItem,
+  canEdit = true,
 }: PricingItemListItemProps) {
   const handleSave = useCallback(
     (input: PricingItemInput) => onSaveItem(item.id, input),
@@ -64,6 +66,7 @@ function PricingItemListItemComponent({
       onSave={handleSave}
       onDuplicate={handleDuplicate}
       onDelete={handleDelete}
+      canEdit={canEdit}
     />
   );
 }

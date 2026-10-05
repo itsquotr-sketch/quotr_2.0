@@ -27,6 +27,7 @@ type PricingSummaryPanelProps = {
   pricingChangedAfterQuote?: boolean;
   className?: string;
   compact?: boolean;
+  canEdit?: boolean;
 };
 
 function SummaryRow({
@@ -62,6 +63,7 @@ export function PricingSummaryPanel({
   pricingChangedAfterQuote = false,
   className,
   compact = false,
+  canEdit = true,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
@@ -133,7 +135,7 @@ export function PricingSummaryPanel({
           )}
         </div>
 
-        {compact ? null : (
+        {compact || (!canEdit && !quoteSummary) ? null : (
           <div
             className={cn(
               isReviewed &&

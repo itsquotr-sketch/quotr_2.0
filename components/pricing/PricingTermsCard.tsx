@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PricingReadOnlyValue } from "@/components/pricing/PricingReadOnlyValue";
 import { arrayToTextList, textListToArray } from "@/lib/pricing/calculations";
 import type { PricingDocumentInput } from "@/lib/pricing/types";
 import { partitionClientNarrative } from "@/lib/quotes/client-narrative";
@@ -19,6 +20,7 @@ type PricingTermsCardProps = {
   exclusions: string[];
   terms: string | null;
   internalNotes: string | null;
+  readOnly?: boolean;
   onChange: (updates: PricingDocumentInput) => void;
 };
 
@@ -27,6 +29,7 @@ export function PricingTermsCard({
   exclusions,
   terms,
   internalNotes,
+  readOnly = false,
   onChange,
 }: PricingTermsCardProps) {
   const { client: clientAssumptions, internal: internalAssumptions } = useMemo(
@@ -44,6 +47,20 @@ export function PricingTermsCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
+        {readOnly ? (
+          <>
+            <PricingReadOnlyValue
+              label="Client assumptions"
+              value={arrayToTextList(clientAssumptions)}
+            />
+            <PricingReadOnlyValue
+              label="Client exclusions"
+              value={arrayToTextList(exclusions)}
+            />
+            <PricingReadOnlyValue label="Client terms" value={terms} />
+            <PricingReadOnlyValue label="Internal notes" value={internalNotes} />
+          </>
+        ) : null}
         {internalAssumptions.length > 0 ? (
           <details className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
             <summary className="cursor-pointer text-xs font-medium">
@@ -57,6 +74,8 @@ export function PricingTermsCard({
             </ul>
           </details>
         ) : null}
+        {!readOnly ? (
+        <>
         <div className="space-y-1.5">
           <Label htmlFor="pricing-assumptions" className="text-xs">
             Client assumptions (one per line)
@@ -109,6 +128,8 @@ export function PricingTermsCard({
             }
           />
         </div>
+        </>
+        ) : null}
       </CardContent>
     </Card>
   );

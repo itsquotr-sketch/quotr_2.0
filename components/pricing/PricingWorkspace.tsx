@@ -53,12 +53,14 @@ type PricingWorkspaceProps = {
   initialData: PricingWorkspaceData;
   quoteSummary?: QuoteSummary | null;
   pricingChangedAfterQuote?: boolean;
+  canEditPricing?: boolean;
 };
 
 export function PricingWorkspace({
   initialData,
   quoteSummary = null,
   pricingChangedAfterQuote = false,
+  canEditPricing = true,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -440,7 +442,7 @@ export function PricingWorkspace({
         isSaving={isSaving}
         actionsLocked={reviewLabel != null}
         hasUnsavedChanges={hasUnsavedChanges}
-        onSaveDocument={handleSaveDocument}
+        onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         statusNote={
           <PricingStatusNote
             document={document}
@@ -477,6 +479,7 @@ export function PricingWorkspace({
           needsRecalibration={document.needs_recalibration}
           quoteExists={quoteSummary != null}
           latestEstimateIsStale={latestEstimateIsStale}
+          canEdit={canEditPricing}
           onApplied={({ document: updatedDocument, items: updatedItems }) => {
             setDocument(updatedDocument);
             setItems(updatedItems);
@@ -520,7 +523,9 @@ export function PricingWorkspace({
                   value={groupBy}
                   onChange={setGroupBy}
                   selectionMode={selectionMode}
-                  onSelectionModeChange={setSelectionMode}
+                  onSelectionModeChange={
+                    canEditPricing ? setSelectionMode : undefined
+                  }
                   selectedCount={selectedIds.size}
                 />
                 {selectionMode && selectedIds.size === 0 ? (
@@ -528,7 +533,7 @@ export function PricingWorkspace({
                     Select the lines to show, hide, or delete.
                   </p>
                 ) : null}
-                {selectedIds.size > 0 ? (
+                {canEditPricing && selectedIds.size > 0 ? (
                   <div className={selectionMode ? undefined : "hidden md:block"}>
                     <PricingBulkToolbar
                       selectedCount={selectedIds.size}
@@ -563,6 +568,7 @@ export function PricingWorkspace({
                 showAddItem={groupBy === "work_area"}
                 openRequest={openRequest}
                 documentStatus={document.status}
+                canEdit={canEditPricing}
               />
             ))}
             </div>
@@ -575,6 +581,7 @@ export function PricingWorkspace({
             workAreas={workAreas}
             recommendedSell={latestEstimateRecommendedSell}
             disabled={isSaving}
+            readOnly={!canEditPricing}
             onApplyFinalSell={handleApplyFinalSell}
           />
 
@@ -590,6 +597,7 @@ export function PricingWorkspace({
                 pricingDate={document.pricing_date}
                 validUntil={document.valid_until}
                 scopeSummary={document.scope_summary}
+                readOnly={!canEditPricing}
                 onChange={handleDocumentChange}
               />
             </div>
@@ -605,21 +613,14 @@ export function PricingWorkspace({
                 exclusions={document.exclusions}
                 terms={document.terms}
                 internalNotes={document.internal_notes}
+                readOnly={!canEditPricing}
                 onChange={handleDocumentChange}
               />
             </div>
           </details>
 
           {/* Desktop/tablet review control; mobile uses PricingMobileActionBar CTA. */}
-          {document.status !== "reviewed" ? (
-            <div className="hidden md:block">
-              <PricingReviewChecklist
-                onMarkReviewed={handleMarkReviewed}
-                disabled={isSaving}
-                pendingLabel={reviewLabel}
-              />
-            </div>
-          ) : (
+          {document.status === "reviewed" ? (
             <div
               className="rounded-xl border border-border bg-card px-4 py-3"
               data-pricing-reviewed-status="true"
@@ -629,7 +630,15 @@ export function PricingWorkspace({
                 Further edits will revert status to draft.
               </p>
             </div>
-          )}
+          ) : canEditPricing ? (
+            <div className="hidden md:block">
+              <PricingReviewChecklist
+                onMarkReviewed={handleMarkReviewed}
+                disabled={isSaving}
+                pendingLabel={reviewLabel}
+              />
+            </div>
+          ) : null}
         </div>
 
         <PricingSummaryPanel
@@ -639,6 +648,7 @@ export function PricingWorkspace({
           items={items}
           quoteSummary={quoteSummary}
           pricingChangedAfterQuote={pricingChangedAfterQuote}
+          canEdit={canEditPricing}
         />
       </div>
 
@@ -650,8 +660,9 @@ export function PricingWorkspace({
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
         needsRecalibration={document.needs_recalibration}
-        onSaveDocument={handleSaveDocument}
-        onMarkReviewed={handleMarkReviewed}
+        canEdit={canEditPricing}
+        onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
+        onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}
         onRecalibrate={() => {
           globalThis.document

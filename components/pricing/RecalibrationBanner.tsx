@@ -15,6 +15,7 @@ type RecalibrationBannerProps = {
   latestEstimateIsStale: boolean;
   onKeepCurrent: () => void;
   onApplied: (input: { document: PricingDocument; items: PricingItem[] }) => void;
+  canEdit?: boolean;
 };
 
 export function RecalibrationBanner({
@@ -25,6 +26,7 @@ export function RecalibrationBanner({
   latestEstimateIsStale,
   onKeepCurrent,
   onApplied,
+  canEdit = true,
 }: RecalibrationBannerProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -116,28 +118,33 @@ export function RecalibrationBanner({
           </p>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={handlePreviewOpen}
-            disabled={isPending || latestEstimateIsStale}
-          >
-            Preview changes
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={handleKeepCurrent}
-            disabled={isPending}
-          >
-            Keep current pricing
-          </Button>
-        </div>
+        {canEdit ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-11 min-h-11"
+              onClick={handlePreviewOpen}
+              disabled={isPending || latestEstimateIsStale}
+            >
+              Preview changes
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-11 min-h-11"
+              onClick={handleKeepCurrent}
+              disabled={isPending}
+            >
+              Keep current pricing
+            </Button>
+          </div>
+        ) : null}
       </div>
 
+      {canEdit ? (
       <RecalibrationPreviewPanel
         open={previewOpen}
         onClose={handlePreviewClose}
@@ -152,6 +159,7 @@ export function RecalibrationBanner({
           onApplied(result);
         }}
       />
+      ) : null}
     </>
   );
 }

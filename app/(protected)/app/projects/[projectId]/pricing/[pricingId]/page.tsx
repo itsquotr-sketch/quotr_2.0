@@ -18,6 +18,8 @@ import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { getOnboardingAccess } from "@/lib/setup/actions";
+import { memberCanEditPricing } from "@/lib/team/permissions";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -35,19 +37,20 @@ export default async function PricingPage({ params }: PricingPageProps) {
       notFound();
     }
 
-    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary] =
+    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary, access] =
       await Promise.all([
         getPricingWorkspaceDataWithContext(auth, projectId, pricingId),
         getProjectWithContext(auth, projectId),
         getProjectWorkspaceTabContextWithContext(auth, projectId),
         getQuoteSummaryForPricingDocument(pricingId),
         getLatestQuoteSummaryWithContext(auth, projectId),
+        getOnboardingAccess(),
       ]);
 
-    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary };
+    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access };
   });
 
-  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary } =
+  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access } =
     pageData;
 
   const pricingChangedAfterQuote =
@@ -88,6 +91,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
         initialData={data}
         quoteSummary={quoteSummaryForDoc}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
+        canEditPricing={memberCanEditPricing(access.role)}
       />
     </WorkspacePage>
   );

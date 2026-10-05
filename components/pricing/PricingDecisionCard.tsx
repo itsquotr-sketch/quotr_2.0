@@ -19,6 +19,7 @@ type PricingDecisionCardProps = {
   workAreas: PricingWorkArea[];
   recommendedSell: number | null;
   disabled?: boolean;
+  readOnly?: boolean;
   onApplyFinalSell: (finalSellExGst: number) => Promise<{ error?: string }>;
 };
 
@@ -26,6 +27,7 @@ export function PricingDecisionCard({
   document,
   recommendedSell,
   disabled = false,
+  readOnly = false,
   onApplyFinalSell,
 }: PricingDecisionCardProps) {
   const view = pricingDocumentViewModel(document);
@@ -95,6 +97,19 @@ export function PricingDecisionCard({
         </p>
       ) : null}
 
+      {readOnly ? (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Final price{view.showGst ? " (ex GST)" : ""}
+          </p>
+          <p className="text-sm font-medium tabular-nums">{view.subtotalSellFormatted}</p>
+          {view.costKnown ? (
+            <p className="text-sm text-muted-foreground">
+              Expected gross margin {storedMargin.marginLabel}
+            </p>
+          ) : null}
+        </div>
+      ) : (
       <div className="space-y-3" data-pricing-final-price-control>
         <div className="flex flex-col gap-2">
           <label className="flex min-h-11 items-center gap-2 text-sm">
@@ -175,6 +190,7 @@ export function PricingDecisionCard({
           </Button>
         ) : null}
       </div>
+      )}
     </section>
   );
 }

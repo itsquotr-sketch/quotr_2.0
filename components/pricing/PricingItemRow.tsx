@@ -46,7 +46,10 @@ import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { presentPricingLine } from "@/lib/pricing/line-presentation";
-import { PRICING_TABLE_GRID } from "@/lib/pricing/table-layout";
+import {
+  PRICING_TABLE_GRID,
+  PRICING_TABLE_GRID_READONLY,
+} from "@/lib/pricing/table-layout";
 import type {
   PricingDocumentStatus,
   PricingItem,
@@ -66,6 +69,7 @@ type PricingItemRowProps = {
   onSave: (input: PricingItemInput) => Promise<{ error?: string }>;
   onDuplicate: () => Promise<{ error?: string }>;
   onDelete: () => Promise<{ error?: string }>;
+  canEdit?: boolean;
 };
 
 function statusNote(status: PricingDocumentStatus | undefined): string | null {
@@ -93,6 +97,7 @@ function PricingItemRowComponent({
   onSave,
   onDuplicate,
   onDelete,
+  canEdit = true,
 }: PricingItemRowProps) {
   const actionsRef = useRef<HTMLButtonElement>(null);
   const [localDetails, setLocalDetails] = useState(false);
@@ -168,7 +173,7 @@ function PricingItemRowComponent({
   );
 
   const selectControl =
-    onToggleSelect && (layout === "table" || selectionMode) ? (
+    canEdit && onToggleSelect && (layout === "table" || selectionMode) ? (
       <Checkbox
         checked={selected}
         aria-label={`Select ${item.client_label}`}
@@ -177,7 +182,7 @@ function PricingItemRowComponent({
       />
     ) : null;
 
-  const actions = (
+  const actions = !canEdit ? null : (
     <DropdownMenu>
       <DropdownMenuTrigger
         ref={actionsRef}
@@ -283,7 +288,9 @@ function PricingItemRowComponent({
         ) : (
           <div className="col-span-2">
             <p className="text-xs text-amber-950">
-              A cost or client sell still needs to be entered. Use Add price.
+              {canEdit
+                ? "A cost or client sell still needs to be entered. Use Add price."
+                : "A cost or client sell still needs to be entered."}
             </p>
           </div>
         )}
@@ -314,9 +321,11 @@ function PricingItemRowComponent({
           {error}
         </p>
       ) : null}
-      <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
-        {moneyView.pricingRequired ? "Add price" : "Edit line"}
-      </Button>
+      {canEdit ? (
+        <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
+          {moneyView.pricingRequired ? "Add price" : "Edit line"}
+        </Button>
+      ) : null}
     </div>
   ) : null;
 
@@ -436,16 +445,18 @@ function PricingItemRowComponent({
             {error}
           </p>
         ) : null}
-        {editor}
-        {deleteDialog}
+        {canEdit ? editor : null}
+        {canEdit ? deleteDialog : null}
       </div>
     );
   }
 
   return (
     <div className="bg-background" data-pricing-line={item.id}>
-      <div className={PRICING_TABLE_GRID}>
-        <div className="hidden items-center lg:flex">{selectControl}</div>
+      <div className={canEdit ? PRICING_TABLE_GRID : PRICING_TABLE_GRID_READONLY}>
+        {canEdit ? (
+          <div className="hidden items-center lg:flex">{selectControl}</div>
+        ) : null}
         <button
           type="button"
           className="min-w-0 text-left"
@@ -474,7 +485,7 @@ function PricingItemRowComponent({
         <div className="hidden truncate text-right text-xs text-muted-foreground lg:block">
           {line.source}
         </div>
-        <div className="flex justify-end">{actions}</div>
+        {canEdit ? <div className="flex justify-end">{actions}</div> : null}
       </div>
       {details}
       {error && !detailsExpanded && !editorOpen ? (
@@ -482,8 +493,8 @@ function PricingItemRowComponent({
           {error}
         </p>
       ) : null}
-      {editor}
-      {deleteDialog}
+      {canEdit ? editor : null}
+      {canEdit ? deleteDialog : null}
     </div>
   );
 }
