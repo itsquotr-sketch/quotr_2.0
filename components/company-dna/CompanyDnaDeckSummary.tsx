@@ -289,11 +289,12 @@ export function CompanyDnaDeckSummary({
             <DialogDescription>{DNA_RESET_CONSEQUENCE}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setConfirmKey(null)}>
+            <Button type="button" variant="outline" size="touch" onClick={() => setConfirmKey(null)}>
               Cancel
             </Button>
             <Button
               type="button"
+              size="touch"
               disabled={!confirmKey || resetting === confirmKey}
               onClick={() => confirmKey && void onReset(confirmKey)}
             >

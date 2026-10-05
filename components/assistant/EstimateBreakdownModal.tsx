@@ -766,7 +766,7 @@ export function EstimateBreakdownModal({
         className="flex max-h-[90vh] w-[calc(100%-1rem)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:w-[92vw] sm:max-w-6xl"
         showCloseButton
       >
-        <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-14 sm:px-6 sm:pr-12">
           <DialogTitle className="text-lg">Estimate breakdown</DialogTitle>
           <DialogDescription>
             Internal estimate review only — not a client quote.

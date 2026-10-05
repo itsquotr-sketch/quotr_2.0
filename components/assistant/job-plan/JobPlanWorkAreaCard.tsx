@@ -341,10 +341,12 @@ export function JobPlanWorkAreaCardView({
                 back later.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="ghost"
+                size="touch"
+                className="h-11 min-h-11"
                 disabled={isRemoving}
                 onClick={() => setRemoveConfirmOpen(false)}
               >
@@ -353,6 +355,8 @@ export function JobPlanWorkAreaCardView({
               <Button
                 type="button"
                 variant="destructive"
+                size="touch"
+                className="h-11 min-h-11"
                 disabled={isRemoving}
                 data-job-plan-remove-confirm
                 onClick={() => {

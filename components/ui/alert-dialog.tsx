@@ -41,7 +41,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[min(85vh,40rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[min(var(--radius-4xl),24px)] bg-popover p-6 text-sm text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] w-full max-w-[calc(100%-2rem)] min-w-0 -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-popover p-6 text-sm text-popover-foreground shadow-xl duration-100 outline-none sm:max-w-md",
           className
         )}
         {...props}
@@ -86,15 +86,15 @@ function AlertDialogDescription({ className, ...props }: AlertDialogPrimitive.De
   )
 }
 
-function AlertDialogAction({ className, ...props }: React.ComponentProps<typeof Button>) {
-  return <Button data-slot="alert-dialog-action" className={className} {...props} />
+function AlertDialogAction({ className, size = "touch", ...props }: React.ComponentProps<typeof Button>) {
+  return <Button data-slot="alert-dialog-action" size={size} className={className} {...props} />
 }
 
 function AlertDialogCancel({ className, ...props }: AlertDialogPrimitive.Close.Props) {
   return (
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-cancel"
-      render={<Button variant="outline" className={className} />}
+      render={<Button variant="outline" size="touch" className={className} />}
       {...props}
     />
   )

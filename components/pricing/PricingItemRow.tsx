@@ -361,7 +361,7 @@ function PricingItemRowComponent({
         }}
       >
         <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6">
+          <DialogHeader className="px-6 pt-6 pr-14">
             <DialogTitle>{line.title}</DialogTitle>
             <DialogDescription>
               {moneyView.pricingRequired

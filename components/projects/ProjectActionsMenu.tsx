@@ -188,6 +188,7 @@ export function ProjectActionsMenu({
             <Button
               type="button"
               variant="ghost"
+              size="touch"
               disabled={isPending}
               onClick={() => setConfirmAction(null)}
             >
@@ -196,6 +197,7 @@ export function ProjectActionsMenu({
             <Button
               type="button"
               variant={confirmAction === "delete" ? "destructive" : "default"}
+              size="touch"
               disabled={isPending}
               onClick={handleConfirm}
             >

@@ -233,6 +233,7 @@ export function SiteNoteCard({
             <Button
               type="button"
               variant="outline"
+              size="touch"
               onClick={() => setDeleteOpen(false)}
               disabled={isDeleting}
             >
@@ -241,6 +242,7 @@ export function SiteNoteCard({
             <Button
               type="button"
               variant="destructive"
+              size="touch"
               onClick={handleConfirmDelete}
               disabled={isDeleting}
             >

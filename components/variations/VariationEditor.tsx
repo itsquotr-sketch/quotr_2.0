@@ -1924,7 +1924,7 @@ function ItemDialog(props: {
       if (!open) props.onClose();
     }}>
       <DialogContent className="flex max-h-[min(92vh,900px)] w-[min(calc(100vw-0.75rem),840px)] max-w-[calc(100%-0.75rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[840px]">
-        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-14 sm:px-6">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-14 sm:px-6 sm:pr-12">
           <DialogTitle>{activeComponentEditor ? (componentTask === "edit" ? "Edit cost" : "Add cost") : props.title}</DialogTitle>
           <DialogDescription>Prices are per unit and ex GST. Internal costs and rate sources stay off the client document.</DialogDescription>
         </DialogHeader>
@@ -2088,7 +2088,7 @@ function ItemDialog(props: {
           </div>
           {creatingArea ? (
             <Dialog open onOpenChange={(open) => { if (!open && !areaPending) setCreatingArea(false); }}>
-              <DialogContent className="sm:max-w-[28rem]" data-variation-create-work-area="true">
+              <DialogContent className="sm:max-w-lg" data-variation-create-work-area="true">
                 <DialogHeader>
                   <DialogTitle>Create work area</DialogTitle>
                   <DialogDescription>This work area belongs to this Variation. It does not change the accepted Quote.</DialogDescription>
@@ -2097,7 +2097,7 @@ function ItemDialog(props: {
                   <Field id="variation-area-name" label="Work area name" value={areaName} onChange={setAreaName} />
                   <div className="grid gap-1.5">
                     <Label htmlFor="variation-area-description">Description (optional)</Label>
-                    <textarea id="variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-sm" value={areaDescription} onChange={(event) => setAreaDescription(event.target.value)} />
+                    <textarea id="variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-base md:text-sm" value={areaDescription} onChange={(event) => setAreaDescription(event.target.value)} />
                   </div>
                   {areaError ? <p role="alert" className="text-sm">{areaError}</p> : null}
                 </div>
@@ -2331,7 +2331,7 @@ function WorkAreaEditDialog(props: {
   if (!props.area) return null;
   return (
     <Dialog open onOpenChange={(open) => { if (!open) props.onClose(); }}>
-      <DialogContent className="sm:max-w-[28rem]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit work area</DialogTitle>
           <DialogDescription>Changes apply to this draft Variation only.</DialogDescription>
@@ -2340,7 +2340,7 @@ function WorkAreaEditDialog(props: {
           <Field id="edit-variation-area-name" label="Work area name" value={name} onChange={setName} />
           <div className="grid gap-1.5">
             <Label htmlFor="edit-variation-area-description">Description (optional)</Label>
-            <textarea id="edit-variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-sm" value={description} onChange={(event) => setDescription(event.target.value)} />
+            <textarea id="edit-variation-area-description" className="min-h-20 rounded-xl border bg-background px-3 py-2 text-base md:text-sm" value={description} onChange={(event) => setDescription(event.target.value)} />
           </div>
         </div>
         <DialogFooter>

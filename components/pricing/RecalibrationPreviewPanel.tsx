@@ -167,7 +167,7 @@ export function RecalibrationPreviewPanel({
         showCloseButton
         className="flex w-[calc(100%-1.5rem)] max-h-[min(92vh,900px)] max-w-5xl flex-col gap-0 overflow-hidden p-0 sm:w-[min(calc(100vw-2rem),960px)] sm:max-w-5xl"
       >
-        <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
+        <DialogHeader className="shrink-0 border-b px-4 py-4 pr-14 sm:px-6 sm:pr-12">
           <DialogTitle className="text-lg">Recalibration preview</DialogTitle>
           <DialogDescription>
             Compare current final pricing with the latest estimate before

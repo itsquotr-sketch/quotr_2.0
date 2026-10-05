@@ -510,11 +510,12 @@ export function CompanyDnaDeckTaskFlow({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOutlierOpen(false)}>
+            <Button type="button" variant="outline" size="touch" onClick={() => setOutlierOpen(false)}>
               {DNA_OUTLIER_BACK}
             </Button>
             <Button
               type="button"
+              size="touch"
               disabled={saving}
               onClick={() => {
                 setOutlierOpen(false);
@@ -534,10 +535,10 @@ export function CompanyDnaDeckTaskFlow({
             <DialogDescription>{DNA_RESET_CONSEQUENCE}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>
+            <Button type="button" variant="outline" size="touch" onClick={() => setResetOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" disabled={saving} onClick={() => void onReset()}>
+            <Button type="button" size="touch" disabled={saving} onClick={() => void onReset()}>
               {DNA_RESET_CTA}
             </Button>
           </DialogFooter>

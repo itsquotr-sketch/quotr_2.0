@@ -273,7 +273,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
 
           {view.canInvite ? (
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-              <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Invite member</DialogTitle>
                   <DialogDescription>{SEAT_ADD_DISCLOSURE}</DialogDescription>
@@ -349,7 +349,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
           if (!open) setConfirmRemoveId(null);
         }}
       >
-        <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               Remove {removeTarget?.fullName ?? "this person"}?
@@ -386,7 +386,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
           if (!open) setPendingRole(null);
         }}
       >
-        <DialogContent className="max-h-[min(85dvh,40rem)] overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Reduce this role?</DialogTitle>
             <DialogDescription>
