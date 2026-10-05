@@ -39,6 +39,7 @@ import {
   isManuallyAddedPricingItem,
   type PricingGroupBy,
 } from "@/lib/pricing/grouping";
+import { saveDocumentThenReview } from "@/lib/pricing/review-sequence";
 import type {
   PricingDocument,
   PricingDocumentInput,
@@ -67,7 +68,11 @@ export function PricingWorkspace({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [reviewLabel, setReviewLabel] = useState<string | null>(null);
   const documentDraftRef = useRef<PricingDocumentInput>({});
+  const hasUnsavedRef = useRef(false);
+  const reviewInFlight = useRef(false);
+  const saveInFlight = useRef(false);
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
@@ -134,6 +139,7 @@ export function PricingWorkspace({
       ...documentDraftRef.current,
       ...updates,
     };
+    hasUnsavedRef.current = true;
     setHasUnsavedChanges(true);
     setDocument((prev) => ({
       ...prev,
@@ -163,37 +169,69 @@ export function PricingWorkspace({
     []
   );
 
+  const applySavedDraft = useCallback((draft: PricingDocumentInput) => {
+    documentDraftRef.current = {};
+    hasUnsavedRef.current = false;
+    setHasUnsavedChanges(false);
+    setDocument((current) => ({
+      ...current,
+      ...draft,
+      status: "draft",
+      reviewed_at: null,
+    }));
+  }, []);
+
   const handleSaveDocument = () => {
+    if (reviewInFlight.current || saveInFlight.current) return;
+    saveInFlight.current = true;
     setSaveError(null);
     startSave(async () => {
-      const draft = documentDraftRef.current;
-      const result = await updatePricingDocument(pricingDocumentId, draft);
-      if (result.error) {
-        setSaveError(result.error);
-        return;
+      try {
+        const draft = documentDraftRef.current;
+        const result = await updatePricingDocument(pricingDocumentId, draft);
+        if (result.error) {
+          setSaveError(result.error);
+          return;
+        }
+        applySavedDraft(draft);
+      } finally {
+        saveInFlight.current = false;
       }
-      documentDraftRef.current = {};
-      setHasUnsavedChanges(false);
-      setDocument((current) => ({
-        ...current,
-        ...draft,
-        status: "draft",
-        reviewed_at: null,
-      }));
     });
   };
 
   const handleMarkReviewed = async () => {
-    const result = await markPricingReviewed(pricingDocumentId);
-    if (result.error) {
-      setSaveError(result.error);
-      return;
+    if (reviewInFlight.current || saveInFlight.current) return;
+    reviewInFlight.current = true;
+    const dirty = hasUnsavedRef.current;
+    setReviewLabel(dirty ? "Saving and reviewing…" : "Marking as reviewed…");
+    setSaveError(null);
+    try {
+      const result = await saveDocumentThenReview({
+        dirty,
+        save: async () => {
+          const draft = documentDraftRef.current;
+          const saved = await updatePricingDocument(pricingDocumentId, draft);
+          if (!saved.error) {
+            applySavedDraft(draft);
+          }
+          return saved;
+        },
+        review: () => markPricingReviewed(pricingDocumentId),
+      });
+      if (!result.ok) {
+        setSaveError(result.error);
+        return;
+      }
+      setDocument((current) => ({
+        ...current,
+        status: "reviewed",
+        reviewed_at: new Date().toISOString(),
+      }));
+    } finally {
+      reviewInFlight.current = false;
+      setReviewLabel(null);
     }
-    setDocument((current) => ({
-      ...current,
-      status: "reviewed",
-      reviewed_at: new Date().toISOString(),
-    }));
   };
 
   const handleSaveItem = useCallback(
@@ -400,6 +438,7 @@ export function PricingWorkspace({
       <PricingHeader
         document={document}
         isSaving={isSaving}
+        actionsLocked={reviewLabel != null}
         hasUnsavedChanges={hasUnsavedChanges}
         onSaveDocument={handleSaveDocument}
         statusNote={
@@ -578,6 +617,7 @@ export function PricingWorkspace({
               <PricingReviewChecklist
                 onMarkReviewed={handleMarkReviewed}
                 disabled={isSaving}
+                pendingLabel={reviewLabel}
               />
             </div>
           ) : (
@@ -613,6 +653,7 @@ export function PricingWorkspace({
         needsRecalibration={document.needs_recalibration}
         onSaveDocument={handleSaveDocument}
         onMarkReviewed={handleMarkReviewed}
+        reviewLabel={reviewLabel}
         onRecalibrate={() => {
           globalThis.document
             .getElementById("recalibration-banner")

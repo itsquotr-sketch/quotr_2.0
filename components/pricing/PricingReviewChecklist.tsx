@@ -1,27 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type PricingReviewChecklistProps = {
   onMarkReviewed: () => Promise<void>;
   disabled?: boolean;
+  pendingLabel?: string | null;
 };
 
 export function PricingReviewChecklist({
   onMarkReviewed,
   disabled = false,
+  pendingLabel = null,
 }: PricingReviewChecklistProps) {
   const [reviewed, setReviewed] = useState(false);
-  const [isReviewing, startReview] = useTransition();
-
-  const handleMarkReviewed = () => {
-    startReview(async () => {
-      await onMarkReviewed();
-    });
-  };
+  const isReviewing = pendingLabel != null;
 
   return (
     <div className="rounded-xl border bg-card px-4 py-3">
@@ -41,20 +36,15 @@ export function PricingReviewChecklist({
           </span>
         </label>
 
-        <Button
+          <Button
           type="button"
           disabled={disabled || isReviewing || !reviewed}
-          onClick={handleMarkReviewed}
-          className="shrink-0"
+          onClick={() => {
+            void onMarkReviewed();
+          }}
+          className="h-11 min-h-11 shrink-0"
         >
-          {isReviewing ? (
-            <>
-              <Loader2 className="mr-1.5 size-4 animate-spin" />
-              Marking…
-            </>
-          ) : (
-            "Mark as reviewed"
-          )}
+          {pendingLabel ?? "Mark as reviewed"}
         </Button>
       </div>
     </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
@@ -24,6 +23,7 @@ type PricingMobileActionBarProps = {
   needsRecalibration?: boolean;
   onSaveDocument?: () => void;
   onMarkReviewed?: () => Promise<void>;
+  reviewLabel?: string | null;
   onRecalibrate?: () => void;
   className?: string;
 };
@@ -38,6 +38,7 @@ export function PricingMobileActionBar({
   needsRecalibration = false,
   onSaveDocument,
   onMarkReviewed,
+  reviewLabel = null,
   onRecalibrate,
   className,
 }: PricingMobileActionBarProps) {
@@ -47,14 +48,7 @@ export function PricingMobileActionBar({
   const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
     ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
     : null;
-  const [isReviewing, startReview] = useTransition();
-
-  const handleMarkReviewed = () => {
-    if (!onMarkReviewed) return;
-    startReview(async () => {
-      await onMarkReviewed();
-    });
-  };
+  const isReviewing = reviewLabel != null;
 
   return (
     <div
@@ -104,17 +98,12 @@ export function PricingMobileActionBar({
                 type="button"
                 className="h-11 min-h-11 w-full"
                 disabled={isSaving || isReviewing}
-                onClick={handleMarkReviewed}
+                onClick={() => {
+                  void onMarkReviewed?.();
+                }}
                 data-pricing-mobile-mark-reviewed="true"
               >
-                {isReviewing ? (
-                  <>
-                    <Loader2 className="mr-1.5 size-4 animate-spin" />
-                    Marking…
-                  </>
-                ) : (
-                  "Mark as reviewed"
-                )}
+                {reviewLabel ?? "Mark as reviewed"}
               </Button>
               {hasUnsavedChanges && onSaveDocument ? (
                 <Button

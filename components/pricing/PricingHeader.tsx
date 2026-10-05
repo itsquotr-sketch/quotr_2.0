@@ -10,6 +10,7 @@ import type { PricingDocument } from "@/lib/pricing/types";
 type PricingHeaderProps = {
   document: PricingDocument;
   isSaving?: boolean;
+  actionsLocked?: boolean;
   hasUnsavedChanges?: boolean;
   onSaveDocument?: () => void;
   statusNote?: ReactNode;
@@ -18,6 +19,7 @@ type PricingHeaderProps = {
 export function PricingHeader({
   document,
   isSaving,
+  actionsLocked = false,
   hasUnsavedChanges = false,
   onSaveDocument,
   statusNote,
@@ -40,7 +42,7 @@ export function PricingHeader({
         {onSaveDocument && hasUnsavedChanges ? (
           <Button
             type="button"
-            disabled={isSaving}
+            disabled={isSaving || actionsLocked}
             onClick={onSaveDocument}
             className="hidden shrink-0 md:inline-flex"
           >

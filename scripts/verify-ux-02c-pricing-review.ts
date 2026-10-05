@@ -5,6 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { saveDocumentThenReview } from "../lib/pricing/review-sequence";
 
 const root = join(__dirname, "..");
 let passed = 0;
@@ -112,5 +113,110 @@ check(
     actions.includes("export async function applyPricingFinalSell")
 );
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+async function checkReviewSequence(): Promise<void> {
+  let saves = 0;
+  let reviews = 0;
+  const clean = await saveDocumentThenReview({
+    dirty: false,
+    save: async () => {
+      saves += 1;
+      return {};
+    },
+    review: async () => {
+      reviews += 1;
+      return {};
+    },
+  });
+  check("clean draft reviews without saving", clean.ok && saves === 0 && reviews === 1);
+
+  saves = 0;
+  reviews = 0;
+  const savedFields: string[] = [];
+  const dirty = await saveDocumentThenReview({
+    dirty: true,
+    save: async () => {
+      saves += 1;
+      savedFields.push("details");
+      return {};
+    },
+    review: async () => {
+      reviews += 1;
+      return {};
+    },
+  });
+  check(
+    "dirty document saves once then reviews",
+    dirty.ok && saves === 1 && reviews === 1 && savedFields.length === 1
+  );
+
+  const saveFailed = await saveDocumentThenReview({
+    dirty: true,
+    save: async () => ({ error: "Could not save pricing changes. Please try again." }),
+    review: async () => {
+      reviews += 1;
+      return {};
+    },
+  });
+  check(
+    "save failure does not review",
+    !saveFailed.ok &&
+      saveFailed.stage === "save" &&
+      reviews === 1
+  );
+
+  const reviewFailed = await saveDocumentThenReview({
+    dirty: true,
+    save: async () => {
+      savedFields.push("terms");
+      return {};
+    },
+    review: async () => ({ error: "Could not save pricing changes. Please try again." }),
+  });
+  check(
+    "review failure keeps the saved document unreviewed",
+    !reviewFailed.ok &&
+      reviewFailed.stage === "review" &&
+      savedFields.includes("terms")
+  );
+
+  check(
+    "workspace locks a second review and uses one pending message",
+    workspace.includes("reviewInFlight") &&
+      workspace.includes("Saving and reviewing…") &&
+      workspace.includes("Marking as reviewed…") &&
+      workspace.includes("saveDocumentThenReview") &&
+      !mobile.includes("Marking…") &&
+      !read("components/pricing/PricingReviewChecklist.tsx").includes("Marking…")
+  );
+
+  saves = 0;
+  reviews = 0;
+  let flight = false;
+  const activate = async () => {
+    if (flight) return;
+    flight = true;
+    try {
+      await saveDocumentThenReview({
+        dirty: true,
+        save: async () => {
+          saves += 1;
+          await Promise.resolve();
+          return {};
+        },
+        review: async () => {
+          reviews += 1;
+          return {};
+        },
+      });
+    } finally {
+      flight = false;
+    }
+  };
+  await Promise.all([activate(), activate()]);
+  check("rapid repeat activation saves and reviews once", saves === 1 && reviews === 1);
+}
+
+void checkReviewSequence().then(() => {
+  console.log(`\n${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+});
