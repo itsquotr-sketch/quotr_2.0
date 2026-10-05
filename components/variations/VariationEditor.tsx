@@ -5,6 +5,7 @@ import {
   mobileActionInnerClass,
   mobileActionSurfaceClass,
   mobileNavBottomClass,
+  mobileQuoteContentPadClass,
 } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -501,7 +502,7 @@ export function VariationEditor(props: EditorProps) {
   const omissionTotal = sumLines(viewing.items.filter((item) => item.itemType === "omission"));
 
   return (
-    <div data-variation-editor="true" data-editor-instance={editorInstance} className={`min-w-0 space-y-6 overflow-x-hidden ${(draft || (current.status === "issued" && !historical)) ? "pb-28 xl:pb-0" : ""}`}>
+    <div data-variation-editor="true" data-editor-instance={editorInstance} className={`min-w-0 space-y-6 overflow-x-hidden ${(draft || (current.status === "issued" && !historical)) ? mobileQuoteContentPadClass : ""}`}>
       <Link
         href={`/app/projects/${props.projectId}/variations`}
         className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"

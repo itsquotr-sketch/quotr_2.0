@@ -82,7 +82,7 @@ export function QuoteHeader({
             size="touch"
             disabled={isSaving}
             onClick={onSave}
-            className="hidden shrink-0 md:inline-flex"
+            className="hidden shrink-0 xl:inline-flex"
           >
             {isSaving ? "Saving…" : "Save changes"}
           </Button>

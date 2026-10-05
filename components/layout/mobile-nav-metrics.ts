@@ -45,11 +45,13 @@ export const mobileActionSurfaceClass =
 export const mobileWorkflowContentPadClass = "pb-[11rem] md:pb-0";
 
 /**
- * Quote's bar remains through the tablet range, where the shell padding is gone
- * and the bar sits on the viewport bottom.
+ * Quote and Variation keep a one-row bar until xl.
+ * Below md the shell already clears the navigation and its safe area, so the
+ * page only adds the rest of the 77px bar. From md the shell padding is gone
+ * and the bar sits on the viewport bottom, including the safe area once.
  */
 export const mobileQuoteContentPadClass =
-  "pb-[calc(8rem+env(safe-area-inset-bottom))] xl:pb-4";
+  "pb-16 md:pb-[calc(4.75rem+env(safe-area-inset-bottom))] xl:pb-4";
 
 export function isDashboardRoute(pathname: string | null): boolean {
   return pathname === "/app/dashboard";

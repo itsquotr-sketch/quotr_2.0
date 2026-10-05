@@ -70,6 +70,7 @@ export function CreateQuoteButton({
       <Button
         type="button"
         size="touch"
+        variant={isReviewed && !quoteBlockedReason ? "default" : "outline"}
         className={cn(
           "h-11 min-h-11 w-full",
           isReviewed && presentation !== "bar" && "font-semibold"
