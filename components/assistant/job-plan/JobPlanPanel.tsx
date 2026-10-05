@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
+import { ManualPricingNotice } from "@/components/assistant/ManualPricingNotice";
+import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
 import { JobPlanWorkAreaCardView } from "@/components/assistant/job-plan/JobPlanWorkAreaCard";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { getJobPlanQuickSpecEditor } from "@/components/assistant/job-plan/quick-spec-editors";
@@ -35,6 +37,12 @@ type JobPlanPanelProps = {
   scopeSaveStatus?: SaveStatus;
   scopeSaveError?: string | null;
   onContinue?: () => void;
+  onContinueManual?: () => void;
+  onAddManualWork?: (input: {
+    name: string;
+    scopeDescription: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  manualScopeDefault?: string;
   onAddWorkArea?: (
     workAreaType: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -74,6 +82,9 @@ export function JobPlanPanel({
   scopeSaveStatus = "idle",
   scopeSaveError,
   onContinue,
+  onContinueManual,
+  onAddManualWork,
+  manualScopeDefault = "",
   onAddWorkArea,
   onRemoveWorkArea,
   focusWorkAreaId = null,
@@ -87,6 +98,11 @@ export function JobPlanPanel({
   const cardsToRender = focusWorkAreaId
     ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
     : plan.cards;
+  const manualCards = cardsToRender.filter(
+    (card) => !workAreaTypeHasDetailedCalculator(card.workAreaType)
+  );
+  const manualOnly =
+    cardsToRender.length > 0 && manualCards.length === cardsToRender.length;
   const [addOpen, setAddOpen] = useState(false);
   const interactive = workspaceEditing || !submitted;
   const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
@@ -119,6 +135,17 @@ export function JobPlanPanel({
               const out = await onAddWorkArea(workAreaType);
               if (out.success) setAddOpen(false);
             }}
+            showManualPricing={Boolean(onAddManualWork)}
+            manualScopeDefault={manualScopeDefault}
+            onContinueManual={
+              onAddManualWork
+                ? async (input) => {
+                    const out = await onAddManualWork(input);
+                    if (out.success) setAddOpen(false);
+                    return out;
+                  }
+                : undefined
+            }
           />
         ) : null}
       </div>
@@ -179,8 +206,23 @@ export function JobPlanPanel({
           data-job-plan-cta-bar
           data-action-footer="true"
         >
+          {manualCards.length > 0 ? (
+            <div className="mb-3">
+              <ManualPricingNotice />
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2">
-            {workspaceEditing ? null : (
+            {workspaceEditing ? null : manualOnly && onContinueManual ? (
+              <Button
+                type="button"
+                className="min-h-11 flex-1 sm:flex-none"
+                data-manual-pricing-continue="true"
+                onClick={onContinueManual}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving…" : "Continue with manual pricing"}
+              </Button>
+            ) : workspaceEditing ? null : (
               <Button
                 type="button"
                 className="min-h-11 flex-1 sm:flex-none"
@@ -223,6 +265,17 @@ export function JobPlanPanel({
           workAreas={workAreas}
           isSaving={isAddingWorkArea}
           error={addWorkAreaError}
+          showManualPricing={Boolean(onAddManualWork)}
+          manualScopeDefault={manualScopeDefault}
+          onContinueManual={
+            onAddManualWork
+              ? async (input) => {
+                  const out = await onAddManualWork(input);
+                  if (out.success) setAddOpen(false);
+                  return out;
+                }
+              : undefined
+          }
           onAdd={async (workAreaType) => {
             const out = await onAddWorkArea(workAreaType);
             if (out.success) setAddOpen(false);

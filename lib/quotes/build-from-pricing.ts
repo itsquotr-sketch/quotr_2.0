@@ -8,6 +8,7 @@ import {
   CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
+import { unresolvedManualPricingQuoteBlock } from "@/lib/work-areas/manual-pricing-route";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
@@ -121,6 +122,8 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (nestedCeilingsQuoteIsBlocked({ items })) {
     return { error: CEILINGS_QUOTE_PR_BLOCK_MESSAGE };
   }
+  const manualBlock = unresolvedManualPricingQuoteBlock(items);
+  if (manualBlock) return { error: manualBlock };
   const workAreaNames = new Map(
     (workAreas ?? []).map((workArea) => [workArea.id, workArea.name])
   );

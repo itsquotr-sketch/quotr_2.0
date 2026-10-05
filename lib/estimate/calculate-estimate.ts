@@ -21,6 +21,10 @@ import { mergeDuplicateMaterialBuildUpLineItems } from "@/lib/estimate/material-
 import { dedupePricedItemsByScopeOwnership } from "@/lib/estimate/pricing-ownership";
 import { collectRequirements } from "@/lib/estimate/requirement-normalize";
 import { applyRegisteredComponentCommercialAuthority } from "@/lib/estimate/component-commercial-selection";
+import {
+  workAreaTypeHasDetailedCalculator,
+  type DetailedCalculatorWorkAreaType,
+} from "@/lib/estimate/calculator-availability";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -29,7 +33,7 @@ import type {
   WorkAreaCalculator,
 } from "@/lib/estimate/types";
 
-const CALCULATORS: Record<string, WorkAreaCalculator> = {
+const CALCULATORS: Record<DetailedCalculatorWorkAreaType, WorkAreaCalculator> = {
   deck: calculateDeck,
   pergola: calculatePergola,
   retaining_wall: calculateRetainingWall,
@@ -70,7 +74,9 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   let sortOrder = 1;
 
   for (const workArea of confirmed) {
-    const calculator = CALCULATORS[workArea.type];
+    const calculator = workAreaTypeHasDetailedCalculator(workArea.type)
+      ? CALCULATORS[workArea.type]
+      : undefined;
 
     if (!calculator) {
       missingInfo.push(`No calculator available for ${workArea.name}.`);

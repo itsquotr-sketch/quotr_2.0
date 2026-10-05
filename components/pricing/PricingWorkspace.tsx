@@ -38,6 +38,8 @@ import {
   identityFromPricingItem,
   isPendingPricingItemId,
 } from "@/lib/pricing/manual-requirement-promotion";
+import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
+import { unresolvedManualPricingQuoteBlock } from "@/lib/work-areas/manual-pricing-route";
 import {
   groupPricingItems,
   isManuallyAddedPricingItem,
@@ -147,6 +149,10 @@ export function PricingWorkspace({
 
   const unresolvedPriceCount = useMemo(
     () => pricingRequiredItems(items).length,
+    [items]
+  );
+  const manualQuoteBlock = useMemo(
+    () => unresolvedManualPricingQuoteBlock(items),
     [items]
   );
 
@@ -283,6 +289,21 @@ export function PricingWorkspace({
         currentItem != null &&
         (isPendingPricingItemId(itemId) ||
           pricingItemViewModel(currentItem).pricingRequired);
+      if (
+        promote &&
+        currentItem &&
+        isManualScopePricingRequiredNote(currentItem.notes_internal) &&
+        !identityFromPricingItem(currentItem)
+      ) {
+        const result = await updatePricingItem(itemId, input);
+        if (!result.error && result.item && result.document) {
+          setItems((current) =>
+            current.map((item) => (item.id === itemId ? result.item! : item))
+          );
+          applyDocumentUpdate(result.document);
+        }
+        return result;
+      }
       if (promote && currentItem) {
         const identity = identityFromPricingItem(currentItem);
         if (!identity) {
@@ -713,6 +734,7 @@ export function PricingWorkspace({
                 onMarkReviewed={handleMarkReviewed}
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
+                blockedReason={manualQuoteBlock}
               />
             </div>
           ) : null}

@@ -84,6 +84,8 @@ type PricingItemEditFormProps = {
   onSave: () => void;
   onCancel: () => void;
   saveLabel?: string;
+  /** User-entered lump sum. Blank cost is not a calculated $0 cost or margin. */
+  sellOnlyLumpSum?: boolean;
 };
 
 export function PricingItemEditForm({
@@ -94,6 +96,7 @@ export function PricingItemEditForm({
   onSave,
   onCancel,
   saveLabel = "Save item",
+  sellOnlyLumpSum = false,
 }: PricingItemEditFormProps) {
   const calculationMode = useMemo(
     () =>
@@ -345,7 +348,9 @@ export function PricingItemEditForm({
             {form.quantity != null || form.unit ? (
               <>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Display quantity</Label>
+                  <Label className="text-xs">
+                    {sellOnlyLumpSum ? "Quantity" : "Display quantity"}
+                  </Label>
                   <Input className="h-11 text-right tabular-nums md:h-8"
                     type="number"
                     step="0.01"
@@ -359,7 +364,9 @@ export function PricingItemEditForm({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Display unit</Label>
+                  <Label className="text-xs">
+                    {sellOnlyLumpSum ? "Unit" : "Display unit"}
+                  </Label>
                   <Input className="h-11 md:h-8"
                     value={form.unit ?? ""}
                     onChange={(event) =>
@@ -408,6 +415,11 @@ export function PricingItemEditForm({
           </>
         ) : null}
 
+        {sellOnlyLumpSum ? (
+          <p className="text-xs leading-4 text-muted-foreground sm:col-span-2">
+            Enter your price for this work. Quotr has not calculated a cost or margin.
+          </p>
+        ) : (
         <div className="space-y-1.5">
           <Label className="text-xs">Total cost</Label>
           <Input className="h-11 text-right tabular-nums md:h-8"
@@ -422,8 +434,9 @@ export function PricingItemEditForm({
             }
           />
         </div>
+        )}
         <div className="space-y-1.5">
-          <Label className="text-xs">Total charge</Label>
+          <Label className="text-xs">{sellOnlyLumpSum ? "Your price" : "Total charge"}</Label>
           <Input className="h-11 text-right tabular-nums md:h-8"
             type="number"
             step="0.01"
@@ -448,6 +461,7 @@ export function PricingItemEditForm({
           </div>
         ) : null}
 
+        {sellOnlyLumpSum ? null : (
         <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs sm:col-span-2">
           <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
             Preview until saved
@@ -467,6 +481,7 @@ export function PricingItemEditForm({
             </span>
           </div>
         </div>
+        )}
 
         <p className="text-xs font-medium text-muted-foreground sm:col-span-2">Quote</p>
         <div className="space-y-1.5 sm:col-span-2">

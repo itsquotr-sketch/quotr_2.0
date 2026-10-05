@@ -8,24 +8,31 @@ type PricingReviewChecklistProps = {
   onMarkReviewed: () => Promise<void>;
   disabled?: boolean;
   pendingLabel?: string | null;
+  blockedReason?: string | null;
 };
 
 export function PricingReviewChecklist({
   onMarkReviewed,
   disabled = false,
   pendingLabel = null,
+  blockedReason = null,
 }: PricingReviewChecklistProps) {
   const [reviewed, setReviewed] = useState(false);
   const isReviewing = pendingLabel != null;
 
   return (
     <div className="rounded-xl border bg-card px-4 py-3">
+      {blockedReason ? (
+        <p className="mb-3 text-sm text-amber-950" data-manual-pricing-review-block="true">
+          {blockedReason}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex min-w-0 flex-1 items-start gap-2.5 text-sm">
           <Checkbox
             className="mt-0.5"
             checked={reviewed}
-            disabled={disabled || isReviewing}
+            disabled={disabled || isReviewing || Boolean(blockedReason)}
             onCheckedChange={(checked) => setReviewed(checked === true)}
           />
           <span>
@@ -38,7 +45,7 @@ export function PricingReviewChecklist({
 
           <Button
           type="button"
-          disabled={disabled || isReviewing || !reviewed}
+          disabled={disabled || isReviewing || !reviewed || Boolean(blockedReason)}
           onClick={() => {
             void onMarkReviewed();
           }}

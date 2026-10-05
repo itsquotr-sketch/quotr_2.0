@@ -12,6 +12,10 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import {
+  presentClientSellForUnresolvedDocument,
+  unresolvedManualPricingQuoteBlock,
+} from "@/lib/work-areas/manual-pricing-route";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -70,10 +74,25 @@ export function PricingSummaryPanel({
   const pricingRequiredCount = items.filter(
     (item) => pricingItemViewModel(item).pricingRequired
   ).length;
-  const costValue = view.costKnown ? view.subtotalCostFormatted : "Pricing required";
+  const clientSellValue = presentClientSellForUnresolvedDocument({
+    pricingRequiredCount,
+    subtotalSell: document.subtotal_sell,
+    costKnown: view.costKnown,
+    formattedSell: view.subtotalSellFormatted,
+  });
+  const sellIncomplete = clientSellValue === "Pricing required";
+  const inclGstValue = sellIncomplete
+    ? "Pricing required"
+    : view.totalInclGstFormatted;
+  const costValue =
+    sellIncomplete && document.subtotal_cost <= 0
+      ? "Pricing required"
+      : view.costKnown
+        ? view.subtotalCostFormatted
+        : "Pricing required";
   const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
     ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
-    : null;
+    : unresolvedManualPricingQuoteBlock(items);
 
   return (
     <Card
@@ -93,13 +112,13 @@ export function PricingSummaryPanel({
         <div className="space-y-2">
           <SummaryRow
             label={view.showGst ? "Client sell ex GST" : "Client sell"}
-            value={pricingRequiredCount > 0 && !view.costKnown ? "Pricing required" : view.subtotalSellFormatted}
+            value={clientSellValue}
             prominent
           />
           {compact && view.showGst ? (
             <SummaryRow
               label="Client sell incl GST"
-              value={view.totalInclGstFormatted}
+              value={inclGstValue}
               prominent
             />
           ) : null}
@@ -115,20 +134,32 @@ export function PricingSummaryPanel({
               </summary>
               <div className="space-y-2 pt-1">
                 <SummaryRow label="Direct cost" value={costValue} />
-                <SummaryRow label="Expected gross margin" value={view.marginLabel} />
+                <SummaryRow
+                  label="Expected gross margin"
+                  value={sellIncomplete ? "—" : view.marginLabel}
+                />
                 {view.showGst ? (
-                  <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
+                  <SummaryRow
+                    label={view.gstLabel}
+                    value={sellIncomplete ? "—" : view.gstAmountFormatted}
+                  />
                 ) : null}
               </div>
             </details>
           ) : (
             <>
               <SummaryRow label="Direct cost" value={costValue} />
-              <SummaryRow label="Expected gross margin" value={view.marginLabel} />
+              <SummaryRow
+                label="Expected gross margin"
+                value={sellIncomplete ? "—" : view.marginLabel}
+              />
               {view.showGst ? (
                 <>
-                  <SummaryRow label={view.gstLabel} value={view.gstAmountFormatted} />
-                  <SummaryRow label="Client sell incl GST" value={view.totalInclGstFormatted} prominent />
+                  <SummaryRow
+                    label={view.gstLabel}
+                    value={sellIncomplete ? "—" : view.gstAmountFormatted}
+                  />
+                  <SummaryRow label="Client sell incl GST" value={inclGstValue} prominent />
                 </>
               ) : null}
             </>

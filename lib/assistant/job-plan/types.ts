@@ -76,6 +76,7 @@ export type JobPlanWorkAreaInput = {
   readonly name: string;
   readonly status: "suggested" | "confirmed" | "excluded";
   readonly sortOrder?: number;
+  readonly scopeDescription?: string | null;
 };
 
 export type JobPlanConstraintInput = {

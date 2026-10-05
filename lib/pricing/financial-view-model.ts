@@ -14,9 +14,11 @@ import { presentStoredGst } from "@/lib/pricing/gst-presentation";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 
 export function pricingItemViewModel(item: PricingItem) {
+  const sell = Number(item.total_sell ?? 0);
+  const unpricedSell = !Number.isFinite(sell) || sell <= 0;
   const pricingRequired =
-    isManualScopePricingRequiredNote(item.notes_internal) ||
-    (item.cost_known === false && Number(item.total_sell ?? 0) <= 0);
+    (isManualScopePricingRequiredNote(item.notes_internal) && unpricedSell) ||
+    (item.cost_known === false && unpricedSell);
   const profitability = formatProfitabilityDisplay({
     costKnown: pricingRequired ? false : item.cost_known,
     grossProfit: item.gross_profit,

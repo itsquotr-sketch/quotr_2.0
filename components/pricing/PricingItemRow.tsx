@@ -34,6 +34,7 @@ import {
   PricingItemEditForm,
 } from "@/components/pricing/PricingItemEditForm";
 import { PricingCalculationDetails } from "@/components/pricing/PricingCalculationDetails";
+import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   Sheet,
   SheetContent,
@@ -168,6 +169,11 @@ function PricingItemRowComponent({
         onSave={handleSave}
         onCancel={closeEditor}
         saveLabel={moneyView.pricingRequired ? "Add price" : "Save item"}
+        sellOnlyLumpSum={
+          item.calculation_mode === "lump_sum" &&
+          !item.component_key &&
+          isManualScopePricingRequiredNote(item.notes_internal)
+        }
       />
     </div>
   );

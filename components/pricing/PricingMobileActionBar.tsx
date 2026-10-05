@@ -8,6 +8,7 @@ import {
   CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
+import { unresolvedManualPricingQuoteBlock } from "@/lib/work-areas/manual-pricing-route";
 import { Button } from "@/components/ui/button";
 import {
   mobileActionDockClass,
@@ -51,9 +52,10 @@ export function PricingMobileActionBar({
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
   const view = pricingDocumentViewModel(document);
+  const manualQuoteBlock = unresolvedManualPricingQuoteBlock(items);
   const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
     ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
-    : null;
+    : manualQuoteBlock;
   const isReviewing = reviewLabel != null;
 
   return (
@@ -111,10 +113,15 @@ export function PricingMobileActionBar({
             />
           ) : !isReviewed && !isConverted && onMarkReviewed ? (
             <>
+              {manualQuoteBlock ? (
+                <p className="text-xs leading-4 text-amber-950" data-manual-pricing-review-block="true">
+                  {manualQuoteBlock}
+                </p>
+              ) : null}
               <Button
                 type="button"
                 className="h-11 min-h-11 w-full"
-                disabled={isSaving || isReviewing}
+                disabled={isSaving || isReviewing || Boolean(manualQuoteBlock)}
                 onClick={() => {
                   void onMarkReviewed?.();
                 }}

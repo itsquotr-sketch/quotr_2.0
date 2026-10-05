@@ -3,6 +3,8 @@
  * without inventing calculated money (3.1B.7F-R2).
  */
 
+import { buildPersistedLineItemNotes } from "@/lib/estimate/line-item-metadata";
+
 export const MANUAL_SCOPE_PRICING_REQUIRED_NOTE =
   "Pricing required — added by you. Enter a rate or lump sum before issuing to clients.";
 
@@ -28,5 +30,10 @@ export function buildManualScopePricingNotes(params: {
   if (desc) {
     parts.push(desc);
   }
-  return parts.join("\n");
+  return (
+    buildPersistedLineItemNotes({
+      notes: parts.join("\n"),
+      metadata: { rateSourceType: "missing" },
+    }) ?? parts.join("\n")
+  );
 }

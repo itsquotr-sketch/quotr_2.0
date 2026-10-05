@@ -54,6 +54,8 @@ import {
   calculateEstimate,
   EstimateEngineError,
 } from "@/lib/estimate/calculate-estimate";
+import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
+import { MANUAL_ESTIMATE_SKIPPED_MESSAGE } from "@/lib/work-areas/manual-pricing-route";
 import { loadProjectStage } from "@/lib/assistant/load-project-stage";
 import { getEstimateContextWithContext } from "@/lib/estimate/context";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
@@ -1724,10 +1726,18 @@ async function runEstimateGeneration(
     return { error: USER_ERRORS.projectConditionsIncomplete };
   }
 
+  const calculableWorkAreas = contextResult.confirmedWorkAreas.filter((area) =>
+    workAreaTypeHasDetailedCalculator(area.type)
+  );
+  if (calculableWorkAreas.length === 0) {
+    return { error: MANUAL_ESTIMATE_SKIPPED_MESSAGE };
+  }
+
   let estimateResult;
   try {
     estimateResult = calculateEstimate({
       ...contextResult,
+      confirmedWorkAreas: calculableWorkAreas,
       briefText:
         contextResult.briefText ??
         (typeof projectRow?.brief_text === "string"

@@ -33,6 +33,8 @@ const projects = read("app/(protected)/app/projects/page.tsx");
 const mobile = read("components/layout/mobile-nav.tsx");
 const handoff = read("components/projects/DashboardOnboardingHandoff.tsx");
 const capture = read("components/assistant/ProjectCaptureBlock.tsx");
+const manualNotice = read("components/assistant/ManualPricingNotice.tsx");
+const manualRoute = read("lib/work-areas/manual-pricing-route.ts");
 const analysis = read("lib/project-notes/build-analysis-source.ts");
 const extract = read("lib/ai/extract.ts");
 const prompt = read("lib/ai/brief-extraction-prompt.ts");
@@ -167,8 +169,12 @@ check(
 check(
   "zero-result recovery is distinct from other analysis errors",
   capture.includes("NO_WORK_AREAS_ERROR") &&
+    capture.includes("!manualRecovery") &&
     capture.includes('data-manual-work-area-recovery="true"') &&
-    capture.includes("Add a work area")
+    capture.includes("ManualPricingScopeForm") &&
+    capture.includes("data-analyse-retry") &&
+    manualNotice.includes("Continue with manual pricing") &&
+    manualRoute.includes("You'll price this work yourself")
 );
 check(
   "manual stage write stays on the existing confirm stage",

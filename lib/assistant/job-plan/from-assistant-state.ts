@@ -48,5 +48,6 @@ export function jobPlanWorkAreasFromUi(
     name: wa.name,
     status: wa.status,
     sortOrder: index,
+    scopeDescription: wa.quoteDescription?.trim() || wa.summary?.trim() || null,
   }));
 }

@@ -111,6 +111,7 @@ import {
   addWorkAreaToProject,
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
+import { continueManualWorkToPricing } from "@/lib/pricing/actions";
 import {
   LAST_ACTIVE_WORK_AREA_MESSAGE,
   canRemoveCanonicalWorkArea,
@@ -270,6 +271,10 @@ export function AssistantShell({
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
+  const manualPricingInFlightRef = useRef<Promise<{
+    success: boolean;
+    error?: string;
+  }> | null>(null);
   const generationRequestSeqRef = useRef(0);
   const appliedGenerationRef = useRef<AppliedEstimateGeneration | null>(null);
   const factMutationSeqRef = useRef(0);
@@ -1661,6 +1666,40 @@ export function AssistantShell({
       return { success: true as const };
     },
     [bridgeEstimateStaleAfterCanonicalWrite, initialState.workAreas, project.id, router]
+  );
+
+  const handleContinueManualPricing = useCallback(
+    async (input?: { name: string; scopeDescription: string }) => {
+      if (manualPricingInFlightRef.current) {
+        return manualPricingInFlightRef.current;
+      }
+      const run = (async () => {
+        setIsAddingWorkArea(true);
+        setAddWorkAreaError(null);
+        const result = await continueManualWorkToPricing({
+          projectId: project.id,
+          name: input?.name,
+          scopeDescription: input?.scopeDescription,
+        });
+        if (result && "error" in result) {
+          setAddWorkAreaError(result.error);
+          setIsAddingWorkArea(false);
+          return { success: false as const, error: result.error };
+        }
+        setIsAddingWorkArea(false);
+        startTransition(() => {
+          router.refresh();
+        });
+        return { success: true as const };
+      })();
+      manualPricingInFlightRef.current = run;
+      try {
+        return await run;
+      } finally {
+        manualPricingInFlightRef.current = null;
+      }
+    },
+    [project.id, router]
   );
 
   const handleExcludeWorkArea = useCallback(
@@ -3156,7 +3195,11 @@ export function AssistantShell({
                   addWorkAreaError={addWorkAreaError}
                   scopeSaveStatus={jobPlanScopeSaveStatus}
                   scopeSaveError={jobPlanScopeSaveError}
-                  onAddWorkArea={handleAddWorkArea}
+                  onAddWorkArea={canUploadFiles ? handleAddWorkArea : undefined}
+                  onAddManualWork={
+                    canUploadFiles ? handleContinueManualPricing : undefined
+                  }
+                  manualScopeDefault={briefText}
                   onRemoveWorkArea={handleExcludeWorkArea}
                   focusWorkAreaId={jobPlanEditFocus?.workAreaId ?? null}
                   specFocusKey={jobPlanEditFocus?.specFocusKey ?? null}
@@ -3323,9 +3366,13 @@ export function AssistantShell({
               documents={documents}
               canUploadFiles={canUploadFiles}
               workAreas={displayWorkAreas}
-              onAddWorkArea={handleAddWorkArea}
+              onAddWorkArea={canUploadFiles ? handleAddWorkArea : undefined}
               isAddingWorkArea={isAddingWorkArea}
               addWorkAreaError={addWorkAreaError}
+              canEditProject={canUploadFiles}
+              onContinueManual={
+                canUploadFiles ? handleContinueManualPricing : undefined
+              }
             />
           </CollapsibleStageCard>
           )}
@@ -3375,8 +3422,23 @@ export function AssistantShell({
                     ? undefined
                     : () => handleWorkAreasConfirm(displayWorkAreas)
                 }
+                onContinueManual={
+                  workAreasConfirmed || !canUploadFiles
+                    ? undefined
+                    : () => {
+                        void handleContinueManualPricing();
+                      }
+                }
+                onAddManualWork={
+                  workAreasConfirmed || !canUploadFiles
+                    ? undefined
+                    : handleContinueManualPricing
+                }
+                manualScopeDefault={briefText}
                 onAddWorkArea={
-                  workAreasConfirmed ? undefined : handleAddWorkArea
+                  workAreasConfirmed || !canUploadFiles
+                    ? undefined
+                    : handleAddWorkArea
                 }
                 onRemoveWorkArea={
                   workAreasConfirmed ? undefined : handleExcludeWorkArea

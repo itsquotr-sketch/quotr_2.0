@@ -14,6 +14,10 @@ import type { ProjectNote } from "@/lib/project-notes/types";
 import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
 import { NO_WORK_AREAS_ERROR } from "@/lib/ai/analyse-job-contract";
+import {
+  ManualPricingNotice,
+  ManualPricingScopeForm,
+} from "@/components/assistant/ManualPricingNotice";
 
 type ProjectCaptureBlockProps = {
   briefText: string;
@@ -38,6 +42,11 @@ type ProjectCaptureBlockProps = {
   ) => Promise<{ success: boolean; error?: string }>;
   isAddingWorkArea?: boolean;
   addWorkAreaError?: string | null;
+  canEditProject?: boolean;
+  onContinueManual?: (input: {
+    name: string;
+    scopeDescription: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 };
 
 export function buildProjectCaptureSummary(
@@ -73,10 +82,11 @@ export function ProjectCaptureBlock({
   onAddWorkArea,
   isAddingWorkArea = false,
   addWorkAreaError = null,
+  canEditProject = false,
+  onContinueManual,
 }: ProjectCaptureBlockProps) {
   const [addWorkAreaOpen, setAddWorkAreaOpen] = useState(false);
-  const manualRecovery =
-    analyseError === NO_WORK_AREAS_ERROR && onAddWorkArea != null;
+  const manualRecovery = analyseError === NO_WORK_AREAS_ERROR;
   const briefIncluded = briefText.trim().length > 0;
   const [progressElapsedMs, setProgressElapsedMs] = useState(0);
   const analyseStartedAt = useRef<number | null>(null);
@@ -190,7 +200,7 @@ export function ProjectCaptureBlock({
           {isAnalysing ? (
             <AnalysisProgressBanner label={progressLabel} />
           ) : null}
-          {analyseError && !isAnalysing ? (
+          {analyseError && !isAnalysing && !manualRecovery ? (
             <div
               className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-3"
               role="alert"
@@ -211,12 +221,31 @@ export function ProjectCaptureBlock({
                   Your job details are still here.
                 </p>
               </div>
-              {manualRecovery ? (
-                <div className="space-y-2" data-manual-work-area-recovery="true">
-                  <p className="text-sm text-foreground">
-                    Quotr did not identify a supported work area. Add one to
-                    continue.
+            </div>
+          ) : null}
+          {manualRecovery && !isAnalysing ? (
+            <div
+              className="space-y-3 rounded-xl border border-border/60 bg-card px-3.5 py-3"
+              data-manual-work-area-recovery="true"
+            >
+              {canEditProject && onContinueManual ? (
+                <ManualPricingScopeForm
+                  initialScope={briefText}
+                  disabled={disabled}
+                  isSaving={isAddingWorkArea}
+                  error={addWorkAreaError}
+                  onContinue={onContinueManual}
+                />
+              ) : (
+                <>
+                  <ManualPricingNotice />
+                  <p className="text-sm text-muted-foreground">
+                    You can read this job. Editing and pricing need project access.
                   </p>
+                </>
+              )}
+              {canEditProject && onAddWorkArea ? (
+                <>
                   <Button
                     type="button"
                     variant="outline"
@@ -224,7 +253,7 @@ export function ProjectCaptureBlock({
                     onClick={() => setAddWorkAreaOpen(true)}
                     disabled={disabled || isAddingWorkArea}
                   >
-                    Add a work area
+                    Add a supported work area
                   </Button>
                   <AddWorkAreaDialog
                     open={addWorkAreaOpen}
@@ -232,12 +261,13 @@ export function ProjectCaptureBlock({
                     workAreas={workAreas}
                     isSaving={isAddingWorkArea}
                     error={addWorkAreaError}
+                    showManualPricing={false}
                     onAdd={async (workAreaType) => {
                       const out = await onAddWorkArea(workAreaType);
                       if (out.success) setAddWorkAreaOpen(false);
                     }}
                   />
-                </div>
+                </>
               ) : null}
             </div>
           ) : null}

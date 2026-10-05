@@ -1,10 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  SCOPE_CATALOGUE,
-  type ScopeCatalogueItem,
-} from "@/lib/scopes/catalogue";
+import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { FIRST_RUN_PRIMARY_WORK_AREA_TYPES } from "@/lib/setup/first-run-work-areas";
 import { getWorkAreaCapabilityLabel } from "@/lib/work-areas/support-contract";
 import type { WorkArea } from "@/components/assistant/types";
@@ -19,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import { ManualPricingScopeForm } from "@/components/assistant/ManualPricingNotice";
 
 type AddWorkAreaDialogProps = {
   open: boolean;
@@ -27,14 +25,13 @@ type AddWorkAreaDialogProps = {
   isSaving?: boolean;
   error?: string | null;
   onAdd: (workAreaType: string) => Promise<void>;
+  showManualPricing?: boolean;
+  manualScopeDefault?: string;
+  onContinueManual?: (input: {
+    name: string;
+    scopeDescription: string;
+  }) => Promise<{ success: boolean; error?: string }>;
 };
-
-function isAvailableToAdd(
-  _item: ScopeCatalogueItem,
-  _workAreas: WorkArea[]
-): boolean {
-  return true;
-}
 
 export function AddWorkAreaDialog({
   open,
@@ -43,14 +40,15 @@ export function AddWorkAreaDialog({
   isSaving,
   error,
   onAdd,
+  showManualPricing = false,
+  manualScopeDefault = "",
+  onContinueManual,
 }: AddWorkAreaDialogProps) {
   const [query, setQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const options = useMemo(() => {
-    const available = SCOPE_CATALOGUE.filter((item) =>
-      isAvailableToAdd(item, workAreas)
-    );
+    const available = [...SCOPE_CATALOGUE];
     const preferred = new Map<string, number>(
       FIRST_RUN_PRIMARY_WORK_AREA_TYPES.map((type, index) => [type, index])
     );
@@ -70,7 +68,7 @@ export function AddWorkAreaDialog({
         item.category.toLowerCase().includes(normalized) ||
         item.description.toLowerCase().includes(normalized)
     );
-  }, [query, workAreas]);
+  }, [query]);
 
   const handleAdd = async () => {
     if (!selectedType) return;
@@ -160,6 +158,18 @@ export function AddWorkAreaDialog({
           <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
+        ) : null}
+
+        {showManualPricing && onContinueManual ? (
+          <div className="space-y-3 border-t border-border pt-3">
+            <ManualPricingScopeForm
+              initialScope={manualScopeDefault}
+              disabled={isSaving}
+              isSaving={isSaving}
+              error={error}
+              onContinue={onContinueManual}
+            />
+          </div>
         ) : null}
 
         <div className="flex justify-end gap-2">

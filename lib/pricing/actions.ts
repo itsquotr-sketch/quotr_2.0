@@ -59,7 +59,19 @@ import {
   PRICING_ITEM_UPDATE_SELECT,
   saveManualPriceForUnresolvedRequirement,
 } from "@/lib/pricing/manual-requirement-promotion";
-import { buildManualScopePricingNotes } from "@/lib/work-areas/scope-items/pricing-bridge";
+import {
+  buildManualScopePricingNotes,
+  isManualScopePricingRequiredNote,
+} from "@/lib/work-areas/scope-items/pricing-bridge";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
+import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
+import {
+  buildManualWorkAreaPricingItemRow,
+  manualScopeSellOmitsBlankCost,
+  manualWorkAreaPersistence,
+  manualWorkAreaScopeText,
+  unresolvedManualPricingQuoteBlock,
+} from "@/lib/work-areas/manual-pricing-route";
 import {
   buildScopeSummaryFromWorkAreas,
   mapPricingDocument,
@@ -519,7 +531,7 @@ export async function createPricingFromEstimate(input: {
 
   const { data: workAreas } = await supabase
     .from("work_areas")
-    .select("id, name")
+    .select("id, name, type, summary, quote_description")
     .eq("project_id", projectId)
     .eq("org_id", orgId)
     .eq("status", "confirmed");
@@ -693,6 +705,33 @@ export async function createPricingFromEstimate(input: {
           }),
         });
       }
+    }
+  }
+
+  {
+    let sortBase = pricingItemRows.length;
+    for (const area of workAreas ?? []) {
+      if (workAreaTypeHasDetailedCalculator(String(area.type ?? ""))) continue;
+      const already = pricingItemRows.some(
+        (row) => row.work_area_id === area.id
+      );
+      if (already) continue;
+      const scope = manualWorkAreaScopeText(area);
+      aggregateLines.push({
+        total_cost: 0,
+        total_sell: 0,
+        cost_known: false,
+      });
+      pricingItemRows.push(
+        buildManualWorkAreaPricingItemRow({
+          orgId,
+          projectId,
+          workAreaId: String(area.id),
+          name: String(area.name ?? "Work"),
+          scope: scope || null,
+          sortOrder: sortBase++,
+        })
+      );
     }
   }
 
@@ -1035,12 +1074,20 @@ export async function updatePricingItem(
   // Omitted optional fields arrive as undefined from Zod; explicit null and 0
   // are preserved. Client total_cost/total_sell are ignored for qty/productivity
   // modes inside the adapter (not trusted as derived authority).
+  const originatedAsPricingRequired =
+    parseLineItemNotes(existing.notes_internal).metadata.rateSourceType ===
+    "missing";
+  const omitBlankManualCost = manualScopeSellOmitsBlankCost({
+    originatedAsPricingRequired,
+    totalCost: item.total_cost,
+    totalSell: item.total_sell,
+  });
   const computed = computePricingItemMoneyFields({
     quantity: item.quantity,
     unit: item.unit,
-    unitCost: item.unit_cost,
+    unitCost: omitBlankManualCost ? null : item.unit_cost,
     unitSell: item.unit_sell,
-    totalCost: item.total_cost,
+    totalCost: omitBlankManualCost ? undefined : item.total_cost,
     totalSell: item.total_sell,
     itemType: item.item_type,
     calculationMode: item.calculation_mode,
@@ -1055,9 +1102,6 @@ export async function updatePricingItem(
     return { error: computed.error };
   }
   const totals = computed.fields;
-  const originatedAsPricingRequired =
-    parseLineItemNotes(existing.notes_internal).metadata.rateSourceType ===
-    "missing";
   const costKnown = resolveCostKnownAfterPricingEdit({
     existingCostKnown: inferStoredPricingCostKnown(existing),
     computedCostKnown: totals.costKnown,
@@ -1754,6 +1798,19 @@ export async function markPricingReviewed(
   const denied = await requirePricingEditPermission({ orgId, user });
   if (denied) return denied;
 
+  const { data: reviewItems, error: reviewItemsError } = await supabase
+    .from("pricing_items")
+    .select("notes_internal, total_sell, visible_on_quote")
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (reviewItemsError) {
+    return {
+      error: toUserError(reviewItemsError, "pricing-mark-reviewed", PRICING_SAVE_FAILED),
+    };
+  }
+  const manualBlock = unresolvedManualPricingQuoteBlock(reviewItems ?? []);
+  if (manualBlock) return { error: manualBlock };
+
   const { error } = await supabase
     .from("pricing_documents")
     .update({
@@ -2132,4 +2189,292 @@ export async function applyPricingFinalSell(input: {
     document: updatedDocument,
     items: (updatedItems.data ?? []).map((row) => mapPricingItem(row)),
   };
+}
+
+/**
+ * Include work that has no detailed calculator.
+ * Mixed jobs only store the work area; Pricing is created from the estimate.
+ * Manual-only jobs open an editable Pricing document without a $0 estimate.
+ */
+export async function continueManualWorkToPricing(input: {
+  projectId: string;
+  name?: string;
+  scopeDescription?: string;
+}): Promise<{ error: string } | { success: true }> {
+  const projectId = input.projectId?.trim() ?? "";
+  if (!projectId) return { error: "Invalid work area request." };
+
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) return { error: auth.error };
+  const { supabase, orgId, user } = auth;
+
+  const projectDenied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (projectDenied) return { error: projectDenied.error };
+
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
+  if ("error" in ownedProject) return { error: ownedProject.error };
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, title, client_name, site_address, brief_text, stage, business_status, deleted_at")
+    .eq("id", projectId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (projectError || !project || project.deleted_at) {
+    return { error: "Project not found." };
+  }
+
+  const named = input.name?.trim();
+  if (named) {
+    const persisted = manualWorkAreaPersistence({
+      name: named,
+      scopeDescription: input.scopeDescription ?? "",
+    });
+    if (!persisted.ok) return { error: persisted.error };
+
+    const { data: existingMatch } = await supabase
+      .from("work_areas")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .eq("type", persisted.type)
+      .eq("status", "confirmed")
+      .eq("name", persisted.name)
+      .eq("quote_description", persisted.quoteDescription)
+      .limit(1)
+      .maybeSingle();
+    if (!existingMatch) {
+      const { data: sortRows } = await supabase
+        .from("work_areas")
+        .select("sort_order")
+        .eq("project_id", projectId)
+        .eq("org_id", orgId)
+        .order("sort_order", { ascending: false })
+        .limit(1);
+      const nextSort = (sortRows?.[0]?.sort_order ?? 0) + 1;
+      const { error: insertError } = await supabase.from("work_areas").insert({
+        org_id: orgId,
+        project_id: projectId,
+        type: persisted.type,
+        name: persisted.name,
+        status: persisted.status,
+        ai_confidence: null,
+        summary: persisted.summary,
+        quote_description: persisted.quoteDescription,
+        sort_order: nextSort,
+      });
+      if (insertError) {
+        return {
+          error: toUserError(insertError, "manual-work-area", "Could not save this work."),
+        };
+      }
+    }
+  }
+
+  if (project.stage === "brief") {
+    await supabase
+      .from("projects")
+      .update({ stage: "confirm_work_areas" })
+      .eq("id", projectId)
+      .eq("org_id", orgId)
+      .eq("stage", "brief");
+  }
+
+  const { data: areas, error: areasError } = await supabase
+    .from("work_areas")
+    .select("id, name, type, summary, quote_description, status")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .eq("status", "confirmed");
+  if (areasError) {
+    return { error: toUserError(areasError, "manual-work-area", "Could not save this work.") };
+  }
+
+  const confirmed = areas ?? [];
+  const manualAreas = confirmed.filter(
+    (area) => !workAreaTypeHasDetailedCalculator(String(area.type ?? ""))
+  );
+  const calculable = confirmed.filter((area) =>
+    workAreaTypeHasDetailedCalculator(String(area.type ?? ""))
+  );
+  if (manualAreas.length === 0) {
+    return { error: "Add the work you want to price before continuing." };
+  }
+
+  await markEstimateStaleWithContext(auth, projectId);
+
+  if (calculable.length > 0) {
+    revalidatePath(`/app/projects/${projectId}`);
+    return { success: true };
+  }
+
+  for (const area of manualAreas) {
+    if (!manualWorkAreaScopeText(area)) {
+      return {
+        error: `Describe the scope for ${area.name} before pricing this work.`,
+      };
+    }
+  }
+
+  const pricingDenied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "pricing.edit",
+    entitlement: "pricing.access",
+  });
+  if (pricingDenied) return { error: pricingDenied.error };
+
+  const { data: existingDoc } = await supabase
+    .from("pricing_documents")
+    .select("id, status, estimate_id")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .is("estimate_id", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingDoc?.status === "converted_to_quote" && existingDoc.id) {
+    revalidatePricingDashboard(projectId, existingDoc.id);
+    redirect(`/app/projects/${projectId}/pricing/${existingDoc.id}`);
+  }
+
+  let pricingDocumentId = existingDoc?.id as string | undefined;
+
+  if (!pricingDocumentId) {
+    const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+    const gstRate = resolveCreatePricingFromEstimateGstRates(
+      orgDefaults.defaultGstRate
+    ).documentGstRate;
+    const assumptions = resolveClientQuoteAssumptions({
+      pricingClientAssumptions: [],
+      orgDefaults,
+    });
+    const exclusions = resolveClientQuoteExclusions({
+      pricingClientExclusions: [],
+      orgDefaults,
+    });
+    const terms = resolveTermsForSnapshot(null, orgDefaults);
+    const { data: created, error: createError } = await supabase
+      .from("pricing_documents")
+      .insert({
+        org_id: orgId,
+        project_id: projectId,
+        estimate_id: null,
+        title: `Final pricing — ${project.title}`,
+        status: "draft",
+        client_name: project.client_name,
+        site_address: project.site_address,
+        pricing_date: todayIsoDate(),
+        valid_until: addDaysIsoDate(orgDefaults.defaultQuoteValidityDays),
+        subtotal_cost: 0,
+        subtotal_sell: 0,
+        gross_profit: 0,
+        margin_percent: 0,
+        markup_percent: 0,
+        gst_rate: gstRate,
+        gst_amount: 0,
+        total_incl_gst: 0,
+        scope_summary: buildScopeSummaryFromWorkAreas(
+          manualAreas.map((area) => String(area.name)),
+          project.brief_text
+        ),
+        assumptions,
+        exclusions,
+        terms,
+        internal_notes: null,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (createError || !created) {
+      return {
+        error: toUserError(createError, "manual-pricing-document", "Failed to create pricing."),
+      };
+    }
+    pricingDocumentId = created.id;
+  }
+
+  if (!pricingDocumentId) {
+    return { error: "Failed to create pricing." };
+  }
+
+  const { data: existingItems } = await supabase
+    .from("pricing_items")
+    .select("id, work_area_id, notes_internal, sort_order")
+    .eq("pricing_document_id", pricingDocumentId)
+    .eq("org_id", orgId);
+
+  const covered = new Set(
+    (existingItems ?? [])
+      .filter((row) => isManualScopePricingRequiredNote(row.notes_internal))
+      .map((row) => String(row.work_area_id))
+  );
+  let sortBase =
+    (existingItems ?? []).reduce(
+      (max, row) => Math.max(max, Number(row.sort_order ?? 0)),
+      -1
+    ) + 1;
+  const rows = [];
+  for (const area of manualAreas) {
+    if (covered.has(String(area.id))) continue;
+    rows.push({
+      ...buildManualWorkAreaPricingItemRow({
+        orgId,
+        projectId,
+        workAreaId: String(area.id),
+        name: String(area.name),
+        scope: manualWorkAreaScopeText(area),
+        sortOrder: sortBase++,
+      }),
+      pricing_document_id: pricingDocumentId,
+    });
+  }
+  if (rows.length > 0) {
+    const { error: itemsError } = await supabase.from("pricing_items").insert(rows);
+    if (itemsError) {
+      return {
+        error: toUserError(itemsError, "manual-pricing-items", PRICING_SAVE_FAILED),
+      };
+    }
+  }
+
+  const { data: document } = await supabase
+    .from("pricing_documents")
+    .select("gst_rate")
+    .eq("id", pricingDocumentId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    pricingDocumentId,
+    resolveStoredPricingDocumentGstRate(coercePersistedGstRate(document?.gst_rate)).rate,
+    false
+  );
+
+  const currentStatus = project.business_status as string;
+  if (
+    ACTIVE_PIPELINE_STATUSES.includes(
+      currentStatus as (typeof ACTIVE_PIPELINE_STATUSES)[number]
+    ) &&
+    ["lead", "scoping", "estimating"].includes(currentStatus)
+  ) {
+    await supabase
+      .from("projects")
+      .update({
+        business_status: "estimate_ready",
+        status_updated_at: new Date().toISOString(),
+      })
+      .eq("id", projectId)
+      .eq("org_id", orgId);
+  }
+
+  revalidatePricingDashboard(projectId, pricingDocumentId);
+  redirect(`/app/projects/${projectId}/pricing/${pricingDocumentId}`);
 }
