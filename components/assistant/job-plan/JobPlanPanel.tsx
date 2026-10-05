@@ -12,7 +12,10 @@ import type {
   JobPlanView,
 } from "@/lib/assistant/job-plan/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionFlowClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -169,8 +172,9 @@ export function JobPlanPanel({
       {showCtaBar ? (
         <div
           className={cn(
-            "sticky z-10 -mx-1 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] md:bottom-0",
-            mobileNavBottomClass
+            "sticky z-10 -mx-1 border-t border-border bg-background px-3 pt-3 pb-3 md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+            mobileNavBottomClass,
+            mobileActionFlowClass
           )}
           data-job-plan-cta-bar
           data-action-footer="true"

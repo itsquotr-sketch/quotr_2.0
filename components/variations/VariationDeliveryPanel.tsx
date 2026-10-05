@@ -1,6 +1,12 @@
 "use client";
 
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionDockClass,
+  mobileActionInnerClass,
+  mobileActionSurfaceClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
+import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,7 +112,7 @@ export function VariationDeliveryPanel(props: {
           </Button>
         ) : null}
       </div>
-      <div className={`fixed inset-x-0 z-40 border-t border-border bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden md:bottom-0 ${mobileNavBottomClass}`}>
+      <div className={cn(mobileActionSurfaceClass, "px-3 xl:hidden md:bottom-0 md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]", mobileActionInnerClass, mobileNavBottomClass, mobileActionDockClass)}>
         <Button type="button" size="touch" className="w-full" onClick={openDialog} disabled={pending || Boolean(props.blockedMessage)}>
           {latestSent || sent ? "Resend" : "Send to client"}
         </Button>

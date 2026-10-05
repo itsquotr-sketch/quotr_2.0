@@ -1,6 +1,12 @@
 "use client";
 
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionDockClass,
+  mobileActionInnerClass,
+  mobileActionSurfaceClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -744,7 +750,7 @@ export function VariationEditor(props: EditorProps) {
             </ul>
           )}
           <Button className="mt-3 hidden xl:inline-flex" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
-          <div className={`fixed inset-x-0 z-40 border-t border-border bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden md:bottom-0 ${mobileNavBottomClass}`}>
+          <div className={cn(mobileActionSurfaceClass, "px-3 xl:hidden md:bottom-0 md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]", mobileActionInnerClass, mobileNavBottomClass, mobileActionDockClass)}>
             <Button className="w-full" size="touch" type="button" disabled={!readiness.ready || pending} onClick={() => setConfirmIssue(true)}>Issue revision</Button>
           </div>
         </section>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
 import { Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
+import { mobileQuoteContentPadClass } from "@/components/layout/mobile-nav-metrics";
 import { QuoteMobileActionBar } from "@/components/quotes/QuoteMobileActionBar";
 import { QuoteDisplayControl } from "@/components/quotes/QuoteDisplayControl";
 import { QuotePresentationControl } from "@/components/quotes/QuotePresentationControl";
@@ -358,7 +359,7 @@ export function QuoteWorkspace({
   );
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(8rem+env(safe-area-inset-bottom))] xl:pb-4">
+    <div className={`min-w-0 space-y-4 overflow-x-hidden ${mobileQuoteContentPadClass}`}>
       <div className="print:hidden">
         <QuoteHeader
           quote={quote}

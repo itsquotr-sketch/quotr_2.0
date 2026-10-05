@@ -18,7 +18,7 @@ export function ActionFooter({
     <div
       data-action-footer="true"
       className={cn(
-        "sticky bottom-0 z-10 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+        "sticky bottom-0 z-10 border-t border-border bg-background px-3 pt-3 pb-3 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         className
       )}
       {...props}

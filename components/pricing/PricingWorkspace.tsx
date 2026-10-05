@@ -12,6 +12,7 @@ import {
   PricingAttention,
   PricingStatusNote,
 } from "@/components/pricing/PricingReadiness";
+import { mobileWorkflowContentPadClass } from "@/components/layout/mobile-nav-metrics";
 import { PricingMobileActionBar } from "@/components/pricing/PricingMobileActionBar";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
 import { PricingSummaryPanel } from "@/components/pricing/PricingSummaryPanel";
@@ -436,7 +437,7 @@ export function PricingWorkspace({
   };
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className={`min-w-0 space-y-4 overflow-x-hidden ${mobileWorkflowContentPadClass}`}>
       <PricingHeader
         document={document}
         isSaving={isSaving}

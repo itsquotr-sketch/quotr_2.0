@@ -280,7 +280,9 @@ function main() {
   const pricingWorkspace = read("components/pricing/PricingWorkspace.tsx");
   assert(
     "pricing workspace reserves mobile bar space",
-    pricingWorkspace.includes("safe-area-inset-bottom")
+    pricingWorkspace.includes("mobileWorkflowContentPadClass") &&
+      read("components/layout/mobile-nav-metrics.ts").includes("pb-[11rem] md:pb-0") &&
+      read("components/layout/mobile-nav-metrics.ts").includes("env(safe-area-inset-bottom)")
   );
 
   section("ENVIRONMENT GUARDS");

@@ -459,7 +459,8 @@ check(
     read("components/layout/mobile-nav-metrics.ts").includes(
       "bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
     ) &&
-    pricingWorkspace.includes("env(safe-area-inset-bottom)")
+    pricingWorkspace.includes("mobileWorkflowContentPadClass") &&
+    read("components/layout/mobile-nav-metrics.ts").includes("pb-[11rem] md:pb-0")
 );
 check(
   33.1,

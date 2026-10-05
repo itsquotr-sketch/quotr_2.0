@@ -11,7 +11,10 @@ import type {
   EstimateOverviewAction,
   EstimateOverviewModel,
 } from "@/lib/assistant/presentation/estimate-overview";
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionDockClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 
 const actionButtonClassName = "h-11 min-h-11 w-full sm:w-auto";
@@ -343,8 +346,9 @@ export function EstimateOverview({
         className={cn(
           "order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
           showPrimaryAction &&
-            "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:py-3",
-          showPrimaryAction && mobileNavBottomClass
+            "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:pt-3 max-md:pb-[1.25rem]",
+          showPrimaryAction && mobileNavBottomClass,
+          showPrimaryAction && mobileActionDockClass
         )}
         data-estimate-primary-actions={showPrimaryAction ? "pinned" : "flow"}
       >

@@ -9,7 +9,12 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import { Button } from "@/components/ui/button";
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionDockClass,
+  mobileActionInnerClass,
+  mobileActionSurfaceClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 
 type PricingMobileActionBarProps = {
@@ -54,13 +59,15 @@ export function PricingMobileActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 z-40 border-t bg-background/95 backdrop-blur-sm md:hidden print:hidden",
+        mobileActionSurfaceClass,
+        "md:hidden",
         mobileNavBottomClass,
+        mobileActionDockClass,
         className
       )}
       data-pricing-mobile-action-bar="true"
     >
-      <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
+      <div className={cn("mx-auto flex max-w-lg flex-col gap-3 px-4", mobileActionInnerClass)}>
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-xs font-medium text-muted-foreground">
             {view.showGst ? "Total incl. GST" : "Your final price"}

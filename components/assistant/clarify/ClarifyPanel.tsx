@@ -13,7 +13,10 @@ import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnsw
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
-import { mobileNavBottomClass } from "@/components/layout/mobile-nav-metrics";
+import {
+  mobileActionFlowClass,
+  mobileNavBottomClass,
+} from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 import {
@@ -637,7 +640,7 @@ export function ClarifyPanel({
       ) : null}
 
       <ActionFooter
-        className={cn("-mx-1 md:bottom-0", mobileNavBottomClass)}
+        className={cn("-mx-1 md:bottom-0", mobileNavBottomClass, mobileActionFlowClass)}
         data-clarify-cta-bar=""
       >
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
