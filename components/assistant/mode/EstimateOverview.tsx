@@ -178,7 +178,7 @@ export function EstimateOverview({
       data-estimate-overview
     >
       <header className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Estimate</h1>
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">Estimate</h2>
         <p
           className="mt-1 text-sm font-medium text-foreground"
           data-estimate-overview-status={model.status}

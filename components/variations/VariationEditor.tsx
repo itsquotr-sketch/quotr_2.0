@@ -511,7 +511,7 @@ export function VariationEditor(props: EditorProps) {
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
+          <h2 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h2>
           <p className="text-sm text-muted-foreground">Revision {viewing.revisionNumber}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <StatusBadge variant={variationBadgeVariant({

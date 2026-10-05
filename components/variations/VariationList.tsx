@@ -119,7 +119,7 @@ export function VariationList(props: {
       <div className="flex min-w-0 flex-col gap-5">
       <div className="order-1 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">Variations</h1>
+          <h2 className="text-xl font-semibold tracking-tight">Variations</h2>
           <p className="mt-1 text-sm text-muted-foreground">Changes to the agreed scope and price.</p>
         </div>
         {props.eligible ? (
