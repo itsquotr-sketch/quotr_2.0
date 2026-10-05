@@ -28,7 +28,9 @@ export function PricingAttention({ items, onJump }: PricingAttentionProps) {
     <section className="rounded-xl border border-border bg-card px-4 py-3" data-pricing-attention="true">
       <h2 className="text-base font-semibold leading-snug">Pricing required</h2>
       <p className="mt-1 text-sm leading-5 text-foreground/80">
-        {required.length} {required.length === 1 ? "line still needs" : "lines still need"} a price before this pricing can be confirmed.
+        {required.length === 1
+          ? "1 line still needs a price. Review it before creating the Quote."
+          : `${required.length} lines still need prices. Review them before creating the Quote.`}
       </p>
       <button
         type="button"

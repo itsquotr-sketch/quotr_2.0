@@ -153,6 +153,15 @@ check(
 );
 
 check(
+  "12 unresolved price guidance does not claim review is blocked",
+  readiness.includes("1 line still needs a price. Review it before creating the Quote.") &&
+    readiness.includes("lines still need prices. Review them before creating the Quote.") &&
+    !readiness.includes("before this pricing can be confirmed") &&
+    readiness.includes("Pricing required") &&
+    readiness.includes("Go to the first unresolved Work Area") &&
+    summary.includes("CEILINGS_QUOTE_PR_BLOCK_MESSAGE")
+);
+check(
   "11 viewers read pricing without mutation controls",
   page.includes("getOnboardingAccess") &&
     page.includes("memberCanEditPricing(access.role)") &&
