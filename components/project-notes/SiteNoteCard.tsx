@@ -194,14 +194,7 @@ export function SiteNoteCard({
                 onClick={handleSaveEdit}
                 disabled={isSaving}
               >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  "Save changes"
-                )}
+                {isSaving ? "Saving…" : "Save changes"}
               </Button>
               <Button
                 type="button"
@@ -246,14 +239,7 @@ export function SiteNoteCard({
               onClick={handleConfirmDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Deleting…
-                </>
-              ) : (
-                "Delete note"
-              )}
+              {isDeleting ? "Deleting…" : "Delete note"}
             </Button>
           </DialogFooter>
         </DialogContent>

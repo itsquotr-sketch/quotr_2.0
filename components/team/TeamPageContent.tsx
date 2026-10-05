@@ -53,6 +53,8 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
   } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState("estimator");
+  const [dismissInviteSuccess, setDismissInviteSuccess] = useState(false);
+  if (invitePending && dismissInviteSuccess) setDismissInviteSuccess(false);
   const roles = roleOptionCopy();
   const inviteRoleCopy = roles.find((option) => option.value === inviteRole);
   const activeCount = view.members.filter((member) => member.status === "active").length;
@@ -263,7 +265,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                       disabled={busyId === invite.invitationId}
                       onClick={() => void onCancelInvite(invite.invitationId)}
                     >
-                      Cancel invite
+                      {busyId === invite.invitationId ? "Updating…" : "Cancel invite"}
                     </Button>
                   ) : null}
                 </div>
@@ -278,7 +280,13 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                   <DialogTitle>Invite member</DialogTitle>
                   <DialogDescription>{SEAT_ADD_DISCLOSURE}</DialogDescription>
                 </DialogHeader>
-                <form action={inviteFormAction} className="space-y-4">
+                <form
+                  action={inviteFormAction}
+                  className="space-y-4"
+                  onChange={() => {
+                    if (inviteState.success) setDismissInviteSuccess(true);
+                  }}
+                >
                   {inviteState.error ? (
                     <p
                       role="alert"
@@ -287,10 +295,10 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                       {inviteState.error}
                     </p>
                   ) : null}
-                  {inviteState.success ? (
+                  {inviteState.success && !dismissInviteSuccess && !invitePending ? (
                     <p
                       role="status"
-                      className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm"
+                      className="text-sm text-muted-foreground"
                     >
                       {inviteState.warning ?? "Invitation sent."}
                     </p>
@@ -328,8 +336,8 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                     ) : null}
                   </div>
                   <DialogFooter>
-                    <Button type="submit" className="h-11 min-h-11" disabled={invitePending}>
-                      {invitePending ? "Sending…" : "Send invitation"}
+                    <Button type="submit" className="h-11 min-h-11 min-w-40" disabled={invitePending}>
+                      {invitePending ? "Inviting…" : "Send invitation"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -374,7 +382,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                 if (confirmRemoveId) void onRemove(confirmRemoveId);
               }}
             >
-              Remove
+              {busyId === confirmRemoveId ? "Removing…" : "Remove"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -414,7 +422,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                 }
               }}
             >
-              Change role
+              {pendingRole && busyId === pendingRole.membershipId ? "Updating…" : "Change role"}
             </Button>
           </DialogFooter>
         </DialogContent>

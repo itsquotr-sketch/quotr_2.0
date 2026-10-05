@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   changePassword,
   updateProfileFullName,
@@ -28,11 +28,11 @@ function Alert({
 }) {
   return (
     <p
-      role="alert"
+      role={tone === "error" ? "alert" : "status"}
       className={
         tone === "error"
           ? "rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          : "rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200"
+          : "text-sm text-muted-foreground"
       }
     >
       {children}
@@ -61,6 +61,10 @@ export function ProfilePageContent({
     changePassword,
     initialState
   );
+  const [hideProfileSuccess, setHideProfileSuccess] = useState(false);
+  const [hidePasswordSuccess, setHidePasswordSuccess] = useState(false);
+  if (profilePending && hideProfileSuccess) setHideProfileSuccess(false);
+  if (passwordPending && hidePasswordSuccess) setHidePasswordSuccess(false);
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-8">
@@ -75,11 +79,17 @@ export function ProfilePageContent({
           </p>
         </div>
 
-        <form action={profileAction} className="space-y-4">
+        <form
+          action={profileAction}
+          className="space-y-4"
+          onChange={() => {
+            if (profileState.success) setHideProfileSuccess(true);
+          }}
+        >
           {profileState.error ? (
             <Alert tone="error">{profileState.error}</Alert>
           ) : null}
-          {profileState.success ? (
+          {profileState.success && !hideProfileSuccess && !profilePending ? (
             <Alert tone="success">{profileState.success}</Alert>
           ) : null}
 
@@ -142,7 +152,7 @@ export function ProfilePageContent({
             >
               Open Company settings
             </Link>
-            <Button type="submit" disabled={profilePending} className="sm:w-auto">
+            <Button type="submit" disabled={profilePending} className="min-w-36 sm:w-auto">
               {profilePending ? "Saving…" : "Save changes"}
             </Button>
           </div>
@@ -158,11 +168,18 @@ export function ProfilePageContent({
           </p>
         </div>
 
-        <form action={passwordAction} className="space-y-4" autoComplete="off">
+        <form
+          action={passwordAction}
+          className="space-y-4"
+          autoComplete="off"
+          onChange={() => {
+            if (passwordState.success) setHidePasswordSuccess(true);
+          }}
+        >
           {passwordState.error ? (
             <Alert tone="error">{passwordState.error}</Alert>
           ) : null}
-          {passwordState.success ? (
+          {passwordState.success && !hidePasswordSuccess && !passwordPending ? (
             <Alert tone="success">{passwordState.success}</Alert>
           ) : null}
 
@@ -212,7 +229,7 @@ export function ProfilePageContent({
             />
           </div>
 
-          <Button type="submit" disabled={passwordPending}>
+          <Button type="submit" disabled={passwordPending} className="min-w-40">
             {passwordPending ? "Updating…" : "Change password"}
           </Button>
         </form>

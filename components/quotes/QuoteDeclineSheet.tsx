@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +79,7 @@ export function QuoteDeclineSheet({
       disabled={isPending}
       onClick={submit}
     >
-      {isPending ? <Loader2 className="size-4 animate-spin" /> : "Decline quote"}
+      {isPending ? "Declining…" : "Decline quote"}
     </Button>
   );
 

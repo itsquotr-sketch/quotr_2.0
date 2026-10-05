@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { Button } from "@/components/ui/button";
@@ -81,14 +80,7 @@ export function CreateQuoteButton({
         }
         onClick={handleCreate}
       >
-        {isPending ? (
-          <>
-            <Loader2 className="mr-1.5 size-4 animate-spin" />
-            Creating quote…
-          </>
-        ) : (
-          "Create quote"
-        )}
+        {isPending ? "Creating quote…" : "Create quote"}
       </Button>
       {quoteBlockedReason ? (
         <p

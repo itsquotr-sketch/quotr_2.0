@@ -1,6 +1,5 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,16 +66,27 @@ export function QuoteSummaryPanel({
   onMarkExpired,
 }: QuoteSummaryPanelProps) {
   const [isPending, startTransition] = useTransition();
+  const [pendingAction, setPendingAction] = useState<
+    "sent" | "accepted" | "declined" | "expired" | null
+  >(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const view = quoteDocumentViewModel(quote);
 
-  const runAction = (action?: () => Promise<{ error?: string }>) => {
-    if (!action) return;
+  const runAction = (
+    actionName: "sent" | "accepted" | "declined" | "expired",
+    action?: () => Promise<{ error?: string }>
+  ) => {
+    if (!action || isPending) return;
+    setPendingAction(actionName);
     setStatusError(null);
     startTransition(async () => {
-      const result = await action();
-      if (result?.error) {
-        setStatusError(result.error);
+      try {
+        const result = await action();
+        if (result?.error) {
+          setStatusError(result.error);
+        }
+      } finally {
+        setPendingAction(null);
       }
     });
   };
@@ -160,13 +170,9 @@ export function QuoteSummaryPanel({
                 variant="ghost"
                 className="mt-2 w-full text-muted-foreground"
                 disabled={isPending}
-                onClick={() => runAction(onMarkSent)}
+                onClick={() => runAction("sent", onMarkSent)}
               >
-                {isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Mark sent without email"
-                )}
+                {pendingAction === "sent" ? "Updating…" : "Mark sent without email"}
               </Button>
             </details>
           ) : null}
@@ -176,9 +182,9 @@ export function QuoteSummaryPanel({
               variant="outline"
               className="min-h-11 w-full"
               disabled={isPending}
-              onClick={() => runAction(onMarkAccepted)}
+              onClick={() => runAction("accepted", onMarkAccepted)}
             >
-              Mark accepted manually
+              {pendingAction === "accepted" ? "Accepting…" : "Mark accepted manually"}
             </Button>
           ) : null}
           {canMarkAccepted && onMarkAccepted ? (
@@ -192,9 +198,9 @@ export function QuoteSummaryPanel({
               variant="outline"
               className="min-h-11 w-full"
               disabled={isPending}
-              onClick={() => runAction(onMarkDeclined)}
+              onClick={() => runAction("declined", onMarkDeclined)}
             >
-              Mark declined
+              {pendingAction === "declined" ? "Updating…" : "Mark declined"}
             </Button>
           ) : null}
           {canMarkExpired && onMarkExpired ? (
@@ -203,9 +209,9 @@ export function QuoteSummaryPanel({
               variant="ghost"
               className="min-h-11 w-full text-muted-foreground"
               disabled={isPending}
-              onClick={() => runAction(onMarkExpired)}
+              onClick={() => runAction("expired", onMarkExpired)}
             >
-              Mark expired
+              {pendingAction === "expired" ? "Updating…" : "Mark expired"}
             </Button>
           ) : null}
         </div>

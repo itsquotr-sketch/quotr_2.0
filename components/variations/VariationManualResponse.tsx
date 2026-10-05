@@ -171,7 +171,7 @@ export function VariationManualResponse(props: {
               <DialogFooter className="flex-col gap-2 sm:flex-row">
                 <Button type="button" variant="outline" className="h-11 w-full sm:w-auto" disabled={pending} onClick={close}>Cancel</Button>
                 <Button type="submit" className="h-11 w-full sm:w-auto" disabled={pending}>
-                  {pending ? "Saving…" : outcome === "accepted" ? "Record acceptance" : "Record decline"}
+                  {pending ? (outcome === "accepted" ? "Accepting…" : "Declining…") : outcome === "accepted" ? "Record acceptance" : "Record decline"}
                 </Button>
               </DialogFooter>
             </form>

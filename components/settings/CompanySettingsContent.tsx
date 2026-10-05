@@ -434,7 +434,16 @@ export function CompanySettingsContent({
   }
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden" data-company-settings>
+    <div
+      className="min-w-0 space-y-4 overflow-x-hidden"
+      data-company-settings
+      onInput={() => {
+        if (savedMessage) setSavedMessage(null);
+      }}
+      onChange={() => {
+        if (savedMessage) setSavedMessage(null);
+      }}
+    >
       <CompanySectionPicker activeId={activeSection} onChange={selectSection} />
 
       {canEdit ? null : (
@@ -443,9 +452,6 @@ export function CompanySettingsContent({
         </p>
       )}
       {error ? <StatusMessage variant="error">{error}</StatusMessage> : null}
-      {savedMessage && activeSection !== "work" ? (
-        <StatusMessage variant="success">{savedMessage}</StatusMessage>
-      ) : null}
 
       {activeSection === "overview" ? (
         <div className="grid gap-4 sm:grid-cols-2" data-company-overview>
