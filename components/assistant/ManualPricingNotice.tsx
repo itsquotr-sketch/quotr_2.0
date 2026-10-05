@@ -29,6 +29,8 @@ type ManualPricingScopeFormProps = {
   disabled?: boolean;
   isSaving?: boolean;
   error?: string | null;
+  submitLabel?: string;
+  submitHint?: string | null;
   onContinue: (input: {
     name: string;
     scopeDescription: string;
@@ -41,6 +43,8 @@ export function ManualPricingScopeForm({
   disabled = false,
   isSaving = false,
   error = null,
+  submitLabel = "Continue with manual pricing",
+  submitHint = null,
   onContinue,
 }: ManualPricingScopeFormProps) {
   const [name, setName] = useState(initialName);
@@ -95,6 +99,11 @@ export function ManualPricingScopeForm({
           {shownError}
         </p>
       ) : null}
+      {submitHint ? (
+        <p className="text-xs leading-5 text-muted-foreground" data-manual-continue-role>
+          {submitHint}
+        </p>
+      ) : null}
       <Button
         type="button"
         className="h-11 min-h-11 w-full sm:w-auto"
@@ -102,7 +111,7 @@ export function ManualPricingScopeForm({
         disabled={disabled || isSaving}
         onClick={() => void handleContinue()}
       >
-        {isSaving ? "Saving…" : "Continue with manual pricing"}
+        {isSaving ? "Saving…" : submitLabel}
       </Button>
     </div>
   );

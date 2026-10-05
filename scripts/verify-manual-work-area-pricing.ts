@@ -21,9 +21,13 @@ import { calculateQuoteBaseTotalsFromItems } from "../lib/quotes/base-totals";
 import type { PricingItem } from "../lib/pricing/types";
 import {
   MANUAL_ESTIMATE_SKIPPED_MESSAGE,
+  MANUAL_AREA_PRICE_LABEL,
   MANUAL_PRICING_NOTICE_BODY,
   MANUAL_PRICING_NOTICE_TITLE,
   MANUAL_PRICING_QUOTE_BLOCK,
+  WORK_AREA_INTRODUCTION,
+  ANALYSE_JOB_ROLE,
+  MANUAL_CONTINUE_ROLE,
   MANUAL_WORK_AREA_LINE_MARKER,
   buildManualWorkAreaPricingItemRow,
   copyEnteredManualPrices,
@@ -50,6 +54,18 @@ function check(name: string, ok: boolean, detail = "") {
 const SCOPE = "Supply and lay a 40 square metre concrete driveway, 100 mm thick.";
 
 check("notice is the specified copy", MANUAL_PRICING_NOTICE_TITLE === "You'll price this work yourself" && MANUAL_PRICING_NOTICE_BODY.startsWith("Quotr can include this work"));
+check(
+  "work introduction does not claim every area is estimated",
+  WORK_AREA_INTRODUCTION ===
+    "Review the work Quotr found. Add anything missing; work Quotr cannot calculate can be priced in Pricing." &&
+    !WORK_AREA_INTRODUCTION.toLowerCase().includes("estimate separately")
+);
+check(
+  "manual and analyse actions keep distinct roles",
+  MANUAL_CONTINUE_ROLE.includes("does not analyse") &&
+    ANALYSE_JOB_ROLE.includes("only when you choose it") &&
+    ANALYSE_JOB_ROLE.startsWith("Analyse job")
+);
 check("kitchen keeps its calculator", workAreaTypeHasDetailedCalculator("kitchen") && !isManualPricingWorkAreaType("kitchen"));
 check("kitchen is not marked unsupported", getWorkAreaCapabilityBand("kitchen") !== "unsupported");
 check("custom work has no calculator", !workAreaTypeHasDetailedCalculator("custom") && isManualPricingWorkAreaType("custom"));
@@ -447,6 +463,37 @@ const foldedRows = pricingRowsForOpenManualHandoff({
 check(
   "folding keeps the priced manual line and adds the calculated line",
   foldedRows.length === 1 && foldedRows[0]?.source_estimate_line_item_id === "line-1"
+);
+const deckAdapter = readFileSync("lib/assistant/job-plan/adapters/deck.ts", "utf8");
+const jobPlan = readFileSync("components/assistant/job-plan/JobPlanPanel.tsx", "utf8");
+const workCard = readFileSync("components/assistant/job-plan/JobPlanWorkAreaCard.tsx", "utf8");
+const captureBlock = readFileSync("components/assistant/ProjectCaptureBlock.tsx", "utf8");
+check(
+  "deck footings stay on the Deck card",
+  deckAdapter.includes('label: "Concrete post footings"') &&
+    !deckAdapter.includes(MANUAL_AREA_PRICE_LABEL)
+);
+check(
+  "a manual area is labelled Price in Pricing",
+  MANUAL_AREA_PRICE_LABEL === "Price in Pricing" &&
+    workCard.includes("MANUAL_AREA_PRICE_LABEL") &&
+    workCard.includes('data-price-in-pricing="true"') &&
+    workCard.includes("workAreaTypeHasDetailedCalculator")
+);
+check(
+  "adding beside a calculated area uses the manual continuation and an empty scope",
+  jobPlan.includes("onAddManualWork") &&
+    jobPlan.includes("addingBesideCalculatedWork ? \"\"") &&
+    jobPlan.includes("MANUAL_ADD_WORK_LABEL") &&
+    jobPlan.includes("WORK_AREA_INTRODUCTION") &&
+    !jobPlan.includes("estimate separately")
+);
+check(
+  "job details keeps Analyse job and explains both actions",
+  captureBlock.includes('"Analyse job"') &&
+    captureBlock.includes("MANUAL_CONTINUE_ROLE") &&
+    captureBlock.includes("ANALYSE_JOB_ROLE") &&
+    captureBlock.includes("onClick={onAnalyse}")
 );
 check(
   "job plan copy no longer calls a manual area an estimate",

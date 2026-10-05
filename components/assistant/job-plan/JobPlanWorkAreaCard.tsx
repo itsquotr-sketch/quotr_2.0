@@ -24,6 +24,7 @@ import type {
 import { StatusPill } from "@/components/ui/status-pill";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
+import { MANUAL_AREA_PRICE_LABEL } from "@/lib/work-areas/manual-pricing-route";
 import { PREMIUM } from "@/lib/ui/premium";
 
 const INCLUDED_PREVIEW_LIMIT = 6;
@@ -280,9 +281,16 @@ export function JobPlanWorkAreaCardView({
     >
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
-          <h3 id={headingId} className="text-base font-semibold tracking-tight">
-            {card.name}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 id={headingId} className="text-base font-semibold tracking-tight">
+              {card.name}
+            </h3>
+            {workAreaTypeHasDetailedCalculator(card.workAreaType) ? null : (
+              <StatusPill tone="warning" className="shrink-0">
+                <span data-price-in-pricing="true">{MANUAL_AREA_PRICE_LABEL}</span>
+              </StatusPill>
+            )}
+          </div>
           {card.summary ? (
             <div
               data-job-plan-spec

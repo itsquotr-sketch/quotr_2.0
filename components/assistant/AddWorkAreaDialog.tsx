@@ -27,6 +27,8 @@ type AddWorkAreaDialogProps = {
   onAdd: (workAreaType: string) => Promise<void>;
   showManualPricing?: boolean;
   manualScopeDefault?: string;
+  manualSubmitLabel?: string;
+  manualSubmitHint?: string | null;
   onContinueManual?: (input: {
     name: string;
     scopeDescription: string;
@@ -42,6 +44,8 @@ export function AddWorkAreaDialog({
   onAdd,
   showManualPricing = false,
   manualScopeDefault = "",
+  manualSubmitLabel,
+  manualSubmitHint = null,
   onContinueManual,
 }: AddWorkAreaDialogProps) {
   const [query, setQuery] = useState("");
@@ -167,6 +171,8 @@ export function AddWorkAreaDialog({
               disabled={isSaving}
               isSaving={isSaving}
               error={error}
+              submitLabel={manualSubmitLabel}
+              submitHint={manualSubmitHint}
               onContinue={onContinueManual}
             />
           </div>

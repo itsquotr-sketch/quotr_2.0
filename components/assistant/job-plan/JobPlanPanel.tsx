@@ -4,6 +4,10 @@ import { useState } from "react";
 import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
 import { ManualPricingNotice } from "@/components/assistant/ManualPricingNotice";
 import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
+import {
+  MANUAL_ADD_WORK_LABEL,
+  WORK_AREA_INTRODUCTION,
+} from "@/lib/work-areas/manual-pricing-route";
 import { JobPlanWorkAreaCardView } from "@/components/assistant/job-plan/JobPlanWorkAreaCard";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { getJobPlanQuickSpecEditor } from "@/components/assistant/job-plan/quick-spec-editors";
@@ -103,6 +107,9 @@ export function JobPlanPanel({
   );
   const manualOnly =
     cardsToRender.length > 0 && manualCards.length === cardsToRender.length;
+  const addingBesideCalculatedWork = cardsToRender.some((card) =>
+    workAreaTypeHasDetailedCalculator(card.workAreaType)
+  );
   const [addOpen, setAddOpen] = useState(false);
   const interactive = workspaceEditing || !submitted;
   const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
@@ -138,7 +145,15 @@ export function JobPlanPanel({
               if (out.success) setAddOpen(false);
             }}
             showManualPricing={Boolean(onAddManualWork)}
-            manualScopeDefault={manualScopeDefault}
+            manualScopeDefault={addingBesideCalculatedWork ? "" : manualScopeDefault}
+            manualSubmitLabel={
+              addingBesideCalculatedWork ? MANUAL_ADD_WORK_LABEL : undefined
+            }
+            manualSubmitHint={
+              addingBesideCalculatedWork
+                ? "Adds a separate area. Quotr will not calculate it; you price it in Pricing."
+                : null
+            }
             onContinueManual={
               onAddManualWork
                 ? async (input) => {
@@ -164,8 +179,8 @@ export function JobPlanPanel({
         <p className="text-sm font-medium" data-job-plan-found-heading>
           Here&apos;s the work I found.
         </p>
-        <p className="hidden text-xs text-muted-foreground md:block" data-work-area-term>
-          Work Areas are the main pieces of work Quotr will estimate separately.
+        <p className="text-xs leading-5 text-muted-foreground" data-work-area-term>
+          {WORK_AREA_INTRODUCTION}
         </p>
       </div>
       <div className="flex flex-col gap-3">
@@ -268,7 +283,15 @@ export function JobPlanPanel({
           isSaving={isAddingWorkArea}
           error={addWorkAreaError}
           showManualPricing={Boolean(onAddManualWork)}
-          manualScopeDefault={manualScopeDefault}
+          manualScopeDefault={addingBesideCalculatedWork ? "" : manualScopeDefault}
+          manualSubmitLabel={
+            addingBesideCalculatedWork ? MANUAL_ADD_WORK_LABEL : undefined
+          }
+          manualSubmitHint={
+            addingBesideCalculatedWork
+              ? "Adds a separate area. Quotr will not calculate it; you price it in Pricing."
+              : null
+          }
           onContinueManual={
             onAddManualWork
               ? async (input) => {

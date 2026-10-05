@@ -3381,7 +3381,7 @@ export function AssistantShell({
           {briefSubmitted ? (
             <CollapsibleStageCard
               title="Work"
-              subtitle="Work Areas are the main pieces of work Quotr will estimate separately."
+              subtitle="Review the work Quotr found. Add anything missing; work Quotr cannot calculate can be priced in Pricing."
               statusLabel={
                 workAreasIsCurrent
                   ? "Current"

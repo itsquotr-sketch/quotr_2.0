@@ -15,6 +15,10 @@ import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
 import { NO_WORK_AREAS_ERROR } from "@/lib/ai/analyse-job-contract";
 import {
+  ANALYSE_JOB_ROLE,
+  MANUAL_CONTINUE_ROLE,
+} from "@/lib/work-areas/manual-pricing-route";
+import {
   ManualPricingNotice,
   ManualPricingScopeForm,
 } from "@/components/assistant/ManualPricingNotice";
@@ -234,6 +238,7 @@ export function ProjectCaptureBlock({
                   disabled={disabled}
                   isSaving={isAddingWorkArea}
                   error={addWorkAreaError}
+                  submitHint={MANUAL_CONTINUE_ROLE}
                   onContinue={onContinueManual}
                 />
               ) : (
@@ -270,6 +275,11 @@ export function ProjectCaptureBlock({
                 </>
               ) : null}
             </div>
+          ) : null}
+          {manualRecovery && !isAnalysing ? (
+            <p className="text-xs leading-5 text-muted-foreground" data-analyse-job-role>
+              {ANALYSE_JOB_ROLE}
+            </p>
           ) : null}
           <Button
             type="button"

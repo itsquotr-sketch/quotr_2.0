@@ -106,7 +106,12 @@ function main() {
       stepper.includes('label: "Estimate"')
   );
   assert("backend stepper keys unchanged", stepper.includes('key: "brief"') && stepper.includes('key: "confirm_work_areas"'));
-  assert("Work Areas remain the product term", jobPlan.includes("Work Areas are the main pieces"));
+  assert(
+    "Work introduction does not claim every area is estimated",
+    jobPlan.includes("Review the work Quotr found") &&
+      jobPlan.includes("priced in Pricing") &&
+      !jobPlan.includes("estimate separately")
+  );
   assert("Looks right — continue is the confirm CTA", ASSISTANT_ACTION_LABELS.looksRight === "Looks right — continue");
   assert("Create estimate is the ready CTA", ASSISTANT_ACTION_LABELS.generateEstimate === "Create estimate");
   assert("Estimate now using assumptions kept", ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions.includes("assumptions"));

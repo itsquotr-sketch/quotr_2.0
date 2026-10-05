@@ -23,6 +23,19 @@ export const MANUAL_PRICING_QUOTE_BLOCK =
 export const MANUAL_ESTIMATE_SKIPPED_MESSAGE =
   "Quotr cannot build a detailed estimate for this work. Continue with manual pricing and enter your price.";
 
+export const WORK_AREA_INTRODUCTION =
+  "Review the work Quotr found. Add anything missing; work Quotr cannot calculate can be priced in Pricing.";
+
+export const MANUAL_AREA_PRICE_LABEL = "Price in Pricing";
+
+export const MANUAL_ADD_WORK_LABEL = "Add this work";
+
+export const MANUAL_CONTINUE_ROLE =
+  "Saves this description so you can price it in Pricing. This does not analyse the job again.";
+
+export const ANALYSE_JOB_ROLE =
+  "Analyse job looks again for work Quotr can calculate. It runs only when you choose it.";
+
 /** Marks the one Pricing line for a manual work area. Scope-item stubs do not use it. */
 export const MANUAL_WORK_AREA_LINE_MARKER = "__quotr_manual_work_area_line__:true";
 
