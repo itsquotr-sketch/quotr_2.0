@@ -5,7 +5,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { PricingItemListItem } from "@/components/pricing/PricingItemListItem";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { pricingWorkAreaDomId } from "@/components/pricing/PricingReadiness";
@@ -134,9 +134,16 @@ export function PricingWorkAreaSection({
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold leading-snug">{sectionName}</h3>
-              <Badge variant="secondary" className="text-xs font-normal">
+              <StatusBadge
+                variant={requiredCount > 0 ? "outline" : "default"}
+                className={
+                  requiredCount > 0
+                    ? "border-amber-300/80 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                    : undefined
+                }
+              >
                 {readiness}
-              </Badge>
+              </StatusBadge>
             </div>
             <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs leading-4 text-foreground/75">
               <span>{items.length} {items.length === 1 ? "item" : "items"}</span>

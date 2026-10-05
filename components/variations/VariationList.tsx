@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ import { createDraftVariation, createVariationRevision, deleteUnissuedDraftVaria
 import {
   formatContractMoney,
   formatSignedAdjustment,
+  variationBadgeVariant,
   VARIATION_EMPTY_LIST,
   VARIATION_PRICING_REQUIRED_LABEL,
 } from "@/lib/variations/presentation";
@@ -159,7 +160,19 @@ export function VariationList(props: {
                     {row.revisionNumber == null ? "Current revision pending" : `Revision ${row.revisionNumber}`}
                   </p>
                 </div>
-                <Badge variant="outline">{row.deliveryLabel ?? row.statusLabel}</Badge>
+                <StatusBadge
+                  variant={variationBadgeVariant({
+                    status: row.status,
+                    latestAttempt:
+                      row.deliveryLabel === "Issued · Delivery failed"
+                        ? "failed"
+                        : row.deliveryLabel === "Issued · Sent"
+                          ? "sent"
+                          : null,
+                  })}
+                >
+                  {row.deliveryLabel ?? row.statusLabel}
+                </StatusBadge>
               </div>
               {row.status === "accepted" || row.status === "rejected" ? (
                 <p className="mt-3 break-words text-muted-foreground" data-variation-list-scan="true">

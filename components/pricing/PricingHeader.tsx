@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { getPricingStatusDefinition } from "@/lib/pricing/status";
 import type { PricingDocument } from "@/lib/pricing/types";
@@ -33,7 +33,7 @@ export function PricingHeader({
             <h1 className="text-lg font-semibold leading-6 tracking-tight sm:text-xl">
               Pricing
             </h1>
-            <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
+            <StatusBadge variant={statusDef.variant}>{statusDef.label}</StatusBadge>
           </div>
           {statusNote}
         </div>

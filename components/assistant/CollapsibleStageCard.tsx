@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -54,13 +54,26 @@ const cardVariantStyles: Record<StageStatusVariant, string> = {
   needs_input: "border-[var(--brand-orange-muted)] ring-1 ring-[var(--brand-orange)]/15",
 };
 
-const badgeVariantStyles: Record<StageStatusVariant, string> = {
-  current:
-    "border-transparent bg-[var(--brand-orange-muted)] text-[var(--brand-orange)]",
-  complete: "border-transparent bg-muted/60 text-muted-foreground",
-  review: "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  stale: "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  needs_input: "border-transparent bg-primary/10 text-primary",
+const stageBadgeVariant: Record<
+  StageStatusVariant,
+  "default" | "secondary" | "outline"
+> = {
+  current: "secondary",
+  complete: "default",
+  review: "outline",
+  stale: "outline",
+  needs_input: "outline",
+};
+
+const badgeVariantStyles: Record<StageStatusVariant, string | undefined> = {
+  current: undefined,
+  complete: undefined,
+  review:
+    "border-amber-300/80 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
+  stale:
+    "border-amber-300/80 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
+  needs_input:
+    "border-amber-300/80 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100",
 };
 
 export function CollapsibleStageCard({
@@ -168,15 +181,12 @@ export function CollapsibleStageCard({
                 {title}
               </span>
               {statusLabel ? (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "shrink-0 text-[10px] font-normal",
-                    badgeVariantStyles[statusVariant]
-                  )}
+                <StatusBadge
+                  variant={stageBadgeVariant[statusVariant]}
+                  className={badgeVariantStyles[statusVariant]}
                 >
                   {statusLabel}
-                </Badge>
+                </StatusBadge>
               ) : null}
             </div>
             {isExpanded && subtitle ? (

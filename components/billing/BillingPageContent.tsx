@@ -7,7 +7,7 @@ import {
   startCustomerPortal,
   upgradeToBusiness,
 } from "@/lib/billing/billing-actions";
-import type { BillingPageView } from "@/lib/billing/billing-page-view";
+import type { BillingPageKind, BillingPageView } from "@/lib/billing/billing-page-view";
 import {
   formatExclusivePlusGst,
   PLAN_DISPLAY_CATALOGUE,
@@ -20,6 +20,7 @@ import {
   BUSINESS_PLAN_SUMMARY,
 } from "@/lib/billing/plan-copy";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Card,
   CardContent,
@@ -39,6 +40,24 @@ function isErrorView(
   value: BillingPageView | { error: string }
 ): value is { error: string } {
   return "error" in value && !("kind" in value);
+}
+
+function billingBadgeVariant(
+  kind: BillingPageKind
+): "default" | "secondary" | "outline" | "destructive" {
+  switch (kind) {
+    case "active":
+    case "comped":
+    case "custom":
+      return "default";
+    case "trial":
+      return "secondary";
+    case "past_due":
+    case "unpaid":
+      return "destructive";
+    default:
+      return "outline";
+  }
 }
 
 export function BillingPageContent({
@@ -180,7 +199,10 @@ export function BillingPageContent({
       {view.kind === "trial" && view.trial ? (
         <Card>
           <CardHeader>
-            <CardTitle>Quotr Trial</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              Quotr Trial
+              <StatusBadge variant="secondary">{view.statusLabel}</StatusBadge>
+            </CardTitle>
             <CardDescription>Business features · 1 user</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
@@ -203,7 +225,11 @@ export function BillingPageContent({
         <Card>
           <CardHeader>
             <CardTitle>{view.planLabel ?? "Current plan"}</CardTitle>
-            <CardDescription>{view.statusLabel}</CardDescription>
+            <CardDescription>
+              <StatusBadge variant={billingBadgeVariant(view.kind)}>
+                {view.statusLabel}
+              </StatusBadge>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             {view.monthlyPriceLabel ? <p>{view.monthlyPriceLabel}</p> : null}

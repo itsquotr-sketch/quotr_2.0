@@ -22,6 +22,7 @@ import {
 import { VariationDocument } from "@/components/variations/VariationDocument";
 import { VariationRatePicker, variationRateSourceText, type VariationRateChoice } from "@/components/variations/VariationRatePicker";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -83,6 +84,7 @@ import {
   sellFromKnownCost,
   signedUnitFromMagnitude,
   variationIssueReadiness,
+  variationBadgeVariant,
   variationDeliveryListLabel,
   variationStatusLabel,
   variationUnitLineReadout,
@@ -511,10 +513,13 @@ export function VariationEditor(props: EditorProps) {
           <h1 className="text-xl font-semibold text-foreground">Variation {props.variation.variationNumber}</h1>
           <p className="text-sm text-muted-foreground">Revision {viewing.revisionNumber}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{variationDeliveryListLabel({
+            <StatusBadge variant={variationBadgeVariant({
               status: viewing.status,
               latestAttempt: latestDelivery(props.deliveries, viewing.id),
-            }) ?? variationStatusLabel(viewing.status)}</Badge>
+            })}>{variationDeliveryListLabel({
+              status: viewing.status,
+              latestAttempt: latestDelivery(props.deliveries, viewing.id),
+            }) ?? variationStatusLabel(viewing.status)}</StatusBadge>
             <span className="text-sm text-muted-foreground">{historical ? "Historical revision" : "Current revision"}</span>
           </div>
         </div>

@@ -66,7 +66,7 @@ export const BUSINESS_STATUSES: BusinessStatusDefinition[] = [
     value: "quote_draft",
     label: "Quote draft",
     description: "Quote is being prepared.",
-    variant: "outline",
+    variant: "secondary",
     sortOrder: 60,
   },
   {

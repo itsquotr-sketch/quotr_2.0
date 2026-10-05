@@ -625,6 +625,30 @@ export function revisionTotalsFromItems(
   return variationRevisionTotals(prepared, gstRate);
 }
 
+/** Presentation only. Does not change the stored status. */
+export function variationBadgeVariant(input: {
+  status: VariationStatus;
+  latestAttempt?: "sent" | "failed" | null;
+}): "default" | "secondary" | "outline" | "destructive" {
+  if (input.status === "issued" && input.latestAttempt === "failed") {
+    return "destructive";
+  }
+  switch (input.status) {
+    case "draft":
+      return "secondary";
+    case "issued":
+    case "accepted":
+      return "default";
+    case "rejected":
+      return "destructive";
+    case "withdrawn":
+    case "superseded":
+      return "outline";
+    default:
+      return "secondary";
+  }
+}
+
 /** List label only. It does not replace the Variation status. */
 export function variationDeliveryListLabel(input: {
   status: VariationStatus;

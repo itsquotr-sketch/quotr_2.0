@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { getBusinessStatusDefinition } from "@/lib/projects/status";
 import type { BusinessStatus } from "@/lib/projects/status";
 import { cn } from "@/lib/utils";
@@ -17,15 +17,11 @@ export function BusinessStatusBadge({
   const definition = getBusinessStatusDefinition(status);
 
   return (
-    <Badge
+    <StatusBadge
       variant={definition.variant}
-      className={cn(
-        "shrink-0 text-xs font-normal",
-        muted && "opacity-70",
-        className
-      )}
+      className={cn(muted && "opacity-70", className)}
     >
       {definition.label}
-    </Badge>
+    </StatusBadge>
   );
 }

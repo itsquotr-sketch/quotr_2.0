@@ -60,7 +60,7 @@ export function ProjectMobileCard({
           <BusinessStatusBadge
             status={project.business_status}
             muted={muted}
-            className="text-[10px]"
+            className="max-w-full"
           />
           <ProjectActionsMenu project={project} variant="card" />
         </div>

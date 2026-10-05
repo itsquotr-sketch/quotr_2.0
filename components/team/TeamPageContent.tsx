@@ -12,6 +12,7 @@ import { SEAT_ADD_DISCLOSURE, SEAT_REMOVE_DISCLOSURE } from "@/lib/billing/seat-
 import { roleOptionCopy, type TeamPageView } from "@/lib/team/team-page-view";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type MembershipRole } from "@/lib/team/roles";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -190,11 +191,11 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                     option.value === member.role &&
                     (view.actorRole === "admin" ? option.value !== "admin" : true)
                 ) ? (
-                  <p className="text-sm">
+                  <StatusBadge variant="secondary">
                     {member.status === "pending_billing"
                       ? "Joining"
                       : ROLE_LABELS[member.role]}
-                  </p>
+                  </StatusBadge>
                 ) : (
                   <select
                     className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:text-sm"
@@ -247,8 +248,10 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{invite.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {ROLE_LABELS[invite.role]} · pending · no access until accepted
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <StatusBadge variant="secondary">{ROLE_LABELS[invite.role]}</StatusBadge>
+                      <StatusBadge variant="secondary">Pending</StatusBadge>
+                      <span>no access until accepted</span>
                     </p>
                   </div>
                   {view.canInvite ? (

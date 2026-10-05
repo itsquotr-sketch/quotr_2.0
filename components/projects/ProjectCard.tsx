@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Card,
   CardContent,
@@ -18,6 +18,10 @@ import {
   formatProjectDate,
 } from "@/lib/projects/format";
 import { getProjectNextAction } from "@/lib/projects/next-action";
+import {
+  formatContractorQuoteStatusLabel,
+  getQuoteStatusDefinition,
+} from "@/lib/quotes/status";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +73,7 @@ export function ProjectCard({ project, prefetch = true }: ProjectCardProps) {
                 />
                 <PriorityBadge priority={project.priority} />
                 {project.archived_at ? (
-                  <Badge variant="outline">Archived</Badge>
+                  <StatusBadge variant="outline">Archived</StatusBadge>
                 ) : null}
               </div>
             </div>
@@ -85,9 +89,14 @@ export function ProjectCard({ project, prefetch = true }: ProjectCardProps) {
           <CardContent className="space-y-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
               {showWorkflowBadge ? (
-                <Badge
+                <StatusBadge
                   variant={
-                    estimateDisplay.variant === "warning" ? "outline" : "secondary"
+                    estimateDisplay.variant === "default"
+                      ? "default"
+                      : estimateDisplay.variant === "outline" ||
+                          estimateDisplay.variant === "warning"
+                        ? "outline"
+                        : "secondary"
                   }
                   className={
                     estimateDisplay.variant === "warning"
@@ -96,23 +105,26 @@ export function ProjectCard({ project, prefetch = true }: ProjectCardProps) {
                   }
                 >
                   {estimateDisplay.label}
-                </Badge>
+                </StatusBadge>
               ) : null}
               {project.pricing_summary ? (
-                <Badge variant="outline">
+                <StatusBadge
+                  variant={
+                    project.pricing_summary.status === "reviewed" ? "default" : "secondary"
+                  }
+                >
                   Pricing{" "}
                   {project.pricing_summary.status === "reviewed"
                     ? "reviewed"
                     : "draft"}
-                </Badge>
+                </StatusBadge>
               ) : null}
               {project.quote_summary ? (
-                <Badge
-                  variant="outline"
-                  className="border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]"
+                <StatusBadge
+                  variant={getQuoteStatusDefinition(project.quote_summary.status).variant}
                 >
-                  Quote {project.quote_summary.status}
-                </Badge>
+                  {formatContractorQuoteStatusLabel(project.quote_summary.status)}
+                </StatusBadge>
               ) : null}
             </div>
 

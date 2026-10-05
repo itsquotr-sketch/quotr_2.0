@@ -61,7 +61,7 @@ export function ProjectRow({ project, prefetch = true }: ProjectRowProps) {
       <BusinessStatusBadge
         status={project.business_status}
         muted={isClosedStatus || isArchived}
-        className="w-fit text-[10px]"
+        className="max-w-full"
       />
       <p className="whitespace-nowrap text-xs text-muted-foreground">{updated}</p>
       <Link

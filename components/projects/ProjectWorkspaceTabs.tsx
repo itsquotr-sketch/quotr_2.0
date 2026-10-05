@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
 import type { PricingSummary } from "@/lib/pricing/types";
 import { projectWorkflowRoutes } from "@/lib/projects/workflow-orientation";
-import { formatContractorQuoteStatusLabel } from "@/lib/quotes/status";
+import {
+  formatContractorQuoteStatusLabel,
+  getQuoteStatusDefinition,
+} from "@/lib/quotes/status";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { cn } from "@/lib/utils";
 
@@ -93,9 +96,7 @@ export function ProjectWorkspaceTabs({
             >
               Pricing
               {pricingSummary?.status === "reviewed" ? (
-                <Badge variant="outline" className="text-[10px]">
-                  Reviewed
-                </Badge>
+                <StatusBadge variant="default">Reviewed</StatusBadge>
               ) : null}
             </Link>
           ) : (
@@ -119,9 +120,7 @@ export function ProjectWorkspaceTabs({
             >
               Pricing
               {pricingNotStarted ? (
-                <Badge variant="outline" className="text-[10px]">
-                  Not started
-                </Badge>
+                <StatusBadge variant="secondary">Not started</StatusBadge>
               ) : null}
             </button>
           )}
@@ -138,9 +137,9 @@ export function ProjectWorkspaceTabs({
               )}
             >
               Quote
-              <Badge variant="outline" className="text-[10px]">
+              <StatusBadge variant={getQuoteStatusDefinition(quoteSummary!.status).variant}>
                 {formatContractorQuoteStatusLabel(quoteSummary!.status)}
-              </Badge>
+              </StatusBadge>
             </Link>
           ) : (
             <span
@@ -155,9 +154,7 @@ export function ProjectWorkspaceTabs({
               )}
             >
               Quote
-              <Badge variant="outline" className="text-[10px]">
-                Not started
-              </Badge>
+              <StatusBadge variant="secondary">Not started</StatusBadge>
             </span>
           )}
 

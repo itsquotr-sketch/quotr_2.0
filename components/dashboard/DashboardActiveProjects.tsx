@@ -106,7 +106,7 @@ function ActiveProjectRow({
             >
               {project.title}
             </Link>
-            <BusinessStatusBadge status={project.business_status} className="shrink-0 text-[10px]" />
+            <BusinessStatusBadge status={project.business_status} className="max-w-[45%]" />
           </div>
           {place ? (
             <p className="truncate text-xs text-muted-foreground">{place}</p>
@@ -139,7 +139,7 @@ function ActiveProjectRow({
             ) : null}
           </div>
         </div>
-        <BusinessStatusBadge status={project.business_status} className="w-fit text-[10px]" />
+        <BusinessStatusBadge status={project.business_status} className="max-w-full" />
         <p className="truncate text-xs text-muted-foreground">{state}</p>
         <p className="truncate text-xs text-muted-foreground">{updated}</p>
         <Link

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { BusinessStatusControl } from "@/components/projects/BusinessStatusControl";
 import { PriorityBadge } from "@/components/projects/ProjectMeta";
 import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
@@ -51,7 +51,7 @@ export function ProjectHeader({
                   currentStatus={project.business_status}
                 />
               ) : (
-                <Badge variant="outline">Archived</Badge>
+                <StatusBadge variant="outline">Archived</StatusBadge>
               )}
               <PriorityBadge priority={project.priority} />
             </div>

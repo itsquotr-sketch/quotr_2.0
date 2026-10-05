@@ -23,7 +23,7 @@ export function StatusPill({
     <span
       data-status-pill={tone}
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex h-auto max-w-full items-center overflow-visible whitespace-normal rounded-2xl border px-2 py-0.5 text-xs font-medium leading-4 shadow-none",
         TONE[tone],
         className
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { formatPricingDate } from "@/lib/pricing/format";
 import {
@@ -45,7 +45,7 @@ export function QuoteHeader({
             <h1 className="text-lg font-semibold leading-6 tracking-tight sm:text-xl">
               Quote
             </h1>
-            <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
+            <StatusBadge variant={statusDef.variant}>{statusDef.label}</StatusBadge>
           </div>
           <p className="text-sm font-medium text-foreground">
             {formatQuoteNumberRevision(quote)}
