@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolveConfiguredSiteOrigin } from "@/lib/auth/site-url";
+import { resolveRfqPublicOrigin } from "@/lib/rfqs/origin";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
@@ -135,7 +135,7 @@ async function deliverRecipient(input: {
   if (begun.error || delivery.ok !== true || !delivery.deliveryId) return "failed";
   if (delivery.status === "sent" || delivery.status === "delivered") return "sent";
   if (delivery.status === "failed") return "failed";
-  const origin = resolveConfiguredSiteOrigin();
+  const origin = resolveRfqPublicOrigin();
   const from = rfqDeliveryFromHeader(input.builderName);
   const provider = getQuoteDeliveryProvider();
   if (!origin || !from || !provider.isConfigured()) {
