@@ -33,7 +33,7 @@ import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { probeProjectSchemaColumns } from "@/lib/projects/query-utils";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { markAnalytics, startAnalyticsClock, analyticsClock } from "@/lib/analytics/server-timing";
+import { analyticsClock } from "@/lib/analytics/server-timing";
 import { createClient } from "@/lib/supabase/server";
 
 const QUERY_LIMIT = 2000;
@@ -60,6 +60,27 @@ export type AnalyticsPageData =
     };
 
 /**
+ * One clock for this call. React cache() keeps the layout marks on a full page
+ * render. A server action does not share that cache between calls, so the
+ * loader holds this object and writes every later mark onto it.
+ */
+function boundAnalyticsClock(): {
+  mark: (name: string) => void;
+  marks: Record<string, number>;
+} {
+  const clock = analyticsClock();
+  if (!clock.t0) clock.t0 = Date.now();
+  const marks = clock.marks;
+  const t0 = clock.t0;
+  return {
+    marks,
+    mark(name: string) {
+      marks[name] = Date.now() - t0;
+    },
+  };
+}
+
+/**
  * Organisation comes from the signed-in profile. Entitlement is checked
  * before any aggregate query. Business tables are not read for Builder.
  */
@@ -71,9 +92,9 @@ export async function loadAnalyticsPage(
     recordPage?: { kind: "sent" | "accepted"; offset: number };
   }
 ): Promise<AnalyticsPageData> {
-  startAnalyticsClock();
+  const clock = boundAnalyticsClock();
   const auth = await requireAuthOrgContext();
-  markAnalytics("pageAuth");
+  clock.mark("pageAuth");
   if (!auth.ok) {
     return { kind: "unauthenticated" };
   }
@@ -90,7 +111,7 @@ export async function loadAnalyticsPage(
   }
 
   const business = await requireOrgEntitlement(orgId, "analytics.business");
-  markAnalytics("entitlement");
+  clock.mark("entitlement");
   const tier = analyticsTierFromDecisions({
     personalOk: true,
     businessOk: business.ok,
@@ -111,6 +132,7 @@ export async function loadAnalyticsPage(
     options?.from,
     options?.to,
     tier,
+    clock,
     options?.recordPage
   );
   if ("kind" in view) return view;
@@ -134,6 +156,7 @@ async function queryAndPresent(
   from: string | undefined,
   to: string | undefined,
   tier: AnalyticsTier,
+  clock: { mark: (name: string) => void; marks: Record<string, number> },
   recordPage?: { kind: "sent" | "accepted"; offset: number }
 ): Promise<AnalyticsView | { kind: "invalid_range"; error: string; timeZone: string }> {
   const tables = analyticsTablesForTier(tier);
@@ -153,7 +176,7 @@ async function queryAndPresent(
   }
   const window = resolved.window;
   const started = Date.now();
-  markAnalytics("schema");
+  clock.mark("schema");
 
   const canReadPipeline =
     schema.lifecycleAvailable && schema.businessStatusAvailable;
@@ -181,7 +204,7 @@ async function queryAndPresent(
   const [[activeCount, sends, acceptedSnapshots, estimates], [pipeline, variationRows, pricing]] =
     await Promise.all([headlinePromise, independentPromise]);
   const wave1Ms = Date.now() - started;
-  markAnalytics("headline");
+  clock.mark("headline");
   const names = new Map<string, string>();
 
   let projects: AnalyticsProject[] = [];
@@ -226,7 +249,7 @@ async function queryAndPresent(
       : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
   ]);
   const wave2Ms = Date.now() - dependentStarted;
-  markAnalytics("detail");
+  clock.mark("detail");
   projects = pipeline.rows;
   projectsTruncated = pipeline.truncated;
   cohortSnapshots = cohort;
@@ -295,13 +318,13 @@ async function queryAndPresent(
     },
   });
 
-  markAnalytics("aggregate");
+  clock.mark("aggregate");
   const finished = Date.now();
-  markAnalytics("response");
+  clock.mark("response");
   return presentAnalytics(measured, tier, window, recordPage, finished - started, {
     wave1Ms,
     wave2Ms,
-    serverTiming: { ...analyticsClock().marks },
+    serverTiming: { ...clock.marks },
   });
 }
 

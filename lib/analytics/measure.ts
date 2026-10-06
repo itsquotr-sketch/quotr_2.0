@@ -862,6 +862,9 @@ function rateSourceLabel(raw: string | null): string {
   if (raw == null || raw.trim() === "") return "Not recorded";
   const token = raw.trim().toLowerCase();
   if (token === "missing" || token === "rate_missing") return "Pricing required";
+  if (token === "user_rate" || token === "work_area_rate" || token === "calibrated_productivity") {
+    return "Your rates";
+  }
   const source = classifyRateSource(raw);
   if (source === "user_rate" || source === "work_area_rate" || source === "calibrated_productivity") {
     return "Your rates";

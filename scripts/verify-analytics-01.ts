@@ -824,6 +824,20 @@ const mixed = measureAnalytics({
       rateSource: "missing",
       costStored: false,
     },
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      workAreaName: "Deck",
+      rateSource: "user_rate",
+      costStored: true,
+    },
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      workAreaName: "Fence",
+      rateSource: "work_area_rate",
+      costStored: false,
+    },
   ],
   pricingItems: [
     {
@@ -874,7 +888,7 @@ check(
   "blank rate source is not recorded and a missing cost is not zero",
   mixed.rateSources?.some((row) => row.label === "Not recorded" && row.lines === 1) &&
     mixed.rateSources?.some((row) => row.label === "Pricing required" && row.lines === 1) &&
-    mixed.rateSources?.some((row) => row.label === "Your rates" && row.lines === 1) &&
+    mixed.rateSources?.some((row) => row.label === "Your rates" && row.lines === 3) &&
     !("cost" in (mixed.rateSources?.[0] ?? {}))
 );
 check(
