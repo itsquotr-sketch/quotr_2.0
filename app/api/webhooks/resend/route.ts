@@ -97,6 +97,23 @@ export async function POST(request: Request) {
     await admin.from("quote_deliveries").update(patch).eq("id", delivery.id);
   }
 
+  if (
+    providerMessageId &&
+    incoming &&
+    (incoming === "delivered" || incoming === "failed" || incoming === "bounced" || incoming === "complained")
+  ) {
+    const rfqEvent = await admin.rpc("apply_rfq_delivery_event_v1", {
+      p_provider_message_id: providerMessageId,
+      p_status: incoming,
+    });
+    if (
+      rfqEvent.error &&
+      !/apply_rfq_delivery_event_v1|schema cache|does not exist|PGRST202/i.test(rfqEvent.error.message)
+    ) {
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+  }
+
   if (providerMessageId) {
     const incomingNotification =
       mapResendEventToNotificationDeliveryStatus(type);

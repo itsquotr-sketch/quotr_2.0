@@ -1,0 +1,416 @@
+/**
+ * RFQ phase 2.
+ *
+ * Static: npx tsx scripts/verify-rfq-01.ts
+ * Live Preview: npx tsx scripts/verify-rfq-01.ts --live
+ */
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { createClient } from "@supabase/supabase-js";
+import { evaluateOrgEntitlement } from "../lib/billing/entitlements";
+import { planAllowsCapability, trialAllowsCapability } from "../lib/billing/entitlement-matrix";
+import { buildInternalTrialSubscription } from "../lib/billing/trial";
+import type { OrgBillingState } from "../lib/billing/types";
+import {
+  PREVIEW_SUPABASE_PROJECT_REF,
+  PRODUCTION_SUPABASE_PROJECT_REF,
+} from "../lib/deployment/environment";
+import { buildRfqDeliveryEmail } from "../lib/rfqs/email";
+import { RFQ_WITHHELD } from "../lib/rfqs/shared";
+import { rfqResponseLabel } from "../lib/rfqs/states";
+import { generateRfqAccessToken, hashRfqAccessToken, isRfqAccessTokenFormat } from "../lib/rfqs/token";
+import { permissionsForRole, roleAllowsPermission } from "../lib/team/permissions";
+
+function assert(label: string, ok: boolean) {
+  console.log(ok ? "PASS" : "FAIL", label);
+  if (!ok) process.exitCode = 1;
+}
+
+function read(rel: string): string {
+  return readFileSync(join(process.cwd(), rel), "utf8");
+}
+
+function section(title: string) {
+  console.log(`\n=== ${title} ===\n`);
+}
+
+function parseEnvFile(filePath: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  if (!existsSync(filePath)) return env;
+  for (const raw of readFileSync(filePath, "utf8").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const idx = line.indexOf("=");
+    let value = line.slice(idx + 1);
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    env[line.slice(0, idx)] = value;
+  }
+  return env;
+}
+
+function hostnameRef(url: string): string {
+  return new URL(url).hostname.split(".")[0] ?? "";
+}
+
+function staticMain() {
+  console.log("=== rfq phase 2 ===");
+  const sql = read("supabase/migrations/090_rfq_requests.sql");
+  const actions = read("lib/rfqs/actions.ts");
+  const email = read("lib/rfqs/email.ts");
+  const rates = read("lib/estimate/rates.ts");
+  const mobile = read("components/layout/mobile-nav.tsx");
+  const header = read("components/projects/ProjectSectionHeader.tsx");
+  const composer = read("components/rfqs/RfqComposer.tsx");
+  const detail = read("components/rfqs/RfqDetailView.tsx");
+  const pub = read("components/rfqs/RfqPublicExperience.tsx");
+  const webhook = read("app/api/webhooks/resend/route.ts");
+
+  section("ENTITLEMENT");
+  const now = new Date("2026-10-07T00:00:00.000Z");
+  const billingBase = {
+    orgId: "00000000-0000-4000-8000-000000000001",
+    billingEnvironment: "test" as const,
+    customer: null,
+    activeOverride: null,
+    effectiveTrialState: null,
+  };
+  const billingState = (subscription: OrgBillingState["subscription"]): OrgBillingState => ({
+    ...billingBase,
+    subscription,
+  });
+  const activeTrial = buildInternalTrialSubscription({
+    id: "trial-active",
+    orgId: billingBase.orgId,
+    billingEnvironment: "test",
+    now,
+    trialEndsAt: new Date("2026-11-01T00:00:00.000Z"),
+  });
+  const expiredTrial = buildInternalTrialSubscription({
+    id: "trial-expired",
+    orgId: billingBase.orgId,
+    billingEnvironment: "test",
+    now,
+    trialEndsAt: new Date("2026-09-01T00:00:00.000Z"),
+  });
+  assert(
+    "Builder and Business already allow projects.create",
+    planAllowsCapability("builder", "projects.create") && planAllowsCapability("business", "projects.create")
+  );
+  assert("active trial allows projects.create", trialAllowsCapability("projects.create") && evaluateOrgEntitlement({
+    state: billingState(activeTrial),
+    capability: "projects.create",
+    mode: "strict",
+    now,
+  }).ok);
+  assert(
+    "expired trial denies projects.create",
+    evaluateOrgEntitlement({
+      state: billingState(expiredTrial),
+      capability: "projects.create",
+      mode: "strict",
+      now,
+    }).ok === false
+  );
+  assert(
+    "RFQ writes use projects.edit and projects.create",
+    actions.includes('permission: "projects.edit"') && actions.includes('entitlement: "projects.create"')
+  );
+  assert("Viewer cannot edit projects", !roleAllowsPermission("viewer", "projects.edit"));
+  assert(
+    "owner admin and estimator can edit projects",
+    (["owner", "admin", "estimator"] as const).every((role) => permissionsForRole(role).includes("projects.edit"))
+  );
+  assert("no new RFQ capability key", !read("lib/billing/capabilities.ts").includes("rfq"));
+
+  section("ISOLATION");
+  assert("request freezes sent content", sql.includes("RFQ_FROZEN") && sql.includes("status = 'sent'"));
+  assert("delivery is separate from response", sql.includes("rfq_deliveries") && sql.includes("response_state"));
+  assert("awaiting is labelled No response", rfqResponseLabel("awaiting") === "No response");
+  assert("declined is explicit", rfqResponseLabel("declined") === "Declined to quote");
+  assert("public lookup does not return client identity", !sql.includes("'clientName'") && sql.includes("'builderName'"));
+  assert("withheld list names pricing and client", RFQ_WITHHELD.includes("Pricing") && RFQ_WITHHELD.includes("Client name and email"));
+  assert("files are explicit", composer.includes("Nothing is shared until you select it"));
+  const mail = buildRfqDeliveryEmail({
+    builderName: "Ada Builders",
+    contactName: "Bea",
+    scopeLabel: "Bathroom",
+    responseDueOn: null,
+    publicUrl: "https://example.test/r/rfq_example",
+  });
+  assert("email carries the link and not a price", mail.text.includes("https://example.test/r/rfq_example") && !mail.text.includes("$") && !email.includes("client_name"));
+  assert("no award control", !detail.includes("Award") && !detail.includes("notify the subcontractor of acceptance"));
+  assert("later pricing is not this phase", detail.includes("Choosing a price for the job is a later step"));
+  assert("rate resolver is untouched", rates.includes("export function resolveRate") && !actions.includes("resolveRate"));
+  assert("inbound mail is not parsed into a price", actions.includes("Inbound email is not captured"));
+  assert("tokens are hashed", sql.includes("token_hash") && !sql.includes("raw_token"));
+  assert("public writes are rate limited", sql.includes("rfq_public_rate_ok"));
+  assert("response versions stay", sql.includes("RFQ_RESPONSE_FROZEN") && sql.includes("version_number"));
+  assert("webhook does not mark a response from email", webhook.includes("apply_rfq_delivery_event_v1") && !webhook.includes("response_state"));
+  assert("mobile nav stays five items", mobile.includes('data-mobile-nav="five"') && !mobile.includes("/requests"));
+  assert("project sections stay four columns", header.includes('data-project-section-columns="four"') && header.includes("Requests"));
+  assert("public page has no sign-in", !pub.includes("requireAuth"));
+  assert("token format is unguessable length", isRfqAccessTokenFormat(generateRfqAccessToken()) && hashRfqAccessToken("rfq_x").length === 64);
+}
+
+async function liveMain() {
+  section("LIVE PREVIEW");
+  const local = parseEnvFile(join(process.cwd(), ".env.local"));
+  const url = local.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = local.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const service = local.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !anonKey || !service) {
+    assert("Preview env present", false);
+    return;
+  }
+  const ref = hostnameRef(url);
+  assert("live target is Preview", ref === PREVIEW_SUPABASE_PROJECT_REF);
+  if (ref !== PREVIEW_SUPABASE_PROJECT_REF || ref === PRODUCTION_SUPABASE_PROJECT_REF) {
+    throw new Error("Refusing non-Preview Supabase URL");
+  }
+  const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+  const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const suffix = randomUUID().slice(0, 8);
+  const password = `rfq-${randomUUID()}`;
+  const orgA = randomUUID();
+  const orgB = randomUUID();
+  const projectId = randomUUID();
+  const userIds: string[] = [];
+
+  async function userFor(role: "owner" | "viewer", orgId: string) {
+    const email = `rfq-${role}-${orgId.slice(0, 8)}-${suffix}@example.invalid`;
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (created.error || !created.data.user) throw new Error(created.error?.message ?? "user");
+    userIds.push(created.data.user.id);
+    const profile = await admin.from("profiles").upsert({
+      id: created.data.user.id, org_id: orgId, role, full_name: `RFQ ${role}`,
+    });
+    if (profile.error) throw new Error(profile.error.message);
+    const membership = await admin.from("organisation_memberships").insert({
+      org_id: orgId, user_id: created.data.user.id, role, status: "active", joined_at: new Date().toISOString(),
+    });
+    if (membership.error) throw new Error(membership.error.message);
+    const client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const signed = await client.auth.signInWithPassword({ email, password });
+    if (signed.error) throw new Error(signed.error.message);
+    return client;
+  }
+
+  try {
+    for (const org of [
+      { id: orgA, name: `RFQ A ${suffix}` },
+      { id: orgB, name: `RFQ B ${suffix}` },
+    ]) {
+      const inserted = await admin.from("organisations").insert(org);
+      if (inserted.error) throw new Error(inserted.error.message);
+    }
+    const owner = await userFor("owner", orgA);
+    const viewer = await userFor("viewer", orgA);
+    const foreign = await userFor("owner", orgB);
+    const project = await admin.from("projects").insert({
+      id: projectId,
+      org_id: orgA,
+      created_by: userIds[0],
+      title: `Client secret ${suffix}`,
+      client_name: `Hidden Client ${suffix}`,
+      client_email: `hidden-${suffix}@example.invalid`,
+      site_address: `12 Site Road ${suffix}`,
+      notes: `Internal note ${suffix}`,
+      stage: "estimate_ready",
+      business_status: "estimate_ready",
+    });
+    if (project.error) throw new Error(project.error.message);
+    const areas = await admin.from("work_areas").insert([
+      { org_id: orgA, project_id: projectId, type: "bathroom", name: "Bathroom", status: "confirmed", sort_order: 1 },
+      { org_id: orgA, project_id: projectId, type: "deck", name: "Deck", status: "confirmed", sort_order: 2 },
+    ]).select("id, type");
+    if (areas.error || !areas.data) throw new Error(areas.error?.message ?? "areas");
+    const bathroom = areas.data.find((row) => row.type === "bathroom");
+    if (!bathroom) throw new Error("bathroom");
+
+    const quotesBefore = await admin.from("quotes").select("id", { count: "exact", head: true }).eq("project_id", projectId);
+    const first = await owner.rpc("save_subcontractor_v1", {
+      p_payload: {
+        trading_name: `Tile Co ${suffix}`,
+        country_code: "NZ",
+        work_area_types: ["bathroom"],
+        contacts: [{ name: "Ada", email: `ada-${suffix}@example.invalid`, is_primary: true }],
+      },
+    });
+    const second = await owner.rpc("save_subcontractor_v1", {
+      p_payload: {
+        trading_name: `Deck Co ${suffix}`,
+        country_code: "NZ",
+        work_area_types: ["deck"],
+        contacts: [{ name: "Bea", email: `bea-${suffix}@example.invalid`, is_primary: true }],
+      },
+    });
+    const archived = await owner.rpc("save_subcontractor_v1", {
+      p_payload: {
+        trading_name: `Old Co ${suffix}`,
+        work_area_types: ["bathroom"],
+        contacts: [{ name: "Cam", email: `cam-${suffix}@example.invalid`, is_primary: true }],
+      },
+    });
+    if (first.error || second.error || archived.error || typeof first.data !== "string") {
+      throw new Error(first.error?.message ?? second.error?.message ?? archived.error?.message ?? "subcontractor seed");
+    }
+    const archivedId = archived.data as string;
+    const secondId = second.data as string;
+    const firstId = first.data;
+    const archivedRow = await owner.from("subcontractors").update({ archived_at: new Date().toISOString() }).eq("id", archivedId);
+    if (archivedRow.error) throw new Error(archivedRow.error.message);
+    const contacts = await admin.from("subcontractor_contacts").select("id, subcontractor_id").in("subcontractor_id", [firstId, secondId, archivedId]);
+    const contactFor = (businessId: string) => contacts.data?.find((row) => row.subcontractor_id === businessId)?.id;
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    async function readyFile(title: string) {
+      const prepared = await owner.rpc("prepare_project_document_upload_v1", {
+        p_project: projectId, p_document: null, p_category: "photos", p_title: title, p_visibility: "internal",
+        p_original_filename: "site.jpg", p_mime_type: "image/jpeg", p_byte_size: jpeg.byteLength, p_version_note: null,
+      });
+      if (prepared.data?.ok !== true) throw new Error(prepared.data?.error ?? "prepare");
+      const version = await admin.from("project_document_versions").select("storage_object_path").eq("id", prepared.data.versionId).single();
+      if (version.error || !version.data) throw new Error(version.error?.message ?? "path");
+      const uploaded = await admin.storage.from("project-documents").upload(version.data.storage_object_path, jpeg, { contentType: "image/jpeg", upsert: true });
+      if (uploaded.error) throw new Error(uploaded.error.message);
+      const completed = await owner.rpc("complete_project_document_version_v1", { p_version: prepared.data.versionId, p_byte_size: jpeg.byteLength });
+      if (completed.data?.ok !== true) throw new Error(completed.data?.error ?? "complete");
+      return { versionId: prepared.data.versionId as string, documentId: prepared.data.documentId as string, title };
+    }
+    const selectedFile = await readyFile(`Selected ${suffix}`);
+    const hiddenFile = await readyFile(`Hidden ${suffix}`);
+
+    const archivedSave = await owner.rpc("save_rfq_draft_v1", {
+      p_payload: {
+        project_id: projectId, scope_kind: "work_area", work_area_id: bathroom.id, requested_scope: "Tile the room",
+        recipients: [{ subcontractor_id: archivedId, contact_id: contactFor(archivedId), selection_source: "suggested" }],
+        document_version_ids: [],
+      },
+    });
+    assert("archived subcontractor is rejected", archivedSave.data?.error === "ARCHIVED_SUBCONTRACTOR");
+
+    const draft = await owner.rpc("save_rfq_draft_v1", {
+      p_payload: {
+        project_id: projectId,
+        scope_kind: "work_area",
+        work_area_id: bathroom.id,
+        requested_scope: `Tile the bathroom ${suffix}`,
+        measurement_notes: "12 m2",
+        include_site_address: false,
+        site_details: "Access from the side gate",
+        questions: "Can you start in June?",
+        message: "Please price the tiling only",
+        recipients: [
+          { subcontractor_id: firstId, contact_id: contactFor(firstId), selection_source: "suggested" },
+          { subcontractor_id: secondId, contact_id: contactFor(secondId), selection_source: "manual" },
+        ],
+        document_version_ids: [selectedFile.versionId],
+      },
+    });
+    assert("draft saves", draft.data?.ok === true);
+    const stored = await admin.from("rfqs").select("site_address, site_details, requested_scope, status").eq("id", draft.data.id).single();
+    assert(
+      "site address stays off and internal notes are not copied",
+      stored.data?.site_address === "" && stored.data?.site_details === "Access from the side gate" && !String(stored.data?.requested_scope).includes("Hidden Client")
+    );
+    const viewerSend = await viewer.rpc("send_rfq_v1", { p_rfq: draft.data.id, p_tokens: [] });
+    assert("viewer cannot send", viewerSend.data?.error === "FORBIDDEN" || Boolean(viewerSend.error));
+    const rawA = generateRfqAccessToken();
+    const rawB = generateRfqAccessToken();
+    const recipients = await admin.from("rfq_recipients").select("id, subcontractor_id, suggestion_reason, selection_source").eq("rfq_id", draft.data.id);
+    const recipientA = recipients.data?.find((row) => row.subcontractor_id === firstId);
+    const recipientB = recipients.data?.find((row) => row.subcontractor_id === secondId);
+    if (!recipientA || !recipientB) throw new Error("recipients");
+    assert("suggestion reason comes from the work area tag", String(recipientA.suggestion_reason).includes("Bathroom"));
+    assert("manual choice is not labelled as a suggestion", recipientB.selection_source === "manual" && recipientB.suggestion_reason == null);
+    const sent = await owner.rpc("send_rfq_v1", {
+      p_rfq: draft.data.id,
+      p_tokens: [
+        { recipient_id: recipientA.id, token_hash: hashRfqAccessToken(rawA) },
+        { recipient_id: recipientB.id, token_hash: hashRfqAccessToken(rawB) },
+      ],
+    });
+    assert("send freezes the request", sent.data?.ok === true);
+    const edited = await owner.rpc("save_rfq_draft_v1", {
+      p_payload: { id: draft.data.id, project_id: projectId, scope_kind: "written", written_scope_label: "Changed", requested_scope: "Changed" },
+    });
+    assert("sent request cannot be edited", edited.data?.error === "FROZEN");
+    const failedDelivery = await owner.rpc("begin_rfq_delivery_v1", { p_recipient: recipientA.id, p_idempotency_key: `rfq-live-fail-${suffix}` });
+    const failed = await owner.rpc("fail_rfq_delivery_v1", { p_delivery: failedDelivery.data?.deliveryId, p_failure_code: "provider_rejected" });
+    const afterFail = await admin.from("rfq_recipients").select("response_state").eq("id", recipientA.id).single();
+    assert("failed email stays awaiting and is not a response", failed.data?.status === "failed" && afterFail.data?.response_state === "awaiting");
+
+    const seenA = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawA) });
+    const seenB = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
+    const payloadA = JSON.stringify(seenA.data);
+    assert("recipient sees the selected file only", seenA.data?.ok === true && payloadA.includes("Selected") && !payloadA.includes("Hidden") && !payloadA.includes("Hidden Client") && !payloadA.includes(`Deck Co ${suffix}`));
+    assert("other recipient does not see the first response later", seenB.data?.ok === true && !JSON.stringify(seenB.data).includes(`Tile Co ${suffix}`));
+    const foreignRead = await foreign.from("rfqs").select("id").eq("id", draft.data.id);
+    assert("another organisation cannot read the request", !foreignRead.data?.length);
+    const question = await anon.rpc("public_rfq_clarify_v1", { p_token_hash: hashRfqAccessToken(rawA), p_body: "Does this include silicone?" });
+    const offer = await anon.rpc("public_rfq_save_response_v1", {
+      p_token_hash: hashRfqAccessToken(rawA),
+      p_payload: { price_ex_gst: "1800", gst_treatment: "extra", pricing_structure: "lump_sum", included_scope: "Wall tiles", excluded_scope: "Floor tiles", valid_until: "2027-01-01" },
+      p_confirm: true,
+      p_revise: false,
+    });
+    const duplicate = await anon.rpc("public_rfq_save_response_v1", {
+      p_token_hash: hashRfqAccessToken(rawA),
+      p_payload: { price_ex_gst: "1", gst_treatment: "none", pricing_structure: "lump_sum" },
+      p_confirm: true,
+      p_revise: false,
+    });
+    const revised = await anon.rpc("public_rfq_save_response_v1", {
+      p_token_hash: hashRfqAccessToken(rawA),
+      p_payload: { price_ex_gst: "2100", gst_treatment: "extra", pricing_structure: "itemised", included_scope: "Wall and trim", excluded_scope: "Floor tiles" },
+      p_confirm: true,
+      p_revise: true,
+    });
+    const decline = await anon.rpc("public_rfq_decline_v1", { p_token_hash: hashRfqAccessToken(rawB), p_message: "Fully booked" });
+    const states = await admin.from("rfq_recipients").select("id, response_state").in("id", [recipientA.id, recipientB.id]);
+    const versions = await admin.from("rfq_responses").select("version_number, price_ex_gst, status").eq("recipient_id", recipientA.id).order("version_number");
+    assert("question, two offer versions, and a decline are distinct", question.data?.ok === true && offer.data?.ok === true && duplicate.data?.error === "DUPLICATE" && revised.data?.ok === true && decline.data?.ok === true);
+    assert(
+      "original price remains beside the revision",
+      versions.data?.length === 2 && Number(versions.data?.[0]?.price_ex_gst) === 1800 && Number(versions.data?.[1]?.price_ex_gst) === 2100
+    );
+    assert(
+      "states stay independent",
+      states.data?.find((row) => row.id === recipientA.id)?.response_state === "responded" &&
+        states.data?.find((row) => row.id === recipientB.id)?.response_state === "declined"
+    );
+    const cross = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
+    assert("declined recipient cannot see the other price", cross.data?.ok === true && !JSON.stringify(cross.data).includes("2100") && !JSON.stringify(cross.data).includes("1800"));
+    const removed = await owner.rpc("authorize_project_document_delete_v1", { p_project: projectId, p_document: selectedFile.documentId });
+    const hiddenDelete = await owner.rpc("authorize_project_document_delete_v1", { p_project: projectId, p_document: hiddenFile.documentId });
+    assert("selected file is kept and the unselected file can be removed", removed.data?.error === "REFERENCED" && hiddenDelete.data?.ok === true);
+    const oldHash = hashRfqAccessToken(rawA);
+    const replacement = generateRfqAccessToken();
+    const resent = await owner.rpc("resend_rfq_recipient_v1", { p_recipient: recipientA.id, p_token_hash: hashRfqAccessToken(replacement) });
+    const stale = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: oldHash });
+    const fresh = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(replacement) });
+    assert("resend revokes the previous link", resent.data?.ok === true && stale.data?.error === "UNAVAILABLE" && fresh.data?.ok === true);
+    await admin.from("rfq_access_tokens").update({ expires_at: "2020-01-01T00:00:00Z" }).eq("token_hash", hashRfqAccessToken(replacement));
+    const expired = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(replacement) });
+    assert("expired link is refused", expired.data?.error === "EXPIRED");
+    const quotesAfter = await admin.from("quotes").select("id", { count: "exact", head: true }).eq("project_id", projectId);
+    assert("quotes were not created", quotesBefore.count === quotesAfter.count);
+    const viewerList = await viewer.from("rfqs").select("id").eq("id", draft.data.id);
+    assert("viewer can read the request", viewerList.data?.length === 1);
+  } finally {
+    await admin.from("rfqs").delete().eq("project_id", projectId);
+    await admin.from("projects").delete().eq("id", projectId);
+    for (const userId of userIds) await admin.auth.admin.deleteUser(userId);
+    await admin.from("organisations").delete().in("id", [orgA, orgB]);
+  }
+}
+
+staticMain();
+if (process.argv.includes("--live")) {
+  liveMain().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
