@@ -16,6 +16,10 @@ import {
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { analyticsTimingAttribute } from "@/lib/analytics/server-timing";
 
+/** Wraps from the content width, including a 200% browser zoom, instead of the viewport breakpoint. */
+const summaryGridClass =
+  "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] items-stretch gap-2 lg:gap-3";
+
 type AnalyticsViewProps = {
   view: AnalyticsView;
   upgrade: { message: string; href: string } | null;
@@ -74,7 +78,7 @@ export function AnalyticsView({
         {headlinePhase === "updating" ? (
           <UpdatingSummary business={view.tier === "business"} />
         ) : (
-        <div className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-5 lg:gap-3">
+        <div data-analytics-summary className={summaryGridClass}>
           <EstimateSheet
             label="Estimates created"
             value={formatCount(view.estimatesCreated)}
@@ -142,7 +146,7 @@ export function AnalyticsView({
             disabled={view.acceptedQuoteValueExGst == null}
           />
           {view.tier === "business" ? (
-            <div className="col-span-2 lg:col-span-1">
+            <div className="min-w-0">
             <RecordSheet
               periodId={view.periodId}
               from={view.from}
@@ -485,7 +489,7 @@ function UpdatingSummary({ business }: { business: boolean }) {
     : ["Estimates created", "First sends", "Accepted quotes", "Accepted ex GST", "Active projects"];
   return (
     <div
-      className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-5 lg:gap-3"
+      className={summaryGridClass}
       data-analytics-headlines-pending
       aria-busy="true"
     >

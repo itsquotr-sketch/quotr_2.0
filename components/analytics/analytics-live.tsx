@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 import { AnalyticsRefreshContext, type AnalyticsRefreshResult } from "@/components/analytics/refresh-context";
+import { loadAnalyticsPeriodView } from "@/lib/analytics/actions";
 import type { AnalyticsPageData } from "@/lib/analytics/load-analytics";
 import type { AnalyticsView as AnalyticsViewData, BusinessAnalyticsView } from "@/lib/analytics/measure";
 import { analyticsPeriodHref, analyticsRangeHref } from "@/lib/analytics/presentation";
@@ -25,8 +26,20 @@ function sameRange(current: AnalyticsViewData, incoming: AnalyticsViewData): boo
   );
 }
 
+type Transport = "single" | "split" | "stream";
+
+function selectedTransport(): Transport {
+  try {
+    const value = sessionStorage.getItem("quotr-analytics-transport");
+    if (value === "single" || value === "split" || value === "stream") return value;
+  } catch {
+    // Private browsing can block storage. The page then uses the stream.
+  }
+  return "stream";
+}
+
 async function postScope(
-  scope: "headline" | "business",
+  scope: "headline" | "business" | "full" | "stream",
   period: string,
   from?: string,
   to?: string
@@ -98,59 +111,148 @@ export function AnalyticsLive({
     setBusinessMs(null);
     setBusinessError(null);
     if (tier.current === "business") setBusinessPhase("updating");
+    let pushed = false;
 
-    const headlinePromise = postScope("headline", input.period, input.from, input.to);
-    const businessPromise = postScope("business", input.period, input.from, input.to);
-    const headline = await headlinePromise;
-    if (id !== request.current) return { ok: false, stale: true };
-    if (headline.kind === "invalid_range") {
-      setHeadlinePhase("ready");
-      setBusinessPhase("ready");
-      return { ok: false, error: headline.error };
-    }
-    if (headline.kind !== "ready") {
-      setHeadlinePhase("ready");
-      setBusinessPhase("ready");
-      return { ok: false, error: headline.kind === "denied" ? headline.message : "Sign in required." };
-    }
-
-    flushSync(() => {
-      setView(headline.view);
-      setUpgrade(headline.upgrade);
-      setHeadlinePhase("ready");
-      setHeadlineMs(Math.round(performance.now() - started));
-      if (headline.view.tier !== "business") setBusinessPhase("ready");
-    });
-    if (!input.restore) {
+    function push(next: AnalyticsViewData) {
+      if (input.restore || pushed) return;
+      pushed = true;
       const href =
-        headline.view.periodId === "custom"
-          ? analyticsRangeHref({
-              period: "custom",
-              from: headline.view.from ?? "",
-              to: headline.view.to ?? "",
-            })
-          : analyticsPeriodHref(headline.view.periodId);
+        next.periodId === "custom"
+          ? analyticsRangeHref({ period: "custom", from: next.from ?? "", to: next.to ?? "" })
+          : analyticsPeriodHref(next.periodId);
       window.history.pushState(null, "", href);
     }
 
-    const business = await businessPromise;
-    if (id !== request.current) return { ok: false, stale: true };
-    if (business.kind === "ready") {
+    function reject(payload: AnalyticsPageData): AnalyticsRefreshResult {
+      setHeadlinePhase("ready");
+      setBusinessPhase("ready");
+      if (payload.kind === "invalid_range") return { ok: false, error: payload.error };
+      return { ok: false, error: payload.kind === "denied" ? payload.message : "Sign in required." };
+    }
+
+    function paintHeadline(payload: Extract<AnalyticsPageData, { kind: "ready" }>) {
       flushSync(() => {
-        setView((current) => applyBusiness(current, business.view));
-        setUpgrade(business.upgrade);
-        setBusinessTiming(business.view.serverTiming);
+        setView(payload.view);
+        setUpgrade(payload.upgrade);
+        setHeadlinePhase("ready");
+        setHeadlineMs(Math.round(performance.now() - started));
+        if (payload.view.tier !== "business") setBusinessPhase("ready");
+      });
+      push(payload.view);
+    }
+
+    function paintPanels(payload: Extract<AnalyticsPageData, { kind: "ready" }>, replace: boolean) {
+      flushSync(() => {
+        setView((current) => (replace ? payload.view : applyBusiness(current, payload.view)));
+        setUpgrade(payload.upgrade);
+        setBusinessTiming(payload.view.serverTiming);
         setBusinessPhase("ready");
         setBusinessMs(Math.round(performance.now() - started));
       });
+    }
+
+    const transport = selectedTransport();
+    if (transport === "single") {
+      const payload = await loadAnalyticsPeriodView(input.period, input.from, input.to);
+      if (id !== request.current) return { ok: false, stale: true };
+      if (payload.kind !== "ready") return reject(payload);
+      const elapsed = Math.round(performance.now() - started);
+      flushSync(() => {
+        setView(payload.view);
+        setUpgrade(payload.upgrade);
+        setHeadlinePhase("ready");
+        setBusinessPhase("ready");
+        setHeadlineMs(elapsed);
+        setBusinessMs(elapsed);
+        setBusinessTiming(payload.view.serverTiming);
+      });
+      push(payload.view);
       return { ok: true };
     }
-    setBusinessPhase("ready");
-    setBusinessMs(Math.round(performance.now() - started));
-    if (headline.view.tier === "business") {
-      setBusinessError(business.kind === "denied" ? business.message : business.kind === "invalid_range" ? business.error : "Sign in required.");
+
+    if (transport === "split") {
+      const headlinePromise = postScope("headline", input.period, input.from, input.to);
+      const businessPromise = postScope("business", input.period, input.from, input.to);
+      const headline = await headlinePromise;
+      if (id !== request.current) return { ok: false, stale: true };
+      if (headline.kind !== "ready") return reject(headline);
+      paintHeadline(headline);
+      const business = await businessPromise;
+      if (id !== request.current) return { ok: false, stale: true };
+      if (business.kind !== "ready") {
+        setBusinessPhase("ready");
+        setBusinessMs(Math.round(performance.now() - started));
+        if (headline.view.tier === "business") {
+          setBusinessError(
+            business.kind === "denied" ? business.message : business.kind === "invalid_range" ? business.error : "Sign in required."
+          );
+        }
+        return { ok: true };
+      }
+      paintPanels(business, false);
+      return { ok: true };
     }
-    return { ok: true };
+
+    let sawHeadline = false;
+    let result: AnalyticsRefreshResult = { ok: true };
+    try {
+      const response = await fetch("/api/analytics/period", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ period: input.period, from: input.from, to: input.to, scope: "stream" }),
+      });
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("missing body");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const take = (payload: AnalyticsPageData) => {
+        if (id !== request.current) {
+          result = { ok: false, stale: true };
+          return;
+        }
+        if (payload.kind !== "ready") {
+          if (!sawHeadline) result = reject(payload);
+          else if (payload.kind === "denied" || payload.kind === "invalid_range") {
+            setBusinessPhase("ready");
+            setBusinessError(payload.kind === "denied" ? payload.message : payload.error);
+          }
+          return;
+        }
+        if (!sawHeadline) {
+          sawHeadline = true;
+          paintHeadline(payload);
+          if (payload.view.tier !== "business" || payload.view.workAreas !== null) paintPanels(payload, true);
+          return;
+        }
+        paintPanels(payload, false);
+      };
+      while (result.ok) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+        let newline = buffer.indexOf("\n");
+        while (newline >= 0) {
+          const line = buffer.slice(0, newline).trim();
+          buffer = buffer.slice(newline + 1);
+          if (line) take(JSON.parse(line) as AnalyticsPageData);
+          newline = buffer.indexOf("\n");
+        }
+      }
+    } catch {
+      if (id !== request.current) return { ok: false, stale: true };
+      if (!sawHeadline) {
+        return reject({
+          kind: "denied",
+          message: "Analytics could not be loaded.",
+          reasonCode: null,
+          upgradeTarget: null,
+        });
+      }
+      setBusinessPhase("ready");
+      setBusinessError("Analytics could not be loaded.");
+    }
+    return id === request.current ? result : { ok: false, stale: true };
   }, []);
 
   useEffect(() => {

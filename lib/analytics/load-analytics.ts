@@ -92,6 +92,11 @@ export async function loadAnalyticsPage(
     /** Headline skips the slower Business panel reads. Business is the panel read. */
     scope?: "full" | "headline" | "business";
     recordPage?: { kind: "sent" | "accepted"; offset: number };
+    /**
+     * Same request as the final result. Fired once the headline measures are
+     * ready, while panel reads started with them are still running.
+     */
+    onHeadline?: (data: AnalyticsPageData) => void;
   }
 ): Promise<AnalyticsPageData> {
   const clock = boundAnalyticsClock();
@@ -127,6 +132,13 @@ export async function loadAnalyticsPage(
     };
   }
 
+  const upgrade =
+    tier === "business"
+      ? null
+      : {
+          message: businessAnalyticsUpgradeCopy(business.reasonCode),
+          href: "/app/settings/billing",
+        };
   const view = await queryAndPresent(
     auth.supabase,
     orgId,
@@ -136,37 +148,43 @@ export async function loadAnalyticsPage(
     tier,
     clock,
     options?.scope ?? "full",
-    options?.recordPage
+    options?.recordPage,
+    options?.onHeadline
+      ? (headline) => {
+          options.onHeadline?.({
+            kind: "ready",
+            view: withoutBusinessPanels(headline),
+            upgrade,
+          });
+        }
+      : undefined
   );
   if ("kind" in view) return view;
   const ready =
-    options?.scope === "headline" && view.tier === "business"
-      ? {
-          ...view,
-          pipeline: null,
-          pipelineUnavailableReason: null,
-          variations: { acceptedCount: null, adjustmentExGst: null },
-          workAreas: null,
-          workAreaCheck: null,
-          rateSources: null,
-          pricing: {
-            requiredCount: null,
-            unknownCostCount: null,
-            unknownCostSellExGst: null,
-            documents: [],
-          },
-        }
-      : view;
+    options?.scope === "headline" && view.tier === "business" ? withoutBusinessPanels(view) : view;
   return {
     kind: "ready",
     view: ready,
-    upgrade:
-      tier === "business"
-        ? null
-        : {
-            message: businessAnalyticsUpgradeCopy(business.reasonCode),
-            href: "/app/settings/billing",
-          },
+    upgrade,
+  };
+}
+
+function withoutBusinessPanels(view: AnalyticsView): AnalyticsView {
+  if (view.tier !== "business") return view;
+  return {
+    ...view,
+    pipeline: null,
+    pipelineUnavailableReason: null,
+    variations: { acceptedCount: null, adjustmentExGst: null },
+    workAreas: null,
+    workAreaCheck: null,
+    rateSources: null,
+    pricing: {
+      requiredCount: null,
+      unknownCostCount: null,
+      unknownCostSellExGst: null,
+      documents: [],
+    },
   };
 }
 
@@ -179,7 +197,8 @@ async function queryAndPresent(
   tier: AnalyticsTier,
   clock: { mark: (name: string) => void; marks: Record<string, number> },
   scope: "full" | "headline" | "business",
-  recordPage?: { kind: "sent" | "accepted"; offset: number }
+  recordPage?: { kind: "sent" | "accepted"; offset: number },
+  emitHeadline?: (view: AnalyticsView) => void
 ): Promise<AnalyticsView | { kind: "invalid_range"; error: string; timeZone: string }> {
   const tables = analyticsTablesForTier(tier);
   const [schema, timezone] = await Promise.all([
@@ -224,18 +243,12 @@ async function queryAndPresent(
       ? readPricingItems(supabase, orgId)
       : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
-  const [[activeCount, sends, acceptedSnapshots, estimates], [pipeline, variationRows, pricing]] =
-    await Promise.all([headlinePromise, independentPromise]);
+  const stream = Boolean(emitHeadline) && scope !== "headline";
+  const [[activeCount, sends, acceptedSnapshots, estimates], panelWave] = stream
+    ? [await headlinePromise, null]
+    : await Promise.all([headlinePromise, independentPromise]);
   const wave1Ms = Date.now() - started;
   clock.mark("headline");
-  const names = new Map<string, string>();
-
-  let projects: AnalyticsProject[] = [];
-  let projectsTruncated = false;
-  let cohortSnapshots: AnalyticsSnapshot[] = [];
-  let timingSends: AnalyticsQuoteEvent[] = [];
-  let variations: AnalyticsVariation[] = [];
-  let variationsTruncated = false;
 
   const sentIds = new Set(sends.rows.map((row) => row.quoteId));
   const acceptedIds = new Set(acceptedSnapshots.rows.map((row) => row.quoteId));
@@ -244,52 +257,143 @@ async function queryAndPresent(
     .map((row) => row.quoteId)
     .filter((id) => !sentIds.has(id));
   const dependentStarted = Date.now();
-
-  const [cohort, timing, quoteTotals, lines, quotedAreas, acceptedAreas] = await Promise.all([
-    businessRead
-      ? readSnapshotsForQuotes(supabase, orgId, cohortIds)
-      : Promise.resolve([] as AnalyticsSnapshot[]),
-    businessRead
-      ? readSendsForQuotes(supabase, orgId, timingIds)
-      : Promise.resolve([] as AnalyticsQuoteEvent[]),
-    readQuoteTotals(
-      supabase,
-      orgId,
-      sends.rows.map((row) => row.quoteId)
-    ),
+  const cohortPromise = businessRead
+    ? readSnapshotsForQuotes(supabase, orgId, cohortIds)
+    : Promise.resolve([] as AnalyticsSnapshot[]);
+  const timingPromise = businessRead
+    ? readSendsForQuotes(supabase, orgId, timingIds)
+    : Promise.resolve([] as AnalyticsQuoteEvent[]);
+  const totalsPromise = readQuoteTotals(
+    supabase,
+    orgId,
+    sends.rows.map((row) => row.quoteId)
+  );
+  const linesPromise =
     panels && tables.includes("estimate_line_items")
       ? readEstimateLines(
           supabase,
           orgId,
           estimates.rows.map((row) => row.estimateId)
         )
-      : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false }),
-    panels
-      ? readQuotedAreaLines(supabase, orgId, sends.rows.map((row) => row.quoteId))
-      : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
-    panels
-      ? readAcceptedAreaLines(supabase, orgId, window)
-      : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
+      : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false });
+  const quotedAreasPromise = panels
+    ? readQuotedAreaLines(supabase, orgId, sends.rows.map((row) => row.quoteId))
+    : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false });
+  const acceptedAreasPromise = panels
+    ? readAcceptedAreaLines(supabase, orgId, window)
+    : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false });
+
+  const [cohort, timing, quoteTotals] = await Promise.all([
+    cohortPromise,
+    timingPromise,
+    totalsPromise,
+  ]);
+  if (stream && emitHeadline) {
+    clock.mark("headlineFlush");
+    emitHeadline(
+      await composeAnalyticsView({
+        supabase,
+        orgId,
+        window,
+        tier,
+        recordPage,
+        started,
+        wave1Ms,
+        wave2Ms: Date.now() - dependentStarted,
+        clock,
+        canReadPipeline,
+        sends,
+        acceptedSnapshots,
+        cohortSnapshots: cohort,
+        timingSends: timing,
+        estimates,
+        quoteTotals,
+        pipeline: { rows: [], truncated: false },
+        variationRows: { rows: [], truncated: false },
+        lines: { rows: [], truncated: false },
+        quotedAreas: { rows: [], truncated: false },
+        acceptedAreas: { rows: [], truncated: false },
+        pricing: { rows: [], truncated: false },
+        activeCount,
+        final: false,
+      })
+    );
+  }
+
+  const [[pipeline, variationRows, pricing], lines, quotedAreas, acceptedAreas] = await Promise.all([
+    panelWave ?? independentPromise,
+    linesPromise,
+    quotedAreasPromise,
+    acceptedAreasPromise,
   ]);
   const wave2Ms = Date.now() - dependentStarted;
   clock.mark("detail");
-  projects = pipeline.rows;
-  projectsTruncated = pipeline.truncated;
-  cohortSnapshots = cohort;
-  timingSends = timing;
-  variations = variationRows.rows;
-  variationsTruncated = variationRows.truncated;
+  return composeAnalyticsView({
+    supabase,
+    orgId,
+    window,
+    tier,
+    recordPage,
+    started,
+    wave1Ms,
+    wave2Ms,
+    clock,
+    canReadPipeline,
+    sends,
+    acceptedSnapshots,
+    cohortSnapshots: cohort,
+    timingSends: timing,
+    estimates,
+    quoteTotals,
+    pipeline,
+    variationRows,
+    lines,
+    quotedAreas,
+    acceptedAreas,
+    pricing,
+    activeCount,
+    final: true,
+  });
+}
 
-  for (const [id, title] of estimates.titles) names.set(id, title);
-
+async function composeAnalyticsView(input: {
+  supabase: Supabase;
+  orgId: string;
+  window: PeriodWindow;
+  tier: AnalyticsTier;
+  recordPage?: { kind: "sent" | "accepted"; offset: number };
+  started: number;
+  wave1Ms: number;
+  wave2Ms: number;
+  clock: { mark: (name: string) => void; marks: Record<string, number> };
+  canReadPipeline: boolean;
+  sends: { rows: AnalyticsQuoteEvent[]; truncated: boolean };
+  acceptedSnapshots: { rows: AnalyticsSnapshot[]; truncated: boolean };
+  cohortSnapshots: AnalyticsSnapshot[];
+  timingSends: AnalyticsQuoteEvent[];
+  estimates: { rows: AnalyticsEstimate[]; titles: Map<string, string>; truncated: boolean };
+  quoteTotals: { rows: AnalyticsQuoteTotal[]; truncated: boolean };
+  pipeline: { rows: AnalyticsProject[]; truncated: boolean };
+  variationRows: { rows: AnalyticsVariation[]; truncated: boolean };
+  lines: { rows: AnalyticsEstimateLine[]; truncated: boolean };
+  quotedAreas: { rows: AnalyticsAreaLine[]; truncated: boolean };
+  acceptedAreas: { rows: AnalyticsAreaLine[]; truncated: boolean };
+  pricing: { rows: AnalyticsPricingItem[]; truncated: boolean };
+  activeCount: { count: number | null; failed: boolean };
+  final: boolean;
+}): Promise<AnalyticsView> {
+  const names = new Map<string, string>();
+  const projects: AnalyticsProject[] = [...input.pipeline.rows];
+  let projectsTruncated = input.pipeline.truncated;
+  for (const [id, title] of input.estimates.titles) names.set(id, title);
   const titleIds = [
-    ...estimates.rows.map((row) => row.projectId),
-    ...pricing.rows.map((row) => row.projectId),
-    ...sends.rows.slice(0, 16).map((row) => row.projectId),
-    ...acceptedSnapshots.rows.slice(0, 16).map((row) => row.projectId),
+    ...input.estimates.rows.map((row) => row.projectId),
+    ...input.pricing.rows.map((row) => row.projectId),
+    ...input.sends.rows.slice(0, 16).map((row) => row.projectId),
+    ...input.acceptedSnapshots.rows.slice(0, 16).map((row) => row.projectId),
   ].filter((id) => !names.has(id) && !projects.some((project) => project.id === id));
   const titleMap = titleIds.length
-    ? await readProjectTitles(supabase, orgId, titleIds)
+    ? await readProjectTitles(input.supabase, input.orgId, titleIds)
     : new Map<string, string>();
   for (const [id, title] of titleMap) names.set(id, title);
   for (const project of projects) {
@@ -299,7 +403,7 @@ async function queryAndPresent(
     if (!projects.some((project) => project.id === id)) {
       projects.push({
         id,
-        orgId,
+        orgId: input.orgId,
         title,
         businessStatus: "won",
         archivedAt: null,
@@ -307,47 +411,46 @@ async function queryAndPresent(
       });
     }
   }
-  if (tier === "business" && !canReadPipeline) {
-    projectsTruncated = true;
-  }
-
+  if (input.tier === "business" && !input.canReadPipeline) projectsTruncated = true;
   const measured = measureAnalytics({
-    orgId,
-    window,
+    orgId: input.orgId,
+    window: input.window,
     projects: projects.map((project) => ({
       ...project,
       title: names.get(project.id) || project.title,
     })),
-    quoteEvents: [...sends.rows, ...timingSends],
-    snapshots: [...acceptedSnapshots.rows, ...cohortSnapshots],
-    variations,
-    estimates: estimates.rows,
-    quoteTotals: quoteTotals.rows,
-    estimateLines: lines.rows,
-    areaLines: [...quotedAreas.rows, ...acceptedAreas.rows],
-    pricingItems: pricing.rows,
-    activeProjectCount: activeCount.failed ? null : activeCount.count,
+    quoteEvents: [...input.sends.rows, ...input.timingSends],
+    snapshots: [...input.acceptedSnapshots.rows, ...input.cohortSnapshots],
+    variations: input.variationRows.rows,
+    estimates: input.estimates.rows,
+    quoteTotals: input.quoteTotals.rows,
+    estimateLines: input.lines.rows,
+    areaLines: [...input.quotedAreas.rows, ...input.acceptedAreas.rows],
+    pricingItems: input.pricing.rows,
+    activeProjectCount: input.activeCount.failed ? null : input.activeCount.count,
     limits: {
-      sentTruncated: sends.truncated,
-      snapshotsTruncated: acceptedSnapshots.truncated,
-      projectsTruncated: tier === "business" ? projectsTruncated : false,
-      variationsTruncated: tier === "business" ? variationsTruncated : false,
-      estimatesTruncated: estimates.truncated,
-      quoteTotalsTruncated: quoteTotals.truncated,
-      linesTruncated: tier === "business" ? lines.truncated : false,
+      sentTruncated: input.sends.truncated,
+      snapshotsTruncated: input.acceptedSnapshots.truncated,
+      projectsTruncated: input.tier === "business" ? projectsTruncated : false,
+      variationsTruncated: input.tier === "business" ? input.variationRows.truncated : false,
+      estimatesTruncated: input.estimates.truncated,
+      quoteTotalsTruncated: input.quoteTotals.truncated,
+      linesTruncated: input.tier === "business" ? input.lines.truncated : false,
       areaMoneyTruncated:
-        tier === "business" ? quotedAreas.truncated || acceptedAreas.truncated : false,
-      pricingTruncated: tier === "business" ? pricing.truncated : false,
+        input.tier === "business"
+          ? input.quotedAreas.truncated || input.acceptedAreas.truncated
+          : false,
+      pricingTruncated: input.tier === "business" ? input.pricing.truncated : false,
     },
   });
-
-  clock.mark("aggregate");
-  const finished = Date.now();
-  clock.mark("response");
-  return presentAnalytics(measured, tier, window, recordPage, finished - started, {
-    wave1Ms,
-    wave2Ms,
-    serverTiming: { ...clock.marks },
+  if (input.final) {
+    input.clock.mark("aggregate");
+    input.clock.mark("response");
+  }
+  return presentAnalytics(measured, input.tier, input.window, input.recordPage, Date.now() - input.started, {
+    wave1Ms: input.wave1Ms,
+    wave2Ms: input.wave2Ms,
+    serverTiming: { ...input.clock.marks },
   });
 }
 
