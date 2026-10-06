@@ -223,7 +223,21 @@ function TrendBars({
   const selected = trend[index];
 
   return (
-    <div className="mt-4 overflow-x-auto" role="group" aria-label="Dates">
+      <div
+        className="mt-4 overflow-x-auto"
+        role="group"
+        aria-label="Dates"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            onSelect(Math.min(trend.length - 1, index + 1));
+          }
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            onSelect(Math.max(0, index - 1));
+          }
+        }}
+      >
       <p className="text-[11px] text-muted-foreground tabular-nums">
         Highest {money ? "ex GST" : "count"} {money ? formatPricingMoney(max) : max}
       </p>

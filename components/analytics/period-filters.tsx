@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { analyticsPeriodHref, analyticsRangeHref } from "@/lib/analytics/presentation";
+import { useAnalyticsRefresh } from "@/components/analytics/refresh-context";
 import {
   ANALYTICS_MAX_RANGE_DAYS,
   ANALYTICS_PERIODS,
@@ -31,7 +32,9 @@ type PeriodFiltersProps = {
 
 export function PeriodFilters(props: PeriodFiltersProps) {
   const router = useRouter();
+  const refresh = useAnalyticsRefresh();
   const [isPending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(false);
   const [pendingId, setPendingId] = useState<AnalyticsWindowId | null>(null);
@@ -40,7 +43,20 @@ export function PeriodFilters(props: PeriodFiltersProps) {
   const started = useRef<number | null>(null);
   const band = useRef<HTMLDivElement>(null);
   const serverKey = `${props.periodId}:${props.from ?? ""}:${props.to ?? ""}`;
+  const sawBusy = useRef(false);
   const sawPending = useRef(false);
+
+  useEffect(() => {
+    if (busy && !sawBusy.current) {
+      started.current = performance.now();
+      sawBusy.current = true;
+      return;
+    }
+    if (busy || !sawBusy.current || started.current == null || !band.current) return;
+    band.current.dataset.analyticsSwitchMs = String(Math.round(performance.now() - started.current));
+    started.current = null;
+    sawBusy.current = false;
+  }, [busy]);
   const selected = pendingId ?? props.periodId;
   const from = draft?.key === serverKey ? draft.from : (props.from ?? "");
   const to = draft?.key === serverKey ? draft.to : (props.to ?? "");
@@ -70,12 +86,26 @@ export function PeriodFilters(props: PeriodFiltersProps) {
     setPendingId(null);
   }, [isPending, serverKey]);
 
-  function go(href: string, id: AnalyticsWindowId) {
+  function go(id: AnalyticsWindowId, fromDate?: string, toDate?: string) {
     setError(null);
     setPendingId(id);
     setOpen(false);
-    startTransition(() => {
-      router.push(href);
+    if (!refresh) {
+      const href =
+        id === "custom" && fromDate && toDate
+          ? analyticsRangeHref({ period: "custom", from: fromDate, to: toDate })
+          : analyticsPeriodHref(id === "custom" ? "this_month" : id);
+      startTransition(() => {
+        router.push(href);
+      });
+      return;
+    }
+    setBusy(true);
+    void refresh({ period: id, from: fromDate, to: toDate }).then((result) => {
+      if (!result.ok && result.stale) return;
+      setBusy(false);
+      setPendingId(null);
+      if (!result.ok && result.error) setError(result.error);
     });
   }
 
@@ -89,7 +119,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
       setError(resolved.error);
       return;
     }
-    go(analyticsRangeHref({ period: "custom", from, to }), "custom");
+    go("custom", from, to);
   }
 
   function cancel() {
@@ -106,7 +136,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
             key={period.id}
             type="button"
             aria-current={selected === period.id ? "true" : undefined}
-            onClick={() => go(analyticsPeriodHref(period.id), period.id)}
+            onClick={() => go(period.id)}
             className={cn(
               "min-h-11 rounded-lg px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
               selected === period.id ? "bg-foreground text-background" : "hover:bg-muted"
@@ -168,7 +198,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
   );
 
   return (
-    <div ref={band} className="relative min-w-0" data-analytics-filters aria-busy={isPending}>
+    <div ref={band} className="relative min-w-0" data-analytics-filters aria-busy={isPending || busy}>
       <button
         type="button"
         aria-expanded={open}
@@ -179,10 +209,10 @@ export function PeriodFilters(props: PeriodFiltersProps) {
       >
         <CalendarRange className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0">
-          <span className="block text-sm font-medium">{isPending ? pendingLabel : props.periodLabel}</span>
+          <span className="block text-sm font-medium">{isPending || busy ? pendingLabel : props.periodLabel}</span>
           <span className="block truncate text-xs text-muted-foreground">{props.periodRange}</span>
         </span>
-        {isPending ? (
+        {isPending || busy ? (
           <span className="ml-auto shrink-0 text-xs text-muted-foreground">Updating this range</span>
         ) : null}
       </button>

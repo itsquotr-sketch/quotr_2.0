@@ -109,3 +109,8 @@ export async function loadAnalyticsRecordWindow(
     limit: ANALYTICS_LINK_LIMIT,
   };
 }
+
+/** Period change without re-rendering the app shell. Entitlement is checked inside the loader. */
+export async function loadAnalyticsPeriodView(periodRaw: string, from?: string, to?: string) {
+  return loadAnalyticsPage(periodRaw, { from, to });
+}

@@ -1,4 +1,4 @@
-import { AnalyticsView } from "@/components/analytics/analytics-view";
+import { AnalyticsLive } from "@/components/analytics/analytics-live";
 import { PeriodFilters } from "@/components/analytics/period-filters";
 import { AnalyticsScrollFrame } from "@/components/analytics/scroll-frame";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
@@ -48,7 +48,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             rangeError={result.error}
           />
         ) : (
-          <AnalyticsView view={result.view} upgrade={result.upgrade} />
+          <AnalyticsLive initial={result} />
         )}
       </PageContainer>
     </AnalyticsScrollFrame>

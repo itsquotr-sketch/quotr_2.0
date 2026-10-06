@@ -33,6 +33,7 @@ import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { probeProjectSchemaColumns } from "@/lib/projects/query-utils";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { markAnalytics, startAnalyticsClock, analyticsClock } from "@/lib/analytics/server-timing";
 import { createClient } from "@/lib/supabase/server";
 
 const QUERY_LIMIT = 2000;
@@ -70,7 +71,9 @@ export async function loadAnalyticsPage(
     recordPage?: { kind: "sent" | "accepted"; offset: number };
   }
 ): Promise<AnalyticsPageData> {
+  startAnalyticsClock();
   const auth = await requireAuthOrgContext();
+  markAnalytics("pageAuth");
   if (!auth.ok) {
     return { kind: "unauthenticated" };
   }
@@ -87,6 +90,7 @@ export async function loadAnalyticsPage(
   }
 
   const business = await requireOrgEntitlement(orgId, "analytics.business");
+  markAnalytics("entitlement");
   const tier = analyticsTierFromDecisions({
     personalOk: true,
     businessOk: business.ok,
@@ -149,11 +153,13 @@ async function queryAndPresent(
   }
   const window = resolved.window;
   const started = Date.now();
+  markAnalytics("schema");
 
   const canReadPipeline =
     schema.lifecycleAvailable && schema.businessStatusAvailable;
+  const businessRead = tier === "business" && tables.includes("variation_accepted_adjustments");
 
-  const [activeCount, sends, acceptedSnapshots, estimates] = await Promise.all([
+  const headlinePromise = Promise.all([
     canReadPipeline
       ? countActiveProjects(supabase, orgId)
       : Promise.resolve({ count: null as number | null, failed: false }),
@@ -161,7 +167,21 @@ async function queryAndPresent(
     readSnapshotsInPeriod(supabase, orgId, window),
     readEstimates(supabase, orgId, window),
   ]);
+  const independentPromise = Promise.all([
+    businessRead && canReadPipeline
+      ? readPipelineProjects(supabase, orgId)
+      : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
+    businessRead
+      ? readVariationAdjustments(supabase, orgId, window)
+      : Promise.resolve({ rows: [] as AnalyticsVariation[], truncated: false }),
+    tier === "business" && tables.includes("pricing_items")
+      ? readPricingItems(supabase, orgId)
+      : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
+  ]);
+  const [[activeCount, sends, acceptedSnapshots, estimates], [pipeline, variationRows, pricing]] =
+    await Promise.all([headlinePromise, independentPromise]);
   const wave1Ms = Date.now() - started;
+  markAnalytics("headline");
   const names = new Map<string, string>();
 
   let projects: AnalyticsProject[] = [];
@@ -177,22 +197,15 @@ async function queryAndPresent(
   const timingIds = acceptedSnapshots.rows
     .map((row) => row.quoteId)
     .filter((id) => !sentIds.has(id));
-  const businessRead = tier === "business" && tables.includes("variation_accepted_adjustments");
+  const dependentStarted = Date.now();
 
-  const [pipeline, cohort, timing, variationRows, quoteTotals, lines, quotedAreas, acceptedAreas, pricing] =
-    await Promise.all([
-    businessRead && canReadPipeline
-      ? readPipelineProjects(supabase, orgId)
-      : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
+  const [cohort, timing, quoteTotals, lines, quotedAreas, acceptedAreas] = await Promise.all([
     businessRead
       ? readSnapshotsForQuotes(supabase, orgId, cohortIds)
       : Promise.resolve([] as AnalyticsSnapshot[]),
     businessRead
       ? readSendsForQuotes(supabase, orgId, timingIds)
       : Promise.resolve([] as AnalyticsQuoteEvent[]),
-    businessRead
-      ? readVariationAdjustments(supabase, orgId, window)
-      : Promise.resolve({ rows: [] as AnalyticsVariation[], truncated: false }),
     readQuoteTotals(
       supabase,
       orgId,
@@ -211,10 +224,9 @@ async function queryAndPresent(
     tier === "business"
       ? readAcceptedAreaLines(supabase, orgId, window)
       : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
-    tier === "business" && tables.includes("pricing_items")
-      ? readPricingItems(supabase, orgId)
-      : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
+  const wave2Ms = Date.now() - dependentStarted;
+  markAnalytics("detail");
   projects = pipeline.rows;
   projectsTruncated = pipeline.truncated;
   cohortSnapshots = cohort;
@@ -283,10 +295,13 @@ async function queryAndPresent(
     },
   });
 
+  markAnalytics("aggregate");
   const finished = Date.now();
+  markAnalytics("response");
   return presentAnalytics(measured, tier, window, recordPage, finished - started, {
     wave1Ms,
-    wave2Ms: finished - started - wave1Ms,
+    wave2Ms,
+    serverTiming: { ...analyticsClock().marks },
   });
 }
 
@@ -433,7 +448,7 @@ function areaName(value: unknown, fallback: string): string {
   if (row && typeof row === "object" && "name" in row && typeof row.name === "string" && row.name.trim()) {
     return row.name.trim();
   }
-  return fallback.trim() || "Not named";
+  return fallback.trim() || "Unallocated";
 }
 
 async function readQuotedAreaLines(
@@ -445,7 +460,7 @@ async function readQuotedAreaLines(
   for (let index = 0; index < quoteIds.length; index += 150) {
     const { data, error } = await supabase
       .from("quote_items")
-      .select("quote_id, section_title, total, work_areas(name)")
+      .select("quote_id, section_title, total, optional, visible, work_areas(name)")
       .eq("org_id", orgId)
       .in("quote_id", quoteIds.slice(index, index + 150))
       .limit(QUERY_LIMIT + 1);
@@ -458,6 +473,7 @@ async function readQuotedAreaLines(
         quoteId: String(row.quote_id),
         name: areaName(row.work_areas, String(row.section_title ?? "")),
         lineExGst: total != null && Number.isFinite(total) ? total : null,
+        included: row.visible !== false && row.optional !== true,
         kind: "quoted",
       });
     }

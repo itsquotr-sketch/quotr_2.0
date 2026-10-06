@@ -174,6 +174,8 @@ export type AnalyticsAreaLine = {
   /** Frozen quote line total, ex GST. Null when the line has no stored total. */
   lineExGst: number | null;
   kind: "quoted" | "accepted";
+  /** False for optional or hidden lines. Those stay out of the quote total. */
+  included?: boolean;
 };
 
 export type AnalyticsEstimateLine = {
@@ -211,6 +213,15 @@ export type AnalyticsWorkArea = {
 export type AnalyticsRateSource = {
   label: string;
   lines: number;
+};
+
+export type WorkAreaCheck = {
+  quotedAreasExGst: number | null;
+  quotedFrozenExGst: number | null;
+  acceptedAreasExGst: number | null;
+  acceptedFrozenExGst: number | null;
+  /** Optional or hidden quoted lines. Shown so they are not dropped quietly. */
+  optionalQuotedExGst: number | null;
 };
 
 export type PricingExposure = {
@@ -264,6 +275,7 @@ export type PersonalAnalyticsView = {
   queryMs: number;
   wave1Ms: number;
   wave2Ms: number;
+  serverTiming: Record<string, number>;
   incomplete: boolean;
 };
 
@@ -295,6 +307,7 @@ export type BusinessAnalyticsView = Omit<PersonalAnalyticsView, "tier"> & {
     adjustmentExGst: number | null;
   };
   workAreas: AnalyticsWorkArea[] | null;
+  workAreaCheck: WorkAreaCheck | null;
   rateSources: AnalyticsRateSource[] | null;
   pricing: PricingExposure;
 };
@@ -318,6 +331,7 @@ export type AnalyticsMeasurement = {
   timing: BusinessAnalyticsView["timing"];
   variations: BusinessAnalyticsView["variations"];
   workAreas: AnalyticsWorkArea[] | null;
+  workAreaCheck: WorkAreaCheck | null;
   rateSources: AnalyticsRateSource[] | null;
   pricing: PricingExposure;
   estimateRecords: AnalyticsRecordLink[];
@@ -519,6 +533,15 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
           ? row
           : { ...row, quotedQuotes: null, quotedLineExGst: null, acceptedLineExGst: null }
       );
+  const workAreaCheck = areaMoney && workAreas
+    ? reconcileWorkAreas({
+        areas: workAreas,
+        areaLines,
+        quoteTotals: totals,
+        sentQuoteIds: sendsInPeriod.map((row) => row.quoteId),
+        acceptedTotal: acceptedQuoteValueExGst,
+      })
+    : null;
   const rateSources = input.limits.estimatesTruncated || input.limits.linesTruncated
     ? null
     : rateSourceMix(lines);
@@ -566,6 +589,7 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
     quotedValueExGst,
     estimateRecords,
     workAreas,
+    workAreaCheck,
     rateSources,
     pricing,
     sentQuoteIds: sendsInPeriod.map((row) => row.quoteId),
@@ -608,7 +632,7 @@ export function presentAnalytics(
   window: PeriodWindow,
   recordPage?: { kind: "sent" | "accepted"; offset: number },
   queryMs = 0,
-  waves: { wave1Ms?: number; wave2Ms?: number } = {}
+  waves: { wave1Ms?: number; wave2Ms?: number; serverTiming?: Record<string, number> } = {}
 ): AnalyticsView {
   const sentPage = recordWindow(
     measured.sentRecords,
@@ -643,6 +667,7 @@ export function presentAnalytics(
     queryMs,
     wave1Ms: waves.wave1Ms ?? queryMs,
     wave2Ms: waves.wave2Ms ?? 0,
+    serverTiming: waves.serverTiming ?? {},
     incomplete: measured.incomplete,
   };
   if (tier !== "business") return personal;
@@ -657,6 +682,7 @@ export function presentAnalytics(
     timing: measured.timing,
     variations: measured.variations,
     workAreas: measured.workAreas,
+    workAreaCheck: measured.workAreaCheck,
     rateSources: measured.rateSources,
     pricing: measured.pricing,
   };
@@ -685,13 +711,100 @@ export function classifyPricingExposure(item: {
   return "priced";
 }
 
+function moneyCents(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function reconcileWorkAreas(input: {
+  areas: AnalyticsWorkArea[];
+  areaLines: readonly AnalyticsAreaLine[];
+  quoteTotals: ReadonlyMap<string, number>;
+  sentQuoteIds: readonly string[];
+  acceptedTotal: number | null;
+}): WorkAreaCheck {
+  const quoted = input.areaLines.filter((line) => line.kind === "quoted" && line.included !== false);
+  const optional = input.areaLines.filter((line) => line.kind === "quoted" && line.included === false);
+  const accepted = input.areaLines.filter((line) => line.kind === "accepted" && line.included !== false);
+  const quotedIncomplete = quoted.some((line) => line.lineExGst == null || !Number.isFinite(line.lineExGst));
+  const acceptedIncomplete = accepted.some((line) => line.lineExGst == null || !Number.isFinite(line.lineExGst));
+  const lineByQuote = new Map<string, number>();
+  for (const line of quoted) {
+    if (line.lineExGst == null) continue;
+    lineByQuote.set(line.quoteId, (lineByQuote.get(line.quoteId) ?? 0) + line.lineExGst);
+  }
+  let quotedFrozen = 0;
+  let quotedKnown = true;
+  let quotedGap = 0;
+  for (const id of input.sentQuoteIds) {
+    const total = input.quoteTotals.get(id);
+    if (total == null || !Number.isFinite(total)) {
+      quotedKnown = false;
+      continue;
+    }
+    quotedFrozen += total;
+    quotedGap += total - (lineByQuote.get(id) ?? 0);
+  }
+  quotedGap = moneyCents(quotedGap);
+  if (quotedKnown && !quotedIncomplete && quotedGap !== 0) {
+    addGap(input.areas, "quotedLineExGst", quotedGap);
+  }
+  const acceptedLineSum = moneyCents(
+    accepted.reduce((sum, line) => sum + (line.lineExGst ?? 0), 0)
+  );
+  const acceptedGap =
+    input.acceptedTotal == null ? 0 : moneyCents(input.acceptedTotal - acceptedLineSum);
+  if (input.acceptedTotal != null && !acceptedIncomplete && acceptedGap !== 0) {
+    addGap(input.areas, "acceptedLineExGst", acceptedGap);
+  }
+  const quotedAreas = moneyCents(
+    input.areas.reduce((sum, row) => sum + (row.quotedLineExGst ?? 0), 0)
+  );
+  const acceptedAreas = moneyCents(
+    input.areas.reduce((sum, row) => sum + (row.acceptedLineExGst ?? 0), 0)
+  );
+  return {
+    quotedAreasExGst: quotedKnown && !quotedIncomplete ? quotedAreas : null,
+    quotedFrozenExGst: quotedKnown && !quotedIncomplete ? moneyCents(quotedFrozen) : null,
+    acceptedAreasExGst: input.acceptedTotal == null || acceptedIncomplete ? null : acceptedAreas,
+    acceptedFrozenExGst:
+      input.acceptedTotal == null || acceptedIncomplete ? null : moneyCents(input.acceptedTotal),
+    optionalQuotedExGst: optional.some((line) => line.lineExGst == null)
+      ? null
+      : moneyCents(optional.reduce((sum, line) => sum + (line.lineExGst ?? 0), 0)),
+  };
+}
+
+function addGap(
+  areas: AnalyticsWorkArea[],
+  field: "quotedLineExGst" | "acceptedLineExGst",
+  gap: number
+): void {
+  const current = areas.find((row) => row.name === "Unallocated");
+  if (current) {
+    current[field] = moneyCents((current[field] ?? 0) + gap);
+    return;
+  }
+  areas.push({
+    name: "Unallocated",
+    estimates: 0,
+    quotedQuotes: 0,
+    quotedLineExGst: field === "quotedLineExGst" ? gap : 0,
+    acceptedLineExGst: field === "acceptedLineExGst" ? gap : 0,
+  });
+}
+
+function areaLabel(name: string): string {
+  const trimmed = name.trim();
+  return trimmed || "Unallocated";
+}
+
 function workAreaFrequency(
   lines: readonly AnalyticsEstimateLine[],
   areaLines: readonly AnalyticsAreaLine[]
 ): AnalyticsWorkArea[] {
   const sets = new Map<string, Set<string>>();
   for (const line of lines) {
-    const name = line.workAreaName.trim() || "Not named";
+    const name = areaLabel(line.workAreaName);
     const current = sets.get(name) ?? new Set<string>();
     current.add(line.estimateId);
     sets.set(name, current);
@@ -699,7 +812,8 @@ function workAreaFrequency(
   const quoted = new Map<string, { quotes: Set<string>; values: number[]; complete: boolean }>();
   const accepted = new Map<string, { values: number[]; complete: boolean }>();
   for (const line of areaLines) {
-    const name = line.name.trim() || "Not named";
+    if (line.included === false) continue;
+    const name = areaLabel(line.name);
     if (line.kind === "quoted") {
       const current = quoted.get(name) ?? { quotes: new Set<string>(), values: [], complete: true };
       current.quotes.add(line.quoteId);
@@ -723,10 +837,14 @@ function workAreaFrequency(
       acceptedLineExGst:
         accepted.get(name)?.complete === false ? null : sumExGst(accepted.get(name)?.values ?? []),
     }))
-    .sort(
-      (a, b) =>
-        b.estimates + b.quotedQuotes - (a.estimates + a.quotedQuotes) || a.name.localeCompare(b.name)
-    );
+    .sort((a, b) => {
+      if (a.name === "Unallocated") return 1;
+      if (b.name === "Unallocated") return -1;
+      return (
+        b.estimates + (b.quotedQuotes ?? 0) - (a.estimates + (a.quotedQuotes ?? 0)) ||
+        a.name.localeCompare(b.name)
+      );
+    });
 }
 
 function rateSourceMix(lines: readonly AnalyticsEstimateLine[]): AnalyticsRateSource[] {

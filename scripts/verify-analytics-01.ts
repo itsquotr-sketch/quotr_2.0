@@ -969,6 +969,57 @@ check(
     allocated.workAreas?.find((row) => row.name === "Fence")?.quotedLineExGst === 300 &&
     allocated.workAreas?.every((row) => row.quotedLineExGst !== 500)
 );
+const reconciled = measureAnalytics({
+  orgId: ORG,
+  window: auckland,
+  projects: [
+    {
+      id: "p1",
+      orgId: ORG,
+      title: "Mixed",
+      businessStatus: "quote_sent",
+      archivedAt: null,
+      deletedAt: null,
+    },
+  ],
+  quoteEvents: [event("qm", "p1", "quote_sent", "2026-02-02T00:00:00.000Z")],
+  snapshots: [snapshot("qm", "p1", 1000, 0, 1000, "2026-02-10T00:00:00.000Z")],
+  variations: [],
+  quoteTotals: [{ orgId: ORG, quoteId: "qm", subtotalExGst: 1000 }],
+  areaLines: [
+    { orgId: ORG, name: "Deck", quoteId: "qm", lineExGst: 400, kind: "quoted" },
+    { orgId: ORG, name: "Fence", quoteId: "qm", lineExGst: 350, kind: "quoted" },
+    { orgId: ORG, name: "Gate", quoteId: "qm", lineExGst: 150, kind: "quoted" },
+    { orgId: ORG, name: "", quoteId: "qm", lineExGst: 100, kind: "quoted" },
+    { orgId: ORG, name: "Extra", quoteId: "qm", lineExGst: 80, kind: "quoted", included: false },
+    { orgId: ORG, name: "Deck", quoteId: "qm", lineExGst: 400, kind: "accepted" },
+    { orgId: ORG, name: "Fence", quoteId: "qm", lineExGst: 350, kind: "accepted" },
+    { orgId: ORG, name: "Gate", quoteId: "qm", lineExGst: 250, kind: "accepted" },
+  ],
+  limits: {
+    sentTruncated: false,
+    snapshotsTruncated: false,
+    projectsTruncated: false,
+    variationsTruncated: false,
+  },
+});
+const reconciledSum = (kind: "quotedLineExGst" | "acceptedLineExGst") =>
+  moneySum(reconciled.workAreas?.map((row) => row[kind] ?? 0) ?? []);
+function moneySum(values: number[]): number {
+  return Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100;
+}
+check(
+  "area lines plus unallocated equal the frozen quote and snapshot",
+  reconciled.workAreas?.find((row) => row.name === "Unallocated")?.quotedLineExGst === 100 &&
+    reconciled.workAreas?.find((row) => row.name === "Gate")?.quotedLineExGst === 150 &&
+    reconciledSum("quotedLineExGst") === 1000 &&
+    reconciled.workAreaCheck?.quotedFrozenExGst === 1000 &&
+    reconciled.workAreaCheck?.optionalQuotedExGst === 80 &&
+    reconciled.workAreas?.find((row) => row.name === "Unallocated")?.acceptedLineExGst === 0 &&
+    reconciled.workAreas?.find((row) => row.name === "Gate")?.acceptedLineExGst === 250 &&
+    reconciledSum("acceptedLineExGst") === 1000 &&
+    !reconciled.workAreas?.some((row) => row.name === "Extra")
+);
 check(
   "pricing required links the current document",
   mixed.pricing.documents.length === 1 &&

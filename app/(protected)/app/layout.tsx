@@ -17,6 +17,7 @@ import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getFirstRunStage, getOnboardingAccess } from "@/lib/setup/actions";
 import { resolveProtectedOnboardingAccess } from "@/lib/setup/first-run-stage";
+import { markAnalytics, startAnalyticsClock } from "@/lib/analytics/server-timing";
 import { memberCanCreateProjects } from "@/lib/team/permissions";
 import { lookupPendingInvitationForCurrentUser } from "@/lib/team/public-invite";
 
@@ -55,9 +56,12 @@ async function AuthenticatedApp({
 }) {
   const headerStore = await headers();
   const pathname = headerStore.get("x-pathname");
+  const timingAnalytics = pathname === "/app/analytics" || pathname?.startsWith("/app/analytics?");
+  if (timingAnalytics) startAnalyticsClock();
   const onSetupRequired = isSetupRequiredPath(pathname);
 
   const auth = await requireAuthOrgContext();
+  if (timingAnalytics) markAnalytics("auth");
 
   if (!auth.ok) {
     if (auth.code === "not_authenticated") {
@@ -86,6 +90,7 @@ async function AuthenticatedApp({
     getOrgBillingState(auth.orgId).catch(() => null),
   ]);
 
+  if (timingAnalytics) markAnalytics("shell");
   const onboardingAccessDecision = resolveProtectedOnboardingAccess({
     stage: firstRunStage,
     role: onboardingAccess.role,

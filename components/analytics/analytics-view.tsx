@@ -12,6 +12,7 @@ import {
   sharePercents,
 } from "@/lib/analytics/presentation";
 import { formatPricingMoney } from "@/lib/pricing/format";
+import { analyticsTimingAttribute } from "@/lib/analytics/server-timing";
 
 type AnalyticsViewProps = {
   view: AnalyticsView;
@@ -27,6 +28,7 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
       data-analytics-query-ms={view.queryMs}
       data-analytics-wave1-ms={view.wave1Ms}
       data-analytics-wave2-ms={view.wave2Ms}
+      data-analytics-server-timing={analyticsTimingAttribute(view.serverTiming)}
     >
       <PeriodFilters
         periodId={view.periodId}
@@ -242,8 +244,23 @@ function WorkAreaPanel({ view }: { view: BusinessAnalyticsView }) {
     <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4">
       <h2 className="text-sm font-medium">Work areas</h2>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        An estimate counts once in each area it uses. Quoted and accepted money is the sum of lines in that area, not the whole quote repeated. Open Estimates created for the projects.
+        An estimate counts once in each area it uses. Quoted and accepted money is the sum of included lines in that area. Unallocated is a line with no area, or the difference needed to reach the frozen quote or snapshot total. Optional lines stay out of that total.
       </p>
+      {view.workAreaCheck?.quotedFrozenExGst != null ? (
+        <p className="mt-2 text-sm tabular-nums">
+          Area lines {formatMoney(view.workAreaCheck.quotedAreasExGst)} = frozen sends{" "}
+          {formatMoney(view.workAreaCheck.quotedFrozenExGst)}
+          {view.workAreaCheck.optionalQuotedExGst
+            ? ` · optional lines ${formatMoney(view.workAreaCheck.optionalQuotedExGst)} are outside the total`
+            : ""}
+        </p>
+      ) : null}
+      {view.workAreaCheck?.acceptedFrozenExGst != null ? (
+        <p className="text-sm tabular-nums">
+          Accepted lines {formatMoney(view.workAreaCheck.acceptedAreasExGst)} = snapshots{" "}
+          {formatMoney(view.workAreaCheck.acceptedFrozenExGst)}
+        </p>
+      ) : null}
       {view.workAreas == null ? (
         <p className="mt-3 text-sm text-muted-foreground">Work areas are hidden because the read was incomplete.</p>
       ) : rows.length === 0 ? (
