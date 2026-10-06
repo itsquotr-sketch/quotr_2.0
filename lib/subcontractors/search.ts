@@ -1,3 +1,4 @@
+import { regionLabel } from "@/lib/subcontractors/regions";
 import type { Subcontractor } from "@/lib/subcontractors/types";
 import { workAreaLabel } from "@/lib/subcontractors/work-areas";
 
@@ -13,7 +14,8 @@ export function subcontractorSearchText(subcontractor: Subcontractor): string {
     subcontractor.legal_name,
     subcontractor.country,
     subcontractor.specialties,
-    ...subcontractor.service_regions,
+    ...subcontractor.service_regions.map((region) => regionLabel(region)),
+    ...subcontractor.service_region_other_labels,
     ...subcontractor.work_area_types.map((type) => workAreaLabel(type)),
     ...contactText,
   ]

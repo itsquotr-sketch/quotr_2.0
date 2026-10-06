@@ -10,7 +10,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { evaluateOrgEntitlement } from "../lib/billing/entitlements";
+import { planAllowsCapability, trialAllowsCapability } from "../lib/billing/entitlement-matrix";
+import { buildInternalTrialSubscription } from "../lib/billing/trial";
+import type { OrgBillingState } from "../lib/billing/types";
 import { subcontractorSchema } from "../lib/subcontractors/schema";
+import { mapLegacyServiceRegion, retainRegionsForCountry } from "../lib/subcontractors/regions";
 import {
   filterSubcontractors,
   suggestSubcontractorsForWorkArea,
@@ -85,15 +90,23 @@ function sample(overrides: Partial<Subcontractor> = {}): Subcontractor {
     legal_name: null,
     website: null,
     country: "Australia",
-    service_regions: ["Auckland"],
+    country_code: "AU",
+    address_line_1: null,
+    address_line_2: null,
+    address_city: null,
+    address_region: null,
+    address_postcode: null,
+    service_regions: ["auckland"],
+    service_region_other_labels: ["North Shore"],
     work_area_types: ["bathroom"],
     specialties: "Waterproofing",
     internal_notes: null,
     preferred_pricing_method: null,
     currency: null,
     abn: null,
+    nzbn: null,
+    gst_registration: null,
     gst_number: null,
-    gst_notes: null,
     minimum_charge_notes: null,
     travel_notes: null,
     archived_at: null,
@@ -118,10 +131,15 @@ function sample(overrides: Partial<Subcontractor> = {}): Subcontractor {
 function staticMain() {
   console.log("=== subcontractors directory ===");
   const sql = read("supabase/migrations/087_organisation_subcontractors.sql");
+  const profileSql = read("supabase/migrations/088_subcontractor_profile.sql");
   const actions = read("lib/subcontractors/actions.ts");
+  const documents = read("lib/subcontractors/document-actions.ts");
   const rates = read("lib/estimate/rates.ts");
   const directory = read("components/subcontractors/SubcontractorsDirectory.tsx");
-  const dialog = read("components/subcontractors/SubcontractorFormDialog.tsx");
+  const dialog = read("components/subcontractors/SubcontractorCreateDialog.tsx");
+  const picker = read("components/subcontractors/WorkAreaPicker.tsx");
+  const profile = read("components/subcontractors/SubcontractorProfile.tsx");
+  const documentUi = read("components/subcontractors/SubcontractorDocuments.tsx");
   const sidebar = read("components/app-sidebar.tsx");
   const mobile = read("components/layout/mobile-nav.tsx");
   const menu = read("components/layout/mobile-menu-sheet.tsx");
@@ -153,18 +171,41 @@ function staticMain() {
   assert("capability tags are not rates", sql.includes("Not a priced rate"));
   assert("commercial details are not verified", sql.includes("Not verified."));
   assert("minimum charge is notes", sql.includes("minimum_charge_notes") && !sql.includes("minimum_charge_cents"));
-  assert("documents have no storage path", !sql.includes("storage_path") && !sql.includes("create bucket"));
+  assert("documents have no storage path in the first migration", !sql.includes("storage_object_path") && !sql.includes("create bucket"));
   assert("anonymous access is revoked", sql.includes("revoke all on table public.subcontractors from public, anon, authenticated"));
   for (const type of SUBCONTRACTOR_WORK_AREA_TYPES) {
     assert(`capability list includes ${type}`, sql.includes(`'${type}'`));
   }
 
+  section("PROFILE MIGRATION");
+  assert("profile migration has no Preview ref", !profileSql.includes(PREVIEW_SUPABASE_PROJECT_REF));
+  assert("profile migration has no Production ref", !profileSql.includes(PRODUCTION_SUPABASE_PROJECT_REF));
+  assert("profile migration does not drop gst notes", !/drop column[^;]*gst_notes/i.test(profileSql));
+  assert("profile migration does not alter customers or rates", !/alter table public\.customers/i.test(profileSql) && !/alter table public\.rates/i.test(profileSql));
+  assert("service regions map Auckland and keep other labels", profileSql.includes("subcontractor_region_code") && profileSql.includes("service_region_other_labels"));
+  assert("North Shore is not forced to a region code", !profileSql.includes("when 'north shore'"));
+  assert("private document bucket", profileSql.includes("'subcontractor-documents'") && profileSql.includes("public = false") && profileSql.includes("No storage policies"));
+  assert("no client storage policy", !profileSql.includes("on storage.objects"));
+  assert("document kinds include rate schedule and other", profileSql.includes("'rate_schedule'") && profileSql.includes("'other'"));
+  assert("gst registration is explicit", profileSql.includes("'yes', 'no', 'unknown'") && profileSql.includes("not inferred"));
+  assert("complete upload is not granted to authenticated", profileSql.includes("revoke all on function public.complete_subcontractor_document_upload_v1(uuid, bigint) from public, anon, authenticated"));
+  assert("profile save does not write quotes or rates", !/insert into public\.(quotes|rates|estimates)/i.test(profileSql));
+  assert("files are not copied to an RFQ", !profileSql.includes("insert into public.rfq") && !profileSql.includes("create table public.rfq"));
+
   section("AUTHORITY");
   assert("directory save checks subcontractors.edit", actions.includes('permission: "subcontractors.edit"'));
   assert("directory save keeps the project billing gate", actions.includes('entitlement: "projects.create"'));
-  assert("actions do not call the rate resolver", !actions.includes("resolveRate") && !actions.includes("lib/estimate/rates"));
+  assert("document writes keep the same billing gate", documents.includes('permission: "subcontractors.edit"') && documents.includes('entitlement: "projects.create"'));
+  assert("actions do not call the rate resolver", !actions.includes("resolveRate") && !actions.includes("lib/estimate/rates") && !documents.includes("resolveRate"));
+  assert("document actions do not expose files through RFQs", !documents.includes('from("rfq') && !documents.includes("rfq_"));
+  const savePayload = actions.slice(actions.indexOf('rpc("save_subcontractor_v1")'));
+  assert("profile save does not send gst notes", !savePayload.includes("gst_notes"));
+  assert("profile save does not replace document rows", !savePayload.includes("document"));
   assert("rate resolver file is unchanged by this module", rates.includes("export function resolveRate"));
   assert("actions do not write customers, projects, quotes, or rates", !actions.includes('.from("customers")') && !actions.includes('.from("projects")') && !actions.includes('.from("quotes")') && !actions.includes('.from("rates")'));
+  assert("estimate math is not imported", !actions.includes("lib/estimate-math") && !documents.includes("lib/estimate-math"));
+  assert("quote fingerprint is not imported", !actions.includes("snapshot-fingerprint") && !documents.includes("snapshot-fingerprint"));
+  assert("pricing mappers are not imported", !actions.includes("lib/pricing/mappers") && !documents.includes("lib/pricing/mappers"));
 
   section("UI");
   assert("subcontractor page is read-only for viewers", page.includes("memberCanEditSubcontractors"));
@@ -172,7 +213,11 @@ function staticMain() {
   assert("desktop rows and mobile cards", directory.includes('data-subcontractor-list="aligned"') && directory.includes('data-subcontractor-list="stacked"') && directory.includes("md:hidden") && directory.includes("md:block"));
   assert("status badges", directory.includes("Active") && directory.includes("Archived"));
   assert("no invented job history", !directory.includes("Prior jobs") && !directory.includes("RFQ score"));
-  assert("dialog allows shared contact details and unverified commercial notes", dialog.includes("share an email or phone") && dialog.includes("Not verified") && dialog.includes("Uploading the file is not part of this directory."));
+  assert("dialog is a short create form", dialog.includes("Trading name") && dialog.includes("Primary contact (optional)") && dialog.includes("WorkAreaPicker") && picker.includes("Search work areas") && dialog.includes("Services offered (optional)"));
+  assert("create form does not pretend to upload", !dialog.includes("Add document") && !dialog.includes("GST notes"));
+  assert("profile has the requested sections", profile.includes("Business and address") && profile.includes("People") && profile.includes("Capabilities and service regions") && profile.includes("Documents") && profile.includes("Commercial preferences") && profile.includes("Internal notes") && profile.includes("Services offered"));
+  assert("commercial copy does not infer GST", profile.includes("not taken from the NZBN or ABN") && profile.includes("do not change Quote GST"));
+  assert("document control is a real upload", documentUi.includes('type="file"') && documentUi.includes("Add document") && documentUi.includes("not sent with a request for quote"));
   assert("sidebar Contacts destination", sidebar.includes('href: "/app/contacts"') && sidebar.includes('label: "Contacts"'));
   assert("mobile bar stays five items without Contacts", mobile.includes('data-mobile-nav="five"') && !mobile.includes("/app/contacts"));
   assert("menu includes Contacts", menu.includes('destination("/app/contacts", "Contacts"'));
@@ -181,7 +226,7 @@ function staticMain() {
   const shared = subcontractorSchema.safeParse({
     trading_name: "North Plumbing",
     work_area_types: ["bathroom"],
-    service_regions: ["Auckland"],
+    service_regions: ["auckland"],
     contacts: [
       { name: "Ada Mason", email: "office@example.invalid", phone: "021", is_primary: true },
       { name: "Bea Cole", email: "office@example.invalid", phone: "021", is_primary: false },
@@ -197,6 +242,59 @@ function staticMain() {
     documents: [],
   });
   assert("unknown capability tag is rejected", !unknown.success);
+  assert("Auckland maps to the Auckland region", mapLegacyServiceRegion("Auckland") === "auckland");
+  assert("North Shore is preserved as other text", mapLegacyServiceRegion("North Shore") === null);
+  assert(
+    "changing country keeps an unmatched region",
+    retainRegionsForCountry("AU", ["auckland"], []).otherLabels.includes("Auckland") &&
+      retainRegionsForCountry("AU", ["auckland"], []).selected.includes("other")
+  );
+  const now = new Date("2026-10-07T00:00:00.000Z");
+  const billingBase = {
+    orgId: "00000000-0000-4000-8000-000000000001",
+    billingEnvironment: "test" as const,
+    customer: null,
+    activeOverride: null,
+    effectiveTrialState: null,
+  };
+  function billingState(subscription: OrgBillingState["subscription"]): OrgBillingState {
+    return { ...billingBase, subscription };
+  }
+  const activeTrial = buildInternalTrialSubscription({
+    id: "trial-active",
+    orgId: billingBase.orgId,
+    billingEnvironment: "test",
+    now,
+    trialEndsAt: new Date("2026-11-01T00:00:00.000Z"),
+  });
+  const expiredTrial = buildInternalTrialSubscription({
+    id: "trial-expired",
+    orgId: billingBase.orgId,
+    billingEnvironment: "test",
+    now,
+    trialEndsAt: new Date("2026-09-01T00:00:00.000Z"),
+  });
+  assert("Builder plan allows the Contacts write entitlement", planAllowsCapability("builder", "projects.create"));
+  assert("Business plan allows the Contacts write entitlement", planAllowsCapability("business", "projects.create"));
+  assert("active trial catalogue allows the Contacts write entitlement", trialAllowsCapability("projects.create"));
+  assert(
+    "active trial can pass the Contacts billing gate",
+    evaluateOrgEntitlement({
+      state: billingState(activeTrial),
+      capability: "projects.create",
+      mode: "strict",
+      now,
+    }).ok
+  );
+  assert(
+    "expired trial is denied the Contacts billing gate",
+    evaluateOrgEntitlement({
+      state: billingState(expiredTrial),
+      capability: "projects.create",
+      mode: "strict",
+      now,
+    }).ok === false
+  );
   const filtered = filterSubcontractors(
     [sample(), sample({ id: "2", trading_name: "South Electric", work_area_types: ["kitchen"], contacts: [] })],
     "office@example",
@@ -374,7 +472,7 @@ async function liveMain() {
 
     const business = await owner
       .from("subcontractors")
-      .select("currency, abn, work_area_types, minimum_charge_notes")
+      .select("currency, abn, gst_number, gst_registration, country_code, work_area_types, service_regions, service_region_other_labels, minimum_charge_notes")
       .eq("id", subcontractorId)
       .single();
     assert(
@@ -384,6 +482,20 @@ async function liveMain() {
         Array.isArray(business.data?.work_area_types) &&
         business.data.work_area_types.includes("bathroom") &&
         business.data?.minimum_charge_notes === "Call-out note only"
+    );
+    assert(
+      "free-text regions map without dropping North Shore",
+      Array.isArray(business.data?.service_regions) &&
+        business.data.service_regions.includes("auckland") &&
+        business.data.service_regions.includes("other") &&
+        Array.isArray(business.data?.service_region_other_labels) &&
+        business.data.service_region_other_labels.includes("North Shore")
+    );
+    assert(
+      "GST registration is not inferred from ABN or GST number",
+      business.data?.country_code === "AU" &&
+        business.data?.gst_number === "123-456-789" &&
+        business.data?.gst_registration == null
     );
 
     const documents = await owner
@@ -395,6 +507,102 @@ async function liveMain() {
       "document metadata is stored without a file",
       !documents.error && documents.data?.length === 1 && documents.data[0]?.document_kind === "insurance"
     );
+
+    const keptDocuments = await owner.rpc("save_subcontractor_v1", {
+      p_payload: {
+        id: subcontractorId,
+        trading_name: `North Plumbing ${suffix}`,
+        country: "Australia",
+        service_regions: ["Auckland", "North Shore"],
+        work_area_types: ["bathroom", "kitchen"],
+        contacts: [
+          {
+            name: `Ada Mason ${suffix}`,
+            email: sharedEmail,
+            phone: "021000111",
+            is_primary: true,
+          },
+          {
+            name: `Bea Cole ${suffix}`,
+            email: sharedEmail,
+            phone: "021000111",
+            is_primary: false,
+          },
+        ],
+      },
+    });
+    const documentsAfterProfileSave = await owner
+      .from("subcontractor_documents")
+      .select("id")
+      .eq("subcontractor_id", subcontractorId)
+      .is("archived_at", null);
+    assert(
+      "a profile save that omits documents keeps the existing file record",
+      !keptDocuments.error && (documentsAfterProfileSave.data?.length ?? 0) === 1
+    );
+
+    const prepared = await owner.rpc("prepare_subcontractor_document_upload_v1", {
+      p_subcontractor: subcontractorId,
+      p_kind: "licence",
+      p_title: `Licence ${suffix}`,
+      p_expires: "2027-06-01",
+      p_notes: "Supplied",
+      p_filename: "licence.pdf",
+      p_mime: "application/pdf",
+      p_byte_size: 1200,
+    });
+    assert("owner can prepare a private document upload", !prepared.error && typeof prepared.data === "string");
+    const documentId = prepared.data as string;
+    const pendingFile = await owner
+      .from("subcontractor_documents")
+      .select("upload_status, storage_object_path, expires_on")
+      .eq("id", documentId)
+      .single();
+    assert(
+      "prepared file stays pending inside the organisation path",
+      pendingFile.data?.upload_status === "pending" &&
+        typeof pendingFile.data?.storage_object_path === "string" &&
+        pendingFile.data.storage_object_path.startsWith(`${orgA}/`) &&
+        String(pendingFile.data?.expires_on).startsWith("2027-06-01")
+    );
+    const forcedReady = await owner
+      .from("subcontractor_documents")
+      .update({ upload_status: "ready" })
+      .eq("id", documentId)
+      .select("upload_status")
+      .single();
+    assert(
+      "a member cannot mark a file ready without the server",
+      forcedReady.data?.upload_status === "pending"
+    );
+    const ownerComplete = await owner.rpc("complete_subcontractor_document_upload_v1", {
+      p_document: documentId,
+      p_byte_size: 1200,
+    });
+    assert("authenticated clients cannot complete an upload", Boolean(ownerComplete.error));
+    const storageWrite = await owner.storage
+      .from("subcontractor-documents")
+      .upload(`${orgA}/direct.pdf`, new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]), {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    assert("authenticated storage upload is denied", Boolean(storageWrite.error));
+    const viewerPrepare = await viewer.rpc("prepare_subcontractor_document_upload_v1", {
+      p_subcontractor: subcontractorId,
+      p_kind: "insurance",
+      p_title: "Denied",
+      p_expires: null,
+      p_notes: null,
+      p_filename: "denied.pdf",
+      p_mime: "application/pdf",
+      p_byte_size: 10,
+    });
+    assert("viewer cannot prepare a document upload", Boolean(viewerPrepare.error));
+    const foreignDocument = await foreign
+      .from("subcontractor_documents")
+      .select("id")
+      .eq("id", documentId);
+    assert("cross-organisation document read denied", deniedWrite(foreignDocument.data, foreignDocument.error));
 
     const second = await owner.rpc("save_subcontractor_v1", {
       p_payload: {

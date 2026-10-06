@@ -1,23 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubcontractorCreateDialog } from "@/components/subcontractors/SubcontractorCreateDialog";
 import {
   ArchiveSubcontractorButton,
   RestoreSubcontractorButton,
-  SubcontractorFormDialog,
 } from "@/components/subcontractors/SubcontractorFormDialog";
 import { SCOPE_CATALOGUE, SCOPE_CATEGORIES } from "@/lib/scopes/catalogue";
 import { filterSubcontractors } from "@/lib/subcontractors/search";
-import type { Subcontractor, SubcontractorContact } from "@/lib/subcontractors/types";
+import type {
+  Subcontractor,
+  SubcontractorContact,
+  SubcontractorCountryCode,
+} from "@/lib/subcontractors/types";
 import { workAreaLabels } from "@/lib/subcontractors/work-areas";
 
 type SubcontractorsDirectoryProps = {
   subcontractors: Subcontractor[];
   archived: boolean;
   canEdit: boolean;
+  organisationCountry: SubcontractorCountryCode | null;
 };
 
 const selectClass =
@@ -48,6 +55,10 @@ function StatusBadge({ archived }: { archived: boolean }) {
   );
 }
 
+function profileHref(subcontractor: Subcontractor): string {
+  return `/app/contacts/subcontractors/${subcontractor.id}`;
+}
+
 function SubcontractorActions({
   subcontractor,
   archived,
@@ -64,11 +75,13 @@ function SubcontractorActions({
         <RestoreSubcontractorButton subcontractorId={subcontractor.id} />
       ) : (
         <>
-          <SubcontractorFormDialog
-            mode="edit"
-            subcontractor={subcontractor}
-            triggerLabel="Edit"
-          />
+          <Button
+            variant="outline"
+            size="touch"
+            render={<Link href={profileHref(subcontractor)} />}
+          >
+            Edit
+          </Button>
           <ArchiveSubcontractorButton subcontractor={subcontractor} />
         </>
       )}
@@ -80,6 +93,7 @@ export function SubcontractorsDirectory({
   subcontractors,
   archived,
   canEdit,
+  organisationCountry,
 }: SubcontractorsDirectoryProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -157,8 +171,8 @@ export function SubcontractorsDirectory({
               : "Add a business and the people you contact there. Work areas help you find them later. They are not rates."}
           </p>
           {!archived && canEdit ? (
-            <div className="mt-4 flex justify-center">
-              <SubcontractorFormDialog mode="create" />
+              <div className="mt-4 flex justify-center">
+              <SubcontractorCreateDialog organisationCountry={organisationCountry} />
             </div>
           ) : null}
         </div>
@@ -196,9 +210,13 @@ export function SubcontractorsDirectory({
                     data-subcontractor-row
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium" title={subcontractor.trading_name}>
+                      <Link
+                        href={profileHref(subcontractor)}
+                        className="block truncate font-medium underline-offset-2 hover:underline"
+                        title={subcontractor.trading_name}
+                      >
                         {subcontractor.trading_name}
-                      </p>
+                      </Link>
                       {areas ? (
                         <p className="truncate text-sm text-muted-foreground lg:hidden" title={areas}>
                           {areas}
@@ -236,9 +254,12 @@ export function SubcontractorsDirectory({
                 >
                   <div className="flex min-w-0 flex-col gap-3">
                     <div className="flex min-w-0 items-start justify-between gap-3">
-                      <p className="min-w-0 break-words text-base font-medium">
+                      <Link
+                        href={profileHref(subcontractor)}
+                        className="min-w-0 break-words text-base font-medium underline-offset-2 hover:underline"
+                      >
                         {subcontractor.trading_name}
-                      </p>
+                      </Link>
                       <StatusBadge archived={archived} />
                     </div>
                     <p className="break-words text-sm text-muted-foreground">
