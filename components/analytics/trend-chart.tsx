@@ -272,13 +272,13 @@ function TrendBars({
                   <span className="flex h-28 w-full items-end justify-center gap-1" aria-hidden>
                     {showSent ? (
                       <span
-                        className="w-3 max-w-[42%] rounded-t-sm bg-foreground"
+                        className="w-[calc(50%-0.25rem)] max-w-14 rounded-t-sm bg-foreground"
                         style={{ height: barHeight(sentHeight, value(point, "sent")) }}
                       />
                     ) : null}
                     {showAccepted ? (
                       <span
-                        className="w-3 max-w-[42%] rounded-t-sm bg-[var(--brand-orange)]"
+                        className="w-[calc(50%-0.25rem)] max-w-14 rounded-t-sm bg-[var(--brand-orange)]"
                         style={{ height: barHeight(acceptedHeight, value(point, "accepted")) }}
                       />
                     ) : null}
