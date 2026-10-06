@@ -11,9 +11,24 @@ import {
 } from "@/lib/financial-presentation/format";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import { presentStoredGst } from "@/lib/pricing/gst-presentation";
+import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 
 export function pricingItemViewModel(item: PricingItem) {
+  if (isReplacedSubcontractPlaceholder(item)) {
+    return {
+      totalCost: item.total_cost,
+      totalSell: item.total_sell,
+      costKnown: false,
+      pricingRequired: false,
+      manuallyEdited: item.manually_edited,
+      totalSellFormatted: "Not on the quote",
+      totalCostFormatted: "Replaced",
+      profitLabel: "—",
+      marginLabel: "—",
+      markupLabel: "—",
+    };
+  }
   const sell = Number(item.total_sell ?? 0);
   const unpricedSell = !Number.isFinite(sell) || sell <= 0;
   const pricingRequired =

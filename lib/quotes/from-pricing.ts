@@ -13,6 +13,7 @@ import {
   containsSuspiciousQuoteText,
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
+import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { claddingPricingItemIsClientPriced } from "@/lib/estimate/cladding-quote";
 import { doorsPricingItemIsClientPriced } from "@/lib/estimate/doors-quote";
 import { flooringPricingItemIsClientPriced } from "@/lib/estimate/flooring-quote";
@@ -142,6 +143,7 @@ export function mapPricingItemsToQuoteItems(
 
   return pricingItems
     .filter((item) => item.visible_on_quote)
+    .filter((item) => !isReplacedSubcontractPlaceholder(item))
     .filter((item) => doorsPricingItemIsClientPriced(item))
     .filter((item) => flooringPricingItemIsClientPriced(item))
     .filter((item) => claddingPricingItemIsClientPriced(item))
@@ -199,6 +201,7 @@ export function buildInclusionsFromPricing(
     (item) =>
       item.visible_on_quote &&
       !item.optional &&
+      !isReplacedSubcontractPlaceholder(item) &&
       doorsPricingItemIsClientPriced(item)
   );
   const inclusions = new Set<string>();

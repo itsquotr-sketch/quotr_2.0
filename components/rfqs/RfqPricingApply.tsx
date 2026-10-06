@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import type { RfqDetail, RfqPricingTarget } from "@/lib/rfqs/load";
 import { applyRfqPricingApplication, previewRfqPricingApplication } from "@/lib/rfqs/pricing-apply";
 import type { RfqPricingPreviewResult } from "@/lib/rfqs/pricing-apply";
+import type { RfqSellTreatment } from "@/lib/rfqs/pricing-preview";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 
-function money(value: number | null): string {
-  if (value == null) return "Unknown";
+function money(value: number | null, unknownLabel = "Unknown"): string {
+  if (value == null) return unknownLabel;
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -32,6 +33,9 @@ export function RfqPricingApply({
   const [responseId, setResponseId] = useState(submitted[0]?.id ?? "");
   const [selected, setSelected] = useState<string[]>([]);
   const [preview, setPreview] = useState<RfqPricingPreviewResult | null>(null);
+  const [treatment, setTreatment] = useState<RfqSellTreatment | "">("");
+  const [manualSell, setManualSell] = useState("");
+  const [acknowledgeLoss, setAcknowledgeLoss] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -51,9 +55,15 @@ export function RfqPricingApply({
 
   if (!canPrice || detail.status !== "sent" || submitted.length === 0) return null;
 
-  function toggle(id: string) {
+  function clearChoice() {
     setPreview(null);
+    setTreatment("");
+    setAcknowledgeLoss(false);
     setConfirmed(false);
+  }
+
+  function toggle(id: string) {
+    clearChoice();
     setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   }
 
@@ -61,11 +71,16 @@ export function RfqPricingApply({
     if (!response || !pricing) return;
     setPending(true);
     setError(null);
+    setTreatment("");
+    setAcknowledgeLoss(false);
+    setConfirmed(false);
+    const parsedSell = manualSell.trim() === "" ? null : Number(manualSell);
     const result = await previewRfqPricingApplication({
       responseId: response.id,
       pricingDocumentId: pricing.documentId,
       workAreaId: detail.workAreaId || lines.find((line) => selected.includes(line.id))?.workAreaId || "",
       replacedItemIds: selected,
+      manualSell: parsedSell != null && Number.isFinite(parsedSell) ? parsedSell : null,
     });
     setPending(false);
     if (!result.ok) {
@@ -76,15 +91,21 @@ export function RfqPricingApply({
     setPreview(result);
   }
 
+  const selectedChoice = preview?.choices.find((choice) => choice.treatment === treatment) ?? null;
+
   async function apply() {
-    if (!response || !pricing || !preview) return;
+    if (!response || !pricing || !preview || !treatment) return;
     setPending(true);
     setError(null);
+    const parsedSell = manualSell.trim() === "" ? null : Number(manualSell);
     const result = await applyRfqPricingApplication({
       responseId: response.id,
       pricingDocumentId: pricing.documentId,
       workAreaId: detail.workAreaId || lines.find((line) => selected.includes(line.id))?.workAreaId || "",
       replacedItemIds: selected,
+      sellTreatment: treatment,
+      manualSell: parsedSell != null && Number.isFinite(parsedSell) ? parsedSell : null,
+      acknowledgeLoss,
     });
     setPending(false);
     if (!result.ok) {
@@ -157,33 +178,108 @@ export function RfqPricingApply({
             <span>
               {line.label}
               <span className="block text-foreground/70">
-                Cost {line.totalCost === 0 && line.totalSell === 0 ? "Unknown" : line.totalCost.toLocaleString()} · Sell {line.totalCost === 0 && line.totalSell === 0 ? "Unknown" : line.totalSell.toLocaleString()}
+                Cost {line.totalCost === 0 && line.totalSell === 0 ? "Pricing Required" : line.totalCost.toLocaleString()} · Sell {line.totalCost === 0 && line.totalSell === 0 ? "Pricing Required" : line.totalSell.toLocaleString()}
               </span>
             </span>
           </label>
         ))}
       </fieldset>
+      <label className="grid gap-1 text-sm">Manual sell ex GST
+        <input
+          className="h-11 min-h-11 rounded-md border border-border bg-background px-3"
+          inputMode="decimal"
+          value={manualSell}
+          onChange={(event) => {
+            setManualSell(event.target.value);
+            clearChoice();
+          }}
+        />
+      </label>
       <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={pending || selected.length === 0 || !pricing} onClick={runPreview}>
         Preview pricing
       </Button>
       {preview ? (
-        <div className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-pricing-preview>
+        <div className="grid gap-3 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-pricing-preview>
           <p className="font-medium">{preview.label}</p>
-          <p>Subcontract cost ex GST: {money(preview.allowanceCost)}</p>
-          <p>Subcontract sell: {preview.sellKnown ? money(preview.allowanceSell) : "Unknown"}</p>
-          <p>Pricing cost: {money(preview.before.cost)} → {money(preview.after.cost)}</p>
-          <p>Pricing sell: {money(preview.before.sell)} → {money(preview.after.sell)}</p>
-          <p>Margin: {percent(preview.before.marginPercent)} → {percent(preview.after.marginPercent)}</p>
-          <p>GST: {money(preview.before.gstAmount)} → {money(preview.after.gstAmount)}</p>
-          <p>Total including GST: {money(preview.before.totalInclGst)} → {money(preview.after.totalInclGst)}</p>
+          <div className="grid gap-1">
+            <p className="font-medium">Lines this response replaces</p>
+            {preview.affected.map((line) => (
+              <p key={line.id}>
+                {line.label}: cost {money(line.cost, "Pricing Required")} · sell {money(line.sell, "Pricing Required")}
+              </p>
+            ))}
+          </div>
+          <p>Pricing before: cost {money(preview.before.cost)} · sell {money(preview.before.sell)} · gross profit {money(preview.before.grossProfit)} · margin {percent(preview.before.marginPercent)} · GST {money(preview.before.gstAmount)} · total {money(preview.before.totalInclGst)}</p>
+          <fieldset className="grid gap-3">
+            <legend className="text-sm font-medium">Choose the sell. Nothing is selected for you.</legend>
+            {preview.choices.map((choice) => {
+              const title = choice.treatment === "keep"
+                ? "Keep the current sell"
+                : choice.treatment === "target_margin"
+                  ? preview.targetMarginPercent == null
+                    ? "Reprice at the target margin"
+                    : `Reprice at the ${preview.targetMarginSource === "job" ? "job" : "pricing"} target margin of ${preview.targetMarginPercent}%`
+                  : "Enter a sell";
+              return (
+                <label key={choice.treatment} className="grid gap-1 rounded-md border border-border p-3" data-rfq-sell-choice={choice.treatment}>
+                  <span className="flex min-h-11 items-center gap-2 font-medium">
+                    <input
+                      type="radio"
+                      name="rfq-sell-treatment"
+                      disabled={!choice.available}
+                      checked={treatment === choice.treatment}
+                      onChange={() => {
+                        setTreatment(choice.treatment);
+                        setAcknowledgeLoss(false);
+                        setConfirmed(false);
+                      }}
+                    />
+                    {title}
+                  </span>
+                  {choice.available ? (
+                    <>
+                      <p>Cost ex GST: {money(choice.cost)}</p>
+                      <p>Sell ex GST: {choice.sellKnown ? money(choice.sell) : "Pricing Required"}</p>
+                      <p>Gross profit: {money(choice.grossProfit)}</p>
+                      <p>Margin: {percent(choice.marginPercent)}</p>
+                      <p>Pricing cost: {money(preview.before.cost)} → {money(choice.after.cost)}</p>
+                      <p>Pricing sell: {money(preview.before.sell)} → {money(choice.after.sell)}</p>
+                      <p>Gross profit: {money(preview.before.grossProfit)} → {money(choice.after.grossProfit)}</p>
+                      <p>Margin: {percent(preview.before.marginPercent)} → {percent(choice.after.marginPercent)}</p>
+                      <p>GST: {money(preview.before.gstAmount)} → {money(choice.after.gstAmount)}</p>
+                      <p>Total including GST: {money(preview.before.totalInclGst)} → {money(choice.after.totalInclGst)}</p>
+                      {choice.loss ? (
+                        <p className="rounded-md border border-destructive px-3 py-2 font-medium text-destructive" role="alert">
+                          Cost is higher than the sell. The gross margin is negative.
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p>{choice.unavailableReason}</p>
+                  )}
+                </label>
+              );
+            })}
+          </fieldset>
           {preview.quoteExists ? (
             <p>A quote already exists. This changes draft pricing only. Issuing the revised price uses the normal new quote or revision path.</p>
+          ) : null}
+          {selectedChoice?.loss ? (
+            <label className="flex min-h-11 items-start gap-2">
+              <input type="checkbox" className="mt-1" checked={acknowledgeLoss} onChange={(event) => setAcknowledgeLoss(event.target.checked)} />
+              <span>I acknowledge this cost is higher than the sell. This does not award the work.</span>
+            </label>
           ) : null}
           <label className="flex min-h-11 items-start gap-2">
             <input type="checkbox" className="mt-1" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
             <span>Use this response for draft pricing. This does not award the work or notify the subcontractor.</span>
           </label>
-          <Button type="button" className="h-11 min-h-11 w-fit" disabled={!confirmed || pending} onClick={apply}>
+          <Button
+            type="button"
+            className="h-11 min-h-11 w-fit"
+            disabled={!confirmed || pending || !selectedChoice?.available || (selectedChoice.loss && !acknowledgeLoss)}
+            onClick={apply}
+          >
             Use for pricing
           </Button>
         </div>

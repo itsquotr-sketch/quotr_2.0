@@ -7,7 +7,14 @@ import {
   resolveStoredPricingDocumentGstRate,
 } from "@/lib/pricing/gst-source";
 import { persistPricingDocumentTotals } from "@/lib/pricing/actions";
-import { buildRfqPricingPreview, rfqAllowanceLabel } from "@/lib/rfqs/pricing-preview";
+import {
+  buildRfqSellChoices,
+  rfqAllowanceLabel,
+  type RfqPricingMoneyView,
+  type RfqSellChoice,
+  type RfqSellTreatment,
+} from "@/lib/rfqs/pricing-preview";
+import { validateMarginPercent } from "@/lib/security/margin-validation";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
 /**
@@ -20,22 +27,15 @@ import { permissionDeniedError } from "@/lib/team/permission-server";
 const FAILED = "Could not apply that response to pricing. Nothing was changed.";
 
 type Fail = { ok: false; error: string };
-type PreviewMoney = {
-  cost: number | null;
-  sell: number | null;
-  marginPercent: number | null;
-  gstAmount: number | null;
-  totalInclGst: number | null;
-};
 
 export type RfqPricingPreviewResult = {
   ok: true;
   label: string;
-  sellKnown: boolean;
-  allowanceCost: number;
-  allowanceSell: number | null;
-  before: PreviewMoney;
-  after: PreviewMoney;
+  affected: Array<{ id: string; label: string; cost: number | null; sell: number | null }>;
+  before: RfqPricingMoneyView;
+  choices: RfqSellChoice[];
+  targetMarginPercent: number | null;
+  targetMarginSource: "job" | "pricing" | null;
   quoteExists: boolean;
 };
 
@@ -68,18 +68,56 @@ function moneyError(code: string | undefined): string {
       return "That pricing document can no longer be changed.";
     case "FORBIDDEN":
       return "You do not have permission to change pricing.";
+    case "LOSS_ACK":
+      return "Confirm that this cost is higher than the sell before using it.";
+    case "SELL_UNKNOWN":
+      return "The current sell is unknown. Choose another sell treatment.";
+    case "SELL_TREATMENT":
+      return "Choose how the sell should be set before using this response.";
     default:
       return FAILED;
   }
 }
 
+async function loadTargetMargin(
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
+  orgId: string,
+  projectId: string
+): Promise<{ percent: number; source: "job" | "pricing" } | null> {
+  const estimate = await supabase
+    .from("estimates")
+    .select("target_margin_percent")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .not("target_margin_percent", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const jobMargin = estimate.data?.target_margin_percent == null ? null : Number(estimate.data.target_margin_percent);
+  if (jobMargin != null && validateMarginPercent(jobMargin).ok) {
+    return { percent: jobMargin, source: "job" };
+  }
+  const settings = await supabase
+    .from("organisation_settings")
+    .select("default_margin_percent")
+    .eq("org_id", orgId)
+    .maybeSingle();
+  const pricingMargin = settings.data?.default_margin_percent == null ? null : Number(settings.data.default_margin_percent);
+  if (pricingMargin != null && validateMarginPercent(pricingMargin).ok) {
+    return { percent: pricingMargin, source: "pricing" };
+  }
+  return null;
+}
+
 async function loadApplyContext(
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
+  orgId: string,
   input: {
     responseId: string;
     pricingDocumentId: string;
     workAreaId: string;
     replacedItemIds: string[];
+    manualSell: number | null;
   }
 ) {
   const response = await supabase
@@ -112,7 +150,7 @@ async function loadApplyContext(
   }
   const items = await supabase
     .from("pricing_items")
-    .select("id, total_cost, total_sell, work_area_id")
+    .select("id, client_label, total_cost, total_sell, work_area_id")
     .eq("pricing_document_id", document.data.id);
   const active = await supabase
     .from("rfq_pricing_applications")
@@ -138,7 +176,9 @@ async function loadApplyContext(
       return { id: row.id, totalCost: Number(row.total_cost ?? 0), totalSell: Number(row.total_sell ?? 0) };
     })
     .filter((line): line is { id: string; totalCost: number; totalSell: number } => line != null);
-  const preview = buildRfqPricingPreview({
+  const target = await loadTargetMargin(supabase, orgId, rfq.data.project_id);
+  const labels = new Map((items.data ?? []).map((item) => [item.id, item.client_label as string]));
+  const preview = buildRfqSellChoices({
     responseId: input.responseId,
     priceExGst: Number(response.data.price_ex_gst),
     gstRate: resolveStoredPricingDocumentGstRate(coercePersistedGstRate(document.data.gst_rate)).rate,
@@ -150,11 +190,15 @@ async function loadApplyContext(
     replacedIds: input.replacedItemIds,
     existingAllowanceId: active.data?.allowance_item_id ?? null,
     sellLines: sellLines.length > 0 ? sellLines : undefined,
+    targetMarginPercent: target?.percent ?? null,
+    manualSell: input.manualSell,
   });
   if (!preview.ok) return preview;
   return {
     ok: true as const,
     preview: preview.preview,
+    labels,
+    target,
     scope,
     structure: response.data.pricing_structure,
     projectId: rfq.data.project_id,
@@ -170,19 +214,26 @@ export async function previewRfqPricingApplication(input: {
   pricingDocumentId: string;
   workAreaId: string;
   replacedItemIds: string[];
+  manualSell?: number | null;
 }): Promise<RfqPricingPreviewResult | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
-  const context = await loadApplyContext(loaded.context.supabase, input);
+  const context = await loadApplyContext(loaded.context.supabase, loaded.context.orgId, {
+    ...input,
+    manualSell: input.manualSell ?? null,
+  });
   if (!context.ok) return context;
   return {
     ok: true,
     label: rfqAllowanceLabel(context.structure, context.scope),
-    sellKnown: context.preview.sellKnown,
-    allowanceCost: context.preview.allowance.totalCost,
-    allowanceSell: context.preview.sellKnown ? context.preview.allowance.totalSell : null,
+    affected: context.preview.affected.map((line) => ({
+      ...line,
+      label: context.labels.get(line.id) || "Pricing line",
+    })),
     before: context.preview.before,
-    after: context.preview.after,
+    choices: context.preview.choices,
+    targetMarginPercent: context.target?.percent ?? null,
+    targetMarginSource: context.target?.source ?? null,
     quoteExists: context.quoteExists,
   };
 }
@@ -192,22 +243,38 @@ export async function applyRfqPricingApplication(input: {
   pricingDocumentId: string;
   workAreaId: string;
   replacedItemIds: string[];
+  sellTreatment: RfqSellTreatment;
+  manualSell?: number | null;
+  acknowledgeLoss?: boolean;
 }): Promise<{ ok: true; alreadyApplied: boolean } | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
-  const context = await loadApplyContext(loaded.context.supabase, input);
+  const context = await loadApplyContext(loaded.context.supabase, loaded.context.orgId, {
+    ...input,
+    manualSell: input.manualSell ?? null,
+  });
   if (!context.ok) return context;
+  const choice = context.preview.choices.find((item) => item.treatment === input.sellTreatment);
+  if (!choice?.available || !choice.allowance || choice.sell == null) {
+    return { ok: false, error: choice?.unavailableReason ?? "Choose how the sell should be set before using this response." };
+  }
+  if (choice.loss && input.acknowledgeLoss !== true) {
+    return { ok: false, error: "Confirm that this cost is higher than the sell before using it." };
+  }
   const applied = await loaded.context.supabase.rpc("apply_rfq_response_to_pricing_v1", {
     p_payload: {
       response_id: input.responseId,
       pricing_document_id: input.pricingDocumentId,
       work_area_id: input.workAreaId,
       replaced_item_ids: input.replacedItemIds,
-      total_cost: context.preview.allowance.totalCost,
-      total_sell: context.preview.allowance.totalSell,
-      gross_profit: context.preview.allowance.grossProfit,
-      margin_percent: context.preview.allowance.marginPercent,
-      markup_percent: context.preview.allowance.markupPercent,
+      sell_treatment: input.sellTreatment,
+      acknowledge_loss: choice.loss ? "true" : "false",
+      target_margin_percent: input.sellTreatment === "target_margin" ? context.target?.percent ?? null : null,
+      total_cost: choice.allowance.totalCost,
+      total_sell: choice.allowance.totalSell,
+      gross_profit: choice.allowance.grossProfit,
+      margin_percent: choice.allowance.marginPercent,
+      markup_percent: choice.allowance.markupPercent,
     },
   });
   const body = (applied.data ?? {}) as { ok?: boolean; error?: string; alreadyApplied?: boolean };

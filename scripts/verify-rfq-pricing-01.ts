@@ -20,7 +20,10 @@ import { PREVIEW_AUTH_SITE_ORIGIN_STABLE } from "../lib/auth/site-url";
 import { resolveRfqPublicOrigin } from "../lib/rfqs/origin";
 import { hostFromRfqMessage } from "../lib/rfqs/sent-link";
 import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
-import { buildRfqPricingPreview } from "../lib/rfqs/pricing-preview";
+import { isReplacedSubcontractPlaceholder } from "../lib/pricing/replaced-subcontract-line";
+import type { PricingItem } from "../lib/pricing/types";
+import { mapPricingItemsToQuoteItems } from "../lib/quotes/from-pricing";
+import { buildRfqSellChoices, type RfqSellChoice } from "../lib/rfqs/pricing-preview";
 import { generateRfqAccessToken, hashRfqAccessToken } from "../lib/rfqs/token";
 import { roleAllowsPermission } from "../lib/team/permissions";
 
@@ -52,6 +55,7 @@ function parseEnvFile(filePath: string): Record<string, string> {
 function staticMain() {
   console.log("=== rfq pricing application ===");
   const sql = read("supabase/migrations/091_rfq_pricing_application.sql");
+  const sellSql = read("supabase/migrations/092_rfq_sell_treatment.sql");
   const apply = read("lib/rfqs/pricing-apply.ts");
   const actions = read("lib/rfqs/actions.ts");
   const rates = read("lib/estimate/rates.ts");
@@ -87,7 +91,10 @@ function staticMain() {
   }).ok === false);
   assert("apply uses pricing.edit and pricing.access", apply.includes('permission: "pricing.edit"') && apply.includes('entitlement: "pricing.access"'));
   assert("Viewer cannot edit pricing", !roleAllowsPermission("viewer", "pricing.edit"));
-  assert("no award mail", !apply.includes("getQuoteDeliveryProvider") && sql.includes("was not notified"));
+  assert("no award mail", !apply.includes("getQuoteDeliveryProvider") && sql.includes("was not notified") && sellSql.includes("was not notified"));
+  assert("sell treatment is explicit and a loss must be acknowledged", sellSql.includes("acknowledge_loss") && sellSql.includes("SELL_TREATMENT") && sellSql.includes("LOSS_ACK"));
+  assert("target sell is not recalculated in SQL", !sellSql.includes("1 -") && !sellSql.includes("default_margin_percent"));
+  assert("apply recomputes the chosen sell and does not call the rate resolver", apply.includes("buildRfqSellChoices") && apply.includes("acknowledgeLoss") && !apply.includes("resolveRate"));
   assert("public token is not granted the pricing function", sql.includes("revoke all on function public.apply_rfq_response_to_pricing_v1(jsonb) from public, anon"));
   assert("document totals use the existing pricing persist", apply.includes("persistPricingDocumentTotals"));
   assert("estimate rate resolver is untouched by this path", !apply.includes("resolveRate") && rates.includes("export function resolveRate"));
@@ -107,7 +114,7 @@ function staticMain() {
 
   const unpriced = "00000000-0000-4000-8000-0000000000a1";
   const known = "00000000-0000-4000-8000-0000000000a2";
-  const preview = buildRfqPricingPreview({
+  const preview = buildRfqSellChoices({
     responseId: "00000000-0000-4000-8000-0000000000aa",
     priceExGst: 1800,
     gstRate: 15,
@@ -117,20 +124,26 @@ function staticMain() {
     ],
     replacedIds: [known],
     existingAllowanceId: null,
+    targetMarginPercent: 25,
+    manualSell: 2500,
   });
-  assert("itemised replacement keeps the known sell and the subcontract cost", preview.ok && preview.preview.sellKnown && preview.preview.allowance.totalCost === 1800 && preview.preview.allowance.totalSell === 800);
+  assert("the three sell choices are returned and none is applied by the preview", preview.ok && preview.preview.choices.map((choice) => choice.treatment).join(",") === "keep,target_margin,manual");
   if (preview.ok) {
+    const keep = preview.preview.choices.find((choice) => choice.treatment === "keep") as RfqSellChoice;
+    const target = preview.preview.choices.find((choice) => choice.treatment === "target_margin") as RfqSellChoice;
+    const manual = preview.preview.choices.find((choice) => choice.treatment === "manual") as RfqSellChoice;
     console.log("EXAMPLE before", JSON.stringify(preview.preview.before));
-    console.log("EXAMPLE after", JSON.stringify(preview.preview.after));
-    console.log("EXAMPLE allowance", JSON.stringify({
-      cost: preview.preview.allowance.totalCost,
-      sell: preview.preview.allowance.totalSell,
-      margin: preview.preview.allowance.marginPercent,
-    }));
-    assert("document cost replaces 400 with 1800 and leaves the unpriced line at zero", preview.preview.after.cost === 1800 && preview.preview.before.cost === 400);
-    assert("document sell stays 800", preview.preview.after.sell === 800 && preview.preview.before.sell === 800);
+    console.log("EXAMPLE keep", JSON.stringify({ cost: keep.cost, sell: keep.sell, grossProfit: keep.grossProfit, margin: keep.marginPercent, after: keep.after, loss: keep.loss }));
+    console.log("EXAMPLE target", JSON.stringify({ cost: target.cost, sell: target.sell, grossProfit: target.grossProfit, margin: target.marginPercent, after: target.after, loss: target.loss }));
+    console.log("EXAMPLE manual", JSON.stringify({ cost: manual.cost, sell: manual.sell, grossProfit: manual.grossProfit, margin: manual.marginPercent, after: manual.after, loss: manual.loss }));
+    assert("keeping the current sell shows the loss instead of hiding it", keep.available && keep.loss && keep.cost === 1800 && keep.sell === 800 && keep.grossProfit === -1000 && keep.marginPercent === -125);
+    assert("keeping the current sell leaves document GST on 800", keep.after.cost === 1800 && keep.after.sell === 800 && keep.after.gstAmount === 120 && keep.after.totalInclGst === 920 && keep.after.marginPercent === -125);
+    assert("repricing uses the 25 percent target through the commercial engine", target.available && !target.loss && target.sell === 2400 && target.grossProfit === 600 && target.marginPercent === 25 && target.after.gstAmount === 360 && target.after.totalInclGst === 2760);
+    assert("a manual sell is priced by the commercial engine", manual.available && !manual.loss && manual.sell === 2500 && manual.grossProfit === 700 && manual.marginPercent === 28 && manual.after.gstAmount === 375 && manual.after.totalInclGst === 2875);
+    assert("the unpriced line stays out of the replacement and is not shown as zero sell", preview.preview.affected.length === 1 && preview.preview.affected[0]?.cost === 400 && preview.preview.affected[0]?.sell === 800);
+    assert("pricing before the response is the known line", preview.preview.before.cost === 400 && preview.preview.before.sell === 800 && preview.preview.before.marginPercent === 50 && preview.preview.before.gstAmount === 120 && preview.preview.before.totalInclGst === 920);
   }
-  const both = buildRfqPricingPreview({
+  const both = buildRfqSellChoices({
     responseId: "00000000-0000-4000-8000-0000000000ab",
     priceExGst: 1800,
     gstRate: 15,
@@ -140,8 +153,51 @@ function staticMain() {
     ],
     replacedIds: [unpriced, known],
     existingAllowanceId: null,
+    targetMarginPercent: 25,
+    manualSell: null,
   });
-  assert("an unpriced line keeps the subcontract sell unknown", both.ok && both.preview.sellKnown === false && both.preview.allowance.totalSell === 0);
+  const bothKeep = both.ok ? both.preview.choices.find((choice) => choice.treatment === "keep") : null;
+  const bothUnpriced = both.ok ? both.preview.affected.find((line) => line.id === unpriced) : null;
+  assert("an unpriced line makes the current sell unavailable", both.ok && bothKeep?.available === false && bothKeep.sell == null && bothKeep.marginPercent == null && bothKeep.grossProfit == null);
+  assert("an unpriced line is Pricing Required rather than a zero sell", bothUnpriced?.cost == null && bothUnpriced?.sell == null);
+  const negative = buildRfqSellChoices({
+    responseId: "00000000-0000-4000-8000-0000000000ac",
+    priceExGst: 1800,
+    gstRate: 15,
+    items: [{ id: known, totalCost: 400, totalSell: 800 }],
+    replacedIds: [known],
+    existingAllowanceId: null,
+    targetMarginPercent: null,
+    manualSell: -1,
+  });
+  const negativeManual = negative.ok ? negative.preview.choices.find((choice) => choice.treatment === "manual") : null;
+  const missingTarget = negative.ok ? negative.preview.choices.find((choice) => choice.treatment === "target_margin") : null;
+  assert("a negative manual sell is rejected by the existing money rule", negativeManual?.available === false && (negativeManual.unavailableReason ?? "").includes("zero or greater"));
+  assert("reprice is unavailable when the job has no target margin", missingTarget?.available === false);
+  const replacedLine = {
+    id: "replaced",
+    client_label: "Known allowance",
+    total_cost: 0,
+    total_sell: 0,
+    visible_on_quote: true,
+    recalibration_note: "Replaced for draft pricing by a subcontract response. This is not an award.",
+    sort_order: 1,
+    item_type: "allowance",
+    component_key: null,
+  } as PricingItem;
+  const allowanceLine = {
+    id: "allowance",
+    client_label: "Subcontract — Bathroom",
+    total_cost: 1800,
+    total_sell: 800,
+    visible_on_quote: true,
+    recalibration_note: null,
+    sort_order: 2,
+    item_type: "allowance",
+    component_key: null,
+  } as PricingItem;
+  const mapped = mapPricingItemsToQuoteItems([replacedLine, allowanceLine], new Map());
+  assert("a replaced line is not a zero-dollar quote line", isReplacedSubcontractPlaceholder(replacedLine) && mapped.length === 1 && mapped[0]?.label.includes("Subcontract"));
 }
 
 async function liveMain() {
@@ -236,14 +292,14 @@ async function liveMain() {
       {
         org_id: orgA, pricing_document_id: document.data.id, project_id: projectId, work_area_id: area.data.id,
         item_type: "subcontractor", delivery_method: "subcontracted", internal_label: "Wall tiling", client_label: "Wall tiling",
-        quantity: 1, total_cost: 0, total_sell: 0, gross_profit: 0, margin_percent: 0, markup_percent: 0, sort_order: 1,
+        quantity: 1, total_cost: 0, total_sell: 0, gross_profit: 0, margin_percent: 0, markup_percent: 0, sort_order: 1, manually_edited: false,
         notes_internal: "Cost unknown\n__quotr_meta__:{\"rateSourceType\":\"missing\"}",
       },
       {
         org_id: orgA, pricing_document_id: document.data.id, project_id: projectId, work_area_id: area.data.id,
         item_type: "allowance", delivery_method: "allowance", internal_label: "Known allowance", client_label: "Known allowance",
         quantity: 1, unit_cost: 400, unit_sell: 800, total_cost: 400, total_sell: 800,
-        gross_profit: 400, margin_percent: 50, markup_percent: 100, sort_order: 2,
+        gross_profit: 400, margin_percent: 50, markup_percent: 100, sort_order: 2, manually_edited: true,
       },
     ]).select("id, client_label, total_cost, total_sell");
     if (items.error || !items.data) throw new Error(items.error?.message ?? "items");
@@ -322,14 +378,52 @@ async function liveMain() {
     const estimateBefore = JSON.stringify(estimate.data);
     const estimateLineBefore = JSON.stringify(estimateLine.data);
 
+    const sellPreview = buildRfqSellChoices({
+      responseId: first.id,
+      priceExGst: 1800,
+      gstRate: 15,
+      items: [
+        { id: unpriced.id, totalCost: 0, totalSell: 0 },
+        { id: known.id, totalCost: 400, totalSell: 800 },
+      ],
+      replacedIds: [known.id],
+      existingAllowanceId: null,
+      targetMarginPercent: 25,
+      manualSell: 2500,
+    });
+    if (!sellPreview.ok) throw new Error(sellPreview.error);
+    const keepChoice = sellPreview.preview.choices.find((choice) => choice.treatment === "keep");
+    if (!keepChoice?.allowance) throw new Error("keep choice");
+    const keepMoney = {
+      sell_treatment: "keep",
+      total_cost: keepChoice.allowance.totalCost,
+      total_sell: keepChoice.allowance.totalSell,
+      gross_profit: keepChoice.allowance.grossProfit,
+      margin_percent: keepChoice.allowance.marginPercent,
+      markup_percent: keepChoice.allowance.markupPercent,
+    };
+
+    const silent = await owner.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: first.id,
+        pricing_document_id: document.data.id,
+        work_area_id: area.data.id,
+        replaced_item_ids: [known.id],
+        ...keepMoney,
+      },
+    });
+    const silentBody = silent.data as { ok?: boolean; error?: string } | null;
+    const afterSilent = await admin.from("pricing_items").select("total_cost, total_sell").eq("id", known.id).single();
+    assert("a loss is not stored without acknowledgement", silentBody?.ok !== true && silentBody?.error === "LOSS_ACK" && Number(afterSilent.data?.total_cost) === 400 && Number(afterSilent.data?.total_sell) === 800, JSON.stringify(silent.data ?? silent.error));
+
     const forced = await owner.rpc("apply_rfq_response_to_pricing_v1", {
       p_payload: {
         response_id: first.id,
         pricing_document_id: document.data.id,
         work_area_id: area.data.id,
         replaced_item_ids: [known.id],
-        total_cost: 1800,
-        total_sell: 800,
+        ...keepMoney,
+        acknowledge_loss: "true",
         force_fail: "true",
       },
     });
@@ -345,24 +439,26 @@ async function liveMain() {
         pricing_document_id: document.data.id,
         work_area_id: area.data.id,
         replaced_item_ids: [known.id],
-        total_cost: 1800,
-        total_sell: 800,
-        gross_profit: -1000,
-        margin_percent: -125,
-        markup_percent: -55.56,
+        ...keepMoney,
+        acknowledge_loss: "true",
       },
     });
     const appliedBody = applied.data as { ok?: boolean; alreadyApplied?: boolean; sellKnown?: boolean; costExGst?: number } | null;
     assert("itemised response applies once", applied.error == null && appliedBody?.ok === true && appliedBody.alreadyApplied !== true, JSON.stringify(applied.data ?? applied.error));
-    const lines = await admin.from("pricing_items").select("id, client_label, total_cost, total_sell, item_type").eq("pricing_document_id", document.data.id);
+    const lines = await admin.from("pricing_items").select("id, client_label, total_cost, total_sell, item_type, visible_on_quote, recalibration_note").eq("pricing_document_id", document.data.id);
     const allowance = (lines.data ?? []).find((row) => String(row.client_label).startsWith("Subcontract —"));
     const unpricedAfter = (lines.data ?? []).find((row) => row.id === unpriced.id);
     const knownAfter = (lines.data ?? []).find((row) => row.id === known.id);
     assert("one subcontract line carries 1800 ex GST and the known sell", Boolean(allowance) && Number(allowance?.total_cost) === 1800 && Number(allowance?.total_sell) === 800);
     assert("the unpriced line is not given the subcontract cost", Number(unpricedAfter?.total_cost) === 0 && Number(unpricedAfter?.total_sell) === 0);
     assert("the replaced line no longer adds its old cost", Number(knownAfter?.total_cost) === 0 && Number(knownAfter?.total_sell) === 0);
-    const provenance = await admin.from("rfq_pricing_applications").select("cost_ex_gst, currency, gst_treatment, included_scope, excluded_scope, response_id, subcontractor_id").eq("response_id", first.id).single();
-    assert("provenance stores the response, cost, currency, GST treatment, and scope", provenance.data?.currency === "NZD" && Number(provenance.data?.cost_ex_gst) === 1800 && provenance.data?.gst_treatment === "extra" && String(provenance.data?.included_scope).includes("Walls") && provenance.data?.subcontractor_id === business.data);
+    assert("the replaced line is not a client scope line", knownAfter?.visible_on_quote === false && String(knownAfter?.recalibration_note ?? "").startsWith("Replaced for draft pricing"));
+    const provenance = await admin.from("rfq_pricing_applications").select("cost_ex_gst, sell_ex_gst, sell_treatment, currency, gst_treatment, included_scope, excluded_scope, response_id, subcontractor_id, before_lines").eq("response_id", first.id).single();
+    const original = Array.isArray(provenance.data?.before_lines)
+      ? (provenance.data.before_lines as Array<{ id?: string; total_cost?: number; total_sell?: number; manually_edited?: boolean }>).find((line) => line.id === known.id)
+      : null;
+    assert("provenance stores the response, cost, currency, GST treatment, and scope", provenance.data?.currency === "NZD" && Number(provenance.data?.cost_ex_gst) === 1800 && provenance.data?.gst_treatment === "extra" && String(provenance.data?.included_scope).includes("Walls") && provenance.data?.subcontractor_id === business.data && provenance.data?.sell_treatment === "keep" && Number(provenance.data?.sell_ex_gst) === 800);
+    assert("the original manual sell stays in provenance", Number(original?.total_cost) === 400 && Number(original?.total_sell) === 800 && original?.manually_edited === true);
     const docAfter = await admin.from("pricing_documents").select("status, reviewed_at").eq("id", document.data.id).single();
     assert("reviewed pricing returns to draft", docAfter.data?.status === "draft" && docAfter.data?.reviewed_at == null);
     const persistedLines = await admin.from("pricing_items").select("total_cost, total_sell").eq("pricing_document_id", document.data.id);
@@ -388,23 +484,61 @@ async function liveMain() {
     const linesAgain = await admin.from("pricing_items").select("id").eq("pricing_document_id", document.data.id).like("client_label", "Subcontract%");
     assert("applying the same response does not add a second cost", againBody?.alreadyApplied === true && (linesAgain.data ?? []).length === allowanceCount);
 
-    const revised = await respond(2100, "itemised", "2026-12-15", true);
+    const revised = await respond(2100, "lump_sum", "2026-12-15", true);
     const replacedIds = [known.id];
+    const revisedKeep = await owner.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: revised.id,
+        pricing_document_id: document.data.id,
+        work_area_id: area.data.id,
+        replaced_item_ids: replacedIds,
+        sell_treatment: "keep",
+        total_cost: 2100,
+        total_sell: 800,
+        gross_profit: -1300,
+        margin_percent: -162.5,
+        markup_percent: -61.9,
+      },
+    });
+    const costDuringLoss = await admin.from("pricing_items").select("total_cost").eq("pricing_document_id", document.data.id).like("client_label", "Subcontract%").single();
+    assert("a revised loss is not stored without acknowledgement", (revisedKeep.data as { error?: string } | null)?.error === "LOSS_ACK" && Number(costDuringLoss.data?.total_cost) === 1800, JSON.stringify(revisedKeep.data ?? revisedKeep.error));
+    const revisedPreview = buildRfqSellChoices({
+      responseId: revised.id,
+      priceExGst: 2100,
+      gstRate: 15,
+      items: [
+        { id: unpriced.id, totalCost: 0, totalSell: 0 },
+        { id: known.id, totalCost: 400, totalSell: 800 },
+      ],
+      replacedIds: replacedIds,
+      existingAllowanceId: null,
+      targetMarginPercent: 25,
+      manualSell: 2800,
+    });
+    if (!revisedPreview.ok) throw new Error(revisedPreview.error);
+    const targetChoice = revisedPreview.preview.choices.find((choice) => choice.treatment === "target_margin");
+    if (!targetChoice?.allowance) throw new Error("target choice");
     const revisedApply = await owner.rpc("apply_rfq_response_to_pricing_v1", {
       p_payload: {
         response_id: revised.id,
         pricing_document_id: document.data.id,
         work_area_id: area.data.id,
         replaced_item_ids: replacedIds,
-        total_cost: 2100,
-        total_sell: 800,
+        sell_treatment: "target_margin",
+        target_margin_percent: 25,
+        total_cost: targetChoice.allowance.totalCost,
+        total_sell: targetChoice.allowance.totalSell,
+        gross_profit: targetChoice.allowance.grossProfit,
+        margin_percent: targetChoice.allowance.marginPercent,
+        markup_percent: targetChoice.allowance.markupPercent,
       },
     });
     const revisedBody = revisedApply.data as { ok?: boolean; costExGst?: number } | null;
-    const allowanceNow = await admin.from("pricing_items").select("total_cost").eq("pricing_document_id", document.data.id).like("client_label", "Subcontract%");
-    const activeApps = await admin.from("rfq_pricing_applications").select("id, response_id, superseded_at").eq("pricing_document_id", document.data.id);
+    const allowanceNow = await admin.from("pricing_items").select("client_label, total_cost, total_sell").eq("pricing_document_id", document.data.id).like("client_label", "Subcontract%");
+    const activeApps = await admin.from("rfq_pricing_applications").select("id, response_id, superseded_at, sell_treatment").eq("pricing_document_id", document.data.id);
     const liveApps = (activeApps.data ?? []).filter((row) => row.superseded_at == null);
-    assert("a newer response replaces the applied cost instead of adding it", revisedApply.error == null && revisedBody?.ok === true && (allowanceNow.data ?? []).length === 1 && Number(allowanceNow.data?.[0]?.total_cost) === 2100 && liveApps.length === 1 && liveApps[0]?.response_id === revised.id, JSON.stringify(revisedApply.data ?? revisedApply.error));
+    assert("a newer lump-sum response replaces the applied cost instead of adding it", revisedApply.error == null && revisedBody?.ok === true && (allowanceNow.data ?? []).length === 1 && Number(allowanceNow.data?.[0]?.total_cost) === 2100 && Number(allowanceNow.data?.[0]?.total_sell) === targetChoice.allowance.totalSell && String(allowanceNow.data?.[0]?.client_label).startsWith("Subcontract allowance") && liveApps.length === 1 && liveApps[0]?.response_id === revised.id && liveApps[0]?.sell_treatment === "target_margin", JSON.stringify(revisedApply.data ?? revisedApply.error));
+    assert("repricing the revised cost uses the target margin", targetChoice.allowance.totalSell === 2800 && targetChoice.allowance.grossProfit === 700 && targetChoice.allowance.marginPercent === 25);
 
     const expired = await respond(900, "lump_sum", "2020-01-01", true);
     const expiredApply = await owner.rpc("apply_rfq_response_to_pricing_v1", {

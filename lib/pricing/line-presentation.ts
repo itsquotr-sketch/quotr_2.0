@@ -7,6 +7,7 @@ import {
 } from "@/lib/estimate/labour-trade-mapping";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { PRICING_ITEM_TYPES } from "@/lib/pricing/status";
 import type { PricingItem } from "@/lib/pricing/types";
@@ -149,6 +150,27 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
     item.quantity != null
       ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
       : "—";
+
+  if (isReplacedSubcontractPlaceholder(item)) {
+    return {
+      title,
+      supporting: "Original price is kept internally. This line is not on the quote.",
+      specification: null,
+      category,
+      quantityLabel,
+      costLabel: "Replaced",
+      sellLabel: "Not on the quote",
+      pricingRequired: false,
+      source: manual ? "Manual" : rateSource ?? "Estimate",
+      manual,
+      workerType: null,
+      pricingBasis: null,
+      hoursLabel: null,
+      hourlyCostLabel: null,
+      productivitySource: null,
+      visibleOnQuote: false,
+    };
+  }
 
   return {
     title,
