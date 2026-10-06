@@ -109,14 +109,23 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
             disabled={view.acceptedQuoteValueExGst == null}
           />
           {view.tier === "business" ? (
+            <div className="col-span-2 lg:col-span-1">
             <RecordSheet
               periodId={view.periodId}
               from={view.from}
               to={view.to}
               kind="sent"
               label="Sent, since accepted"
-              value={formatAcceptanceLine(view.acceptance)}
-              context="Cohort of first sends in this range"
+              value={
+                view.acceptance.numerator == null || view.acceptance.denominator == null
+                  ? "—"
+                  : `${view.acceptance.numerator} of ${view.acceptance.denominator}`
+              }
+              context={
+                view.acceptance.rate == null
+                  ? "Cohort of first sends in this range"
+                  : `${Math.round(view.acceptance.rate * 1000) / 10}% of projects first sent in this range`
+              }
               title="Projects first sent in this range"
               description="These are the projects first sent in the range. A row marked accepted has an acceptance snapshot. A row with no acceptance snapshot has not been accepted. Declined, expired, and superseded are not a separate status here."
               empty="No quotes were sent in this period."
@@ -125,6 +134,7 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
               timeZone={view.timeZone}
               disabled={view.acceptance.denominator == null}
             />
+            </div>
           ) : (
             <MetricLinkCard
               href={ACTIVE_PROJECTS_HREF}
@@ -242,6 +252,8 @@ function WorkAreaPanel({ view }: { view: BusinessAnalyticsView }) {
         <ul className="mt-3 divide-y divide-border/60">
           {rows.slice(0, 8).map((row, index) => {
             const activity = row.estimates + (row.quotedQuotes ?? 0);
+            const next = rows[index + 1];
+            const nextActivity = next ? next.estimates + (next.quotedQuotes ?? 0) : -1;
             return (
               <li key={row.name} className="flex min-h-11 items-center gap-3 py-2">
                 <span
@@ -252,7 +264,7 @@ function WorkAreaPanel({ view }: { view: BusinessAnalyticsView }) {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
                     {row.name}
-                    {index === 0 && activity > 0 ? (
+                    {index === 0 && activity > nextActivity ? (
                       <span className="ml-2 text-[11px] font-normal text-muted-foreground">Most activity</span>
                     ) : null}
                   </span>

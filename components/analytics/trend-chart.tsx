@@ -46,14 +46,9 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
   return (
     <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4" data-analytics-trend={density}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-medium">Commercial activity</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {moneyReady
-              ? "Quoted ex GST is the subtotal frozen when each quote left draft, dated on the first send. Accepted ex GST is the snapshot, dated on acceptance. The two series are not the same quotes on the same day."
-              : "Sends and acceptances are counted on their own dates. Quoted money is hidden because a sent total is missing."}
-          </p>
-        </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-medium">Commercial activity</h2>
+          </div>
         {density === "chart" ? (
           <div className="flex gap-2" role="group" aria-label="Chart series">
             <SeriesToggle
@@ -90,6 +85,11 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
             {acceptedTotal} accepted {acceptedTotal === 1 ? "quote" : "quotes"}
             {acceptedValueTotal == null ? "" : ` · ${formatPricingMoney(acceptedValueTotal)} accepted ex GST`}
           </p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {moneyReady
+              ? "Quoted ex GST is frozen when the quote leaves draft, on the send date. Accepted ex GST is the snapshot, on the acceptance date."
+              : "Sends and acceptances are counted on their own dates. Quoted money is hidden because a sent total is missing."}
+          </p>
           <ol className="mt-2 space-y-1">
             {trend
               .filter((point) => point.sent > 0 || point.accepted > 0)
@@ -113,6 +113,11 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
       ) : null}
       {density === "chart" ? (
         <>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {moneyReady
+              ? "Quoted ex GST is frozen when the quote leaves draft, on the send date. Accepted ex GST is the snapshot, on the acceptance date."
+              : "Sends and acceptances are counted on their own dates. Quoted money is hidden because a sent total is missing."}
+          </p>
           {!showSent && !showAccepted ? (
             <p className="mt-4 text-sm text-muted-foreground">Turn on Sent or Accepted to see the chart.</p>
           ) : (
