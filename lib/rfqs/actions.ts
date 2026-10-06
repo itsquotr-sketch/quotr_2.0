@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, timingSafeEqual } from "node:crypto";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { resolveRfqPublicOrigin } from "@/lib/rfqs/origin";
 import { readSentRfqLink } from "@/lib/rfqs/sent-link";
@@ -214,6 +214,14 @@ async function deliverRecipient(input: {
   } catch {
     // The email was already accepted. A host note must not turn that into a failed send.
   }
+  const jar = await cookies();
+  jar.set("rfq_ops_link", publicUrl, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 180,
+  });
   return capture ? { status: "sent", publicPath: publicUrl } : { status: "sent" };
 }
 
