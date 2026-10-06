@@ -1,7 +1,5 @@
 "use server";
 
-import { createHash, timingSafeEqual } from "node:crypto";
-import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { resolveRfqPublicOrigin } from "@/lib/rfqs/origin";
 import { readSentRfqLink } from "@/lib/rfqs/sent-link";
@@ -119,15 +117,6 @@ export async function saveRfqDraft(input: {
   return { ok: true, id };
 }
 
-function linkCaptureAllowed(presented: string | null): boolean {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  if (!presented || !key) return false;
-  const expected = createHash("sha256").update(key).digest("hex");
-  const left = Buffer.from(presented);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
 async function deliverRecipient(input: {
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"];
   recipientId: string;
@@ -138,7 +127,7 @@ async function deliverRecipient(input: {
   responseDueOn: string | null;
   rawToken: string;
   idempotencyKey: string;
-}): Promise<{ status: "sent" | "failed"; publicPath?: string }> {
+}): Promise<{ status: "sent" | "failed" }> {
   const begun = await input.supabase.rpc("begin_rfq_delivery_v1", {
     p_recipient: input.recipientId,
     p_idempotency_key: input.idempotencyKey,
@@ -186,11 +175,9 @@ async function deliverRecipient(input: {
   });
   const completedBody = (completed.data ?? {}) as { ok?: boolean };
   if (completed.error || completedBody.ok !== true) return { status: "failed" };
-  const headerStore = await headers();
-  const capture = linkCaptureAllowed(headerStore.get("x-rfq-link-capture"));
   let checked = await readSentRfqLink(sent.providerMessageId);
-  for (let attempt = 0; capture && attempt < 4 && checked.providerStatus !== "delivered" && checked.providerStatus !== "bounced" && checked.providerStatus !== "complained"; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+  if (checked.providerStatus !== "delivered" && checked.providerStatus !== "bounced" && checked.providerStatus !== "complained") {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     checked = await readSentRfqLink(sent.providerMessageId);
   }
   const preparedHost = new URL(origin).host;
@@ -214,15 +201,7 @@ async function deliverRecipient(input: {
   } catch {
     // The email was already accepted. A host note must not turn that into a failed send.
   }
-  const jar = await cookies();
-  jar.set("rfq_ops_link", publicUrl, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 180,
-  });
-  return capture ? { status: "sent", publicPath: publicUrl } : { status: "sent" };
+  return { status: "sent" };
 }
 
 export async function sendRfq(input: {
@@ -244,7 +223,7 @@ export async function sendRfq(input: {
     selectionSource: "suggested" | "manual";
   }>;
   documentVersionIds: string[];
-}): Promise<Ok<{ id: string; failed: number; publicPath?: string }> | Fail> {
+}): Promise<Ok<{ id: string; failed: number }> | Fail> {
   const saved = await saveRfqDraft(input);
   if (!saved.ok) return saved;
   const loaded = await requireRfqWriter();
@@ -276,7 +255,6 @@ export async function sendRfq(input: {
       ? rfq.data.work_area_name || "Requested work"
       : rfq.data?.written_scope_label || "Requested work";
   let failed = 0;
-  let publicPath: string | undefined;
   for (const row of rows) {
     const raw = rawByRecipient.get(row.id);
     if (!raw) {
@@ -295,11 +273,10 @@ export async function sendRfq(input: {
       idempotencyKey: `rfq-send:${row.id}`,
     });
     if (result.status === "failed") failed += 1;
-    if (result.publicPath) publicPath = result.publicPath;
   }
   revalidatePath(`/app/projects/${input.projectId}/requests`);
   revalidatePath(`/app/projects/${input.projectId}/requests/${saved.id}`);
-  return publicPath ? { ok: true, id: saved.id, failed, publicPath } : { ok: true, id: saved.id, failed };
+  return { ok: true, id: saved.id, failed };
 }
 
 export async function resendRfqRecipient(input: {

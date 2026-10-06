@@ -99,6 +99,7 @@ function staticMain() {
   assert("localhost is not emailed", resolveRfqPublicOrigin({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }) === null);
   assert("send uses the RFQ origin helper", actions.includes("resolveRfqPublicOrigin()") && !actions.includes("resolveConfiguredSiteOrigin"));
   assert("sent mail records the provider link host", actions.includes("readSentRfqLink"));
+  assert("the raw response link is not returned to the browser", !actions.includes("publicPath") && !actions.includes("rfq_ops_link") && !actions.includes("x-rfq-link-capture"));
   assert("provider link check returns the host only", hostFromRfqMessage("View and respond: https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/r/rfq_abcdefghijklmnopqrstuvwxyz012345") === "quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app");
   assert("provider link check can see the hardening alias", hostFromRfqMessage("https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/r/rfq_abcdefghijklmnopqrstuvwxyz012345") === "quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app");
   assert("a message without a response link has no host", hostFromRfqMessage("No link here") === null);
