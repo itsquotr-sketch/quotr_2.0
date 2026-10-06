@@ -1,49 +1,13 @@
-import { CustomersDirectory } from "@/components/customers/CustomersDirectory";
-import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
-import { PageContainer } from "@/components/layout/page-containers";
-import { PageHeader } from "@/components/layout/page-header";
-import { listCustomers } from "@/lib/customers/actions";
-import { getOnboardingAccess } from "@/lib/setup/actions";
-import {
-  memberCanCreateProjects,
-  memberCanEditProjects,
-} from "@/lib/team/permissions";
+import { redirect } from "next/navigation";
 
-type CustomersPageProps = {
+type CustomersRedirectProps = {
   searchParams: Promise<{ archived?: string }>;
 };
 
-export default async function CustomersPage({ searchParams }: CustomersPageProps) {
+/** Existing customer URLs stay valid. The directory now lives under Contacts. */
+export default async function CustomersRedirectPage({
+  searchParams,
+}: CustomersRedirectProps) {
   const params = await searchParams;
-  const archived = params.archived === "1";
-  const [customers, onboardingAccess] = await Promise.all([
-    listCustomers({ archived }),
-    getOnboardingAccess(),
-  ]);
-  const canCreate = memberCanCreateProjects(onboardingAccess.role);
-  const canEdit = memberCanEditProjects(onboardingAccess.role);
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
-      <PageHeader
-        title="Customers"
-        description="Save customer details for faster project setup."
-        wrapDescription
-        alignWithContent
-        actions={
-          !archived && canCreate ? (
-            <CustomerFormDialog mode="create" triggerLabel="New customer" />
-          ) : null
-        }
-      />
-      <PageContainer innerClassName="py-4 sm:py-6">
-        <CustomersDirectory
-          customers={customers}
-          archived={archived}
-          canCreate={canCreate}
-          canEdit={canEdit}
-        />
-      </PageContainer>
-    </div>
-  );
+  redirect(params.archived === "1" ? "/app/contacts?archived=1" : "/app/contacts");
 }

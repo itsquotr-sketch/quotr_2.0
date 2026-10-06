@@ -11,6 +11,11 @@ import type {
 import { toUserError } from "@/lib/errors/user-message";
 
 const CUSTOMER_SAVE_FAILED = "Could not save the customer. Please try again.";
+
+function revalidateCustomerDirectory() {
+  revalidatePath("/app/customers");
+  revalidatePath("/app/contacts");
+}
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const CUSTOMER_COLUMNS =
@@ -126,7 +131,7 @@ export async function createCustomer(
   if (error) {
     return { error: toUserError(error, "createCustomer", CUSTOMER_SAVE_FAILED) };
   }
-  revalidatePath("/app/customers");
+  revalidateCustomerDirectory();
   return { success: true };
 }
 
@@ -156,7 +161,7 @@ export async function updateCustomer(
   if (error) {
     return { error: toUserError(error, "updateCustomer", CUSTOMER_SAVE_FAILED) };
   }
-  revalidatePath("/app/customers");
+  revalidateCustomerDirectory();
   return { success: true };
 }
 
@@ -176,7 +181,7 @@ export async function archiveCustomer(
   if (error) {
     return { error: toUserError(error, "archiveCustomer", CUSTOMER_SAVE_FAILED) };
   }
-  revalidatePath("/app/customers");
+  revalidateCustomerDirectory();
   return { success: true };
 }
 
@@ -196,6 +201,6 @@ export async function restoreCustomer(
   if (error) {
     return { error: toUserError(error, "restoreCustomer", CUSTOMER_SAVE_FAILED) };
   }
-  revalidatePath("/app/customers");
+  revalidateCustomerDirectory();
   return { success: true };
 }

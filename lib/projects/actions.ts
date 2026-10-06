@@ -397,6 +397,7 @@ export async function createProject(
     }
     revalidatePath("/app/dashboard");
     revalidatePath("/app/customers");
+    revalidatePath("/app/contacts");
     return { projectId };
   }
 

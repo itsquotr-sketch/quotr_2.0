@@ -14,6 +14,7 @@ export const ORG_PERMISSIONS = [
   "billing.manage",
   "projects.create",
   "projects.edit",
+  "subcontractors.edit",
   "estimates.run",
   "pricing.edit",
   "quotes.create",
@@ -34,6 +35,7 @@ const ADMIN: ReadonlySet<OrgPermission> = new Set([
   "billing.view",
   "projects.create",
   "projects.edit",
+  "subcontractors.edit",
   "estimates.run",
   "pricing.edit",
   "quotes.create",
@@ -48,6 +50,7 @@ const ESTIMATOR: ReadonlySet<OrgPermission> = new Set([
   "billing.view",
   "projects.create",
   "projects.edit",
+  "subcontractors.edit",
   "estimates.run",
   "pricing.edit",
   "quotes.create",
@@ -97,6 +100,13 @@ export function memberCanEditProjects(
   role: MembershipRole | null | undefined
 ): boolean {
   return role != null && roleAllowsPermission(role, "projects.edit");
+}
+
+/** Read-only UI gate for the subcontractor directory. Server actions and RLS remain the authority. */
+export function memberCanEditSubcontractors(
+  role: MembershipRole | null | undefined
+): boolean {
+  return role != null && roleAllowsPermission(role, "subcontractors.edit");
 }
 
 /** Read-only UI gate. Server actions and RLS remain the authority. */

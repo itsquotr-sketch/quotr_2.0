@@ -79,7 +79,7 @@ export function CustomersDirectory({
             type="checkbox"
             checked={archived}
             onChange={() => {
-              router.push(archived ? "/app/customers" : "/app/customers?archived=1");
+              router.push(archived ? "/app/contacts" : "/app/contacts?archived=1");
             }}
             className="size-4 accent-[var(--brand-orange)]"
           />

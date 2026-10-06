@@ -18,7 +18,7 @@ const PRIMARY_NAV = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/projects", label: "Projects", icon: Briefcase },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/app/customers", label: "Customers", icon: BookUser },
+  { href: "/app/contacts", label: "Contacts", icon: BookUser },
   { href: "/app/rates", label: "Rates", icon: DollarSign },
 ] as const;
 

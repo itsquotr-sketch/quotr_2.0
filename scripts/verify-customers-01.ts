@@ -83,7 +83,8 @@ function staticMain() {
   const sidebar = read("components/app-sidebar.tsx");
   const mobile = read("components/layout/mobile-nav.tsx");
   const menu = read("components/layout/mobile-menu-sheet.tsx");
-  const page = read("app/(protected)/app/customers/page.tsx");
+  const page = read("app/(protected)/app/contacts/page.tsx");
+  const legacy = read("app/(protected)/app/customers/page.tsx");
   const directory = read("components/customers/CustomersDirectory.tsx");
 
   section("MIGRATION");
@@ -123,7 +124,9 @@ function staticMain() {
   assert("directory edit uses projects.edit", customerActions.includes('requireCustomerContext("projects.edit")'));
 
   section("UI");
-  assert("page heading and copy", page.includes("Customers") && page.includes("Save customer details for faster project setup."));
+  assert("page heading and copy", page.includes("CustomersDirectory") && page.includes("Save customer details for faster project setup."));
+  assert("contacts title", read("components/contacts/ContactsPageFrame.tsx").includes('title="Contacts"') && page.includes('section="customers"'));
+  assert("legacy customer URL redirects into Contacts", legacy.includes('redirect(') && legacy.includes("/app/contacts") && legacy.includes("archived=1"));
   assert("viewer gates", page.includes("memberCanCreateProjects") && page.includes("memberCanEditProjects"));
   assert(
     "search and archive disclosure",
@@ -147,14 +150,14 @@ function staticMain() {
       read("components/customers/CustomerPicker.tsx").includes("data-selected-customer")
   );
   assert("desktop list and mobile cards", directory.includes('data-customer-list="aligned"') && directory.includes('data-customer-list="stacked"') && directory.includes("md:hidden") && directory.includes("md:block"));
-  assert("sidebar places Customers after Projects and before Rates", (() => {
+  assert("sidebar places Contacts after Projects and before Rates", (() => {
     const projects = sidebar.indexOf('label: "Projects"');
-    const customers = sidebar.indexOf('label: "Customers"');
+    const contacts = sidebar.indexOf('label: "Contacts"');
     const rates = sidebar.indexOf('label: "Rates"');
-    return projects < customers && customers < rates;
+    return projects < contacts && contacts < rates && sidebar.includes('href: "/app/contacts"');
   })());
-  assert("mobile bar stays five items", mobile.includes('data-mobile-nav="five"') && !mobile.includes("/app/customers"));
-  assert("menu sheet includes Customers", menu.includes('destination("/app/customers", "Customers"'));
+  assert("mobile bar stays five items", mobile.includes('data-mobile-nav="five"') && !mobile.includes("/app/customers") && !mobile.includes("/app/contacts"));
+  assert("menu sheet includes Contacts", menu.includes('destination("/app/contacts", "Contacts"'));
   assert("job dialog has the three customer choices", dialog.includes("Existing customer") && dialog.includes("New customer") && dialog.includes("No customer yet"));
   assert("job dialog keeps job name and site", dialog.includes('htmlFor="project-title"') && dialog.includes('htmlFor="site-address"'));
   assert("edit explains project-only changes", edit.includes("Changes here apply to this project only.") && edit.includes("No linked customer"));

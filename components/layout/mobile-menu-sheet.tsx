@@ -137,7 +137,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
                 Work
               </p>
               {destination("/app/analytics", "Analytics", BarChart3)}
-              {destination("/app/customers", "Customers", BookUser)}
+              {destination("/app/contacts", "Contacts", BookUser)}
             </nav>
           )}
           {setupIncomplete ? null : (
