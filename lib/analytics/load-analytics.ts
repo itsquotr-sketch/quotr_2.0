@@ -172,33 +172,27 @@ async function queryAndPresent(
   let variations: AnalyticsVariation[] = [];
   let variationsTruncated = false;
 
-  if (tier === "business" && tables.includes("variation_accepted_adjustments")) {
-    const sentIds = new Set(sends.rows.map((row) => row.quoteId));
-    const acceptedIds = new Set(acceptedSnapshots.rows.map((row) => row.quoteId));
-    const cohortIds = sends.rows
-      .map((row) => row.quoteId)
-      .filter((id) => !acceptedIds.has(id));
-    const timingIds = acceptedSnapshots.rows
-      .map((row) => row.quoteId)
-      .filter((id) => !sentIds.has(id));
+  const sentIds = new Set(sends.rows.map((row) => row.quoteId));
+  const acceptedIds = new Set(acceptedSnapshots.rows.map((row) => row.quoteId));
+  const cohortIds = sends.rows.map((row) => row.quoteId).filter((id) => !acceptedIds.has(id));
+  const timingIds = acceptedSnapshots.rows
+    .map((row) => row.quoteId)
+    .filter((id) => !sentIds.has(id));
+  const businessRead = tier === "business" && tables.includes("variation_accepted_adjustments");
 
-    const [pipeline, cohort, timing, variationRows] = await Promise.all([
-      canReadPipeline
-        ? readPipelineProjects(supabase, orgId)
-        : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
-      readSnapshotsForQuotes(supabase, orgId, cohortIds),
-      readSendsForQuotes(supabase, orgId, timingIds),
-      readVariationAdjustments(supabase, orgId, window),
-    ]);
-    projects = pipeline.rows;
-    projectsTruncated = pipeline.truncated;
-    cohortSnapshots = cohort;
-    timingSends = timing;
-    variations = variationRows.rows;
-    variationsTruncated = variationRows.truncated;
-  }
-
-  const [quoteTotals, lines] = await Promise.all([
+  const [pipeline, cohort, timing, variationRows, quoteTotals, lines] = await Promise.all([
+    businessRead && canReadPipeline
+      ? readPipelineProjects(supabase, orgId)
+      : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
+    businessRead
+      ? readSnapshotsForQuotes(supabase, orgId, cohortIds)
+      : Promise.resolve([] as AnalyticsSnapshot[]),
+    businessRead
+      ? readSendsForQuotes(supabase, orgId, timingIds)
+      : Promise.resolve([] as AnalyticsQuoteEvent[]),
+    businessRead
+      ? readVariationAdjustments(supabase, orgId, window)
+      : Promise.resolve({ rows: [] as AnalyticsVariation[], truncated: false }),
     readQuoteTotals(
       supabase,
       orgId,
@@ -212,14 +206,24 @@ async function queryAndPresent(
         )
       : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false }),
   ]);
+  projects = pipeline.rows;
+  projectsTruncated = pipeline.truncated;
+  cohortSnapshots = cohort;
+  timingSends = timing;
+  variations = variationRows.rows;
+  variationsTruncated = variationRows.truncated;
+
+  for (const [id, title] of estimates.titles) names.set(id, title);
 
   const titleIds = [
     ...estimates.rows.map((row) => row.projectId),
     ...pricing.rows.map((row) => row.projectId),
     ...sends.rows.slice(0, 16).map((row) => row.projectId),
     ...acceptedSnapshots.rows.slice(0, 16).map((row) => row.projectId),
-  ];
-  const titleMap = await readProjectTitles(supabase, orgId, titleIds);
+  ].filter((id) => !names.has(id) && !projects.some((project) => project.id === id));
+  const titleMap = titleIds.length
+    ? await readProjectTitles(supabase, orgId, titleIds)
+    : new Map<string, string>();
   for (const [id, title] of titleMap) names.set(id, title);
   for (const project of projects) {
     if (!names.has(project.id)) names.set(project.id, project.title);
@@ -285,21 +289,25 @@ async function readEstimates(
   supabase: Supabase,
   orgId: string,
   window: PeriodWindow
-): Promise<{ rows: AnalyticsEstimate[]; truncated: boolean }> {
+): Promise<{ rows: AnalyticsEstimate[]; titles: Map<string, string>; truncated: boolean }> {
   const { data, error } = await supabase
     .from("estimates")
-    .select("id, project_id, created_at, projects!inner(deleted_at)")
+    .select("id, project_id, created_at, projects!inner(title, deleted_at)")
     .eq("org_id", orgId)
     .gte("created_at", window.start)
     .lt("created_at", window.end)
     .order("created_at", { ascending: false })
     .limit(QUERY_LIMIT + 1);
-  if (error || !data) return { rows: [], truncated: true };
+  if (error || !data) return { rows: [], titles: new Map(), truncated: true };
   const truncated = data.length > QUERY_LIMIT;
+  const titles = new Map<string, string>();
   return {
     truncated,
+    titles,
     rows: data.slice(0, QUERY_LIMIT).map((row) => {
       const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+      const projectId = String(row.project_id);
+      if (project && "title" in project && project.title) titles.set(projectId, String(project.title));
       return {
         orgId,
         estimateId: String(row.id),
