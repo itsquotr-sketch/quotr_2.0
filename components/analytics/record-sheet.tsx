@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   Sheet,
@@ -71,6 +71,7 @@ function RecordList(props: RecordSheetProps) {
   const [records, setRecords] = useState(props.records);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const inFlight = useRef(false);
   const pageKey = `${props.periodId}:${props.kind}:${props.total}:${props.records[0]?.quoteId ?? ""}`;
   const [seenKey, setSeenKey] = useState(pageKey);
   if (seenKey !== pageKey) {
@@ -87,16 +88,22 @@ function RecordList(props: RecordSheetProps) {
   const canNext = to < props.total;
 
   async function go(nextOffset: number) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setLoading(true);
     setError(null);
-    const result = await loadAnalyticsRecordWindow(props.periodId, props.kind, nextOffset);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await loadAnalyticsRecordWindow(props.periodId, props.kind, nextOffset);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setRecords(result.records);
+      setOffset(result.offset);
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
     }
-    setRecords(result.records);
-    setOffset(result.offset);
   }
 
   return (
@@ -152,6 +159,7 @@ function RecordList(props: RecordSheetProps) {
               type="button"
               className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] disabled:opacity-40"
               disabled={!canNext || loading}
+              aria-busy={loading}
               onClick={() => go(offset + records.length)}
             >
               {loading ? "Loading" : "Next"}

@@ -1,4 +1,5 @@
 import { AnalyticsView } from "@/components/analytics/analytics-view";
+import { AnalyticsScrollFrame } from "@/components/analytics/scroll-frame";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
@@ -18,7 +19,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
+    <AnalyticsScrollFrame>
       <PageHeader
         title="Analytics"
         description="Quotes and accepted work for this organisation. Accepted value is the contracted price ex GST, not cash received."
@@ -36,6 +37,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           <AnalyticsView view={result.view} upgrade={result.upgrade} />
         )}
       </PageContainer>
-    </div>
+    </AnalyticsScrollFrame>
   );
 }

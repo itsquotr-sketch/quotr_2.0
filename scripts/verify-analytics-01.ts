@@ -686,6 +686,30 @@ check(
 );
 const recordAction = readFileSync(new URL("../lib/analytics/actions.ts", import.meta.url), "utf8");
 check(
+  "record pages stay on one measure and do not skip or repeat",
+  (() => {
+    const ids = Array.from({ length: 21 }, (_, index) => index);
+    const seen: number[] = [];
+    let offset = 0;
+    let guard = 0;
+    while (offset < ids.length && guard < 6) {
+      const page = recordWindow(ids, offset);
+      if (page.records.length === 0) break;
+      seen.push(...page.records);
+      offset += page.records.length;
+      guard += 1;
+    }
+    const last = recordWindow(ids, 16);
+    return (
+      seen.join(",") === ids.join(",") &&
+      last.records.length === 5 &&
+      last.from === 17 &&
+      last.to === 21 &&
+      recordWindow(ids, 16).records.every((id) => !recordWindow(ids, 8).records.includes(id))
+    );
+  })()
+);
+check(
   "record paging returns the record page only",
   /export async function loadAnalyticsRecordWindow[\s\S]*return \{\s*ok: true,\s*records,\s*total,\s*offset: start,\s*limit: ANALYTICS_LINK_LIMIT,\s*\};/.test(
     recordAction
