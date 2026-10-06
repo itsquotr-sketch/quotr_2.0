@@ -10,6 +10,7 @@ import { rfqDeliveryFailed, rfqDeliveryLabel, rfqResponseLabel } from "@/lib/rfq
 import { resendRfqRecipient, revokeRfqRecipient, signRfqResponseFile } from "@/lib/rfqs/actions";
 import type { RfqPricingTarget } from "@/lib/rfqs/load";
 import { RfqPricingApply } from "@/components/rfqs/RfqPricingApply";
+import { SaveResponseAsRate } from "@/components/rfqs/SaveResponseAsRate";
 
 export function RfqDetailView({
   detail,
@@ -133,6 +134,7 @@ export function RfqDetailView({
                 <th className="p-2 font-medium">Valid until</th>
                 <th className="p-2 font-medium">Pricing</th>
                 <th className="p-2 font-medium">File</th>
+                <th className="p-2 font-medium">Rate</th>
               </tr>
             </thead>
             <tbody>
@@ -153,6 +155,9 @@ export function RfqDetailView({
                       {latest?.fileReady ? (
                         <button type="button" className="underline" onClick={() => openFile(latest.id)}>{latest.fileName || "PDF"}</button>
                       ) : "—"}
+                    </td>
+                    <td className="p-2">
+                      {latest ? <SaveResponseAsRate responseId={latest.id} canSave={canEdit} /> : "—"}
                     </td>
                   </tr>
                 );

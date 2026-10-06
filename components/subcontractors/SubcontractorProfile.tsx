@@ -10,6 +10,8 @@ import {
   RestoreSubcontractorButton,
 } from "@/components/subcontractors/SubcontractorFormDialog";
 import { SubcontractorDocuments } from "@/components/subcontractors/SubcontractorDocuments";
+import { SubcontractorRates } from "@/components/subcontractors/SubcontractorRates";
+import type { SubcontractorRateRecord } from "@/lib/subcontractors/rate-actions";
 import { WorkAreaPicker } from "@/components/subcontractors/WorkAreaPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,9 +87,11 @@ function Section({
 
 export function SubcontractorProfile({
   subcontractor,
+  rates,
   canEdit,
 }: {
   subcontractor: Subcontractor;
+  rates: SubcontractorRateRecord[];
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -195,6 +199,7 @@ export function SubcontractorProfile({
   }
 
   return (
+    <div className="flex min-w-0 flex-col gap-4">
     <form className="flex min-w-0 flex-col gap-4" data-subcontractor-profile onSubmit={(event) => void save(event)}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
@@ -470,7 +475,7 @@ export function SubcontractorProfile({
 
       <Section
         title="Documents"
-        description="Licences, insurance, capability statements, and rate schedules stay private to your organisation."
+        description="Licences, insurance, and capability statements stay private to your organisation. A rate schedule upload remains a source document. It is not read or turned into a rate."
       >
         <SubcontractorDocuments
           subcontractorId={subcontractor.id}
@@ -619,5 +624,12 @@ export function SubcontractorProfile({
         </div>
       ) : null}
     </form>
+    <SubcontractorRates
+      subcontractorId={subcontractor.id}
+      workAreaTypes={subcontractor.work_area_types}
+      rates={rates}
+      canEdit={canEdit && !archived}
+    />
+    </div>
   );
 }

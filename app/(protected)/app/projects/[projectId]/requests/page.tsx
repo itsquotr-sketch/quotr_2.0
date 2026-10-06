@@ -1,3 +1,4 @@
+import { JobRateSuggestions } from "@/components/projects/JobRateSuggestions";
 import { RfqList } from "@/components/rfqs/RfqList";
 import { WorkspaceContainer } from "@/components/layout/page-containers";
 import { WorkspaceHeaderBar } from "@/components/layout/workspace-page";
@@ -9,6 +10,7 @@ import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { loadProjectRfqs } from "@/lib/rfqs/load";
+import { loadJobRateBook } from "@/lib/subcontractors/rate-actions";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { memberCanEditProjects } from "@/lib/team/permissions";
@@ -29,7 +31,10 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
     getOnboardingAccess(),
   ]);
   if (!project) notFound();
-  const rows = await loadProjectRfqs(auth.supabase, projectId);
+  const [rows, rateBook] = await Promise.all([
+    loadProjectRfqs(auth.supabase, projectId),
+    loadJobRateBook(projectId),
+  ]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 border-b bg-background">
@@ -47,7 +52,10 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
         estimateIsStale={tabContext.estimateIsStale}
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
-        <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
+        <div className="grid gap-6">
+          <JobRateSuggestions areas={rateBook.areas} rates={rateBook.rates} today={rateBook.today} />
+          <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
+        </div>
       </WorkspaceContainer>
     </div>
   );
