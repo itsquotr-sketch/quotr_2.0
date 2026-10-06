@@ -8,13 +8,19 @@ import type { RfqDetail } from "@/lib/rfqs/load";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 import { rfqDeliveryFailed, rfqDeliveryLabel, rfqResponseLabel } from "@/lib/rfqs/states";
 import { resendRfqRecipient, revokeRfqRecipient, signRfqResponseFile } from "@/lib/rfqs/actions";
+import type { RfqPricingTarget } from "@/lib/rfqs/load";
+import { RfqPricingApply } from "@/components/rfqs/RfqPricingApply";
 
 export function RfqDetailView({
   detail,
   canEdit,
+  canPrice,
+  pricing,
 }: {
   detail: RfqDetail;
   canEdit: boolean;
+  canPrice: boolean;
+  pricing: RfqPricingTarget | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +118,7 @@ export function RfqDetailView({
 
       <section className="grid gap-3" data-rfq-compare>
         <h2 className="text-base font-semibold">Compare responses</h2>
-        <p className="text-sm text-foreground/70">No response is not a decline. Choosing a price for the job is a later step and does not notify the subcontractor.</p>
+        <p className="text-sm text-foreground/70">No response is not a decline. Using a price for draft pricing does not award the work or notify the subcontractor.</p>
         <div className="min-w-0 overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
@@ -125,6 +131,7 @@ export function RfqDetailView({
                 <th className="p-2 font-medium">Included</th>
                 <th className="p-2 font-medium">Excluded</th>
                 <th className="p-2 font-medium">Valid until</th>
+                <th className="p-2 font-medium">Pricing</th>
                 <th className="p-2 font-medium">File</th>
               </tr>
             </thead>
@@ -141,6 +148,7 @@ export function RfqDetailView({
                     <td className="p-2">{latest?.includedScope || "—"}</td>
                     <td className="p-2">{latest?.excludedScope || "—"}</td>
                     <td className="p-2">{latest?.validUntil || "—"}</td>
+                    <td className="p-2">{latest && detail.applications.some((application) => application.responseId === latest.id) ? "Used for pricing" : "—"}</td>
                     <td className="p-2">
                       {latest?.fileReady ? (
                         <button type="button" className="underline" onClick={() => openFile(latest.id)}>{latest.fileName || "PDF"}</button>
@@ -160,6 +168,8 @@ export function RfqDetailView({
           </ul>
         ) : null}
       </section>
+
+      <RfqPricingApply detail={detail} pricing={pricing} canPrice={canPrice} />
 
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Communication</h2>

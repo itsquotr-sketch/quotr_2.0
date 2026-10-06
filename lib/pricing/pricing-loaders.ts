@@ -179,6 +179,23 @@ export async function getPricingWorkspaceDataWithContext(
       workspaceItems = [...mappedItems, ...projected];
     }
   }
+  const offers = await supabase
+    .from("rfq_pricing_applications")
+    .select("rfq_id, allowance_item_id, replaced_item_ids")
+    .eq("pricing_document_id", pricingDocumentId)
+    .is("superseded_at", null);
+  if (!offers.error) {
+    const hrefFor = new Map<string, string>();
+    for (const offer of offers.data ?? []) {
+      const href = `/app/projects/${projectId}/requests/${offer.rfq_id}`;
+      if (offer.allowance_item_id) hrefFor.set(offer.allowance_item_id, href);
+      for (const itemId of offer.replaced_item_ids ?? []) hrefFor.set(itemId, href);
+    }
+    workspaceItems = workspaceItems.map((item) => ({
+      ...item,
+      subcontract_response_href: hrefFor.get(item.id) ?? null,
+    }));
+  }
 
   const mappedDocument = mapPricingDocument(document);
   if (

@@ -142,7 +142,7 @@ function staticMain() {
   });
   assert("email carries the link and not a price", mail.text.includes("https://example.test/r/rfq_example") && !mail.text.includes("$") && !email.includes("client_name"));
   assert("no award control", !detail.includes("Award") && !detail.includes("notify the subcontractor of acceptance"));
-  assert("later pricing is not this phase", detail.includes("Choosing a price for the job is a later step"));
+  assert("using a price does not award work", detail.includes("does not award the work or notify the subcontractor"));
   assert("rate resolver is untouched", rates.includes("export function resolveRate") && !actions.includes("resolveRate"));
   assert("inbound mail is not parsed into a price", actions.includes("Inbound email is not captured"));
   assert("tokens are hashed", sql.includes("token_hash") && !sql.includes("raw_token"));

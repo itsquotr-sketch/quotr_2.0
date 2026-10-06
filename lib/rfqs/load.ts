@@ -71,6 +71,29 @@ export type RfqDetail = {
   responses: RfqResponseView[];
   clarifications: Array<{ id: string; recipientId: string; body: string; createdAt: string }>;
   events: Array<{ id: string; kind: string; summary: string; createdAt: string; recipientId: string | null }>;
+  applications: Array<{
+    id: string;
+    responseId: string;
+    recipientId: string;
+    allowanceItemId: string;
+    replacedItemIds: string[];
+    costExGst: number;
+    workAreaId: string;
+  }>;
+};
+
+export type RfqPricingTarget = {
+  documentId: string;
+  documentStatus: string;
+  gstRate: number;
+  quoteExists: boolean;
+  items: Array<{
+    id: string;
+    workAreaId: string | null;
+    label: string;
+    totalCost: number;
+    totalSell: number;
+  }>;
 };
 
 export type PublicRfqView =
@@ -176,6 +199,11 @@ export async function loadRfqDetail(
   const fileByResponse = new Map(
     (fileRows.data ?? []).map((row) => [row.response_id, row])
   );
+  const applications = await supabase
+    .from("rfq_pricing_applications")
+    .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, work_area_id")
+    .eq("rfq_id", rfqId)
+    .is("superseded_at", null);
   return {
     id: data.id,
     projectId: data.project_id,
@@ -246,6 +274,51 @@ export async function loadRfqDetail(
       summary: row.summary,
       createdAt: row.created_at,
       recipientId: row.recipient_id,
+    })),
+    applications: (applications.data ?? []).map((row) => ({
+      id: row.id,
+      responseId: row.response_id,
+      recipientId: row.recipient_id,
+      allowanceItemId: row.allowance_item_id,
+      replacedItemIds: Array.isArray(row.replaced_item_ids) ? row.replaced_item_ids : [],
+      costExGst: Number(row.cost_ex_gst ?? 0),
+      workAreaId: row.work_area_id,
+    })),
+  };
+}
+
+export async function loadRfqPricingTargets(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<RfqPricingTarget | null> {
+  const document = await supabase
+    .from("pricing_documents")
+    .select("id, status, gst_rate")
+    .eq("project_id", projectId)
+    .neq("status", "archived")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!document.data) return null;
+  const [items, quotes] = await Promise.all([
+    supabase
+      .from("pricing_items")
+      .select("id, work_area_id, client_label, total_cost, total_sell")
+      .eq("pricing_document_id", document.data.id)
+      .order("sort_order"),
+    supabase.from("quotes").select("id").eq("project_id", projectId).limit(1),
+  ]);
+  return {
+    documentId: document.data.id,
+    documentStatus: document.data.status,
+    gstRate: Number(document.data.gst_rate ?? 15),
+    quoteExists: (quotes.data ?? []).length > 0,
+    items: (items.data ?? []).map((item) => ({
+      id: item.id,
+      workAreaId: item.work_area_id,
+      label: item.client_label,
+      totalCost: Number(item.total_cost ?? 0),
+      totalSell: Number(item.total_sell ?? 0),
     })),
   };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { memo, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -225,6 +226,11 @@ function PricingItemRowComponent({
   const identity = (
     <div className="min-w-0">
       <p className="text-sm font-medium leading-snug">{line.title}</p>
+      {item.subcontract_response_href ? (
+        <Link href={item.subcontract_response_href} className="text-xs underline">
+          Subcontract response
+        </Link>
+      ) : null}
       {line.supporting ? (
         <p className="truncate text-xs text-muted-foreground">{line.supporting}</p>
       ) : null}

@@ -107,6 +107,8 @@ export type PricingItem = {
    * (unknown-cost sentinel). Not a persisted engine field.
    */
   cost_known: boolean;
+  /** Present when this line was replaced by, or created from, a subcontract response. */
+  subcontract_response_href?: string | null;
 };
 
 export type PricingWorkArea = {

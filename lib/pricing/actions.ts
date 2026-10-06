@@ -244,6 +244,22 @@ async function recalculateAndPersistDocumentTotals(
   }
 }
 
+export async function persistPricingDocumentTotals(
+  supabase: Parameters<typeof recalculateAndPersistDocumentTotals>[0],
+  orgId: string,
+  pricingDocumentId: string,
+  gstRate: number,
+  resetReview = true
+) {
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    pricingDocumentId,
+    gstRate,
+    resetReview
+  );
+}
+
 function computePricingItemMoneyFields(input: {
   quantity?: number | null;
   unit?: string | null;

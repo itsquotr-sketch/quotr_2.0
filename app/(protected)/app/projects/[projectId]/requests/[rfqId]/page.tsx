@@ -8,10 +8,10 @@ import { getProjectWorkspaceTabContextWithContext } from "@/lib/pricing/pricing-
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
-import { loadRfqDetail } from "@/lib/rfqs/load";
+import { loadRfqDetail, loadRfqPricingTargets } from "@/lib/rfqs/load";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
-import { memberCanEditProjects } from "@/lib/team/permissions";
+import { memberCanEditPricing, memberCanEditProjects } from "@/lib/team/permissions";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -22,11 +22,12 @@ export default async function RfqDetailPage({ params }: PageProps) {
   const { projectId, rfqId } = await params;
   const auth = await requireAuthOrgContext();
   if (!auth.ok) notFound();
-  const [project, tabContext, quoteSummary, detail, access] = await Promise.all([
+  const [project, tabContext, quoteSummary, detail, pricing, access] = await Promise.all([
     getProjectWithContext(auth, projectId),
     getProjectWorkspaceTabContextWithContext(auth, projectId),
     getLatestQuoteSummaryWithContext(auth, projectId),
     loadRfqDetail(auth.supabase, projectId, rfqId),
+    loadRfqPricingTargets(auth.supabase, projectId),
     getOnboardingAccess(),
   ]);
   if (!project || !detail) notFound();
@@ -47,7 +48,12 @@ export default async function RfqDetailPage({ params }: PageProps) {
         estimateIsStale={tabContext.estimateIsStale}
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
-        <RfqDetailView detail={detail} canEdit={memberCanEditProjects(access.role)} />
+        <RfqDetailView
+          detail={detail}
+          canEdit={memberCanEditProjects(access.role)}
+          canPrice={memberCanEditPricing(access.role)}
+          pricing={pricing}
+        />
       </WorkspaceContainer>
     </div>
   );
