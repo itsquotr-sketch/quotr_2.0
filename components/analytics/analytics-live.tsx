@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 import { AnalyticsRefreshContext, type AnalyticsRefreshResult } from "@/components/analytics/refresh-context";
-import { loadAnalyticsPeriodView } from "@/lib/analytics/actions";
 import type { AnalyticsPageData } from "@/lib/analytics/load-analytics";
 import type { AnalyticsView as AnalyticsViewData, BusinessAnalyticsView } from "@/lib/analytics/measure";
 import { analyticsPeriodHref, analyticsRangeHref } from "@/lib/analytics/presentation";
@@ -24,44 +23,6 @@ function sameRange(current: AnalyticsViewData, incoming: AnalyticsViewData): boo
     current.from === incoming.from &&
     current.to === incoming.to
   );
-}
-
-type Transport = "single" | "split" | "stream";
-
-function selectedTransport(): Transport {
-  try {
-    const value = sessionStorage.getItem("quotr-analytics-transport");
-    if (value === "single" || value === "split" || value === "stream") return value;
-  } catch {
-    // Private browsing can block storage. The page then uses the stream.
-  }
-  return "stream";
-}
-
-async function postScope(
-  scope: "headline" | "business" | "full" | "stream",
-  period: string,
-  from?: string,
-  to?: string
-): Promise<AnalyticsPageData> {
-  try {
-    const response = await fetch("/api/analytics/period", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({ period, from, to, scope }),
-    });
-    const payload = (await response.json()) as AnalyticsPageData;
-    if (payload && typeof payload === "object" && "kind" in payload) return payload;
-  } catch {
-    // The caller treats a failed read as denied and keeps the previous figures.
-  }
-  return {
-    kind: "denied",
-    message: "Analytics could not be loaded.",
-    reasonCode: null,
-    upgradeTarget: null,
-  };
 }
 
 function applyBusiness(current: AnalyticsViewData, incoming: AnalyticsViewData): AnalyticsViewData {
@@ -149,48 +110,6 @@ export function AnalyticsLive({
         setBusinessPhase("ready");
         setBusinessMs(Math.round(performance.now() - started));
       });
-    }
-
-    const transport = selectedTransport();
-    if (transport === "single") {
-      const payload = await loadAnalyticsPeriodView(input.period, input.from, input.to);
-      if (id !== request.current) return { ok: false, stale: true };
-      if (payload.kind !== "ready") return reject(payload);
-      const elapsed = Math.round(performance.now() - started);
-      flushSync(() => {
-        setView(payload.view);
-        setUpgrade(payload.upgrade);
-        setHeadlinePhase("ready");
-        setBusinessPhase("ready");
-        setHeadlineMs(elapsed);
-        setBusinessMs(elapsed);
-        setBusinessTiming(payload.view.serverTiming);
-      });
-      push(payload.view);
-      return { ok: true };
-    }
-
-    if (transport === "split") {
-      const headlinePromise = postScope("headline", input.period, input.from, input.to);
-      const businessPromise = postScope("business", input.period, input.from, input.to);
-      const headline = await headlinePromise;
-      if (id !== request.current) return { ok: false, stale: true };
-      if (headline.kind !== "ready") return reject(headline);
-      paintHeadline(headline);
-      const business = await businessPromise;
-      if (id !== request.current) return { ok: false, stale: true };
-      if (business.kind !== "ready") {
-        setBusinessPhase("ready");
-        setBusinessMs(Math.round(performance.now() - started));
-        if (headline.view.tier === "business") {
-          setBusinessError(
-            business.kind === "denied" ? business.message : business.kind === "invalid_range" ? business.error : "Sign in required."
-          );
-        }
-        return { ok: true };
-      }
-      paintPanels(business, false);
-      return { ok: true };
     }
 
     let sawHeadline = false;
