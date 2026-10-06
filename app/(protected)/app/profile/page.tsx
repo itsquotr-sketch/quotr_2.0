@@ -46,6 +46,17 @@ export default async function ProfilePage() {
     getAuthDisplayProfile()
   );
 
+  const { data: accountPhone } = await auth.supabase
+    .from("account_phone_numbers")
+    .select("country_code, phone_display")
+    .eq("user_id", auth.user.id)
+    .maybeSingle();
+  const phoneCountry = accountPhone?.country_code === "AU" ? "AU" : "NZ";
+  const phoneNumber =
+    typeof accountPhone?.phone_display === "string"
+      ? accountPhone.phone_display
+      : "";
+
   // STATE C — display could not be assembled from the signed-in org
   if (!display) {
     redirect("/app/setup-required");
@@ -65,6 +76,8 @@ export default async function ProfilePage() {
           email={auth.user.email ?? display.userEmail ?? ""}
           role={formatRole(display.role)}
           organisationName={display.organisationName?.trim() || "Company not set"}
+          phoneCountry={phoneCountry}
+          phoneNumber={phoneNumber}
         />
       </SettingsContainer>
     </div>

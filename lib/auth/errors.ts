@@ -12,6 +12,7 @@ export type AuthErrorCategory =
   | "EMAIL_NOT_CONFIRMED"
   | "RATE_LIMITED"
   | "EMAIL_ALREADY_REGISTERED"
+  | "PHONE_ALREADY_LINKED"
   | "SIGNUP_FAILED"
   | "ORG_PROVISION_FAILED"
   | "PROFILE_PROVISION_FAILED"
@@ -51,6 +52,8 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
   EMAIL_ALREADY_REGISTERED:
     "An account with this email already exists. Try signing in instead.",
+  PHONE_ALREADY_LINKED:
+    "This phone number is already linked to an account. Sign in or use a different number.",
   SIGNUP_FAILED: "We couldn’t create your account. Please try again.",
   ORG_PROVISION_FAILED:
     "We couldn’t finish setting up your company. Please try again shortly.",
@@ -161,6 +164,13 @@ export function classifyAuthProviderError(
     m.includes("email address is already")
   ) {
     return "EMAIL_ALREADY_REGISTERED";
+  }
+
+  if (
+    m.includes("phone:already_linked") ||
+    m.includes("phone_number_already_linked")
+  ) {
+    return "PHONE_ALREADY_LINKED";
   }
 
   if (

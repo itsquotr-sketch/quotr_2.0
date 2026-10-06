@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { signup, type AuthActionState } from "@/app/(auth)/actions";
 import {
   resendSignupConfirmation,
   type RecoveryActionState,
 } from "@/lib/auth/recovery-actions";
-import { signup, type AuthActionState } from "@/app/(auth)/actions";
 import {
   AuthCard,
   AuthCardContent,
@@ -17,6 +17,7 @@ import {
 import { AuthContinue } from "@/components/auth/AuthContinue";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,7 +153,28 @@ export function SignupForm(props: {
           <input type="hidden" name="invite_token" value={inviteToken} />
         ) : null}
         <AuthCardContent>
-          {state.error ? (
+          {state.phoneAlreadyLinked ? (
+            <p
+              role="alert"
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              This phone number is already linked to an account.{" "}
+              <Link
+                href={
+                  inviteToken
+                    ? `/login?next=/invite/${inviteToken}`
+                    : "/login"
+                }
+                className={authTextLinkClass}
+              >
+                Sign in
+              </Link>
+              {" or use a different number. "}
+              <Link href="/forgot-password" className={authTextLinkClass}>
+                Account recovery
+              </Link>
+            </p>
+          ) : state.error ? (
             <p
               role="alert"
               className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
@@ -211,6 +233,13 @@ export function SignupForm(props: {
             ) : null}
             <FieldError messages={state.fieldErrors?.email} />
           </div>
+
+          <AccountPhoneField
+            error={
+              state.fieldErrors?.phone_number?.[0] ??
+              state.fieldErrors?.phone_country?.[0]
+            }
+          />
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor="password">Password</Label>

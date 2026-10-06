@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
+  isExplicitPhoneClaimFailure,
+  normalizeAccountPhone,
+  PHONE_ALREADY_LINKED_MESSAGE,
+} from "@/lib/auth/account-phone";
+import {
   presentAuthError,
   type AuthErrorCategory,
 } from "@/lib/auth/errors";
@@ -17,6 +22,7 @@ export type ProfileActionState = {
   error?: string;
   success?: string;
   fieldErrors?: Record<string, string[]>;
+  phoneAlreadyLinked?: boolean;
 };
 
 const fullNameSchema = z.object({
@@ -70,6 +76,49 @@ export async function updateProfileFullName(
 
   if (!user) {
     return { error: presentAuthError("INVALID_CREDENTIALS") };
+  }
+
+  const submittedPhone = formData.get("phone_number");
+  const phoneText = typeof submittedPhone === "string" ? submittedPhone.trim() : "";
+  const { data: existingPhone, error: existingPhoneError } = await supabase
+    .from("account_phone_numbers")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingPhoneError) {
+    return { error: presentAuthError("PROFILE_UPDATE_FAILED") };
+  }
+
+  if (!phoneText) {
+    if (existingPhone) {
+      return { fieldErrors: { phone_number: ["Enter a phone number."] } };
+    }
+  } else {
+    const phone = normalizeAccountPhone(formData.get("phone_country"), phoneText);
+    if (!phone.ok) {
+      return { fieldErrors: { [phone.field]: [phone.message] } };
+    }
+
+    const { error: phoneError } = await supabase.rpc("set_own_account_phone", {
+      p_phone_e164: phone.e164,
+      p_phone_display: phone.display,
+      p_country_code: phone.country,
+    });
+
+    if (phoneError) {
+      const providerText = `${phoneError.message ?? ""} ${phoneError.details ?? ""} ${phoneError.hint ?? ""}`;
+      if (
+        isExplicitPhoneClaimFailure(providerText) ||
+        phoneError.code === "23505"
+      ) {
+        return {
+          phoneAlreadyLinked: true,
+          error: PHONE_ALREADY_LINKED_MESSAGE,
+        };
+      }
+      return { error: presentAuthError("PROFILE_UPDATE_FAILED") };
+    }
   }
 
   logAuthEvent({

@@ -21,6 +21,7 @@ import {
   shouldProvisionSignupOrganisation,
 } from "../lib/auth/email-confirm-destination";
 import { POST_SIGNUP_DESTINATION } from "../lib/auth/post-auth-navigation";
+import { buildSignupUserMetadata } from "../lib/auth/account-phone";
 import { AUTH_USER_MESSAGES } from "../lib/auth/errors";
 import {
   PREVIEW_AUTH_SITE_ORIGIN_STABLE,
@@ -100,7 +101,19 @@ function main() {
   );
   assert(
     "invite signup does not store a new organisation name",
-    /inviteToken\s*\?\s*\{\s*full_name\s*\}/.test(signup)
+    !("organisation_name" in
+      buildSignupUserMetadata({
+        invite: true,
+        fullName: "Ada Lovelace",
+        organisationName: "Should Not Persist",
+        phone: {
+          e164: "+64211234567",
+          display: "021 123 4567",
+          country: "NZ",
+        },
+      })) &&
+      signup.includes("invite: Boolean(inviteToken)") &&
+      signup.includes("buildSignupUserMetadata")
   );
 
   const metadata = {

@@ -2,6 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { signupWasBlockedByExistingPhone } from "@/lib/auth/account-phone-claim";
+import {
+  buildSignupUserMetadata,
+  normalizeAccountPhone,
+  PHONE_ALREADY_LINKED_MESSAGE,
+  signupAuthErrorText,
+} from "@/lib/auth/account-phone";
 import {
   classifyAuthProviderError,
   presentAuthError,
@@ -37,6 +44,11 @@ export type AuthActionState = {
    * Email the confirmation was sent to (user-provided; for confirmation UX only).
    */
   confirmationEmail?: string;
+  /**
+   * The submitted phone is already claimed. The message must not name the
+   * other account. Signup did not keep an auth user in this case.
+   */
+  phoneAlreadyLinked?: boolean;
   /**
    * After session cookie mutation, client must hard-navigate here
    * (document assign). Soft Server Action redirect can blank protected RSC.
@@ -128,22 +140,32 @@ export async function signup(
     password: formData.get("password"),
     invite_token: formData.get("invite_token") ?? undefined,
   });
-
-  if (!parsed.success) {
-    return { fieldErrors: parsed.error.flatten().fieldErrors };
-  }
-
-  const { full_name, organisation_name, email, password, invite_token } =
-    parsed.data;
-  const inviteToken = isWellFormedInviteToken(invite_token ?? "")
-    ? invite_token!.trim()
+  const phone = normalizeAccountPhone(
+    formData.get("phone_country"),
+    formData.get("phone_number")
+  );
+  const rawInviteValue = formData.get("invite_token");
+  const rawInvite = typeof rawInviteValue === "string" ? rawInviteValue : "";
+  const inviteToken = isWellFormedInviteToken(rawInvite)
+    ? rawInvite.trim()
     : null;
+  const organisationMissing =
+    !inviteToken &&
+    !(parsed.success && parsed.data.organisation_name?.trim());
 
-  if (!inviteToken && !organisation_name?.trim()) {
+  if (!parsed.success || !phone.ok || organisationMissing) {
     return {
-      fieldErrors: { organisation_name: ["Company name is required"] },
+      fieldErrors: {
+        ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+        ...(!phone.ok ? { [phone.field]: [phone.message] } : {}),
+        ...(organisationMissing
+          ? { organisation_name: ["Company name is required"] }
+          : {}),
+      },
     };
   }
+
+  const { full_name, organisation_name, email, password } = parsed.data;
 
   let signupEmail = email;
   if (inviteToken) {
@@ -186,17 +208,39 @@ export async function signup(
     password,
     options: {
       emailRedirectTo,
-      data: inviteToken
-        ? { full_name }
-        : {
-            full_name,
-            organisation_name,
-          },
+      data: buildSignupUserMetadata({
+        invite: Boolean(inviteToken),
+        fullName: full_name,
+        organisationName: organisation_name,
+        phone,
+      }),
     },
   });
 
   if (authError) {
-    const category = classifyAuthProviderError(authError.message, "signup");
+    const providerText = signupAuthErrorText(authError);
+    const category = classifyAuthProviderError(providerText, "signup");
+    // Rate limit and email collision stay on the existing Auth responses.
+    // The phone check runs only after that submit, and only for a database
+    // save failure. It is not a public availability endpoint.
+    if (
+      category === "RATE_LIMITED" ||
+      category === "EMAIL_ALREADY_REGISTERED"
+    ) {
+      return signupFail(category, correlationId, startedAt);
+    }
+    if (await signupWasBlockedByExistingPhone(providerText, phone.e164)) {
+      logAuthEvent({
+        event: "signup_failed",
+        category: "PHONE_ALREADY_LINKED",
+        correlationId,
+        elapsedMs: Date.now() - startedAt,
+      });
+      return {
+        phoneAlreadyLinked: true,
+        error: PHONE_ALREADY_LINKED_MESSAGE,
+      };
+    }
     return signupFail(category, correlationId, startedAt);
   }
 
@@ -239,6 +283,8 @@ export async function signup(
   }
 
   if (inviteToken) {
+    // Phone is already claimed on the auth user. Do not provision a second
+    // organisation. A pending invitation is accepted only after sign-in.
     logAuthEvent({
       event: "signup_completed",
       correlationId,

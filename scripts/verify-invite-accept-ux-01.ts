@@ -7,6 +7,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildSignupUserMetadata } from "../lib/auth/account-phone";
 import { mapTeamRpcError } from "../lib/team/rpc-errors";
 import { SEAT_ADD_DISCLOSURE } from "../lib/billing/seat-change";
 import { roleAllowsPermission } from "../lib/team/permissions";
@@ -90,7 +91,17 @@ function main() {
   );
   assert(
     "invite signup does not write organisation_name metadata",
-    /inviteToken\s*\?\s*\{\s*full_name\s*\}/.test(signupActions)
+    !("organisation_name" in
+      buildSignupUserMetadata({
+        invite: true,
+        fullName: "Ada",
+        organisationName: "Should Not Persist",
+        phone: {
+          e164: "+64211234567",
+          display: "021 123 4567",
+          country: "NZ",
+        },
+      })) && /invite: Boolean\(inviteToken\)/.test(signupActions)
   );
   assert(
     "acceptInvitation also compares authenticated email to invitation",

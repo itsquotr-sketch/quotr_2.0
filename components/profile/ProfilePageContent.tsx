@@ -7,7 +7,9 @@ import {
   updateProfileFullName,
   type ProfileActionState,
 } from "@/lib/auth/profile-actions";
+import { PHONE_ALREADY_LINKED_MESSAGE } from "@/lib/auth/account-phone";
 import { logout } from "@/app/(auth)/actions";
+import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,8 @@ type ProfilePageContentProps = {
   email: string;
   role: string;
   organisationName: string;
+  phoneCountry: "NZ" | "AU";
+  phoneNumber: string;
 };
 
 export function ProfilePageContent({
@@ -52,6 +56,8 @@ export function ProfilePageContent({
   email,
   role,
   organisationName,
+  phoneCountry,
+  phoneNumber,
 }: ProfilePageContentProps) {
   const [profileState, profileAction, profilePending] = useActionState(
     updateProfileFullName,
@@ -86,7 +92,9 @@ export function ProfilePageContent({
             if (profileState.success) setHideProfileSuccess(true);
           }}
         >
-          {profileState.error ? (
+          {profileState.phoneAlreadyLinked ? (
+            <Alert tone="error">{PHONE_ALREADY_LINKED_MESSAGE}</Alert>
+          ) : profileState.error ? (
             <Alert tone="error">{profileState.error}</Alert>
           ) : null}
           {profileState.success && !hideProfileSuccess && !profilePending ? (
@@ -106,6 +114,19 @@ export function ProfilePageContent({
             />
             <FieldError messages={profileState.fieldErrors?.full_name} />
           </div>
+
+          <AccountPhoneField
+            defaultCountry={phoneCountry}
+            defaultNumber={phoneNumber}
+            required={Boolean(phoneNumber)}
+            disabled={profilePending}
+            error={
+              profileState.phoneAlreadyLinked
+                ? undefined
+                : profileState.fieldErrors?.phone_number?.[0] ??
+                  profileState.fieldErrors?.phone_country?.[0]
+            }
+          />
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor="email">Email address</Label>
