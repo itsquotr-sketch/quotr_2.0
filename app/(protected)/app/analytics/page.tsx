@@ -25,7 +25,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         wrapDescription
         alignWithContent
       />
-      <PageContainer innerClassName="py-4 sm:py-6">
+      <PageContainer innerClassName="py-3 sm:py-6">
         {result.kind === "denied" ? (
           <BillingAccessDenied
             error={result.message}

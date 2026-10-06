@@ -18,7 +18,7 @@ type AnalyticsViewProps = {
 
 export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
   return (
-    <div className="min-w-0 space-y-4" data-analytics-page data-analytics-tier={view.tier}>
+    <div className="min-w-0 space-y-3 lg:space-y-4" data-analytics-page data-analytics-tier={view.tier}>
       <PeriodFilters
         periodId={view.periodId}
         periodLabel={view.periodLabel}
@@ -35,7 +35,7 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
         <h2 id="analytics-summary-heading" className="sr-only">
           Summary
         </h2>
-        <div className="grid grid-cols-2 items-stretch gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="grid grid-cols-2 items-stretch gap-2 lg:grid-cols-4 lg:gap-4">
           <MetricLinkCard
             href={ACTIVE_PROJECTS_HREF}
             label="Active projects"
@@ -44,6 +44,8 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
             disabled={view.activeProjects == null}
           />
           <RecordSheet
+            periodId={view.periodId}
+            kind="sent"
             label="Quotes sent"
             value={formatCount(view.quotesSent)}
             context="First sends. Resends are not counted again."
@@ -56,6 +58,8 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
             disabled={view.quotesSent == null}
           />
           <RecordSheet
+            periodId={view.periodId}
+            kind="accepted"
             label="Quotes accepted"
             value={formatCount(view.quotesAccepted)}
             context="Accepted in this period"
@@ -68,6 +72,8 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
             disabled={view.quotesAccepted == null}
           />
           <RecordSheet
+            periodId={view.periodId}
+            kind="accepted"
             label="Accepted quote value"
             value={formatMoney(view.acceptedQuoteValueExGst)}
             context="Ex GST · contracted, not cash"
@@ -106,9 +112,9 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
 function BusinessSections({ view }: { view: BusinessAnalyticsView }) {
   return (
     <div className="space-y-3 lg:space-y-4" data-analytics-business>
-      <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-3 sm:py-4">
         <h2 className="text-sm font-medium">Quote performance</h2>
-        <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
+        <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums sm:mt-2 sm:text-2xl">
           {formatAcceptanceLine(view.acceptance)}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">

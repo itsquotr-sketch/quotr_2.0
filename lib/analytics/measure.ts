@@ -1,5 +1,6 @@
 import { ACTIVE_PIPELINE_STATUSES, getBusinessStatusDefinition } from "@/lib/projects/status";
 import type { AnalyticsTier } from "@/lib/analytics/access";
+import { recordWindow } from "@/lib/analytics/presentation";
 import {
   formatPeriodRange,
   inPeriod,
@@ -364,8 +365,19 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
 export function presentAnalytics(
   measured: AnalyticsMeasurement,
   tier: AnalyticsTier,
-  window: PeriodWindow
+  window: PeriodWindow,
+  recordPage?: { kind: "sent" | "accepted"; offset: number }
 ): AnalyticsView {
+  const sentPage = recordWindow(
+    measured.sentRecords,
+    recordPage?.kind === "sent" ? recordPage.offset : 0,
+    ANALYTICS_LINK_LIMIT
+  );
+  const acceptedPage = recordWindow(
+    measured.acceptedRecords,
+    recordPage?.kind === "accepted" ? recordPage.offset : 0,
+    ANALYTICS_LINK_LIMIT
+  );
   const personal: PersonalAnalyticsView = {
     tier: "personal",
     periodId: window.id,
@@ -376,10 +388,10 @@ export function presentAnalytics(
     quotesSent: measured.quotesSent,
     quotesAccepted: measured.quotesAccepted,
     acceptedQuoteValueExGst: measured.acceptedQuoteValueExGst,
-    sentRecords: measured.sentRecords.slice(0, ANALYTICS_LINK_LIMIT),
-    acceptedRecords: measured.acceptedRecords.slice(0, ANALYTICS_LINK_LIMIT),
-    sentRecordTotal: measured.sentQuoteIds.length,
-    acceptedRecordTotal: measured.acceptedQuoteIds.length,
+    sentRecords: sentPage.records,
+    acceptedRecords: acceptedPage.records,
+    sentRecordTotal: sentPage.total,
+    acceptedRecordTotal: acceptedPage.total,
     incomplete: measured.incomplete,
   };
   if (tier !== "business") return personal;

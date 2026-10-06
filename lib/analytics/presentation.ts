@@ -64,3 +64,39 @@ export function pipelineGroups<T extends { count: number }>(
 export function recordListIsPartial(listed: number, total: number): boolean {
   return total > listed;
 }
+
+/** One bounded page of an already measured record list. Offset does not change the total. */
+export function recordWindow<T>(
+  records: readonly T[],
+  offset: number,
+  limit = 8
+): { records: T[]; offset: number; limit: number; total: number; from: number; to: number } {
+  const raw = Number.isFinite(offset) ? Math.floor(offset) : 0;
+  const start = Math.min(Math.max(raw, 0), 10_000);
+  const page = records.slice(start, start + limit);
+  return {
+    records: page,
+    offset: start,
+    limit,
+    total: records.length,
+    from: page.length === 0 ? 0 : start + 1,
+    to: start + page.length,
+  };
+}
+
+export function initialTrendIndex(
+  trend: ReadonlyArray<{ sent: number; accepted: number }>
+): number {
+  for (let index = trend.length - 1; index >= 0; index -= 1) {
+    if (trend[index].sent > 0 || trend[index].accepted > 0) return index;
+  }
+  return 0;
+}
+
+export function formatTrendReadout(point: {
+  label: string;
+  sent: number;
+  accepted: number;
+}): string {
+  return `${point.label} · Sent ${point.sent} · Accepted ${point.accepted}`;
+}

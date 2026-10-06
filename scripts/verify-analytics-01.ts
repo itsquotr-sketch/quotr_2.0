@@ -29,9 +29,12 @@ import {
   ACTIVE_PROJECTS_HREF,
   analyticsPeriodHref,
   formatAcceptanceLine,
+  formatTrendReadout,
+  initialTrendIndex,
   pipelineGroups,
   pipelineStatusHref,
   recordListIsPartial,
+  recordWindow,
   trendChartState,
 } from "../lib/analytics/presentation";
 import { applyProjectListFilter } from "../lib/projects/query-utils";
@@ -649,6 +652,44 @@ check(
     personal.sentRecords.every((row) => row.amountExGst == null) &&
     recordListIsPartial(8, 9) &&
     !recordListIsPartial(personal.acceptedRecords.length, personal.acceptedRecordTotal)
+);
+const laterRecords = recordWindow(
+  Array.from({ length: 21 }, (_, index) => index),
+  8
+);
+check(
+  "a record page continues past the first eight without changing the total",
+  laterRecords.records.length === 8 &&
+    laterRecords.offset === 8 &&
+    laterRecords.from === 9 &&
+    laterRecords.to === 16 &&
+    laterRecords.total === 21 &&
+    recordWindow([1, 2, 3], 8).records.length === 0 &&
+    recordWindow([1, 2, 3], 8).total === 3
+);
+const paged = presentAnalytics(measured, "personal", auckland, { kind: "sent", offset: 8 });
+check(
+  "paging sent quotes does not add business fields or change the sent total",
+  paged.tier === "personal" &&
+    !("acceptance" in paged) &&
+    paged.sentRecordTotal === measured.quotesSent &&
+    paged.sentRecords.length === 0
+);
+check(
+  "trend readout names the selected date and both series",
+  formatTrendReadout({ label: "5 Oct", sent: 1, accepted: 0 }) === "5 Oct · Sent 1 · Accepted 0" &&
+    initialTrendIndex([
+      { sent: 0, accepted: 0 },
+      { sent: 2, accepted: 0 },
+      { sent: 0, accepted: 1 },
+    ]) === 2
+);
+const recordAction = readFileSync(new URL("../lib/analytics/actions.ts", import.meta.url), "utf8");
+check(
+  "record paging returns the record page only",
+  /export async function loadAnalyticsRecordWindow[\s\S]*return \{\s*ok: true,\s*records,\s*total,\s*offset: start,\s*limit: ANALYTICS_LINK_LIMIT,\s*\};/.test(
+    recordAction
+  )
 );
 
 console.log("\nExample book (Auckland, February 2026)");

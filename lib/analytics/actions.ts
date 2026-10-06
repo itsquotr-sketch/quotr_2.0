@@ -2,7 +2,11 @@
 
 import { deniedBusinessAnalytics } from "@/lib/analytics/access";
 import { loadAnalyticsPage } from "@/lib/analytics/load-analytics";
-import type { BusinessAnalyticsView } from "@/lib/analytics/measure";
+import {
+  ANALYTICS_LINK_LIMIT,
+  type AnalyticsRecordLink,
+  type BusinessAnalyticsView,
+} from "@/lib/analytics/measure";
 import { requireOrgEntitlement } from "@/lib/billing/entitlement-server";
 import type {
   EntitlementReasonCode,
@@ -54,4 +58,45 @@ export async function loadBusinessAnalyticsDirect(
   }
 
   return { ok: true, view: loaded.view };
+}
+
+export type AnalyticsRecordWindowResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      records: AnalyticsRecordLink[];
+      total: number;
+      offset: number;
+      limit: number;
+    };
+
+/**
+ * One later page of the same sent or accepted quotes.
+ * The response is the record page only. Business measures are not returned.
+ */
+export async function loadAnalyticsRecordWindow(
+  periodRaw: string,
+  kind: "sent" | "accepted",
+  offset: number
+): Promise<AnalyticsRecordWindowResult> {
+  if (kind !== "sent" && kind !== "accepted") {
+    return { ok: false, error: "Unknown record list." };
+  }
+  const loaded = await loadAnalyticsPage(periodRaw, { kind, offset });
+  if (loaded.kind === "unauthenticated") {
+    return { ok: false, error: "Sign in required." };
+  }
+  if (loaded.kind === "denied") {
+    return { ok: false, error: loaded.message };
+  }
+  const records = kind === "sent" ? loaded.view.sentRecords : loaded.view.acceptedRecords;
+  const total = kind === "sent" ? loaded.view.sentRecordTotal : loaded.view.acceptedRecordTotal;
+  const start = Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+  return {
+    ok: true,
+    records,
+    total,
+    offset: start,
+    limit: ANALYTICS_LINK_LIMIT,
+  };
 }

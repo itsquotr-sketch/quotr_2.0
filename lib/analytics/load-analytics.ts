@@ -54,7 +54,8 @@ export type AnalyticsPageData =
  * before any aggregate query. Business tables are not read for Builder.
  */
 export async function loadAnalyticsPage(
-  periodRaw: string | undefined
+  periodRaw: string | undefined,
+  recordPage?: { kind: "sent" | "accepted"; offset: number }
 ): Promise<AnalyticsPageData> {
   const auth = await requireAuthOrgContext();
   if (!auth.ok) {
@@ -86,7 +87,7 @@ export async function loadAnalyticsPage(
     };
   }
 
-  const view = await queryAndPresent(auth.supabase, orgId, periodRaw, tier);
+  const view = await queryAndPresent(auth.supabase, orgId, periodRaw, tier, recordPage);
   return {
     kind: "ready",
     view,
@@ -104,7 +105,8 @@ async function queryAndPresent(
   supabase: Supabase,
   orgId: string,
   periodRaw: string | undefined,
-  tier: AnalyticsTier
+  tier: AnalyticsTier,
+  recordPage?: { kind: "sent" | "accepted"; offset: number }
 ): Promise<AnalyticsView> {
   const tables = analyticsTablesForTier(tier);
   const [schema, timezone] = await Promise.all([
@@ -206,7 +208,7 @@ async function queryAndPresent(
     },
   });
 
-  return presentAnalytics(measured, tier, window);
+  return presentAnalytics(measured, tier, window, recordPage);
 }
 
 async function readTimezone(supabase: Supabase, orgId: string): Promise<string> {
