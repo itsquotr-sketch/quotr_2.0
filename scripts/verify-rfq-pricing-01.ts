@@ -18,6 +18,7 @@ import {
 } from "../lib/deployment/environment";
 import { PREVIEW_AUTH_SITE_ORIGIN_STABLE } from "../lib/auth/site-url";
 import { resolveRfqPublicOrigin } from "../lib/rfqs/origin";
+import { hostFromRfqMessage } from "../lib/rfqs/sent-link";
 import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
 import { buildRfqPricingPreview } from "../lib/rfqs/pricing-preview";
 import { generateRfqAccessToken, hashRfqAccessToken } from "../lib/rfqs/token";
@@ -97,6 +98,10 @@ function staticMain() {
   assert("a missing branch host does not use the hardening alias", resolveRfqPublicOrigin({ VERCEL_ENV: "preview" }) === null);
   assert("localhost is not emailed", resolveRfqPublicOrigin({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }) === null);
   assert("send uses the RFQ origin helper", actions.includes("resolveRfqPublicOrigin()") && !actions.includes("resolveConfiguredSiteOrigin"));
+  assert("sent mail records the provider link host", actions.includes("readSentRfqLink"));
+  assert("provider link check returns the host only", hostFromRfqMessage("View and respond: https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/r/rfq_abcdefghijklmnopqrstuvwxyz012345") === "quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app");
+  assert("provider link check can see the hardening alias", hostFromRfqMessage("https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/r/rfq_abcdefghijklmnopqrstuvwxyz012345") === "quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app");
+  assert("a message without a response link has no host", hostFromRfqMessage("No link here") === null);
   assert("hardening alias constant is unchanged", PREVIEW_AUTH_SITE_ORIGIN_STABLE.includes("hardening-stage-2a-security"));
 
   const unpriced = "00000000-0000-4000-8000-0000000000a1";

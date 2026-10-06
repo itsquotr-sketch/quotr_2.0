@@ -1,7 +1,10 @@
 "use server";
 
+import { createHash, timingSafeEqual } from "node:crypto";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { resolveRfqPublicOrigin } from "@/lib/rfqs/origin";
+import { readSentRfqLink } from "@/lib/rfqs/sent-link";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
@@ -116,6 +119,15 @@ export async function saveRfqDraft(input: {
   return { ok: true, id };
 }
 
+function linkCaptureAllowed(presented: string | null): boolean {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (!presented || !key) return false;
+  const expected = createHash("sha256").update(key).digest("hex");
+  const left = Buffer.from(presented);
+  const right = Buffer.from(expected);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
 async function deliverRecipient(input: {
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"];
   recipientId: string;
@@ -126,15 +138,15 @@ async function deliverRecipient(input: {
   responseDueOn: string | null;
   rawToken: string;
   idempotencyKey: string;
-}): Promise<"sent" | "failed"> {
+}): Promise<{ status: "sent" | "failed"; publicPath?: string }> {
   const begun = await input.supabase.rpc("begin_rfq_delivery_v1", {
     p_recipient: input.recipientId,
     p_idempotency_key: input.idempotencyKey,
   });
   const delivery = (begun.data ?? {}) as { ok?: boolean; deliveryId?: string; status?: string };
-  if (begun.error || delivery.ok !== true || !delivery.deliveryId) return "failed";
-  if (delivery.status === "sent" || delivery.status === "delivered") return "sent";
-  if (delivery.status === "failed") return "failed";
+  if (begun.error || delivery.ok !== true || !delivery.deliveryId) return { status: "failed" };
+  if (delivery.status === "sent" || delivery.status === "delivered") return { status: "sent" };
+  if (delivery.status === "failed") return { status: "failed" };
   const origin = resolveRfqPublicOrigin();
   const from = rfqDeliveryFromHeader(input.builderName);
   const provider = getQuoteDeliveryProvider();
@@ -143,14 +155,15 @@ async function deliverRecipient(input: {
       p_delivery: delivery.deliveryId,
       p_failure_code: "not_configured",
     });
-    return "failed";
+    return { status: "failed" };
   }
+  const publicUrl = `${origin}${rfqPublicPath(input.rawToken)}`;
   const mail = buildRfqDeliveryEmail({
     builderName: input.builderName,
     contactName: input.contactName,
     scopeLabel: input.scopeLabel,
     responseDueOn: input.responseDueOn,
-    publicUrl: `${origin}${rfqPublicPath(input.rawToken)}`,
+    publicUrl,
   });
   const sent = await provider.send({
     to: input.email,
@@ -165,15 +178,43 @@ async function deliverRecipient(input: {
       p_delivery: delivery.deliveryId,
       p_failure_code: sent.code,
     });
-    return "failed";
+    return { status: "failed" };
   }
   const completed = await input.supabase.rpc("complete_rfq_delivery_v1", {
     p_delivery: delivery.deliveryId,
     p_provider_message_id: sent.providerMessageId,
   });
   const completedBody = (completed.data ?? {}) as { ok?: boolean };
-  if (completed.error || completedBody.ok !== true) return "failed";
-  return "sent";
+  if (completed.error || completedBody.ok !== true) return { status: "failed" };
+  const headerStore = await headers();
+  const capture = linkCaptureAllowed(headerStore.get("x-rfq-link-capture"));
+  let checked = await readSentRfqLink(sent.providerMessageId);
+  for (let attempt = 0; capture && attempt < 4 && checked.providerStatus !== "delivered" && checked.providerStatus !== "bounced" && checked.providerStatus !== "complained"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    checked = await readSentRfqLink(sent.providerMessageId);
+  }
+  const preparedHost = new URL(origin).host;
+  const providerHost = checked.host ?? "unavailable";
+  const summary = checked.host
+    ? `Mail service status: ${checked.providerStatus ?? "unknown"}. Provider link host: ${providerHost}. Prepared link host: ${preparedHost}.`
+    : `Mail service status: ${checked.providerStatus ?? "unknown"}. Provider link host: unavailable. Prepared link host: ${preparedHost}. Provider read status: ${checked.readStatus ?? "none"}. HTML length: ${checked.htmlLength}. Text length: ${checked.textLength}.`;
+  try {
+    const admin = createAdminClient();
+    const recipient = await admin.from("rfq_recipients").select("org_id, rfq_id").eq("id", input.recipientId).maybeSingle();
+    if (recipient.data) {
+      await admin.from("rfq_events").insert({
+        org_id: recipient.data.org_id,
+        rfq_id: recipient.data.rfq_id,
+        recipient_id: input.recipientId,
+        kind: "link_prepared",
+        summary: summary.slice(0, 300),
+        actor: "system",
+      });
+    }
+  } catch {
+    // The email was already accepted. A host note must not turn that into a failed send.
+  }
+  return capture ? { status: "sent", publicPath: publicUrl } : { status: "sent" };
 }
 
 export async function sendRfq(input: {
@@ -195,7 +236,7 @@ export async function sendRfq(input: {
     selectionSource: "suggested" | "manual";
   }>;
   documentVersionIds: string[];
-}): Promise<Ok<{ id: string; failed: number }> | Fail> {
+}): Promise<Ok<{ id: string; failed: number; publicPath?: string }> | Fail> {
   const saved = await saveRfqDraft(input);
   if (!saved.ok) return saved;
   const loaded = await requireRfqWriter();
@@ -227,6 +268,7 @@ export async function sendRfq(input: {
       ? rfq.data.work_area_name || "Requested work"
       : rfq.data?.written_scope_label || "Requested work";
   let failed = 0;
+  let publicPath: string | undefined;
   for (const row of rows) {
     const raw = rawByRecipient.get(row.id);
     if (!raw) {
@@ -244,11 +286,12 @@ export async function sendRfq(input: {
       rawToken: raw,
       idempotencyKey: `rfq-send:${row.id}`,
     });
-    if (result === "failed") failed += 1;
+    if (result.status === "failed") failed += 1;
+    if (result.publicPath) publicPath = result.publicPath;
   }
   revalidatePath(`/app/projects/${input.projectId}/requests`);
   revalidatePath(`/app/projects/${input.projectId}/requests/${saved.id}`);
-  return { ok: true, id: saved.id, failed };
+  return publicPath ? { ok: true, id: saved.id, failed, publicPath } : { ok: true, id: saved.id, failed };
 }
 
 export async function resendRfqRecipient(input: {
@@ -292,7 +335,7 @@ export async function resendRfqRecipient(input: {
     idempotencyKey: `rfq-resend:${input.recipientId}:${Date.now()}`,
   });
   revalidatePath(`/app/projects/${input.projectId}/requests/${input.rfqId}`);
-  return { ok: true, failed: result === "failed" };
+  return { ok: true, failed: result.status === "failed" };
 }
 
 export async function revokeRfqRecipient(input: {
