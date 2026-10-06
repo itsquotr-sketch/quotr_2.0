@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
+  BarChart3,
   BookUser,
   Building2,
   CreditCard,
@@ -135,6 +136,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
               <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                 Work
               </p>
+              {destination("/app/analytics", "Analytics", BarChart3)}
               {destination("/app/customers", "Customers", BookUser)}
             </nav>
           )}

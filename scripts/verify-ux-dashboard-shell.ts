@@ -52,9 +52,10 @@ const onboarding = read("components/setup/OnboardingFrame.tsx");
 console.log("=== Dashboard and shell IA ===\n");
 
 check(
-  "desktop primary order is Dashboard, Projects, Customers, Rates",
+  "desktop primary order is Dashboard, Projects, Analytics, Customers, Rates",
   sidebar.indexOf('href: "/app/dashboard"') < sidebar.indexOf('href: "/app/projects"') &&
-    sidebar.indexOf('href: "/app/projects"') < sidebar.indexOf('href: "/app/customers"') &&
+    sidebar.indexOf('href: "/app/projects"') < sidebar.indexOf('href: "/app/analytics"') &&
+    sidebar.indexOf('href: "/app/analytics"') < sidebar.indexOf('href: "/app/customers"') &&
     sidebar.indexOf('href: "/app/customers"') < sidebar.indexOf('href: "/app/rates"') &&
     sidebar.indexOf("Organisation") > sidebar.indexOf('href: "/app/rates"')
 );
@@ -90,13 +91,15 @@ check(
     mobileNav.includes("size-[22px]") &&
     mobileNav.includes("size-14") &&
     mobileNav.includes("rounded-full") &&
-    !mobileNav.includes("speed dial")
+    !mobileNav.includes("speed dial") &&
+    !mobileNav.includes("/app/analytics")
 );
 check(
   "mobile menu is secondary destinations and closes after navigation",
   !menu.includes('"/app/projects"') &&
     !menu.includes('"/app/dashboard"') &&
     !menu.includes('"/app/rates"') &&
+    menu.includes('"/app/analytics"') &&
     menu.indexOf('"/app/settings/company"') <
       menu.indexOf('"/app/settings/billing"') &&
     menu.includes("Organisation") &&

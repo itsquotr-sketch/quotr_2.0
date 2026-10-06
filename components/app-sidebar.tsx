@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { BookUser, Briefcase, Building2, DollarSign, LayoutDashboard, Users } from "lucide-react";
+import { BarChart3, BookUser, Briefcase, Building2, DollarSign, LayoutDashboard, Users } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
@@ -17,6 +17,7 @@ const activeNavClass = "bg-white/[0.08] text-white";
 const PRIMARY_NAV = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/projects", label: "Projects", icon: Briefcase },
+  { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/app/customers", label: "Customers", icon: BookUser },
   { href: "/app/rates", label: "Rates", icon: DollarSign },
 ] as const;
