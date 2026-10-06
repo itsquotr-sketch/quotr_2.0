@@ -33,7 +33,7 @@ export type WorkflowStatusLabel =
 
 export type ProjectWorkflowInput = {
   projectId: string;
-  activeTab: "information" | "assistant" | "pricing" | "quote" | "variations";
+  activeTab: "information" | "assistant" | "pricing" | "quote" | "variations" | "requests";
   hasEstimate: boolean;
   estimateIsStale: boolean;
   pricingSummary: Pick<PricingSummary, "id" | "status" | "needsRecalibration"> | null;

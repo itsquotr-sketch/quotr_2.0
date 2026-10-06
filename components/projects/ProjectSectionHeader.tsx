@@ -37,9 +37,11 @@ export function ProjectSectionHeader({
   const variations = stageById(model.stages, "variations");
   const informationHref = `/app/projects/${workflowInput.projectId}/information`;
   const informationCurrent = workflowInput.activeTab === "information";
+  const requestsCurrent = workflowInput.activeTab === "requests";
   const quoteColumnCurrent = workflowInput.activeTab === "quote" || workflowInput.activeTab === "variations";
   const pricingCanCreate = !pricing.locked && pricing.href == null && pricing.status === "Ready";
-  const topLevel = quoteColumnCurrent ? "quote" : workflowInput.activeTab;
+  const topLevel = quoteColumnCurrent ? "quote" : requestsCurrent ? "information" : workflowInput.activeTab;
+  const requestsHref = `/app/projects/${workflowInput.projectId}/requests`;
 
   const sections = [
     {
@@ -133,15 +135,25 @@ export function ProjectSectionHeader({
           data-project-variations-row
         >
           <p className="text-xs leading-4 text-foreground/70">Separate from Quote</p>
-          <Destination
-            title="Variations"
-            status={stageStatusText(variations)}
-            reason={variationsLockReason(variations)}
-            href={variations.viewing ? null : variations.href}
-            current={variations.viewing}
-            column="variations"
-            compact
-          />
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <Destination
+              title="Requests"
+              status="Subcontractor prices"
+              href={requestsCurrent ? null : requestsHref}
+              current={requestsCurrent}
+              column="requests"
+              compact
+            />
+            <Destination
+              title="Variations"
+              status={stageStatusText(variations)}
+              reason={variationsLockReason(variations)}
+              href={variations.viewing ? null : variations.href}
+              current={variations.viewing}
+              column="variations"
+              compact
+            />
+          </span>
         </div>
       </div>
 
@@ -149,12 +161,12 @@ export function ProjectSectionHeader({
         <label className="grid gap-1">
           <span className="text-xs leading-4 text-foreground/70">Project section</span>
           <span className="text-sm font-semibold leading-5" data-project-stage-current>
-            Step {activeSection.step}. {activeSection.label}
+            {requestsCurrent ? "Requests" : `Step ${activeSection.step}. ${activeSection.label}`}
           </span>
           <select
             aria-label="Project section"
             data-project-section-select
-            value={topLevel}
+            value={requestsCurrent ? "requests" : topLevel}
             className={cn(
               "h-11 min-h-11 w-full rounded-md border border-border bg-card px-3 text-base text-foreground",
               focusClass
@@ -170,6 +182,7 @@ export function ProjectSectionHeader({
               router.push(next.href);
             }}
           >
+            {requestsCurrent ? <option value="requests">Requests</option> : null}
             {sections.map((section) => (
               <option key={section.id} value={section.id} disabled={section.disabled}>
                 {section.disabled && section.hint
@@ -204,6 +217,17 @@ export function ProjectSectionHeader({
             />
           </div>
         ) : null}
+        <Link
+          href={requestsHref}
+          className={cn(
+            "inline-flex min-h-11 items-center text-sm font-medium text-foreground",
+            focusClass
+          )}
+          data-rfq-nav="true"
+          aria-current={requestsCurrent ? "page" : undefined}
+        >
+          Requests
+        </Link>
       </div>
       <CreateFinalPricingDialog
         projectId={workflowInput.projectId}
@@ -340,6 +364,7 @@ function Destination({
         data-project-column={column}
         data-project-stage={step}
         data-variations-nav={column === "variations" ? "true" : undefined}
+        data-rfq-nav={column === "requests" ? "true" : undefined}
       >
         {body}
       </Link>
@@ -352,6 +377,7 @@ function Destination({
       data-project-column={column}
       data-project-stage={step}
       data-variations-nav={column === "variations" ? "true" : undefined}
+      data-rfq-nav={column === "requests" ? "true" : undefined}
       data-project-column-locked={href == null && !current ? "true" : undefined}
     >
       {body}
