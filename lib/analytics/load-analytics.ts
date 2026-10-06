@@ -9,15 +9,18 @@ import {
 import {
   measureAnalytics,
   presentAnalytics,
+  type AnalyticsEstimate,
+  type AnalyticsEstimateLine,
+  type AnalyticsPricingItem,
   type AnalyticsProject,
   type AnalyticsQuoteEvent,
+  type AnalyticsQuoteTotal,
   type AnalyticsSnapshot,
   type AnalyticsVariation,
   type AnalyticsView,
 } from "@/lib/analytics/measure";
 import {
-  parseAnalyticsPeriod,
-  resolveAnalyticsPeriod,
+  resolveAnalyticsRequest,
   type PeriodWindow,
 } from "@/lib/analytics/periods";
 import { requireOrgEntitlement } from "@/lib/billing/entitlement-server";
@@ -44,6 +47,11 @@ export type AnalyticsPageData =
       upgradeTarget: UpgradeTarget;
     }
   | {
+      kind: "invalid_range";
+      error: string;
+      timeZone: string;
+    }
+  | {
       kind: "ready";
       view: AnalyticsView;
       upgrade: { message: string; href: string } | null;
@@ -55,7 +63,11 @@ export type AnalyticsPageData =
  */
 export async function loadAnalyticsPage(
   periodRaw: string | undefined,
-  recordPage?: { kind: "sent" | "accepted"; offset: number }
+  options?: {
+    from?: string;
+    to?: string;
+    recordPage?: { kind: "sent" | "accepted"; offset: number };
+  }
 ): Promise<AnalyticsPageData> {
   const auth = await requireAuthOrgContext();
   if (!auth.ok) {
@@ -87,7 +99,16 @@ export async function loadAnalyticsPage(
     };
   }
 
-  const view = await queryAndPresent(auth.supabase, orgId, periodRaw, tier, recordPage);
+  const view = await queryAndPresent(
+    auth.supabase,
+    orgId,
+    periodRaw,
+    options?.from,
+    options?.to,
+    tier,
+    options?.recordPage
+  );
+  if ("kind" in view) return view;
   return {
     kind: "ready",
     view,
@@ -105,29 +126,42 @@ async function queryAndPresent(
   supabase: Supabase,
   orgId: string,
   periodRaw: string | undefined,
+  from: string | undefined,
+  to: string | undefined,
   tier: AnalyticsTier,
   recordPage?: { kind: "sent" | "accepted"; offset: number }
-): Promise<AnalyticsView> {
+): Promise<AnalyticsView | { kind: "invalid_range"; error: string; timeZone: string }> {
   const tables = analyticsTablesForTier(tier);
   const [schema, timezone] = await Promise.all([
     probeProjectSchemaColumns(supabase),
     readTimezone(supabase, orgId),
   ]);
-  const window = resolveAnalyticsPeriod({
-    period: parseAnalyticsPeriod(periodRaw),
+  const resolved = resolveAnalyticsRequest({
+    period: periodRaw,
+    from,
+    to,
     timeZone: timezone,
     now: new Date(),
   });
+  if (!resolved.ok) {
+    return { kind: "invalid_range", error: resolved.error, timeZone: timezone };
+  }
+  const window = resolved.window;
+  const started = Date.now();
 
   const canReadPipeline =
     schema.lifecycleAvailable && schema.businessStatusAvailable;
 
-  const [activeCount, sends, acceptedSnapshots] = await Promise.all([
+  const [activeCount, sends, acceptedSnapshots, estimates, pricing] = await Promise.all([
     canReadPipeline
       ? countActiveProjects(supabase, orgId)
       : Promise.resolve({ count: null as number | null, failed: false }),
     readSends(supabase, orgId, window),
     readSnapshotsInPeriod(supabase, orgId, window),
+    readEstimates(supabase, orgId, window),
+    tier === "business" && tables.includes("pricing_items")
+      ? readPricingItems(supabase, orgId)
+      : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
   const names = new Map<string, string>();
 
@@ -164,7 +198,24 @@ async function queryAndPresent(
     variationsTruncated = variationRows.truncated;
   }
 
+  const [quoteTotals, lines] = await Promise.all([
+    readQuoteTotals(
+      supabase,
+      orgId,
+      sends.rows.map((row) => row.quoteId)
+    ),
+    tier === "business" && tables.includes("estimate_line_items")
+      ? readEstimateLines(
+          supabase,
+          orgId,
+          estimates.rows.map((row) => row.estimateId)
+        )
+      : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false }),
+  ]);
+
   const titleIds = [
+    ...estimates.rows.map((row) => row.projectId),
+    ...pricing.rows.map((row) => row.projectId),
     ...sends.rows.slice(0, 16).map((row) => row.projectId),
     ...acceptedSnapshots.rows.slice(0, 16).map((row) => row.projectId),
   ];
@@ -199,16 +250,24 @@ async function queryAndPresent(
     quoteEvents: [...sends.rows, ...timingSends],
     snapshots: [...acceptedSnapshots.rows, ...cohortSnapshots],
     variations,
+    estimates: estimates.rows,
+    quoteTotals: quoteTotals.rows,
+    estimateLines: lines.rows,
+    pricingItems: pricing.rows,
     activeProjectCount: activeCount.failed ? null : activeCount.count,
     limits: {
       sentTruncated: sends.truncated,
       snapshotsTruncated: acceptedSnapshots.truncated,
       projectsTruncated: tier === "business" ? projectsTruncated : false,
       variationsTruncated: tier === "business" ? variationsTruncated : false,
+      estimatesTruncated: estimates.truncated,
+      quoteTotalsTruncated: quoteTotals.truncated,
+      linesTruncated: tier === "business" ? lines.truncated : false,
+      pricingTruncated: tier === "business" ? pricing.truncated : false,
     },
   });
 
-  return presentAnalytics(measured, tier, window, recordPage);
+  return presentAnalytics(measured, tier, window, recordPage, Date.now() - started);
 }
 
 async function readTimezone(supabase: Supabase, orgId: string): Promise<string> {
@@ -220,6 +279,128 @@ async function readTimezone(supabase: Supabase, orgId: string): Promise<string> 
   return resolveDisplayTimezone(
     typeof data?.timezone === "string" ? data.timezone : null
   );
+}
+
+async function readEstimates(
+  supabase: Supabase,
+  orgId: string,
+  window: PeriodWindow
+): Promise<{ rows: AnalyticsEstimate[]; truncated: boolean }> {
+  const { data, error } = await supabase
+    .from("estimates")
+    .select("id, project_id, created_at, projects!inner(deleted_at)")
+    .eq("org_id", orgId)
+    .gte("created_at", window.start)
+    .lt("created_at", window.end)
+    .order("created_at", { ascending: false })
+    .limit(QUERY_LIMIT + 1);
+  if (error || !data) return { rows: [], truncated: true };
+  const truncated = data.length > QUERY_LIMIT;
+  return {
+    truncated,
+    rows: data.slice(0, QUERY_LIMIT).map((row) => {
+      const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+      return {
+        orgId,
+        estimateId: String(row.id),
+        projectId: String(row.project_id),
+        createdAt: String(row.created_at),
+        projectDeleted: Boolean(project && "deleted_at" in project && project.deleted_at),
+      };
+    }),
+  };
+}
+
+async function readQuoteTotals(
+  supabase: Supabase,
+  orgId: string,
+  quoteIds: string[]
+): Promise<{ rows: AnalyticsQuoteTotal[]; truncated: boolean }> {
+  const unique = [...new Set(quoteIds)];
+  if (unique.length === 0) return { rows: [], truncated: false };
+  const rows: AnalyticsQuoteTotal[] = [];
+  for (let index = 0; index < unique.length; index += 150) {
+    const slice = unique.slice(index, index + 150);
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("id, subtotal")
+      .eq("org_id", orgId)
+      .in("id", slice);
+    if (error || !data) return { rows: [], truncated: true };
+    for (const row of data) {
+      const subtotal = Number(row.subtotal);
+      if (!Number.isFinite(subtotal)) return { rows: [], truncated: true };
+      rows.push({ orgId, quoteId: String(row.id), subtotalExGst: subtotal });
+    }
+  }
+  return { rows, truncated: false };
+}
+
+async function readEstimateLines(
+  supabase: Supabase,
+  orgId: string,
+  estimateIds: string[]
+): Promise<{ rows: AnalyticsEstimateLine[]; truncated: boolean }> {
+  const unique = [...new Set(estimateIds)];
+  if (unique.length === 0) return { rows: [], truncated: false };
+  const rows: AnalyticsEstimateLine[] = [];
+  for (let index = 0; index < unique.length; index += 150) {
+    const slice = unique.slice(index, index + 150);
+    const { data, error } = await supabase
+      .from("estimate_line_items")
+      .select("estimate_id, work_area_name, rate_source, recommended_cost")
+      .eq("org_id", orgId)
+      .in("estimate_id", slice)
+      .limit(QUERY_LIMIT + 1);
+    if (error || !data) return { rows: [], truncated: true };
+    if (rows.length + data.length > QUERY_LIMIT) {
+      return { rows: rows.slice(0, QUERY_LIMIT), truncated: true };
+    }
+    for (const row of data) {
+      rows.push({
+        orgId,
+        estimateId: String(row.estimate_id),
+        workAreaName: String(row.work_area_name ?? ""),
+        rateSource: row.rate_source == null ? null : String(row.rate_source),
+        costStored: row.recommended_cost != null && Number.isFinite(Number(row.recommended_cost)),
+      });
+    }
+  }
+  return { rows, truncated: false };
+}
+
+async function readPricingItems(
+  supabase: Supabase,
+  orgId: string
+): Promise<{ rows: AnalyticsPricingItem[]; truncated: boolean }> {
+  const { data, error } = await supabase
+    .from("pricing_items")
+    .select(
+      "project_id, client_label, notes_internal, total_cost, total_sell, pricing_documents!inner(status), projects!inner(deleted_at)"
+    )
+    .eq("org_id", orgId)
+    .limit(QUERY_LIMIT + 1);
+  if (error || !data) return { rows: [], truncated: true };
+  const truncated = data.length > QUERY_LIMIT;
+  return {
+    truncated,
+    rows: data.slice(0, QUERY_LIMIT).map((row) => {
+      const document = Array.isArray(row.pricing_documents)
+        ? row.pricing_documents[0]
+        : row.pricing_documents;
+      const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+      return {
+        orgId,
+        projectId: String(row.project_id),
+        label: String(row.client_label ?? "Pricing item"),
+        notes: row.notes_internal == null ? null : String(row.notes_internal),
+        totalCost: Number(row.total_cost ?? 0),
+        totalSell: Number(row.total_sell ?? 0),
+        documentArchived: Boolean(document && "status" in document && document.status === "archived"),
+        projectDeleted: Boolean(project && "deleted_at" in project && project.deleted_at),
+      };
+    }),
+  };
 }
 
 async function countActiveProjects(

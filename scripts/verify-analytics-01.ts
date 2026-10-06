@@ -11,6 +11,7 @@ import {
   deniedBusinessAnalytics,
 } from "../lib/analytics/access";
 import {
+  classifyPricingExposure,
   measureAnalytics,
   presentAnalytics,
   type AnalyticsMeasureInput,
@@ -23,11 +24,13 @@ import {
   inPeriod,
   parseAnalyticsPeriod,
   resolveAnalyticsPeriod,
+  resolveCustomRange,
   trendGranularity,
 } from "../lib/analytics/periods";
 import {
   ACTIVE_PROJECTS_HREF,
   analyticsPeriodHref,
+  analyticsRangeHref,
   formatAcceptanceLine,
   formatTrendReadout,
   initialTrendIndex,
@@ -36,6 +39,7 @@ import {
   recordListIsPartial,
   recordWindow,
   trendChartState,
+  trendDensity,
 } from "../lib/analytics/presentation";
 import { applyProjectListFilter } from "../lib/projects/query-utils";
 import type { Project } from "../lib/projects/types";
@@ -714,6 +718,196 @@ check(
   /export async function loadAnalyticsRecordWindow[\s\S]*return \{\s*ok: true,\s*records,\s*total,\s*offset: start,\s*limit: ANALYTICS_LINK_LIMIT,\s*\};/.test(
     recordAction
   )
+);
+
+const aucklandCustom = resolveCustomRange({
+  from: "2026-04-01",
+  to: "2026-04-06",
+  timeZone: "Pacific/Auckland",
+});
+const sydneyCustom = resolveCustomRange({
+  from: "2026-04-01",
+  to: "2026-04-06",
+  timeZone: "Australia/Sydney",
+});
+check(
+  "custom dates are inclusive and end on the next local midnight",
+  aucklandCustom.ok &&
+    aucklandCustom.window.start === "2026-03-31T11:00:00.000Z" &&
+    aucklandCustom.window.end === "2026-04-06T12:00:00.000Z" &&
+    sydneyCustom.ok &&
+    sydneyCustom.window.start === "2026-03-31T13:00:00.000Z" &&
+    sydneyCustom.window.end === "2026-04-06T14:00:00.000Z" &&
+    inPeriod("2026-04-06T11:30:00.000Z", aucklandCustom.window) &&
+    !inPeriod("2026-04-06T12:00:00.000Z", aucklandCustom.window)
+);
+check(
+  "custom range rejects an inverted or oversized span",
+  !resolveCustomRange({ from: "2026-02-10", to: "2026-02-01", timeZone: "Pacific/Auckland" }).ok &&
+    !resolveCustomRange({ from: "2025-01-01", to: "2026-02-01", timeZone: "Pacific/Auckland" }).ok &&
+    !resolveCustomRange({ from: "2026-02-31", to: "2026-03-01", timeZone: "Pacific/Auckland" }).ok &&
+    analyticsRangeHref({ period: "custom", from: "2026-02-01", to: "2026-02-15" }) ===
+      "/app/analytics?period=custom&from=2026-02-01&to=2026-02-15"
+);
+const quoted = measureAnalytics({
+  ...book,
+  quoteTotals: [
+    { orgId: "org-a", quoteId: "q1", subtotalExGst: 100 },
+    { orgId: "org-a", quoteId: "q2", subtotalExGst: 0 },
+    { orgId: "org-b", quoteId: "q3", subtotalExGst: 9999 },
+  ],
+});
+check(
+  "a missing quote total hides the quoted value instead of summing a partial set",
+  quoted.quotesSent === 6 && quoted.quotedValueExGst == null
+);
+const quotedComplete = measureAnalytics({
+  ...book,
+  quoteEvents: [event("q1", "p1", "quote_sent", "2026-02-02T00:00:00.000Z")],
+  snapshots: [
+    {
+      orgId: "org-a",
+      quoteId: "q1",
+      projectId: "p1",
+      sellExGst: 80,
+      gstRate: 0,
+      sellInclGst: 80,
+      acceptedAt: "2026-02-03T00:00:00.000Z",
+    },
+  ],
+  variations: [],
+  quoteTotals: [{ orgId: "org-a", quoteId: "q1", subtotalExGst: 80 }],
+});
+check(
+  "a zero-GST accepted quote keeps its ex GST subtotal",
+  quotedComplete.quotedValueExGst === 80 && quotedComplete.acceptedQuoteValueExGst === 80
+);
+const mixed = measureAnalytics({
+  ...book,
+  estimates: [
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      projectId: "p1",
+      createdAt: "2026-02-02T00:00:00.000Z",
+      projectDeleted: false,
+    },
+    {
+      orgId: "org-a",
+      estimateId: "e-deleted",
+      projectId: "gone",
+      createdAt: "2026-02-02T00:00:00.000Z",
+      projectDeleted: true,
+    },
+  ],
+  estimateLines: [
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      workAreaName: "Deck",
+      rateSource: "Your company rate",
+      costStored: true,
+    },
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      workAreaName: "Fence",
+      rateSource: "",
+      costStored: false,
+    },
+    {
+      orgId: "org-a",
+      estimateId: "e1",
+      workAreaName: "Deck",
+      rateSource: "missing",
+      costStored: false,
+    },
+  ],
+  pricingItems: [
+    {
+      orgId: "org-a",
+      projectId: "p1",
+      label: "Manual deck",
+      notes: "Pricing required — added by you",
+      totalCost: 0,
+      totalSell: 0,
+      documentArchived: false,
+      projectDeleted: false,
+    },
+    {
+      orgId: "org-a",
+      projectId: "p1",
+      label: "Manual price",
+      notes: null,
+      totalCost: 0,
+      totalSell: 500,
+      documentArchived: false,
+      projectDeleted: false,
+    },
+    {
+      orgId: "org-a",
+      projectId: "p1",
+      label: "Archived",
+      notes: null,
+      totalCost: 0,
+      totalSell: 0,
+      documentArchived: true,
+      projectDeleted: false,
+    },
+  ],
+});
+const mixedPersonal = presentAnalytics(mixed, "personal", auckland);
+const mixedBusiness = presentAnalytics(mixed, "business", auckland);
+check(
+  "work areas count estimates once and do not split value",
+  mixed.estimatesCreated === 1 &&
+    mixed.workAreas?.find((row) => row.name === "Deck")?.estimates === 1 &&
+    mixed.workAreas?.find((row) => row.name === "Fence")?.estimates === 1 &&
+    !JSON.stringify(mixed.workAreas).includes("500")
+);
+check(
+  "blank rate source is not recorded and a missing cost is not zero",
+  mixed.rateSources?.some((row) => row.label === "Not recorded" && row.lines === 1) &&
+    mixed.rateSources?.some((row) => row.label === "Pricing required" && row.lines === 1) &&
+    mixed.rateSources?.some((row) => row.label === "Your rates" && row.lines === 1) &&
+    !("cost" in (mixed.rateSources?.[0] ?? {}))
+);
+check(
+  "pricing required is a count and unknown cost keeps its sell",
+  classifyPricingExposure({
+    notes: "Pricing required — added by you",
+    totalCost: 0,
+    totalSell: 0,
+  }) === "required" &&
+    classifyPricingExposure({ notes: null, totalCost: 0, totalSell: 500 }) === "unknown_cost" &&
+    mixed.pricing.requiredCount === 1 &&
+    mixed.pricing.unknownCostCount === 1 &&
+    mixed.pricing.unknownCostSellExGst === 500
+);
+check(
+  "personal keeps the basic figures and omits business insight",
+  mixedPersonal.tier === "personal" &&
+    mixedPersonal.estimatesCreated === 1 &&
+    !("workAreas" in mixedPersonal) &&
+    !("pricing" in mixedPersonal) &&
+    !("rateSources" in mixedPersonal) &&
+    mixedBusiness.tier === "business" &&
+    mixedBusiness.workAreas != null
+);
+check(
+  "a sparse period is a summary and a busy period stays a chart",
+  trendDensity({
+    trend: [
+      { sent: 1, accepted: 0 },
+      { sent: 0, accepted: 0 },
+      { sent: 0, accepted: 0 },
+      { sent: 0, accepted: 0 },
+      { sent: 1, accepted: 0 },
+      { sent: 0, accepted: 0 },
+    ],
+  }) === "summary" &&
+    trendDensity({ trend: [{ sent: 8, accepted: 2 }] }) === "chart" &&
+    trendDensity({ trend: [] }) === "empty"
 );
 
 console.log("\nExample book (Auckland, February 2026)");

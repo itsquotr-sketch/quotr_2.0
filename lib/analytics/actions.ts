@@ -77,14 +77,23 @@ export type AnalyticsRecordWindowResult =
 export async function loadAnalyticsRecordWindow(
   periodRaw: string,
   kind: "sent" | "accepted",
-  offset: number
+  offset: number,
+  from?: string,
+  to?: string
 ): Promise<AnalyticsRecordWindowResult> {
   if (kind !== "sent" && kind !== "accepted") {
     return { ok: false, error: "Unknown record list." };
   }
-  const loaded = await loadAnalyticsPage(periodRaw, { kind, offset });
+  const loaded = await loadAnalyticsPage(periodRaw, {
+    recordPage: { kind, offset },
+    from,
+    to,
+  });
   if (loaded.kind === "unauthenticated") {
     return { ok: false, error: "Sign in required." };
+  }
+  if (loaded.kind === "invalid_range") {
+    return { ok: false, error: loaded.error };
   }
   if (loaded.kind === "denied") {
     return { ok: false, error: loaded.message };

@@ -22,9 +22,17 @@ export function analyticsTablesForTier(tier: AnalyticsTier): readonly string[] {
     "projects",
     "quote_events",
     "accepted_commercial_snapshots",
+    "estimates",
+    "quotes",
   ] as const;
   if (tier === "personal") return personal;
-  return [...personal, "variation_accepted_adjustments"];
+  return [
+    ...personal,
+    "variation_accepted_adjustments",
+    "estimate_line_items",
+    "pricing_items",
+    "pricing_documents",
+  ];
 }
 
 export function businessAnalyticsUpgradeCopy(
@@ -34,7 +42,7 @@ export function businessAnalyticsUpgradeCopy(
     reasonCode === "trial_expired" ||
     reasonCode === "subscription_cancelled"
   ) {
-    return "Acceptance rate, pipeline, send-to-accept timing, and accepted variation adjustments need an active Business plan.";
+    return "Quote conversion, work areas, rate sources, pipeline, and accepted variation adjustments need an active Business plan.";
   }
   if (
     reasonCode === "payment_past_due" ||
@@ -42,9 +50,9 @@ export function businessAnalyticsUpgradeCopy(
     reasonCode === "subscription_paused" ||
     reasonCode === "billing_incomplete"
   ) {
-    return "Acceptance rate, pipeline, send-to-accept timing, and accepted variation adjustments are paused until billing is up to date.";
+    return "Quote conversion, work areas, rate sources, pipeline, and accepted variation adjustments are paused until billing is up to date.";
   }
-  return "Acceptance rate, pipeline, send-to-accept timing, and accepted variation adjustments are included with Business.";
+  return "Quote conversion, work areas, rate sources, pipeline, and accepted variation adjustments are included with Business.";
 }
 
 /** Direct Business calls return this shape and no measures. */

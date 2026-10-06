@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { trendChartState, initialTrendIndex, formatTrendReadout } from "@/lib/analytics/presentation";
+import { trendChartState, trendDensity, initialTrendIndex, formatTrendReadout } from "@/lib/analytics/presentation";
 import { cn } from "@/lib/utils";
 
 type TrendPoint = { label: string; sent: number; accepted: number };
@@ -16,6 +16,7 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
   const [showAccepted, setShowAccepted] = useState(true);
   const [index, setIndex] = useState(() => initialTrendIndex(trend));
   const state = trendChartState({ trend, unavailableReason });
+  const density = state === "chart" && trendDensity({ trend }) === "summary" ? "summary" : state;
   const trendKey = trend.map((point) => `${point.label}:${point.sent}:${point.accepted}`).join("|");
   const [seenKey, setSeenKey] = useState(trendKey);
   if (seenKey !== trendKey) {
@@ -25,7 +26,7 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
   const selected = trend[Math.min(index, Math.max(trend.length - 1, 0))];
 
   return (
-    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4" data-analytics-trend={state}>
+    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4" data-analytics-trend={density}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-sm font-medium">Sends and acceptances</h2>
@@ -33,7 +34,7 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
             Counted on their own dates. An acceptance is not a quote sent that day.
           </p>
         </div>
-        {state === "chart" ? (
+        {density === "chart" ? (
           <div className="flex gap-2" role="group" aria-label="Chart series">
             <SeriesToggle
               pressed={showSent}
@@ -59,7 +60,23 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
           {unavailableReason ?? "No quotes were sent or accepted in this period."}
         </p>
       ) : null}
-      {state === "chart" ? (
+      {density === "summary" ? (
+        <ol className="mt-3 space-y-1">
+          {trend
+            .filter((point) => point.sent > 0 || point.accepted > 0)
+            .map((point) => (
+              <li key={point.label} className="flex min-h-11 items-center justify-between gap-3 text-sm">
+                <span className="font-medium">{point.label}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  <span className="text-foreground">Sent {point.sent}</span>
+                  <span className="px-1" aria-hidden>·</span>
+                  <span className="text-[var(--brand-orange)]">Accepted {point.accepted}</span>
+                </span>
+              </li>
+            ))}
+        </ol>
+      ) : null}
+      {density === "chart" ? (
         <>
           {!showSent && !showAccepted ? (
             <p className="mt-4 text-sm text-muted-foreground">Turn on Sent or Accepted to see the chart.</p>

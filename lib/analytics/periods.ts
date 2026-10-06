@@ -11,15 +11,23 @@ export const ANALYTICS_PERIODS = [
 ] as const;
 
 export type AnalyticsPeriodId = (typeof ANALYTICS_PERIODS)[number]["id"];
+export type AnalyticsWindowId = AnalyticsPeriodId | "custom";
+
+/** Inclusive calendar days. A leap-year span still fits. */
+export const ANALYTICS_MAX_RANGE_DAYS = 366;
 
 export type PeriodWindow = {
-  id: AnalyticsPeriodId;
+  id: AnalyticsWindowId;
   label: string;
   timeZone: string;
   /** Inclusive UTC instant. */
   start: string;
   /** Exclusive UTC instant. */
   end: string;
+  /** Custom range start date, YYYY-MM-DD. Null for a preset. */
+  from: string | null;
+  /** Custom range end date, YYYY-MM-DD, inclusive for the user. */
+  to: string | null;
 };
 
 type CalendarDate = { year: number; month: number; day: number };
@@ -74,7 +82,94 @@ export function resolveAnalyticsPeriod(input: {
     timeZone,
     start: zonedTimeToUtc(startDate, timeZone).toISOString(),
     end: zonedTimeToUtc(endDate, timeZone).toISOString(),
+    from: null,
+    to: null,
   };
+}
+
+export type AnalyticsRangeResult =
+  | { ok: true; window: PeriodWindow }
+  | { ok: false; error: string };
+
+/**
+ * Presets use the existing calendar rules. Custom dates are inclusive for the
+ * user and become an exclusive end instant at the start of the next day in
+ * the organisation timezone.
+ */
+export function resolveAnalyticsRequest(input: {
+  period: string | null | undefined;
+  from?: string | null;
+  to?: string | null;
+  timeZone: string;
+  now: Date;
+}): AnalyticsRangeResult {
+  if (input.period !== "custom") {
+    return {
+      ok: true,
+      window: resolveAnalyticsPeriod({
+        period: parseAnalyticsPeriod(input.period),
+        timeZone: input.timeZone,
+        now: input.now,
+      }),
+    };
+  }
+  return resolveCustomRange({
+    from: input.from ?? "",
+    to: input.to ?? "",
+    timeZone: input.timeZone,
+  });
+}
+
+export function resolveCustomRange(input: {
+  from: string;
+  to: string;
+  timeZone: string;
+}): AnalyticsRangeResult {
+  const from = parseCalendarDate(input.from);
+  const to = parseCalendarDate(input.to);
+  if (!from || !to) {
+    return { ok: false, error: "Enter a start and end date." };
+  }
+  if (compareCalendar(from, to) > 0) {
+    return { ok: false, error: "The start date has to be on or before the end date." };
+  }
+  const days = calendarDaySpan(from, to);
+  if (days > ANALYTICS_MAX_RANGE_DAYS) {
+    return {
+      ok: false,
+      error: `Choose a range of ${ANALYTICS_MAX_RANGE_DAYS} days or fewer.`,
+    };
+  }
+  const endDate = addCalendarDays(to, 1);
+  return {
+    ok: true,
+    window: {
+      id: "custom",
+      label: "Custom range",
+      timeZone: input.timeZone,
+      start: zonedTimeToUtc(from, input.timeZone).toISOString(),
+      end: zonedTimeToUtc(endDate, input.timeZone).toISOString(),
+      from: calendarKey(from),
+      to: calendarKey(to),
+    },
+  };
+}
+
+function parseCalendarDate(value: string): CalendarDate | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day };
 }
 
 export function inPeriod(iso: string, window: PeriodWindow): boolean {

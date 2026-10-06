@@ -1,3 +1,7 @@
+import { classifyRateSource } from "@/lib/estimate/rate-source-labels";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { inferPersistedLineCostKnown } from "@/lib/pricing/authoritative-document-totals";
+import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import { ACTIVE_PIPELINE_STATUSES, getBusinessStatusDefinition } from "@/lib/projects/status";
 import type { AnalyticsTier } from "@/lib/analytics/access";
 import { recordWindow } from "@/lib/analytics/presentation";
@@ -45,6 +49,30 @@ export const ANALYTICS_LINK_LIMIT = 8;
  * Variations — Business. variation rows with status accepted and accepted_at
  * in the period. Adjustment is net_adjustment_ex_gst. Rejected variations are
  * ignored. The adjustment is not added to the accepted quote baseline.
+ *
+ * Estimates created — estimates.created_at in the period. One row per project,
+ * so a regeneration does not add another estimate. Deleted projects are
+ * excluded. Archived projects stay. Not an estimator filter: estimates have
+ * no created_by.
+ *
+ * Quoted ex GST — sum of quotes.subtotal for quotes with a first quote_sent
+ * in the period. Subtotal is the stored ex-GST quote total, not a send-time
+ * snapshot and not cash. Each revision is its own quote. A missing total
+ * makes the figure unavailable rather than a partial sum. Zero GST does not
+ * drop a positive subtotal.
+ *
+ * Work-area frequency — Business. Distinct estimates created in the period
+ * that include the area. A mixed estimate counts once in each area. Its
+ * value is not allocated across areas.
+ *
+ * Rate-source mix — Business. Line counts on those estimates, from the stored
+ * rate_source text. A blank source is "Not recorded", not a default and not
+ * a zero cost. Missing prices are their own count. Costs are not summed.
+ *
+ * Pricing required — Business. Current non-archived pricing items, not the
+ * period. Unpriced rows are a count with no dollar value. A positive sell
+ * whose stored cost is unknown is counted and its sell is summed; the unknown
+ * cost is not treated as zero and no margin is derived.
  */
 
 export type AnalyticsProject = {
@@ -101,12 +129,72 @@ export type AnalyticsMeasureInput = {
   /** Ignored by every measure. Present so fixtures can prove resends are not sends. */
   deliveries?: readonly AnalyticsDelivery[];
   activeProjectCount?: number | null;
+  estimates?: readonly AnalyticsEstimate[];
+  quoteTotals?: readonly AnalyticsQuoteTotal[];
+  estimateLines?: readonly AnalyticsEstimateLine[];
+  pricingItems?: readonly AnalyticsPricingItem[];
   limits: {
     sentTruncated: boolean;
     snapshotsTruncated: boolean;
     projectsTruncated: boolean;
     variationsTruncated: boolean;
+    estimatesTruncated?: boolean;
+    quoteTotalsTruncated?: boolean;
+    linesTruncated?: boolean;
+    pricingTruncated?: boolean;
   };
+};
+
+export type AnalyticsEstimate = {
+  orgId: string;
+  estimateId: string;
+  projectId: string;
+  createdAt: string;
+  projectDeleted: boolean;
+};
+
+export type AnalyticsQuoteTotal = {
+  orgId: string;
+  quoteId: string;
+  /** Stored quotes.subtotal, ex GST. */
+  subtotalExGst: number;
+};
+
+export type AnalyticsEstimateLine = {
+  orgId: string;
+  estimateId: string;
+  workAreaName: string;
+  rateSource: string | null;
+  /** False when recommended_cost was not stored. Never coerced to zero. */
+  costStored: boolean;
+};
+
+export type AnalyticsPricingItem = {
+  orgId: string;
+  projectId: string;
+  label: string;
+  notes: string | null;
+  totalCost: number;
+  totalSell: number;
+  documentArchived: boolean;
+  projectDeleted: boolean;
+};
+
+export type AnalyticsWorkArea = {
+  name: string;
+  estimates: number;
+};
+
+export type AnalyticsRateSource = {
+  label: string;
+  lines: number;
+};
+
+export type PricingExposure = {
+  requiredCount: number | null;
+  unknownCostCount: number | null;
+  /** Sell on rows whose cost is unknown. Null when the read is incomplete. */
+  unknownCostSellExGst: number | null;
 };
 
 export type AnalyticsRecordLink = {
@@ -125,14 +213,21 @@ export type PersonalAnalyticsView = {
   periodLabel: string;
   periodRange: string;
   timeZone: string;
+  from: string | null;
+  to: string | null;
   activeProjects: number | null;
   quotesSent: number | null;
   quotesAccepted: number | null;
   acceptedQuoteValueExGst: number | null;
+  estimatesCreated: number | null;
+  quotedValueExGst: number | null;
   sentRecords: AnalyticsRecordLink[];
   acceptedRecords: AnalyticsRecordLink[];
+  estimateRecords: AnalyticsRecordLink[];
   sentRecordTotal: number;
   acceptedRecordTotal: number;
+  estimateRecordTotal: number;
+  queryMs: number;
   incomplete: boolean;
 };
 
@@ -157,6 +252,9 @@ export type BusinessAnalyticsView = Omit<PersonalAnalyticsView, "tier"> & {
     acceptedCount: number | null;
     adjustmentExGst: number | null;
   };
+  workAreas: AnalyticsWorkArea[] | null;
+  rateSources: AnalyticsRateSource[] | null;
+  pricing: PricingExposure;
 };
 
 export type AnalyticsView = PersonalAnalyticsView | BusinessAnalyticsView;
@@ -177,6 +275,12 @@ export type AnalyticsMeasurement = {
   trendUnavailableReason: string | null;
   timing: BusinessAnalyticsView["timing"];
   variations: BusinessAnalyticsView["variations"];
+  workAreas: AnalyticsWorkArea[] | null;
+  rateSources: AnalyticsRateSource[] | null;
+  pricing: PricingExposure;
+  estimateRecords: AnalyticsRecordLink[];
+  quotedValueExGst: number | null;
+  estimatesCreated: number | null;
   incomplete: boolean;
 };
 
@@ -320,7 +424,67 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
           ),
         };
 
-  const sentRecords = toLinks(sendsInPeriod, titles, "occurredAt", () => null);
+  const estimatesInPeriod = (input.estimates ?? []).filter(
+    (row) =>
+      row.orgId === orgId &&
+      !row.projectDeleted &&
+      inPeriod(row.createdAt, input.window)
+  );
+  const estimatesCreated = input.limits.estimatesTruncated ? null : estimatesInPeriod.length;
+  const estimateIdSet = new Set(estimatesInPeriod.map((row) => row.estimateId));
+
+  const totals = new Map(
+    (input.quoteTotals ?? [])
+      .filter((row) => row.orgId === orgId)
+      .map((row) => [row.quoteId, row.subtotalExGst])
+  );
+  let quotedValueExGst: number | null = null;
+  if (!input.limits.sentTruncated && !input.limits.quoteTotalsTruncated) {
+    const values: number[] = [];
+    let complete = true;
+    for (const row of sendsInPeriod) {
+      const value = totals.get(row.quoteId);
+      if (value == null || !Number.isFinite(value)) {
+        complete = false;
+        break;
+      }
+      values.push(value);
+    }
+    quotedValueExGst = complete ? sumExGst(values) : null;
+  }
+
+  const lines = (input.estimateLines ?? []).filter(
+    (row) => row.orgId === orgId && estimateIdSet.has(row.estimateId)
+  );
+  const workAreas = input.limits.estimatesTruncated || input.limits.linesTruncated
+    ? null
+    : workAreaFrequency(lines);
+  const rateSources = input.limits.estimatesTruncated || input.limits.linesTruncated
+    ? null
+    : rateSourceMix(lines);
+
+  const pricingRows = (input.pricingItems ?? []).filter(
+    (row) => row.orgId === orgId && !row.documentArchived && !row.projectDeleted
+  );
+  const pricing = input.limits.pricingTruncated
+    ? { requiredCount: null, unknownCostCount: null, unknownCostSellExGst: null }
+    : pricingExposure(pricingRows);
+
+  const sentRecords = toLinks(sendsInPeriod, titles, "occurredAt", (quoteId) => {
+    const value = totals.get(quoteId);
+    return value == null || !Number.isFinite(value) ? null : value;
+  });
+  const estimateRecords = estimatesInPeriod
+    .slice()
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .map((row) => ({
+      projectId: row.projectId,
+      projectTitle: titles.get(row.projectId) || "Project",
+      href: `/app/projects/${row.projectId}`,
+      occurredAt: row.createdAt,
+      quoteId: row.estimateId,
+      amountExGst: null,
+    }));
   const acceptedRecords = toLinks(
     acceptedInPeriod,
     titles,
@@ -333,6 +497,12 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
     quotesSent,
     quotesAccepted,
     acceptedQuoteValueExGst,
+    estimatesCreated,
+    quotedValueExGst,
+    estimateRecords,
+    workAreas,
+    rateSources,
+    pricing,
     sentQuoteIds: sendsInPeriod.map((row) => row.quoteId),
     acceptedQuoteIds: acceptedInPeriod.map((row) => row.quoteId),
     sentRecords,
@@ -358,7 +528,12 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
       input.limits.sentTruncated ||
       input.limits.snapshotsTruncated ||
       input.limits.projectsTruncated ||
-      input.limits.variationsTruncated,
+      input.limits.variationsTruncated ||
+      Boolean(input.limits.estimatesTruncated) ||
+      Boolean(input.limits.quoteTotalsTruncated) ||
+      Boolean(input.limits.linesTruncated) ||
+      Boolean(input.limits.pricingTruncated) ||
+      (quotesSent != null && quotesSent > 0 && quotedValueExGst == null),
   };
 }
 
@@ -366,7 +541,8 @@ export function presentAnalytics(
   measured: AnalyticsMeasurement,
   tier: AnalyticsTier,
   window: PeriodWindow,
-  recordPage?: { kind: "sent" | "accepted"; offset: number }
+  recordPage?: { kind: "sent" | "accepted"; offset: number },
+  queryMs = 0
 ): AnalyticsView {
   const sentPage = recordWindow(
     measured.sentRecords,
@@ -384,14 +560,21 @@ export function presentAnalytics(
     periodLabel: window.label,
     periodRange: formatPeriodRange(window),
     timeZone: window.timeZone,
+    from: window.from,
+    to: window.to,
     activeProjects: measured.activeProjects,
     quotesSent: measured.quotesSent,
     quotesAccepted: measured.quotesAccepted,
     acceptedQuoteValueExGst: measured.acceptedQuoteValueExGst,
+    estimatesCreated: measured.estimatesCreated,
+    quotedValueExGst: measured.quotedValueExGst,
     sentRecords: sentPage.records,
     acceptedRecords: acceptedPage.records,
+    estimateRecords: measured.estimateRecords,
     sentRecordTotal: sentPage.total,
     acceptedRecordTotal: acceptedPage.total,
+    estimateRecordTotal: measured.estimateRecords.length,
+    queryMs,
     incomplete: measured.incomplete,
   };
   if (tier !== "business") return personal;
@@ -405,8 +588,90 @@ export function presentAnalytics(
     trendUnavailableReason: measured.trendUnavailableReason,
     timing: measured.timing,
     variations: measured.variations,
+    workAreas: measured.workAreas,
+    rateSources: measured.rateSources,
+    pricing: measured.pricing,
   };
   return business;
+}
+
+export function classifyPricingExposure(item: {
+  notes: string | null;
+  totalCost: number;
+  totalSell: number;
+}): "required" | "unknown_cost" | "priced" {
+  const metadata = parseLineItemNotes(item.notes).metadata;
+  const missingSource = metadata.rateSourceType === "missing" && item.totalCost <= 0;
+  const costKnown = missingSource
+    ? false
+    : inferPersistedLineCostKnown({
+        total_cost: item.totalCost,
+        total_sell: item.totalSell,
+      });
+  const sell = Number(item.totalSell);
+  const unpriced = !Number.isFinite(sell) || sell <= 0;
+  if ((isManualScopePricingRequiredNote(item.notes) && unpriced) || (!costKnown && unpriced)) {
+    return "required";
+  }
+  if (!costKnown && Number.isFinite(sell) && sell > 0) return "unknown_cost";
+  return "priced";
+}
+
+function workAreaFrequency(lines: readonly AnalyticsEstimateLine[]): AnalyticsWorkArea[] {
+  const sets = new Map<string, Set<string>>();
+  for (const line of lines) {
+    const name = line.workAreaName.trim() || "Not named";
+    const current = sets.get(name) ?? new Set<string>();
+    current.add(line.estimateId);
+    sets.set(name, current);
+  }
+  return [...sets.entries()]
+    .map(([name, estimates]) => ({ name, estimates: estimates.size }))
+    .sort((a, b) => b.estimates - a.estimates || a.name.localeCompare(b.name));
+}
+
+function rateSourceMix(lines: readonly AnalyticsEstimateLine[]): AnalyticsRateSource[] {
+  const counts = new Map<string, number>();
+  for (const line of lines) {
+    const label = rateSourceLabel(line.rateSource);
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([label, count]) => ({ label, lines: count }))
+    .sort((a, b) => b.lines - a.lines || a.label.localeCompare(b.label));
+}
+
+function rateSourceLabel(raw: string | null): string {
+  if (raw == null || raw.trim() === "") return "Not recorded";
+  const token = raw.trim().toLowerCase();
+  if (token === "missing" || token === "rate_missing") return "Pricing required";
+  const source = classifyRateSource(raw);
+  if (source === "user_rate" || source === "work_area_rate" || source === "calibrated_productivity") {
+    return "Your rates";
+  }
+  if (source === "benchmark" || source === "productivity") return "Quotr benchmark";
+  if (source === "missing") return "Pricing required";
+  if (source === "fallback" || source === "default") return "Allowance";
+  return "Other";
+}
+
+function pricingExposure(rows: readonly AnalyticsPricingItem[]): PricingExposure {
+  let requiredCount = 0;
+  let unknownCostCount = 0;
+  const sells: number[] = [];
+  for (const row of rows) {
+    const kind = classifyPricingExposure(row);
+    if (kind === "required") requiredCount += 1;
+    if (kind === "unknown_cost") {
+      unknownCostCount += 1;
+      sells.push(row.totalSell);
+    }
+  }
+  return {
+    requiredCount,
+    unknownCostCount,
+    unknownCostSellExGst: sumExGst(sells),
+  };
 }
 
 function isCurrentPipelineProject(project: AnalyticsProject): boolean {

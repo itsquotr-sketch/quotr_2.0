@@ -1,4 +1,4 @@
-import type { AnalyticsPeriodId } from "@/lib/analytics/periods";
+import { ANALYTICS_PERIODS, type AnalyticsPeriodId } from "@/lib/analytics/periods";
 
 /**
  * Presentation only. Metric maths stay in measure.ts.
@@ -15,6 +15,34 @@ export const ACTIVE_PROJECTS_HREF = "/app/projects?filter=active";
 
 export function analyticsPeriodHref(period: AnalyticsPeriodId): string {
   return `/app/analytics?period=${period}`;
+}
+
+export function analyticsRangeHref(input: {
+  period: string;
+  from?: string | null;
+  to?: string | null;
+}): string {
+  if (input.period === "custom" && input.from && input.to) {
+    const params = new URLSearchParams({
+      period: "custom",
+      from: input.from,
+      to: input.to,
+    });
+    return `/app/analytics?${params.toString()}`;
+  }
+  const period = ANALYTICS_PERIODS.some((row) => row.id === input.period)
+    ? input.period
+    : "this_month";
+  return `/app/analytics?period=${period}`;
+}
+
+export function trendDensity(input: {
+  trend: ReadonlyArray<{ sent: number; accepted: number }>;
+}): "empty" | "summary" | "chart" {
+  const events = input.trend.reduce((sum, row) => sum + row.sent + row.accepted, 0);
+  if (events === 0) return "empty";
+  if (events < 8) return "summary";
+  return "chart";
 }
 
 export function pipelineStatusHref(status: string): string | null {

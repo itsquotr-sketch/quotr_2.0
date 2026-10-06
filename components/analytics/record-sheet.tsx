@@ -12,14 +12,16 @@ import {
 } from "@/components/ui/sheet";
 import { loadAnalyticsRecordWindow } from "@/lib/analytics/actions";
 import type { AnalyticsRecordLink } from "@/lib/analytics/measure";
-import type { AnalyticsPeriodId } from "@/lib/analytics/periods";
+import type { AnalyticsWindowId } from "@/lib/analytics/periods";
 import { recordListIsPartial } from "@/lib/analytics/presentation";
 import { formatInOrgTimezone } from "@/lib/org/timezone";
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { cn } from "@/lib/utils";
 
 type RecordSheetProps = {
-  periodId: AnalyticsPeriodId;
+  periodId: AnalyticsWindowId;
+  from?: string | null;
+  to?: string | null;
   kind: "sent" | "accepted";
   label: string;
   value: string;
@@ -72,7 +74,7 @@ function RecordList(props: RecordSheetProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inFlight = useRef(false);
-  const pageKey = `${props.periodId}:${props.kind}:${props.total}:${props.records[0]?.quoteId ?? ""}`;
+  const pageKey = `${props.periodId}:${props.from ?? ""}:${props.to ?? ""}:${props.kind}:${props.total}:${props.records[0]?.quoteId ?? ""}`;
   const [seenKey, setSeenKey] = useState(pageKey);
   if (seenKey !== pageKey) {
     setSeenKey(pageKey);
@@ -93,7 +95,13 @@ function RecordList(props: RecordSheetProps) {
     setLoading(true);
     setError(null);
     try {
-      const result = await loadAnalyticsRecordWindow(props.periodId, props.kind, nextOffset);
+      const result = await loadAnalyticsRecordWindow(
+        props.periodId,
+        props.kind,
+        nextOffset,
+        props.from ?? undefined,
+        props.to ?? undefined
+      );
       if (!result.ok) {
         setError(result.error);
         return;
@@ -168,6 +176,86 @@ function RecordList(props: RecordSheetProps) {
         ) : null}
       </div>
     </>
+  );
+}
+
+export function EstimateSheet(props: {
+  label: string;
+  value: string;
+  context: string;
+  records: AnalyticsRecordLink[];
+  disabled?: boolean;
+  timeZone: string;
+}) {
+  const [offset, setOffset] = useState(0);
+  const page = props.records.slice(offset, offset + 8);
+  const total = props.records.length;
+  const from = page.length === 0 ? 0 : offset + 1;
+  const to = offset + page.length;
+  const body = (
+    <>
+      <p className="text-[11px] font-medium leading-tight text-muted-foreground">{props.label}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums sm:text-2xl">
+        {props.value}
+      </p>
+      <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{props.context}</p>
+    </>
+  );
+  if (props.disabled) return <div className={cardClass}>{body}</div>;
+  return (
+    <Sheet>
+      <SheetTrigger className={cn(cardClass, "w-full hover:bg-muted/20")}>{body}</SheetTrigger>
+      <SheetContent side="right" className="w-full data-[side=right]:w-full data-[side=right]:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Estimates created</SheetTitle>
+          <SheetDescription>
+            One estimate row per project. Regenerating it does not add another row.
+          </SheetDescription>
+        </SheetHeader>
+        {page.length === 0 ? (
+          <p className="px-6 text-sm text-muted-foreground">No estimates were created in this range.</p>
+        ) : (
+          <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto px-3">
+            {page.map((record) => (
+              <li key={record.quoteId}>
+                <Link
+                  href={record.href}
+                  className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                >
+                  <span className="truncate font-medium">{record.projectTitle}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatInOrgTimezone(record.occurredAt, props.timeZone) ?? "—"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {total > 8 ? (
+          <div className="flex gap-2 px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <p className="sr-only">
+              Showing {from}–{to} of {total}
+            </p>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm disabled:opacity-40"
+              disabled={offset === 0}
+              onClick={() => setOffset((value) => Math.max(0, value - 8))}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm disabled:opacity-40"
+              disabled={to >= total}
+              onClick={() => setOffset((value) => value + 8)}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
 
