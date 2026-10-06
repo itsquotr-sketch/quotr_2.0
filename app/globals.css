@@ -382,3 +382,38 @@
     page-break-inside: avoid;
   }
 }
+
+gmp-place-autocomplete.quotr-address-search {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  border-radius: 0.75rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  color-scheme: light;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.dark gmp-place-autocomplete.quotr-address-search {
+  color-scheme: dark;
+}
+
+gmp-place-autocomplete.quotr-address-search::part(prediction-list) {
+  z-index: 80;
+  max-height: min(16rem, 50dvh);
+  border-radius: 0.75rem;
+}
+
+gmp-place-autocomplete.quotr-address-search::part(prediction-item) {
+  min-height: 2.75rem;
+}
+
+@media (min-width: 768px) {
+  gmp-place-autocomplete.quotr-address-search {
+    font-size: 0.875rem;
+  }
+}

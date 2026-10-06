@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SiteAddressField } from "@/components/addresses/SiteAddressField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -311,12 +312,13 @@ export function EditProjectDialog({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="edit-site-address">Site address</Label>
-                <Input
+                <SiteAddressField
                   id="edit-site-address"
                   value={siteAddress}
-                  onChange={(event) => setSiteAddress(event.target.value)}
+                  onChange={setSiteAddress}
                   maxLength={300}
                   className="min-h-11"
+                  aria-invalid={Boolean(fieldErrors.site_address?.[0])}
                 />
                 {fieldErrors.site_address?.[0] ? (
                   <p className="text-sm text-destructive" role="alert">

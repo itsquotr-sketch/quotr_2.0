@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AddressSearch } from "@/components/addresses/AddressSearch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { addressCountryCode } from "@/lib/addresses/map-place";
 import { saveBusinessAddress } from "@/lib/setup/actions";
 import {
   FIRST_RUN_BASICS_PATH,
@@ -69,7 +71,7 @@ export function BusinessAddressStep({ state }: { state: SetupState }) {
     <OnboardingSurface
       mode="address"
       title="Business address"
-      description="Enter the address used for this business. Country comes from the previous step."
+      description="Search for the address or type it below. Country comes from the previous step."
     >
       <form data-onboarding-form onSubmit={handleSubmit} className="space-y-4">
         {error ? (
@@ -77,6 +79,16 @@ export function BusinessAddressStep({ state }: { state: SetupState }) {
             {error}
           </p>
         ) : null}
+        <AddressSearch
+          countryCode={addressCountryCode(countryCode)}
+          onAddress={(mapped) => {
+            setAddressLine1(mapped.street);
+            setAddressLine2(mapped.unit);
+            setCity(mapped.suburbOrCity);
+            setRegion(mapped.region);
+            setPostcode(mapped.postcode.slice(0, 4));
+          }}
+        />
         <div className="space-y-1.5">
           <Label htmlFor="street-address">Street address</Label>
           <Input

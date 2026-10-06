@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SiteAddressField } from "@/components/addresses/SiteAddressField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,14 +104,13 @@ export function PricingDetailsCard({
           <Label htmlFor="pricing-site-address" className="text-xs">
             Site address
           </Label>
-          <Input
+          <SiteAddressField
             id="pricing-site-address"
             className="h-11 md:h-8"
             value={siteAddress ?? ""}
             placeholder="Site address"
-            onChange={(event) =>
-              onChange({ site_address: event.target.value || null })
-            }
+            maxLength={500}
+            onChange={(next) => onChange({ site_address: next || null })}
           />
         </div>
         <div className="space-y-0.5">

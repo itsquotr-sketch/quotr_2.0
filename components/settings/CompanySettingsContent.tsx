@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AddressSearch } from "@/components/addresses/AddressSearch";
+import { addressCountryCode } from "@/lib/addresses/map-place";
 import { SectionCard } from "@/components/layout/section-card";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
 import { StatusMessage } from "@/components/layout/status-message";
@@ -684,9 +686,22 @@ export function CompanySettingsContent({
         >
           <SectionCard
             title="Address and region"
-            description="Manual address entry. This address can appear on Quotes and Variations."
+            description="Search can fill these fields. You can edit every field before saving. This address can appear on Quotes and Variations."
           >
             <div className="space-y-5" data-company-address>
+              {canEdit ? (
+                <AddressSearch
+                  countryCode={addressCountryCode(addressCountry)}
+                  onAddress={(mapped) => {
+                    setAddressLine1(mapped.street);
+                    setAddressLine2(mapped.unit);
+                    setCity(mapped.suburbOrCity);
+                    setRegion(mapped.region);
+                    setPostcode(mapped.postcode);
+                    if (mapped.country) setAddressCountry(mapped.country);
+                  }}
+                />
+              ) : null}
               <div className="space-y-1.5">
                 <Label className="text-xs" htmlFor="address-line-1">Address line 1</Label>
                 <LockedInput

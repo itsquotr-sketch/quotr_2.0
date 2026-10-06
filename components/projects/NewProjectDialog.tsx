@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SiteAddressField } from "@/components/addresses/SiteAddressField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -384,10 +385,10 @@ export function NewProjectDialog({
 
             <div className="space-y-1.5">
               <Label className="text-xs" htmlFor="site-address">Site</Label>
-              <Input
+              <SiteAddressField
                 id="site-address"
                 value={siteAddress}
-                onChange={(event) => setSiteAddress(event.target.value)}
+                onChange={setSiteAddress}
                 placeholder="e.g. 12 Example Rd, Auckland"
                 maxLength={300}
                 autoComplete="street-address"
