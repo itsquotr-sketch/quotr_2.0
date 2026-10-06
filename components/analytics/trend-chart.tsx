@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import { trendChartState, trendDensity, initialTrendIndex, formatTrendReadout } from "@/lib/analytics/presentation";
+import { formatPricingMoney } from "@/lib/pricing/format";
 import { cn } from "@/lib/utils";
 
-type TrendPoint = { label: string; sent: number; accepted: number };
+type TrendPoint = {
+  label: string;
+  sent: number;
+  accepted: number;
+  quotedExGst?: number | null;
+  acceptedExGst?: number | null;
+};
 
 type TrendChartProps = {
   trend: TrendPoint[];
@@ -24,14 +31,27 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
     setIndex(initialTrendIndex(trend));
   }
   const selected = trend[Math.min(index, Math.max(trend.length - 1, 0))];
+  const moneyReady = trend.every(
+    (point) => point.quotedExGst != null && point.acceptedExGst != null
+  );
+  const sentTotal = trend.reduce((sum, point) => sum + point.sent, 0);
+  const acceptedTotal = trend.reduce((sum, point) => sum + point.accepted, 0);
+  const quotedTotal = moneyReady
+    ? trend.reduce((sum, point) => sum + (point.quotedExGst ?? 0), 0)
+    : null;
+  const acceptedValueTotal = moneyReady
+    ? trend.reduce((sum, point) => sum + (point.acceptedExGst ?? 0), 0)
+    : null;
 
   return (
     <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4" data-analytics-trend={density}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-medium">Sends and acceptances</h2>
+          <h2 className="text-sm font-medium">Commercial activity</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Counted on their own dates. An acceptance is not a quote sent that day.
+            {moneyReady
+              ? "Quoted ex GST is the subtotal frozen when each quote left draft, dated on the first send. Accepted ex GST is the snapshot, dated on acceptance. The two series are not the same quotes on the same day."
+              : "Sends and acceptances are counted on their own dates. Quoted money is hidden because a sent total is missing."}
           </p>
         </div>
         {density === "chart" ? (
@@ -39,13 +59,13 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
             <SeriesToggle
               pressed={showSent}
               onClick={() => setShowSent((value) => !value)}
-              label="Sent"
+              label={moneyReady ? "Quoted ex GST" : "Sent"}
               swatch="bg-foreground"
             />
             <SeriesToggle
               pressed={showAccepted}
               onClick={() => setShowAccepted((value) => !value)}
-              label="Accepted"
+              label={moneyReady ? "Accepted ex GST" : "Accepted"}
               swatch="bg-[var(--brand-orange)]"
             />
           </div>
@@ -61,20 +81,35 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
         </p>
       ) : null}
       {density === "summary" ? (
-        <ol className="mt-3 space-y-1">
-          {trend
-            .filter((point) => point.sent > 0 || point.accepted > 0)
-            .map((point) => (
-              <li key={point.label} className="flex min-h-11 items-center justify-between gap-3 text-sm">
-                <span className="font-medium">{point.label}</span>
-                <span className="text-muted-foreground tabular-nums">
-                  <span className="text-foreground">Sent {point.sent}</span>
-                  <span className="px-1" aria-hidden>·</span>
-                  <span className="text-[var(--brand-orange)]">Accepted {point.accepted}</span>
-                </span>
-              </li>
-            ))}
-        </ol>
+        <div className="mt-3">
+          <p className="text-sm tabular-nums">
+            {sentTotal} first {sentTotal === 1 ? "send" : "sends"}
+            {quotedTotal == null ? "" : ` · ${formatPricingMoney(quotedTotal)} quoted ex GST`}
+          </p>
+          <p className="text-sm tabular-nums">
+            {acceptedTotal} accepted {acceptedTotal === 1 ? "quote" : "quotes"}
+            {acceptedValueTotal == null ? "" : ` · ${formatPricingMoney(acceptedValueTotal)} accepted ex GST`}
+          </p>
+          <ol className="mt-2 space-y-1">
+            {trend
+              .filter((point) => point.sent > 0 || point.accepted > 0)
+              .map((point) => (
+                <li key={point.label} className="flex min-h-11 items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{point.label}</span>
+                  <span className="text-right text-muted-foreground tabular-nums">
+                    <span className="text-foreground">
+                      Sent {point.sent}
+                      {point.quotedExGst == null ? "" : ` · ${formatPricingMoney(point.quotedExGst)}`}
+                    </span>
+                    <span className="block text-[var(--brand-orange)]">
+                      Accepted {point.accepted}
+                      {point.acceptedExGst == null ? "" : ` · ${formatPricingMoney(point.acceptedExGst)}`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+          </ol>
+        </div>
       ) : null}
       {density === "chart" ? (
         <>
@@ -86,6 +121,7 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
                 trend={trend}
                 showSent={showSent}
                 showAccepted={showAccepted}
+                money={moneyReady}
                 index={Math.min(index, trend.length - 1)}
                 onSelect={setIndex}
               />
@@ -121,7 +157,7 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
               View numbers
             </summary>
             <div className="max-h-64 overflow-auto">
-              <TrendTable trend={trend} />
+              <TrendTable trend={trend} money={moneyReady} />
             </div>
           </details>
         </>
@@ -156,30 +192,43 @@ function TrendBars({
   trend,
   showSent,
   showAccepted,
+  money,
   index,
   onSelect,
 }: {
   trend: TrendPoint[];
   showSent: boolean;
   showAccepted: boolean;
+  money: boolean;
   index: number;
   onSelect: (index: number) => void;
 }) {
+  const value = (point: TrendPoint, series: "sent" | "accepted") =>
+    money
+      ? series === "sent"
+        ? (point.quotedExGst ?? 0)
+        : (point.acceptedExGst ?? 0)
+      : series === "sent"
+        ? point.sent
+        : point.accepted;
   const max = Math.max(
     1,
-    ...trend.map((point) => Math.max(showSent ? point.sent : 0, showAccepted ? point.accepted : 0))
+    ...trend.map((point) => Math.max(showSent ? value(point, "sent") : 0, showAccepted ? value(point, "accepted") : 0))
   );
   const selected = trend[index];
 
   return (
     <div className="mt-4 overflow-x-auto" role="group" aria-label="Dates">
+      <p className="text-[11px] text-muted-foreground tabular-nums">
+        Highest {money ? "ex GST" : "count"} {money ? formatPricingMoney(max) : max}
+      </p>
       <div
         className="flex h-32 items-end gap-1"
         style={{ minWidth: trend.length > 10 ? trend.length * 36 : "100%" }}
       >
         {trend.map((point, pointIndex) => {
-          const sentHeight = showSent ? (point.sent / max) * 100 : 0;
-          const acceptedHeight = showAccepted ? (point.accepted / max) * 100 : 0;
+          const sentHeight = showSent ? (value(point, "sent") / max) * 100 : 0;
+          const acceptedHeight = showAccepted ? (value(point, "accepted") / max) * 100 : 0;
           const isSelected = pointIndex === index;
           return (
             <button
@@ -219,17 +268,19 @@ function TrendBars({
   );
 }
 
-function TrendTable({ trend }: { trend: TrendPoint[] }) {
+function TrendTable({ trend, money }: { trend: TrendPoint[]; money: boolean }) {
   return (
     <table className="mt-2 w-full text-left text-sm">
       <caption className="sr-only">
-        Sent quotes and accepted quotes by date. The two columns are not paired as the same quotes.
+        Quoted and accepted amounts by date. Quoted is the frozen send subtotal. Accepted is the snapshot. They are not the same quotes.
       </caption>
       <thead>
         <tr className="text-[11px] text-muted-foreground">
           <th scope="col" className="py-2 pr-3 font-medium">Period</th>
           <th scope="col" className="py-2 pr-3 font-medium">Sent</th>
-          <th scope="col" className="py-2 font-medium">Accepted</th>
+          {money ? <th scope="col" className="py-2 pr-3 font-medium">Quoted ex GST</th> : null}
+          <th scope="col" className="py-2 pr-3 font-medium">Accepted</th>
+          {money ? <th scope="col" className="py-2 font-medium">Accepted ex GST</th> : null}
         </tr>
       </thead>
       <tbody>
@@ -237,7 +288,17 @@ function TrendTable({ trend }: { trend: TrendPoint[] }) {
           <tr key={`${point.label}-${index}`} className="border-t border-border/60">
             <th scope="row" className="py-2 pr-3 font-normal">{point.label}</th>
             <td className="py-2 pr-3 tabular-nums">{point.sent}</td>
-            <td className="py-2 tabular-nums">{point.accepted}</td>
+            {money ? (
+              <td className="py-2 pr-3 tabular-nums">
+                {point.quotedExGst == null ? "—" : formatPricingMoney(point.quotedExGst)}
+              </td>
+            ) : null}
+            <td className="py-2 pr-3 tabular-nums">{point.accepted}</td>
+            {money ? (
+              <td className="py-2 tabular-nums">
+                {point.acceptedExGst == null ? "—" : formatPricingMoney(point.acceptedExGst)}
+              </td>
+            ) : null}
           </tr>
         ))}
       </tbody>

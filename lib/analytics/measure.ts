@@ -56,10 +56,15 @@ export const ANALYTICS_LINK_LIMIT = 8;
  * no created_by.
  *
  * Quoted ex GST — sum of quotes.subtotal for quotes with a first quote_sent
- * in the period. Subtotal is the stored ex-GST quote total, not a send-time
- * snapshot and not cash. Each revision is its own quote. A missing total
- * makes the figure unavailable rather than a partial sum. Zero GST does not
- * drop a positive subtotal.
+ * in the period. Once a quote leaves draft, prevent_quote_snapshot_mutation
+ * rejects a subtotal change, so this is the value frozen at send, not a later
+ * edit and not cash. Each revision is its own quote. A missing total hides
+ * the figure. Zero GST does not drop a positive subtotal. It is not the
+ * accepted-snapshot population.
+ *
+ * Conversion cohort — projects with a first send in the period whose sent
+ * quote now has an accepted snapshot. This is not accepted-in-period divided
+ * by sent-in-period. Those headline counts are different populations.
  *
  * Work-area frequency — Business. Distinct estimates created in the period
  * that include the area. A mixed estimate counts once in each area. Its
@@ -133,6 +138,7 @@ export type AnalyticsMeasureInput = {
   quoteTotals?: readonly AnalyticsQuoteTotal[];
   estimateLines?: readonly AnalyticsEstimateLine[];
   pricingItems?: readonly AnalyticsPricingItem[];
+  areaLines?: readonly AnalyticsAreaLine[];
   limits: {
     sentTruncated: boolean;
     snapshotsTruncated: boolean;
@@ -141,6 +147,7 @@ export type AnalyticsMeasureInput = {
     estimatesTruncated?: boolean;
     quoteTotalsTruncated?: boolean;
     linesTruncated?: boolean;
+    areaMoneyTruncated?: boolean;
     pricingTruncated?: boolean;
   };
 };
@@ -158,6 +165,15 @@ export type AnalyticsQuoteTotal = {
   quoteId: string;
   /** Stored quotes.subtotal, ex GST. */
   subtotalExGst: number;
+};
+
+export type AnalyticsAreaLine = {
+  orgId: string;
+  name: string;
+  quoteId: string;
+  /** Frozen quote line total, ex GST. Null when the line has no stored total. */
+  lineExGst: number | null;
+  kind: "quoted" | "accepted";
 };
 
 export type AnalyticsEstimateLine = {
@@ -178,11 +194,18 @@ export type AnalyticsPricingItem = {
   totalSell: number;
   documentArchived: boolean;
   projectDeleted: boolean;
+  pricingDocumentId: string;
 };
 
 export type AnalyticsWorkArea = {
   name: string;
   estimates: number;
+  /** Distinct sent quotes with a line in this area. Null when the line read stopped early. */
+  quotedQuotes: number | null;
+  /** Sum of frozen quote line totals in this area. Null when the line read is incomplete. */
+  quotedLineExGst: number | null;
+  /** Sum of accepted snapshot line sell in this area. */
+  acceptedLineExGst: number | null;
 };
 
 export type AnalyticsRateSource = {
@@ -195,6 +218,16 @@ export type PricingExposure = {
   unknownCostCount: number | null;
   /** Sell on rows whose cost is unknown. Null when the read is incomplete. */
   unknownCostSellExGst: number | null;
+  documents: PricingDocumentLink[];
+};
+
+export type PricingDocumentLink = {
+  projectId: string;
+  projectTitle: string;
+  pricingDocumentId: string;
+  href: string;
+  unpricedLines: number;
+  unknownCostLines: number;
 };
 
 export type AnalyticsRecordLink = {
@@ -205,6 +238,7 @@ export type AnalyticsRecordLink = {
   quoteId: string;
   /** Accepted snapshot ex GST. Null on a send row. */
   amountExGst: number | null;
+  note?: string | null;
 };
 
 export type PersonalAnalyticsView = {
@@ -228,6 +262,8 @@ export type PersonalAnalyticsView = {
   acceptedRecordTotal: number;
   estimateRecordTotal: number;
   queryMs: number;
+  wave1Ms: number;
+  wave2Ms: number;
   incomplete: boolean;
 };
 
@@ -241,7 +277,13 @@ export type BusinessAnalyticsView = Omit<PersonalAnalyticsView, "tier"> & {
   };
   pipeline: Array<{ status: string; label: string; count: number }> | null;
   pipelineUnavailableReason: string | null;
-  trend: Array<{ label: string; sent: number; accepted: number }>;
+  trend: Array<{
+    label: string;
+    sent: number;
+    accepted: number;
+    quotedExGst: number | null;
+    acceptedExGst: number | null;
+  }>;
   trendUnavailableReason: string | null;
   timing: {
     medianDays: number | null;
@@ -367,18 +409,35 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
         ).length,
       }));
 
+  const totals = new Map(
+    (input.quoteTotals ?? [])
+      .filter((row) => row.orgId === orgId)
+      .map((row) => [row.quoteId, row.subtotalExGst])
+  );
   const trendUnavailable = input.limits.sentTruncated || input.limits.snapshotsTruncated;
   const trend = trendUnavailable
     ? []
-    : trendBuckets(input.window).map((bucket) => ({
-        label: bucket.label,
-        sent: sendsInPeriod.filter((row) =>
+    : trendBuckets(input.window).map((bucket) => {
+        const sentRows = sendsInPeriod.filter((row) =>
           inBucket(row.occurredAt, bucket.start, bucket.end)
-        ).length,
-        accepted: acceptedInPeriod.filter((row) =>
+        );
+        const acceptedRows = acceptedInPeriod.filter((row) =>
           inBucket(row.acceptedAt, bucket.start, bucket.end)
-        ).length,
-      }));
+        );
+        const quotedValues = sentRows.map((row) => totals.get(row.quoteId));
+        const quotedComplete = quotedValues.every(
+          (value) => value != null && Number.isFinite(value)
+        );
+        return {
+          label: bucket.label,
+          sent: sentRows.length,
+          accepted: acceptedRows.length,
+          quotedExGst: quotedComplete
+            ? sumExGst(quotedValues.filter((value): value is number => value != null))
+            : null,
+          acceptedExGst: sumExGst(acceptedRows.map((row) => row.sellExGst)),
+        };
+      });
   const trendHasActivity = trend.some((bucket) => bucket.sent > 0 || bucket.accepted > 0);
 
   const sendTimeByQuote = new Map<string, string>();
@@ -433,11 +492,6 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
   const estimatesCreated = input.limits.estimatesTruncated ? null : estimatesInPeriod.length;
   const estimateIdSet = new Set(estimatesInPeriod.map((row) => row.estimateId));
 
-  const totals = new Map(
-    (input.quoteTotals ?? [])
-      .filter((row) => row.orgId === orgId)
-      .map((row) => [row.quoteId, row.subtotalExGst])
-  );
   let quotedValueExGst: number | null = null;
   if (!input.limits.sentTruncated && !input.limits.quoteTotalsTruncated) {
     const values: number[] = [];
@@ -456,9 +510,15 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
   const lines = (input.estimateLines ?? []).filter(
     (row) => row.orgId === orgId && estimateIdSet.has(row.estimateId)
   );
+  const areaLines = (input.areaLines ?? []).filter((row) => row.orgId === orgId);
+  const areaMoney = !input.limits.areaMoneyTruncated;
   const workAreas = input.limits.estimatesTruncated || input.limits.linesTruncated
     ? null
-    : workAreaFrequency(lines);
+    : workAreaFrequency(lines, areaMoney ? areaLines : []).map((row) =>
+        areaMoney
+          ? row
+          : { ...row, quotedQuotes: null, quotedLineExGst: null, acceptedLineExGst: null }
+      );
   const rateSources = input.limits.estimatesTruncated || input.limits.linesTruncated
     ? null
     : rateSourceMix(lines);
@@ -467,13 +527,18 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
     (row) => row.orgId === orgId && !row.documentArchived && !row.projectDeleted
   );
   const pricing = input.limits.pricingTruncated
-    ? { requiredCount: null, unknownCostCount: null, unknownCostSellExGst: null }
-    : pricingExposure(pricingRows);
+    ? { requiredCount: null, unknownCostCount: null, unknownCostSellExGst: null, documents: [] }
+    : pricingExposure(pricingRows, titles);
 
   const sentRecords = toLinks(sendsInPeriod, titles, "occurredAt", (quoteId) => {
     const value = totals.get(quoteId);
     return value == null || !Number.isFinite(value) ? null : value;
-  });
+  }).map((record) => ({
+    ...record,
+    note: acceptedSentQuotes.has(record.projectId)
+      ? "Accepted since this send"
+      : "No acceptance snapshot",
+  }));
   const estimateRecords = estimatesInPeriod
     .slice()
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
@@ -542,7 +607,8 @@ export function presentAnalytics(
   tier: AnalyticsTier,
   window: PeriodWindow,
   recordPage?: { kind: "sent" | "accepted"; offset: number },
-  queryMs = 0
+  queryMs = 0,
+  waves: { wave1Ms?: number; wave2Ms?: number } = {}
 ): AnalyticsView {
   const sentPage = recordWindow(
     measured.sentRecords,
@@ -575,6 +641,8 @@ export function presentAnalytics(
     acceptedRecordTotal: acceptedPage.total,
     estimateRecordTotal: measured.estimateRecords.length,
     queryMs,
+    wave1Ms: waves.wave1Ms ?? queryMs,
+    wave2Ms: waves.wave2Ms ?? 0,
     incomplete: measured.incomplete,
   };
   if (tier !== "business") return personal;
@@ -617,7 +685,10 @@ export function classifyPricingExposure(item: {
   return "priced";
 }
 
-function workAreaFrequency(lines: readonly AnalyticsEstimateLine[]): AnalyticsWorkArea[] {
+function workAreaFrequency(
+  lines: readonly AnalyticsEstimateLine[],
+  areaLines: readonly AnalyticsAreaLine[]
+): AnalyticsWorkArea[] {
   const sets = new Map<string, Set<string>>();
   for (const line of lines) {
     const name = line.workAreaName.trim() || "Not named";
@@ -625,9 +696,37 @@ function workAreaFrequency(lines: readonly AnalyticsEstimateLine[]): AnalyticsWo
     current.add(line.estimateId);
     sets.set(name, current);
   }
-  return [...sets.entries()]
-    .map(([name, estimates]) => ({ name, estimates: estimates.size }))
-    .sort((a, b) => b.estimates - a.estimates || a.name.localeCompare(b.name));
+  const quoted = new Map<string, { quotes: Set<string>; values: number[]; complete: boolean }>();
+  const accepted = new Map<string, { values: number[]; complete: boolean }>();
+  for (const line of areaLines) {
+    const name = line.name.trim() || "Not named";
+    if (line.kind === "quoted") {
+      const current = quoted.get(name) ?? { quotes: new Set<string>(), values: [], complete: true };
+      current.quotes.add(line.quoteId);
+      if (line.lineExGst == null || !Number.isFinite(line.lineExGst)) current.complete = false;
+      else current.values.push(line.lineExGst);
+      quoted.set(name, current);
+    } else {
+      const current = accepted.get(name) ?? { values: [], complete: true };
+      if (line.lineExGst == null || !Number.isFinite(line.lineExGst)) current.complete = false;
+      else current.values.push(line.lineExGst);
+      accepted.set(name, current);
+    }
+  }
+  const names = new Set([...sets.keys(), ...quoted.keys(), ...accepted.keys()]);
+  return [...names]
+    .map((name) => ({
+      name,
+      estimates: sets.get(name)?.size ?? 0,
+      quotedQuotes: quoted.get(name)?.quotes.size ?? 0,
+      quotedLineExGst: quoted.get(name)?.complete === false ? null : sumExGst(quoted.get(name)?.values ?? []),
+      acceptedLineExGst:
+        accepted.get(name)?.complete === false ? null : sumExGst(accepted.get(name)?.values ?? []),
+    }))
+    .sort(
+      (a, b) =>
+        b.estimates + b.quotedQuotes - (a.estimates + a.quotedQuotes) || a.name.localeCompare(b.name)
+    );
 }
 
 function rateSourceMix(lines: readonly AnalyticsEstimateLine[]): AnalyticsRateSource[] {
@@ -655,22 +754,41 @@ function rateSourceLabel(raw: string | null): string {
   return "Other";
 }
 
-function pricingExposure(rows: readonly AnalyticsPricingItem[]): PricingExposure {
+function pricingExposure(
+  rows: readonly AnalyticsPricingItem[],
+  titles: ReadonlyMap<string, string>
+): PricingExposure {
   let requiredCount = 0;
   let unknownCostCount = 0;
   const sells: number[] = [];
+  const documents = new Map<string, PricingDocumentLink>();
   for (const row of rows) {
     const kind = classifyPricingExposure(row);
+    if (kind === "priced") continue;
     if (kind === "required") requiredCount += 1;
     if (kind === "unknown_cost") {
       unknownCostCount += 1;
       sells.push(row.totalSell);
     }
+    const current = documents.get(row.pricingDocumentId) ?? {
+      projectId: row.projectId,
+      projectTitle: titles.get(row.projectId) || "Project",
+      pricingDocumentId: row.pricingDocumentId,
+      href: `/app/projects/${row.projectId}/pricing/${row.pricingDocumentId}`,
+      unpricedLines: 0,
+      unknownCostLines: 0,
+    };
+    if (kind === "required") current.unpricedLines += 1;
+    if (kind === "unknown_cost") current.unknownCostLines += 1;
+    documents.set(row.pricingDocumentId, current);
   }
   return {
     requiredCount,
     unknownCostCount,
     unknownCostSellExGst: sumExGst(sells),
+    documents: [...documents.values()].sort(
+      (a, b) => b.unpricedLines + b.unknownCostLines - (a.unpricedLines + a.unknownCostLines)
+    ),
   };
 }
 

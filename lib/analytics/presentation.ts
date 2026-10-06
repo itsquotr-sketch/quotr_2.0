@@ -36,6 +36,24 @@ export function analyticsRangeHref(input: {
   return `/app/analytics?period=${period}`;
 }
 
+export function sharePercents(counts: readonly number[]): number[] | null {
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  if (total < 8) return null;
+  const exact = counts.map((count) => (count / total) * 100);
+  const floors = exact.map((value) => Math.floor(value));
+  let left = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const order = exact
+    .map((value, index) => ({ index, fraction: value - (floors[index] ?? 0) }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
+  const shares = [...floors];
+  for (const row of order) {
+    if (left <= 0) break;
+    shares[row.index] = (shares[row.index] ?? 0) + 1;
+    left -= 1;
+  }
+  return shares;
+}
+
 export function trendDensity(input: {
   trend: ReadonlyArray<{ sent: number; accepted: number }>;
 }): "empty" | "summary" | "chart" {
@@ -125,6 +143,12 @@ export function formatTrendReadout(point: {
   label: string;
   sent: number;
   accepted: number;
+  quotedExGst?: number | null;
+  acceptedExGst?: number | null;
 }): string {
-  return `${point.label} · Sent ${point.sent} · Accepted ${point.accepted}`;
+  const quoted =
+    point.quotedExGst == null ? "" : ` · Quoted ${point.quotedExGst}`;
+  const acceptedValue =
+    point.acceptedExGst == null ? "" : ` · Accepted value ${point.acceptedExGst}`;
+  return `${point.label} · Sent ${point.sent} · Accepted ${point.accepted}${quoted}${acceptedValue}`;
 }

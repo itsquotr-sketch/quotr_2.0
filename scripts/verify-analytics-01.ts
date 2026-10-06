@@ -38,9 +38,11 @@ import {
   pipelineStatusHref,
   recordListIsPartial,
   recordWindow,
+  sharePercents,
   trendChartState,
   trendDensity,
 } from "../lib/analytics/presentation";
+import { assertQuoteSnapshotMutable } from "../lib/quotes/transaction";
 import { applyProjectListFilter } from "../lib/projects/query-utils";
 import type { Project } from "../lib/projects/types";
 import { evaluateOrgEntitlement } from "../lib/billing/entitlements";
@@ -833,6 +835,7 @@ const mixed = measureAnalytics({
       totalSell: 0,
       documentArchived: false,
       projectDeleted: false,
+      pricingDocumentId: "doc-1",
     },
     {
       orgId: "org-a",
@@ -843,6 +846,7 @@ const mixed = measureAnalytics({
       totalSell: 500,
       documentArchived: false,
       projectDeleted: false,
+      pricingDocumentId: "doc-1",
     },
     {
       orgId: "org-a",
@@ -853,6 +857,7 @@ const mixed = measureAnalytics({
       totalSell: 0,
       documentArchived: true,
       projectDeleted: false,
+      pricingDocumentId: "doc-archived",
     },
   ],
 });
@@ -908,6 +913,76 @@ check(
   }) === "summary" &&
     trendDensity({ trend: [{ sent: 8, accepted: 2 }] }) === "chart" &&
     trendDensity({ trend: [] }) === "empty"
+);
+
+const quarter = resolveAnalyticsPeriod({
+  period: "this_quarter",
+  timeZone: "Pacific/Auckland",
+  now: new Date("2026-02-15T01:00:00.000Z"),
+});
+const lastYear = resolveAnalyticsPeriod({
+  period: "last_12_months",
+  timeZone: "Pacific/Auckland",
+  now: new Date("2024-03-01T01:00:00.000Z"),
+});
+check(
+  "quarter and last 12 months stay inside the organisation calendar",
+  quarter.id === "this_quarter" &&
+    quarter.from === "2026-01-01" &&
+    quarter.to === "2026-02-15" &&
+    lastYear.id === "last_12_months" &&
+    lastYear.from === "2023-03-01"
+);
+check(
+  "rate shares use largest remainder and skip a tiny sample",
+  sharePercents([335, 335, 330])?.join(",") === "34,33,33" &&
+    sharePercents([335, 335, 330])?.reduce((sum, value) => sum + value, 0) === 100 &&
+    sharePercents([1, 1]) == null
+);
+check(
+  "a sent quote cannot change its frozen subtotal",
+  assertQuoteSnapshotMutable({
+    status: "sent",
+    superseded_by_quote_id: null,
+    send_lock_delivery_id: null,
+  }) != null &&
+    assertQuoteSnapshotMutable({
+      status: "draft",
+      superseded_by_quote_id: null,
+      send_lock_delivery_id: null,
+    }) == null &&
+    read("supabase/migrations/042_quote_delivery.sql").includes(
+      "Quote snapshot is immutable once it is no longer a draft"
+    )
+);
+const allocated = measureAnalytics({
+  ...book,
+  quoteTotals: [{ orgId: "org-a", quoteId: "q-sent", subtotalExGst: 500 }],
+  areaLines: [
+    { orgId: "org-a", name: "Deck", quoteId: "q-sent", lineExGst: 200, kind: "quoted" },
+    { orgId: "org-a", name: "Fence", quoteId: "q-sent", lineExGst: 300, kind: "quoted" },
+  ],
+});
+check(
+  "mixed areas keep line totals and do not repeat the quote",
+  allocated.workAreas?.find((row) => row.name === "Deck")?.quotedLineExGst === 200 &&
+    allocated.workAreas?.find((row) => row.name === "Fence")?.quotedLineExGst === 300 &&
+    allocated.workAreas?.every((row) => row.quotedLineExGst !== 500)
+);
+check(
+  "pricing required links the current document",
+  mixed.pricing.documents.length === 1 &&
+    mixed.pricing.documents[0]?.href === "/app/projects/p1/pricing/doc-1" &&
+    mixed.pricing.documents[0]?.unpricedLines === 1 &&
+    mixed.pricing.documents[0]?.unknownCostLines === 1
+);
+check(
+  "the range control is one trigger and the page does not call a sent total editable",
+  view.includes("data-analytics-upgrade") &&
+    read("components/analytics/period-filters.tsx").includes("data-analytics-range-trigger") &&
+    read("components/analytics/period-filters.tsx").includes("Custom range") &&
+    !view.includes("no send-time snapshot") &&
+    !view.includes("later edit")
 );
 
 console.log("\nExample book (Auckland, February 2026)");

@@ -6,15 +6,18 @@
 export const ANALYTICS_PERIODS = [
   { id: "this_month", label: "This month" },
   { id: "last_month", label: "Last month" },
+  { id: "this_quarter", label: "This quarter" },
+  { id: "last_quarter", label: "Last quarter" },
   { id: "last_90_days", label: "Last 90 days" },
   { id: "year_to_date", label: "Year to date" },
+  { id: "last_12_months", label: "Last 12 months" },
 ] as const;
 
 export type AnalyticsPeriodId = (typeof ANALYTICS_PERIODS)[number]["id"];
 export type AnalyticsWindowId = AnalyticsPeriodId | "custom";
 
-/** Inclusive calendar days. A leap-year span still fits. */
-export const ANALYTICS_MAX_RANGE_DAYS = 366;
+/** Inclusive calendar days. Covers last 12 months, including one leap day. */
+export const ANALYTICS_MAX_RANGE_DAYS = 372;
 
 export type PeriodWindow = {
   id: AnalyticsWindowId;
@@ -60,11 +63,26 @@ export function resolveAnalyticsPeriod(input: {
       startDate = { year: today.year - 1, month: 12, day: 1 };
     }
     endDate = { year: today.year, month: today.month, day: 1 };
+  } else if (input.period === "this_quarter" || input.period === "last_quarter") {
+    const quarterStartMonth = Math.floor((today.month - 1) / 3) * 3 + 1;
+    const thisQuarter = { year: today.year, month: quarterStartMonth, day: 1 };
+    if (input.period === "this_quarter") {
+      startDate = thisQuarter;
+      endDate = addCalendarMonths(thisQuarter, 3);
+      const tomorrowUtc = zonedTimeToUtc(tomorrow, timeZone).getTime();
+      if (tomorrowUtc < zonedTimeToUtc(endDate, timeZone).getTime()) endDate = tomorrow;
+    } else {
+      startDate = addCalendarMonths(thisQuarter, -3);
+      endDate = thisQuarter;
+    }
   } else if (input.period === "last_90_days") {
     startDate = addCalendarDays(today, -89);
     endDate = tomorrow;
   } else if (input.period === "year_to_date") {
     startDate = { year: today.year, month: 1, day: 1 };
+    endDate = tomorrow;
+  } else if (input.period === "last_12_months") {
+    startDate = addCalendarMonths(today, -12);
     endDate = tomorrow;
   } else {
     startDate = { year: today.year, month: today.month, day: 1 };
@@ -82,8 +100,8 @@ export function resolveAnalyticsPeriod(input: {
     timeZone,
     start: zonedTimeToUtc(startDate, timeZone).toISOString(),
     end: zonedTimeToUtc(endDate, timeZone).toISOString(),
-    from: null,
-    to: null,
+    from: calendarKey(startDate),
+    to: calendarKey(addCalendarDays(endDate, -1)),
   };
 }
 

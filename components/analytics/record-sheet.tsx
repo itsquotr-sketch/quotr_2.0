@@ -42,7 +42,7 @@ export function RecordSheet(props: RecordSheetProps) {
   const body = (
     <>
       <p className="text-[11px] font-medium leading-tight text-muted-foreground">{props.label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums sm:text-2xl">
+      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums">
         {props.value}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{props.context}</p>
@@ -137,6 +137,9 @@ function RecordList(props: RecordSheetProps) {
                       {formatPricingMoney(record.amountExGst)} ex GST
                     </span>
                   ) : null}
+                  {record.note ? (
+                    <span className="block text-xs text-muted-foreground">{record.note}</span>
+                  ) : null}
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {formatInOrgTimezone(record.occurredAt, props.timeZone) ?? "—"}
@@ -195,7 +198,7 @@ export function EstimateSheet(props: {
   const body = (
     <>
       <p className="text-[11px] font-medium leading-tight text-muted-foreground">{props.label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums sm:text-2xl">
+      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums">
         {props.value}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{props.context}</p>
@@ -269,7 +272,7 @@ export function MetricLinkCard(props: {
   const body = (
     <>
       <p className="text-[11px] font-medium leading-tight text-muted-foreground">{props.label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums sm:text-2xl">
+      <p className="mt-1 text-lg font-semibold tracking-tight break-words tabular-nums">
         {props.value}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{props.context}</p>

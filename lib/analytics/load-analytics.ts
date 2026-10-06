@@ -9,6 +9,7 @@ import {
 import {
   measureAnalytics,
   presentAnalytics,
+  type AnalyticsAreaLine,
   type AnalyticsEstimate,
   type AnalyticsEstimateLine,
   type AnalyticsPricingItem,
@@ -152,17 +153,15 @@ async function queryAndPresent(
   const canReadPipeline =
     schema.lifecycleAvailable && schema.businessStatusAvailable;
 
-  const [activeCount, sends, acceptedSnapshots, estimates, pricing] = await Promise.all([
+  const [activeCount, sends, acceptedSnapshots, estimates] = await Promise.all([
     canReadPipeline
       ? countActiveProjects(supabase, orgId)
       : Promise.resolve({ count: null as number | null, failed: false }),
     readSends(supabase, orgId, window),
     readSnapshotsInPeriod(supabase, orgId, window),
     readEstimates(supabase, orgId, window),
-    tier === "business" && tables.includes("pricing_items")
-      ? readPricingItems(supabase, orgId)
-      : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
+  const wave1Ms = Date.now() - started;
   const names = new Map<string, string>();
 
   let projects: AnalyticsProject[] = [];
@@ -180,7 +179,8 @@ async function queryAndPresent(
     .filter((id) => !sentIds.has(id));
   const businessRead = tier === "business" && tables.includes("variation_accepted_adjustments");
 
-  const [pipeline, cohort, timing, variationRows, quoteTotals, lines] = await Promise.all([
+  const [pipeline, cohort, timing, variationRows, quoteTotals, lines, quotedAreas, acceptedAreas, pricing] =
+    await Promise.all([
     businessRead && canReadPipeline
       ? readPipelineProjects(supabase, orgId)
       : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
@@ -205,6 +205,15 @@ async function queryAndPresent(
           estimates.rows.map((row) => row.estimateId)
         )
       : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false }),
+    tier === "business"
+      ? readQuotedAreaLines(supabase, orgId, sends.rows.map((row) => row.quoteId))
+      : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
+    tier === "business"
+      ? readAcceptedAreaLines(supabase, orgId, window)
+      : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
+    tier === "business" && tables.includes("pricing_items")
+      ? readPricingItems(supabase, orgId)
+      : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
   projects = pipeline.rows;
   projectsTruncated = pipeline.truncated;
@@ -257,6 +266,7 @@ async function queryAndPresent(
     estimates: estimates.rows,
     quoteTotals: quoteTotals.rows,
     estimateLines: lines.rows,
+    areaLines: [...quotedAreas.rows, ...acceptedAreas.rows],
     pricingItems: pricing.rows,
     activeProjectCount: activeCount.failed ? null : activeCount.count,
     limits: {
@@ -267,11 +277,17 @@ async function queryAndPresent(
       estimatesTruncated: estimates.truncated,
       quoteTotalsTruncated: quoteTotals.truncated,
       linesTruncated: tier === "business" ? lines.truncated : false,
+      areaMoneyTruncated:
+        tier === "business" ? quotedAreas.truncated || acceptedAreas.truncated : false,
       pricingTruncated: tier === "business" ? pricing.truncated : false,
     },
   });
 
-  return presentAnalytics(measured, tier, window, recordPage, Date.now() - started);
+  const finished = Date.now();
+  return presentAnalytics(measured, tier, window, recordPage, finished - started, {
+    wave1Ms,
+    wave2Ms: finished - started - wave1Ms,
+  });
 }
 
 async function readTimezone(supabase: Supabase, orgId: string): Promise<string> {
@@ -384,7 +400,7 @@ async function readPricingItems(
   const { data, error } = await supabase
     .from("pricing_items")
     .select(
-      "project_id, client_label, notes_internal, total_cost, total_sell, pricing_documents!inner(status), projects!inner(deleted_at)"
+      "project_id, pricing_document_id, client_label, notes_internal, total_cost, total_sell, pricing_documents!inner(status), projects!inner(deleted_at)"
     )
     .eq("org_id", orgId)
     .limit(QUERY_LIMIT + 1);
@@ -406,6 +422,79 @@ async function readPricingItems(
         totalSell: Number(row.total_sell ?? 0),
         documentArchived: Boolean(document && "status" in document && document.status === "archived"),
         projectDeleted: Boolean(project && "deleted_at" in project && project.deleted_at),
+        pricingDocumentId: String(row.pricing_document_id),
+      };
+    }),
+  };
+}
+
+function areaName(value: unknown, fallback: string): string {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (row && typeof row === "object" && "name" in row && typeof row.name === "string" && row.name.trim()) {
+    return row.name.trim();
+  }
+  return fallback.trim() || "Not named";
+}
+
+async function readQuotedAreaLines(
+  supabase: Supabase,
+  orgId: string,
+  quoteIds: string[]
+): Promise<{ rows: AnalyticsAreaLine[]; truncated: boolean }> {
+  const rows: AnalyticsAreaLine[] = [];
+  for (let index = 0; index < quoteIds.length; index += 150) {
+    const { data, error } = await supabase
+      .from("quote_items")
+      .select("quote_id, section_title, total, work_areas(name)")
+      .eq("org_id", orgId)
+      .in("quote_id", quoteIds.slice(index, index + 150))
+      .limit(QUERY_LIMIT + 1);
+    if (error || !data) return { rows: [], truncated: true };
+    if (data.length > QUERY_LIMIT) return { rows: [], truncated: true };
+    for (const row of data) {
+      const total = row.total == null ? null : Number(row.total);
+      rows.push({
+        orgId,
+        quoteId: String(row.quote_id),
+        name: areaName(row.work_areas, String(row.section_title ?? "")),
+        lineExGst: total != null && Number.isFinite(total) ? total : null,
+        kind: "quoted",
+      });
+    }
+  }
+  return { rows, truncated: false };
+}
+
+async function readAcceptedAreaLines(
+  supabase: Supabase,
+  orgId: string,
+  window: PeriodWindow
+): Promise<{ rows: AnalyticsAreaLine[]; truncated: boolean }> {
+  const { data, error } = await supabase
+    .from("accepted_commercial_snapshot_lines")
+    .select("line_sell_ex_gst, work_areas(name), accepted_commercial_snapshots!inner(accepted_at, quote_id)")
+    .eq("org_id", orgId)
+    .gte("accepted_commercial_snapshots.accepted_at", window.start)
+    .lt("accepted_commercial_snapshots.accepted_at", window.end)
+    .limit(QUERY_LIMIT + 1);
+  if (error || !data) return { rows: [], truncated: true };
+  if (data.length > QUERY_LIMIT) return { rows: [], truncated: true };
+  return {
+    truncated: false,
+    rows: data.map((row) => {
+      const snapshot = Array.isArray(row.accepted_commercial_snapshots)
+        ? row.accepted_commercial_snapshots[0]
+        : row.accepted_commercial_snapshots;
+      const sell = row.line_sell_ex_gst == null ? null : Number(row.line_sell_ex_gst);
+      return {
+        orgId,
+        quoteId:
+          snapshot && typeof snapshot === "object" && "quote_id" in snapshot
+            ? String(snapshot.quote_id)
+            : "",
+        name: areaName(row.work_areas, ""),
+        lineExGst: sell != null && Number.isFinite(sell) ? sell : null,
+        kind: "accepted" as const,
       };
     }),
   };
