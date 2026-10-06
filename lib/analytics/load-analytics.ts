@@ -89,6 +89,8 @@ export async function loadAnalyticsPage(
   options?: {
     from?: string;
     to?: string;
+    /** Headline skips the slower Business panel reads. Business is the panel read. */
+    scope?: "full" | "headline" | "business";
     recordPage?: { kind: "sent" | "accepted"; offset: number };
   }
 ): Promise<AnalyticsPageData> {
@@ -133,12 +135,31 @@ export async function loadAnalyticsPage(
     options?.to,
     tier,
     clock,
+    options?.scope ?? "full",
     options?.recordPage
   );
   if ("kind" in view) return view;
+  const ready =
+    options?.scope === "headline" && view.tier === "business"
+      ? {
+          ...view,
+          pipeline: null,
+          pipelineUnavailableReason: null,
+          variations: { acceptedCount: null, adjustmentExGst: null },
+          workAreas: null,
+          workAreaCheck: null,
+          rateSources: null,
+          pricing: {
+            requiredCount: null,
+            unknownCostCount: null,
+            unknownCostSellExGst: null,
+            documents: [],
+          },
+        }
+      : view;
   return {
     kind: "ready",
-    view,
+    view: ready,
     upgrade:
       tier === "business"
         ? null
@@ -157,6 +178,7 @@ async function queryAndPresent(
   to: string | undefined,
   tier: AnalyticsTier,
   clock: { mark: (name: string) => void; marks: Record<string, number> },
+  scope: "full" | "headline" | "business",
   recordPage?: { kind: "sent" | "accepted"; offset: number }
 ): Promise<AnalyticsView | { kind: "invalid_range"; error: string; timeZone: string }> {
   const tables = analyticsTablesForTier(tier);
@@ -181,6 +203,7 @@ async function queryAndPresent(
   const canReadPipeline =
     schema.lifecycleAvailable && schema.businessStatusAvailable;
   const businessRead = tier === "business" && tables.includes("variation_accepted_adjustments");
+  const panels = scope !== "headline" && businessRead;
 
   const headlinePromise = Promise.all([
     canReadPipeline
@@ -191,13 +214,13 @@ async function queryAndPresent(
     readEstimates(supabase, orgId, window),
   ]);
   const independentPromise = Promise.all([
-    businessRead && canReadPipeline
+    panels && canReadPipeline
       ? readPipelineProjects(supabase, orgId)
       : Promise.resolve({ rows: [] as AnalyticsProject[], truncated: false }),
-    businessRead
+    panels
       ? readVariationAdjustments(supabase, orgId, window)
       : Promise.resolve({ rows: [] as AnalyticsVariation[], truncated: false }),
-    tier === "business" && tables.includes("pricing_items")
+    panels && tables.includes("pricing_items")
       ? readPricingItems(supabase, orgId)
       : Promise.resolve({ rows: [] as AnalyticsPricingItem[], truncated: false }),
   ]);
@@ -234,17 +257,17 @@ async function queryAndPresent(
       orgId,
       sends.rows.map((row) => row.quoteId)
     ),
-    tier === "business" && tables.includes("estimate_line_items")
+    panels && tables.includes("estimate_line_items")
       ? readEstimateLines(
           supabase,
           orgId,
           estimates.rows.map((row) => row.estimateId)
         )
       : Promise.resolve({ rows: [] as AnalyticsEstimateLine[], truncated: false }),
-    tier === "business"
+    panels
       ? readQuotedAreaLines(supabase, orgId, sends.rows.map((row) => row.quoteId))
       : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
-    tier === "business"
+    panels
       ? readAcceptedAreaLines(supabase, orgId, window)
       : Promise.resolve({ rows: [] as AnalyticsAreaLine[], truncated: false }),
   ]);
@@ -483,7 +506,7 @@ async function readQuotedAreaLines(
   for (let index = 0; index < quoteIds.length; index += 150) {
     const { data, error } = await supabase
       .from("quote_items")
-      .select("quote_id, section_title, total, optional, visible, work_areas(name)")
+      .select("quote_id, project_id, section_title, total, optional, visible, work_areas(name)")
       .eq("org_id", orgId)
       .in("quote_id", quoteIds.slice(index, index + 150))
       .limit(QUERY_LIMIT + 1);
@@ -494,6 +517,7 @@ async function readQuotedAreaLines(
       rows.push({
         orgId,
         quoteId: String(row.quote_id),
+        projectId: row.project_id ? String(row.project_id) : "",
         name: areaName(row.work_areas, String(row.section_title ?? "")),
         lineExGst: total != null && Number.isFinite(total) ? total : null,
         included: row.visible !== false && row.optional !== true,
@@ -511,7 +535,7 @@ async function readAcceptedAreaLines(
 ): Promise<{ rows: AnalyticsAreaLine[]; truncated: boolean }> {
   const { data, error } = await supabase
     .from("accepted_commercial_snapshot_lines")
-    .select("line_sell_ex_gst, work_areas(name), accepted_commercial_snapshots!inner(accepted_at, quote_id)")
+    .select("line_sell_ex_gst, project_id, work_areas(name), accepted_commercial_snapshots!inner(accepted_at, quote_id)")
     .eq("org_id", orgId)
     .gte("accepted_commercial_snapshots.accepted_at", window.start)
     .lt("accepted_commercial_snapshots.accepted_at", window.end)
@@ -531,6 +555,7 @@ async function readAcceptedAreaLines(
           snapshot && typeof snapshot === "object" && "quote_id" in snapshot
             ? String(snapshot.quote_id)
             : "",
+        projectId: row.project_id ? String(row.project_id) : "",
         name: areaName(row.work_areas, ""),
         lineExGst: sell != null && Number.isFinite(sell) ? sell : null,
         kind: "accepted" as const,

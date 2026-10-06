@@ -114,3 +114,13 @@ export async function loadAnalyticsRecordWindow(
 export async function loadAnalyticsPeriodView(periodRaw: string, from?: string, to?: string) {
   return loadAnalyticsPage(periodRaw, { from, to });
 }
+
+/** Headline measures only. Business panels are loaded separately. */
+export async function loadAnalyticsHeadlineView(periodRaw: string, from?: string, to?: string) {
+  return loadAnalyticsPage(periodRaw, { from, to, scope: "headline" });
+}
+
+/** Work areas, pricing, rate sources, pipeline, and variations for the same range. */
+export async function loadAnalyticsBusinessView(periodRaw: string, from?: string, to?: string) {
+  return loadAnalyticsPage(periodRaw, { from, to, scope: "business" });
+}

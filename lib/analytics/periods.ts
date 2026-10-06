@@ -266,15 +266,21 @@ export function trendBuckets(window: PeriodWindow): Array<{
           : addCalendarMonths(cursor, 1);
     const start = zonedTimeToUtc(cursor, window.timeZone);
     const end = zonedTimeToUtc(next, window.timeZone);
-    if (end.getTime() <= Date.parse(window.start)) {
+    const rangeStart = Date.parse(window.start);
+    const rangeEnd = Date.parse(window.end);
+    const clippedStartMs = Math.max(start.getTime(), rangeStart);
+    const clippedEndMs = Math.min(end.getTime(), rangeEnd);
+    if (clippedEndMs <= clippedStartMs) {
       cursor = next;
       continue;
     }
+    const clippedStart = new Date(clippedStartMs);
+    const clippedEnd = new Date(clippedEndMs);
     buckets.push({
       key: calendarKey(cursor),
-      label: bucketLabel(cursor, granularity, window.timeZone),
-      start: start.toISOString(),
-      end: end.toISOString(),
+      label: bucketLabel(clippedStart, clippedEnd, granularity, window.timeZone),
+      start: clippedStart.toISOString(),
+      end: clippedEnd.toISOString(),
     });
     cursor = next;
   }
@@ -283,23 +289,40 @@ export function trendBuckets(window: PeriodWindow): Array<{
 }
 
 function bucketLabel(
-  date: CalendarDate,
+  start: Date,
+  endExclusive: Date,
   granularity: TrendGranularity,
   timeZone: string
 ): string {
-  const instant = zonedTimeToUtc(date, timeZone);
   if (granularity === "month") {
     return new Intl.DateTimeFormat("en-NZ", {
       timeZone,
       month: "short",
       year: "numeric",
-    }).format(instant);
+    }).format(start);
   }
-  return new Intl.DateTimeFormat("en-NZ", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  }).format(instant);
+  if (granularity === "day") {
+    return new Intl.DateTimeFormat("en-NZ", {
+      timeZone,
+      day: "numeric",
+      month: "short",
+    }).format(start);
+  }
+  const last = new Date(endExclusive.getTime() - 1);
+  return formatDaySpan(start, last, timeZone);
+}
+
+/** Week labels use the days inside the selected range, so a Monday before the range is not shown as activity. */
+function formatDaySpan(start: Date, end: Date, timeZone: string): string {
+  const s = zonedParts(start, timeZone);
+  const e = zonedParts(end, timeZone);
+  const month = (date: Date) =>
+    new Intl.DateTimeFormat("en-NZ", { timeZone, month: "short" }).format(date);
+  if (s.year === e.year && s.month === e.month) {
+    if (s.day === e.day) return `${s.day} ${month(start)}`;
+    return `${s.day}–${e.day} ${month(start)}`;
+  }
+  return `${s.day} ${month(start)}–${e.day} ${month(end)}`;
 }
 
 function calendarKey(date: CalendarDate): string {

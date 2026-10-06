@@ -83,7 +83,22 @@ export function formatAcceptanceLine(input: {
   }
   const percent = `${Math.round(input.rate * 1000) / 10}%`;
   const projects = input.denominator === 1 ? "project" : "projects";
-  return `${percent} · ${input.numerator} of ${input.denominator} ${projects}`;
+  return `${input.numerator} of ${input.denominator} ${projects} · ${percent}`;
+}
+
+/** Under a day, keep the real duration. A positive gap is not shown as 0 days. */
+export function formatTurnaround(days: number | null): string {
+  if (days == null || !Number.isFinite(days)) return "—";
+  if (days <= 0) return "Same day";
+  if (days < 1) {
+    const minutes = Math.round(days * 24 * 60);
+    if (minutes <= 0) return "Same day";
+    if (minutes < 60) return minutes === 1 ? "1 minute" : `${minutes} minutes`;
+    const hours = Math.round(minutes / 60);
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  }
+  const shown = Math.round(days * 10) / 10;
+  return shown === 1 ? "1 day" : `${shown} days`;
 }
 
 export function trendChartState(input: {

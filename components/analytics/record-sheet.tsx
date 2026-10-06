@@ -55,7 +55,7 @@ export function RecordSheet(props: RecordSheetProps) {
 
   return (
     <Sheet>
-      <SheetTrigger className={cn(cardClass, "w-full hover:bg-muted/20")}>
+      <SheetTrigger className={cn(cardClass, "w-full cursor-pointer hover:border-foreground/30 hover:bg-muted/40")}>
         {body}
       </SheetTrigger>
       <SheetContent
@@ -207,7 +207,7 @@ export function EstimateSheet(props: {
   if (props.disabled) return <div className={cardClass}>{body}</div>;
   return (
     <Sheet>
-      <SheetTrigger className={cn(cardClass, "w-full hover:bg-muted/20")}>{body}</SheetTrigger>
+      <SheetTrigger className={cn(cardClass, "w-full cursor-pointer hover:border-foreground/30 hover:bg-muted/40")}>{body}</SheetTrigger>
       <SheetContent side="right" className="w-full data-[side=right]:w-full data-[side=right]:max-w-md">
         <SheetHeader>
           <SheetTitle>Estimates created</SheetTitle>

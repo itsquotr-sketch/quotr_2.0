@@ -41,6 +41,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
   const [draft, setDraft] = useState<{ from: string; to: string; key: string } | null>(null);
   const [error, setError] = useState<string | null>(props.rangeError ?? null);
   const started = useRef<number | null>(null);
+  const clickAt = useRef<number | null>(null);
   const band = useRef<HTMLDivElement>(null);
   const serverKey = `${props.periodId}:${props.from ?? ""}:${props.to ?? ""}`;
   const sawBusy = useRef(false);
@@ -86,7 +87,13 @@ export function PeriodFilters(props: PeriodFiltersProps) {
     setPendingId(null);
   }, [isPending, serverKey]);
 
-  function go(id: AnalyticsWindowId, fromDate?: string, toDate?: string) {
+  useEffect(() => {
+    if (!pendingId || clickAt.current == null || !band.current) return;
+    band.current.dataset.analyticsControlMs = String(Math.round(performance.now() - clickAt.current));
+  }, [pendingId]);
+
+  function go(id: AnalyticsWindowId, fromDate?: string, toDate?: string, timeStamp?: number) {
+    if (timeStamp != null) clickAt.current = timeStamp;
     setError(null);
     setPendingId(id);
     setOpen(false);
@@ -109,7 +116,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
     });
   }
 
-  function applyCustom() {
+  function applyCustom(event: { timeStamp: number }) {
     const resolved = resolveCustomRange({
       from,
       to,
@@ -119,7 +126,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
       setError(resolved.error);
       return;
     }
-    go("custom", from, to);
+    go("custom", from, to, event.timeStamp);
   }
 
   function cancel() {
@@ -136,7 +143,7 @@ export function PeriodFilters(props: PeriodFiltersProps) {
             key={period.id}
             type="button"
             aria-current={selected === period.id ? "true" : undefined}
-            onClick={() => go(period.id)}
+            onClick={(event) => go(period.id, undefined, undefined, event.timeStamp)}
             className={cn(
               "min-h-11 rounded-lg px-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
               selected === period.id ? "bg-foreground text-background" : "hover:bg-muted"

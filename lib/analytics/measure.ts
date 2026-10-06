@@ -173,6 +173,7 @@ export type AnalyticsAreaLine = {
   quoteId: string;
   /** Frozen quote line total, ex GST. Null when the line has no stored total. */
   lineExGst: number | null;
+  projectId?: string;
   kind: "quoted" | "accepted";
   /** False for optional or hidden lines. Those stay out of the quote total. */
   included?: boolean;
@@ -208,6 +209,10 @@ export type AnalyticsWorkArea = {
   quotedLineExGst: number | null;
   /** Sum of accepted snapshot line sell in this area. */
   acceptedLineExGst: number | null;
+  /** Accepted quotes with a line attributed to this area. Null when that read stopped early. */
+  acceptedQuotes: number | null;
+  /** Projects that have a quoted or accepted line in this area. */
+  projects: Array<{ projectId: string; projectTitle: string; href: string }>;
 };
 
 export type AnalyticsRateSource = {
@@ -528,10 +533,16 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
   const areaMoney = !input.limits.areaMoneyTruncated;
   const workAreas = input.limits.estimatesTruncated || input.limits.linesTruncated
     ? null
-    : workAreaFrequency(lines, areaMoney ? areaLines : []).map((row) =>
+    : workAreaFrequency(lines, areaMoney ? areaLines : [], titles).map((row) =>
         areaMoney
           ? row
-          : { ...row, quotedQuotes: null, quotedLineExGst: null, acceptedLineExGst: null }
+          : {
+              ...row,
+              quotedQuotes: null,
+              quotedLineExGst: null,
+              acceptedLineExGst: null,
+              acceptedQuotes: null,
+            }
       );
   const workAreaCheck = areaMoney && workAreas
     ? reconcileWorkAreas({
@@ -790,6 +801,8 @@ function addGap(
     quotedQuotes: 0,
     quotedLineExGst: field === "quotedLineExGst" ? gap : 0,
     acceptedLineExGst: field === "acceptedLineExGst" ? gap : 0,
+    acceptedQuotes: 0,
+    projects: [],
   });
 }
 
@@ -800,7 +813,8 @@ function areaLabel(name: string): string {
 
 function workAreaFrequency(
   lines: readonly AnalyticsEstimateLine[],
-  areaLines: readonly AnalyticsAreaLine[]
+  areaLines: readonly AnalyticsAreaLine[],
+  titles: ReadonlyMap<string, string>
 ): AnalyticsWorkArea[] {
   const sets = new Map<string, Set<string>>();
   for (const line of lines) {
@@ -810,10 +824,16 @@ function workAreaFrequency(
     sets.set(name, current);
   }
   const quoted = new Map<string, { quotes: Set<string>; values: number[]; complete: boolean }>();
-  const accepted = new Map<string, { values: number[]; complete: boolean }>();
+  const accepted = new Map<string, { quotes: Set<string>; values: number[]; complete: boolean }>();
+  const projects = new Map<string, Set<string>>();
   for (const line of areaLines) {
     if (line.included === false) continue;
     const name = areaLabel(line.name);
+    if (line.projectId) {
+      const ids = projects.get(name) ?? new Set<string>();
+      ids.add(line.projectId);
+      projects.set(name, ids);
+    }
     if (line.kind === "quoted") {
       const current = quoted.get(name) ?? { quotes: new Set<string>(), values: [], complete: true };
       current.quotes.add(line.quoteId);
@@ -821,7 +841,8 @@ function workAreaFrequency(
       else current.values.push(line.lineExGst);
       quoted.set(name, current);
     } else {
-      const current = accepted.get(name) ?? { values: [], complete: true };
+      const current = accepted.get(name) ?? { quotes: new Set<string>(), values: [], complete: true };
+      current.quotes.add(line.quoteId);
       if (line.lineExGst == null || !Number.isFinite(line.lineExGst)) current.complete = false;
       else current.values.push(line.lineExGst);
       accepted.set(name, current);
@@ -836,6 +857,12 @@ function workAreaFrequency(
       quotedLineExGst: quoted.get(name)?.complete === false ? null : sumExGst(quoted.get(name)?.values ?? []),
       acceptedLineExGst:
         accepted.get(name)?.complete === false ? null : sumExGst(accepted.get(name)?.values ?? []),
+      acceptedQuotes: accepted.get(name)?.complete === false ? null : (accepted.get(name)?.quotes.size ?? 0),
+      projects: [...(projects.get(name) ?? [])].slice(0, 4).map((projectId) => ({
+        projectId,
+        projectTitle: titles.get(projectId) || "Project",
+        href: `/app/projects/${projectId}`,
+      })),
     }))
     .sort((a, b) => {
       if (a.name === "Unallocated") return 1;
@@ -961,8 +988,9 @@ function median(values: number[]): number | null {
   const mid = Math.floor(sorted.length / 2);
   const raw =
     sorted.length % 2 === 1
-      ? sorted[mid]
-      : (sorted[mid - 1] + sorted[mid]) / 2;
+      ? sorted[mid]!
+      : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+  if (raw > 0 && raw < 1) return raw;
   return Math.round(raw * 10) / 10;
 }
 

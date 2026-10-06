@@ -25,6 +25,7 @@ import {
   parseAnalyticsPeriod,
   resolveAnalyticsPeriod,
   resolveCustomRange,
+  trendBuckets,
   trendGranularity,
 } from "../lib/analytics/periods";
 import {
@@ -32,6 +33,7 @@ import {
   analyticsPeriodHref,
   analyticsRangeHref,
   formatAcceptanceLine,
+  formatTurnaround,
   formatTrendReadout,
   initialTrendIndex,
   pipelineGroups,
@@ -534,9 +536,17 @@ check(
 
 check(
   "acceptance line shows the sample with the rate",
-  formatAcceptanceLine({ numerator: 2, denominator: 2, rate: 1 }) === "100% · 2 of 2 projects" &&
-    formatAcceptanceLine({ numerator: 0, denominator: 1, rate: 0 }) === "0% · 0 of 1 project" &&
+  formatAcceptanceLine({ numerator: 2, denominator: 2, rate: 1 }) === "2 of 2 projects · 100%" &&
+    formatAcceptanceLine({ numerator: 1, denominator: 7, rate: 1 / 7 }) === "1 of 7 projects · 14.3%" &&
+    formatAcceptanceLine({ numerator: 0, denominator: 1, rate: 0 }) === "0 of 1 project · 0%" &&
     formatAcceptanceLine({ numerator: 0, denominator: 0, rate: null }) === "—"
+);
+check(
+  "a short acceptance time stays in hours and a zero gap is the same day",
+  formatTurnaround(0) === "Same day" &&
+    formatTurnaround(1 / 24) === "1 hour" &&
+    formatTurnaround(2.5) === "2.5 days" &&
+    formatTurnaround(0.04) !== "0 days"
 );
 check(
   "period links are real addresses",
@@ -575,6 +585,19 @@ check(
   trendGranularity(auckland) === "day" &&
     trendGranularity(lastMonth) === "week" &&
     trendGranularity(ninety) === "month"
+);
+const september = resolveCustomRange({
+  from: "2026-09-01",
+  to: "2026-09-30",
+  timeZone: "Pacific/Auckland",
+});
+const septemberBuckets = september.ok ? trendBuckets(september.window) : [];
+check(
+  "a week that starts before the range is labelled inside the range",
+  september.ok &&
+    septemberBuckets[0]?.label === "1–6 Sept" &&
+    !septemberBuckets.some((bucket) => bucket.label.includes("Aug")) &&
+    Date.parse(septemberBuckets[0]?.start ?? "") >= Date.parse(september.window.start)
 );
 check(
   "a sparse period stays a chart and an empty period does not",

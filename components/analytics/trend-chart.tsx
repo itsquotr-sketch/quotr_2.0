@@ -224,7 +224,7 @@ function TrendBars({
 
   return (
       <div
-        className="mt-4 overflow-x-auto"
+        className="mt-3 min-w-0"
         role="group"
         aria-label="Dates"
         onKeyDown={(event) => {
@@ -238,53 +238,68 @@ function TrendBars({
           }
         }}
       >
-      <p className="text-[11px] text-muted-foreground tabular-nums">
-        Highest {money ? "ex GST" : "count"} {money ? formatPricingMoney(max) : max}
-      </p>
-      <div
-        className="flex h-32 items-end gap-1"
-        style={{ minWidth: trend.length > 10 ? trend.length * 36 : "100%" }}
-      >
-        {trend.map((point, pointIndex) => {
-          const sentHeight = showSent ? (value(point, "sent") / max) * 100 : 0;
-          const acceptedHeight = showAccepted ? (value(point, "accepted") / max) * 100 : 0;
-          const isSelected = pointIndex === index;
-          return (
-            <button
-              key={`${point.label}-${pointIndex}`}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={formatTrendReadout(point)}
-              onClick={() => onSelect(pointIndex)}
-              className={cn(
-                "flex min-h-11 min-w-9 flex-1 flex-col items-center justify-end gap-1 rounded-md px-0.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
-                isSelected && "bg-muted"
-              )}
-            >
-              <span className="flex h-20 w-full items-end justify-center gap-0.5" aria-hidden>
-                {showSent ? (
-                  <span
-                    className="w-1.5 rounded-sm bg-foreground"
-                    style={{ height: `${sentHeight}%` }}
-                  />
-                ) : null}
-                {showAccepted ? (
-                  <span
-                    className="w-1.5 rounded-sm bg-[var(--brand-orange)]"
-                    style={{ height: `${acceptedHeight}%` }}
-                  />
-                ) : null}
-              </span>
-              <span className="max-w-full truncate text-[10px] leading-4 text-muted-foreground">
-                {trend.length <= 8 || isSelected ? point.label : ""}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex min-w-0 gap-2">
+        <div className="flex h-36 w-14 shrink-0 flex-col justify-between pb-5 text-right text-[10px] leading-4 text-muted-foreground tabular-nums">
+          <span>{money ? formatPricingMoney(max) : max}</span>
+          <span>{money ? formatPricingMoney(max / 2) : Math.round(max / 2)}</span>
+          <span>0</span>
+        </div>
+        <div className="relative min-w-0 flex-1">
+          <div className="pointer-events-none absolute inset-x-0 top-0 bottom-5 flex flex-col justify-between" aria-hidden>
+            <span className="border-t border-border/70" />
+            <span className="border-t border-border/40" />
+            <span className="border-t border-foreground/20" />
+          </div>
+          <div className="relative flex h-36 items-end">
+            {trend.map((point, pointIndex) => {
+              const sentHeight = showSent ? (value(point, "sent") / max) * 100 : 0;
+              const acceptedHeight = showAccepted ? (value(point, "accepted") / max) * 100 : 0;
+              const isSelected = pointIndex === index;
+              return (
+                <button
+                  key={`${point.label}-${pointIndex}`}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={formatTrendReadout(point)}
+                  onClick={() => onSelect(pointIndex)}
+                  onMouseEnter={() => onSelect(pointIndex)}
+                  onFocus={() => onSelect(pointIndex)}
+                  className={cn(
+                    "flex h-full min-h-11 min-w-0 flex-1 flex-col items-center justify-end rounded-md px-0.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
+                    isSelected && "bg-muted"
+                  )}
+                >
+                  <span className="flex h-28 w-full items-end justify-center gap-1" aria-hidden>
+                    {showSent ? (
+                      <span
+                        className="w-3 max-w-[42%] rounded-t-sm bg-foreground"
+                        style={{ height: barHeight(sentHeight, value(point, "sent")) }}
+                      />
+                    ) : null}
+                    {showAccepted ? (
+                      <span
+                        className="w-3 max-w-[42%] rounded-t-sm bg-[var(--brand-orange)]"
+                        style={{ height: barHeight(acceptedHeight, value(point, "accepted")) }}
+                      />
+                    ) : null}
+                  </span>
+                  <span className="max-w-full truncate px-0.5 text-center text-[10px] leading-4 text-muted-foreground">
+                    {trend.length <= 8 || isSelected ? point.label : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
       {selected ? <span className="sr-only">{formatTrendReadout(selected)}</span> : null}
     </div>
   );
+}
+
+function barHeight(percent: number, amount: number): string {
+  if (amount <= 0) return "2px";
+  return `${Math.max(percent, 8)}%`;
 }
 
 function TrendTable({ trend, money }: { trend: TrendPoint[]; money: boolean }) {
