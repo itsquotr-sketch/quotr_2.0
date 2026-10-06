@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 import { AnalyticsRefreshContext, type AnalyticsRefreshResult } from "@/components/analytics/refresh-context";
-import { loadAnalyticsBusinessView, loadAnalyticsHeadlineView } from "@/lib/analytics/actions";
+import type { AnalyticsPageData } from "@/lib/analytics/load-analytics";
 import type { AnalyticsView as AnalyticsViewData, BusinessAnalyticsView } from "@/lib/analytics/measure";
 import { analyticsPeriodHref, analyticsRangeHref } from "@/lib/analytics/presentation";
 
@@ -23,6 +23,32 @@ function sameRange(current: AnalyticsViewData, incoming: AnalyticsViewData): boo
     current.from === incoming.from &&
     current.to === incoming.to
   );
+}
+
+async function postScope(
+  scope: "headline" | "business",
+  period: string,
+  from?: string,
+  to?: string
+): Promise<AnalyticsPageData> {
+  try {
+    const response = await fetch("/api/analytics/period", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ period, from, to, scope }),
+    });
+    const payload = (await response.json()) as AnalyticsPageData;
+    if (payload && typeof payload === "object" && "kind" in payload) return payload;
+  } catch {
+    // The caller treats a failed read as denied and keeps the previous figures.
+  }
+  return {
+    kind: "denied",
+    message: "Analytics could not be loaded.",
+    reasonCode: null,
+    upgradeTarget: null,
+  };
 }
 
 function applyBusiness(current: AnalyticsViewData, incoming: AnalyticsViewData): AnalyticsViewData {
@@ -73,8 +99,8 @@ export function AnalyticsLive({
     setBusinessError(null);
     if (tier.current === "business") setBusinessPhase("updating");
 
-    const headlinePromise = loadAnalyticsHeadlineView(input.period, input.from, input.to);
-    const businessPromise = loadAnalyticsBusinessView(input.period, input.from, input.to);
+    const headlinePromise = postScope("headline", input.period, input.from, input.to);
+    const businessPromise = postScope("business", input.period, input.from, input.to);
     const headline = await headlinePromise;
     if (id !== request.current) return { ok: false, stale: true };
     if (headline.kind === "invalid_range") {

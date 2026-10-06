@@ -83,7 +83,11 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
           </p>
           <p className="text-sm tabular-nums">
             {acceptedTotal} accepted {acceptedTotal === 1 ? "quote" : "quotes"}
-            {acceptedValueTotal == null ? "" : ` · ${formatPricingMoney(acceptedValueTotal)} accepted ex GST`}
+            {acceptedTotal === 0
+              ? " · None in this range"
+              : acceptedValueTotal == null
+                ? ""
+                : ` · ${formatPricingMoney(acceptedValueTotal)} accepted ex GST`}
           </p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {moneyReady
@@ -103,7 +107,11 @@ export function TrendChart({ trend, unavailableReason }: TrendChartProps) {
                     </span>
                     <span className="block text-[var(--brand-orange)]">
                       Accepted {point.accepted}
-                      {point.acceptedExGst == null ? "" : ` · ${formatPricingMoney(point.acceptedExGst)}`}
+                      {point.accepted === 0
+                        ? " · None"
+                        : point.acceptedExGst == null
+                          ? ""
+                          : ` · ${formatPricingMoney(point.acceptedExGst)}`}
                     </span>
                   </span>
                 </li>
