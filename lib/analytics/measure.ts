@@ -114,6 +114,8 @@ export type AnalyticsRecordLink = {
   href: string;
   occurredAt: string;
   quoteId: string;
+  /** Accepted snapshot ex GST. Null on a send row. */
+  amountExGst: number | null;
 };
 
 export type PersonalAnalyticsView = {
@@ -317,8 +319,13 @@ export function measureAnalytics(input: AnalyticsMeasureInput): AnalyticsMeasure
           ),
         };
 
-  const sentRecords = toLinks(sendsInPeriod, titles, "occurredAt");
-  const acceptedRecords = toLinks(acceptedInPeriod, titles, "acceptedAt");
+  const sentRecords = toLinks(sendsInPeriod, titles, "occurredAt", () => null);
+  const acceptedRecords = toLinks(
+    acceptedInPeriod,
+    titles,
+    "acceptedAt",
+    (quoteId) => acceptedInPeriod.find((row) => row.quoteId === quoteId)?.sellExGst ?? null
+  );
 
   return {
     activeProjects,
@@ -451,7 +458,8 @@ function inBucket(iso: string, start: string, end: string): boolean {
 function toLinks(
   rows: Array<{ quoteId: string; projectId: string; occurredAt?: string; acceptedAt?: string }>,
   titles: Map<string, string>,
-  field: "occurredAt" | "acceptedAt"
+  field: "occurredAt" | "acceptedAt",
+  amountFor: (quoteId: string) => number | null
 ): AnalyticsRecordLink[] {
   return [...rows]
     .sort((a, b) => {
@@ -465,5 +473,6 @@ function toLinks(
       href: `/app/projects/${row.projectId}`,
       occurredAt: (field === "occurredAt" ? row.occurredAt : row.acceptedAt) ?? "",
       quoteId: row.quoteId,
+      amountExGst: amountFor(row.quoteId),
     }));
 }

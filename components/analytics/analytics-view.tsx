@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { ANALYTICS_PERIODS } from "@/lib/analytics/periods";
-import { formatInOrgTimezone } from "@/lib/org/timezone";
-import { formatPricingMoney } from "@/lib/pricing/format";
+import { PeriodFilters } from "@/components/analytics/period-filters";
+import { MetricLinkCard, RecordSheet } from "@/components/analytics/record-sheet";
+import { TrendChart } from "@/components/analytics/trend-chart";
 import type { AnalyticsView, BusinessAnalyticsView } from "@/lib/analytics/measure";
-import { cn } from "@/lib/utils";
+import {
+  ACTIVE_PROJECTS_HREF,
+  formatAcceptanceLine,
+  pipelineGroups,
+  pipelineStatusHref,
+} from "@/lib/analytics/presentation";
+import { formatPricingMoney } from "@/lib/pricing/format";
 
 type AnalyticsViewProps = {
   view: AnalyticsView;
@@ -12,30 +18,12 @@ type AnalyticsViewProps = {
 
 export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
   return (
-    <div className="space-y-4" data-analytics-page data-analytics-tier={view.tier}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <p className="text-sm text-muted-foreground">{view.periodRange}</p>
-        <nav aria-label="Period" className="flex flex-wrap gap-x-1 gap-y-1">
-          {ANALYTICS_PERIODS.map((period) => {
-            const selected = period.id === view.periodId;
-            return (
-              <Link
-                key={period.id}
-                href={`/app/analytics?period=${period.id}`}
-                aria-current={selected ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-11 items-center border-b-2 px-2 text-sm",
-                  selected
-                    ? "border-foreground font-medium text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {period.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+    <div className="min-w-0 space-y-4" data-analytics-page data-analytics-tier={view.tier}>
+      <PeriodFilters
+        periodId={view.periodId}
+        periodLabel={view.periodLabel}
+        periodRange={view.periodRange}
+      />
 
       {view.incomplete ? (
         <p className="rounded-xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
@@ -48,56 +36,64 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
           Summary
         </h2>
         <div className="grid grid-cols-2 items-stretch gap-3 lg:grid-cols-4 lg:gap-4">
-          <MetricLink
-            href="/app/projects"
+          <MetricLinkCard
+            href={ACTIVE_PROJECTS_HREF}
             label="Active projects"
             value={formatCount(view.activeProjects)}
-            context="Current pipeline"
+            context="Current pipeline, not this period"
+            disabled={view.activeProjects == null}
           />
-          <MetricCard
+          <RecordSheet
             label="Quotes sent"
             value={formatCount(view.quotesSent)}
-            context="First sends in this period"
+            context="First sends. Resends are not counted again."
+            title="Quotes sent"
+            description="First send in this period. A resend of the same quote is not another row."
+            empty="No quotes were sent in this period."
+            records={view.sentRecords}
+            total={view.sentRecordTotal}
+            timeZone={view.timeZone}
+            disabled={view.quotesSent == null}
           />
-          <MetricCard
+          <RecordSheet
             label="Quotes accepted"
             value={formatCount(view.quotesAccepted)}
             context="Accepted in this period"
+            title="Quotes accepted"
+            description="Accepted commercial snapshots in this period. This is contracted work, not cash received."
+            empty="No quotes were accepted in this period."
+            records={view.acceptedRecords}
+            total={view.acceptedRecordTotal}
+            timeZone={view.timeZone}
+            disabled={view.quotesAccepted == null}
           />
-          <MetricCard
+          <RecordSheet
             label="Accepted quote value"
             value={formatMoney(view.acceptedQuoteValueExGst)}
             context="Ex GST · contracted, not cash"
+            title="Accepted quote value"
+            description="Sum of accepted quote prices ex GST in this period. Variations are not included."
+            empty="No accepted quote value in this period."
+            records={view.acceptedRecords}
+            total={view.acceptedRecordTotal}
+            timeZone={view.timeZone}
+            disabled={view.acceptedQuoteValueExGst == null}
           />
         </div>
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
-        <RecordList
-          title="Quotes sent"
-          empty="No quotes were sent in this period."
-          records={view.sentRecords}
-          total={view.sentRecordTotal}
-          timeZone={view.timeZone}
-        />
-        <RecordList
-          title="Quotes accepted"
-          empty="No quotes were accepted in this period."
-          records={view.acceptedRecords}
-          total={view.acceptedRecordTotal}
-          timeZone={view.timeZone}
-        />
-      </div>
-
       {view.tier === "business" ? <BusinessSections view={view} /> : null}
 
       {upgrade ? (
-        <section className="rounded-xl border border-border/60 bg-card px-4 py-4" data-analytics-upgrade>
+        <section
+          className="rounded-xl border border-border/60 bg-card px-4 py-4"
+          data-analytics-upgrade
+        >
           <h2 className="text-sm font-medium">More detail on Business</h2>
           <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{upgrade.message}</p>
           <Link
             href={upgrade.href}
-            className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-foreground underline-offset-4 hover:underline"
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-medium underline-offset-4 hover:underline"
           >
             View plans
           </Link>
@@ -108,107 +104,143 @@ export function AnalyticsView({ view, upgrade }: AnalyticsViewProps) {
 }
 
 function BusinessSections({ view }: { view: BusinessAnalyticsView }) {
-  const maxTrend = Math.max(
-    1,
-    ...view.trend.map((bucket) => Math.max(bucket.sent, bucket.accepted))
-  );
-
   return (
     <div className="space-y-3 lg:space-y-4" data-analytics-business>
       <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-        <h2 className="text-[11px] font-medium text-muted-foreground">Acceptance rate</h2>
-        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
-          {view.acceptance.rate == null ? "—" : formatRate(view.acceptance.rate)}
+        <h2 className="text-sm font-medium">Quote performance</h2>
+        <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
+          {formatAcceptanceLine(view.acceptance)}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {view.acceptance.unavailableReason ??
-            `${view.acceptance.numerator} of ${view.acceptance.denominator} projects sent in this period have an accepted quote. Further revisions are not counted again.`}
+            "Projects with a first send in this period that now have an accepted quote. Another revision is not another project."}
         </p>
-      </section>
-
-      <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
-        <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground">Pipeline</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Current pipeline. This is not the selected period, and a sent quote is not revenue.
-          </p>
-          {view.pipelineUnavailableReason || !view.pipeline ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {view.pipelineUnavailableReason ?? "Pipeline breakdown is unavailable."}
-            </p>
-          ) : (
-            <ul className="mt-3 divide-y divide-border/60">
-              {view.pipeline.map((row) => (
-                <li key={row.status} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span>{row.label}</span>
-                  <span className="tabular-nums font-medium">{row.count}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground">Sends and acceptances</h2>
-          {view.trendUnavailableReason || view.trend.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {view.trendUnavailableReason ?? "No quotes were sent or accepted in this period."}
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {view.trend.map((bucket) => (
-                <li key={bucket.label} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 text-sm">
-                  <span className="text-muted-foreground">{bucket.label}</span>
-                  <span className="min-w-0">
-                    <span className="flex h-2 overflow-hidden rounded-full bg-muted">
-                      <span
-                        className="bg-foreground"
-                        style={{ width: `${(bucket.sent / maxTrend) * 100}%` }}
-                      />
-                    </span>
-                    <span className="mt-1 block text-xs tabular-nums text-muted-foreground">
-                      {bucket.sent} sent · {bucket.accepted} accepted
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
-        <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground">Send to acceptance</h2>
-          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <p className="text-[11px] font-medium text-muted-foreground">Median send to acceptance</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums">
             {view.timing.medianDays == null ? "—" : `${view.timing.medianDays} days`}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {timingCopy(view)}
-          </p>
-        </section>
-        <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground">Accepted variations</h2>
-          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
-            {formatCount(view.variations.acceptedCount)}
-          </p>
-          <p className="mt-1 text-sm tabular-nums">
-            {formatMoney(view.variations.adjustmentExGst)}
-            <span className="ml-2 text-muted-foreground">adjustment ex GST</span>
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Kept separate from the accepted quote. Declined variations are not included.
-          </p>
-        </section>
+          <p className="mt-1 text-sm text-muted-foreground">{timingCopy(view)}</p>
+        </div>
+      </section>
+
+      <TrendChart trend={view.trend} unavailableReason={view.trendUnavailableReason} />
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.8fr)] lg:gap-4">
+        <PipelinePanel view={view} />
+        <VariationsPanel view={view} />
       </div>
     </div>
   );
 }
 
-function timingCopy(view: BusinessAnalyticsView): string {
-  if (view.quotesAccepted === 0) {
-    return "No quotes were accepted in this period.";
+function PipelinePanel({ view }: { view: BusinessAnalyticsView }) {
+  const rows = view.pipeline ?? [];
+  const groups = pipelineGroups(rows);
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+
+  return (
+    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4">
+      <h2 className="text-sm font-medium">Current pipeline</h2>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Current status, not the selected period. A sent quote is pipeline, not revenue.
+      </p>
+      {view.pipelineUnavailableReason || !view.pipeline ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {view.pipelineUnavailableReason ?? "Pipeline breakdown is unavailable."}
+        </p>
+      ) : (
+        <>
+          {total > 0 ? (
+            <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+              {groups.primary.map((row, index) => (
+                <span
+                  key={row.status}
+                  className="h-full bg-foreground"
+                  style={{
+                    width: `${(row.count / total) * 100}%`,
+                    opacity: Math.max(0.35, 1 - index * 0.12),
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">No projects are in the current pipeline.</p>
+          )}
+          <ul className="mt-2">
+            {groups.primary.map((row) => (
+              <PipelineRow key={row.status} row={row} />
+            ))}
+          </ul>
+          {groups.rest.length > 0 ? (
+            <details className="mt-1">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] [&::-webkit-details-marker]:hidden">
+                Show all statuses
+              </summary>
+              <ul>
+                {groups.rest.map((row) => (
+                  <PipelineRow key={row.status} row={row} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function PipelineRow({
+  row,
+}: {
+  row: { status: string; label: string; count: number };
+}) {
+  const href = pipelineStatusHref(row.status);
+  const body = (
+    <>
+      <span className="min-w-0">{row.label}</span>
+      <span className="tabular-nums font-medium">{row.count}</span>
+    </>
+  );
+  if (!href) {
+    return (
+      <li className="flex min-h-11 items-center justify-between gap-3 border-t border-border/60 text-sm">
+        {body}
+      </li>
+    );
   }
+  return (
+    <li className="border-t border-border/60">
+      <Link
+        href={href}
+        className="flex min-h-11 items-center justify-between gap-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+      >
+        {body}
+      </Link>
+    </li>
+  );
+}
+
+function VariationsPanel({ view }: { view: BusinessAnalyticsView }) {
+  const count = view.variations.acceptedCount;
+  const money = view.variations.adjustmentExGst;
+  return (
+    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4">
+      <h2 className="text-sm font-medium">Accepted variations</h2>
+      <p className="mt-2 text-xl font-semibold tabular-nums">
+        {count == null || money == null
+          ? "—"
+          : `${count} · ${formatPricingMoney(money)} ex GST`}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Separate from accepted quote value. Declined variations are not included.
+      </p>
+    </section>
+  );
+}
+
+function timingCopy(view: BusinessAnalyticsView): string {
+  if (view.quotesAccepted === 0) return "No quotes were accepted in this period.";
   if (view.timing.sample === 0) {
     return view.timing.excluded > 0
       ? `${view.timing.excluded} accepted ${view.timing.excluded === 1 ? "quote has" : "quotes have"} no reliable send time.`
@@ -219,81 +251,10 @@ function timingCopy(view: BusinessAnalyticsView): string {
   return `${base} ${view.timing.excluded} left out because the send time is missing or later than acceptance.`;
 }
 
-function MetricLink(props: { href: string; label: string; value: string; context: string }) {
-  return (
-    <Link
-      href={props.href}
-      className="flex h-full min-h-11 flex-col rounded-xl border border-border/60 bg-card px-3 py-2.5 outline-none hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-    >
-      <MetricBody {...props} />
-    </Link>
-  );
-}
-
-function MetricCard(props: { label: string; value: string; context: string }) {
-  return (
-    <div className="flex h-full min-h-11 flex-col rounded-xl border border-border/60 bg-card px-3 py-2.5">
-      <MetricBody {...props} />
-    </div>
-  );
-}
-
-function MetricBody(props: { label: string; value: string; context: string }) {
-  return (
-    <>
-      <p className="text-[11px] font-medium leading-tight text-muted-foreground">{props.label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">{props.value}</p>
-      <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{props.context}</p>
-    </>
-  );
-}
-
-function RecordList(props: {
-  title: string;
-  empty: string;
-  records: AnalyticsView["sentRecords"];
-  total: number;
-  timeZone: string;
-}) {
-  return (
-    <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
-      <h2 className="text-[11px] font-medium text-muted-foreground">{props.title}</h2>
-      {props.records.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">{props.empty}</p>
-      ) : (
-        <ul className="mt-2 divide-y divide-border/60">
-          {props.records.map((record) => (
-            <li key={record.quoteId}>
-              <Link
-                href={record.href}
-                className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-              >
-                <span className="min-w-0 truncate font-medium">{record.projectTitle}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatInOrgTimezone(record.occurredAt, props.timeZone) ?? "—"}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      {props.total > props.records.length ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Showing {props.records.length} of {props.total}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
 function formatCount(value: number | null): string {
   return value == null ? "—" : String(value);
 }
 
 function formatMoney(value: number | null): string {
   return value == null ? "—" : formatPricingMoney(value);
-}
-
-function formatRate(rate: number): string {
-  return `${Math.round(rate * 1000) / 10}%`;
 }

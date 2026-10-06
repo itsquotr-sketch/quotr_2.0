@@ -23,7 +23,19 @@ import {
   inPeriod,
   parseAnalyticsPeriod,
   resolveAnalyticsPeriod,
+  trendGranularity,
 } from "../lib/analytics/periods";
+import {
+  ACTIVE_PROJECTS_HREF,
+  analyticsPeriodHref,
+  formatAcceptanceLine,
+  pipelineGroups,
+  pipelineStatusHref,
+  recordListIsPartial,
+  trendChartState,
+} from "../lib/analytics/presentation";
+import { applyProjectListFilter } from "../lib/projects/query-utils";
+import type { Project } from "../lib/projects/types";
 import { evaluateOrgEntitlement } from "../lib/billing/entitlements";
 import { trialAllowsCapability } from "../lib/billing/entitlement-matrix";
 import { buildInternalTrialSubscription } from "../lib/billing/trial";
@@ -506,9 +518,137 @@ check(
 );
 check(
   "copy does not claim margin, profit, forecast, or cash received",
-  !/margin|profit|forecast|cash received/i.test(view) &&
-    view.includes("not cash") &&
+  !/margin|profit|forecast|(?<!not )cash received/i.test(view) &&
+    view.includes("not cash received") &&
     view.includes("data-analytics-upgrade")
+);
+
+check(
+  "acceptance line shows the sample with the rate",
+  formatAcceptanceLine({ numerator: 2, denominator: 2, rate: 1 }) === "100% · 2 of 2 projects" &&
+    formatAcceptanceLine({ numerator: 0, denominator: 1, rate: 0 }) === "0% · 0 of 1 project" &&
+    formatAcceptanceLine({ numerator: 0, denominator: 0, rate: null }) === "—"
+);
+check(
+  "period links are real addresses",
+  analyticsPeriodHref("this_month") === "/app/analytics?period=this_month" &&
+    analyticsPeriodHref("last_month") === "/app/analytics?period=last_month" &&
+    analyticsPeriodHref("last_90_days") === "/app/analytics?period=last_90_days" &&
+    analyticsPeriodHref("year_to_date") === "/app/analytics?period=year_to_date"
+);
+
+const boundarySend = event("edge", "p1", "quote_sent", auckland.start);
+const inThisMonth = measureAnalytics({
+  ...book,
+  quoteEvents: [boundarySend],
+  snapshots: [],
+  variations: [],
+});
+const inLastMonth = measureAnalytics({
+  ...book,
+  window: lastMonth,
+  quoteEvents: [boundarySend],
+  snapshots: [],
+  variations: [],
+});
+check(
+  "changing period moves a boundary send out of the count",
+  inThisMonth.quotesSent === 1 && inLastMonth.quotesSent === 0
+);
+
+const ninety = resolveAnalyticsPeriod({
+  period: "last_90_days",
+  timeZone: "Pacific/Auckland",
+  now: NOW,
+});
+check(
+  "short periods are daily, longer periods weekly or monthly",
+  trendGranularity(auckland) === "day" &&
+    trendGranularity(lastMonth) === "week" &&
+    trendGranularity(ninety) === "month"
+);
+check(
+  "a sparse period stays a chart and an empty period does not",
+  trendChartState({
+    trend: business.tier === "business" ? business.trend : [],
+    unavailableReason: business.tier === "business" ? business.trendUnavailableReason : null,
+  }) === "chart" &&
+    trendChartState({ trend: [], unavailableReason: "No quotes were sent or accepted in this period." }) === "empty" &&
+    trendChartState({
+      trend: [{ sent: 4, accepted: 1 }],
+      unavailableReason: "The period trend is hidden because a source query was incomplete.",
+    }) === "unavailable"
+);
+check(
+  "non-zero pipeline statuses stay in the first group",
+  (() => {
+    const groups = pipelineGroups([
+      { status: "lead", count: 0 },
+      { status: "quote_sent", count: 2 },
+      { status: "scoping", count: 1 },
+    ]);
+    return (
+      groups.primary.every((row) => row.count > 0) &&
+      groups.rest.every((row) => row.count === 0) &&
+      groups.primary.some((row) => row.status === "quote_sent") &&
+      groups.primary.some((row) => row.status === "scoping")
+    );
+  })()
+);
+
+function stubProject(status: Project["business_status"], archived: boolean): Project {
+  return {
+    id: `${status}-${archived ? "archived" : "open"}`,
+    title: status,
+    brief_text: null,
+    client_name: null,
+    client_email: null,
+    site_address: null,
+    priority: "normal",
+    due_date: null,
+    notes: null,
+    stage: "active",
+    quality_level: "standard",
+    status: "active",
+    business_status: status,
+    status_updated_at: null,
+    lost_reason: null,
+    won_at: null,
+    lost_at: null,
+    created_at: NOW.toISOString(),
+    archived_at: archived ? "2026-02-01T00:00:00.000Z" : null,
+    deleted_at: null,
+    duplicated_from_project_id: null,
+  };
+}
+
+const filterRows = [
+  stubProject("lead", false),
+  stubProject("lead", true),
+  stubProject("quote_sent", false),
+  stubProject("quote_sent", true),
+  stubProject("estimating", true),
+];
+check(
+  "only active and quote sent filters match the analytics archive rule",
+  ACTIVE_PROJECTS_HREF === "/app/projects?filter=active" &&
+    pipelineStatusHref("quote_sent") === "/app/projects?filter=quote_sent" &&
+    pipelineStatusHref("lead") === null &&
+    pipelineStatusHref("site_visit") === null &&
+    pipelineStatusHref("scoping") === null &&
+    pipelineStatusHref("estimating") === null &&
+    pipelineStatusHref("estimate_ready") === null &&
+    pipelineStatusHref("quote_draft") === null &&
+    applyProjectListFilter(filterRows, "active", true, true).length === 2 &&
+    applyProjectListFilter(filterRows, "quote_sent", true, true).length === 1 &&
+    applyProjectListFilter(filterRows, "lead", true, true).length === 2
+);
+check(
+  "accepted drilldown amounts add up to the ex GST total",
+  personal.acceptedRecords.reduce((sum, row) => sum + (row.amountExGst ?? 0), 0) === 3650 &&
+    personal.sentRecords.every((row) => row.amountExGst == null) &&
+    recordListIsPartial(8, 9) &&
+    !recordListIsPartial(personal.acceptedRecords.length, personal.acceptedRecordTotal)
 );
 
 console.log("\nExample book (Auckland, February 2026)");
