@@ -20,6 +20,7 @@ import {
   type EstimateLineItemRow,
   type RecalibrationPreview,
 } from "@/lib/pricing/recalibration-helpers";
+import { RATE_RECONCILIATION_REQUIRED } from "@/lib/subcontractors/rate-use";
 import type {
   PricingActionState,
   PricingItem,
@@ -159,6 +160,43 @@ export async function markPricingDocumentsNeedingRecalibration(
       error.message
     );
   }
+
+  const { error: rateError } = await supabase
+    .from("subcontractor_rate_applications")
+    .update({ reconciliation_status: "pending" })
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .is("superseded_at", null);
+
+  if (rateError) {
+    console.error(
+      "Failed to flag supplier rates for reconciliation:",
+      rateError.message
+    );
+  }
+}
+
+async function supplierRateHold(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  orgId: string,
+  pricingDocumentId: string
+): Promise<{ pending: boolean; keptWorkAreas: Set<string>; keptAllowanceIds: Set<string> }> {
+  const { data } = await supabase
+    .from("subcontractor_rate_applications")
+    .select("work_area_id, allowance_item_id, reconciliation_status")
+    .eq("org_id", orgId)
+    .eq("pricing_document_id", pricingDocumentId)
+    .is("superseded_at", null);
+  const rows = data ?? [];
+  return {
+    pending: rows.some((row) => row.reconciliation_status === "pending"),
+    keptWorkAreas: new Set(
+      rows.filter((row) => row.reconciliation_status === "kept" && row.work_area_id).map((row) => row.work_area_id as string)
+    ),
+    keptAllowanceIds: new Set(
+      rows.filter((row) => row.reconciliation_status === "kept").map((row) => row.allowance_item_id as string)
+    ),
+  };
 }
 
 export async function previewRecalibration(
@@ -168,6 +206,8 @@ export async function previewRecalibration(
   if ("error" in loaded) {
     return { error: loaded.error };
   }
+  const hold = await supplierRateHold(loaded.supabase, loaded.orgId, input.pricingDocumentId);
+  if (hold.pending) return { error: RATE_RECONCILIATION_REQUIRED };
 
   const preview = buildRecalibrationPreviewData(
     loaded.estimateLineItems,
@@ -292,6 +332,9 @@ export async function applyRecalibration(
     pricingItems,
   } = loaded;
 
+  const hold = await supplierRateHold(supabase, orgId, pricingDocumentId);
+  if (hold.pending) return { error: RATE_RECONCILIATION_REQUIRED };
+
   const matches = matchPricingToEstimateLines(estimateLineItems, pricingItems);
   const matchedPricingIds = new Set(
     [...matches.values()].map((item) => item.id)
@@ -309,7 +352,20 @@ export async function applyRecalibration(
   try {
     for (const lineItem of estimateLineItems) {
       const existing = matches.get(lineItem.id);
+      if (lineItem.work_area_id && hold.keptWorkAreas.has(lineItem.work_area_id) && !existing) {
+        continue;
+      }
       if (existing) {
+        if (hold.keptAllowanceIds.has(existing.id)) {
+          updates.push({
+            id: existing.id,
+            patch: {
+              recalibration_note: "Supplier rate kept after the estimate was regenerated.",
+            },
+          });
+          itemsChanged = true;
+          continue;
+        }
         if (existing.manually_edited) {
           updates.push({
             id: existing.id,
@@ -356,6 +412,7 @@ export async function applyRecalibration(
       hasSource && !estimateIds.has(item.source_estimate_line_item_id!);
     const unmatched = !matchedPricingIds.has(item.id);
 
+    if (hold.keptAllowanceIds.has(item.id)) continue;
     if (hasSource && (sourceMissing || unmatched)) {
       if (!item.orphaned) {
         itemsChanged = true;

@@ -9,19 +9,27 @@ import {
   type SubcontractorRateUnit,
 } from "@/lib/subcontractors/rate-book";
 import { workAreaLabel } from "@/lib/subcontractors/work-areas";
+import { UseSubcontractorRate } from "@/components/projects/UseSubcontractorRate";
+import type { JobRatePricingContext } from "@/lib/subcontractors/rate-use-actions";
 
 function money(value: number): string {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function JobRateSuggestions({
+  projectId,
   areas,
   rates,
   today,
+  pricing = null,
+  canEdit = false,
 }: {
+  projectId: string;
   areas: Array<{ id: string; type: string; name: string; summary: string | null }>;
   rates: StoredRateVersion[];
   today: string;
+  pricing?: JobRatePricingContext | null;
+  canEdit?: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [jobUnit, setJobUnit] = useState("");
@@ -43,7 +51,7 @@ export function JobRateSuggestions({
     <section className="grid gap-3" data-job-rate-suggestions>
       <h2 className="text-base font-semibold">Subcontractor rates</h2>
       <p className="text-sm text-foreground/70">
-        Matching active rates for this job. Choosing one previews a cost only. It is not applied to the Estimate or to Pricing.
+        A work-area match is only a suggestion. It does not mean the supplier scope matches the job. Choosing one previews a cost only. It is not applied to the Estimate or to Pricing.
       </p>
       <label className="grid max-w-xs gap-1 text-sm">Job unit for this preview
         <select className="h-11 min-h-11 rounded-md border border-border bg-background px-3" value={jobUnit} onChange={(event) => setJobUnit(event.target.value)}>
@@ -76,7 +84,7 @@ export function JobRateSuggestions({
                 <p className="font-medium">{rate.tradingName} · {workAreaLabel(rate.workAreaType)}</p>
                 <p>Scope: {rate.scope}</p>
                 <p>Unit: {SUBCONTRACTOR_RATE_UNIT_LABELS[rate.unit as SubcontractorRateUnit] ?? rate.unit} · {money(rate.costExGst)} {rate.currency} ex GST</p>
-                <p>Effective {rate.effectiveFrom}{rate.effectiveUntil ? ` to ${rate.effectiveUntil}` : ", no end date"}</p>
+                <p>Version {rate.versionNumber}. Effective {rate.effectiveFrom}{rate.effectiveUntil ? ` to ${rate.effectiveUntil}` : ", no end date"}</p>
                 <p>Exclusions: {rate.exclusions.trim() ? rate.exclusions : "None recorded"}</p>
                 {rate.fit === "reference" ? rate.reasons.map((reason) => <p key={reason}>{reason}</p>) : <p>The recorded specification and unit match this rate.</p>}
                 {rate.overlaps ? <p>Another active rate covers the same dates.</p> : null}
@@ -89,6 +97,7 @@ export function JobRateSuggestions({
                     {preview.amountExGst == null ? "No job total." : `${money(preview.amountExGst)} ex GST.`} {preview.statement}
                   </p>
                 ) : null}
+                <UseSubcontractorRate projectId={projectId} area={area} rate={rate} pricing={pricing} canEdit={canEdit} />
               </article>
             );
           })}

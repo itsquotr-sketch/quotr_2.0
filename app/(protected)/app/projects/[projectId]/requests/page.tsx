@@ -11,9 +11,10 @@ import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { loadProjectRfqs } from "@/lib/rfqs/load";
 import { loadJobRateBook } from "@/lib/subcontractors/rate-actions";
+import { loadJobPricingForRates } from "@/lib/subcontractors/rate-use-actions";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
-import { memberCanEditProjects } from "@/lib/team/permissions";
+import { memberCanEditPricing, memberCanEditProjects } from "@/lib/team/permissions";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -31,9 +32,10 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
     getOnboardingAccess(),
   ]);
   if (!project) notFound();
-  const [rows, rateBook] = await Promise.all([
+  const [rows, rateBook, ratePricing] = await Promise.all([
     loadProjectRfqs(auth.supabase, projectId),
     loadJobRateBook(projectId),
+    loadJobPricingForRates(projectId),
   ]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
@@ -53,7 +55,14 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <div className="grid gap-6">
-          <JobRateSuggestions areas={rateBook.areas} rates={rateBook.rates} today={rateBook.today} />
+          <JobRateSuggestions
+            projectId={projectId}
+            areas={rateBook.areas}
+            rates={rateBook.rates}
+            today={rateBook.today}
+            pricing={ratePricing}
+            canEdit={memberCanEditPricing(access.role)}
+          />
           <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
         </div>
       </WorkspaceContainer>
