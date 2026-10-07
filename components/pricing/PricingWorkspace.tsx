@@ -55,7 +55,10 @@ import type {
 } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { SupplierPriceProvider } from "@/components/pricing/SupplierPriceEditor";
+import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import type { SupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
+import type { ScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
+import { ScheduleScopeGaps } from "@/components/pricing/ScheduleScopeGaps";
 
 type PricingWorkspaceProps = {
   initialData: PricingWorkspaceData;
@@ -63,6 +66,7 @@ type PricingWorkspaceProps = {
   pricingChangedAfterQuote?: boolean;
   canEditPricing?: boolean;
   supplierReview?: SupplierPriceReview | null;
+  scopeReview?: ScheduleScopeReview | null;
 };
 
 export function PricingWorkspace({
@@ -71,6 +75,7 @@ export function PricingWorkspace({
   pricingChangedAfterQuote = false,
   canEditPricing = true,
   supplierReview = null,
+  scopeReview = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -160,14 +165,18 @@ export function PricingWorkspace({
     [items]
   );
 
+  const activeItems = useMemo(
+    () => items.filter((item) => !isReplacedSubcontractPlaceholder(item)),
+    [items]
+  );
   const groupedSections = useMemo(
-    () => groupPricingItems(items, workAreas, groupBy),
-    [items, workAreas, groupBy]
+    () => groupPricingItems(activeItems, workAreas, groupBy),
+    [activeItems, workAreas, groupBy]
   );
 
   const selectedItems = useMemo(
-    () => items.filter((item) => selectedIds.has(item.id)),
-    [items, selectedIds]
+    () => activeItems.filter((item) => selectedIds.has(item.id)),
+    [activeItems, selectedIds]
   );
   const canDeleteCount = selectedItems.filter(
     (item) =>
@@ -522,6 +531,15 @@ export function PricingWorkspace({
         }
       />
 
+      {scopeReview ? (
+        <ScheduleScopeGaps
+          review={scopeReview}
+          pricingDocumentId={document.id}
+          canEdit={canEditPricing}
+          coveringItems={activeItems.filter((item) => item.visible_on_quote).map((item) => ({ id: item.id, label: item.client_label }))}
+        />
+      ) : null}
+
       <PricingAttention items={items} onJump={jumpToSection} />
 
       <PricingSummaryPanel
@@ -532,6 +550,7 @@ export function PricingWorkspace({
         items={items}
         quoteSummary={quoteSummary}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
+        scopeQuoteBlock={scopeReview?.blocking ?? null}
       />
 
       {quoteSummary != null ? (
@@ -607,13 +626,13 @@ export function PricingWorkspace({
               </span>
             </summary>
             <div className="space-y-4 border-t border-border/60 p-3">
-            {items.length === 0 ? (
+            {activeItems.length === 0 ? (
               <EmptyState
                 title="No pricing items yet"
                 description="Line items appear here after you continue to Pricing from your estimate."
               />
             ) : null}
-            {items.length > 0 ? (
+            {activeItems.length > 0 ? (
               <>
                 <PricingGroupControl
                   value={groupBy}
@@ -753,6 +772,7 @@ export function PricingWorkspace({
           quoteSummary={quoteSummary}
           pricingChangedAfterQuote={pricingChangedAfterQuote}
           canEdit={canEditPricing}
+          scopeQuoteBlock={scopeReview?.blocking ?? null}
         />
       </div>
 
@@ -765,6 +785,7 @@ export function PricingWorkspace({
         hasUnsavedChanges={hasUnsavedChanges}
         needsRecalibration={document.needs_recalibration}
         canEdit={canEditPricing}
+        scopeQuoteBlock={scopeReview?.blocking ?? null}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

@@ -21,6 +21,7 @@ import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { loadPendingRateReconciliations, loadSupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
+import { loadScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
 import { memberCanEditPricing } from "@/lib/team/permissions";
 import {
   MANUAL_PRICING_AFTER_QUOTE_NOTICE,
@@ -51,7 +52,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
       notFound();
     }
 
-    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview] =
+    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview] =
       await Promise.all([
         getPricingWorkspaceDataWithContext(auth, projectId, pricingId),
         getProjectWithContext(auth, projectId),
@@ -61,12 +62,13 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         getOnboardingAccess(),
         loadPendingRateReconciliations(pricingId),
         loadSupplierPriceReview(projectId, pricingId),
+        loadScheduleScopeReview(auth.supabase, auth.orgId, pricingId),
       ]);
 
-    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview };
+    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview };
   });
 
-  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview } =
+  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview } =
     pageData;
 
   const pricingChangedAfterQuote =
@@ -123,6 +125,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         pricingChangedAfterQuote={pricingChangedAfterQuote}
         canEditPricing={memberCanEditPricing(access.role)}
         supplierReview={supplierReview}
+        scopeReview={scopeReview}
       />
     </WorkspacePage>
   );

@@ -32,6 +32,7 @@ type PricingMobileActionBarProps = {
   onRecalibrate?: () => void;
   canEdit?: boolean;
   className?: string;
+  scopeQuoteBlock?: string | null;
 };
 
 export function PricingMobileActionBar({
@@ -48,14 +49,16 @@ export function PricingMobileActionBar({
   onRecalibrate,
   canEdit = true,
   className,
+  scopeQuoteBlock = null,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
   const view = pricingDocumentViewModel(document);
   const manualQuoteBlock = unresolvedManualPricingQuoteBlock(items);
-  const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
-    ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
-    : manualQuoteBlock;
+  const quoteBlockedReason = scopeQuoteBlock
+    || (nestedCeilingsQuoteIsBlocked({ items })
+      ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
+      : manualQuoteBlock);
   const isReviewing = reviewLabel != null;
 
   return (

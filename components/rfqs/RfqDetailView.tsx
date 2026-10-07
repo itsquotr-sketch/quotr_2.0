@@ -32,8 +32,15 @@ export function RfqDetailView({
   const diagnostics = detail.events.filter((event) => event.kind.includes("delivery") || event.kind.includes("email") || event.kind === "link_prepared" || event.summary.startsWith("Mail service"));
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("question");
-    if (!id) return;
-    document.getElementById(`question-${id}`)?.scrollIntoView({ block: "center" });
+    const hash = window.location.hash.replace(/^#/, "");
+    const target = (id ? `question-${id}` : hash);
+    if (!target) return;
+    const matches = [
+      document.getElementById(target),
+      ...document.querySelectorAll(`[data-rfq-anchor~="${CSS.escape(target)}"]`),
+    ].filter((node): node is HTMLElement => node instanceof HTMLElement);
+    const visible = matches.find((node) => node.getClientRects().length > 0) ?? matches[0];
+    visible?.scrollIntoView({ block: "center" });
   }, []);
 
   async function resend(recipientId: string) {

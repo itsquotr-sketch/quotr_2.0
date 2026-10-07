@@ -487,7 +487,8 @@ export type SupplierPriceLine = {
   sellTreatment: string;
   minimumApplied: boolean;
   rate?: StoredRateVersion;
-  schedule?: { projectId: string; rfqId: string; responseId: string; versionNumber: number };
+  schedule?: { projectId: string; rfqId: string; responseId: string; scheduleItemId: string; versionNumber: number };
+  replaces?: Array<{ id: string; label: string; cost: number; sell: number }>;
   area: { id: string; name: string; summary: string | null };
 };
 
@@ -514,7 +515,7 @@ export async function loadSupplierPriceReview(
   const rows = applications.data ?? [];
   const scheduleApplications = await context.supabase
     .from("rfq_schedule_pricing_applications")
-    .select("allowance_item_id, response_id, response_version, rfq_id, scope, excluded_scope, unit, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, work_area_id")
+    .select("allowance_item_id, response_id, response_version, rfq_id, schedule_item_id, scope, excluded_scope, unit, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, work_area_id, replaced_item_ids, before_lines")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", context.orgId)
     .is("superseded_at", null);
@@ -544,11 +545,13 @@ export async function loadSupplierPriceReview(
           projectId,
           rfqId: row.rfq_id,
           responseId: row.response_id,
+          scheduleItemId: row.schedule_item_id,
           versionNumber: row.response_version,
         },
         area: { id: area.id, name: area.name, summary: area.summary },
       };
     }
+    await attachScheduleReplacements(context.supabase, byItemId, scheduleRows);
     return { projectId, pricing, byItemId };
   }
   const versionIds = rows.map((row) => row.rate_version_id);
@@ -635,11 +638,38 @@ export async function loadSupplierPriceReview(
           projectId,
           rfqId: row.rfq_id,
           responseId: row.response_id,
+          scheduleItemId: row.schedule_item_id,
           versionNumber: row.response_version,
         },
         area: { id: area.id, name: area.name, summary: area.summary },
       };
     }
   }
+  await attachScheduleReplacements(context.supabase, byItemId, scheduleRows);
   return { projectId, pricing, byItemId };
+}
+
+async function attachScheduleReplacements(
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
+  byItemId: Record<string, SupplierPriceLine>,
+  rows: Array<{ allowance_item_id: string; schedule_item_id: string; replaced_item_ids: string[] | null; before_lines: Array<{ id?: string; total_cost?: number; total_sell?: number }> | null }>
+) {
+  const ids = [...new Set(rows.flatMap((row) => row.replaced_item_ids ?? []))];
+  const labels = ids.length === 0
+    ? { data: [] as Array<{ id: string; client_label: string | null }> }
+    : await supabase.from("pricing_items").select("id, client_label").in("id", ids);
+  const labelById = new Map((labels.data ?? []).map((row) => [row.id, row.client_label || "Original item"]));
+  for (const row of rows) {
+    const line = byItemId[row.allowance_item_id];
+    if (!line) continue;
+    line.replaces = (row.replaced_item_ids ?? []).map((id) => {
+      const before = (row.before_lines ?? []).find((item) => item.id === id);
+      return {
+        id,
+        label: labelById.get(id) || "Original item",
+        cost: Number(before?.total_cost ?? 0),
+        sell: Number(before?.total_sell ?? 0),
+      };
+    });
+  }
 }

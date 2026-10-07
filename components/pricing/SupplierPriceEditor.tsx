@@ -74,7 +74,7 @@ export function SupplierPriceEditor({
           <dt className="text-xs text-muted-foreground">{line.schedule ? "Response version" : "Rate version"}</dt>
           <dd>
             {line.schedule ? (
-              <Link className="underline" href={`/app/projects/${line.schedule.projectId}/requests/${line.schedule.rfqId}#rfq-response-${line.schedule.responseId}`}>
+              <Link className="underline" href={`/app/projects/${line.schedule.projectId}/requests/${line.schedule.rfqId}#rfq-response-${line.schedule.responseId}-item-${line.schedule.scheduleItemId}`}>
                 Version {line.schedule.versionNumber}
               </Link>
             ) : (

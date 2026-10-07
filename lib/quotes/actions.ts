@@ -724,6 +724,13 @@ export async function createQuoteFromPricing(input: {
   }
 
   const { quoteFields, quoteItems } = snapshot;
+  const { loadScheduleScopeReview } = await import("@/lib/rfqs/schedule-scope-gaps");
+  const scopeReview = await loadScheduleScopeReview(supabase, orgId, pricingDocumentId);
+  if (scopeReview.blocking) return { error: scopeReview.blocking };
+  quoteFields.exclusions = [
+    ...quoteFields.exclusions,
+    ...scopeReview.clientExclusions.filter((line) => !quoteFields.exclusions.includes(line)),
+  ];
 
   const created = await runQuoteTxn(supabase, INSERT_DRAFT_QUOTE_RPC, {
     p_payload: {

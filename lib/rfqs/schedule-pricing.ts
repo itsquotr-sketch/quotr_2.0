@@ -19,6 +19,31 @@ import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const FAILED = "Could not apply those items to pricing. Nothing was changed.";
 
+function coverageReady(coverage: ScheduleCoverageInput, allowedItemIds: string[]): boolean {
+  if (coverage.decision === "covered_by_item") return Boolean(coverage.itemId && allowedItemIds.includes(coverage.itemId));
+  if (coverage.decision === "client_exclusion") return coverage.wording.trim().length >= 3;
+  return coverage.note.trim().length >= 3;
+}
+
+function coveragePayload(coverage: ScheduleCoverageInput | null) {
+  if (!coverage) return null;
+  return {
+    decision: coverage.decision,
+    item_id: coverage.itemId,
+    wording: coverage.wording,
+    note: coverage.note,
+  };
+}
+
+export type ScheduleCoverageDecision = "covered_by_item" | "client_exclusion" | "builder_responsibility";
+
+export type ScheduleCoverageInput = {
+  decision: ScheduleCoverageDecision;
+  itemId: string | null;
+  wording: string;
+  note: string;
+};
+
 export type SchedulePricingRowInput = {
   scheduleItemId: string;
   mode: "replace" | "add";
@@ -31,6 +56,7 @@ export type SchedulePricingRowInput = {
   qualificationAcknowledged: boolean;
   acknowledgeAlternative: boolean;
   acknowledgeSource: boolean;
+  coverage: ScheduleCoverageInput | null;
 };
 
 export type SchedulePricingPreview = {
@@ -91,6 +117,8 @@ function moneyError(code: string | undefined): string {
       return "Confirm the supplier scope matches this job.";
     case "QUALIFICATION":
       return "Acknowledge the qualification on each qualified line before using it.";
+    case "COVERAGE":
+      return "Choose how the supplier condition is covered. An acknowledgement does not decide the client scope.";
     case "ALTERNATIVE":
       return "An alternative cannot be added beside its base item until you review that conflict.";
     case "SOURCE":
@@ -152,6 +180,7 @@ export async function previewSchedulePricing(input: {
   pricingDocumentId: string;
   workAreaId: string;
   rows: SchedulePricingRowInput[];
+  responseCoverage: ScheduleCoverageInput | null;
 }): Promise<SchedulePricingPreview | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
@@ -165,6 +194,7 @@ export async function applySchedulePricing(input: {
   pricingDocumentId: string;
   workAreaId: string;
   rows: SchedulePricingRowInput[];
+  responseCoverage: ScheduleCoverageInput | null;
 }): Promise<{ ok: true; alreadyApplied: boolean } | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
@@ -201,6 +231,7 @@ export async function applySchedulePricing(input: {
       qualification_acknowledged: row.qualificationAcknowledged ? "true" : "false",
       acknowledge_alternative: row.acknowledgeAlternative ? "true" : "false",
       acknowledge_source: row.acknowledgeSource ? "true" : "false",
+      coverage: coveragePayload(row.coverage),
       target_margin_percent: row.sellTreatment === "target_margin" ? built.preview.targetMarginPercent : null,
       total_cost: choice.allowance.totalCost,
       total_sell: choice.allowance.totalSell,
@@ -216,6 +247,7 @@ export async function applySchedulePricing(input: {
       work_area_id: input.workAreaId,
       request_sent_at: built.requestSentAt,
       rows: payloadRows,
+      response_coverage: coveragePayload(input.responseCoverage),
     },
   });
   const body = (applied.data ?? {}) as { ok?: boolean; error?: string; alreadyApplied?: boolean };
@@ -244,6 +276,41 @@ export async function applySchedulePricing(input: {
   return { ok: true, alreadyApplied: false };
 }
 
+export async function resolveScheduleGap(input: {
+  pricingDocumentId: string;
+  responseId: string;
+  scheduleItemId: string;
+  coverage: ScheduleCoverageInput;
+}): Promise<{ ok: true } | Fail> {
+  const loaded = await writer();
+  if (!loaded.ok) return loaded;
+  const resolved = await loaded.context.supabase.rpc("resolve_rfq_schedule_gap_v1", {
+    p_payload: {
+      pricing_document_id: input.pricingDocumentId,
+      response_id: input.responseId,
+      schedule_item_id: input.scheduleItemId,
+      decision: input.coverage.decision,
+      item_id: input.coverage.itemId,
+      wording: input.coverage.wording,
+      note: input.coverage.note,
+    },
+  });
+  const body = (resolved.data ?? {}) as { ok?: boolean; error?: string };
+  if (resolved.error || body.ok !== true) {
+    return {
+      ok: false,
+      error: body.error === "NOT_APPLICABLE"
+        ? "That required item is already covered here, or it is not an open gap on this response."
+        : moneyError(body.error),
+    };
+  }
+  const document = await loaded.context.supabase.from("pricing_documents").select("project_id").eq("id", input.pricingDocumentId).maybeSingle();
+  if (document.data?.project_id) {
+    revalidatePath(`/app/projects/${document.data.project_id}/pricing/${input.pricingDocumentId}`);
+  }
+  return { ok: true };
+}
+
 async function buildSchedulePreview(
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
   orgId: string,
@@ -252,6 +319,7 @@ async function buildSchedulePreview(
     pricingDocumentId: string;
     workAreaId: string;
     rows: SchedulePricingRowInput[];
+    responseCoverage: ScheduleCoverageInput | null;
   }
 ): Promise<{ ok: true; preview: SchedulePricingPreview; requestSentAt: string; gstRate: number; projectId: string; rfqId: string; quoteIssued: boolean } | Fail> {
   if (input.rows.length === 0) return { ok: false, error: "Choose at least one priced item." };
@@ -286,7 +354,7 @@ async function buildSchedulePreview(
   const quoteIssued = document.data.status === "converted_to_quote"
     || (quotes.data ?? []).some((quote) => quote.status !== "draft" && quote.status !== "archived");
   const [items, schedule, lines, applications, rates, lump] = await Promise.all([
-    supabase.from("pricing_items").select("id, client_label, total_cost, total_sell, work_area_id, unit").eq("pricing_document_id", document.data.id),
+    supabase.from("pricing_items").select("id, client_label, total_cost, total_sell, work_area_id, unit, visible_on_quote").eq("pricing_document_id", document.data.id),
     supabase.from("rfq_schedule_items").select("id, scope, specification, quantity, unit, line_role").eq("rfq_id", rfq.data.id),
     supabase.from("rfq_response_lines").select("schedule_item_id, decision, unit_price_ex_gst, amount_ex_gst, qualification, reason").eq("response_id", response.data.id),
     supabase.from("rfq_schedule_pricing_applications").select("schedule_item_id, allowance_item_id, response_id").eq("pricing_document_id", document.data.id).is("superseded_at", null),
@@ -313,6 +381,7 @@ async function buildSchedulePreview(
     label: (item.client_label as string) || "Pricing item",
     workAreaId: item.work_area_id as string | null,
     unit: item.unit as string | null,
+    visible: item.visible_on_quote !== false,
   }));
   const unpriced = (schedule.data ?? [])
     .filter((item) => {
@@ -320,6 +389,12 @@ async function buildSchedulePreview(
       return item.line_role === "required" && (!line || line.decision !== "priced" || line.amount_ex_gst == null);
     })
     .map((item) => item.scope as string);
+  const exclusion = String(response.data.excluded_scope ?? "").trim();
+  if (exclusion && !input.responseCoverage) return { ok: false, error: moneyError("COVERAGE") };
+  if (!exclusion && input.responseCoverage) return { ok: false, error: moneyError("COVERAGE") };
+  if (input.responseCoverage && !coverageReady(input.responseCoverage, sourceItems.filter((item) => item.visible).map((item) => item.id))) {
+    return { ok: false, error: moneyError("COVERAGE") };
+  }
   const selectedIds = new Set<string>();
   const replacedIds = new Set<string>();
   const rows: SchedulePricingPreview["rows"] = [];
@@ -332,7 +407,8 @@ async function buildSchedulePreview(
       return { ok: false, error: moneyError("NOT_PRICED") };
     }
     if (!row.scopeConfirmed) return { ok: false, error: moneyError("CONFIRM_SCOPE") };
-    if (String(line.qualification ?? "").trim() && !row.qualificationAcknowledged) {
+    const qualified = String(line.qualification ?? "").trim();
+    if (qualified && !row.qualificationAcknowledged) {
       return { ok: false, error: moneyError("QUALIFICATION") };
     }
     const targets = row.mode === "replace" ? row.replacedItemIds : [];
@@ -347,6 +423,11 @@ async function buildSchedulePreview(
         return { ok: false, error: moneyError("UNIT") };
       }
     }
+    const coverIds = sourceItems.filter((candidate) => candidate.visible && !targets.includes(candidate.id)).map((candidate) => candidate.id);
+    if (qualified && (!row.coverage || !coverageReady(row.coverage, coverIds))) {
+      return { ok: false, error: moneyError("COVERAGE") };
+    }
+    if (!qualified && row.coverage) return { ok: false, error: moneyError("COVERAGE") };
     const sourceConflict = targets.some((targetId) =>
       (rates.data ?? []).some((rate) => rate.allowance_item_id === targetId)
       || (lump.data ?? []).some((application) => application.allowance_item_id === targetId || (application.replaced_item_ids ?? []).includes(targetId))

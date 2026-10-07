@@ -32,6 +32,7 @@ type PricingSummaryPanelProps = {
   className?: string;
   compact?: boolean;
   canEdit?: boolean;
+  scopeQuoteBlock?: string | null;
 };
 
 function SummaryRow({
@@ -68,6 +69,7 @@ export function PricingSummaryPanel({
   className,
   compact = false,
   canEdit = true,
+  scopeQuoteBlock = null,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
@@ -90,9 +92,10 @@ export function PricingSummaryPanel({
       : view.costKnown
         ? view.subtotalCostFormatted
         : "Pricing required";
-  const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
-    ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
-    : unresolvedManualPricingQuoteBlock(items);
+  const quoteBlockedReason = scopeQuoteBlock
+    || (nestedCeilingsQuoteIsBlocked({ items })
+      ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
+      : unresolvedManualPricingQuoteBlock(items));
 
   return (
     <Card

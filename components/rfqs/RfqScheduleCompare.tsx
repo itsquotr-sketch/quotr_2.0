@@ -37,6 +37,7 @@ export function RfqScheduleCompare({
       <ul className="grid gap-3 md:hidden">
         {detail.schedule.map((item) => (
           <li key={item.id} className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm">
+            {latest.map(({ response: version }) => version ? <span key={version.id} id={`rfq-response-${version.id}-item-${item.id}`} /> : null)}
             <p className="font-medium break-words">{item.scope}</p>
             {item.specification ? <p className="break-words">{item.specification}</p> : null}
             <p>{item.unit === "lump_sum" ? "Lump sum" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}</p>
@@ -64,7 +65,7 @@ export function RfqScheduleCompare({
           </thead>
           <tbody>
             {detail.schedule.map((item) => (
-              <tr key={item.id} className="border-b border-border align-top">
+              <tr key={item.id} className="border-b border-border align-top" data-rfq-anchor={latest.map(({ response: version }) => version ? `rfq-response-${version.id}-item-${item.id}` : "").filter(Boolean).join(" ")}>
                 <td className="py-3 pr-3">
                   <p className="font-medium">{item.scope}</p>
                   <p className="text-foreground/70">{item.unit === "lump_sum" ? "Lump sum" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}</p>

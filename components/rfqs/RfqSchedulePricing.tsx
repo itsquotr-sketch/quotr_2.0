@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { RfqDetail, RfqPricingTarget } from "@/lib/rfqs/load";
 import { applySchedulePricing, previewSchedulePricing } from "@/lib/rfqs/schedule-pricing";
-import type { SchedulePricingPreview, SchedulePricingRowInput } from "@/lib/rfqs/schedule-pricing";
+import type { ScheduleCoverageDecision, ScheduleCoverageInput, SchedulePricingPreview, SchedulePricingRowInput } from "@/lib/rfqs/schedule-pricing";
 import type { RfqSellTreatment } from "@/lib/rfqs/pricing-preview";
 import { scheduleRoleLabel, scheduleUnitLabel } from "@/lib/rfqs/schedule";
 import { gstTreatmentLabel } from "@/lib/rfqs/shared";
@@ -32,6 +32,10 @@ type RowState = {
   qualificationAcknowledged: boolean;
   acknowledgeAlternative: boolean;
   acknowledgeSource: boolean;
+  coverageDecision: ScheduleCoverageDecision | "";
+  coverageWording: string;
+  coverageNote: string;
+  coverageItemId: string;
 };
 
 function blankRow(label: string): RowState {
@@ -47,7 +51,69 @@ function blankRow(label: string): RowState {
     qualificationAcknowledged: false,
     acknowledgeAlternative: false,
     acknowledgeSource: false,
+    coverageDecision: "",
+    coverageWording: "",
+    coverageNote: "",
+    coverageItemId: "",
   };
+}
+
+function CoverageFields({
+  decision,
+  wording,
+  note,
+  itemId,
+  targets,
+  onChange,
+}: {
+  decision: ScheduleCoverageDecision | "";
+  wording: string;
+  note: string;
+  itemId: string;
+  targets: Array<{ id: string; label: string }>;
+  onChange: (patch: { decision?: ScheduleCoverageDecision | ""; wording?: string; note?: string; itemId?: string }) => void;
+}) {
+  return (
+    <fieldset className="grid gap-2">
+      <legend>How is this condition covered?</legend>
+      {([
+        ["covered_by_item", "Another Pricing item already covers it"],
+        ["client_exclusion", "The client quote will exclude it"],
+        ["builder_responsibility", "The builder will cover it, privately"],
+      ] as const).map(([value, label]) => (
+        <label key={value} className="flex min-h-11 items-start gap-2">
+          <input type="radio" className="mt-1" checked={decision === value} onChange={() => onChange({ decision: value })} />
+          <span>{label}</span>
+        </label>
+      ))}
+      {decision === "covered_by_item" ? (
+        <label className="grid gap-1">
+          Covering Pricing item
+          <select className="h-11 min-h-11 rounded-md border border-border bg-background px-3" value={itemId} onChange={(event) => onChange({ itemId: event.target.value })}>
+            <option value="">Choose an item</option>
+            {targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {decision === "client_exclusion" ? (
+        <label className="grid gap-1">
+          Client exclusion wording
+          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={wording} onChange={(event) => onChange({ wording: event.target.value })} />
+        </label>
+      ) : null}
+      {decision === "builder_responsibility" ? (
+        <label className="grid gap-1">
+          Internal explanation
+          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={note} onChange={(event) => onChange({ note: event.target.value })} />
+        </label>
+      ) : null}
+    </fieldset>
+  );
+}
+
+function coverageFrom(decision: ScheduleCoverageDecision | "", wording: string, note: string, itemId: string): ScheduleCoverageInput | null {
+  if (!decision) return null;
+  return { decision, wording, note, itemId: itemId || null };
 }
 
 export function RfqSchedulePricing({
@@ -70,6 +136,10 @@ export function RfqSchedulePricing({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
+  const [responseDecision, setResponseDecision] = useState<ScheduleCoverageDecision | "">("");
+  const [responseWording, setResponseWording] = useState("");
+  const [responseNote, setResponseNote] = useState("");
+  const [responseItemId, setResponseItemId] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
   const response = submitted.find((item) => item.id === responseId) ?? null;
   const recipient = detail.recipients.find((item) => item.id === response?.recipientId);
@@ -119,6 +189,9 @@ export function RfqSchedulePricing({
         qualificationAcknowledged: state.qualificationAcknowledged,
         acknowledgeAlternative: state.acknowledgeAlternative,
         acknowledgeSource: state.acknowledgeSource,
+        coverage: line.qualification.trim()
+          ? coverageFrom(state.coverageDecision, state.coverageWording, state.coverageNote, state.coverageItemId)
+          : null,
       };
     });
   }
@@ -141,6 +214,9 @@ export function RfqSchedulePricing({
       pricingDocumentId: pricing.documentId,
       workAreaId: detail.workAreaId || targets[0]?.workAreaId || "",
       rows: payload,
+      responseCoverage: response.excludedScope.trim()
+        ? coverageFrom(responseDecision, responseWording, responseNote, responseItemId)
+        : null,
     });
     setPending(false);
     if (!result.ok) {
@@ -162,6 +238,9 @@ export function RfqSchedulePricing({
       pricingDocumentId: pricing.documentId,
       workAreaId: detail.workAreaId || targets[0]?.workAreaId || "",
       rows: payload,
+      responseCoverage: response.excludedScope.trim()
+        ? coverageFrom(responseDecision, responseWording, responseNote, responseItemId)
+        : null,
     });
     setPending(false);
     if (!result.ok) {
@@ -196,6 +275,10 @@ export function RfqSchedulePricing({
               onChange={(event) => {
                 setResponseId(event.target.value);
                 setRows({});
+                setResponseDecision("");
+                setResponseWording("");
+                setResponseNote("");
+                setResponseItemId("");
                 clearPreview();
               }}
             >
@@ -209,7 +292,27 @@ export function RfqSchedulePricing({
           <div className="grid gap-1">
             <p>{recipient?.tradingName || "Recipient"} · version {response.versionNumber}</p>
             <p>Valid until {response.validUntil || "No date given"} · {gstTreatmentLabel(response.gstTreatment)} is evidence about the offer. Pricing GST stays on the document.</p>
-            <p>Exclusions: {response.excludedScope.trim() || "None stated"}.</p>
+            <p className="break-words">Exclusions: {response.excludedScope.trim() || "None stated"}.</p>
+            {response.excludedScope.trim() ? (
+              <div className="grid gap-2 rounded-md border border-border p-3">
+                <p className="text-xs text-muted-foreground">Private supplier exclusion</p>
+                <p className="break-words">{response.excludedScope}</p>
+                <CoverageFields
+                  decision={responseDecision}
+                  wording={responseWording}
+                  note={responseNote}
+                  itemId={responseItemId}
+                  targets={targets}
+                  onChange={(patch) => {
+                    if (patch.decision != null) setResponseDecision(patch.decision);
+                    if (patch.wording != null) setResponseWording(patch.wording);
+                    if (patch.note != null) setResponseNote(patch.note);
+                    if (patch.itemId != null) setResponseItemId(patch.itemId);
+                    clearPreview();
+                  }}
+                />
+              </div>
+            ) : null}
             <p>Assumptions: {response.assumptions.trim() || "None stated"}.</p>
             <p>Schedule frozen at send.</p>
             {response.completeness === "partial" ? (
@@ -232,7 +335,10 @@ export function RfqSchedulePricing({
                     {priced ? ` · ${item.unit === "lump_sum" ? money(line?.amountExGst ?? null) : `${money(line?.unitPriceExGst ?? null)} · ${money(line?.amountExGst ?? null)} ex GST`}` : " · Not priced"}
                   </p>
                   {line?.qualification ? <p className="break-words">Qualification: {line.qualification}</p> : null}
-                  {line?.decision === "not_priced" ? <p>Not priced. {line.reason || "No reason recorded."} This is not $0.</p> : null}
+                  {line?.decision === "not_priced" ? <p className="break-words">Not priced. {line.reason || "No reason recorded."} This is not $0. Unresolved — not part of this application.</p> : null}
+                  {!priced && item.role !== "required" ? <p>Outside this application.</p> : null}
+                  {priced && !state.selected && item.role === "required" ? <p>Not selected. This required item is not covered by this application.</p> : null}
+                  {priced && !state.selected && item.role !== "required" ? <p>Outside this application until you select it.</p> : null}
                   {priced ? (
                     <label className="flex min-h-11 items-center gap-2">
                       <input
@@ -296,10 +402,37 @@ export function RfqSchedulePricing({
                         </label>
                       ) : null}
                       {line.qualification ? (
-                        <label className="flex min-h-11 items-start gap-2">
-                          <input type="checkbox" className="mt-1" checked={state.qualificationAcknowledged} onChange={(event) => updateRow(item.id, item.scope, { qualificationAcknowledged: event.target.checked })} />
-                          <span className="break-words">I acknowledge this qualification: {line.qualification}</span>
-                        </label>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Private supplier qualification</p>
+                            <p className="break-words">{line.qualification}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Client-facing scope</p>
+                            <p className="break-words font-medium">{state.clientLabel}</p>
+                            <p className="break-words">{item.scope}</p>
+                            {state.coverageDecision === "client_exclusion" && state.coverageWording.trim() ? <p className="break-words">Excluded: {state.coverageWording}</p> : null}
+                          </div>
+                          <label className="flex min-h-11 items-start gap-2 md:col-span-2">
+                            <input type="checkbox" className="mt-1" checked={state.qualificationAcknowledged} onChange={(event) => updateRow(item.id, item.scope, { qualificationAcknowledged: event.target.checked })} />
+                            <span className="break-words">I have read this qualification. It is not copied onto the quote.</span>
+                          </label>
+                          <div className="md:col-span-2">
+                            <CoverageFields
+                              decision={state.coverageDecision}
+                              wording={state.coverageWording}
+                              note={state.coverageNote}
+                              itemId={state.coverageItemId}
+                              targets={targets.filter((target) => target.id !== state.replacedId)}
+                              onChange={(patch) => updateRow(item.id, item.scope, {
+                                coverageDecision: patch.decision ?? state.coverageDecision,
+                                coverageWording: patch.wording ?? state.coverageWording,
+                                coverageNote: patch.note ?? state.coverageNote,
+                                coverageItemId: patch.itemId ?? state.coverageItemId,
+                              })}
+                            />
+                          </div>
+                        </div>
                       ) : null}
                       {item.role === "alternative" ? (
                         <label className="flex min-h-11 items-start gap-2">
@@ -336,6 +469,12 @@ export function RfqSchedulePricing({
                 return (
                   <div key={row.scheduleItemId} className="grid gap-1 rounded-md border border-border p-3">
                     <p className="break-words font-medium">{row.scope}</p>
+                    {row.qualification ? (
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <p className="break-words"><span className="text-muted-foreground">Private qualification: </span>{row.qualification}</p>
+                        <p className="break-words"><span className="text-muted-foreground">Client scope: </span>{rows[row.scheduleItemId]?.clientLabel}. {rows[row.scheduleItemId]?.coverageDecision === "client_exclusion" ? `Excluded: ${rows[row.scheduleItemId]?.coverageWording}` : "No client exclusion from this qualification."}</p>
+                      </div>
+                    ) : null}
                     <p>Supplier cost ex GST: {money(row.cost)}</p>
                     <p>Current cost: {money(row.currentCost, "None")} · Current sell: {money(row.currentSell, "Pricing Required")}</p>
                     {choice?.available ? (

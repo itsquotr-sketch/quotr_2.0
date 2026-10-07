@@ -271,6 +271,21 @@ function PricingItemRowComponent({
       {line.supporting ? (
         <p className="truncate text-xs text-muted-foreground">{line.supporting}</p>
       ) : null}
+      {supplierPrice?.replaces && supplierPrice.replaces.length > 0 ? (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-xs">Replaces {supplierPrice.replaces.map((item) => item.label).join(", ")}</summary>
+          <div className="mt-1 grid gap-1 text-xs text-muted-foreground">
+            {supplierPrice.replaces.map((item) => (
+              <p key={item.id}>Original {item.label}: cost {formatPricingMoney(item.cost)}, sell {formatPricingMoney(item.sell)}. Kept for audit, not in the current total or the client quote.</p>
+            ))}
+          </div>
+        </details>
+      ) : null}
+      {supplierPrice?.schedule ? (
+        <Link className="text-xs underline" href={`/app/projects/${supplierPrice.schedule.projectId}/requests/${supplierPrice.schedule.rfqId}#rfq-response-${supplierPrice.schedule.responseId}-item-${supplierPrice.schedule.scheduleItemId}`}>
+          Response version {supplierPrice.schedule.versionNumber}
+        </Link>
+      ) : null}
       <div className="mt-1 flex flex-wrap items-center gap-1.5">
         {moneyView.pricingRequired ? (
           <Badge
@@ -282,7 +297,7 @@ function PricingItemRowComponent({
         ) : null}
         {supplierPrice ? (
           <Badge variant="outline" className="text-xs font-medium">
-            Supplier rate v{supplierPrice.versionNumber}
+            {supplierPrice.schedule ? `Response v${supplierPrice.schedule.versionNumber}` : `Supplier rate v${supplierPrice.versionNumber}`}
           </Badge>
         ) : null}
         <PricingOwnershipBadge
