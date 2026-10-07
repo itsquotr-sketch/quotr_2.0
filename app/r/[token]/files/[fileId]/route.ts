@@ -11,7 +11,7 @@ function asciiFilename(value: string): string {
   return cleaned || "file";
 }
 
-export async function GET(_request: Request, { params }: RouteProps): Promise<Response> {
+export async function GET(request: Request, { params }: RouteProps): Promise<Response> {
   const { token, fileId } = await params;
   if (!isRfqAccessTokenFormat(token) || !/^[0-9a-f-]{36}$/i.test(fileId)) {
     return new Response("This request is unavailable.", { status: 404 });
@@ -42,7 +42,9 @@ export async function GET(_request: Request, { params }: RouteProps): Promise<Re
     return new Response("This file is no longer available.", { status: 404 });
   }
   const filename = asciiFilename(body.filename);
-  const inline = body.mimeType === "application/pdf" || body.mimeType.startsWith("image/");
+  const download = new URL(request.url).searchParams.get("download") === "1";
+  const viewable = body.mimeType === "application/pdf" || body.mimeType.startsWith("image/");
+  const inline = viewable && !download;
   return new Response(downloaded.data, {
     headers: {
       "Content-Type": body.mimeType,
@@ -50,6 +52,7 @@ export async function GET(_request: Request, { params }: RouteProps): Promise<Re
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "X-Robots-Tag": "noindex",
+      "Referrer-Policy": "no-referrer",
     },
   });
 }

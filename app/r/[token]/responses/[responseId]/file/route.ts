@@ -31,6 +31,7 @@ export async function GET(_request: Request, { params }: RouteProps): Promise<Re
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "X-Robots-Tag": "noindex",
+      "Referrer-Policy": "no-referrer",
     },
   });
 }

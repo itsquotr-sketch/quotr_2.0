@@ -16,7 +16,9 @@ import {
   PREVIEW_SUPABASE_PROJECT_REF,
   PRODUCTION_SUPABASE_PROJECT_REF,
 } from "../lib/deployment/environment";
+import { composeJobDraft, stripSupplierIdentity } from "../lib/rfqs/draft-compose";
 import { buildRfqDeliveryEmail } from "../lib/rfqs/email";
+import { scopeIsMeaningful } from "../lib/rfqs/validate";
 import { RFQ_WITHHELD } from "../lib/rfqs/shared";
 import { rfqResponseLabel } from "../lib/rfqs/states";
 import { generateRfqAccessToken, hashRfqAccessToken, isRfqAccessTokenFormat } from "../lib/rfqs/token";
@@ -152,6 +154,23 @@ function staticMain() {
   assert("mobile nav stays five items", mobile.includes('data-mobile-nav="five"') && !mobile.includes("/requests"));
   assert("project sections stay four columns", header.includes('data-project-section-columns="four"') && header.includes("Requests"));
   assert("public page has no sign-in", !pub.includes("requireAuth"));
+  const questions = read("supabase/migrations/097_rfq_questions.sql");
+  const facts = read("lib/rfqs/draft-facts.ts");
+  assert("placeholder scope is rejected", scopeIsMeaningful("as") === false && scopeIsMeaningful("   ") === false);
+  assert("a real scope is accepted", scopeIsMeaningful("Supply and install the bathroom wall lining."));
+  assert("draft comes from job details", composer.includes("Draft from job details") && composer.includes("data-rfq-review"));
+  assert("job draft skips client and cost fields", !facts.includes("client_name") && !facts.includes("unit_cost") && !facts.includes("projects.notes"));
+  const draft = composeJobDraft([
+    { id: "a", field: "scope", source: "Project description", text: "Bathroom lining", uncertain: false },
+    { id: "b", field: "measurements", source: "Measured quantity", text: "12 m2", uncertain: true },
+  ]);
+  assert("uncertain quantity is marked", draft.measurementNotes.includes("(check this quantity)") && draft.requestedScope === "Bathroom lining");
+  assert("shared answer removes the asking business", stripSupplierIdentity("Ask Northside about $400", ["Northside"]).includes("a subcontractor") && !stripSupplierIdentity("Ask Northside about $400", ["Northside"]).includes("$"));
+  assert("email button names the action", mail.html.includes("View request and respond"));
+  assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));
+  assert("scope change is not an ordinary answer", questions.includes("SCOPE_CHANGE") && actions.includes("SCOPE_CHANGE"));
+  assert("questions notify editors only", questions.includes("rfq_question") && questions.includes("'owner', 'admin', 'estimator'") && !questions.includes("'viewer'"));
+  assert("file download stays on the request page", pub.includes('target="_blank"') && pub.includes("download=1"));
   assert("token format is unguessable length", isRfqAccessTokenFormat(generateRfqAccessToken()) && hashRfqAccessToken("rfq_x").length === 64);
 }
 
@@ -350,6 +369,56 @@ async function liveMain() {
     const foreignRead = await foreign.from("rfqs").select("id").eq("id", draft.data.id);
     assert("another organisation cannot read the request", !foreignRead.data?.length);
     const question = await anon.rpc("public_rfq_clarify_v1", { p_token_hash: hashRfqAccessToken(rawA), p_body: "Does this include silicone?" });
+    const asked = await admin.from("rfq_clarifications").select("id").eq("recipient_id", recipientA.id).eq("from_recipient", true);
+    const noteId = asked.data?.[0]?.id;
+    const ownerNotes = noteId
+      ? await admin.from("notifications").select("id").eq("notification_type", "rfq_question").eq("resource_id", noteId).eq("recipient_user_id", userIds[0])
+      : { data: [] };
+    const viewerNotes = noteId
+      ? await admin.from("notifications").select("id").eq("notification_type", "rfq_question").eq("resource_id", noteId).eq("recipient_user_id", userIds[1])
+      : { data: [] };
+    const duplicateNote = noteId
+      ? await admin.from("notifications").insert({
+          org_id: orgA,
+          recipient_user_id: userIds[0],
+          notification_type: "rfq_question",
+          title: "Question on a request",
+          body: "duplicate",
+          resource_type: "rfq",
+          resource_id: noteId,
+          project_id: projectId,
+        })
+      : { error: null };
+    assert("one question notifies the owner once", question.data?.ok === true && ownerNotes.data?.length === 1);
+    assert("a viewer is not notified to answer", (viewerNotes.data ?? []).length === 0);
+    assert("the same question is not notified twice", Boolean(duplicateNote.error));
+    const blockedAnswer = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: noteId, body: "Please also tile the laundry", audience: "private", scope_unchanged: "false" },
+    });
+    const scopeAfterBlock = await admin.from("rfqs").select("requested_scope").eq("id", draft.data.id).single();
+    assert("a scope change is refused and the sent request stays", blockedAnswer.data?.error === "SCOPE_CHANGE" && String(scopeAfterBlock.data?.requested_scope).includes(`Tile the bathroom ${suffix}`));
+    const viewerAnswer = await viewer.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: noteId, body: "No", audience: "private", scope_unchanged: "true" },
+    });
+    assert("a viewer cannot answer", viewerAnswer.data?.error === "FORBIDDEN");
+    const privateAnswer = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: noteId, body: "Silicone is included for this bathroom", audience: "private", scope_unchanged: "true" },
+    });
+    const privateSeenA = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawA) });
+    const privateSeenB = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
+    assert(
+      "a private answer reaches only the asking recipient",
+      privateAnswer.data?.ok === true && JSON.stringify(privateSeenA.data).includes("Silicone is included") && !JSON.stringify(privateSeenB.data).includes("Silicone is included")
+    );
+    const sharedAnswer = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: noteId, body: "White silicone is acceptable", audience: "all", scope_unchanged: "true" },
+    });
+    const sharedSeenB = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
+    const sharedPayload = JSON.stringify(sharedSeenB.data);
+    assert(
+      "a shared answer reaches the other recipient without the asking business",
+      sharedAnswer.data?.ok === true && sharedPayload.includes("White silicone is acceptable") && !sharedPayload.includes(`Tile Co ${suffix}`)
+    );
     const offer = await anon.rpc("public_rfq_save_response_v1", {
       p_token_hash: hashRfqAccessToken(rawA),
       p_payload: { price_ex_gst: "1800", gst_treatment: "extra", pricing_structure: "lump_sum", included_scope: "Wall tiles", excluded_scope: "Floor tiles", valid_until: "2027-01-01" },

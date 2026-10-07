@@ -6,7 +6,9 @@ import { readSentRfqLink } from "@/lib/rfqs/sent-link";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
-import { buildRfqDeliveryEmail, rfqDeliveryFromHeader } from "@/lib/rfqs/email";
+import { buildRfqAnswerEmail, buildRfqDeliveryEmail, rfqDeliveryFromHeader } from "@/lib/rfqs/email";
+import { draftRfqJobFacts } from "@/lib/rfqs/draft-facts";
+import { stripSupplierIdentity } from "@/lib/rfqs/draft-compose";
 import {
   generateRfqAccessToken,
   hashRfqAccessToken,
@@ -55,6 +57,14 @@ function rpcError(data: unknown, fallback: string): string {
       return "Each recipient needs a contact with an email address.";
     case "DUE_DATE_PAST":
       return "The response date needs to be today or later.";
+    case "SCOPE_CHANGE":
+      return "An answer cannot change the scope, quantities, files, or due date. Send a new request so every recipient sees the same change.";
+    case "NOT_FOUND":
+      return "That question is no longer available.";
+    case "BODY":
+      return "Write an answer before sending it.";
+    case "AUDIENCE":
+      return "Choose who receives this answer.";
     case "FROZEN":
     case "ALREADY_SENT":
       return "This request has been sent and can no longer be edited.";
@@ -244,7 +254,7 @@ export async function sendRfq(input: {
     p_tokens: payload,
   });
   const sendMessage = sent.error ? SEND_FAILED : rpcError(sent.data, SEND_FAILED);
-  if (sendMessage) return { ok: false, error: SEND_FAILED };
+  if (sendMessage) return { ok: false, error: sendMessage };
   const rfq = await loaded.context.supabase
     .from("rfqs")
     .select("builder_name, work_area_name, written_scope_label, response_due_on, scope_kind")
@@ -378,4 +388,151 @@ export async function signRfqResponseFile(input: {
     return { ok: false, error: "That file is unavailable." };
   }
   return { ok: true, url: signed.data.signedUrl };
+}
+
+export async function draftRfqFromJobDetails(input: {
+  projectId: string;
+  workAreaId: string;
+}): Promise<Ok<Awaited<ReturnType<typeof draftRfqJobFacts>>> | Fail> {
+  const loaded = await requireRfqWriter();
+  if (!loaded.ok) return loaded;
+  try {
+    const draft = await draftRfqJobFacts(loaded.context.supabase, input.projectId, input.workAreaId);
+    return { ok: true, ...draft };
+  } catch {
+    return { ok: false, error: "Job details could not be drafted. You can still write the request yourself." };
+  }
+}
+
+export async function answerRfqQuestion(input: {
+  projectId: string;
+  rfqId: string;
+  clarificationId: string;
+  body: string;
+  audience: "private" | "all";
+  scopeUnchanged: boolean;
+}): Promise<Ok<{ failed: number }> | Fail> {
+  if (!input.scopeUnchanged) {
+    return { ok: false, error: rpcError({ error: "SCOPE_CHANGE" }, SEND_FAILED) };
+  }
+  const loaded = await requireRfqWriter();
+  if (!loaded.ok) return loaded;
+  const question = await loaded.context.supabase
+    .from("rfq_clarifications")
+    .select("id, body, recipient_id, from_recipient")
+    .eq("id", input.clarificationId)
+    .maybeSingle();
+  if (!question.data || question.data.from_recipient !== true) {
+    return { ok: false, error: "That question is no longer available." };
+  }
+  const recipients = await loaded.context.supabase
+    .from("rfq_recipients")
+    .select("id, trading_name, contact_name, contact_email")
+    .eq("rfq_id", input.rfqId);
+  const asker = (recipients.data ?? []).find((recipient) => recipient.id === question.data?.recipient_id);
+  const names = input.audience === "all"
+    ? [asker?.trading_name ?? "", asker?.contact_name ?? "", asker?.contact_email ?? ""]
+    : [];
+  const body = input.audience === "all" ? stripSupplierIdentity(input.body, names) : input.body.trim();
+  const answered = await loaded.context.supabase.rpc("answer_rfq_clarification_v1", {
+    p_payload: {
+      clarification_id: input.clarificationId,
+      body,
+      audience: input.audience,
+      scope_unchanged: "true",
+    },
+  });
+  const message = answered.error
+    ? "Could not record the answer. Please try again."
+    : rpcError(answered.data, "Could not record the answer. Please try again.");
+  if (message) return { ok: false, error: message };
+  const recipientIds = ((answered.data ?? {}) as { recipientIds?: string[] }).recipientIds ?? [];
+  const rfq = await loaded.context.supabase
+    .from("rfqs")
+    .select("builder_name, work_area_name, written_scope_label, scope_kind")
+    .eq("id", input.rfqId)
+    .maybeSingle();
+  const scopeLabel = rfq.data?.scope_kind === "work_area"
+    ? rfq.data.work_area_name || "Requested work"
+    : rfq.data?.written_scope_label || "Requested work";
+  const origin = resolveRfqPublicOrigin();
+  const from = rfqDeliveryFromHeader(rfq.data?.builder_name || "Your builder");
+  const provider = getQuoteDeliveryProvider();
+  const admin = createAdminClient();
+  let failed = 0;
+  for (const recipientId of recipientIds) {
+    const recipient = (recipients.data ?? []).find((item) => item.id === recipientId);
+    if (!recipient || !origin || !from || !provider.isConfigured()) {
+      failed += 1;
+      await admin.from("rfq_events").insert({
+        org_id: loaded.context.orgId,
+        rfq_id: input.rfqId,
+        recipient_id: recipientId,
+        kind: "answer_email_failed",
+        summary: "The answer was saved. The email was not sent.",
+        actor: "system",
+      });
+      continue;
+    }
+    const raw = generateRfqAccessToken();
+    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const token = await admin.from("rfq_access_tokens").insert({
+      org_id: loaded.context.orgId,
+      recipient_id: recipientId,
+      token_hash: hashRfqAccessToken(raw),
+      expires_at: expires,
+      created_by: loaded.context.user.id,
+    });
+    if (token.error) {
+      failed += 1;
+      continue;
+    }
+    const mail = buildRfqAnswerEmail({
+      builderName: rfq.data?.builder_name || "Your builder",
+      contactName: recipient.contact_name,
+      scopeLabel,
+      answer: body,
+      publicUrl: `${origin}${rfqPublicPath(raw)}`,
+      audience: input.audience,
+    });
+    const sent = await provider.send({
+      to: recipient.contact_email,
+      from,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      idempotencyKey: `rfq-answer-${input.clarificationId}-${recipientId}`,
+    });
+    await admin.from("rfq_events").insert({
+      org_id: loaded.context.orgId,
+      rfq_id: input.rfqId,
+      recipient_id: recipientId,
+      kind: sent.ok ? "answer_emailed" : "answer_email_failed",
+      summary: sent.ok ? "Answer email accepted." : "The answer was saved. The email was not accepted.",
+      actor: "system",
+    });
+    if (!sent.ok) failed += 1;
+  }
+  revalidatePath(`/app/projects/${input.projectId}/requests/${input.rfqId}`);
+  return { ok: true, failed };
+}
+
+export async function markRfqQuestionNotificationsRead(input: {
+  projectId: string;
+  rfqId: string;
+}): Promise<void> {
+  const context = await getAuthOrgContext();
+  if (!context) return;
+  const notes = await context.supabase
+    .from("notifications")
+    .select("id, payload")
+    .eq("recipient_user_id", context.user.id)
+    .eq("notification_type", "rfq_question")
+    .is("read_at", null);
+  const ids = (notes.data ?? []).flatMap((note) => {
+    const payload = note.payload as { rfqId?: string } | null;
+    return payload?.rfqId === input.rfqId ? [note.id as string] : [];
+  });
+  if (ids.length === 0) return;
+  await context.supabase.rpc("mark_notifications_read_v1", { p_ids: ids });
 }

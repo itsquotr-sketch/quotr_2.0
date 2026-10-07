@@ -55,15 +55,20 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <div className="grid gap-6">
-          <JobRateSuggestions
-            projectId={projectId}
-            areas={rateBook.areas}
-            rates={rateBook.rates}
-            today={rateBook.today}
-            pricing={ratePricing}
-            canEdit={memberCanEditPricing(access.role)}
-          />
           <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
+          <details className="rounded-xl border border-border bg-card p-4" data-job-rate-disclosure>
+            <summary className="cursor-pointer text-base font-semibold">Subcontractor rates</summary>
+            <div className="pt-4">
+              <JobRateSuggestions
+                projectId={projectId}
+                areas={rateBook.areas}
+                rates={rateBook.rates}
+                today={rateBook.today}
+                pricing={ratePricing}
+                canEdit={memberCanEditPricing(access.role)}
+              />
+            </div>
+          </details>
         </div>
       </WorkspaceContainer>
     </div>

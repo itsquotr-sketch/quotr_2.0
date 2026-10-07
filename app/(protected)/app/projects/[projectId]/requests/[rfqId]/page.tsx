@@ -8,6 +8,7 @@ import { getProjectWorkspaceTabContextWithContext } from "@/lib/pricing/pricing-
 import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
+import { markRfqQuestionNotificationsRead } from "@/lib/rfqs/actions";
 import { loadRfqDetail, loadRfqPricingTargets } from "@/lib/rfqs/load";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
@@ -31,6 +32,7 @@ export default async function RfqDetailPage({ params }: PageProps) {
     getOnboardingAccess(),
   ]);
   if (!project || !detail) notFound();
+  await markRfqQuestionNotificationsRead({ projectId, rfqId });
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
       <header className="shrink-0 border-b bg-background">

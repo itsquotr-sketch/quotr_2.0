@@ -1,4 +1,4 @@
-export type QuoteNotificationType = "quote_accepted" | "quote_declined";
+export type QuoteNotificationType = "quote_accepted" | "quote_declined" | "rfq_question";
 
 export type QuoteNotificationEmailKind =
   | "quote_accepted_builder"

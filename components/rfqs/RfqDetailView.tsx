@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { RfqDetail } from "@/lib/rfqs/load";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 import { rfqDeliveryFailed, rfqDeliveryLabel, rfqResponseLabel } from "@/lib/rfqs/states";
-import { resendRfqRecipient, revokeRfqRecipient, signRfqResponseFile } from "@/lib/rfqs/actions";
+import { answerRfqQuestion, resendRfqRecipient, revokeRfqRecipient, signRfqResponseFile } from "@/lib/rfqs/actions";
+import { stripSupplierIdentity } from "@/lib/rfqs/draft-compose";
 import type { RfqPricingTarget } from "@/lib/rfqs/load";
 import { RfqPricingApply } from "@/components/rfqs/RfqPricingApply";
 import { SaveResponseAsRate } from "@/components/rfqs/SaveResponseAsRate";
@@ -25,8 +26,14 @@ export function RfqDetailView({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const names = new Map(detail.recipients.map((recipient) => [recipient.id, recipient.tradingName]));
   const submitted = detail.responses.filter((response) => response.status === "submitted");
+  const answered = new Set(detail.clarifications.flatMap((note) => note.parentId ? [note.parentId] : []));
+  const diagnostics = detail.events.filter((event) => event.kind.includes("delivery") || event.kind.includes("email") || event.kind === "link_prepared" || event.summary.startsWith("Mail service"));
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("question");
+    if (!id) return;
+    document.getElementById(`question-${id}`)?.scrollIntoView({ block: "center" });
+  }, []);
 
   async function resend(recipientId: string) {
     setError(null);
@@ -64,7 +71,7 @@ export function RfqDetailView({
   }
 
   return (
-    <div className="grid gap-6" data-rfq-detail>
+    <div className="grid gap-6 pb-28 md:pb-0" data-rfq-detail>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="break-words text-xl font-semibold">{detail.scopeLabel || "Request"}</h1>
@@ -120,81 +127,186 @@ export function RfqDetailView({
       <section className="grid gap-3" data-rfq-compare>
         <h2 className="text-base font-semibold">Compare responses</h2>
         <p className="text-sm text-foreground/70">No response is not a decline. Using a price for draft pricing does not award the work or notify the subcontractor.</p>
-        <div className="min-w-0 overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="p-2 font-medium">Business</th>
-                <th className="p-2 font-medium">State</th>
-                <th className="p-2 font-medium">Price ex GST</th>
-                <th className="p-2 font-medium">GST</th>
-                <th className="p-2 font-medium">Structure</th>
-                <th className="p-2 font-medium">Included</th>
-                <th className="p-2 font-medium">Excluded</th>
-                <th className="p-2 font-medium">Valid until</th>
-                <th className="p-2 font-medium">Pricing</th>
-                <th className="p-2 font-medium">File</th>
-                <th className="p-2 font-medium">Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.recipients.map((recipient) => {
-                const latest = submitted.filter((response) => response.recipientId === recipient.id).sort((a, b) => b.versionNumber - a.versionNumber)[0];
-                return (
-                  <tr key={recipient.id} className="border-b align-top">
-                    <td className="p-2">{recipient.tradingName}</td>
-                    <td className="p-2">{rfqResponseLabel(recipient.responseState)}</td>
-                    <td className="p-2">{latest ? latest.priceExGst?.toLocaleString() : "—"}</td>
-                    <td className="p-2">{latest ? gstTreatmentLabel(latest.gstTreatment) : "—"}</td>
-                    <td className="p-2">{latest ? pricingStructureLabel(latest.pricingStructure) : "—"}</td>
-                    <td className="p-2">{latest?.includedScope || "—"}</td>
-                    <td className="p-2">{latest?.excludedScope || "—"}</td>
-                    <td className="p-2">{latest?.validUntil || "—"}</td>
-                    <td className="p-2">{latest && detail.applications.some((application) => application.responseId === latest.id) ? "Used for pricing" : "—"}</td>
-                    <td className="p-2">
-                      {latest?.fileReady ? (
-                        <button type="button" className="underline" onClick={() => openFile(latest.id)}>{latest.fileName || "PDF"}</button>
-                      ) : "—"}
-                    </td>
-                    <td className="p-2">
-                      {latest ? <SaveResponseAsRate responseId={latest.id} canSave={canEdit} /> : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {submitted.length > 1 ? (
-          <ul className="grid gap-2 text-sm">
-            {submitted.map((response) => (
-              <li key={response.id}>Version {response.versionNumber} from {names.get(response.recipientId) || "Recipient"} remains on record.</li>
-            ))}
-          </ul>
-        ) : null}
+        <ul className="grid gap-3">
+          {detail.recipients.map((recipient) => {
+            const versions = submitted.filter((response) => response.recipientId === recipient.id).sort((a, b) => b.versionNumber - a.versionNumber);
+            const latest = versions[0];
+            const used = Boolean(latest && detail.applications.some((application) => application.responseId === latest.id));
+            return (
+              <li key={recipient.id} className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium">{recipient.tradingName}</p>
+                  <p>{rfqResponseLabel(recipient.responseState)} · {rfqDeliveryLabel(recipient.deliveryState)}</p>
+                </div>
+                <p>Price ex GST: {latest?.priceExGst == null ? "None" : latest.priceExGst.toLocaleString()}</p>
+                <p>GST: {latest ? gstTreatmentLabel(latest.gstTreatment) : "None"}</p>
+                <p>Pricing: {pricingUseReason(recipient.responseState, Boolean(latest), used, rfqDeliveryFailed(recipient.deliveryState))}</p>
+                <details>
+                  <summary className="cursor-pointer">Response details</summary>
+                  <div className="grid gap-1 pt-2">
+                    <p>Structure: {latest ? pricingStructureLabel(latest.pricingStructure) : "None"}</p>
+                    <p className="whitespace-pre-wrap">Inclusions: {latest?.includedScope || "None"}</p>
+                    <p className="whitespace-pre-wrap">Exclusions: {latest?.excludedScope || "None"}</p>
+                    <p>Valid until: {latest?.validUntil || "Not stated"}</p>
+                    <p>Version: {latest ? latest.versionNumber : "None"}</p>
+                    <p>File: {latest?.fileReady ? (
+                      <button type="button" className="underline" onClick={() => openFile(latest.id)}>{latest.fileName || "PDF"}</button>
+                    ) : "None"}</p>
+                    {latest ? <SaveResponseAsRate responseId={latest.id} canSave={canEdit} /> : null}
+                    {versions.length > 1 ? (
+                      <ul>
+                        {versions.map((response) => (
+                          <li key={response.id}>Version {response.versionNumber} remains on record.</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                </details>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <RfqPricingApply detail={detail} pricing={pricing} canPrice={canPrice} />
 
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">Communication</h2>
-        <ol className="grid gap-2">
-          {detail.events.map((event) => (
-            <li key={event.id} className="text-sm">
-              <time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time>
-              {" · "}
-              {event.summary}
-              {event.recipientId ? ` · ${names.get(event.recipientId) || "Recipient"}` : ""}
-            </li>
-          ))}
-        </ol>
-        {detail.clarifications.map((note) => (
-          <p key={note.id} className="rounded-md border border-border bg-card p-3 text-sm">
-            {names.get(note.recipientId) || "Recipient"}: {note.body}
-          </p>
-        ))}
+      <section className="grid gap-3" data-rfq-conversation>
+        <h2 className="text-base font-semibold">Conversation</h2>
+        {detail.clarifications.filter((note) => note.fromRecipient && !note.parentId).length === 0 ? (
+          <p className="text-sm text-foreground/70">No questions yet.</p>
+        ) : null}
+        {detail.clarifications.filter((note) => note.fromRecipient && !note.parentId).map((note) => {
+          const recipient = detail.recipients.find((item) => item.id === note.recipientId);
+          const replies = detail.clarifications.filter((item) => item.parentId === note.id && item.recipientId === note.recipientId);
+          return (
+            <article key={note.id} id={`question-${note.id}`} className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm">
+              <p className="text-foreground/70">{recipient?.tradingName || "Recipient"} · {new Date(note.createdAt).toLocaleString()}</p>
+              <p className="whitespace-pre-wrap">{note.body}</p>
+              {replies.map((reply) => (
+                <p key={reply.id} className="whitespace-pre-wrap rounded-md bg-muted/40 p-3">
+                  {reply.audience === "all" ? "Answer to every recipient" : "Answer to this subcontractor"}: {reply.body}
+                </p>
+              ))}
+              {canEdit && detail.status === "sent" && !answered.has(note.id) && recipient ? (
+                <AnswerForm
+                  projectId={detail.projectId}
+                  rfqId={detail.id}
+                  clarificationId={note.id}
+                  names={[recipient.tradingName, recipient.contactName, recipient.contactEmail]}
+                  onError={setError}
+                />
+              ) : null}
+            </article>
+          );
+        })}
+        <details>
+          <summary className="cursor-pointer text-sm font-medium">Delivery details</summary>
+          <ol className="grid gap-2 pt-2">
+            {diagnostics.map((event) => (
+              <li key={event.id} className="text-sm">
+                <time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString()}</time>
+                {" · "}
+                {event.summary}
+              </li>
+            ))}
+            {diagnostics.length === 0 ? <li className="text-sm text-foreground/70">No delivery records yet.</li> : null}
+          </ol>
+        </details>
       </section>
       {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
     </div>
+  );
+}
+
+function pricingUseReason(state: string, hasPrice: boolean, used: boolean, deliveryFailed: boolean): string {
+  if (used) return "Used for draft Pricing. This does not award the work.";
+  if (state === "declined") return "Declined, so there is no price to use.";
+  if (state === "clarification") return "A question is not a price.";
+  if (state === "expired") return "The link expired before a price was submitted.";
+  if (deliveryFailed && !hasPrice) return "The email was not delivered, so there is no price to use.";
+  if (!hasPrice) return "No response yet, so there is no price to use.";
+  return "A price is recorded. Use for Pricing is a separate choice and does not award the work.";
+}
+
+function AnswerForm({
+  projectId,
+  rfqId,
+  clarificationId,
+  names,
+  onError,
+}: {
+  projectId: string;
+  rfqId: string;
+  clarificationId: string;
+  names: string[];
+  onError: (message: string | null) => void;
+}) {
+  const router = useRouter();
+  const [body, setBody] = useState("");
+  const [audience, setAudience] = useState<"private" | "all">("private");
+  const [scopeUnchanged, setScopeUnchanged] = useState(false);
+  const [shareWording, setShareWording] = useState(false);
+  const [pending, setPending] = useState(false);
+  const preview = stripSupplierIdentity(body, names);
+  async function submit() {
+    if (!scopeUnchanged) {
+      onError("An answer cannot change the scope, quantities, files, or due date. Send a new request so every recipient sees the same change.");
+      return;
+    }
+    if (audience === "all" && !shareWording) {
+      onError("Review the wording that every recipient will see, then confirm it.");
+      return;
+    }
+    setPending(true);
+    onError(null);
+    const result = await answerRfqQuestion({
+      projectId,
+      rfqId,
+      clarificationId,
+      body,
+      audience,
+      scopeUnchanged: true,
+    });
+    setPending(false);
+    if (!result.ok) {
+      onError(result.error);
+      return;
+    }
+    if (result.failed > 0) onError("The answer was saved. One or more emails were not sent.");
+    router.refresh();
+  }
+  return (
+    <form className="grid gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      <label className="grid gap-1">
+        Answer
+        <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={body} onChange={(event) => setBody(event.target.value)} />
+      </label>
+      <fieldset className="grid gap-1">
+        <legend>Who receives this answer</legend>
+        <label className="flex min-h-11 items-center gap-2">
+          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "private"} onChange={() => setAudience("private")} />
+          Only this subcontractor
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "all"} onChange={() => setAudience("all")} />
+          All recipients
+        </label>
+      </fieldset>
+      {audience === "all" ? (
+        <div className="grid gap-2 rounded-md border border-border p-3" data-answer-preview>
+          <p>Every recipient will see this wording. The asking business is not named, and prices are removed.</p>
+          <p className="whitespace-pre-wrap">{preview || "Write the answer to preview it."}</p>
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" checked={shareWording} onChange={(event) => setShareWording(event.target.checked)} />
+            Share this wording
+          </label>
+        </div>
+      ) : null}
+      <label className="flex min-h-11 items-start gap-2">
+        <input type="checkbox" checked={scopeUnchanged} onChange={(event) => setScopeUnchanged(event.target.checked)} />
+        <span>This answer does not change the scope, quantities, files, or due date. A change needs a new request.</span>
+      </label>
+      <Button type="submit" className="h-11 min-h-11 w-fit" disabled={pending}>Send answer</Button>
+    </form>
   );
 }

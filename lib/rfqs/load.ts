@@ -15,6 +15,9 @@ export type RfqListRow = {
   dueOn: string | null;
   recipientCount: number;
   respondedCount: number;
+  awaitingCount: number;
+  questionCount: number;
+  recipients: Array<{ name: string; responseState: string; deliveryFailed: boolean }>;
 };
 
 export type RfqRecipientView = {
@@ -69,7 +72,15 @@ export type RfqDetail = {
   recipients: RfqRecipientView[];
   files: Array<{ id: string; versionId: string; title: string; filename: string }>;
   responses: RfqResponseView[];
-  clarifications: Array<{ id: string; recipientId: string; body: string; createdAt: string }>;
+  clarifications: Array<{
+    id: string;
+    recipientId: string;
+    body: string;
+    createdAt: string;
+    fromRecipient: boolean;
+    audience: "private" | "all";
+    parentId: string | null;
+  }>;
   events: Array<{ id: string; kind: string; summary: string; createdAt: string; recipientId: string | null }>;
   applications: Array<{
     id: string;
@@ -113,8 +124,8 @@ export type PublicRfqView =
       questions: string;
       message: string;
       responseState: RfqResponseState;
-      files: Array<{ id: string; title: string; filename: string }>;
-      clarifications: Array<{ id: string; body: string }>;
+      files: Array<{ id: string; title: string; filename: string; mimeType: string }>;
+      clarifications: Array<{ id: string; body: string; fromRecipient: boolean }>;
       responses: RfqResponseView[];
     };
 
@@ -129,11 +140,18 @@ export async function loadProjectRfqs(
   await supabase.rpc("expire_project_rfqs_v1", { p_project: projectId });
   const { data } = await supabase
     .from("rfqs")
-    .select("id, status, scope_kind, work_area_name, written_scope_label, response_due_on, rfq_recipients(id, response_state)")
+    .select("id, status, scope_kind, work_area_name, written_scope_label, response_due_on, rfq_recipients(id, trading_name, response_state, rfq_deliveries(status, created_at), rfq_clarifications(id, from_recipient, parent_id))")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
   return (data ?? []).map((row) => {
-    const recipients = (row.rfq_recipients ?? []) as Array<{ response_state?: string }>;
+    const recipients = (row.rfq_recipients ?? []) as Array<{
+      trading_name?: string;
+      response_state?: string;
+      rfq_deliveries?: Array<{ status?: string; created_at?: string }>;
+      rfq_clarifications?: Array<{ id?: string; from_recipient?: boolean; parent_id?: string | null }>;
+    }>;
+    const notes = recipients.flatMap((item) => item.rfq_clarifications ?? []);
+    const answered = new Set(notes.map((note) => note.parent_id).filter((id): id is string => Boolean(id)));
     return {
       id: row.id,
       status: row.status === "sent" ? "sent" : "draft",
@@ -141,6 +159,17 @@ export async function loadProjectRfqs(
       dueOn: row.response_due_on,
       recipientCount: recipients.length,
       respondedCount: recipients.filter((item) => item.response_state === "responded").length,
+      awaitingCount: recipients.filter((item) => item.response_state === "awaiting" || item.response_state === "clarification").length,
+      questionCount: notes.filter((note) => note.from_recipient && note.id && !answered.has(note.id)).length,
+      recipients: recipients.map((item) => {
+        const delivery = [...(item.rfq_deliveries ?? [])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))[0];
+        const failed = delivery?.status === "failed" || delivery?.status === "bounced" || delivery?.status === "complained";
+        return {
+          name: text(item.trading_name) || "Recipient",
+          responseState: text(item.response_state) || "awaiting",
+          deliveryFailed: failed,
+        };
+      }),
     };
   });
 }
@@ -173,7 +202,7 @@ export async function loadRfqDetail(
       ? supabase.from("rfq_responses").select("id, recipient_id, version_number, status, price_ex_gst, gst_treatment, pricing_structure, included_scope, excluded_scope, assumptions, lead_time, valid_until, message, submitted_at").in("recipient_id", recipientIds)
       : Promise.resolve({ data: [] }),
     recipientIds.length
-      ? supabase.from("rfq_clarifications").select("id, recipient_id, body, created_at").in("recipient_id", recipientIds)
+      ? supabase.from("rfq_clarifications").select("id, recipient_id, body, created_at, from_recipient, audience, parent_id").in("recipient_id", recipientIds)
       : Promise.resolve({ data: [] }),
     recipientIds.length
       ? supabase.from("rfq_deliveries").select("recipient_id, status, created_at").in("recipient_id", recipientIds).order("created_at", { ascending: false })
@@ -267,6 +296,9 @@ export async function loadRfqDetail(
         recipientId: row.recipient_id,
         body: row.body,
         createdAt: row.created_at,
+        fromRecipient: row.from_recipient !== false,
+        audience: row.audience === "all" ? "all" as const : "private" as const,
+        parentId: row.parent_id,
       })),
     events: (events.data ?? []).map((row) => ({
       id: row.id,
@@ -408,7 +440,7 @@ export async function lookupPublicRfq(rawToken: string): Promise<PublicRfqView> 
           if (!file || typeof file !== "object") return [];
           const item = file as Record<string, unknown>;
           if (typeof item.id !== "string") return [];
-          return [{ id: item.id, title: text(item.title), filename: text(item.filename) }];
+          return [{ id: item.id, title: text(item.title), filename: text(item.filename), mimeType: text(item.mimeType) }];
         })
       : [],
     clarifications: Array.isArray(row.clarifications)
@@ -416,7 +448,7 @@ export async function lookupPublicRfq(rawToken: string): Promise<PublicRfqView> 
           if (!note || typeof note !== "object") return [];
           const item = note as Record<string, unknown>;
           if (typeof item.id !== "string") return [];
-          return [{ id: item.id, body: text(item.body) }];
+          return [{ id: item.id, body: text(item.body), fromRecipient: item.fromRecipient !== false }];
         })
       : [],
     responses: responses.flatMap((item) => {

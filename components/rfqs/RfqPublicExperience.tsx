@@ -62,21 +62,35 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
           <h1 className="break-words text-2xl font-semibold">{view.scopeLabel || "Request for price"}</h1>
           <p className="text-sm">This request is only for you. It does not show other subcontractors or their prices.</p>
         </header>
-        <section className="grid gap-2 text-sm">
-          <p>{view.requestedScope}</p>
-          {view.measurementNotes ? <p>Measurements: {view.measurementNotes}</p> : null}
-          {view.responseDueOn ? <p>Please respond by {view.responseDueOn}.</p> : null}
+        <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm" data-rfq-work>
+          <h2 className="text-base font-semibold">The work requested</h2>
+          <p className="whitespace-pre-wrap">{view.requestedScope}</p>
+          {view.measurementNotes ? <p className="whitespace-pre-wrap">Measurements: {view.measurementNotes}</p> : null}
+          {view.questions ? <p className="whitespace-pre-wrap">Questions: {view.questions}</p> : null}
+          {view.message ? <p className="whitespace-pre-wrap">{view.message}</p> : null}
+        </section>
+        <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm">
+          <h2 className="text-base font-semibold">Files and due date</h2>
+          <p>{view.responseDueOn ? `Please respond by ${view.responseDueOn}.` : "No due date was set."}</p>
           {view.siteAddress ? <p>Site: {view.siteAddress}</p> : null}
-          {view.siteDetails ? <p>{view.siteDetails}</p> : null}
-          {view.questions ? <p>Questions: {view.questions}</p> : null}
-          {view.message ? <p>{view.message}</p> : null}
-          <ul className="grid gap-1">
-            {view.files.map((file) => (
-              <li key={file.id}>
-                <a className="underline" href={`/r/${view.token}/files/${file.id}`}>{file.title || file.filename}</a>
-              </li>
-            ))}
-          </ul>
+          {view.siteDetails ? <p className="whitespace-pre-wrap">{view.siteDetails}</p> : null}
+          {view.files.length === 0 ? <p>No files were shared.</p> : (
+            <ul className="grid gap-2">
+              {view.files.map((file) => {
+                const viewable = file.mimeType === "application/pdf" || file.mimeType.startsWith("image/");
+                const href = `/r/${view.token}/files/${file.id}`;
+                return (
+                  <li key={file.id} className="flex flex-wrap items-center gap-3">
+                    <span>{file.title || file.filename}</span>
+                    {viewable ? (
+                      <a className="underline" href={href} target="_blank" rel="noopener noreferrer">Open</a>
+                    ) : null}
+                    <a className="underline" href={`${href}?download=1`} target="_blank" rel="noopener noreferrer">Download</a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
 
         {submitted.map((response) => (
@@ -85,18 +99,26 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
             <p>{response.priceExGst?.toLocaleString()} ex GST · {gstTreatmentLabel(response.gstTreatment)} · {pricingStructureLabel(response.pricingStructure)}</p>
             {response.excludedScope ? <p>Excluded: {response.excludedScope}</p> : null}
             {response.fileReady ? (
-              <a className="underline" href={`/r/${view.token}/responses/${response.id}/file`}>{response.fileName || "PDF"}</a>
+              <a className="underline" href={`/r/${view.token}/responses/${response.id}/file`} target="_blank" rel="noopener noreferrer">{response.fileName || "PDF"}</a>
             ) : null}
           </section>
         ))}
 
-        {view.clarifications.map((note) => (
-          <p key={note.id} className="rounded-md border border-border bg-white p-3 text-sm">{note.body}</p>
-        ))}
+        <section className="grid gap-2" data-rfq-questions>
+          <h2 className="text-base font-semibold">Questions</h2>
+          {view.clarifications.length === 0 ? <p className="text-sm text-foreground/70">No questions yet. A question is not a price.</p> : null}
+          {view.clarifications.map((note) => (
+            <p key={note.id} className="rounded-md border border-border bg-white p-3 text-sm">
+              <span className="block text-foreground/70">{note.fromRecipient ? "Your question" : "Answer from the builder"}</span>
+              {note.body}
+            </p>
+          ))}
+        </section>
 
         {!locked ? (
-          <form className="grid gap-3" onSubmit={(event) => event.preventDefault()}>
-            <h2 className="text-base font-semibold">{latest && revise ? "Revised response" : latest ? "Your response is submitted" : "Your response"}</h2>
+          <form className="grid gap-3 rounded-xl border border-border bg-white p-4" onSubmit={(event) => event.preventDefault()}>
+            <h2 className="text-base font-semibold">Your price and qualifications</h2>
+            <p className="text-sm text-foreground/70">{latest && revise ? "This revision is a new version. The earlier price stays on record." : latest ? "Your response is submitted." : "Price the work described above. GST is separate from the price."}</p>
             {latest && !revise ? (
               <Button type="button" className="h-11 min-h-11 w-fit" onClick={() => setRevise(true)}>Revise response</Button>
             ) : (
@@ -117,10 +139,10 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
                     <option value="itemised">Itemised</option>
                   </select>
                 </label>
-                <label className="grid gap-1 text-sm">Included
+                <label className="grid gap-1 text-sm">Inclusions
                   <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={included} onChange={(event) => setIncluded(event.target.value)} />
                 </label>
-                <label className="grid gap-1 text-sm">Excluded
+                <label className="grid gap-1 text-sm">Exclusions
                   <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={excluded} onChange={(event) => setExcluded(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">Assumptions
@@ -166,14 +188,22 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
         ) : null}
 
         {!locked && view.responseState !== "responded" ? (
-          <section className="grid gap-2">
+          <section className="grid gap-2 rounded-xl border border-border bg-white p-4">
             <h2 className="text-base font-semibold">Ask a question</h2>
+            <p className="text-sm text-foreground/70">A question is not a price and does not decline the request.</p>
             <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={question} onChange={(event) => setQuestion(event.target.value)} />
             <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={pending} onClick={() => run(() => clarifyRfq({ token: view.token, body: question }))}>Send question</Button>
-            <h2 className="text-base font-semibold">Decline to quote</h2>
-            <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={declineMessage} onChange={(event) => setDeclineMessage(event.target.value)} />
-            <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={pending} onClick={() => run(() => declineRfq({ token: view.token, message: declineMessage }))}>Decline to quote</Button>
           </section>
+        ) : null}
+        {!locked && view.responseState !== "responded" ? (
+          <details className="rounded-xl border border-border bg-white p-4">
+            <summary className="cursor-pointer text-base font-semibold">Decline this request</summary>
+            <div className="grid gap-2 pt-3">
+              <p className="text-sm text-foreground/70">Declining tells the builder you will not price this request. It is separate from a question.</p>
+              <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={declineMessage} onChange={(event) => setDeclineMessage(event.target.value)} />
+              <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={pending} onClick={() => run(() => declineRfq({ token: view.token, message: declineMessage }))}>Decline to quote</Button>
+            </div>
+          </details>
         ) : null}
         {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
       </div>
