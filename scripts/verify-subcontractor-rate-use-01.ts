@@ -111,6 +111,13 @@ function staticMain() {
   assert("the pricing save checks the supplier lock before the commercial engine", lockAt > 0 && computeAt > lockAt);
   assert("duplicate, delete, visibility, and final sell refuse a supplier allowance", ["duplicatePricingItem", "deletePricingItem", "setPricingItemsQuoteVisibility", "deleteManualPricingItems", "applyPricingFinalSell"].every((name) => pricingActions.includes(name) && pricingActions.includes("SUPPLIER_PRICE_REVIEW")));
   assert("a lump sum says it is used once", rateDialog.includes("One lump sum") && rateDialog.includes("data-lump-sum"));
+  const reviewStart = rateDialog.indexOf('data-rate-review');
+  const reviewEnd = rateDialog.indexOf('data-dialog-actions');
+  const acknowledgement = rateDialog.indexOf('data-loss-acknowledgement');
+  assert(
+    "the loss acknowledgement scrolls with the review and the actions stay outside that scroller",
+    reviewStart > 0 && acknowledgement > reviewStart && reviewEnd > acknowledgement && rateDialog.includes('min-h-11 cursor-pointer') && !rateDialog.includes('sticky bottom-0'),
+  );
   assert("the pricing editor offers a supplier review", supplierEditor.includes("Review supplier price") && supplierEditor.includes("Supplier cost") && supplierEditor.includes("Client sell"));
   assert("the database refuses a normal rewrite of a supplier allowance", lockSql.includes("SUPPLIER_PRICE_LOCKED") && lockSql.includes("pricing_items_supplier_rate_lock") && lockSql.includes("set_config('quotr.supplier_rate_write', '', true)"));
   assert("a unit sell is stored only when it multiplies back to the approved sell", lockSql.includes("round(coalesce(v_quantity, 1) * round(v_sell / coalesce(v_quantity, 1), 2), 2) = round(v_sell, 2)"));

@@ -50,6 +50,8 @@ export function UseSubcontractorRate({
   const [acknowledgeLoss, setAcknowledgeLoss] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const lossRef = useRef<HTMLLabelElement>(null);
+  const applyingRef = useRef(false);
   const [pending, setPending] = useState(false);
   const existing = pricing?.uses.find((use) => use.rateId === rate.rateId) ?? null;
   const lines = (pricing?.items ?? []).filter((item) => item.workAreaId === area.id && item.id !== existing?.allowanceItemId);
@@ -57,9 +59,21 @@ export function UseSubcontractorRate({
     response.workAreaId === area.id && rateScopeConflictsWithResponse(rate.scope, response.includedScope, response.scopeLabel)
   );
   const lump = rate.unit === "lump_sum";
+  const selectedChoice = preview?.choices.find((choice) => choice.treatment === treatment) ?? null;
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
+  useEffect(() => {
+    if (!selectedChoice?.loss) return;
+    const node = lossRef.current;
+    const scroller = node?.closest("[data-rate-review]");
+    if (!node || !(scroller instanceof HTMLElement)) return;
+    const field = node.getBoundingClientRect();
+    const frame = scroller.getBoundingClientRect();
+    if (field.top < frame.top || field.bottom > frame.bottom) {
+      window.requestAnimationFrame(() => node.scrollIntoView({ block: "nearest" }));
+    }
+  }, [selectedChoice?.loss, treatment]);
   const jobScope = area.summary?.trim() ? area.summary : "No specification is recorded for this work area.";
 
   if (!canEdit) return null;
@@ -115,10 +129,12 @@ export function UseSubcontractorRate({
   }
 
   async function applyChoice() {
-    if (!pricing || !preview || !treatment) return;
+    if (applyingRef.current || !pricing || !preview || !treatment) return;
     const chosen = targetMode();
     const choice = preview.choices.find((item) => item.treatment === treatment);
     if (!chosen || !choice?.available) return;
+    if (choice.loss && !acknowledgeLoss) return;
+    applyingRef.current = true;
     setPending(true);
     setError(null);
     const result = await applySubcontractorRateUse({
@@ -136,6 +152,7 @@ export function UseSubcontractorRate({
       confirmQuantity,
       sourceChoice: conflict ? "rate" : null,
     });
+    applyingRef.current = false;
     setPending(false);
     if (!result.ok) {
       setError(result.error);
@@ -153,8 +170,12 @@ export function UseSubcontractorRate({
       {!pricing ? <p className="text-sm">Create pricing from the estimate before using a rate.</p> : null}
       {pricing?.quoteIssued ? <p className="text-sm">An issued quote stays as it was. This rate is not applied.</p> : null}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className={clearDialogClassName} style={dialogStyle} data-use-rate={rate.versionId}>
-          <div className="px-6 pt-6" onChange={() => setError(null)} onFocus={revealFocusedField}>
+        <DialogContent
+          className={clearDialogClassName}
+          style={{ ...dialogStyle, display: "flex", flexDirection: "column", overflow: "hidden" }}
+          data-use-rate={rate.versionId}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-4" data-rate-review onChange={() => setError(null)} onFocus={revealFocusedField}>
             <DialogHeader>
               <DialogTitle>{buttonLabel}</DialogTitle>
             </DialogHeader>
@@ -219,7 +240,6 @@ export function UseSubcontractorRate({
               <label className="grid gap-1">Manual sell ex GST
                 <input className="h-11 min-h-11 rounded-md border border-border bg-background px-3" inputMode="decimal" value={manualSell} onChange={(event) => { setManualSell(event.target.value); resetPreview(); }} />
               </label>
-              {error ? <p ref={errorRef} className="text-destructive" role="alert" tabIndex={-1}>{error}</p> : null}
               {preview ? (
                 <div className="grid gap-2" data-rate-pricing-preview>
                   <p>Supplier cost ex GST: {money(preview.supplierCost)}{preview.minimumApplied ? " (minimum charge)" : ""}.</p>
@@ -235,32 +255,37 @@ export function UseSubcontractorRate({
                             : `Reprice at the ${preview.targetMarginSource === "job" ? "job" : "pricing"} target of ${preview.targetMarginPercent}%`
                           : "Enter a sell";
                       return (
-                        <label key={choice.treatment} className="grid gap-1 rounded-md border border-border p-3" data-sell-choice={choice.treatment}>
-                          <span className="flex min-h-11 items-center gap-2 font-medium">
+                        <div key={choice.treatment} className="grid gap-1 rounded-md border border-border p-3" data-sell-choice={choice.treatment}>
+                          <label className="flex min-h-11 items-center gap-2 font-medium">
                             <input type="radio" name={`rate-sell-${rate.rateId}`} disabled={!choice.available} checked={treatment === choice.treatment} onChange={() => { setTreatment(choice.treatment); setAcknowledgeLoss(false); }} />
                             {title}
-                          </span>
+                          </label>
                           {choice.available ? (
                             <>
                               <p>After: cost {money(choice.after.cost)} · sell {money(choice.after.sell)} · gross profit {money(choice.after.grossProfit)} · margin {percent(choice.after.marginPercent)} · GST {money(choice.after.gstAmount)} · total {money(choice.after.totalInclGst)}</p>
-                              {choice.loss ? <p className="font-medium text-destructive">Cost is higher than the sell. The gross margin is negative.</p> : null}
+                              {choice.loss ? (
+                                <div className="grid gap-2" data-loss-review>
+                                  <p className="font-medium text-destructive">Cost is higher than the sell. The gross margin is negative.</p>
+                                  {treatment === choice.treatment ? (
+                                    <label ref={lossRef} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-destructive/40 px-3 py-2" data-loss-acknowledgement>
+                                      <input type="checkbox" className="size-6 shrink-0" checked={acknowledgeLoss} onChange={(event) => setAcknowledgeLoss(event.target.checked)} />
+                                      I acknowledge this cost is higher than the sell.
+                                    </label>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </>
                           ) : <p>{choice.unavailableReason}</p>}
-                        </label>
+                        </div>
                       );
                     })}
                   </fieldset>
-                  {preview.choices.find((choice) => choice.treatment === treatment)?.loss ? (
-                    <label className="flex min-h-11 items-start gap-2">
-                      <input type="checkbox" className="mt-1" checked={acknowledgeLoss} onChange={(event) => setAcknowledgeLoss(event.target.checked)} />
-                      I acknowledge this cost is higher than the sell.
-                    </label>
-                  ) : null}
                 </div>
               ) : null}
             </div>
           </div>
-          <div className="sticky bottom-0 z-10 bg-popover" data-dialog-actions>
+          <div className="shrink-0 border-t bg-popover" data-dialog-actions>
+            {error ? <p ref={errorRef} className="px-6 pt-3 text-destructive" role="alert" tabIndex={-1}>{error}</p> : null}
             <DialogFooter className="px-6 pt-3 pb-4">
               <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setOpen(false)}>Cancel</Button>
               {preview && treatment ? (
