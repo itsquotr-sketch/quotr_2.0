@@ -338,6 +338,7 @@ export function RfqSchedulePricing({
               const line = response.lines.find((candidate) => candidate.scheduleItemId === item.id);
               const state = rows[item.id] ?? blankRow(item.scope);
               const priced = line?.decision === "priced" && line.amountExGst != null;
+              const applied = detail.scheduleApplications.find((application) => application.scheduleItemId === item.id);
               return (
                 <li key={item.id} className="grid gap-2 rounded-md border border-border p-3" data-rfq-schedule-row={item.id} data-rfq-anchor={submitted.map((version) => `rfq-response-${version.id}-item-${item.id}`).join(" ")}>
                   <p className="break-words font-medium">{item.scope}</p>
@@ -350,7 +351,13 @@ export function RfqSchedulePricing({
                   {line?.qualification ? <p className="break-words">Qualification: {line.qualification}</p> : null}
                   {line?.decision === "not_priced" ? <p className="break-words">Not priced. {line.reason || "No reason recorded."} This is not $0. Unresolved — not part of this application.</p> : null}
                   {!priced && item.role !== "required" ? <p>Outside this application.</p> : null}
-                  {priced && !state.selected && item.role === "required" ? <p>Not selected. This required item is not covered by this application.</p> : null}
+                  {priced && !state.selected && item.role === "required" ? (
+                    <p>
+                      {applied
+                        ? `Already on this draft from response version ${applied.responseVersion}. Leaving it unselected keeps that charge.`
+                        : "Not selected. This required item is not covered by this application."}
+                    </p>
+                  ) : null}
                   {priced && !state.selected && item.role !== "required" ? <p>Outside this application until you select it.</p> : null}
                   {priced ? (
                     <label className="flex min-h-11 items-center gap-2">
