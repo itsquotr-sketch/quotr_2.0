@@ -123,6 +123,19 @@ function resolveQuoteUnitPrice(item: PricingItem): number | null {
     return null;
   }
 
+  // A lump-sum total is the sell. A rounded unit sell is shown only when
+  // quantity times that unit sell is the same total.
+  if (mode === "lump_sum") {
+    if (
+      item.unit_sell == null ||
+      item.quantity == null ||
+      item.quantity <= 0 ||
+      Math.abs(roundMoney(item.quantity * item.unit_sell) - roundMoney(item.total_sell)) >= 0.001
+    ) {
+      return null;
+    }
+  }
+
   return item.unit_sell;
 }
 

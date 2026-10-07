@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,6 +49,7 @@ export function UseSubcontractorRate({
   const [manualSell, setManualSell] = useState("");
   const [acknowledgeLoss, setAcknowledgeLoss] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [pending, setPending] = useState(false);
   const existing = pricing?.uses.find((use) => use.rateId === rate.rateId) ?? null;
   const lines = (pricing?.items ?? []).filter((item) => item.workAreaId === area.id && item.id !== existing?.allowanceItemId);
@@ -56,6 +57,9 @@ export function UseSubcontractorRate({
     response.workAreaId === area.id && rateScopeConflictsWithResponse(rate.scope, response.includedScope, response.scopeLabel)
   );
   const lump = rate.unit === "lump_sum";
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   const jobScope = area.summary?.trim() ? area.summary : "No specification is recorded for this work area.";
 
   if (!canEdit) return null;
@@ -215,7 +219,7 @@ export function UseSubcontractorRate({
               <label className="grid gap-1">Manual sell ex GST
                 <input className="h-11 min-h-11 rounded-md border border-border bg-background px-3" inputMode="decimal" value={manualSell} onChange={(event) => { setManualSell(event.target.value); resetPreview(); }} />
               </label>
-              {error ? <p className="text-destructive" role="alert">{error}</p> : null}
+              {error ? <p ref={errorRef} className="text-destructive" role="alert" tabIndex={-1}>{error}</p> : null}
               {preview ? (
                 <div className="grid gap-2" data-rate-pricing-preview>
                   <p>Supplier cost ex GST: {money(preview.supplierCost)}{preview.minimumApplied ? " (minimum charge)" : ""}.</p>

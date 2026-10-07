@@ -99,7 +99,8 @@ function staticMain() {
     console.log(`PER_M2_TARGET cost ${money(target?.after.cost)} sell ${money(target?.after.sell)} gp ${money(target?.after.grossProfit)} margin ${money(target?.after.marginPercent)} gst ${money(target?.after.gstAmount)} total ${money(target?.after.totalInclGst)}`);
     assert("target sell is above the 850 cost", Boolean(target?.available && target.sell && target.sell > 850));
   }
-  const lockSql = read("supabase/migrations/095_supplier_rate_pricing_lock.sql");
+  const lockSql = read("supabase/migrations/095_supplier_rate_pricing_lock.sql") + read("supabase/migrations/096_supplier_rate_sell_authority.sql");
+  const quoteMap = read("lib/quotes/from-pricing.ts");
   const pricingActions = read("lib/pricing/actions.ts");
   const rateDialog = read("components/projects/UseSubcontractorRate.tsx");
   const supplierEditor = read("components/pricing/SupplierPriceEditor.tsx");
@@ -111,7 +112,9 @@ function staticMain() {
   assert("duplicate, delete, visibility, and final sell refuse a supplier allowance", ["duplicatePricingItem", "deletePricingItem", "setPricingItemsQuoteVisibility", "deleteManualPricingItems", "applyPricingFinalSell"].every((name) => pricingActions.includes(name) && pricingActions.includes("SUPPLIER_PRICE_REVIEW")));
   assert("a lump sum says it is used once", rateDialog.includes("One lump sum") && rateDialog.includes("data-lump-sum"));
   assert("the pricing editor offers a supplier review", supplierEditor.includes("Review supplier price") && supplierEditor.includes("Supplier cost") && supplierEditor.includes("Client sell"));
-  assert("the database refuses a normal rewrite of a supplier allowance", lockSql.includes("SUPPLIER_PRICE_LOCKED") && lockSql.includes("pricing_items_supplier_rate_lock") && lockSql.split("quotr.supplier_rate_write").length >= 3);
+  assert("the database refuses a normal rewrite of a supplier allowance", lockSql.includes("SUPPLIER_PRICE_LOCKED") && lockSql.includes("pricing_items_supplier_rate_lock") && lockSql.includes("set_config('quotr.supplier_rate_write', '', true)"));
+  assert("a unit sell is stored only when it multiplies back to the approved sell", lockSql.includes("round(coalesce(v_quantity, 1) * round(v_sell / coalesce(v_quantity, 1), 2), 2) = round(v_sell, 2)"));
+  assert("a lump-sum quote omits a unit price that does not match the total", quoteMap.includes("quantity * item.unit_sell") && quoteMap.includes("mode === \"lump_sum\""));
   const ordinaryEdit = calculateAuthoritativePricingItem({
     calculationMode: "lump_sum",
     quantity: 10,
@@ -326,6 +329,14 @@ async function liveMain() {
     assert("reviewed pricing returns to draft", reviewed.data?.status === "draft");
     const storedLine = await admin.from("pricing_items").select("quantity, unit, unit_cost, unit_sell, total_cost, total_sell, gross_profit, margin_percent, calculation_mode, item_type").eq("id", used.allowanceItemId!).single();
     const storedSource = await admin.from("subcontractor_rate_applications").select("rate_version_id, version_number, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, minimum_applied, scope").eq("allowance_item_id", used.allowanceItemId!).is("superseded_at", null).single();
+    assert("the approved sell stays 1,133.33 and is not 10 times 113.33", storedLine.data?.unit_sell == null && Number(storedLine.data?.total_sell) === 1133.33 && Number(storedLine.data?.total_cost) === 850 && Number(storedLine.data?.quantity) === 10, JSON.stringify(storedLine.data));
+    const { mapPricingItem } = await import("../lib/pricing/mappers");
+    const { mapPricingItemsToQuoteItems } = await import("../lib/quotes/from-pricing");
+    const quoteSource = await admin.from("pricing_items").select("*").eq("pricing_document_id", pricing.data.id);
+    const quoteMapped = mapPricingItemsToQuoteItems((quoteSource.data ?? []).map((row) => mapPricingItem(row)), new Map([[area.data.id, "Bathroom"]]));
+    assert("the quote mapping keeps 1,133.33 once and omits the rounded unit price", quoteMapped.filter((item) => Number(item.total) === 1133.33).length === 1 && quoteMapped.every((item) => item.unit_price == null || Math.abs(Number(item.quantity) * Number(item.unit_price) - Number(item.total)) < 0.001), JSON.stringify(quoteMapped.map((item) => ({ total: item.total, unit_price: item.unit_price, quantity: item.quantity }))));
+    const exposedFlag = await owner.rpc("set_config", { setting_name: "quotr.supplier_rate_write", new_value: "apply", is_local: true });
+    assert("the supplier write flag is not an exposed call", Boolean(exposedFlag.error), exposedFlag.error?.message ?? JSON.stringify(exposedFlag.data));
     console.log(`LIVE_STORED_LINE ${JSON.stringify(storedLine.data)}`);
     console.log(`LIVE_STORED_SOURCE ${JSON.stringify(storedSource.data)}`);
     const moneyBeforeEdit = JSON.stringify(storedLine.data);
@@ -369,8 +380,6 @@ async function liveMain() {
     assert("the override keeps the supplier cost and the original version", override.data?.sell_treatment === "manual" && Number(override.data?.sell_ex_gst) === 1000 && Number(override.data?.cost_ex_gst) === 850 && override.data?.rate_version_id === metre.versionId && Number(versionStill.data?.cost_ex_gst) === 85, JSON.stringify(override.data));
     const reviewedForQuote = await admin.from("pricing_documents").update({ status: "reviewed", reviewed_at: new Date().toISOString() }).eq("id", pricing.data.id);
     if (reviewedForQuote.error) throw new Error(reviewedForQuote.error.message);
-    const { mapPricingItem } = await import("../lib/pricing/mappers");
-    const { mapPricingItemsToQuoteItems } = await import("../lib/quotes/from-pricing");
     const { calculateQuoteBaseTotalsFromItems } = await import("../lib/quotes/base-totals");
     const pricingRows = await owner.from("pricing_items").select("*").eq("pricing_document_id", pricing.data.id);
     if (pricingRows.error) throw new Error(pricingRows.error.message);
@@ -453,6 +462,8 @@ async function liveMain() {
     assert("a loss is not kept silently", silentLoss.error === "LOSS_ACK", JSON.stringify(silentLoss));
     const lumpUsed = await apply({ ...lumpPayload, acknowledge_loss: "true" });
     assert("a lump sum is used once", lumpUsed.ok === true && Number(lumpUsed.costExGst) === 1800, JSON.stringify(lumpUsed));
+    const lumpStored = await admin.from("pricing_items").select("quantity, unit_cost, unit_sell, total_cost, total_sell").eq("id", lumpUsed.allowanceItemId!).single();
+    assert("a lump sum is one cost, not quantity times the rate", Number(lumpStored.data?.quantity) === 1 && Number(lumpStored.data?.total_cost) === 1800 && Number(lumpStored.data?.total_sell) === 800 && Number(lumpStored.data?.unit_sell) === 800, JSON.stringify(lumpStored.data));
 
     await clearItems();
     const small = await addItem("Floor tiles", "m²", 40, 80);
@@ -469,6 +480,8 @@ async function liveMain() {
       acknowledge_loss: "false",
     });
     assert("minimum charge is the supplier cost", minimumUsed.ok === true && Number(minimumUsed.costExGst) === 200, JSON.stringify(minimumUsed));
+    const minimumStored = await admin.from("pricing_items").select("quantity, unit_cost, unit_sell, total_cost, total_sell").eq("id", minimumUsed.allowanceItemId!).single();
+    assert("the minimum job cost stays 200 and the sell is not rebuilt from a rounded unit", Number(minimumStored.data?.total_cost) === 200 && Number(minimumStored.data?.total_sell) === 266.67 && Number(minimumStored.data?.quantity) === 1, JSON.stringify(minimumStored.data));
 
     const responseAllowance = await addItem("Response allowance", "lump_sum", 500, 700);
     const conflictRate = await saveRate({ scope: "Supply and install floor tiles", unit: "m2", cost_ex_gst: 85, minimum_charge: 200 });

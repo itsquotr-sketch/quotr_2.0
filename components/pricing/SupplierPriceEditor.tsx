@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPricingMoney } from "@/lib/pricing/format";
@@ -51,6 +51,10 @@ export function SupplierPriceEditor({
 }) {
   const review = useContext(SupplierPriceContext);
   const line = review?.byItemId[itemId];
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   if (!review || !line) return null;
   const loss = line.supplierCost > line.clientSell;
   return (
@@ -79,7 +83,7 @@ export function SupplierPriceEditor({
         Client label
         <Input className="h-11" value={form.client_label} onChange={(event) => setForm((current) => ({ ...current, client_label: event.target.value }))} />
       </label>
-      {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+      {error ? <p ref={errorRef} className="text-sm text-destructive" role="alert" tabIndex={-1}>{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="button" className="min-h-11" disabled={isPending} onClick={onSave}>Save details</Button>
         <Button type="button" variant="ghost" className="min-h-11" disabled={isPending} onClick={onCancel}>Cancel</Button>
