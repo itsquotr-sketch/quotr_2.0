@@ -68,11 +68,12 @@ export function UseSubcontractorRate({
     const node = lossRef.current;
     const scroller = node?.closest("[data-rate-review]");
     if (!node || !(scroller instanceof HTMLElement)) return;
-    const field = node.getBoundingClientRect();
-    const frame = scroller.getBoundingClientRect();
-    if (field.top < frame.top || field.bottom > frame.bottom) {
-      window.requestAnimationFrame(() => node.scrollIntoView({ block: "nearest" }));
-    }
+    window.requestAnimationFrame(() => {
+      const field = node.getBoundingClientRect();
+      const frame = scroller.getBoundingClientRect();
+      if (field.top < frame.top) scroller.scrollTop += field.top - frame.top - 8;
+      else if (field.bottom > frame.bottom) scroller.scrollTop += field.bottom - frame.bottom + 8;
+    });
   }, [selectedChoice?.loss, treatment]);
   const jobScope = area.summary?.trim() ? area.summary : "No specification is recorded for this work area.";
 

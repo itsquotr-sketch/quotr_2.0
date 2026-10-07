@@ -9,6 +9,14 @@ export function revealFocusedField(event: { target: EventTarget | null }) {
   if (!(field instanceof HTMLElement)) return;
   if (field.closest("[data-dialog-actions]")) return;
   window.requestAnimationFrame(() => {
+    const scroller = field.closest("[data-rate-review]");
+    if (scroller instanceof HTMLElement) {
+      const fieldBox = field.getBoundingClientRect();
+      const frame = scroller.getBoundingClientRect();
+      if (fieldBox.top < frame.top) scroller.scrollTop += fieldBox.top - frame.top - 8;
+      else if (fieldBox.bottom > frame.bottom) scroller.scrollTop += fieldBox.bottom - frame.bottom + 8;
+      return;
+    }
     const actions = field.closest("[data-slot='dialog-content']")?.querySelector("[data-dialog-actions]");
     if (!actions) {
       field.scrollIntoView({ block: "nearest" });
@@ -43,6 +51,7 @@ export function useClearDialogStyle(): CSSProperties | undefined {
         : 0;
       setStyle({
         top: "0.75rem",
+        translate: "none",
         transform: "translateX(-50%)",
         maxHeight: `calc(100dvh - 5.75rem - env(safe-area-inset-bottom) - 0.75rem - ${Math.round(covered)}px)`,
       });
