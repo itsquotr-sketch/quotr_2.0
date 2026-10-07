@@ -29,7 +29,7 @@ function PageContainer({
   return (
     <div
       className={cn(
-        scrollable && "flex-1 overflow-auto overflow-x-hidden",
+        scrollable && "min-h-0 flex-1 overflow-auto overflow-x-hidden",
         className
       )}
     >
