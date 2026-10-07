@@ -455,12 +455,14 @@ export function SubcontractorRates({
         {visible.map(({ current, versions }) => (
           <article key={current.rateId} className="grid gap-1 rounded-xl border border-border/70 bg-card px-3 py-3 text-sm" data-rate-id={current.rateId} data-rate-status={rateRecordStatus(current, today)}>
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="min-w-0 font-medium">{current.scope}</p>
+              <p className="min-w-0 break-words font-medium">{current.scope}</p>
               <StatusPill tone={rateRecordStatus(current, today) === "current" ? "positive" : "warning"}>{STATUS_LABEL[rateRecordStatus(current, today)]}</StatusPill>
             </div>
             <p className="text-muted-foreground">{workAreaLabel(current.workAreaType)}</p>
             <p>{money(current.costExGst)} NZD ex GST{current.unit === "lump_sum" ? " lump sum" : ` / ${SUBCONTRACTOR_RATE_UNIT_LABELS[current.unit as SubcontractorRateUnit] ?? current.unit}`}</p>
+            <p>Version {current.versionNumber} · from {showDate(current.effectiveFrom)}{current.effectiveUntil ? ` until ${showDate(current.effectiveUntil)}` : ""}</p>
             {current.minimumCharge != null && current.unit !== "lump_sum" ? <p>Minimum {money(current.minimumCharge)}</p> : null}
+            {current.exclusions.trim() ? <p className="break-words">Exclusions: {current.exclusions.trim()}</p> : null}
             <p>{current.lastConfirmedOn ? `Last confirmed ${showDate(current.lastConfirmedOn)} · ` : ""}{sourceLabel(current)}</p>
             <div className="mt-1 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => { captureFocus(); setDetails(current); }}>Details</Button>
@@ -498,8 +500,8 @@ export function SubcontractorRates({
                   <p className="font-medium">Versions</p>
                   <ul className="grid gap-1">
                     {versions.map((version) => (
-                      <li key={version.versionId}>
-                        Version {version.versionNumber}: {money(version.costExGst)} ex GST · {version.scope}
+                      <li key={version.versionId} className="break-words">
+                        Version {version.versionNumber}: {money(version.costExGst)} ex GST / {SUBCONTRACTOR_RATE_UNIT_LABELS[version.unit as SubcontractorRateUnit] ?? version.unit} · {version.scope} · from {showDate(version.effectiveFrom)}{version.effectiveUntil ? ` until ${showDate(version.effectiveUntil)}` : ""}
                       </li>
                     ))}
                   </ul>

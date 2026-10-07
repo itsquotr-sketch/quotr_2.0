@@ -320,13 +320,12 @@ export function SubcontractorProfile({
       </div>
 
       <div onKeyDown={onTabsKeyDown}>
-        <SettingsSectionNav
+          <SettingsSectionNav
           items={VIEWS}
           activeId={view}
           onChange={(id) => setView(id as ProfileView)}
           label="Subcontractor"
           touchTargets
-          wrap
         />
       </div>
 
@@ -340,7 +339,7 @@ export function SubcontractorProfile({
           </SummaryCard>
           <SummaryCard title="People" action={canOpenEditor ? () => openEditor("people") : null}>
             {primary ? (
-              <p>{primary.name}{primary.role ? ` · ${primary.role}` : ""}{primary.email ? ` · ${primary.email}` : ""}{primary.phone ? ` · ${primary.phone}` : ""}</p>
+              <p className="break-words">{primary.name}{primary.role ? ` · ${primary.role}` : ""}{primary.email ? ` · ${primary.email}` : ""}{primary.phone ? ` · ${primary.phone}` : ""}</p>
             ) : (
               <p>No contacts yet.</p>
             )}
@@ -596,10 +595,10 @@ function SummaryCard({
 }) {
   return (
     <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4 text-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between">
         <h3 className="text-base font-medium">{title}</h3>
         {action ? (
-          <Button type="button" variant="outline" className="h-11 min-h-11 max-w-full whitespace-normal" onClick={action}>Edit {title}</Button>
+          <Button type="button" variant="outline" className="h-11 min-h-11 w-full whitespace-normal sm:w-auto" onClick={action}>Edit {title}</Button>
         ) : null}
       </div>
       <div className="mt-2 grid gap-1">{children}</div>
