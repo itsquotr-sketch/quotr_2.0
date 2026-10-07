@@ -28,7 +28,7 @@ export function RfqScheduleResponse({
   onDone: (error: string | null) => void;
 }) {
   const draft = view.responses.find((response) => response.status === "draft");
-  const source = draft ?? (revise ? view.responses.filter((response) => response.status === "submitted").at(-1) : undefined);
+  const source = draft ?? view.responses.filter((response) => response.status === "submitted").at(-1);
   const [lines, setLines] = useState<Record<string, LineDraft>>(() => {
     const next: Record<string, LineDraft> = {};
     for (const item of view.schedule) {
