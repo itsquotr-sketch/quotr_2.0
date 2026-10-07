@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  applyScopePrompt,
   draftRateFromRfqResponse,
   previewRateCost,
   RATE_SCOPE_PROMPTS,
@@ -98,6 +99,14 @@ function staticMain() {
   assert("response rates still confirm scope", ratesUi.includes("I confirm this reusable scope."));
   assert("profile separates the three views", profile.includes('label: "Overview"') && profile.includes('label: "Rates"') && profile.includes('label: "Requests"'));
   assert("scope prompts are not prices", Object.values(RATE_SCOPE_PROMPTS).every((prompts) => prompts.every((prompt) => !prompt.includes("$") && !/per m/i.test(prompt))));
+  assert("a scope prompt is not added twice", applyScopePrompt("Supply and install wall tiles", "Supply and install wall tiles") === "Supply and install wall tiles");
+  assert("a scope prompt fills an empty field", applyScopePrompt("  ", "Waterproof wet areas") === "Waterproof wet areas");
+  assert("a different scope prompt can be added", applyScopePrompt("Supply and install wall tiles", "Waterproof wet areas").includes("Waterproof wet areas"));
+  assert("retire asks for a distinct confirmation", ratesUi.includes("Confirm retire") && !ratesUi.includes("not recorded"));
+  assert("section edit names the section", profile.includes("Edit {title}"));
+  assert("reviewed manual save sends confirmation flags", ratesUi.includes("confirmScope: true") && ratesUi.includes("confirmValidity: true"));
+  const dialog = read("components/subcontractors/clear-dialog.tsx");
+  assert("dialogs stay above the mobile navigation", dialog.includes("5.75rem") && dialog.includes("translateX(-50%)") && ratesUi.includes("useClearDialogStyle") && profile.includes("useClearDialogStyle") && ratesUi.includes("data-dialog-actions"));
   assert("AUD is not stored as NZD", rateBookCurrencyGate({ countryCode: "AU", preferredCurrency: "AUD" }).needsNzdConfirmation && rateBookCurrencyGate({ countryCode: "AU", preferredCurrency: "AUD" }).notice?.includes("not converted"));
   assert("NZD needs no extra confirmation", !rateBookCurrencyGate({ countryCode: "NZ", preferredCurrency: "NZD" }).needsNzdConfirmation);
 
@@ -269,6 +278,19 @@ async function liveMain() {
       p_payload: { subcontractor_id: business.data, work_area_type: "bathroom", ...base, confirm_scope: "false" },
     });
     assert("unconfirmed facts are refused", unconfirmed.data?.error === "CONFIRM");
+    const manualMissing = await owner.rpc("save_subcontractor_rate_v1", {
+      p_payload: {
+        subcontractor_id: business.data,
+        work_area_type: "kitchen",
+        scope: "Manual rate without confirmation flags",
+        unit: "item",
+        cost_ex_gst: 40,
+        currency: "NZD",
+        effective_from: "2026-10-07",
+        source: "builder",
+      },
+    });
+    assert("manual save without confirmation flags is refused", manualMissing.data?.error === "CONFIRM", JSON.stringify(manualMissing.data ?? manualMissing.error));
     const edited = await owner.rpc("save_subcontractor_rate_v1", {
       p_payload: {
         rate_id: saved.data.rateId, work_area_type: "bathroom", ...base, source: "builder", response_id: null,

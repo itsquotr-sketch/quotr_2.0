@@ -72,7 +72,7 @@ export function ContactsPageFrame({
         alignWithContent
         actions={actions}
       />
-      <PageContainer innerClassName="py-4 sm:py-6">
+      <PageContainer className="min-h-0" innerClassName="py-4 sm:py-6">
         <div className="mb-4">
           <ContactsSectionNav section={section} archived={archived} />
         </div>

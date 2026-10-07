@@ -74,7 +74,10 @@ export function WorkAreaPicker({ selected, onChange, disabled = false }: WorkAre
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(event) => {
-          if (event.key === "Escape") setOpen(false);
+          if (event.key === "Escape" && open) {
+            event.stopPropagation();
+            setOpen(false);
+          }
         }}
         placeholder="Search work areas"
         className="min-h-11"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { retireSubcontractorRate, saveSubcontractorRate } from "@/lib/subcontractors/rate-actions";
 import type { SubcontractorRateRecord } from "@/lib/subcontractors/rate-actions";
 import {
+  applyScopePrompt,
   rateBookCurrencyGate,
   rateCostLabel,
   rateRecordStatus,
@@ -26,6 +27,7 @@ import {
   type RateRecordStatus,
   type SubcontractorRateUnit,
 } from "@/lib/subcontractors/rate-book";
+import { clearDialogClassName, revealFocusedField, useClearDialogStyle } from "@/components/subcontractors/clear-dialog";
 import { workAreaLabel } from "@/lib/subcontractors/work-areas";
 
 const selectClass =
@@ -89,6 +91,8 @@ function RateDialog({
   onClose,
 }: RateDialogProps) {
   const router = useRouter();
+  const dialogStyle = useClearDialogStyle();
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const fromResponse = rate?.originResponseId != null;
   const lockedUnit = fromResponse && rate?.unit === "lump_sum";
   const currencyGate = rateBookCurrencyGate({ countryCode, preferredCurrency });
@@ -116,6 +120,9 @@ function RateDialog({
   const [confirmValidity, setConfirmValidity] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   const measured = unit !== "" && unit !== "lump_sum";
   const prompts = scopePromptsFor(workAreaType);
 
@@ -195,12 +202,13 @@ function RateDialog({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-lg" data-rate-dialog>
+      <DialogContent className={clearDialogClassName} style={dialogStyle} data-rate-dialog>
+        <div className="px-6 pt-6" onChange={() => setError(null)} onFocus={revealFocusedField}>
         <DialogHeader>
           <DialogTitle>{step === "review" ? "Review rate" : rate ? "Edit rate" : "Add rate"}</DialogTitle>
         </DialogHeader>
         {step === "edit" ? (
-          <div className="grid gap-3">
+          <div className="mt-4 grid gap-3">
             <label className="grid gap-1 text-sm">Work area
               <select className={selectClass} value={workAreaType} onChange={(event) => setWorkAreaType(event.target.value)}>
                 <option value="">Choose a work area</option>
@@ -223,7 +231,10 @@ function RateDialog({
                       key={prompt}
                       type="button"
                       className="min-h-11 rounded-full border border-border px-3 text-left text-sm"
-                      onClick={() => setScope((current) => current.trim() ? `${current.trim()} ${prompt}` : prompt)}
+                      onClick={() => {
+                        setScope((current) => applyScopePrompt(current, prompt));
+                        setError(null);
+                      }}
                     >
                       {prompt}
                     </button>
@@ -258,7 +269,7 @@ function RateDialog({
             <label className="grid gap-1 text-sm">Effective from
               <Input className="min-h-11" type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} />
             </label>
-            <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" aria-expanded={more} onClick={() => setMore((open) => !open)}>
+            <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" aria-expanded={more} onClick={() => { setMore((open) => !open); setError(null); }}>
               More details
             </Button>
             {more ? (
@@ -299,7 +310,7 @@ function RateDialog({
             ) : null}
           </div>
         ) : (
-          <div className="grid gap-3 text-sm" data-rate-review>
+          <div className="mt-4 grid gap-3 text-sm" data-rate-review>
             <p>{summary}</p>
             {exclusions.trim() ? <p>Exclusions: {exclusions.trim()}</p> : null}
             {overlap ? <p>Another rate for this work area covers the same dates. Both can stay.</p> : null}
@@ -314,10 +325,14 @@ function RateDialog({
             ) : null}
           </div>
         )}
-        {error ? <p className="text-sm text-destructive" role="alert" data-rate-incomplete={step === "edit" ? "true" : undefined}>{error}</p> : null}
-        <DialogFooter>
+        </div>
+        <div className="sticky bottom-0 z-10 bg-popover" data-dialog-actions>
+        {error ? (
+          <p ref={errorRef} tabIndex={-1} className="px-6 pt-3 text-sm text-destructive outline-none" role="alert" data-rate-incomplete={step === "edit" ? "true" : undefined}>{error}</p>
+        ) : null}
+        <DialogFooter className="px-6 pt-3 pb-4">
           {step === "review" ? (
-            <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setStep("edit")}>Back</Button>
+            <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => { setError(null); setStep("edit"); }}>Back</Button>
           ) : (
             <Button type="button" variant="outline" className="h-11 min-h-11" onClick={onClose}>Cancel</Button>
           )}
@@ -340,6 +355,7 @@ function RateDialog({
             </Button>
           )}
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -363,6 +379,8 @@ export function SubcontractorRates({
   preferredCurrency: string | null;
 }) {
   const router = useRouter();
+  const dialogStyle = useClearDialogStyle();
+  const returnFocus = useRef<HTMLElement | null>(null);
   const [statusFilter, setStatusFilter] = useState<RateRecordStatus>("current");
   const [areaFilter, setAreaFilter] = useState("");
   const [query, setQuery] = useState("");
@@ -393,6 +411,18 @@ export function SubcontractorRates({
     return !needle || current.scope.toLowerCase().includes(needle);
   });
   const areas = [...new Set(latest.map(({ current }) => current.workAreaType))];
+
+  function captureFocus() {
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
+  function restoreFocus() {
+    const target = returnFocus.current;
+    returnFocus.current = null;
+    window.setTimeout(() => {
+      if (target?.isConnected) target.focus();
+    }, 0);
+  }
 
   async function retire(rateId: string) {
     setError(null);
@@ -431,16 +461,16 @@ export function SubcontractorRates({
             <p className="text-muted-foreground">{workAreaLabel(current.workAreaType)}</p>
             <p>{money(current.costExGst)} NZD ex GST{current.unit === "lump_sum" ? " lump sum" : ` / ${SUBCONTRACTOR_RATE_UNIT_LABELS[current.unit as SubcontractorRateUnit] ?? current.unit}`}</p>
             {current.minimumCharge != null && current.unit !== "lump_sum" ? <p>Minimum {money(current.minimumCharge)}</p> : null}
-            <p>Last confirmed {current.lastConfirmedOn ? showDate(current.lastConfirmedOn) : "not recorded"} · {sourceLabel(current)}</p>
+            <p>{current.lastConfirmedOn ? `Last confirmed ${showDate(current.lastConfirmedOn)} · ` : ""}{sourceLabel(current)}</p>
             <div className="mt-1 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setDetails(current)}>Details</Button>
+              <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => { captureFocus(); setDetails(current); }}>Details</Button>
               {canEdit && !current.retired ? (
-                <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setEditing(current)}>Edit</Button>
+                <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => { captureFocus(); setEditing(current); }}>Edit rate</Button>
               ) : null}
               {canEdit && !current.retired ? (
                 retiring === current.rateId ? (
                   <>
-                    <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => void retire(current.rateId)}>Retire</Button>
+                    <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => void retire(current.rateId)}>Confirm retire</Button>
                     <Button type="button" variant="ghost" className="h-11 min-h-11" onClick={() => setRetiring(null)}>Cancel</Button>
                   </>
                 ) : (
@@ -448,12 +478,13 @@ export function SubcontractorRates({
                 )
               ) : null}
             </div>
-            <Dialog open={details?.rateId === current.rateId} onOpenChange={(open) => { if (!open) setDetails(null); }}>
-              <DialogContent className="sm:max-w-lg" data-rate-details={current.rateId}>
+            <Dialog open={details?.rateId === current.rateId} onOpenChange={(open) => { if (!open) { setDetails(null); restoreFocus(); } }}>
+              <DialogContent className={clearDialogClassName} style={dialogStyle} data-rate-details={current.rateId}>
+                <div className="px-6 pt-6">
                 <DialogHeader>
                   <DialogTitle>{current.scope}</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-2 text-sm">
+                <div className="mt-4 grid gap-2 text-sm">
                   <p>Inclusions: {current.inclusions.trim() || "None"}</p>
                   <p>Exclusions: {current.exclusions.trim() || "None"}</p>
                   {current.unit !== "lump_sum" ? (
@@ -473,13 +504,17 @@ export function SubcontractorRates({
                     ))}
                   </ul>
                 </div>
+                </div>
+                <DialogFooter className="sticky bottom-0 z-10 bg-popover px-6 pt-3 pb-4" data-dialog-actions>
+                  <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => { setDetails(null); restoreFocus(); }}>Close</Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </article>
         ))}
       </div>
       {canEdit ? (
-        <Button type="button" className="h-11 min-h-11 w-fit" onClick={() => setAdding(true)}>Add rate</Button>
+        <Button type="button" className="h-11 min-h-11 w-fit" onClick={() => { captureFocus(); setAdding(true); }}>Add rate</Button>
       ) : null}
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
       {adding ? (
@@ -491,7 +526,7 @@ export function SubcontractorRates({
           countryCode={countryCode}
           preferredCurrency={preferredCurrency}
           rate={null}
-          onClose={() => setAdding(false)}
+          onClose={() => { setAdding(false); restoreFocus(); }}
         />
       ) : null}
       {editing ? (
@@ -503,7 +538,7 @@ export function SubcontractorRates({
           countryCode={countryCode}
           preferredCurrency={preferredCurrency}
           rate={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => { setEditing(null); restoreFocus(); }}
         />
       ) : null}
     </section>

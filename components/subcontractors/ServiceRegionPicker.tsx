@@ -144,7 +144,10 @@ export function ServiceRegionPicker({
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={(event) => {
-              if (event.key === "Escape") setOpen(false);
+              if (event.key === "Escape" && open) {
+                event.stopPropagation();
+                setOpen(false);
+              }
             }}
             placeholder={country === "AU" ? "Search states and territories" : "Search regions"}
             className="min-h-11"

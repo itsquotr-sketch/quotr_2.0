@@ -28,6 +28,14 @@ export function scopePromptsFor(workAreaType: string): readonly string[] {
   return RATE_SCOPE_PROMPTS[workAreaType] ?? [];
 }
 
+/** Fills an empty scope, or adds a prompt once. A prompt already present is left as it is. */
+export function applyScopePrompt(current: string, prompt: string): string {
+  const trimmed = current.trim();
+  if (!trimmed) return prompt;
+  if (trimmed.includes(prompt)) return trimmed;
+  return `${trimmed} ${prompt}`;
+}
+
 export function rateCostLabel(unit: string): string {
   switch (unit) {
     case "m2":

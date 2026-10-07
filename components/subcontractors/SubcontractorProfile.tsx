@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BusinessLocationFields } from "@/components/subcontractors/BusinessLocationFields";
@@ -10,6 +10,9 @@ import {
   RestoreSubcontractorButton,
 } from "@/components/subcontractors/SubcontractorFormDialog";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
+import { mobileNavPaddingClass } from "@/components/layout/mobile-nav-metrics";
+import { cn } from "@/lib/utils";
+import { clearDialogClassName, revealFocusedField, useClearDialogStyle } from "@/components/subcontractors/clear-dialog";
 import { SubcontractorDocuments } from "@/components/subcontractors/SubcontractorDocuments";
 import { SubcontractorRates } from "@/components/subcontractors/SubcontractorRates";
 import { SubcontractorRequests } from "@/components/subcontractors/SubcontractorRequests";
@@ -101,6 +104,9 @@ export function SubcontractorProfile({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const dialogStyle = useClearDialogStyle();
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const archived = Boolean(subcontractor.archived_at);
   const locked = !canEdit || archived;
   const [tradingName, setTradingName] = useState(subcontractor.trading_name);
@@ -136,6 +142,9 @@ export function SubcontractorProfile({
   const [travel, setTravel] = useState(subcontractor.travel_notes ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   const [view, setView] = useState<ProfileView>("overview");
   const [editing, setEditing] = useState<ProfileSection | null>(null);
 
@@ -187,10 +196,29 @@ export function SubcontractorProfile({
     setTravel(record.travel_notes ?? "");
   }
 
+  function captureFocus() {
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
+  function restoreFocus() {
+    const target = returnFocus.current;
+    returnFocus.current = null;
+    window.setTimeout(() => {
+      if (target?.isConnected) target.focus();
+    }, 0);
+  }
+
   function closeEditor() {
     resetFrom(subcontractor);
     setEditing(null);
     setError(null);
+    restoreFocus();
+  }
+
+  function openEditor(section: ProfileSection) {
+    captureFocus();
+    setError(null);
+    setEditing(section);
   }
 
   async function save() {
@@ -237,6 +265,7 @@ export function SubcontractorProfile({
       return;
     }
     setEditing(null);
+    restoreFocus();
     router.refresh();
   }
   const primary = contacts.find((contact) => contact.is_primary) ?? contacts[0];
@@ -269,7 +298,7 @@ export function SubcontractorProfile({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4" data-subcontractor-profile data-profile-view={view}>
+    <div className={cn("flex min-w-0 flex-col gap-4", mobileNavPaddingClass)} data-subcontractor-profile data-profile-view={view}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <Link
@@ -303,13 +332,13 @@ export function SubcontractorProfile({
 
       {view === "overview" ? (
         <div className="grid gap-3" data-profile-panel="overview">
-          <SummaryCard title="Business and address" action={canOpenEditor ? () => setEditing("business") : null}>
+          <SummaryCard title="Business and address" action={canOpenEditor ? () => openEditor("business") : null}>
             <p>{country ? SUBCONTRACTOR_COUNTRY_LABELS[country] : "No country"}</p>
             <p>{addressSummary || "No address"}</p>
             {legalName ? <p>{legalName}</p> : null}
             {website ? <p className="break-words">{website}</p> : null}
           </SummaryCard>
-          <SummaryCard title="People" action={canOpenEditor ? () => setEditing("people") : null}>
+          <SummaryCard title="People" action={canOpenEditor ? () => openEditor("people") : null}>
             {primary ? (
               <p>{primary.name}{primary.role ? ` · ${primary.role}` : ""}{primary.email ? ` · ${primary.email}` : ""}{primary.phone ? ` · ${primary.phone}` : ""}</p>
             ) : (
@@ -317,7 +346,7 @@ export function SubcontractorProfile({
             )}
             {contacts.length > 1 ? <p className="text-muted-foreground">{contacts.length} contacts</p> : null}
           </SummaryCard>
-          <SummaryCard title="Capabilities and service regions" action={canOpenEditor ? () => setEditing("capabilities") : null}>
+          <SummaryCard title="Capabilities and service regions" action={canOpenEditor ? () => openEditor("capabilities") : null}>
             <div className="flex flex-wrap gap-2">
               {workAreas.map((type) => (
                 <span key={type} className="rounded-full border border-border px-3 py-1 text-sm">{workAreaLabel(type)}</span>
@@ -343,10 +372,10 @@ export function SubcontractorProfile({
               />
             </div>
           </section>
-          <SummaryCard title="Commercial preferences" action={canOpenEditor ? () => setEditing("commercial") : null}>
+          <SummaryCard title="Commercial preferences" action={canOpenEditor ? () => openEditor("commercial") : null}>
             <p>{pricing ? SUBCONTRACTOR_PRICING_LABELS[pricing] : "No pricing preference"} · {currency || "No currency"} · GST {gstRegistration}</p>
           </SummaryCard>
-          <SummaryCard title="Internal notes" action={canOpenEditor ? () => setEditing("notes") : null}>
+          <SummaryCard title="Internal notes" action={canOpenEditor ? () => openEditor("notes") : null}>
             <p className="whitespace-pre-wrap">{notes.trim() || "No notes"}</p>
           </SummaryCard>
         </div>
@@ -373,7 +402,8 @@ export function SubcontractorProfile({
       ) : null}
 
       <Dialog open={editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className={clearDialogClassName} style={dialogStyle} data-profile-dialog>
+          <div className="px-6 pt-6" onChange={() => setError(null)} onFocus={revealFocusedField}>
           <DialogHeader>
             <DialogTitle>
               {editing === "business" ? "Business and address" : null}
@@ -383,9 +413,8 @@ export function SubcontractorProfile({
               {editing === "notes" ? "Internal notes" : null}
             </DialogTitle>
           </DialogHeader>
-          {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
           {editing === "business" ? (
-            <div className="grid gap-3">
+            <div className="mt-4 grid gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="profile-trading-name">Trading name</Label>
                 <Input id="profile-trading-name" value={tradingName} onChange={(event) => setTradingName(event.target.value)} className={fieldClass} maxLength={160} required disabled={locked} />
@@ -413,7 +442,7 @@ export function SubcontractorProfile({
             </div>
           ) : null}
           {editing === "people" ? (
-            <div className="grid gap-3">
+            <div className="mt-4 grid gap-3">
               {contacts.map((contact, index) => (
                 <div key={contact.key} className="min-w-0 rounded-xl border border-border/70 p-3" data-subcontractor-contact>
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -459,7 +488,7 @@ export function SubcontractorProfile({
             </div>
           ) : null}
           {editing === "capabilities" ? (
-            <div className="grid gap-4">
+            <div className="mt-4 grid gap-4">
               <div className="space-y-2">
                 <p className="text-sm font-medium">Work areas</p>
                 <WorkAreaPicker selected={workAreas} onChange={setWorkAreas} disabled={locked} />
@@ -484,7 +513,7 @@ export function SubcontractorProfile({
             </div>
           ) : null}
           {editing === "commercial" ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <p className="text-sm text-muted-foreground sm:col-span-2">These notes do not change Quote GST. GST registration is not taken from the NZBN or ABN. Reusable rates are stored in NZD only.</p>
               <div className="space-y-1.5">
                 <Label htmlFor="profile-pricing">Preferred pricing method</Label>
@@ -536,14 +565,20 @@ export function SubcontractorProfile({
             </div>
           ) : null}
           {editing === "notes" ? (
-            <Textarea id="profile-notes" value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-28" maxLength={5000} disabled={locked} aria-label="Internal notes" />
+            <Textarea id="profile-notes" value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-4 min-h-28" maxLength={5000} disabled={locked} aria-label="Internal notes" />
           ) : null}
-          <DialogFooter>
+          </div>
+          <div className="sticky bottom-0 z-10 bg-popover" data-dialog-actions>
+          {error ? (
+            <p ref={errorRef} tabIndex={-1} className="px-6 pt-3 text-sm text-destructive outline-none" role="alert">{error}</p>
+          ) : null}
+          <DialogFooter className="px-6 pt-3 pb-4">
             <Button type="button" variant="outline" className="h-11 min-h-11" onClick={closeEditor}>Cancel</Button>
             <Button type="button" className="h-11 min-h-11" disabled={pending || !tradingName.trim()} onClick={() => void save()}>
               {pending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -561,10 +596,10 @@ function SummaryCard({
 }) {
   return (
     <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4 text-sm">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <h3 className="text-base font-medium">{title}</h3>
         {action ? (
-          <Button type="button" variant="outline" className="h-11 min-h-11" aria-label={`Edit ${title}`} onClick={action}>Edit</Button>
+          <Button type="button" variant="outline" className="h-11 min-h-11 max-w-full whitespace-normal" onClick={action}>Edit {title}</Button>
         ) : null}
       </div>
       <div className="mt-2 grid gap-1">{children}</div>
