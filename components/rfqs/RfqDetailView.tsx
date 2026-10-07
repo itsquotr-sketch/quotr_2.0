@@ -11,6 +11,8 @@ import { answerRfqQuestion, resendRfqRecipient, revokeRfqRecipient, signRfqRespo
 import { sharedAnswerLeak } from "@/lib/rfqs/draft-privacy";
 import type { RfqPricingTarget } from "@/lib/rfqs/load";
 import { RfqPricingApply } from "@/components/rfqs/RfqPricingApply";
+import { RfqScheduleCompare } from "@/components/rfqs/RfqScheduleCompare";
+import { scheduleRoleLabel, scheduleUnitLabel } from "@/lib/rfqs/schedule";
 import { SaveResponseAsRate } from "@/components/rfqs/SaveResponseAsRate";
 
 export function RfqDetailView({
@@ -74,7 +76,10 @@ export function RfqDetailView({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="break-words text-xl font-semibold">{detail.scopeLabel || "Request"}</h1>
-          <p className="text-sm text-foreground/70">{detail.status === "draft" ? "Draft" : "Sent"} · The request content stays as it was sent.</p>
+          <p className="text-sm text-foreground/70">{detail.status === "draft" ? "Draft" : "Sent"} · {detail.pricingRequest === "schedule" ? "Item schedule" : "One price for this scope"} · The request content stays as it was sent.</p>
+          {detail.status === "sent" ? (
+            <p className="text-sm">To change the scope, quantities, due date, or files, <Link className="underline" href={`/app/projects/${detail.projectId}/requests/new`}>create a new request</Link>. This request stays as sent, and a response is not reused on a different schedule.</p>
+          ) : null}
         </div>
         {canEdit && detail.status === "draft" ? (
           <Button className="h-11 min-h-11" render={<Link href={`/app/projects/${detail.projectId}/requests/${detail.id}/edit`} />}>
@@ -93,6 +98,13 @@ export function RfqDetailView({
         {detail.questions ? <p>Questions: {detail.questions}</p> : null}
         {detail.message ? <p>Message: {detail.message}</p> : null}
         <p>Files: {detail.files.length === 0 ? "None selected" : detail.files.map((file) => file.filename).join(", ")}</p>
+        {detail.pricingRequest === "schedule" ? (
+          <ol className="grid gap-1" data-rfq-frozen-schedule>
+            {detail.schedule.map((item, index) => (
+              <li key={item.id} className="break-words">{index + 1}. {item.scope} · {item.unit === "lump_sum" ? "Lump sum" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}</li>
+            ))}
+          </ol>
+        ) : null}
       </section>
 
       <section className="grid gap-3">
@@ -137,7 +149,10 @@ export function RfqDetailView({
                   <p className="font-medium">{recipient.tradingName}</p>
                   <p>{rfqResponseLabel(recipient.responseState)} · {rfqDeliveryLabel(recipient.deliveryState)}</p>
                 </div>
-                <p>Price ex GST: {latest?.priceExGst == null ? "None" : latest.priceExGst.toLocaleString()}</p>
+                <p>Price ex GST: {detail.pricingRequest === "schedule"
+                  ? (latest?.completeness === "complete" ? latest.priceExGst?.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : latest?.completeness === "partial" ? "Partial" : "None")
+                  : (latest?.priceExGst == null ? "None" : latest.priceExGst.toLocaleString())}</p>
+                {detail.pricingRequest === "schedule" && latest?.qualified ? <p>Qualified</p> : null}
                 <p>GST: {latest ? gstTreatmentLabel(latest.gstTreatment) : "None"}</p>
                 <p>Pricing: {pricingUseReason(recipient.responseState, Boolean(latest), used, rfqDeliveryFailed(recipient.deliveryState))}</p>
                 <details>
@@ -151,7 +166,7 @@ export function RfqDetailView({
                     <p>File: {latest?.fileReady ? (
                       <button type="button" className="underline" onClick={() => openFile(latest.id)}>{latest.fileName || "PDF"}</button>
                     ) : "None"}</p>
-                    {latest ? <SaveResponseAsRate responseId={latest.id} canSave={canEdit} /> : null}
+                    {latest && detail.pricingRequest !== "schedule" ? <SaveResponseAsRate responseId={latest.id} canSave={canEdit} /> : null}
                     {versions.length > 1 ? (
                       <ul>
                         {versions.map((response) => (
@@ -166,6 +181,8 @@ export function RfqDetailView({
           })}
         </ul>
       </section>
+
+      {detail.pricingRequest === "schedule" ? <RfqScheduleCompare detail={detail} onOpenFile={openFile} /> : null}
 
       <RfqPricingApply detail={detail} pricing={pricing} canPrice={canPrice} />
 

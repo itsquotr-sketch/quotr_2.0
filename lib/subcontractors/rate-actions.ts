@@ -307,11 +307,14 @@ export async function rateDraftForResponse(responseId: string): Promise<
   const rfq = recipient.data
     ? await loaded.context.supabase
         .from("rfqs")
-        .select("scope_kind, work_area_type")
+        .select("scope_kind, work_area_type, pricing_request")
         .eq("id", recipient.data.rfq_id)
         .maybeSingle()
     : { data: null };
   if (!recipient.data) return { ok: false, error: FAILED };
+  if (rfq.data?.pricing_request === "schedule") {
+    return { ok: false, error: "Review item prices here; applying individual items to Pricing is coming next." };
+  }
   const business = await loaded.context.supabase
     .from("subcontractors")
     .select("country_code, currency")

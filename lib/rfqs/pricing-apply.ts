@@ -74,9 +74,26 @@ function moneyError(code: string | undefined): string {
       return "The current sell is unknown. Choose another sell treatment.";
     case "SELL_TREATMENT":
       return "Choose how the sell should be set before using this response.";
+    case "SCHEDULE_NOT_APPLIED":
+      return "Review item prices here; applying individual items to Pricing is coming next.";
     default:
       return FAILED;
   }
+}
+
+async function scheduleApplyBlock(
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
+  responseId: string
+): Promise<string | null> {
+  const response = await supabase.from("rfq_responses").select("recipient_id").eq("id", responseId).maybeSingle();
+  if (!response.data?.recipient_id) return null;
+  const recipient = await supabase.from("rfq_recipients").select("rfq_id").eq("id", response.data.recipient_id).maybeSingle();
+  if (!recipient.data?.rfq_id) return null;
+  const rfq = await supabase.from("rfqs").select("pricing_request").eq("id", recipient.data.rfq_id).maybeSingle();
+  if (rfq.data?.pricing_request === "schedule") {
+    return "Review item prices here; applying individual items to Pricing is coming next.";
+  }
+  return null;
 }
 
 async function loadTargetMargin(
@@ -218,6 +235,8 @@ export async function previewRfqPricingApplication(input: {
 }): Promise<RfqPricingPreviewResult | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
+  const blocked = await scheduleApplyBlock(loaded.context.supabase, input.responseId);
+  if (blocked) return { ok: false, error: blocked };
   const context = await loadApplyContext(loaded.context.supabase, loaded.context.orgId, {
     ...input,
     manualSell: input.manualSell ?? null,
@@ -249,6 +268,8 @@ export async function applyRfqPricingApplication(input: {
 }): Promise<{ ok: true; alreadyApplied: boolean } | Fail> {
   const loaded = await writer();
   if (!loaded.ok) return loaded;
+  const blocked = await scheduleApplyBlock(loaded.context.supabase, input.responseId);
+  if (blocked) return { ok: false, error: blocked };
   const context = await loadApplyContext(loaded.context.supabase, loaded.context.orgId, {
     ...input,
     manualSell: input.manualSell ?? null,

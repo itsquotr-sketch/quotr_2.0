@@ -72,6 +72,16 @@ function rpcError(data: unknown, fallback: string): string {
       return "This request has been sent and can no longer be edited.";
     case "FORBIDDEN":
       return "You do not have permission to change this request.";
+    case "SCHEDULE":
+      return "Add at least one required item with a scope, a unit, and a quantity where the unit is measured.";
+    case "DUPLICATE_ROW":
+      return "Two items use the same scope. Give each item its own wording.";
+    case "STALE_SCHEDULE":
+      return "This request was replaced. Open the latest link before pricing it.";
+    case "NOT_PRICED_REASON":
+      return "Give a reason for each required item you cannot price.";
+    case "INCOMPLETE":
+      return "Price or mark every required item before submitting.";
     default:
       return fallback;
   }
@@ -96,6 +106,15 @@ export async function saveRfqDraft(input: {
     selectionSource: "suggested" | "manual";
   }>;
   documentVersionIds: string[];
+  pricingRequest?: "lump_sum" | "schedule";
+  schedule?: Array<{
+    id: string;
+    scope: string;
+    specification: string;
+    quantity: string;
+    unit: string;
+    role: string;
+  }>;
 }): Promise<Ok<{ id: string }> | Fail> {
   const loaded = await requireRfqWriter();
   if (!loaded.ok) return loaded;
@@ -125,6 +144,28 @@ export async function saveRfqDraft(input: {
   if (message) return { ok: false, error: message };
   const id = (data as { id?: string }).id;
   if (!id) return { ok: false, error: SAVE_FAILED };
+  const mode = input.pricingRequest === "schedule" ? "schedule" : "lump_sum";
+  const modeResult = await loaded.context.supabase.rpc("set_rfq_pricing_request_v1", {
+    p_rfq: id,
+    p_mode: mode,
+  });
+  const modeMessage = modeResult.error ? SAVE_FAILED : rpcError(modeResult.data, SAVE_FAILED);
+  if (modeMessage) return { ok: false, error: modeMessage };
+  if (mode === "schedule") {
+    const scheduleResult = await loaded.context.supabase.rpc("save_rfq_schedule_v1", {
+      p_rfq: id,
+      p_items: (input.schedule ?? []).map((row) => ({
+        id: row.id,
+        scope: row.scope,
+        specification: row.specification,
+        quantity: row.unit === "lump_sum" ? null : row.quantity,
+        unit: row.unit,
+        role: row.role,
+      })),
+    });
+    const scheduleMessage = scheduleResult.error ? SAVE_FAILED : rpcError(scheduleResult.data, SAVE_FAILED);
+    if (scheduleMessage) return { ok: false, error: scheduleMessage };
+  }
   revalidatePath(`/app/projects/${input.projectId}/requests`);
   return { ok: true, id };
 }
@@ -139,6 +180,7 @@ async function deliverRecipient(input: {
   responseDueOn: string | null;
   rawToken: string;
   idempotencyKey: string;
+  pricingRequest: "lump_sum" | "schedule";
 }): Promise<{ status: "sent" | "failed" }> {
   const begun = await input.supabase.rpc("begin_rfq_delivery_v1", {
     p_recipient: input.recipientId,
@@ -165,6 +207,7 @@ async function deliverRecipient(input: {
     scopeLabel: input.scopeLabel,
     responseDueOn: input.responseDueOn,
     publicUrl,
+    pricingRequest: input.pricingRequest,
   });
   const sent = await provider.send({
     to: input.email,
@@ -236,6 +279,15 @@ export async function sendRfq(input: {
   }>;
   documentVersionIds: string[];
   previewApproved?: boolean;
+  pricingRequest?: "lump_sum" | "schedule";
+  schedule?: Array<{
+    id: string;
+    scope: string;
+    specification: string;
+    quantity: string;
+    unit: string;
+    role: string;
+  }>;
 }): Promise<Ok<{ id: string; failed: number }> | Fail> {
   if (input.previewApproved !== true) {
     return { ok: false, error: "Review the request the recipient will see, then approve it before sending." };
@@ -263,7 +315,7 @@ export async function sendRfq(input: {
   if (sendMessage) return { ok: false, error: sendMessage };
   const rfq = await loaded.context.supabase
     .from("rfqs")
-    .select("builder_name, work_area_name, written_scope_label, response_due_on, scope_kind")
+    .select("builder_name, work_area_name, written_scope_label, response_due_on, scope_kind, pricing_request")
     .eq("id", saved.id)
     .maybeSingle();
   const scopeLabel =
@@ -285,6 +337,7 @@ export async function sendRfq(input: {
       builderName: rfq.data?.builder_name || "Your builder",
       scopeLabel,
       responseDueOn: rfq.data?.response_due_on ?? null,
+      pricingRequest: rfq.data?.pricing_request === "schedule" ? "schedule" : "lump_sum",
       rawToken: raw,
       idempotencyKey: `rfq-send:${row.id}`,
     });
@@ -316,7 +369,7 @@ export async function resendRfqRecipient(input: {
     .maybeSingle();
   const rfq = await loaded.context.supabase
     .from("rfqs")
-    .select("builder_name, work_area_name, written_scope_label, response_due_on, scope_kind")
+    .select("builder_name, work_area_name, written_scope_label, response_due_on, scope_kind, pricing_request")
     .eq("id", input.rfqId)
     .maybeSingle();
   if (!recipient.data) return { ok: false, error: SEND_FAILED };
@@ -332,6 +385,7 @@ export async function resendRfqRecipient(input: {
     builderName: rfq.data?.builder_name || "Your builder",
     scopeLabel,
     responseDueOn: rfq.data?.response_due_on ?? null,
+    pricingRequest: rfq.data?.pricing_request === "schedule" ? "schedule" : "lump_sum",
     rawToken: raw,
     idempotencyKey: `rfq-resend:${input.recipientId}:${Date.now()}`,
   });

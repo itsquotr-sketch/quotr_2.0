@@ -19,7 +19,24 @@ function percent(value: number | null): string {
   return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
-export function RfqPricingApply({
+export function RfqPricingApply(props: {
+  detail: RfqDetail;
+  pricing: RfqPricingTarget | null;
+  canPrice: boolean;
+}) {
+  if (props.detail.pricingRequest === "schedule") {
+    return (
+      <section className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-schedule-pricing>
+        <h2 className="text-base font-semibold">Pricing</h2>
+        <p>Review item prices here; applying individual items to Pricing is coming next.</p>
+        <p className="text-foreground/70">This response has not changed the Estimate, Pricing, Quote, or supplier rate book.</p>
+      </section>
+    );
+  }
+  return <LumpPricingApply {...props} />;
+}
+
+function LumpPricingApply({
   detail,
   pricing,
   canPrice,

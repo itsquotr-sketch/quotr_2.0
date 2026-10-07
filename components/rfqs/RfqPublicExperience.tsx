@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { PublicRfqView } from "@/lib/rfqs/load";
+import { RfqScheduleResponse } from "@/components/rfqs/RfqScheduleResponse";
 import { clarifyRfq, declineRfq, saveRfqResponse, uploadRfqResponsePdf } from "@/lib/rfqs/public-actions";
+import { scheduleRoleLabel, scheduleUnitLabel } from "@/lib/rfqs/schedule";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 
 const fieldClass =
@@ -68,6 +70,15 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
           {view.measurementNotes ? <p className="whitespace-pre-wrap">Measurements: {view.measurementNotes}</p> : null}
           {view.questions ? <p className="whitespace-pre-wrap">Questions: {view.questions}</p> : null}
           {view.message ? <p className="whitespace-pre-wrap">{view.message}</p> : null}
+          {view.pricingRequest === "schedule" ? (
+            <ol className="grid gap-2" data-rfq-public-schedule>
+              {view.schedule.map((item, index) => (
+                <li key={item.id} className="break-words">
+                  {index + 1}. {item.scope}{item.specification ? ` — ${item.specification}` : ""} · {item.unit === "lump_sum" ? "Lump sum, one total" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}
+                </li>
+              ))}
+            </ol>
+          ) : <p>One price for this scope.</p>}
         </section>
         <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm">
           <h2 className="text-base font-semibold">Files and due date</h2>
@@ -96,7 +107,11 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
         {submitted.map((response) => (
           <section key={response.id} className="rounded-xl border border-border bg-white p-4 text-sm">
             <h2 className="font-semibold">Submitted version {response.versionNumber}</h2>
-            <p>{response.priceExGst?.toLocaleString()} ex GST · {gstTreatmentLabel(response.gstTreatment)} · {pricingStructureLabel(response.pricingStructure)}</p>
+            {view.pricingRequest === "schedule" ? (
+              <p>{response.completeness === "complete" ? "Complete" : "Partial"}{response.qualified ? " · Qualified" : ""} · Base ex GST {response.priceExGst?.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "None"} · Optional {response.optionalExGst ?? 0} · Alternatives {response.alternativeExGst ?? 0}</p>
+            ) : (
+              <p>{response.priceExGst?.toLocaleString()} ex GST · {gstTreatmentLabel(response.gstTreatment)} · {pricingStructureLabel(response.pricingStructure)}</p>
+            )}
             {response.excludedScope ? <p>Excluded: {response.excludedScope}</p> : null}
             {response.fileReady ? (
               <a className="underline" href={`/r/${view.token}/responses/${response.id}/file`} target="_blank" rel="noopener noreferrer">{response.fileName || "PDF"}</a>
@@ -121,6 +136,11 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
             <p className="text-sm text-foreground/70">{latest && revise ? "This revision is a new version. The earlier price stays on record." : latest ? "Your response is submitted." : "Price the work described above. GST is separate from the price."}</p>
             {latest && !revise ? (
               <Button type="button" className="h-11 min-h-11 w-fit" onClick={() => setRevise(true)}>Revise response</Button>
+            ) : view.pricingRequest === "schedule" ? (
+              <RfqScheduleResponse view={view} revise={revise} pending={pending} onDone={(message) => {
+                if (message) setError(message);
+                else router.refresh();
+              }} />
             ) : (
               <>
                 <label className="grid gap-1 text-sm">Price ex GST

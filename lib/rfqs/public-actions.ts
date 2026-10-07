@@ -24,6 +24,10 @@ function publicError(code: string | undefined): string {
   if (code === "EXPIRED") return EXPIRED;
   if (code === "DUPLICATE") return "That response is already submitted. Send a revision if it needs to change.";
   if (code === "FILE_TYPE") return "Attach a PDF of 15 MB or smaller.";
+  if (code === "STALE_SCHEDULE") return "This request was replaced. Open the latest link before pricing it.";
+  if (code === "NOT_PRICED_REASON") return "Give a reason for each required item you cannot price.";
+  if (code === "INCOMPLETE") return "Price or mark every required item before submitting.";
+  if (code === "DUPLICATE_ROW") return "Each schedule item can only be answered once.";
   return UNAVAILABLE;
 }
 
@@ -82,6 +86,56 @@ export async function saveRfqResponse(input: {
       lead_time: input.leadTime,
       valid_until: input.validUntil || null,
       message: input.message,
+    },
+    p_confirm: input.confirm,
+    p_revise: input.revise,
+  });
+  const body = (data ?? {}) as { ok?: boolean; error?: string; responseId?: string };
+  if (error || body.ok !== true || !body.responseId) return { error: publicError(body.error) };
+  return { responseId: body.responseId };
+}
+
+export async function saveRfqScheduleResponse(input: {
+  token: string;
+  confirm: boolean;
+  revise: boolean;
+  requestSentAt: string;
+  gstTreatment: string;
+  includedScope: string;
+  excludedScope: string;
+  assumptions: string;
+  leadTime: string;
+  validUntil: string;
+  message: string;
+  lines: Array<{
+    scheduleItemId: string;
+    decision: "priced" | "not_priced" | "excluded";
+    unitPrice: string;
+    reason: string;
+    qualification: string;
+  }>;
+}): Promise<{ error?: string; responseId?: string }> {
+  if (!isRfqAccessTokenFormat(input.token)) return { error: UNAVAILABLE };
+  const supabase = anonClient();
+  if (!supabase) return { error: UNAVAILABLE };
+  const { data, error } = await supabase.rpc("public_rfq_save_schedule_response_v1", {
+    p_token_hash: hashRfqAccessToken(input.token),
+    p_payload: {
+      request_sent_at: input.requestSentAt,
+      gst_treatment: input.gstTreatment,
+      included_scope: input.includedScope,
+      excluded_scope: input.excludedScope,
+      assumptions: input.assumptions,
+      lead_time: input.leadTime,
+      valid_until: input.validUntil || null,
+      message: input.message,
+      lines: input.lines.map((line) => ({
+        schedule_item_id: line.scheduleItemId,
+        decision: line.decision,
+        unit_price: line.decision === "priced" ? line.unitPrice : null,
+        reason: line.reason,
+        qualification: line.qualification,
+      })),
     },
     p_confirm: input.confirm,
     p_revise: input.revise,

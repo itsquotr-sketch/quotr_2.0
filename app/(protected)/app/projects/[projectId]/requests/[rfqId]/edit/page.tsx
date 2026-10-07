@@ -69,6 +69,17 @@ export default async function EditRfqPage({ params }: PageProps) {
               selectionSource: recipient.selectionSource,
             })),
             documentVersionIds: detail.files.map((file) => file.versionId),
+            pricingRequest: detail.pricingRequest,
+            schedule: detail.schedule.map((item) => ({
+              id: item.id,
+              scope: item.scope,
+              specification: item.specification,
+              quantity: item.quantity == null ? "" : String(item.quantity),
+              unit: item.unit,
+              role: item.role,
+              quantitySource: null,
+              quantityConfirmed: true,
+            })),
           }}
         />
       </WorkspaceContainer>

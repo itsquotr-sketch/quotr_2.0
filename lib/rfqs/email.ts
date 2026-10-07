@@ -18,6 +18,7 @@ export function buildRfqDeliveryEmail(input: {
   scopeLabel: string;
   responseDueOn: string | null;
   publicUrl: string;
+  pricingRequest?: "lump_sum" | "schedule";
 }): { subject: string; html: string; text: string } {
   const builder = input.builderName.trim() || "A builder";
   const contact = input.contactName.trim() || "there";
@@ -25,11 +26,15 @@ export function buildRfqDeliveryEmail(input: {
   const due = input.responseDueOn
     ? `Please respond by ${humanDate(input.responseDueOn)}.`
     : "Please respond when you can.";
+  const asked = input.pricingRequest === "schedule"
+    ? "Price each item on the schedule. A missing item is not a zero price."
+    : "This request asks for one price for the whole scope.";
   const subject = `Request for price — ${scope}`;
   const text = [
     `Hello ${contact},`,
     "",
     `${builder} has asked you to price ${scope}.`,
+    asked,
     due,
     "The request does not include the builder's client, estimate, or other subcontractors.",
     "",
@@ -51,6 +56,7 @@ export function buildRfqDeliveryEmail(input: {
               <p style="padding:0 0 16px 0;font-size:14px;color:#52525b">Request for price</p>
               <p style="padding:0 0 8px 0;font-size:15px">Hello ${escapeHtml(contact)},</p>
               <p style="padding:0 0 8px 0;font-size:15px">${escapeHtml(builder)} has asked you to price ${escapeHtml(scope)}.</p>
+              <p style="padding:0 0 8px 0;font-size:15px">${escapeHtml(asked)}</p>
               <p style="padding:0 0 16px 0;font-size:15px">${escapeHtml(due)}</p>
               <p style="padding:8px 0 20px 0">
                 <a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View request and respond</a>

@@ -6,6 +6,7 @@ import { readProjectDocumentCentre } from "@/lib/projects/document-centre";
 import { suggestSubcontractorsForWorkArea } from "@/lib/subcontractors/search";
 import { listSubcontractors } from "@/lib/subcontractors/actions";
 import { hashRfqAccessToken, isRfqAccessTokenFormat } from "@/lib/rfqs/token";
+import type { FrozenScheduleRow, ScheduleRole, ScheduleUnit } from "@/lib/rfqs/schedule";
 import type { RfqDeliveryState, RfqResponseState } from "@/lib/rfqs/states";
 
 export type RfqListRow = {
@@ -51,6 +52,21 @@ export type RfqResponseView = {
   submittedAt: string | null;
   fileReady: boolean;
   fileName: string | null;
+  completeness: "complete" | "partial" | null;
+  qualified: boolean;
+  optionalExGst: number | null;
+  alternativeExGst: number | null;
+  requestSentAt: string | null;
+  lines: RfqResponseLineView[];
+};
+
+export type RfqResponseLineView = {
+  scheduleItemId: string;
+  decision: "priced" | "not_priced" | "excluded";
+  unitPriceExGst: number | null;
+  amountExGst: number | null;
+  reason: string;
+  qualification: string;
 };
 
 export type RfqDetail = {
@@ -69,6 +85,9 @@ export type RfqDetail = {
   questions: string;
   message: string;
   builderName: string;
+  pricingRequest: "lump_sum" | "schedule";
+  sentAt: string | null;
+  schedule: FrozenScheduleRow[];
   recipients: RfqRecipientView[];
   files: Array<{ id: string; versionId: string; title: string; filename: string }>;
   responses: RfqResponseView[];
@@ -131,10 +150,66 @@ export type PublicRfqView =
       files: Array<{ id: string; title: string; filename: string; mimeType: string }>;
       clarifications: Array<{ id: string; body: string; fromRecipient: boolean }>;
       responses: RfqResponseView[];
+      pricingRequest: "lump_sum" | "schedule";
+      requestSentAt: string | null;
+      schedule: FrozenScheduleRow[];
     };
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function moneyOrNull(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function scheduleUnit(value: unknown): ScheduleUnit {
+  if (value === "m2" || value === "m" || value === "item" || value === "hour" || value === "lump_sum") return value;
+  return "item";
+}
+
+function scheduleRole(value: unknown): ScheduleRole {
+  if (value === "required" || value === "optional" || value === "alternative") return value;
+  return "required";
+}
+
+function mapSchedule(rows: unknown): FrozenScheduleRow[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
+    if (typeof item.id !== "string") return [];
+    return [{
+      id: item.id,
+      sortOrder: Number(item.sort_order ?? item.sortOrder) || 0,
+      scope: text(item.scope),
+      specification: text(item.specification),
+      quantity: moneyOrNull(item.quantity),
+      unit: scheduleUnit(item.unit),
+      role: scheduleRole(item.line_role ?? item.role),
+    }];
+  });
+}
+
+function mapLines(rows: unknown): RfqResponseLineView[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
+    const scheduleItemId = text(item.schedule_item_id ?? item.scheduleItemId);
+    if (!scheduleItemId) return [];
+    const decision = item.decision === "not_priced" || item.decision === "excluded" ? item.decision : "priced";
+    return [{
+      scheduleItemId,
+      decision,
+      unitPriceExGst: moneyOrNull(item.unit_price_ex_gst ?? item.unitPriceExGst),
+      amountExGst: moneyOrNull(item.amount_ex_gst ?? item.amountExGst),
+      reason: text(item.reason),
+      qualification: text(item.qualification),
+    }];
+  });
 }
 
 export async function loadProjectRfqs(
@@ -189,7 +264,7 @@ export async function loadRfqDetail(
     .select(`
       id, project_id, status, scope_kind, work_area_id, work_area_name, written_scope_label,
       requested_scope, measurement_notes, response_due_on, include_site_address, site_address,
-      site_details, questions, message, builder_name
+      site_details, questions, message, builder_name, pricing_request, sent_at
     `)
     .eq("id", rfqId)
     .eq("project_id", projectId)
@@ -203,7 +278,7 @@ export async function loadRfqDetail(
   const recipientIds = (recipients.data ?? []).map((row) => row.id);
   const [responses, clarifications, deliveries] = await Promise.all([
     recipientIds.length
-      ? supabase.from("rfq_responses").select("id, recipient_id, version_number, status, price_ex_gst, gst_treatment, pricing_structure, included_scope, excluded_scope, assumptions, lead_time, valid_until, message, submitted_at").in("recipient_id", recipientIds)
+      ? supabase.from("rfq_responses").select("id, recipient_id, version_number, status, price_ex_gst, gst_treatment, pricing_structure, included_scope, excluded_scope, assumptions, lead_time, valid_until, message, submitted_at, completeness, qualified, optional_ex_gst, alternative_ex_gst, request_sent_at").in("recipient_id", recipientIds)
       : Promise.resolve({ data: [] }),
     recipientIds.length
       ? supabase.from("rfq_clarifications").select("id, recipient_id, body, created_at, from_recipient, audience, parent_id, author_user_id, request_sent_at, shared_recipient_ids, delivery_state").in("recipient_id", recipientIds)
@@ -232,6 +307,19 @@ export async function loadRfqDetail(
   const fileByResponse = new Map(
     (fileRows.data ?? []).map((row) => [row.response_id, row])
   );
+  const [scheduleRows, lineRows] = await Promise.all([
+    supabase.from("rfq_schedule_items").select("id, sort_order, scope, specification, quantity, unit, line_role").eq("rfq_id", rfqId).order("sort_order"),
+    responseIds.length
+      ? supabase.from("rfq_response_lines").select("response_id, schedule_item_id, decision, unit_price_ex_gst, amount_ex_gst, reason, qualification").in("response_id", responseIds)
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+  ]);
+  const linesByResponse = new Map<string, RfqResponseLineView[]>();
+  for (const row of lineRows.data ?? []) {
+    const responseId = text((row as { response_id?: string }).response_id);
+    const mapped = mapLines([row]);
+    if (!responseId || mapped.length === 0) continue;
+    linesByResponse.set(responseId, [...(linesByResponse.get(responseId) ?? []), ...mapped]);
+  }
   const applications = await supabase
     .from("rfq_pricing_applications")
     .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, work_area_id")
@@ -253,6 +341,9 @@ export async function loadRfqDetail(
     questions: text(data.questions),
     message: text(data.message),
     builderName: text(data.builder_name),
+    pricingRequest: data.pricing_request === "schedule" ? "schedule" : "lump_sum",
+    sentAt: data.sent_at ?? null,
+    schedule: mapSchedule(scheduleRows.data ?? []),
     recipients: (recipients.data ?? []).map((row) => ({
       id: row.id,
       subcontractorId: row.subcontractor_id,
@@ -291,6 +382,12 @@ export async function loadRfqDetail(
         submittedAt: row.submitted_at,
         fileReady: file?.upload_status === "ready",
         fileName: file?.original_filename ?? null,
+        completeness: row.completeness === "complete" || row.completeness === "partial" ? row.completeness : null,
+        qualified: row.qualified === true,
+        optionalExGst: moneyOrNull(row.optional_ex_gst),
+        alternativeExGst: moneyOrNull(row.alternative_ex_gst),
+        requestSentAt: row.request_sent_at ?? null,
+        lines: linesByResponse.get(row.id) ?? [],
       };
     }),
     clarifications: (clarifications.data ?? [])
@@ -463,6 +560,12 @@ export async function lookupPublicRfq(rawToken: string): Promise<PublicRfqView> 
       if (!item || typeof item !== "object") return [];
       const response = item as Record<string, unknown>;
       if (typeof response.id !== "string") return [];
+      const lines = mapLines(
+        (Array.isArray(row.lines) ? row.lines : []).filter((line) => {
+          if (!line || typeof line !== "object") return false;
+          return (line as { responseId?: string }).responseId === response.id;
+        })
+      );
       return [{
         id: response.id,
         recipientId: "",
@@ -480,7 +583,16 @@ export async function lookupPublicRfq(rawToken: string): Promise<PublicRfqView> 
         submittedAt: typeof response.submittedAt === "string" ? response.submittedAt : null,
         fileReady: response.fileReady === true,
         fileName: typeof response.fileName === "string" ? response.fileName : null,
+        completeness: response.completeness === "complete" || response.completeness === "partial" ? response.completeness : null,
+        qualified: response.qualified === true,
+        optionalExGst: moneyOrNull(response.optionalExGst),
+        alternativeExGst: moneyOrNull(response.alternativeExGst),
+        requestSentAt: typeof response.requestSentAt === "string" ? response.requestSentAt : null,
+        lines,
       }];
     }),
+    pricingRequest: row.pricingRequest === "schedule" ? "schedule" : "lump_sum",
+    requestSentAt: typeof row.requestSentAt === "string" ? row.requestSentAt : null,
+    schedule: mapSchedule(row.schedule),
   };
 }

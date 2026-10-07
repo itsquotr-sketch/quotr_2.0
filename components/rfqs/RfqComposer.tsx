@@ -5,9 +5,18 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RFQ_WITHHELD } from "@/lib/rfqs/shared";
+import { RfqScheduleEditor } from "@/components/rfqs/RfqScheduleEditor";
 import { draftRfqFromJobDetails, saveRfqDraft, sendRfq } from "@/lib/rfqs/actions";
 import { dueDateIsFuture, localToday, scopeIsMeaningful } from "@/lib/rfqs/validate";
 import type { DraftSource } from "@/lib/rfqs/draft-compose";
+import {
+  emptyScheduleRow,
+  scheduleProblems,
+  scheduleRoleLabel,
+  scheduleRowsFromJobDetails,
+  scheduleUnitLabel,
+  type ScheduleDraftRow,
+} from "@/lib/rfqs/schedule";
 
 type WorkArea = { id: string; type: string; name: string };
 type Contact = { id: string; name: string; email: string };
@@ -53,6 +62,8 @@ export function RfqComposer({
     message: string;
     recipients: Array<{ subcontractorId: string; contactId: string; selectionSource: "suggested" | "manual" }>;
     documentVersionIds: string[];
+    pricingRequest?: "lump_sum" | "schedule";
+    schedule?: ScheduleDraftRow[];
   };
 }) {
   const router = useRouter();
@@ -82,6 +93,8 @@ export function RfqComposer({
   const [sources, setSources] = useState<DraftSource[]>([]);
   const [withheld, setWithheld] = useState<Array<{ source: string; reason: string }>>([]);
   const [previewApproved, setPreviewApproved] = useState(false);
+  const [pricingRequest, setPricingRequest] = useState<"lump_sum" | "schedule">(initial?.pricingRequest ?? "lump_sum");
+  const [rows, setRows] = useState<ScheduleDraftRow[]>(initial?.schedule?.length ? initial.schedule : [emptyScheduleRow()]);
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const edited = useRef({ scope: Boolean(initial?.requestedScope), notes: Boolean(initial?.measurementNotes) });
   const draftGeneration = useRef(0);
@@ -121,6 +134,15 @@ export function RfqComposer({
       })),
       documentVersionIds: files,
       previewApproved,
+      pricingRequest,
+      schedule: rows.map((row) => ({
+        id: row.id,
+        scope: row.scope,
+        specification: row.specification,
+        quantity: row.quantity,
+        unit: row.unit,
+        role: row.role,
+      })),
     };
   }
 
@@ -133,6 +155,12 @@ export function RfqComposer({
     const recipients = Object.values(selected);
     if (recipients.length === 0) problems.push({ id: "recipients", message: "Choose at least one business with an email contact." });
     if (recipients.some((recipient) => !recipient.contactId)) problems.push({ id: "recipients", message: "Each recipient needs an email contact." });
+    if (pricingRequest === "schedule") {
+      for (const problem of scheduleProblems(rows)) {
+        const row = rows.find((item) => scheduleProblems([item]).includes(problem));
+        problems.push({ id: row ? `schedule-${row.id}` : "schedule", message: problem });
+      }
+    }
     if (!previewApproved) problems.push({ id: "preview-approval", message: "Review the request the recipient will see, then approve it." });
     return problems;
   }
@@ -167,7 +195,7 @@ export function RfqComposer({
   async function onSend() {
     const problems = sendProblems();
     if (problems.length > 0) {
-      if (problems.some((problem) => problem.id === "requested-scope" || problem.id === "work-area" || problem.id === "scope-name" || problem.id === "response-due")) setStep(0);
+      if (problems.some((problem) => problem.id === "requested-scope" || problem.id === "work-area" || problem.id === "scope-name" || problem.id === "response-due" || problem.id === "schedule" || problem.id.startsWith("schedule-"))) setStep(0);
       else if (problems.some((problem) => problem.id === "recipients")) setStep(1);
       showProblems(problems);
       return;
@@ -207,6 +235,12 @@ export function RfqComposer({
     setPreviewApproved(false);
     setSources(result.sources);
     setWithheld(result.withheld);
+    if (pricingRequest === "schedule") {
+      setRows((current) => [
+        ...current.filter((row) => !row.quantitySource && row.scope.trim().length > 0),
+        ...scheduleRowsFromJobDetails(result.sources),
+      ]);
+    }
     const missing = result.missing.join(" ");
     const keptNote = kept.length > 0 ? `Your ${kept.join(" and ")} stayed as you wrote it.` : "";
     const aiNote = result.aiUsed ? "The facts were ordered with help." : "The draft uses the recorded facts directly.";
@@ -241,7 +275,18 @@ export function RfqComposer({
       {step === 0 ? (
         <section className="grid gap-3 rounded-xl border border-border bg-card p-4">
           <h2 className="text-base font-semibold">Scope and pricing format</h2>
-          <p className="text-sm text-foreground/70">This phase asks for one lump-sum price. The subcontractor can still describe what is included.</p>
+          <fieldset className="grid gap-2" id="schedule">
+            <legend className="text-sm font-medium">How should they price this?</legend>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input type="radio" name="pricing-request" checked={pricingRequest === "lump_sum"} onChange={() => { setPreviewApproved(false); setPricingRequest("lump_sum"); }} />
+              One price for this scope
+            </label>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input type="radio" name="pricing-request" checked={pricingRequest === "schedule"} onChange={() => { setPreviewApproved(false); setPricingRequest("schedule"); }} />
+              Price specific items
+            </label>
+          </fieldset>
+          {messageFor("schedule") ? <p className="text-sm text-red-700">{messageFor("schedule")}</p> : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="grid gap-1 text-sm">
               Source
@@ -285,6 +330,11 @@ export function RfqComposer({
             <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={measurementNotes} onChange={(event) => { edited.current.notes = true; setPreviewApproved(false); setMeasurementNotes(event.target.value); }} />
           </label>
           <SourceList sources={sources.filter((source) => source.field === "measurements")} />
+          {pricingRequest === "schedule" ? (
+            <RfqScheduleEditor rows={rows} onChange={(next) => { setPreviewApproved(false); setRows(next); }} messageFor={messageFor} />
+          ) : (
+            <p className="text-sm text-foreground/70">The recipient enters one price for this scope.</p>
+          )}
           <label className="grid gap-1 text-sm sm:max-w-xs" id="response-due">
             Response due
             <input className={fieldClass} type="date" value={responseDueOn} onChange={(event) => { setPreviewApproved(false); setResponseDueOn(event.target.value); }} />
@@ -363,8 +413,18 @@ export function RfqComposer({
           <article className="grid gap-2 rounded-md border border-border p-4 text-sm">
             <p className="text-foreground/70">Request for price</p>
             <h3 className="text-lg font-semibold">{scopeLabel}</h3>
-            <p>Lump sum</p>
+            <p>{pricingRequest === "schedule" ? "Price specific items" : "One price for this scope"}</p>
             <p className="whitespace-pre-wrap">{requestedScope.trim() || "Not written yet"}</p>
+            {pricingRequest === "schedule" ? (
+              <ol className="grid gap-2" data-rfq-schedule-preview>
+                {rows.map((row, index) => (
+                  <li key={row.id}>
+                    {index + 1}. {row.scope.trim() || "Scope not written"} · {row.unit === "lump_sum" ? "Lump sum, one total" : `${row.quantity || "quantity needed"} ${scheduleUnitLabel(row.unit)}`} · {scheduleRoleLabel(row.role)}
+                    {row.specification.trim() ? ` · ${row.specification.trim()}` : ""}
+                  </li>
+                ))}
+              </ol>
+            ) : null}
             <p className="whitespace-pre-wrap">Measurements: {measurementNotes.trim() || "None recorded"}</p>
             <p>Due: {responseDueOn || "Not set"}</p>
             <p>Site address: {includeSiteAddress ? siteAddress || "None on the project" : "Not included"}</p>
