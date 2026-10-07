@@ -393,7 +393,8 @@ function PricingItemRowComponent({
       >
         <SheetContent
           side="bottom"
-          className="max-h-[85vh] overflow-hidden rounded-t-2xl px-0 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          className="max-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] overflow-hidden rounded-t-2xl px-0 pb-4"
+          style={{ bottom: "calc(5.75rem + env(safe-area-inset-bottom))" }}
           showCloseButton
         >
           <SheetHeader className="border-b px-4 pb-3 text-left">
