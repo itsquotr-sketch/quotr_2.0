@@ -80,6 +80,10 @@ export type RfqDetail = {
     fromRecipient: boolean;
     audience: "private" | "all";
     parentId: string | null;
+    authorUserId: string | null;
+    requestSentAt: string | null;
+    sharedRecipientIds: string[];
+    deliveryState: "sent" | "failed" | null;
   }>;
   events: Array<{ id: string; kind: string; summary: string; createdAt: string; recipientId: string | null }>;
   applications: Array<{
@@ -202,7 +206,7 @@ export async function loadRfqDetail(
       ? supabase.from("rfq_responses").select("id, recipient_id, version_number, status, price_ex_gst, gst_treatment, pricing_structure, included_scope, excluded_scope, assumptions, lead_time, valid_until, message, submitted_at").in("recipient_id", recipientIds)
       : Promise.resolve({ data: [] }),
     recipientIds.length
-      ? supabase.from("rfq_clarifications").select("id, recipient_id, body, created_at, from_recipient, audience, parent_id").in("recipient_id", recipientIds)
+      ? supabase.from("rfq_clarifications").select("id, recipient_id, body, created_at, from_recipient, audience, parent_id, author_user_id, request_sent_at, shared_recipient_ids, delivery_state").in("recipient_id", recipientIds)
       : Promise.resolve({ data: [] }),
     recipientIds.length
       ? supabase.from("rfq_deliveries").select("recipient_id, status, created_at").in("recipient_id", recipientIds).order("created_at", { ascending: false })
@@ -299,6 +303,10 @@ export async function loadRfqDetail(
         fromRecipient: row.from_recipient !== false,
         audience: row.audience === "all" ? "all" as const : "private" as const,
         parentId: row.parent_id,
+        authorUserId: row.author_user_id ?? null,
+        requestSentAt: row.request_sent_at ?? null,
+        sharedRecipientIds: Array.isArray(row.shared_recipient_ids) ? row.shared_recipient_ids : [],
+        deliveryState: row.delivery_state === "sent" || row.delivery_state === "failed" ? row.delivery_state : null,
       })),
     events: (events.data ?? []).map((row) => ({
       id: row.id,

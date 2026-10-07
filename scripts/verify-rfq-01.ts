@@ -16,7 +16,8 @@ import {
   PREVIEW_SUPABASE_PROJECT_REF,
   PRODUCTION_SUPABASE_PROJECT_REF,
 } from "../lib/deployment/environment";
-import { composeJobDraft, stripSupplierIdentity } from "../lib/rfqs/draft-compose";
+import { composeJobDraft } from "../lib/rfqs/draft-compose";
+import { sharedAnswerLeak, withholdReason } from "../lib/rfqs/draft-privacy";
 import { buildRfqDeliveryEmail } from "../lib/rfqs/email";
 import { scopeIsMeaningful } from "../lib/rfqs/validate";
 import { RFQ_WITHHELD } from "../lib/rfqs/shared";
@@ -142,7 +143,7 @@ function staticMain() {
     responseDueOn: null,
     publicUrl: "https://example.test/r/rfq_example",
   });
-  assert("email carries the link and not a price", mail.text.includes("https://example.test/r/rfq_example") && !mail.text.includes("$") && !email.includes("client_name"));
+  assert("email carries the link and not a price", mail.text.includes("https://example.test/r/rfq_example") && !mail.text.includes("$") && !email.includes("client_name") && mail.html.includes("Sent securely via Quotr") && mail.text.includes("Submitting a price does not mean the work has been accepted."));
   assert("no award control", !detail.includes("Award") && !detail.includes("notify the subcontractor of acceptance"));
   assert("using a price does not award work", detail.includes("does not award the work or notify the subcontractor"));
   assert("rate resolver is untouched", rates.includes("export function resolveRate") && !actions.includes("resolveRate"));
@@ -159,13 +160,37 @@ function staticMain() {
   assert("placeholder scope is rejected", scopeIsMeaningful("as") === false && scopeIsMeaningful("   ") === false);
   assert("a real scope is accepted", scopeIsMeaningful("Supply and install the bathroom wall lining."));
   assert("draft comes from job details", composer.includes("Draft from job details") && composer.includes("data-rfq-review"));
-  assert("job draft skips client and cost fields", !facts.includes("client_name") && !facts.includes("unit_cost") && !facts.includes("projects.notes"));
+  assert("job draft does not copy client or cost columns into the scope", facts.includes("withholdReason") && facts.includes("clientNames") && !facts.includes("unit_cost") && !facts.includes("projects.notes"));
+  const privateRecords = {
+    clientNames: ["Jane Smith"],
+    emails: ["jane@secret.test"],
+    internalNotes: ["Do not tell the client the margin is 40"],
+  };
+  const adversarial = "Supply lining for Jane Smith at jane@secret.test. Do not tell the client the margin is 40. Supplier price $1800.";
+  const held = withholdReason(adversarial, privateRecords);
+  const proposed = composeJobDraft(held ? [] : [{ id: "bad", field: "scope", source: "Work area details", text: adversarial, uncertain: false }]);
+  assert("adversarial free text is held out of the proposed draft", Boolean(held) && !proposed.requestedScope.includes("Jane Smith") && !proposed.requestedScope.includes("jane@secret.test") && !proposed.requestedScope.includes("$1800"));
+  assert("an ordinary supplier sentence stays available", withholdReason("Supply and install the wall lining.", privateRecords) === null);
+  assert("draft facts stay inside the organisation", facts.includes('.eq("org_id", orgId)') && !facts.includes("text: fact.text"));
   const draft = composeJobDraft([
     { id: "a", field: "scope", source: "Project description", text: "Bathroom lining", uncertain: false },
     { id: "b", field: "measurements", source: "Measured quantity", text: "12 m2", uncertain: true },
   ]);
   assert("uncertain quantity is marked", draft.measurementNotes.includes("(check this quantity)") && draft.requestedScope === "Bathroom lining");
-  assert("shared answer removes the asking business", stripSupplierIdentity("Ask Northside about $400", ["Northside"]).includes("a subcontractor") && !stripSupplierIdentity("Ask Northside about $400", ["Northside"]).includes("$"));
+  const question = "Ada at ada@tile.test can call 0215550199. Our price is $400.";
+  const leak = sharedAnswerLeak(`Ask Northside and ada@tile.test about $400`, {
+    names: ["Northside"],
+    emails: ["ada@tile.test"],
+    phones: ["0215550199"],
+    question,
+  });
+  const clean = sharedAnswerLeak("White silicone is acceptable.", {
+    names: ["Northside"],
+    emails: ["ada@tile.test"],
+    phones: ["0215550199"],
+    question,
+  });
+  assert("a shared answer is blocked when it repeats the question's private details", Boolean(leak) && clean === null);
   assert("email button names the action", mail.html.includes("View request and respond"));
   assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));
   assert("scope change is not an ordinary answer", questions.includes("SCOPE_CHANGE") && actions.includes("SCOPE_CHANGE"));
@@ -401,6 +426,15 @@ async function liveMain() {
       p_payload: { clarification_id: noteId, body: "No", audience: "private", scope_unchanged: "true" },
     });
     assert("a viewer cannot answer", viewerAnswer.data?.error === "FORBIDDEN");
+    const viewerThread = await viewer.from("rfq_clarifications").select("id").eq("id", noteId);
+    const foreignThread = await foreign.from("rfq_clarifications").select("id").eq("id", noteId);
+    assert("a viewer cannot read the private thread", (viewerThread.data ?? []).length === 0);
+    assert("another organisation cannot read the private thread", (foreignThread.data ?? []).length === 0);
+    const leakyAnswer = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: noteId, body: `Ask Tile Co ${suffix} about the silicone`, audience: "all", scope_unchanged: "true" },
+    });
+    const leakyStored = await admin.from("rfq_clarifications").select("id").eq("parent_id", noteId).ilike("body", `%Tile Co ${suffix}%`);
+    assert("a shared answer cannot name the asking business", leakyAnswer.data?.error === "BROADCAST_PRIVATE" && (leakyStored.data ?? []).length === 0);
     const privateAnswer = await owner.rpc("answer_rfq_clarification_v1", {
       p_payload: { clarification_id: noteId, body: "Silicone is included for this bathroom", audience: "private", scope_unchanged: "true" },
     });
@@ -415,9 +449,43 @@ async function liveMain() {
     });
     const sharedSeenB = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
     const sharedPayload = JSON.stringify(sharedSeenB.data);
+    const storedShared = await admin
+      .from("rfq_clarifications")
+      .select("body, author_user_id, request_sent_at, shared_recipient_ids")
+      .eq("parent_id", noteId)
+      .eq("audience", "all");
     assert(
       "a shared answer reaches the other recipient without the asking business",
       sharedAnswer.data?.ok === true && sharedPayload.includes("White silicone is acceptable") && !sharedPayload.includes(`Tile Co ${suffix}`)
+        && (storedShared.data ?? []).every((row) => row.body === "White silicone is acceptable" && row.author_user_id === userIds[0] && row.request_sent_at && Array.isArray(row.shared_recipient_ids) && row.shared_recipient_ids.length === 2)
+    );
+    const sensitiveQuestion = await anon.rpc("public_rfq_clarify_v1", {
+      p_token_hash: hashRfqAccessToken(rawA),
+      p_body: `Ada at ada-${suffix}@example.invalid can call 0215550199. Our price is $400.`,
+    });
+    const sensitiveRow = await admin.from("rfq_clarifications").select("id").eq("recipient_id", recipientA.id).eq("from_recipient", true).ilike("body", "%0215550199%").maybeSingle();
+    const copied = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: {
+        clarification_id: sensitiveRow.data?.id,
+        body: `Ada at ada-${suffix}@example.invalid can call 0215550199. Our price is $400.`,
+        audience: "all",
+        scope_unchanged: "true",
+      },
+    });
+    const cleanShared = await owner.rpc("answer_rfq_clarification_v1", {
+      p_payload: { clarification_id: sensitiveRow.data?.id, body: "Use a standard white finish.", audience: "all", scope_unchanged: "true" },
+    });
+    const afterClean = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
+    const cleanPayload = JSON.stringify(afterClean.data);
+    const originalQuestion = await admin.from("rfq_clarifications").select("body").eq("id", sensitiveRow.data?.id).maybeSingle();
+    assert(
+      "a copied private question is not broadcast, and the original question stays",
+      sensitiveQuestion.data?.ok === true && copied.data?.error === "BROADCAST_PRIVATE" && cleanShared.data?.ok === true
+        && cleanPayload.includes("Use a standard white finish.")
+        && !cleanPayload.includes(`ada-${suffix}@example.invalid`)
+        && !cleanPayload.includes("0215550199")
+        && !cleanPayload.includes("$400")
+        && String(originalQuestion.data?.body).includes("0215550199")
     );
     const offer = await anon.rpc("public_rfq_save_response_v1", {
       p_token_hash: hashRfqAccessToken(rawA),

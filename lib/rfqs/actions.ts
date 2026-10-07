@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
 import { buildRfqAnswerEmail, buildRfqDeliveryEmail, rfqDeliveryFromHeader } from "@/lib/rfqs/email";
 import { draftRfqJobFacts } from "@/lib/rfqs/draft-facts";
-import { stripSupplierIdentity } from "@/lib/rfqs/draft-compose";
+import { sharedAnswerLeak } from "@/lib/rfqs/draft-privacy";
 import {
   generateRfqAccessToken,
   hashRfqAccessToken,
@@ -65,6 +65,8 @@ function rpcError(data: unknown, fallback: string): string {
       return "Write an answer before sending it.";
     case "AUDIENCE":
       return "Choose who receives this answer.";
+    case "BROADCAST_PRIVATE":
+      return "Remove the asking business, contact, email, phone, or price from the message every recipient will see.";
     case "FROZEN":
     case "ALREADY_SENT":
       return "This request has been sent and can no longer be edited.";
@@ -233,7 +235,11 @@ export async function sendRfq(input: {
     selectionSource: "suggested" | "manual";
   }>;
   documentVersionIds: string[];
+  previewApproved?: boolean;
 }): Promise<Ok<{ id: string; failed: number }> | Fail> {
+  if (input.previewApproved !== true) {
+    return { ok: false, error: "Review the request the recipient will see, then approve it before sending." };
+  }
   const saved = await saveRfqDraft(input);
   if (!saved.ok) return saved;
   const loaded = await requireRfqWriter();
@@ -397,7 +403,7 @@ export async function draftRfqFromJobDetails(input: {
   const loaded = await requireRfqWriter();
   if (!loaded.ok) return loaded;
   try {
-    const draft = await draftRfqJobFacts(loaded.context.supabase, input.projectId, input.workAreaId);
+    const draft = await draftRfqJobFacts(loaded.context.supabase, loaded.context.orgId, input.projectId, input.workAreaId);
     return { ok: true, ...draft };
   } catch {
     return { ok: false, error: "Job details could not be drafted. You can still write the request yourself." };
@@ -409,11 +415,16 @@ export async function answerRfqQuestion(input: {
   rfqId: string;
   clarificationId: string;
   body: string;
+  reviewedBody: string;
   audience: "private" | "all";
-  scopeUnchanged: boolean;
+  clarification: "clarifies" | "changes";
 }): Promise<Ok<{ failed: number }> | Fail> {
-  if (!input.scopeUnchanged) {
+  if (input.clarification !== "clarifies") {
     return { ok: false, error: rpcError({ error: "SCOPE_CHANGE" }, SEND_FAILED) };
+  }
+  const body = input.body.trim();
+  if (body !== input.reviewedBody.trim()) {
+    return { ok: false, error: "Review the exact message, then send that wording." };
   }
   const loaded = await requireRfqWriter();
   if (!loaded.ok) return loaded;
@@ -430,10 +441,15 @@ export async function answerRfqQuestion(input: {
     .select("id, trading_name, contact_name, contact_email")
     .eq("rfq_id", input.rfqId);
   const asker = (recipients.data ?? []).find((recipient) => recipient.id === question.data?.recipient_id);
-  const names = input.audience === "all"
-    ? [asker?.trading_name ?? "", asker?.contact_name ?? "", asker?.contact_email ?? ""]
-    : [];
-  const body = input.audience === "all" ? stripSupplierIdentity(input.body, names) : input.body.trim();
+  if (input.audience === "all" && asker) {
+    const leak = sharedAnswerLeak(body, {
+      names: [asker.trading_name, asker.contact_name],
+      emails: [asker.contact_email],
+      phones: [],
+      question: question.data.body,
+    });
+    if (leak) return { ok: false, error: leak };
+  }
   const answered = await loaded.context.supabase.rpc("answer_rfq_clarification_v1", {
     p_payload: {
       clarification_id: input.clarificationId,
@@ -446,7 +462,9 @@ export async function answerRfqQuestion(input: {
     ? "Could not record the answer. Please try again."
     : rpcError(answered.data, "Could not record the answer. Please try again.");
   if (message) return { ok: false, error: message };
-  const recipientIds = ((answered.data ?? {}) as { recipientIds?: string[] }).recipientIds ?? [];
+  const answeredPayload = (answered.data ?? {}) as { recipientIds?: string[]; answerIds?: string[] };
+  const recipientIds = answeredPayload.recipientIds ?? [];
+  const answerIds = answeredPayload.answerIds ?? [];
   const rfq = await loaded.context.supabase
     .from("rfqs")
     .select("builder_name, work_area_name, written_scope_label, scope_kind")
@@ -459,11 +477,16 @@ export async function answerRfqQuestion(input: {
   const from = rfqDeliveryFromHeader(rfq.data?.builder_name || "Your builder");
   const provider = getQuoteDeliveryProvider();
   const admin = createAdminClient();
+  async function recordDelivery(recipientId: string, state: "sent" | "failed") {
+    if (answerIds.length === 0) return;
+    await admin.from("rfq_clarifications").update({ delivery_state: state }).in("id", answerIds).eq("recipient_id", recipientId);
+  }
   let failed = 0;
   for (const recipientId of recipientIds) {
     const recipient = (recipients.data ?? []).find((item) => item.id === recipientId);
     if (!recipient || !origin || !from || !provider.isConfigured()) {
       failed += 1;
+      await recordDelivery(recipientId, "failed");
       await admin.from("rfq_events").insert({
         org_id: loaded.context.orgId,
         rfq_id: input.rfqId,
@@ -485,6 +508,7 @@ export async function answerRfqQuestion(input: {
     });
     if (token.error) {
       failed += 1;
+      await recordDelivery(recipientId, "failed");
       continue;
     }
     const mail = buildRfqAnswerEmail({
@@ -501,8 +525,9 @@ export async function answerRfqQuestion(input: {
       subject: mail.subject,
       html: mail.html,
       text: mail.text,
-      idempotencyKey: `rfq-answer-${input.clarificationId}-${recipientId}`,
+      idempotencyKey: `rfq-answer-${answerIds[recipientIds.indexOf(recipientId)] ?? recipientId}-${recipientId}`,
     });
+    await recordDelivery(recipientId, sent.ok ? "sent" : "failed");
     await admin.from("rfq_events").insert({
       org_id: loaded.context.orgId,
       rfq_id: input.rfqId,

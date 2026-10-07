@@ -8,7 +8,7 @@ import type { RfqDetail } from "@/lib/rfqs/load";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 import { rfqDeliveryFailed, rfqDeliveryLabel, rfqResponseLabel } from "@/lib/rfqs/states";
 import { answerRfqQuestion, resendRfqRecipient, revokeRfqRecipient, signRfqResponseFile } from "@/lib/rfqs/actions";
-import { stripSupplierIdentity } from "@/lib/rfqs/draft-compose";
+import { sharedAnswerLeak } from "@/lib/rfqs/draft-privacy";
 import type { RfqPricingTarget } from "@/lib/rfqs/load";
 import { RfqPricingApply } from "@/components/rfqs/RfqPricingApply";
 import { SaveResponseAsRate } from "@/components/rfqs/SaveResponseAsRate";
@@ -184,6 +184,7 @@ export function RfqDetailView({
               {replies.map((reply) => (
                 <p key={reply.id} className="whitespace-pre-wrap rounded-md bg-muted/40 p-3">
                   {reply.audience === "all" ? "Answer to every recipient" : "Answer to this subcontractor"}: {reply.body}
+                  {reply.deliveryState === "sent" ? " Email sent." : reply.deliveryState === "failed" ? " Email not sent." : ""}
                 </p>
               ))}
               {canEdit && detail.status === "sent" && recipient ? (
@@ -191,7 +192,14 @@ export function RfqDetailView({
                   projectId={detail.projectId}
                   rfqId={detail.id}
                   clarificationId={note.id}
-                  names={[recipient.tradingName, recipient.contactName, recipient.contactEmail]}
+                  question={note.body}
+                  asker={{ name: recipient.tradingName, contact: recipient.contactName, email: recipient.contactEmail }}
+                  request={{
+                    scope: detail.requestedScope,
+                    measurements: detail.measurementNotes,
+                    due: detail.responseDueOn,
+                    files: detail.files.map((file) => file.filename),
+                  }}
                   onError={setError}
                 />
               ) : null}
@@ -231,29 +239,45 @@ function AnswerForm({
   projectId,
   rfqId,
   clarificationId,
-  names,
+  question,
+  asker,
+  request,
   onError,
 }: {
   projectId: string;
   rfqId: string;
   clarificationId: string;
-  names: string[];
+  question: string;
+  asker: { name: string; contact: string; email: string };
+  request: { scope: string; measurements: string; due: string | null; files: string[] };
   onError: (message: string | null) => void;
 }) {
   const router = useRouter();
   const [body, setBody] = useState("");
+  const [broadcast, setBroadcast] = useState("");
   const [audience, setAudience] = useState<"private" | "all">("private");
-  const [scopeUnchanged, setScopeUnchanged] = useState(false);
-  const [shareWording, setShareWording] = useState(false);
+  const [effect, setEffect] = useState<"clarifies" | "changes" | "">("");
+  const [reviewed, setReviewed] = useState(false);
   const [pending, setPending] = useState(false);
-  const preview = stripSupplierIdentity(body, names);
+  const outgoing = audience === "all" ? broadcast : body;
+  const leak = audience === "all"
+    ? sharedAnswerLeak(broadcast, { names: [asker.name, asker.contact], emails: [asker.email], phones: [], question })
+    : null;
   async function submit() {
-    if (!scopeUnchanged) {
-      onError("An answer cannot change the scope, quantities, files, or due date. Send a new request so every recipient sees the same change.");
+    if (effect === "changes") {
+      onError("This would change the request already sent. Create a new request instead.");
       return;
     }
-    if (audience === "all" && !shareWording) {
-      onError("Review the wording that every recipient will see, then confirm it.");
+    if (effect !== "clarifies") {
+      onError("Review the answer next to the request already sent.");
+      return;
+    }
+    if (!reviewed || !outgoing.trim()) {
+      onError("Review the exact message, then confirm it.");
+      return;
+    }
+    if (leak) {
+      onError(leak);
       return;
     }
     setPending(true);
@@ -262,9 +286,10 @@ function AnswerForm({
       projectId,
       rfqId,
       clarificationId,
-      body,
+      body: outgoing,
+      reviewedBody: outgoing,
       audience,
-      scopeUnchanged: true,
+      clarification: "clarifies",
     });
     setPending(false);
     if (!result.ok) {
@@ -272,40 +297,73 @@ function AnswerForm({
       return;
     }
     if (result.failed > 0) onError("The answer was saved. One or more emails were not sent.");
+    setBody("");
+    setBroadcast("");
+    setReviewed(false);
     router.refresh();
   }
   return (
-    <form className="grid gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+    <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+      <div className="grid gap-2 rounded-md border border-border p-3" data-sent-request>
+        <p className="font-medium">Request already sent</p>
+        <p className="whitespace-pre-wrap">{request.scope}</p>
+        <p className="whitespace-pre-wrap">Measurements: {request.measurements || "None recorded"}</p>
+        <p>Due: {request.due || "Not set"}</p>
+        <p>Files: {request.files.length === 0 ? "None" : request.files.join(", ")}</p>
+      </div>
       <label className="grid gap-1">
         Answer
-        <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={body} onChange={(event) => setBody(event.target.value)} />
+        <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={body} onChange={(event) => { setReviewed(false); setBody(event.target.value); }} />
       </label>
       <fieldset className="grid gap-1">
         <legend>Who receives this answer</legend>
         <label className="flex min-h-11 items-center gap-2">
-          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "private"} onChange={() => setAudience("private")} />
+          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "private"} onChange={() => { setAudience("private"); setReviewed(false); }} />
           Only this subcontractor
         </label>
         <label className="flex min-h-11 items-center gap-2">
-          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "all"} onChange={() => setAudience("all")} />
+          <input type="radio" name={`audience-${clarificationId}`} checked={audience === "all"} onChange={() => { setAudience("all"); setReviewed(false); }} />
           All recipients
         </label>
       </fieldset>
       {audience === "all" ? (
         <div className="grid gap-2 rounded-md border border-border p-3" data-answer-preview>
-          <p>Every recipient will see this wording. The asking business is not named, and prices are removed.</p>
-          <p className="whitespace-pre-wrap">{preview || "Write the answer to preview it."}</p>
-          <label className="flex min-h-11 items-center gap-2">
-            <input type="checkbox" checked={shareWording} onChange={(event) => setShareWording(event.target.checked)} />
-            Share this wording
+          <label className="grid gap-1">
+            Message every recipient will see
+            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={broadcast} onChange={(event) => { setReviewed(false); setBroadcast(event.target.value); }} />
           </label>
+          <p>This is the exact message. It is not rewritten.</p>
+          <p className="whitespace-pre-wrap" data-answer-exact>{broadcast || "Write the shared message to preview it."}</p>
+          {leak ? <p className="text-red-700" role="alert">{leak}</p> : null}
         </div>
-      ) : null}
-      <label className="flex min-h-11 items-start gap-2">
-        <input type="checkbox" checked={scopeUnchanged} onChange={(event) => setScopeUnchanged(event.target.checked)} />
-        <span>This answer does not change the scope, quantities, files, or due date. A change needs a new request.</span>
-      </label>
-      <Button type="submit" className="h-11 min-h-11 w-fit" disabled={pending}>Send answer</Button>
+      ) : (
+        <p className="whitespace-pre-wrap rounded-md border border-border p-3" data-answer-exact>{body || "Write the private answer to preview it."}</p>
+      )}
+      <fieldset className="grid gap-1">
+        <legend>Compare this answer with the request already sent</legend>
+        <label className="flex min-h-11 items-start gap-2">
+          <input type="radio" name={`effect-${clarificationId}`} checked={effect === "clarifies"} onChange={() => setEffect("clarifies")} />
+          <span>This clarifies the request already sent</span>
+        </label>
+        <label className="flex min-h-11 items-start gap-2">
+          <input type="radio" name={`effect-${clarificationId}`} checked={effect === "changes"} onChange={() => setEffect("changes")} />
+          <span>This changes the scope, quantities, due date, or files</span>
+        </label>
+      </fieldset>
+      {effect === "changes" ? (
+        <p>
+          <Link className="underline" href={`/app/projects/${projectId}/requests/new`}>Create a new request</Link>
+          . Recipients keep the request they were sent.
+        </p>
+      ) : (
+        <>
+          <label className="flex min-h-11 items-start gap-2">
+            <input type="checkbox" checked={reviewed} onChange={(event) => setReviewed(event.target.checked)} />
+            <span>I have reviewed this exact message.</span>
+          </label>
+          <Button type="submit" className="h-11 min-h-11 w-fit" disabled={pending || Boolean(leak)}>Send answer</Button>
+        </>
+      )}
     </form>
   );
 }

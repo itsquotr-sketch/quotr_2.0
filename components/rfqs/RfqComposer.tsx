@@ -80,6 +80,8 @@ export function RfqComposer({
   const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
   const [pending, setPending] = useState<"save" | "send" | "draft" | null>(null);
   const [sources, setSources] = useState<DraftSource[]>([]);
+  const [withheld, setWithheld] = useState<Array<{ source: string; reason: string }>>([]);
+  const [previewApproved, setPreviewApproved] = useState(false);
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const edited = useRef({ scope: Boolean(initial?.requestedScope), notes: Boolean(initial?.measurementNotes) });
   const draftGeneration = useRef(0);
@@ -118,6 +120,7 @@ export function RfqComposer({
         selectionSource: value.source,
       })),
       documentVersionIds: files,
+      previewApproved,
     };
   }
 
@@ -130,6 +133,7 @@ export function RfqComposer({
     const recipients = Object.values(selected);
     if (recipients.length === 0) problems.push({ id: "recipients", message: "Choose at least one business with an email contact." });
     if (recipients.some((recipient) => !recipient.contactId)) problems.push({ id: "recipients", message: "Each recipient needs an email contact." });
+    if (!previewApproved) problems.push({ id: "preview-approval", message: "Review the request the recipient will see, then approve it." });
     return problems;
   }
 
@@ -200,7 +204,9 @@ export function RfqComposer({
     else kept.push("requested scope");
     if (!edited.current.notes) setMeasurementNotes(result.measurementNotes);
     else kept.push("measurements");
+    setPreviewApproved(false);
     setSources(result.sources);
+    setWithheld(result.withheld);
     const missing = result.missing.join(" ");
     const keptNote = kept.length > 0 ? `Your ${kept.join(" and ")} stayed as you wrote it.` : "";
     const aiNote = result.aiUsed ? "The facts were ordered with help." : "The draft uses the recorded facts directly.";
@@ -208,6 +214,7 @@ export function RfqComposer({
   }
 
   function toggleBusiness(business: Business, source: "suggested" | "manual") {
+    setPreviewApproved(false);
     setSelected((current) => {
       const next = { ...current };
       if (next[business.id]) delete next[business.id];
@@ -269,18 +276,18 @@ export function RfqComposer({
           {draftNote ? <p className="text-sm text-foreground/70" data-rfq-draft-note>{draftNote}</p> : null}
           <label className="grid gap-1 text-sm" id="requested-scope">
             Requested scope
-            <textarea className="min-h-28 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={requestedScope} onChange={(event) => { edited.current.scope = true; setRequestedScope(event.target.value); }} />
+            <textarea className="min-h-28 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={requestedScope} onChange={(event) => { edited.current.scope = true; setPreviewApproved(false); setRequestedScope(event.target.value); }} />
             {messageFor("requested-scope") ? <span className="text-red-700">{messageFor("requested-scope")}</span> : null}
           </label>
           <SourceList sources={sources.filter((source) => source.field === "scope")} />
           <label className="grid gap-1 text-sm">
             Quantities or measurement notes
-            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={measurementNotes} onChange={(event) => { edited.current.notes = true; setMeasurementNotes(event.target.value); }} />
+            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={measurementNotes} onChange={(event) => { edited.current.notes = true; setPreviewApproved(false); setMeasurementNotes(event.target.value); }} />
           </label>
           <SourceList sources={sources.filter((source) => source.field === "measurements")} />
           <label className="grid gap-1 text-sm sm:max-w-xs" id="response-due">
             Response due
-            <input className={fieldClass} type="date" value={responseDueOn} onChange={(event) => setResponseDueOn(event.target.value)} />
+            <input className={fieldClass} type="date" value={responseDueOn} onChange={(event) => { setPreviewApproved(false); setResponseDueOn(event.target.value); }} />
             {messageFor("response-due") ? <span className="text-red-700">{messageFor("response-due")}</span> : null}
           </label>
         </section>
@@ -320,27 +327,27 @@ export function RfqComposer({
         <section className="grid gap-3 rounded-xl border border-border bg-card p-4">
           <h2 className="text-base font-semibold">Site and files to share</h2>
           <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={includeSiteAddress} onChange={(event) => setIncludeSiteAddress(event.target.checked)} />
+            <input type="checkbox" checked={includeSiteAddress} onChange={(event) => { setPreviewApproved(false); setIncludeSiteAddress(event.target.checked); }} />
             Include the site address{siteAddress ? `: ${siteAddress}` : ""}
           </label>
           <label className="grid gap-1 text-sm">
             Site details to share
-            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={siteDetails} onChange={(event) => setSiteDetails(event.target.value)} />
+            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={siteDetails} onChange={(event) => { setPreviewApproved(false); setSiteDetails(event.target.value); }} />
           </label>
           <label className="grid gap-1 text-sm">
             Questions
-            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={questions} onChange={(event) => setQuestions(event.target.value)} />
+            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={questions} onChange={(event) => { setPreviewApproved(false); setQuestions(event.target.value); }} />
           </label>
           <label className="grid gap-1 text-sm">
             Message
-            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={message} onChange={(event) => setMessage(event.target.value)} />
+            <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={message} onChange={(event) => { setPreviewApproved(false); setMessage(event.target.value); }} />
           </label>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium">Project files</legend>
             <p className="text-sm text-foreground/70">Nothing is shared until you select it. A later file change will not replace this version after send.</p>
             {documents.map((document) => (
               <label key={document.versionId} className="flex min-h-11 items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-1" checked={files.includes(document.versionId)} onChange={(event) => setFiles((current) => event.target.checked ? [...current, document.versionId] : current.filter((id) => id !== document.versionId))} />
+                <input type="checkbox" className="mt-1" checked={files.includes(document.versionId)} onChange={(event) => { setPreviewApproved(false); setFiles((current) => event.target.checked ? [...current, document.versionId] : current.filter((id) => id !== document.versionId)); }} />
                 <span>{document.title} · {document.filename} · {document.visibility === "internal" ? "Internal" : "Shareable"}</span>
               </label>
             ))}
@@ -367,7 +374,28 @@ export function RfqComposer({
             <p>Files: {files.length === 0 ? "None" : documents.filter((document) => files.includes(document.versionId)).map((document) => document.filename).join(", ")}</p>
             <p>Recipients: {chosen.map((item) => item.business!.tradingName).join(", ") || "None"}</p>
           </article>
+          {sources.length > 0 ? (
+            <div>
+              <p className="text-sm font-medium">Facts used</p>
+              <ul className="list-disc pl-5 text-sm" data-rfq-review-sources>
+                {sources.map((source) => <li key={`${source.source}-${source.text.slice(0, 24)}`}>{source.source}: {source.text}</li>)}
+              </ul>
+            </div>
+          ) : null}
+          {withheld.length > 0 ? (
+            <div>
+              <p className="text-sm font-medium">Held back from the recipient</p>
+              <ul className="list-disc pl-5 text-sm" data-rfq-draft-withheld>
+                {withheld.map((item) => <li key={`${item.source}-${item.reason}`}>{item.source}: {item.reason}</li>)}
+              </ul>
+            </div>
+          ) : null}
           <p className="text-sm text-foreground/70">Not included: {RFQ_WITHHELD.join(", ")}.</p>
+          <label className="flex min-h-11 items-start gap-2 text-sm" id="preview-approval">
+            <input type="checkbox" className="mt-1" checked={previewApproved} onChange={(event) => setPreviewApproved(event.target.checked)} />
+            <span>I have reviewed this request. It is what the recipient will see.</span>
+          </label>
+          {messageFor("preview-approval") ? <p className="text-sm text-red-700">{messageFor("preview-approval")}</p> : null}
         </section>
       ) : null}
 

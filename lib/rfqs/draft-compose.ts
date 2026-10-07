@@ -1,3 +1,5 @@
+import { isSupplierFactLabel } from "@/lib/rfqs/draft-privacy";
+
 export type DraftFact = {
   id: string;
   field: "scope" | "measurements";
@@ -13,10 +15,8 @@ export type DraftSource = {
   uncertain: boolean;
 };
 
-const BLOCKED = /cost|sell|margin|markup|profit|price|client|email|phone|gst/i;
-
 export function factIsSafe(key: string, label: string): boolean {
-  return !BLOCKED.test(`${key} ${label}`);
+  return isSupplierFactLabel(key, label);
 }
 
 export function composeJobDraft(facts: DraftFact[], preferredOrder: string[] = []): {
@@ -61,16 +61,4 @@ export function composeJobDraft(facts: DraftFact[], preferredOrder: string[] = [
     })),
     missing,
   };
-}
-
-export function stripSupplierIdentity(value: string, names: string[]): string {
-  let next = value;
-  for (const name of names) {
-    const trimmed = name.trim();
-    if (trimmed.length < 3) continue;
-    next = next.replaceAll(trimmed, "a subcontractor");
-  }
-  return next
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "a contact")
-    .replace(/\$\s?\d[\d,]*(?:\.\d+)?/g, "a price");
 }

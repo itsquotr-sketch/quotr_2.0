@@ -36,6 +36,7 @@ export function buildRfqDeliveryEmail(input: {
     `View request and respond: ${input.publicUrl}`,
     "",
     "This link is only for you. Submitting a price does not mean the work has been accepted.",
+    "Sent securely via Quotr",
   ].join("\n");
   const html = `<!doctype html>
 <html>
@@ -55,7 +56,8 @@ export function buildRfqDeliveryEmail(input: {
                 <a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View request and respond</a>
               </p>
               <p style="padding:0 0 8px 0;font-size:13px;color:#52525b">The request does not include the builder's client, estimate, or other subcontractors.</p>
-              <p style="padding:0;font-size:13px;color:#52525b">This link is only for you. Submitting a price does not mean the work has been accepted.</p>
+              <p style="padding:0 0 16px 0;font-size:13px;color:#52525b">This link is only for you. Submitting a price does not mean the work has been accepted.</p>
+              <p style="padding:0;font-size:12px;color:#71717a">Sent securely via Quotr</p>
             </td>
           </tr>
         </table>
@@ -91,6 +93,7 @@ export function buildRfqAnswerEmail(input: {
     "The original request was not changed.",
     "",
     `View request and respond: ${input.publicUrl}`,
+    "Sent securely via Quotr",
   ].join("\n");
   const html = `<!doctype html>
 <html>
@@ -103,7 +106,8 @@ export function buildRfqAnswerEmail(input: {
           <p>${escapeHtml(builder)} answered a question about ${escapeHtml(scope)}.</p>
           <p>${escapeHtml(input.answer.trim())}</p>
           <p style="color:#52525b">${escapeHtml(audience)} The original request was not changed.</p>
-          <p><a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View request and respond</a></p>
+          <p style="padding:0 0 16px 0"><a href="${escapeHtml(input.publicUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">View request and respond</a></p>
+          <p style="padding:0;font-size:12px;color:#71717a">Sent securely via Quotr</p>
         </td></tr>
       </table>
     </td></tr>
