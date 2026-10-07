@@ -27,7 +27,6 @@ export function RfqDetailView({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const submitted = detail.responses.filter((response) => response.status === "submitted");
-  const answered = new Set(detail.clarifications.flatMap((note) => note.parentId ? [note.parentId] : []));
   const diagnostics = detail.events.filter((event) => event.kind.includes("delivery") || event.kind.includes("email") || event.kind === "link_prepared" || event.summary.startsWith("Mail service"));
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("question");
@@ -187,7 +186,7 @@ export function RfqDetailView({
                   {reply.audience === "all" ? "Answer to every recipient" : "Answer to this subcontractor"}: {reply.body}
                 </p>
               ))}
-              {canEdit && detail.status === "sent" && !answered.has(note.id) && recipient ? (
+              {canEdit && detail.status === "sent" && recipient ? (
                 <AnswerForm
                   projectId={detail.projectId}
                   rfqId={detail.id}
