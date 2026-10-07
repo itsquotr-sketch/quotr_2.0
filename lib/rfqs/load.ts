@@ -114,6 +114,16 @@ export type RfqDetail = {
     costExGst: number;
     workAreaId: string;
   }>;
+  scheduleApplications: Array<{
+    id: string;
+    responseId: string;
+    recipientId: string;
+    scheduleItemId: string;
+    allowanceItemId: string;
+    responseVersion: number;
+    costExGst: number;
+    sellExGst: number;
+  }>;
 };
 
 export type RfqPricingTarget = {
@@ -320,11 +330,18 @@ export async function loadRfqDetail(
     if (!responseId || mapped.length === 0) continue;
     linesByResponse.set(responseId, [...(linesByResponse.get(responseId) ?? []), ...mapped]);
   }
-  const applications = await supabase
-    .from("rfq_pricing_applications")
-    .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, work_area_id")
-    .eq("rfq_id", rfqId)
-    .is("superseded_at", null);
+  const [applications, scheduleApplications] = await Promise.all([
+    supabase
+      .from("rfq_pricing_applications")
+      .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, work_area_id")
+      .eq("rfq_id", rfqId)
+      .is("superseded_at", null),
+    supabase
+      .from("rfq_schedule_pricing_applications")
+      .select("id, response_id, recipient_id, schedule_item_id, allowance_item_id, response_version, cost_ex_gst, sell_ex_gst")
+      .eq("rfq_id", rfqId)
+      .is("superseded_at", null),
+  ]);
   return {
     id: data.id,
     projectId: data.project_id,
@@ -420,6 +437,16 @@ export async function loadRfqDetail(
       replacedItemIds: Array.isArray(row.replaced_item_ids) ? row.replaced_item_ids : [],
       costExGst: Number(row.cost_ex_gst ?? 0),
       workAreaId: row.work_area_id,
+    })),
+    scheduleApplications: (scheduleApplications.data ?? []).map((row) => ({
+      id: row.id,
+      responseId: row.response_id,
+      recipientId: row.recipient_id,
+      scheduleItemId: row.schedule_item_id,
+      allowanceItemId: row.allowance_item_id,
+      responseVersion: Number(row.response_version ?? 0),
+      costExGst: Number(row.cost_ex_gst ?? 0),
+      sellExGst: Number(row.sell_ex_gst ?? 0),
     })),
   };
 }

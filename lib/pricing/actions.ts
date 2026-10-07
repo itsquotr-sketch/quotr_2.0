@@ -1147,14 +1147,22 @@ async function lockedSupplierItemIds(
   itemIds: string[]
 ): Promise<string[] | null> {
   if (itemIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from("subcontractor_rate_applications")
-    .select("allowance_item_id")
-    .eq("org_id", orgId)
-    .in("allowance_item_id", itemIds)
-    .is("superseded_at", null);
-  if (error) return null;
-  return (data ?? []).map((row) => row.allowance_item_id as string);
+  const [rates, schedule] = await Promise.all([
+    supabase
+      .from("subcontractor_rate_applications")
+      .select("allowance_item_id")
+      .eq("org_id", orgId)
+      .in("allowance_item_id", itemIds)
+      .is("superseded_at", null),
+    supabase
+      .from("rfq_schedule_pricing_applications")
+      .select("allowance_item_id")
+      .eq("org_id", orgId)
+      .in("allowance_item_id", itemIds)
+      .is("superseded_at", null),
+  ]);
+  if (rates.error || schedule.error) return null;
+  return [...(rates.data ?? []), ...(schedule.data ?? [])].map((row) => row.allowance_item_id as string);
 }
 
 export async function updatePricingItem(

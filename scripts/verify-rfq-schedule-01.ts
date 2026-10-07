@@ -59,7 +59,7 @@ function row(scope: string, unit: ScheduleDraftRow["unit"], quantity: string, ro
 function staticMain() {
   const sql = read("supabase/migrations/101_rfq_schedule.sql");
   const composer = read("components/rfqs/RfqComposer.tsx");
-  const pricing = read("components/rfqs/RfqPricingApply.tsx");
+  const pricing = read("components/rfqs/RfqPricingApply.tsx") + read("components/rfqs/RfqSchedulePricing.tsx");
   const apply = read("lib/rfqs/pricing-apply.ts");
   const head = read("scripts/verify-quote-transaction-01.ts");
   assert("migration is additive and defaults existing requests to one price", sql.includes("default 'lump_sum'") && sql.includes("'schedule'"));
@@ -68,7 +68,7 @@ function staticMain() {
   assert("a schedule response is refused by the whole-response pricing path", sql.includes("SCHEDULE_NOT_APPLIED"));
   assert("stale schedule is rejected", sql.includes("STALE_SCHEDULE"));
   assert("builder offers one price or specific items", composer.includes("One price for this scope") && composer.includes("Price specific items"));
-  assert("pricing apply explains the missing item path", pricing.includes("Review item prices here; applying individual items to Pricing is coming next."));
+  assert("pricing apply offers selected schedule items", pricing.includes("Use items in Pricing"));
   assert("server apply stops before pricing changes", apply.includes("scheduleApplyBlock"));
   assert("migration head check is unchanged", head.includes('migrations.at(-1) === "080_project_document_delete.sql"'));
   assert("measured extension rounds to cents", scheduleExtended("m2", 12.5, 48.4) === 605 && scheduleExtended("item", 3, 25.33) === 75.99);

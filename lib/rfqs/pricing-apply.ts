@@ -96,7 +96,7 @@ async function scheduleApplyBlock(
   return null;
 }
 
-async function loadTargetMargin(
+export async function loadTargetMargin(
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthOrgContext>>>["supabase"],
   orgId: string,
   projectId: string

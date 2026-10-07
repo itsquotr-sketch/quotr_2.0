@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPricingMoney } from "@/lib/pricing/format";
@@ -70,8 +71,17 @@ export function SupplierPriceEditor({
           <dd className="tabular-nums">{formatPricingMoney(line.clientSell)} ex GST</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Rate version</dt>
-          <dd>Version {line.versionNumber}{line.quantity == null ? " · One lump sum" : ` · ${line.quantity} ${line.unit}`}</dd>
+          <dt className="text-xs text-muted-foreground">{line.schedule ? "Response version" : "Rate version"}</dt>
+          <dd>
+            {line.schedule ? (
+              <Link className="underline" href={`/app/projects/${line.schedule.projectId}/requests/${line.schedule.rfqId}#rfq-response-${line.schedule.responseId}`}>
+                Version {line.schedule.versionNumber}
+              </Link>
+            ) : (
+              <>Version {line.versionNumber}</>
+            )}
+            {line.quantity == null ? " · One lump sum" : ` · ${line.quantity} ${line.unit}`}
+          </dd>
         </div>
       </dl>
       <p className="text-sm">{sellChoice(line.sellTreatment)}</p>
@@ -88,14 +98,16 @@ export function SupplierPriceEditor({
         <Button type="button" className="min-h-11" disabled={isPending} onClick={onSave}>Save details</Button>
         <Button type="button" variant="ghost" className="min-h-11" disabled={isPending} onClick={onCancel}>Cancel</Button>
       </div>
-      <UseSubcontractorRate
-        projectId={review.projectId}
-        area={line.area}
-        rate={line.rate}
-        pricing={review.pricing}
-        canEdit
-        buttonLabel="Review supplier price"
-      />
+      {line.rate ? (
+        <UseSubcontractorRate
+          projectId={review.projectId}
+          area={line.area}
+          rate={line.rate}
+          pricing={review.pricing}
+          canEdit
+          buttonLabel="Review supplier price"
+        />
+      ) : null}
     </div>
   );
 }

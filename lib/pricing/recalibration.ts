@@ -180,14 +180,30 @@ async function supplierRateHold(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   orgId: string,
   pricingDocumentId: string
-): Promise<{ pending: boolean; keptWorkAreas: Set<string>; keptAllowanceIds: Set<string> }> {
-  const { data } = await supabase
-    .from("subcontractor_rate_applications")
-    .select("work_area_id, allowance_item_id, reconciliation_status")
-    .eq("org_id", orgId)
-    .eq("pricing_document_id", pricingDocumentId)
-    .is("superseded_at", null);
+): Promise<{ pending: boolean; keptWorkAreas: Set<string>; keptAllowanceIds: Set<string>; scheduleAllowanceIds: Set<string> }> {
+  const [{ data }, schedule] = await Promise.all([
+    supabase
+      .from("subcontractor_rate_applications")
+      .select("work_area_id, allowance_item_id, reconciliation_status")
+      .eq("org_id", orgId)
+      .eq("pricing_document_id", pricingDocumentId)
+      .is("superseded_at", null),
+    supabase
+      .from("rfq_schedule_pricing_applications")
+      .select("allowance_item_id")
+      .eq("org_id", orgId)
+      .eq("pricing_document_id", pricingDocumentId)
+      .is("superseded_at", null),
+  ]);
   const rows = data ?? [];
+  if (schedule.error) {
+    return {
+      pending: true,
+      keptWorkAreas: new Set<string>(),
+      keptAllowanceIds: new Set<string>(),
+      scheduleAllowanceIds: new Set<string>(),
+    };
+  }
   return {
     pending: rows.some((row) => row.reconciliation_status === "pending"),
     keptWorkAreas: new Set(
@@ -196,6 +212,7 @@ async function supplierRateHold(
     keptAllowanceIds: new Set(
       rows.filter((row) => row.reconciliation_status === "kept").map((row) => row.allowance_item_id as string)
     ),
+    scheduleAllowanceIds: new Set((schedule.data ?? []).map((row) => row.allowance_item_id as string)),
   };
 }
 
@@ -356,6 +373,9 @@ export async function applyRecalibration(
         continue;
       }
       if (existing) {
+        if (hold.scheduleAllowanceIds.has(existing.id)) {
+          continue;
+        }
         if (hold.keptAllowanceIds.has(existing.id)) {
           updates.push({
             id: existing.id,
@@ -412,7 +432,7 @@ export async function applyRecalibration(
       hasSource && !estimateIds.has(item.source_estimate_line_item_id!);
     const unmatched = !matchedPricingIds.has(item.id);
 
-    if (hold.keptAllowanceIds.has(item.id)) continue;
+    if (hold.scheduleAllowanceIds.has(item.id) || hold.keptAllowanceIds.has(item.id)) continue;
     if (hasSource && (sourceMissing || unmatched)) {
       if (!item.orphaned) {
         itemsChanged = true;

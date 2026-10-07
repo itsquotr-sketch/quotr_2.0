@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { RfqDetail, RfqPricingTarget } from "@/lib/rfqs/load";
+import { RfqSchedulePricing } from "@/components/rfqs/RfqSchedulePricing";
 import { applyRfqPricingApplication, previewRfqPricingApplication } from "@/lib/rfqs/pricing-apply";
 import type { RfqPricingPreviewResult } from "@/lib/rfqs/pricing-apply";
 import type { RfqSellTreatment } from "@/lib/rfqs/pricing-preview";
@@ -25,13 +26,7 @@ export function RfqPricingApply(props: {
   canPrice: boolean;
 }) {
   if (props.detail.pricingRequest === "schedule") {
-    return (
-      <section className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-schedule-pricing>
-        <h2 className="text-base font-semibold">Pricing</h2>
-        <p>Review item prices here; applying individual items to Pricing is coming next.</p>
-        <p className="text-foreground/70">This response has not changed the Estimate, Pricing, Quote, or supplier rate book.</p>
-      </section>
-    );
+    return <RfqSchedulePricing detail={props.detail} pricing={props.pricing} canPrice={props.canPrice} />;
   }
   return <LumpPricingApply {...props} />;
 }

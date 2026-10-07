@@ -486,7 +486,8 @@ export type SupplierPriceLine = {
   clientSell: number;
   sellTreatment: string;
   minimumApplied: boolean;
-  rate: StoredRateVersion;
+  rate?: StoredRateVersion;
+  schedule?: { projectId: string; rfqId: string; responseId: string; versionNumber: number };
   area: { id: string; name: string; summary: string | null };
 };
 
@@ -511,7 +512,45 @@ export async function loadSupplierPriceReview(
     .eq("org_id", context.orgId)
     .is("superseded_at", null);
   const rows = applications.data ?? [];
-  if (rows.length === 0) return { projectId, pricing, byItemId: {} };
+  const scheduleApplications = await context.supabase
+    .from("rfq_schedule_pricing_applications")
+    .select("allowance_item_id, response_id, response_version, rfq_id, scope, excluded_scope, unit, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, work_area_id")
+    .eq("pricing_document_id", pricingDocumentId)
+    .eq("org_id", context.orgId)
+    .is("superseded_at", null);
+  if (rows.length === 0 && (scheduleApplications.data ?? []).length === 0) return { projectId, pricing, byItemId: {} };
+  if (rows.length === 0) {
+    const byItemId: Record<string, SupplierPriceLine> = {};
+    const scheduleRows = scheduleApplications.data ?? [];
+    const scheduleAreas = await context.supabase
+      .from("work_areas")
+      .select("id, name, summary")
+      .in("id", scheduleRows.map((row) => row.work_area_id));
+    const scheduleAreaById = new Map((scheduleAreas.data ?? []).map((row) => [row.id, row]));
+    for (const row of scheduleRows) {
+      const area = scheduleAreaById.get(row.work_area_id);
+      if (!area) continue;
+      byItemId[row.allowance_item_id] = {
+        versionNumber: row.response_version,
+        scope: row.scope,
+        exclusions: row.excluded_scope ?? "",
+        unit: row.unit,
+        quantity: row.quantity == null ? null : Number(row.quantity),
+        supplierCost: Number(row.cost_ex_gst),
+        clientSell: Number(row.sell_ex_gst),
+        sellTreatment: row.sell_treatment,
+        minimumApplied: false,
+        schedule: {
+          projectId,
+          rfqId: row.rfq_id,
+          responseId: row.response_id,
+          versionNumber: row.response_version,
+        },
+        area: { id: area.id, name: area.name, summary: area.summary },
+      };
+    }
+    return { projectId, pricing, byItemId };
+  }
   const versionIds = rows.map((row) => row.rate_version_id);
   const areaIds = rows.map((row) => row.work_area_id);
   const [versions, areas, rates, businesses] = await Promise.all([
@@ -571,6 +610,36 @@ export async function loadSupplierPriceReview(
       rate: stored,
       area: { id: area.id, name: area.name, summary: area.summary },
     };
+  }
+  const scheduleRows = scheduleApplications.data ?? [];
+  if (scheduleRows.length > 0) {
+    const scheduleAreas = await context.supabase
+      .from("work_areas")
+      .select("id, name, summary")
+      .in("id", scheduleRows.map((row) => row.work_area_id));
+    const scheduleAreaById = new Map((scheduleAreas.data ?? []).map((row) => [row.id, row]));
+    for (const row of scheduleRows) {
+      const area = scheduleAreaById.get(row.work_area_id);
+      if (!area || byItemId[row.allowance_item_id]) continue;
+      byItemId[row.allowance_item_id] = {
+        versionNumber: row.response_version,
+        scope: row.scope,
+        exclusions: row.excluded_scope ?? "",
+        unit: row.unit,
+        quantity: row.quantity == null ? null : Number(row.quantity),
+        supplierCost: Number(row.cost_ex_gst),
+        clientSell: Number(row.sell_ex_gst),
+        sellTreatment: row.sell_treatment,
+        minimumApplied: false,
+        schedule: {
+          projectId,
+          rfqId: row.rfq_id,
+          responseId: row.response_id,
+          versionNumber: row.response_version,
+        },
+        area: { id: area.id, name: area.name, summary: area.summary },
+      };
+    }
   }
   return { projectId, pricing, byItemId };
 }

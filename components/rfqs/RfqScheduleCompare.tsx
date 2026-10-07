@@ -29,6 +29,9 @@ export function RfqScheduleCompare({
 
   return (
     <section className="grid gap-3" data-rfq-schedule-compare>
+      {detail.responses.filter((response) => response.status === "submitted").map((response) => (
+        <span key={response.id} id={`rfq-response-${response.id}`} />
+      ))}
       <h2 className="text-base font-semibold">Item comparison</h2>
       <p className="text-sm text-foreground/70">A partial total is not ranked against a complete price. A qualification does not make the response cheaper.</p>
       <ul className="grid gap-3 md:hidden">
