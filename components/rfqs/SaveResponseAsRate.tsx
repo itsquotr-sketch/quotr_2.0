@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { rateDraftForResponse, saveSubcontractorRate } from "@/lib/subcontractors/rate-actions";
 import {
+  rateBookCurrencyGate,
+  rateCostLabel,
   SUBCONTRACTOR_RATE_UNITS,
   SUBCONTRACTOR_RATE_UNIT_LABELS,
   type RateDraftFromResponse,
@@ -38,8 +40,13 @@ export function SaveResponseAsRate({
   const [confirmUnit, setConfirmUnit] = useState(false);
   const [confirmAmount, setConfirmAmount] = useState(false);
   const [confirmValidity, setConfirmValidity] = useState(false);
+  const [amountIsNzd, setAmountIsNzd] = useState(false);
+  const [countryCode, setCountryCode] = useState<string | null>(null);
+  const [preferredCurrency, setPreferredCurrency] = useState<string | null>(null);
+  const [step, setStep] = useState<"edit" | "review">("edit");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const currencyGate = rateBookCurrencyGate({ countryCode, preferredCurrency });
 
   if (!canSave) return null;
 
@@ -65,6 +72,10 @@ export function SaveResponseAsRate({
     setConfirmUnit(false);
     setConfirmAmount(false);
     setConfirmValidity(false);
+    setAmountIsNzd(false);
+    setCountryCode(result.countryCode);
+    setPreferredCurrency(result.preferredCurrency);
+    setStep("edit");
     setOpen(true);
   }
 
@@ -108,9 +119,8 @@ export function SaveResponseAsRate({
       <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={pending} onClick={() => void openDraft()}>
         Save as reusable rate
       </Button>
-      {open && draft ? (
+      {open && draft && step === "edit" ? (
         <div className="grid gap-2 rounded-md border border-border p-3 text-sm">
-          <p>Confirm the scope, unit, ex-GST amount, and validity. This does not change Estimate or Pricing.</p>
           {draft.workAreaType ? <p>Work area: {workAreaLabel(draft.workAreaType)}</p> : <p>This request has no single work area, so add the rate from the business profile.</p>}
           <label className="grid gap-1">Precise scope
             <Textarea value={scope} onChange={(event) => setScope(event.target.value)} className="min-h-16" />
@@ -124,10 +134,13 @@ export function SaveResponseAsRate({
             </select>
           </label>
           {draft.unitLocked ? <p>This response is a lump sum. It cannot be saved as a per-m² rate.</p> : null}
-          <label className="grid gap-1">Cost ex GST (NZD)
+          <label className="grid gap-1">{rateCostLabel(unit)}{currencyGate.needsNzdConfirmation ? "" : " (NZD)"}
             <Input className={fieldClass} inputMode="decimal" value={cost} onChange={(event) => setCost(event.target.value)} />
           </label>
-          <p>Inclusions and exclusions came from the response. The scope was not guessed.</p>
+          {currencyGate.notice ? <p>{currencyGate.notice}</p> : null}
+          {currencyGate.needsNzdConfirmation ? (
+            <label className="flex min-h-11 items-start gap-2"><input type="checkbox" className="mt-1" checked={amountIsNzd} onChange={(event) => setAmountIsNzd(event.target.checked)} />This amount is in New Zealand dollars.</label>
+          ) : null}
           <label className="grid gap-1">Inclusions
             <Textarea value={inclusions} onChange={(event) => setInclusions(event.target.value)} className="min-h-16" />
           </label>
@@ -142,14 +155,37 @@ export function SaveResponseAsRate({
               <Input className={fieldClass} type="date" value={effectiveUntil} onChange={(event) => setEffectiveUntil(event.target.value)} />
             </label>
           </div>
-          {draft.suggestedEffectiveUntil ? <p>The response said it was valid until {draft.suggestedEffectiveUntil}. That date is not saved until you confirm it.</p> : null}
+          {draft.suggestedEffectiveUntil ? <p>Valid until {draft.suggestedEffectiveUntil} on the response. It is not saved until you confirm it.</p> : null}
+          <Button type="button" className="h-11 min-h-11 w-fit" onClick={() => {
+            if (!draft.workAreaType || !scope.trim() || !unit || !effectiveFrom || cost.trim() === "") {
+              setError("Add the scope, unit, cost, and start date.");
+              return;
+            }
+            if (currencyGate.needsNzdConfirmation && !amountIsNzd) {
+              setError("Confirm this amount is in New Zealand dollars.");
+              return;
+            }
+            setError(null);
+            setStep("review");
+          }}>
+            Review
+          </Button>
+        </div>
+      ) : null}
+      {open && draft && step === "review" ? (
+        <div className="grid gap-2 rounded-md border border-border p-3 text-sm" data-response-rate-review>
+          <p>{workAreaLabel(draft.workAreaType ?? "")}. {scope.trim()}. {cost} {currencyGate.needsNzdConfirmation ? "NZD" : "NZD"} ex GST{unit === "lump_sum" ? " as a lump sum" : unit ? ` per ${SUBCONTRACTOR_RATE_UNIT_LABELS[unit]}` : ""}, from {effectiveFrom}{effectiveUntil ? ` until ${effectiveUntil}` : ", with no end date"}.</p>
+          <p>Estimate and Pricing stay unchanged.</p>
           <label className="flex min-h-11 items-start gap-2"><input type="checkbox" className="mt-1" checked={confirmScope} onChange={(event) => setConfirmScope(event.target.checked)} />I confirm this scope.</label>
           <label className="flex min-h-11 items-start gap-2"><input type="checkbox" className="mt-1" checked={confirmUnit} onChange={(event) => setConfirmUnit(event.target.checked)} />I confirm this unit.</label>
           <label className="flex min-h-11 items-start gap-2"><input type="checkbox" className="mt-1" checked={confirmAmount} onChange={(event) => setConfirmAmount(event.target.checked)} />I confirm this cost ex GST.</label>
           <label className="flex min-h-11 items-start gap-2"><input type="checkbox" className="mt-1" checked={confirmValidity} onChange={(event) => setConfirmValidity(event.target.checked)} />I confirm these effective dates.</label>
-          <Button type="button" className="h-11 min-h-11 w-fit" disabled={pending || !draft.workAreaType || !unit || !confirmScope || !confirmUnit || !confirmAmount || !confirmValidity} onClick={() => void save()}>
-            Save rate
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setStep("edit")}>Back</Button>
+            <Button type="button" className="h-11 min-h-11" disabled={pending || !confirmScope || !confirmUnit || !confirmAmount || !confirmValidity} onClick={() => void save()}>
+              Save rate
+            </Button>
+          </div>
         </div>
       ) : null}
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}

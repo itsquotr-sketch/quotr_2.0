@@ -10,6 +10,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   draftRateFromRfqResponse,
   previewRateCost,
+  RATE_SCOPE_PROMPTS,
+  rateBookCurrencyGate,
   suggestRatesForWorkArea,
   type StoredRateVersion,
 } from "../lib/subcontractors/rate-book";
@@ -81,6 +83,7 @@ function staticMain() {
   const profile = read("components/subcontractors/SubcontractorProfile.tsx");
   const suggestions = read("components/projects/JobRateSuggestions.tsx");
   const saveUi = read("components/rfqs/SaveResponseAsRate.tsx");
+  const ratesUi = read("components/subcontractors/SubcontractorRates.tsx");
   assert("no Preview ref", !sql.includes(PREVIEW_SUPABASE_PROJECT_REF));
   assert("no Production ref", !sql.includes(PRODUCTION_SUPABASE_PROJECT_REF));
   assert("versioned tables", sql.includes("subcontractor_rates") && sql.includes("subcontractor_rate_versions"));
@@ -91,6 +94,12 @@ function staticMain() {
   assert("schedule upload is not parsed", profile.includes("not read or turned into a rate") && !actions.includes("storage.from"));
   assert("job preview does not save", suggestions.includes("not applied to the Estimate or to Pricing") && !suggestions.includes("updatePricingItem"));
   assert("response save requires confirmation", saveUi.includes("Save as reusable rate") && saveUi.includes("I confirm this scope."));
+  assert("manual entry reviews before save", ratesUi.includes("Review rate") && ratesUi.includes("More details") && !ratesUi.includes("I confirm this scope."));
+  assert("response rates still confirm scope", ratesUi.includes("I confirm this reusable scope."));
+  assert("profile separates the three views", profile.includes('label: "Overview"') && profile.includes('label: "Rates"') && profile.includes('label: "Requests"'));
+  assert("scope prompts are not prices", Object.values(RATE_SCOPE_PROMPTS).every((prompts) => prompts.every((prompt) => !prompt.includes("$") && !/per m/i.test(prompt))));
+  assert("AUD is not stored as NZD", rateBookCurrencyGate({ countryCode: "AU", preferredCurrency: "AUD" }).needsNzdConfirmation && rateBookCurrencyGate({ countryCode: "AU", preferredCurrency: "AUD" }).notice?.includes("not converted"));
+  assert("NZD needs no extra confirmation", !rateBookCurrencyGate({ countryCode: "NZ", preferredCurrency: "NZD" }).needsNzdConfirmation);
 
   const lump = draftRateFromRfqResponse({
     priceExGst: 1800,

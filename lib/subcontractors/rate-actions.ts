@@ -288,7 +288,7 @@ export async function retireSubcontractorRate(input: {
 }
 
 export async function rateDraftForResponse(responseId: string): Promise<
-  | { ok: true; draft: ReturnType<typeof draftRateFromRfqResponse>; subcontractorId: string; responseId: string }
+  | { ok: true; draft: ReturnType<typeof draftRateFromRfqResponse>; subcontractorId: string; responseId: string; countryCode: string | null; preferredCurrency: string | null }
   | Fail
 > {
   const loaded = await writer();
@@ -312,6 +312,11 @@ export async function rateDraftForResponse(responseId: string): Promise<
         .maybeSingle()
     : { data: null };
   if (!recipient.data) return { ok: false, error: FAILED };
+  const business = await loaded.context.supabase
+    .from("subcontractors")
+    .select("country_code, currency")
+    .eq("id", recipient.data.subcontractor_id)
+    .maybeSingle();
   const draft = draftRateFromRfqResponse({
     pricingStructure: response.data.pricing_structure,
     priceExGst: response.data.price_ex_gst == null ? null : Number(response.data.price_ex_gst),
@@ -320,5 +325,12 @@ export async function rateDraftForResponse(responseId: string): Promise<
     validUntil: response.data.valid_until,
     workAreaType: rfq.data?.scope_kind === "work_area" ? rfq.data.work_area_type : null,
   });
-  return { ok: true, draft, subcontractorId: recipient.data.subcontractor_id, responseId };
+  return {
+    ok: true,
+    draft,
+    subcontractorId: recipient.data.subcontractor_id,
+    responseId,
+    countryCode: business.data?.country_code ?? null,
+    preferredCurrency: business.data?.currency ?? null,
+  };
 }

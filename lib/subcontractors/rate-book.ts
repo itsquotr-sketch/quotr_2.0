@@ -13,6 +13,69 @@ export const SUBCONTRACTOR_RATE_UNIT_LABELS: Record<SubcontractorRateUnit, strin
   hour: "hour",
 };
 
+/** Writing prompts only. They are not prices and do not describe a job. */
+export const RATE_SCOPE_PROMPTS: Record<string, readonly string[]> = {
+  bathroom: ["Supply and install wall tiles", "Waterproof wet areas", "Supply and install sanitary fixtures"],
+  kitchen: ["Supply and install a splashback", "Supply and install cabinetry"],
+  deck: ["Supply and install decking", "Supply and install a balustrade"],
+  fence: ["Supply and install fencing", "Supply and install gates"],
+  painting: ["Prepare and paint interior walls", "Prepare and paint exterior cladding"],
+  flooring: ["Supply and install flooring", "Prepare the subfloor"],
+  plastering: ["Stop and plaster internal walls", "Sand and finish plaster"],
+};
+
+export function scopePromptsFor(workAreaType: string): readonly string[] {
+  return RATE_SCOPE_PROMPTS[workAreaType] ?? [];
+}
+
+export function rateCostLabel(unit: string): string {
+  switch (unit) {
+    case "m2":
+      return "Cost ex GST per m²";
+    case "m":
+      return "Cost ex GST per m";
+    case "item":
+      return "Cost ex GST per item";
+    case "hour":
+      return "Cost ex GST per hour";
+    case "lump_sum":
+      return "Lump sum cost ex GST";
+    default:
+      return "Cost ex GST";
+  }
+}
+
+export type RateRecordStatus = "current" | "upcoming" | "expired" | "retired";
+
+export function rateRecordStatus(
+  rate: Pick<StoredRateVersion, "retired" | "effectiveFrom" | "effectiveUntil">,
+  today: string
+): RateRecordStatus {
+  if (rate.retired) return "retired";
+  const from = dateOnly(rate.effectiveFrom);
+  const until = rate.effectiveUntil ? dateOnly(rate.effectiveUntil) : null;
+  if (until && until < today) return "expired";
+  if (from > today) return "upcoming";
+  return "current";
+}
+
+/**
+ * The rate book stores NZD only. A non-NZD preference must be confirmed as an
+ * NZD figure before save. Nothing here converts currencies.
+ */
+export function rateBookCurrencyGate(input: {
+  countryCode: string | null;
+  preferredCurrency: string | null;
+}): { needsNzdConfirmation: boolean; notice: string | null } {
+  const currency = (input.preferredCurrency ?? "").trim().toUpperCase();
+  const foreign = input.countryCode === "AU" || (currency !== "" && currency !== "NZD");
+  if (!foreign) return { needsNzdConfirmation: false, notice: null };
+  return {
+    needsNzdConfirmation: true,
+    notice: "Reusable rates are stored in New Zealand dollars only. An amount in another currency is not saved and is not converted.",
+  };
+}
+
 export type SubcontractorRateSource = "builder" | "rfq_response" | "rate_schedule_document";
 
 export type RateDraftFromResponse = {

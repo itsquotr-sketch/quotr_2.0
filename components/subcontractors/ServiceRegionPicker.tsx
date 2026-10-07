@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +27,9 @@ export function ServiceRegionPicker({
   disabled = false,
 }: ServiceRegionPickerProps) {
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
   const [otherDraft, setOtherDraft] = useState("");
+  const boxRef = useRef<HTMLDivElement>(null);
   const needle = query.trim().toLowerCase();
   const options = useMemo(() => {
     const catalogue = [
@@ -77,7 +79,14 @@ export function ServiceRegionPicker({
   }
 
   return (
-    <div className="space-y-2" data-service-region-picker>
+    <div
+      className="space-y-2"
+      data-service-region-picker
+      ref={boxRef}
+      onBlur={(event) => {
+        if (!boxRef.current?.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
       <div className="flex flex-wrap gap-2">
         {selected
           .filter((code) => code !== OTHER_REGION.code)
@@ -129,15 +138,24 @@ export function ServiceRegionPicker({
         <>
           <Input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setOpen(false);
+            }}
             placeholder={country === "AU" ? "Search states and territories" : "Search regions"}
             className="min-h-11"
             disabled={disabled}
             autoComplete="off"
             aria-label="Search service regions"
+            aria-expanded={open}
+            role="combobox"
             data-service-region-search
           />
-          <div className="max-h-52 overflow-y-auto rounded-xl border border-border/80">
+          {open ? <div className="max-h-52 overflow-y-auto rounded-xl border border-border/80" data-service-region-options>
             {options.length === 0 ? (
               <p className="px-3 py-3 text-sm text-muted-foreground">No regions match that search.</p>
             ) : (
@@ -163,7 +181,7 @@ export function ServiceRegionPicker({
                 );
               })
             )}
-          </div>
+          </div> : null}
           {selected.includes(OTHER_REGION.code) || otherLabels.length > 0 ? (
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input

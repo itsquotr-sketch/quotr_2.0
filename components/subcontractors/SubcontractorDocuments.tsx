@@ -47,6 +47,7 @@ export function SubcontractorDocuments({
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function addDocument() {
@@ -120,6 +121,7 @@ export function SubcontractorDocuments({
     setExpiresOn("");
     setNotes("");
     setFile(null);
+    setAdding(false);
     router.refresh();
   }
 
@@ -200,8 +202,11 @@ export function SubcontractorDocuments({
         </ul>
       )}
       {canEdit ? (
-        <div className="space-y-3 rounded-xl border border-dashed border-border/80 p-3">
-          <p className="text-sm font-medium">Add document</p>
+        <div className="space-y-3">
+          <Button type="button" variant="outline" size="touch" aria-expanded={adding} onClick={() => setAdding((open) => !open)}>
+            Add document
+          </Button>
+          {adding ? <div className="space-y-3 rounded-xl border border-dashed border-border/80 p-3">
           <p className="text-sm text-muted-foreground">
             JPG, PNG, PDF, DOCX, or XLSX up to 15 MB. The file stays private to this organisation and is not sent with a request for quote.
           </p>
@@ -269,8 +274,9 @@ export function SubcontractorDocuments({
             />
           </div>
           <Button type="button" size="touch" disabled={pending || !title.trim()} onClick={() => void addDocument()}>
-            {pending ? "Uploading…" : "Add document"}
+            {pending ? "Uploading…" : "Upload"}
           </Button>
+        </div> : null}
         </div>
       ) : null}
       {!canEdit && error ? (

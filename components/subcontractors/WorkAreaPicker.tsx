@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { SCOPE_CATALOGUE, SCOPE_CATEGORIES } from "@/lib/scopes/catalogue";
 import { workAreaLabel } from "@/lib/subcontractors/work-areas";
@@ -13,6 +13,8 @@ type WorkAreaPickerProps = {
 
 export function WorkAreaPicker({ selected, onChange, disabled = false }: WorkAreaPickerProps) {
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const needle = query.trim().toLowerCase();
   const groups = useMemo(
     () =>
@@ -37,7 +39,14 @@ export function WorkAreaPicker({ selected, onChange, disabled = false }: WorkAre
   }
 
   return (
-    <div className="space-y-2" data-work-area-picker>
+    <div
+      className="space-y-2"
+      data-work-area-picker
+      ref={boxRef}
+      onBlur={(event) => {
+        if (!boxRef.current?.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
       {selected.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {selected.map((type) => (
@@ -59,15 +68,24 @@ export function WorkAreaPicker({ selected, onChange, disabled = false }: WorkAre
       )}
       <Input
         value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+        }}
         placeholder="Search work areas"
         className="min-h-11"
         disabled={disabled}
         autoComplete="off"
         data-work-area-search
         aria-label="Search work areas"
+        aria-expanded={open}
+        role="combobox"
       />
-      <div className="max-h-52 overflow-y-auto rounded-xl border border-border/80">
+      {open ? <div className="max-h-52 overflow-y-auto rounded-xl border border-border/80" data-work-area-options>
         {groups.length === 0 ? (
           <p className="px-3 py-3 text-sm text-muted-foreground">No work areas match that search.</p>
         ) : (
@@ -97,7 +115,7 @@ export function WorkAreaPicker({ selected, onChange, disabled = false }: WorkAre
             </div>
           ))
         )}
-      </div>
+      </div> : null}
     </div>
   );
 }

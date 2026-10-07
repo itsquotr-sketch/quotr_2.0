@@ -9,16 +9,27 @@ import {
   ArchiveSubcontractorButton,
   RestoreSubcontractorButton,
 } from "@/components/subcontractors/SubcontractorFormDialog";
+import { SettingsSectionNav } from "@/components/layout/section-nav";
 import { SubcontractorDocuments } from "@/components/subcontractors/SubcontractorDocuments";
 import { SubcontractorRates } from "@/components/subcontractors/SubcontractorRates";
+import { SubcontractorRequests } from "@/components/subcontractors/SubcontractorRequests";
+import type { SubcontractorRequestActivity } from "@/lib/subcontractors/activity";
 import type { SubcontractorRateRecord } from "@/lib/subcontractors/rate-actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { WorkAreaPicker } from "@/components/subcontractors/WorkAreaPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveSubcontractor } from "@/lib/subcontractors/actions";
-import { retainRegionsForCountry } from "@/lib/subcontractors/regions";
+import { workAreaLabel } from "@/lib/subcontractors/work-areas";
+import { regionLabel, retainRegionsForCountry } from "@/lib/subcontractors/regions";
 import type {
   GstRegistration,
   PreferredContactMethod,
@@ -67,31 +78,26 @@ function contactsFromRecord(subcontractor: Subcontractor): ContactDraft[] {
   }));
 }
 
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4">
-      <h3 className="text-base font-medium">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
+type ProfileView = "overview" | "rates" | "requests";
+type ProfileSection = "business" | "people" | "capabilities" | "commercial" | "notes";
+
+const VIEWS: Array<{ id: ProfileView; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "rates", label: "Rates" },
+  { id: "requests", label: "Requests" },
+];
 
 export function SubcontractorProfile({
   subcontractor,
   rates,
+  requests,
+  today,
   canEdit,
 }: {
   subcontractor: Subcontractor;
   rates: SubcontractorRateRecord[];
+  requests: SubcontractorRequestActivity[];
+  today: string;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -130,6 +136,8 @@ export function SubcontractorProfile({
   const [travel, setTravel] = useState(subcontractor.travel_notes ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<ProfileView>("overview");
+  const [editing, setEditing] = useState<ProfileSection | null>(null);
 
   function changeCountry(next: SubcontractorCountryCode | "") {
     setCountry(next);
@@ -151,8 +159,41 @@ export function SubcontractorProfile({
     );
   }
 
-  async function save(event: React.FormEvent) {
-    event.preventDefault();
+  function resetFrom(record: Subcontractor) {
+    setTradingName(record.trading_name);
+    setLegalName(record.legal_name ?? "");
+    setWebsite(record.website ?? "");
+    setCountry(record.country_code ?? "");
+    setAddress({
+      address_line_1: record.address_line_1 ?? "",
+      address_line_2: record.address_line_2 ?? "",
+      address_city: record.address_city ?? "",
+      address_region: record.address_region ?? "",
+      address_postcode: record.address_postcode ?? "",
+    });
+    setRegions(record.service_regions);
+    setOtherLabels(record.service_region_other_labels);
+    setWorkAreas(record.work_area_types);
+    setServices(record.specialties ?? "");
+    setNotes(record.internal_notes ?? "");
+    setContacts(contactsFromRecord(record));
+    setPricing(record.preferred_pricing_method ?? "");
+    setCurrency(record.currency ?? "");
+    setAbn(record.abn ?? "");
+    setNzbn(record.nzbn ?? "");
+    setGstRegistration(record.gst_registration ?? "unknown");
+    setGstNumber(record.gst_number ?? "");
+    setMinimum(record.minimum_charge_notes ?? "");
+    setTravel(record.travel_notes ?? "");
+  }
+
+  function closeEditor() {
+    resetFrom(subcontractor);
+    setEditing(null);
+    setError(null);
+  }
+
+  async function save() {
     if (locked) return;
     setError(null);
     setPending(true);
@@ -195,12 +236,40 @@ export function SubcontractorProfile({
       setError(Object.values(result.fieldErrors).flat()[0] ?? "Check the form and try again.");
       return;
     }
+    setEditing(null);
     router.refresh();
+  }
+  const primary = contacts.find((contact) => contact.is_primary) ?? contacts[0];
+  const addressSummary = [
+    address.address_line_1,
+    address.address_line_2,
+    address.address_city,
+    address.address_region,
+    address.address_postcode,
+  ].filter(Boolean).join(", ");
+  const regionSummary = [
+    ...regions.filter((code) => code !== "other").map((code) => regionLabel(code)),
+    ...otherLabels,
+  ];
+  const canOpenEditor = canEdit && !archived;
+
+  function onTabsKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("[role='tab']")];
+    const index = tabs.findIndex((tab) => tab === document.activeElement);
+    if (index < 0) return;
+    event.preventDefault();
+    const nextIndex = event.key === "ArrowRight"
+      ? (index + 1) % tabs.length
+      : (index - 1 + tabs.length) % tabs.length;
+    const next = VIEWS[nextIndex];
+    if (!next) return;
+    setView(next.id);
+    tabs[nextIndex]?.focus();
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-    <form className="flex min-w-0 flex-col gap-4" data-subcontractor-profile onSubmit={(event) => void save(event)}>
+    <div className="flex min-w-0 flex-col gap-4" data-subcontractor-profile data-profile-view={view}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <Link
@@ -210,11 +279,7 @@ export function SubcontractorProfile({
             Back to subcontractors
           </Link>
           <h2 className="break-words text-xl font-semibold">{tradingName || subcontractor.trading_name}</h2>
-          {archived ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              This business is archived. Restore it before editing.
-            </p>
-          ) : null}
+          {archived ? <p className="mt-1 text-sm text-muted-foreground">Archived. Restore it before editing.</p> : null}
         </div>
         {canEdit ? (
           archived ? (
@@ -224,412 +289,286 @@ export function SubcontractorProfile({
           )
         ) : null}
       </div>
-      {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
+
+      <div onKeyDown={onTabsKeyDown}>
+        <SettingsSectionNav
+          items={VIEWS}
+          activeId={view}
+          onChange={(id) => setView(id as ProfileView)}
+          label="Subcontractor"
+          touchTargets
+          wrap
+        />
+      </div>
+
+      {view === "overview" ? (
+        <div className="grid gap-3" data-profile-panel="overview">
+          <SummaryCard title="Business and address" action={canOpenEditor ? () => setEditing("business") : null}>
+            <p>{country ? SUBCONTRACTOR_COUNTRY_LABELS[country] : "No country"}</p>
+            <p>{addressSummary || "No address"}</p>
+            {legalName ? <p>{legalName}</p> : null}
+            {website ? <p className="break-words">{website}</p> : null}
+          </SummaryCard>
+          <SummaryCard title="People" action={canOpenEditor ? () => setEditing("people") : null}>
+            {primary ? (
+              <p>{primary.name}{primary.role ? ` · ${primary.role}` : ""}{primary.email ? ` · ${primary.email}` : ""}{primary.phone ? ` · ${primary.phone}` : ""}</p>
+            ) : (
+              <p>No contacts yet.</p>
+            )}
+            {contacts.length > 1 ? <p className="text-muted-foreground">{contacts.length} contacts</p> : null}
+          </SummaryCard>
+          <SummaryCard title="Capabilities and service regions" action={canOpenEditor ? () => setEditing("capabilities") : null}>
+            <div className="flex flex-wrap gap-2">
+              {workAreas.map((type) => (
+                <span key={type} className="rounded-full border border-border px-3 py-1 text-sm">{workAreaLabel(type)}</span>
+              ))}
+              {workAreas.length === 0 ? <span>No work areas</span> : null}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {regionSummary.map((label) => (
+                <span key={label} className="rounded-full border border-border px-3 py-1 text-sm">{label}</span>
+              ))}
+              {regionSummary.length === 0 ? <span>No service regions</span> : null}
+            </div>
+            {services ? <p className="mt-2">{services}</p> : null}
+          </SummaryCard>
+          <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4">
+            <h3 className="text-base font-medium">Documents</h3>
+            <p className="mt-1 text-sm text-muted-foreground">A rate schedule is not read or turned into a rate.</p>
+            <div className="mt-3">
+              <SubcontractorDocuments
+                subcontractorId={subcontractor.id}
+                documents={subcontractor.documents}
+                canEdit={canEdit && !archived}
+              />
+            </div>
+          </section>
+          <SummaryCard title="Commercial preferences" action={canOpenEditor ? () => setEditing("commercial") : null}>
+            <p>{pricing ? SUBCONTRACTOR_PRICING_LABELS[pricing] : "No pricing preference"} · {currency || "No currency"} · GST {gstRegistration}</p>
+          </SummaryCard>
+          <SummaryCard title="Internal notes" action={canOpenEditor ? () => setEditing("notes") : null}>
+            <p className="whitespace-pre-wrap">{notes.trim() || "No notes"}</p>
+          </SummaryCard>
+        </div>
       ) : null}
 
-      <Section
-        title="Business and address"
-        description="The address is where the business is based. Service regions are chosen separately."
-      >
-        <div className="grid gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-trading-name">Trading name</Label>
-            <Input
-              id="profile-trading-name"
-              value={tradingName}
-              onChange={(event) => setTradingName(event.target.value)}
-              className={fieldClass}
-              maxLength={160}
-              required
-              disabled={locked}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="profile-legal-name">Legal name (optional)</Label>
-              <Input
-                id="profile-legal-name"
-                value={legalName}
-                onChange={(event) => setLegalName(event.target.value)}
-                className={fieldClass}
-                maxLength={160}
-                disabled={locked}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="profile-website">Website (optional)</Label>
-              <Input
-                id="profile-website"
-                value={website}
-                onChange={(event) => setWebsite(event.target.value)}
-                className={fieldClass}
-                maxLength={300}
-                disabled={locked}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5 sm:max-w-xs">
-            <Label htmlFor="profile-country">Country</Label>
-            <select
-              id="profile-country"
-              value={country}
-              onChange={(event) => changeCountry(event.target.value as SubcontractorCountryCode | "")}
-              className={selectClass}
-              disabled={locked}
-            >
-              <option value="">Select a country</option>
-              {SUBCONTRACTOR_COUNTRY_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {SUBCONTRACTOR_COUNTRY_LABELS[code]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <BusinessLocationFields
-            country={country || null}
-            value={address}
-            onChange={setAddress}
-            disabled={locked}
+      {view === "rates" ? (
+        <div data-profile-panel="rates">
+          <SubcontractorRates
+            subcontractorId={subcontractor.id}
+            workAreaTypes={subcontractor.work_area_types}
+            rates={rates}
+            canEdit={canEdit && !archived}
+            today={today}
+            countryCode={subcontractor.country_code}
+            preferredCurrency={subcontractor.currency}
           />
         </div>
-      </Section>
+      ) : null}
 
-      <Section
-        title="People"
-        description="Add the people you contact. Email and phone do not have to be unique."
-      >
-        {contacts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No contacts yet.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {contacts.map((contact, index) => (
-              <div key={contact.key} className="min-w-0 rounded-xl border border-border/70 p-3" data-subcontractor-contact>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium">Contact {index + 1}</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="touch"
-                    disabled={locked}
-                    onClick={() => setContacts((current) => current.filter((item) => item.key !== contact.key))}
-                  >
-                    Remove
-                  </Button>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor={`contact-name-${contact.key}`}>Name</Label>
-                    <Input
-                      id={`contact-name-${contact.key}`}
-                      value={contact.name}
-                      onChange={(event) => updateContact(contact.key, { name: event.target.value })}
-                      className={fieldClass}
-                      maxLength={160}
-                      disabled={locked}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`contact-role-${contact.key}`}>Role</Label>
-                    <Input
-                      id={`contact-role-${contact.key}`}
-                      value={contact.role}
-                      onChange={(event) => updateContact(contact.key, { role: event.target.value })}
-                      className={fieldClass}
-                      maxLength={80}
-                      disabled={locked}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`contact-preferred-${contact.key}`}>Preferred contact</Label>
-                    <select
-                      id={`contact-preferred-${contact.key}`}
-                      value={contact.preferred_contact}
-                      onChange={(event) =>
-                        updateContact(contact.key, {
-                          preferred_contact: event.target.value as ContactDraft["preferred_contact"],
-                        })
-                      }
-                      className={selectClass}
-                      disabled={locked}
-                    >
-                      <option value="">No preference</option>
-                      {PREFERRED_CONTACT_METHODS.map((method) => (
-                        <option key={method} value={method}>
-                          {method === "either" ? "Either" : method === "email" ? "Email" : "Phone"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`contact-email-${contact.key}`}>Email</Label>
-                    <Input
-                      id={`contact-email-${contact.key}`}
-                      type="email"
-                      value={contact.email}
-                      onChange={(event) => updateContact(contact.key, { email: event.target.value })}
-                      className={fieldClass}
-                      maxLength={254}
-                      disabled={locked}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`contact-phone-${contact.key}`}>Phone</Label>
-                    <Input
-                      id={`contact-phone-${contact.key}`}
-                      type="tel"
-                      value={contact.phone}
-                      onChange={(event) => updateContact(contact.key, { phone: event.target.value })}
-                      className={fieldClass}
-                      maxLength={40}
-                      disabled={locked}
-                    />
-                  </div>
-                </div>
-                <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="primary-contact"
-                    checked={contact.is_primary}
-                    onChange={() => makePrimary(contact.key)}
-                    disabled={locked}
-                    className="size-4 accent-[var(--brand-orange)]"
-                  />
-                  Primary contact
-                </label>
-              </div>
-            ))}
-          </div>
-        )}
-        {canEdit && !archived ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="touch"
-            className="mt-3"
-            onClick={() =>
-              setContacts((current) => [
-                ...current,
-                {
-                  key: draftKey(),
-                  name: "",
-                  role: "",
-                  email: "",
-                  phone: "",
-                  is_primary: current.length === 0,
-                  preferred_contact: "",
-                },
-              ])
-            }
-          >
-            Add contact
-          </Button>
-        ) : null}
-      </Section>
-
-      <Section
-        title="Capabilities and service regions"
-        description="Work areas suggest this business for a later request. Services offered describe the work and are never prices."
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Work areas</p>
-            <WorkAreaPicker selected={workAreas} onChange={setWorkAreas} disabled={locked} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-services">Services offered</Label>
-            <Textarea
-              id="profile-services"
-              value={services}
-              onChange={(event) => setServices(event.target.value)}
-              className="min-h-24"
-              maxLength={500}
-              disabled={locked}
-              placeholder="Describe the work, including work Quotr does not calculate"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Service regions</p>
-            <p className="text-sm text-muted-foreground">
-              {country === "AU"
-                ? "States and territories this business will travel to."
-                : country === "NZ"
-                  ? "Regions this business will travel to."
-                  : "Choose a country to pick service regions."}
-            </p>
-            <ServiceRegionPicker
-              country={country || null}
-              selected={regions}
-              otherLabels={otherLabels}
-              onChange={(next) => {
-                setRegions(next.selected);
-                setOtherLabels(next.otherLabels);
-              }}
-              disabled={locked}
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section
-        title="Documents"
-        description="Licences, insurance, and capability statements stay private to your organisation. A rate schedule upload remains a source document. It is not read or turned into a rate."
-      >
-        <SubcontractorDocuments
-          subcontractorId={subcontractor.id}
-          documents={subcontractor.documents}
-          canEdit={canEdit && !archived}
-        />
-      </Section>
-
-      <Section
-        title="Commercial preferences"
-        description="Optional notes about how this business prefers to price work. They do not change Quote GST or supplier rates."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-pricing">Preferred pricing method</Label>
-            <select
-              id="profile-pricing"
-              value={pricing}
-              onChange={(event) => setPricing(event.target.value as SubcontractorPricingMethod | "")}
-              className={selectClass}
-              disabled={locked}
-            >
-              <option value="">No preference</option>
-              {SUBCONTRACTOR_PRICING_METHODS.map((method) => (
-                <option key={method} value={method}>
-                  {SUBCONTRACTOR_PRICING_LABELS[method]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-currency">Currency</Label>
-            <Input
-              id="profile-currency"
-              value={currency}
-              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-              className={fieldClass}
-              maxLength={3}
-              placeholder="NZD"
-              disabled={locked}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-gst">GST registration</Label>
-            <select
-              id="profile-gst"
-              value={gstRegistration}
-              onChange={(event) => setGstRegistration(event.target.value as GstRegistration)}
-              className={selectClass}
-              disabled={locked}
-            >
-              {GST_REGISTRATIONS.map((value) => (
-                <option key={value} value={value}>
-                  {value === "yes" ? "Yes" : value === "no" ? "No" : "Unknown"}
-                </option>
-              ))}
-            </select>
-            <p className="text-sm text-muted-foreground">
-              Choose yes, no, or unknown. This is not taken from the NZBN or ABN.
-            </p>
-          </div>
-          {gstRegistration === "yes" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="profile-gst-number">GST number (optional)</Label>
-              <Input
-                id="profile-gst-number"
-                value={gstNumber}
-                onChange={(event) => setGstNumber(event.target.value)}
-                className={fieldClass}
-                maxLength={20}
-                disabled={locked}
-              />
-            </div>
-          ) : null}
-          {country === "NZ" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="profile-nzbn">NZBN (optional)</Label>
-              <Input
-                id="profile-nzbn"
-                value={nzbn}
-                onChange={(event) => setNzbn(event.target.value)}
-                className={fieldClass}
-                maxLength={20}
-                disabled={locked}
-              />
-            </div>
-          ) : null}
-          {country === "AU" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="profile-abn">ABN (optional)</Label>
-              <Input
-                id="profile-abn"
-                value={abn}
-                onChange={(event) => setAbn(event.target.value)}
-                className={fieldClass}
-                maxLength={20}
-                disabled={locked}
-              />
-            </div>
-          ) : null}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="profile-minimum">Minimum charge notes</Label>
-            <Textarea
-              id="profile-minimum"
-              value={minimum}
-              onChange={(event) => setMinimum(event.target.value)}
-              className="min-h-20"
-              maxLength={2000}
-              disabled={locked}
-            />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="profile-travel">Travel notes</Label>
-            <Textarea
-              id="profile-travel"
-              value={travel}
-              onChange={(event) => setTravel(event.target.value)}
-              className="min-h-20"
-              maxLength={2000}
-              disabled={locked}
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section
-        title="Internal notes"
-        description="Only people in your organisation can see these notes."
-      >
-        <Textarea
-          id="profile-notes"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          className="min-h-28"
-          maxLength={5000}
-          disabled={locked}
-          aria-label="Internal notes"
-        />
-      </Section>
-
-      {canEdit && !archived ? (
-        <div className="flex justify-end">
-          <Button type="submit" size="touch" disabled={pending || !tradingName.trim()}>
-            {pending ? "Saving…" : "Save profile"}
-          </Button>
+      {view === "requests" ? (
+        <div data-profile-panel="requests">
+          <SubcontractorRequests requests={requests} />
         </div>
       ) : null}
-    </form>
-    <SubcontractorRates
-      subcontractorId={subcontractor.id}
-      workAreaTypes={subcontractor.work_area_types}
-      rates={rates}
-      canEdit={canEdit && !archived}
-    />
+
+      <Dialog open={editing !== null} onOpenChange={(open) => { if (!open) closeEditor(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editing === "business" ? "Business and address" : null}
+              {editing === "people" ? "People" : null}
+              {editing === "capabilities" ? "Capabilities and service regions" : null}
+              {editing === "commercial" ? "Commercial preferences" : null}
+              {editing === "notes" ? "Internal notes" : null}
+            </DialogTitle>
+          </DialogHeader>
+          {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+          {editing === "business" ? (
+            <div className="grid gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-trading-name">Trading name</Label>
+                <Input id="profile-trading-name" value={tradingName} onChange={(event) => setTradingName(event.target.value)} className={fieldClass} maxLength={160} required disabled={locked} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-legal-name">Legal name (optional)</Label>
+                  <Input id="profile-legal-name" value={legalName} onChange={(event) => setLegalName(event.target.value)} className={fieldClass} maxLength={160} disabled={locked} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-website">Website (optional)</Label>
+                  <Input id="profile-website" value={website} onChange={(event) => setWebsite(event.target.value)} className={fieldClass} maxLength={300} disabled={locked} />
+                </div>
+              </div>
+              <div className="space-y-1.5 sm:max-w-xs">
+                <Label htmlFor="profile-country">Country</Label>
+                <select id="profile-country" value={country} onChange={(event) => changeCountry(event.target.value as SubcontractorCountryCode | "")} className={selectClass} disabled={locked}>
+                  <option value="">Select a country</option>
+                  {SUBCONTRACTOR_COUNTRY_CODES.map((code) => (
+                    <option key={code} value={code}>{SUBCONTRACTOR_COUNTRY_LABELS[code]}</option>
+                  ))}
+                </select>
+              </div>
+              <BusinessLocationFields country={country || null} value={address} onChange={setAddress} disabled={locked} />
+            </div>
+          ) : null}
+          {editing === "people" ? (
+            <div className="grid gap-3">
+              {contacts.map((contact, index) => (
+                <div key={contact.key} className="min-w-0 rounded-xl border border-border/70 p-3" data-subcontractor-contact>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">Contact {index + 1}</p>
+                    <Button type="button" variant="outline" size="touch" disabled={locked} onClick={() => setContacts((current) => current.filter((item) => item.key !== contact.key))}>Remove</Button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor={`contact-name-${contact.key}`}>Name</Label>
+                      <Input id={`contact-name-${contact.key}`} value={contact.name} onChange={(event) => updateContact(contact.key, { name: event.target.value })} className={fieldClass} maxLength={160} disabled={locked} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`contact-role-${contact.key}`}>Role</Label>
+                      <Input id={`contact-role-${contact.key}`} value={contact.role} onChange={(event) => updateContact(contact.key, { role: event.target.value })} className={fieldClass} maxLength={80} disabled={locked} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`contact-preferred-${contact.key}`}>Preferred contact</Label>
+                      <select id={`contact-preferred-${contact.key}`} value={contact.preferred_contact} onChange={(event) => updateContact(contact.key, { preferred_contact: event.target.value as ContactDraft["preferred_contact"] })} className={selectClass} disabled={locked}>
+                        <option value="">No preference</option>
+                        {PREFERRED_CONTACT_METHODS.map((method) => (
+                          <option key={method} value={method}>{method === "either" ? "Either" : method === "email" ? "Email" : "Phone"}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`contact-email-${contact.key}`}>Email</Label>
+                      <Input id={`contact-email-${contact.key}`} type="email" value={contact.email} onChange={(event) => updateContact(contact.key, { email: event.target.value })} className={fieldClass} maxLength={254} disabled={locked} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`contact-phone-${contact.key}`}>Phone</Label>
+                      <Input id={`contact-phone-${contact.key}`} type="tel" value={contact.phone} onChange={(event) => updateContact(contact.key, { phone: event.target.value })} className={fieldClass} maxLength={40} disabled={locked} />
+                    </div>
+                  </div>
+                  <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm">
+                    <input type="radio" name="primary-contact" checked={contact.is_primary} onChange={() => makePrimary(contact.key)} disabled={locked} className="size-4 accent-[var(--brand-orange)]" />
+                    Primary contact
+                  </label>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="touch" disabled={locked} onClick={() => setContacts((current) => [...current, { key: draftKey(), name: "", role: "", email: "", phone: "", is_primary: current.length === 0, preferred_contact: "" }])}>
+                Add contact
+              </Button>
+            </div>
+          ) : null}
+          {editing === "capabilities" ? (
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Work areas</p>
+                <WorkAreaPicker selected={workAreas} onChange={setWorkAreas} disabled={locked} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-services">Services offered</Label>
+                <Textarea id="profile-services" value={services} onChange={(event) => setServices(event.target.value)} className="min-h-24" maxLength={500} disabled={locked} />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Service regions</p>
+                <ServiceRegionPicker
+                  country={country || null}
+                  selected={regions}
+                  otherLabels={otherLabels}
+                  onChange={(next) => {
+                    setRegions(next.selected);
+                    setOtherLabels(next.otherLabels);
+                  }}
+                  disabled={locked || !country}
+                />
+              </div>
+            </div>
+          ) : null}
+          {editing === "commercial" ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <p className="text-sm text-muted-foreground sm:col-span-2">These notes do not change Quote GST. GST registration is not taken from the NZBN or ABN. Reusable rates are stored in NZD only.</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-pricing">Preferred pricing method</Label>
+                <select id="profile-pricing" value={pricing} onChange={(event) => setPricing(event.target.value as SubcontractorPricingMethod | "")} className={selectClass} disabled={locked}>
+                  <option value="">No preference</option>
+                  {SUBCONTRACTOR_PRICING_METHODS.map((method) => (
+                    <option key={method} value={method}>{SUBCONTRACTOR_PRICING_LABELS[method]}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-currency">Currency</Label>
+                <Input id="profile-currency" value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} className={fieldClass} maxLength={3} placeholder="NZD" disabled={locked} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-gst">GST registration</Label>
+                <select id="profile-gst" value={gstRegistration} onChange={(event) => setGstRegistration(event.target.value as GstRegistration)} className={selectClass} disabled={locked}>
+                  {GST_REGISTRATIONS.map((value) => (
+                    <option key={value} value={value}>{value === "yes" ? "Yes" : value === "no" ? "No" : "Unknown"}</option>
+                  ))}
+                </select>
+              </div>
+              {gstRegistration === "yes" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-gst-number">GST number (optional)</Label>
+                  <Input id="profile-gst-number" value={gstNumber} onChange={(event) => setGstNumber(event.target.value)} className={fieldClass} maxLength={20} disabled={locked} />
+                </div>
+              ) : null}
+              {country === "NZ" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-nzbn">NZBN (optional)</Label>
+                  <Input id="profile-nzbn" value={nzbn} onChange={(event) => setNzbn(event.target.value)} className={fieldClass} maxLength={20} disabled={locked} />
+                </div>
+              ) : null}
+              {country === "AU" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="profile-abn">ABN (optional)</Label>
+                  <Input id="profile-abn" value={abn} onChange={(event) => setAbn(event.target.value)} className={fieldClass} maxLength={20} disabled={locked} />
+                </div>
+              ) : null}
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="profile-minimum">Minimum charge notes</Label>
+                <Textarea id="profile-minimum" value={minimum} onChange={(event) => setMinimum(event.target.value)} className="min-h-20" maxLength={2000} disabled={locked} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="profile-travel">Travel notes</Label>
+                <Textarea id="profile-travel" value={travel} onChange={(event) => setTravel(event.target.value)} className="min-h-20" maxLength={2000} disabled={locked} />
+              </div>
+            </div>
+          ) : null}
+          {editing === "notes" ? (
+            <Textarea id="profile-notes" value={notes} onChange={(event) => setNotes(event.target.value)} className="min-h-28" maxLength={5000} disabled={locked} aria-label="Internal notes" />
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" className="h-11 min-h-11" onClick={closeEditor}>Cancel</Button>
+            <Button type="button" className="h-11 min-h-11" disabled={pending || !tradingName.trim()} onClick={() => void save()}>
+              {pending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+function SummaryCard({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action: (() => void) | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="min-w-0 rounded-xl border border-border/60 bg-card px-4 py-4 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-base font-medium">{title}</h3>
+        {action ? (
+          <Button type="button" variant="outline" className="h-11 min-h-11" aria-label={`Edit ${title}`} onClick={action}>Edit</Button>
+        ) : null}
+      </div>
+      <div className="mt-2 grid gap-1">{children}</div>
+    </section>
+  );
+}
+
