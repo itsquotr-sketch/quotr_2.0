@@ -150,9 +150,22 @@ export function RfqSchedulePricing({
   const targets = (pricing?.items ?? []).filter((item) => !detail.workAreaId || item.workAreaId === detail.workAreaId);
   const scheduleById = new Map(detail.schedule.map((item) => [item.id, item]));
 
+  const submittedIds = submitted.map((item) => item.id).join(",");
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
+  useEffect(() => {
+    const match = /^rfq-response-([0-9a-f-]{36})-item-([0-9a-f-]{36})$/i.exec(window.location.hash.replace(/^#/, ""));
+    if (!match || !submittedIds.split(",").includes(match[1])) return;
+    setResponseId(match[1]);
+    setOpen(true);
+  }, [submittedIds]);
+  useEffect(() => {
+    if (!open) return;
+    const match = /^rfq-response-([0-9a-f-]{36})-item-([0-9a-f-]{36})$/i.exec(window.location.hash.replace(/^#/, ""));
+    if (!match || responseId !== match[1]) return;
+    document.querySelector(`[data-rfq-schedule-row="${CSS.escape(match[2])}"]`)?.scrollIntoView({ block: "center" });
+  }, [open, responseId]);
 
   if (!canPrice || detail.status !== "sent" || submitted.length === 0) return null;
 
@@ -326,7 +339,7 @@ export function RfqSchedulePricing({
               const state = rows[item.id] ?? blankRow(item.scope);
               const priced = line?.decision === "priced" && line.amountExGst != null;
               return (
-                <li key={item.id} className="grid gap-2 rounded-md border border-border p-3" data-rfq-schedule-row={item.id}>
+                <li key={item.id} className="grid gap-2 rounded-md border border-border p-3" data-rfq-schedule-row={item.id} data-rfq-anchor={submitted.map((version) => `rfq-response-${version.id}-item-${item.id}`).join(" ")}>
                   <p className="break-words font-medium">{item.scope}</p>
                   {item.specification ? <p className="break-words">{item.specification}</p> : null}
                   <p>
