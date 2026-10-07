@@ -20,7 +20,7 @@ import { projectSectionContext } from "@/lib/projects/project-information";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
-import { loadPendingRateReconciliations } from "@/lib/subcontractors/rate-use-actions";
+import { loadPendingRateReconciliations, loadSupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 import { memberCanEditPricing } from "@/lib/team/permissions";
 import {
   MANUAL_PRICING_AFTER_QUOTE_NOTICE,
@@ -51,7 +51,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
       notFound();
     }
 
-    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation] =
+    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview] =
       await Promise.all([
         getPricingWorkspaceDataWithContext(auth, projectId, pricingId),
         getProjectWithContext(auth, projectId),
@@ -60,12 +60,13 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         getLatestQuoteSummaryWithContext(auth, projectId),
         getOnboardingAccess(),
         loadPendingRateReconciliations(pricingId),
+        loadSupplierPriceReview(projectId, pricingId),
       ]);
 
-    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation };
+    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview };
   });
 
-  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation } =
+  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview } =
     pageData;
 
   const pricingChangedAfterQuote =
@@ -121,6 +122,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         quoteSummary={quoteSummaryForDoc}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
         canEditPricing={memberCanEditPricing(access.role)}
+        supplierReview={supplierReview}
       />
     </WorkspacePage>
   );

@@ -1,5 +1,6 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
@@ -25,6 +26,11 @@ import {
   updatePricingDocumentInputSchema,
   updatePricingItemInputSchema,
 } from "@/lib/pricing/schemas";
+import {
+  SUPPLIER_PRICE_REVIEW,
+  supplierCommercialUnchanged,
+  supplierTextUnchanged,
+} from "@/lib/pricing/supplier-rate-lock";
 import {
   isAuthOrgSuccess,
   requireAuthOrgContext,
@@ -1132,6 +1138,25 @@ export async function updatePricingDocument(
   return { success: true };
 }
 
+const SUPPLIER_ITEM_COLUMNS =
+  "id, quantity, unit, unit_cost, unit_sell, total_cost, total_sell, calculation_mode, item_type, delivery_method, work_area_id, visible_on_quote, optional, client_label, internal_label, internal_description, client_description, notes_internal, notes_client";
+
+async function lockedSupplierItemIds(
+  supabase: SupabaseClient,
+  orgId: string,
+  itemIds: string[]
+): Promise<string[] | null> {
+  if (itemIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("subcontractor_rate_applications")
+    .select("allowance_item_id")
+    .eq("org_id", orgId)
+    .in("allowance_item_id", itemIds)
+    .is("superseded_at", null);
+  if (error) return null;
+  return (data ?? []).map((row) => row.allowance_item_id as string);
+}
+
 export async function updatePricingItem(
   pricingItemId: string,
   input: PricingItemInput
@@ -1182,6 +1207,43 @@ export async function updatePricingItem(
 
   if (loadError || !existing) {
     return { error: "Pricing item not found." };
+  }
+
+  const supplierLock = await lockedSupplierItemIds(supabase, orgId, [parsed.data.pricingItemId]);
+  if (supplierLock === null) return { error: PRICING_SAVE_FAILED };
+  if (supplierLock.length > 0) {
+    const commercial = await supabase
+      .from("pricing_items")
+      .select(SUPPLIER_ITEM_COLUMNS)
+      .eq("id", parsed.data.pricingItemId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (commercial.error || !commercial.data) return { error: PRICING_SAVE_FAILED };
+    if (!supplierCommercialUnchanged(commercial.data, item)) {
+      return { error: SUPPLIER_PRICE_REVIEW };
+    }
+    if (!supplierTextUnchanged(commercial.data, item)) {
+      const { error: textError } = await supabase
+        .from("pricing_items")
+        .update({
+          internal_label: item.internal_label,
+          client_label: item.client_label,
+          internal_description: item.internal_description ?? null,
+          client_description: item.client_description ?? null,
+          notes_client: item.notes_client ?? null,
+        })
+        .eq("id", parsed.data.pricingItemId)
+        .eq("org_id", orgId);
+      if (textError) {
+        return { error: textError.message.includes("SUPPLIER_PRICE_LOCKED") ? SUPPLIER_PRICE_REVIEW : PRICING_SAVE_FAILED };
+      }
+    }
+    const [keptItem, keptDocument] = await Promise.all([
+      supabase.from("pricing_items").select("*").eq("id", parsed.data.pricingItemId).eq("org_id", orgId).maybeSingle(),
+      loadPricingDocumentById(supabase, orgId, existing.pricing_document_id),
+    ]);
+    if (!keptItem.data || !keptDocument) return { error: "Failed to load updated pricing item." };
+    return { success: true, item: mapPricingItem(keptItem.data), document: keptDocument };
   }
 
   // Omitted optional fields arrive as undefined from Zod; explicit null and 0
@@ -1280,6 +1342,7 @@ export async function updatePricingItem(
     .eq("org_id", orgId);
 
   if (error) {
+    if (error.message.includes("SUPPLIER_PRICE_LOCKED")) return { error: SUPPLIER_PRICE_REVIEW };
     return {
       error: toUserError(error, "pricing-update-item", PRICING_SAVE_FAILED),
     };
@@ -1673,6 +1736,10 @@ export async function duplicatePricingItem(
     return { error: "Pricing item not found." };
   }
 
+  const duplicateLocked = await lockedSupplierItemIds(supabase, orgId, [parsed.data.pricingItemId]);
+  if (duplicateLocked === null) return { error: PRICING_SAVE_FAILED };
+  if (duplicateLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
+
   // Recalculate from source commercial inputs — do not blindly trust stored totals.
   // manually_edited is intentionally not copied (DB default false), matching prior
   // duplicate behaviour: copied rates/mode are inputs; override flag resets.
@@ -1835,6 +1902,10 @@ export async function deletePricingItem(
     return { error: "Pricing item not found." };
   }
 
+  const deleteLocked = await lockedSupplierItemIds(supabase, orgId, [parsed.data.pricingItemId]);
+  if (deleteLocked === null) return { error: PRICING_SAVE_FAILED };
+  if (deleteLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
+
   const { error } = await supabase
     .from("pricing_items")
     .delete()
@@ -1983,6 +2054,9 @@ export async function setPricingItemsQuoteVisibility(input: {
   if (ownedIds.length === 0) {
     return { error: "No matching pricing items found." };
   }
+  const visibilityLocked = await lockedSupplierItemIds(supabase, orgId, ownedIds);
+  if (visibilityLocked === null) return { error: PRICING_SAVE_FAILED };
+  if (visibilityLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
 
   const { error } = await supabase
     .from("pricing_items")
@@ -2083,6 +2157,9 @@ export async function deleteManualPricingItems(input: {
         "Only manually added lines can be bulk-deleted. Estimate-sourced items were left unchanged.",
     };
   }
+  const deleteLockedIds = await lockedSupplierItemIds(supabase, orgId, manualIds);
+  if (deleteLockedIds === null) return { error: PRICING_SAVE_FAILED };
+  if (deleteLockedIds.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
 
   const { error } = await supabase
     .from("pricing_items")
@@ -2178,6 +2255,9 @@ export async function applyPricingFinalSell(input: {
   }
 
   const items = (rows ?? []).map((row) => mapPricingItem(row));
+  const finalSellLocked = await lockedSupplierItemIds(supabase, orgId, items.map((row) => row.id));
+  if (finalSellLocked === null) return { error: PRICING_SAVE_FAILED };
+  if (finalSellLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
   const allocated = allocateFinalSell(items, parsed.data.finalSellExGst);
   if (!allocated.ok) {
     return { error: allocated.error };

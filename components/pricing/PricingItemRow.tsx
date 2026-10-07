@@ -35,6 +35,7 @@ import {
   PricingItemEditForm,
 } from "@/components/pricing/PricingItemEditForm";
 import { PricingCalculationDetails } from "@/components/pricing/PricingCalculationDetails";
+import { SupplierPriceEditor, useSupplierPriceLine } from "@/components/pricing/SupplierPriceEditor";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   Sheet,
@@ -110,6 +111,7 @@ function PricingItemRowComponent({
   const [form, setForm] = useState<PricingItemInput>(() => itemToForm(item));
   const detailsExpanded = detailsOpen ?? localDetails;
 
+  const supplierPrice = useSupplierPriceLine(item.id);
   const moneyView = useMemo(() => pricingItemViewModel(item), [item]);
   const line = useMemo(() => presentPricingLine(item), [item]);
   const { metadata: pricingMetadata } = useMemo(
@@ -152,15 +154,46 @@ function PricingItemRowComponent({
   };
 
   const handleSave = () => {
-    runAction(() =>
-      onSave({
-        ...form,
-        calculation_mode: getCalculationModeForSave(form),
-      })
-    );
+    const saved = supplierPrice
+      ? {
+          ...itemToForm(item),
+          client_label: form.client_label,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_cost: item.unit_cost,
+          unit_sell: item.unit_sell,
+          total_cost: item.total_cost,
+          total_sell: item.total_sell,
+          calculation_mode: item.calculation_mode,
+          item_type: item.item_type,
+          delivery_method: item.delivery_method,
+          work_area_id: item.work_area_id,
+          visible_on_quote: item.visible_on_quote,
+          optional: item.optional,
+          notes_internal: item.notes_internal,
+          notes_client: item.notes_client,
+          internal_label: item.internal_label,
+          internal_description: item.internal_description,
+          client_description: item.client_description,
+        }
+      : {
+          ...form,
+          calculation_mode: getCalculationModeForSave(form),
+        };
+    runAction(() => onSave(saved));
   };
 
-  const editForm = (
+  const editForm = supplierPrice ? (
+    <SupplierPriceEditor
+      itemId={item.id}
+      form={form}
+      setForm={setForm}
+      error={error}
+      isPending={isPending}
+      onSave={handleSave}
+      onCancel={closeEditor}
+    />
+  ) : (
     <div className="[&_input]:min-h-11 [&_input]:text-base [&_select]:min-h-11 [&_select]:text-base md:[&_input]:text-sm md:[&_select]:text-sm">
       <PricingItemEditForm
         form={form}
@@ -202,8 +235,9 @@ function PricingItemRowComponent({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuItem className="min-h-11" onClick={openEditor}>
-          {moneyView.pricingRequired ? "Add price" : "Edit line"}
+          {supplierPrice ? "Supplier price" : moneyView.pricingRequired ? "Add price" : "Edit line"}
         </DropdownMenuItem>
+        {supplierPrice ? null : (
         <DropdownMenuItem
           className="min-h-11"
           disabled={isPending}
@@ -211,6 +245,8 @@ function PricingItemRowComponent({
         >
           Duplicate
         </DropdownMenuItem>
+        )}
+        {supplierPrice ? null : (
         <DropdownMenuItem
           className="min-h-11"
           variant="destructive"
@@ -219,6 +255,7 @@ function PricingItemRowComponent({
         >
           Delete
         </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -241,6 +278,11 @@ function PricingItemRowComponent({
             className="border-amber-300/80 bg-amber-50 text-xs font-medium text-amber-950"
           >
             Pricing required
+          </Badge>
+        ) : null}
+        {supplierPrice ? (
+          <Badge variant="outline" className="text-xs font-medium">
+            Supplier rate v{supplierPrice.versionNumber}
           </Badge>
         ) : null}
         <PricingOwnershipBadge
@@ -275,7 +317,7 @@ function PricingItemRowComponent({
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">
-            {line.hourlyCostLabel ? "Hourly cost" : "Unit cost"}
+            {supplierPrice ? "Rate unit cost" : line.hourlyCostLabel ? "Hourly cost" : "Unit cost"}
           </dt>
           <dd className="text-right tabular-nums">
             {line.hourlyCostLabel ??
@@ -285,7 +327,7 @@ function PricingItemRowComponent({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Internal cost</dt>
+          <dt className="text-xs text-muted-foreground">{supplierPrice ? "Supplier cost" : "Internal cost"}</dt>
           <dd className="text-right tabular-nums">{line.costLabel}</dd>
         </div>
         <div>

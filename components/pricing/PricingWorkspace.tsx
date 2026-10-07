@@ -54,12 +54,15 @@ import type {
   PricingWorkspaceData,
 } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
+import { SupplierPriceProvider } from "@/components/pricing/SupplierPriceEditor";
+import type { SupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 
 type PricingWorkspaceProps = {
   initialData: PricingWorkspaceData;
   quoteSummary?: QuoteSummary | null;
   pricingChangedAfterQuote?: boolean;
   canEditPricing?: boolean;
+  supplierReview?: SupplierPriceReview | null;
 };
 
 export function PricingWorkspace({
@@ -67,6 +70,7 @@ export function PricingWorkspace({
   quoteSummary = null,
   pricingChangedAfterQuote = false,
   canEditPricing = true,
+  supplierReview = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -499,6 +503,7 @@ export function PricingWorkspace({
   };
 
   return (
+    <SupplierPriceProvider value={supplierReview}>
     <div className={`min-w-0 space-y-4 overflow-x-hidden ${mobileWorkflowContentPadClass}`}>
       <PricingHeader
         document={document}
@@ -770,6 +775,7 @@ export function PricingWorkspace({
         }}
       />
     </div>
+    </SupplierPriceProvider>
   );
 }
 

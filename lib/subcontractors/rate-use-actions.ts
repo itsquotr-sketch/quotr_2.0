@@ -19,6 +19,7 @@ import {
   supplierCostFromRate,
   unitsAreCompatible,
 } from "@/lib/subcontractors/rate-use";
+import type { StoredRateVersion } from "@/lib/subcontractors/rate-book";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const FAILED = "Could not use that rate on this job. Nothing was changed.";
@@ -473,4 +474,103 @@ export async function reconcileSubcontractorRateUse(input: {
   revalidatePath(`/app/projects/${input.projectId}/pricing/${input.pricingDocumentId}`);
   revalidatePath(`/app/projects/${input.projectId}`);
   return { ok: true };
+}
+
+export type SupplierPriceLine = {
+  versionNumber: number;
+  scope: string;
+  exclusions: string;
+  unit: string;
+  quantity: number | null;
+  supplierCost: number;
+  clientSell: number;
+  sellTreatment: string;
+  minimumApplied: boolean;
+  rate: StoredRateVersion;
+  area: { id: string; name: string; summary: string | null };
+};
+
+export type SupplierPriceReview = {
+  projectId: string;
+  pricing: JobRatePricingContext;
+  byItemId: Record<string, SupplierPriceLine>;
+};
+
+export async function loadSupplierPriceReview(
+  projectId: string,
+  pricingDocumentId: string
+): Promise<SupplierPriceReview | null> {
+  const context = await getAuthOrgContext();
+  if (!context) return null;
+  const pricing = await loadJobPricingForRates(projectId);
+  if (!pricing || pricing.documentId !== pricingDocumentId) return null;
+  const applications = await context.supabase
+    .from("subcontractor_rate_applications")
+    .select("allowance_item_id, rate_id, rate_version_id, version_number, scope, exclusions, unit, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, minimum_applied, work_area_id")
+    .eq("pricing_document_id", pricingDocumentId)
+    .eq("org_id", context.orgId)
+    .is("superseded_at", null);
+  const rows = applications.data ?? [];
+  if (rows.length === 0) return { projectId, pricing, byItemId: {} };
+  const versionIds = rows.map((row) => row.rate_version_id);
+  const areaIds = rows.map((row) => row.work_area_id);
+  const [versions, areas, rates, businesses] = await Promise.all([
+    context.supabase.from("subcontractor_rate_versions").select("*").in("id", versionIds),
+    context.supabase.from("work_areas").select("id, name, summary").in("id", areaIds),
+    context.supabase.from("subcontractor_rates").select("id, subcontractor_id, retired_at").in("id", rows.map((row) => row.rate_id)),
+    context.supabase.from("subcontractors").select("id, trading_name, archived_at").eq("org_id", context.orgId),
+  ]);
+  const versionById = new Map((versions.data ?? []).map((row) => [row.id, row]));
+  const areaById = new Map((areas.data ?? []).map((row) => [row.id, row]));
+  const rateById = new Map((rates.data ?? []).map((row) => [row.id, row]));
+  const businessById = new Map((businesses.data ?? []).map((row) => [row.id, row]));
+  const byItemId: Record<string, SupplierPriceLine> = {};
+  for (const row of rows) {
+    const version = versionById.get(row.rate_version_id);
+    const area = areaById.get(row.work_area_id);
+    const rate = rateById.get(row.rate_id);
+    const business = rate ? businessById.get(rate.subcontractor_id) : null;
+    if (!version || !area || !rate || !business) continue;
+    const stored: StoredRateVersion = {
+      rateId: rate.id,
+      versionId: version.id,
+      versionNumber: version.version_number,
+      subcontractorId: rate.subcontractor_id,
+      tradingName: business.trading_name,
+      subcontractorArchived: business.archived_at != null,
+      retired: rate.retired_at != null,
+      workAreaType: version.work_area_type,
+      scope: version.scope,
+      unit: version.unit,
+      costExGst: Number(version.cost_ex_gst),
+      currency: version.currency,
+      minimumCharge: version.minimum_charge == null ? null : Number(version.minimum_charge),
+      quantityBandMin: version.quantity_band_min == null ? null : Number(version.quantity_band_min),
+      quantityBandMax: version.quantity_band_max == null ? null : Number(version.quantity_band_max),
+      inclusions: version.inclusions ?? "",
+      exclusions: version.exclusions ?? "",
+      effectiveFrom: version.effective_from,
+      effectiveUntil: version.effective_until,
+      lastConfirmedOn: version.last_confirmed_on,
+      source: version.source,
+      originResponseId: version.origin_response_id,
+      informingResponseId: version.informing_response_id,
+      sourceAmountExGst: version.source_amount_ex_gst == null ? null : Number(version.source_amount_ex_gst),
+      internalNotes: version.internal_notes ?? "",
+    };
+    byItemId[row.allowance_item_id] = {
+      versionNumber: row.version_number,
+      scope: row.scope,
+      exclusions: row.exclusions ?? "",
+      unit: row.unit,
+      quantity: row.quantity == null ? null : Number(row.quantity),
+      supplierCost: Number(row.cost_ex_gst),
+      clientSell: Number(row.sell_ex_gst),
+      sellTreatment: row.sell_treatment,
+      minimumApplied: row.minimum_applied === true,
+      rate: stored,
+      area: { id: area.id, name: area.name, summary: area.summary },
+    };
+  }
+  return { projectId, pricing, byItemId };
 }

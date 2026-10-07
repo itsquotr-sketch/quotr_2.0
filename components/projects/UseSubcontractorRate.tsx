@@ -27,12 +27,14 @@ export function UseSubcontractorRate({
   rate,
   pricing,
   canEdit,
+  buttonLabel = "Use this rate on the job",
 }: {
   projectId: string;
   area: { id: string; name: string; summary: string | null };
   rate: StoredRateVersion;
   pricing: JobRatePricingContext | null;
   canEdit: boolean;
+  buttonLabel?: string;
 }) {
   const router = useRouter();
   const dialogStyle = useClearDialogStyle();
@@ -142,7 +144,7 @@ export function UseSubcontractorRate({
   return (
     <>
       <Button type="button" className="h-11 min-h-11" disabled={!pricing || pricing.quoteIssued} onClick={() => { setError(null); setOpen(true); }}>
-        Use this rate on the job
+        {buttonLabel}
       </Button>
       {!pricing ? <p className="text-sm">Create pricing from the estimate before using a rate.</p> : null}
       {pricing?.quoteIssued ? <p className="text-sm">An issued quote stays as it was. This rate is not applied.</p> : null}
@@ -150,7 +152,7 @@ export function UseSubcontractorRate({
         <DialogContent className={clearDialogClassName} style={dialogStyle} data-use-rate={rate.versionId}>
           <div className="px-6 pt-6" onChange={() => setError(null)} onFocus={revealFocusedField}>
             <DialogHeader>
-              <DialogTitle>Use this rate on the job</DialogTitle>
+              <DialogTitle>{buttonLabel}</DialogTitle>
             </DialogHeader>
             <div className="mt-4 grid gap-3 text-sm">
               <p data-rate-version>Version {rate.versionNumber}. A later change to the rate book does not change this job.</p>
@@ -159,9 +161,13 @@ export function UseSubcontractorRate({
               <p className="break-words">Supplier scope: {rate.scope}</p>
               <p className="break-words" data-job-scope>Job scope: {jobScope}</p>
               <p>A work-area match does not mean this supplier scope matches the job.</p>
-              <p>Unit: {SUBCONTRACTOR_RATE_UNIT_LABELS[rate.unit as SubcontractorRateUnit] ?? rate.unit} · {money(rate.costExGst)} NZD ex GST</p>
+              {lump ? (
+                <p data-lump-sum>One lump sum · {money(rate.costExGst)} NZD ex GST. This cost is used once.</p>
+              ) : (
+                <p>Unit: {SUBCONTRACTOR_RATE_UNIT_LABELS[rate.unit as SubcontractorRateUnit] ?? rate.unit} · {money(rate.costExGst)} NZD ex GST</p>
+              )}
               {rate.minimumCharge != null && !lump ? <p>Minimum charge {money(rate.minimumCharge)} ex GST, applied once.</p> : null}
-              {lump ? <p>This lump sum is used once. Quantity does not multiply it.</p> : (
+              {lump ? null : (
                 <label className="grid gap-1">Measured quantity
                   <input className="h-11 min-h-11 rounded-md border border-border bg-background px-3" inputMode="decimal" value={quantity} onChange={(event) => { setQuantity(event.target.value); resetPreview(); }} />
                 </label>

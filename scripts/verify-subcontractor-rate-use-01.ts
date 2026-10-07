@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
+import { calculateAuthoritativePricingItem } from "../lib/pricing/commercial-engine-adapter";
 import { buildRfqSellChoices } from "../lib/rfqs/pricing-preview";
 import {
   rateScopeConflictsWithResponse,
@@ -98,6 +99,34 @@ function staticMain() {
     console.log(`PER_M2_TARGET cost ${money(target?.after.cost)} sell ${money(target?.after.sell)} gp ${money(target?.after.grossProfit)} margin ${money(target?.after.marginPercent)} gst ${money(target?.after.gstAmount)} total ${money(target?.after.totalInclGst)}`);
     assert("target sell is above the 850 cost", Boolean(target?.available && target.sell && target.sell > 850));
   }
+  const lockSql = read("supabase/migrations/095_supplier_rate_pricing_lock.sql");
+  const pricingActions = read("lib/pricing/actions.ts");
+  const rateDialog = read("components/projects/UseSubcontractorRate.tsx");
+  const supplierEditor = read("components/pricing/SupplierPriceEditor.tsx");
+  const updateStart = pricingActions.indexOf("export async function updatePricingItem");
+  const updateBody = pricingActions.slice(updateStart, pricingActions.indexOf("export async function duplicatePricingItem"));
+  const lockAt = updateBody.indexOf("supplierCommercialUnchanged");
+  const computeAt = updateBody.indexOf("computePricingItemMoneyFields");
+  assert("the pricing save checks the supplier lock before the commercial engine", lockAt > 0 && computeAt > lockAt);
+  assert("duplicate, delete, visibility, and final sell refuse a supplier allowance", ["duplicatePricingItem", "deletePricingItem", "setPricingItemsQuoteVisibility", "deleteManualPricingItems", "applyPricingFinalSell"].every((name) => pricingActions.includes(name) && pricingActions.includes("SUPPLIER_PRICE_REVIEW")));
+  assert("a lump sum says it is used once", rateDialog.includes("One lump sum") && rateDialog.includes("data-lump-sum"));
+  assert("the pricing editor offers a supplier review", supplierEditor.includes("Review supplier price") && supplierEditor.includes("Supplier cost") && supplierEditor.includes("Client sell"));
+  assert("the database refuses a normal rewrite of a supplier allowance", lockSql.includes("SUPPLIER_PRICE_LOCKED") && lockSql.includes("pricing_items_supplier_rate_lock") && lockSql.split("quotr.supplier_rate_write").length >= 3);
+  const ordinaryEdit = calculateAuthoritativePricingItem({
+    calculationMode: "lump_sum",
+    quantity: 10,
+    unit: "m2",
+    unitCost: 85,
+    unitSell: 113.33,
+    totalCost: 850,
+    totalSell: 1133.33,
+    itemType: "allowance",
+  });
+  assert(
+    "the ordinary lump-sum engine drops the rate unit cost",
+    ordinaryEdit.ok && ordinaryEdit.fields.unitCost == null && ordinaryEdit.fields.totalCost === 850 && ordinaryEdit.fields.totalSell === 1133.33,
+    ordinaryEdit.ok ? `unit ${ordinaryEdit.fields.unitCost}` : ordinaryEdit.error
+  );
 }
 
 function totals(items: Array<{ total_cost: number; total_sell: number }>) {
@@ -126,14 +155,14 @@ async function liveMain() {
   const orgA = crypto.randomUUID();
   const orgB = crypto.randomUUID();
   const userIds: string[] = [];
-  async function boundUser(role: "owner" | "viewer", orgId: string) {
-    const email = `use-${role}-${orgId.slice(0, 8)}-${suffix}@example.invalid`;
+  async function boundUser(role: "owner" | "viewer" | "estimator", orgId: string, status: "active" | "pending_billing" = "active") {
+    const email = `use-${role}-${status}-${orgId.slice(0, 8)}-${suffix}@example.invalid`;
     const created = await createUser(admin, email, password);
     userIds.push(created.id);
     const profile = await admin.from("profiles").upsert({ id: created.id, org_id: orgId, role, full_name: `Use ${role}` });
     if (profile.error) throw new Error(profile.error.message);
     const membership = await admin.from("organisation_memberships").insert({
-      org_id: orgId, user_id: created.id, role, status: "active", joined_at: new Date().toISOString(),
+      org_id: orgId, user_id: created.id, role, status, joined_at: new Date().toISOString(),
     });
     if (membership.error) throw new Error(membership.error.message);
     return created.client;
@@ -146,6 +175,7 @@ async function liveMain() {
     const owner = await boundUser("owner", orgA);
     const viewer = await boundUser("viewer", orgA);
     const foreign = await boundUser("owner", orgB);
+    const inactive = await boundUser("estimator", orgA, "pending_billing");
     const project = await admin.from("projects").insert({
       org_id: orgA, created_by: userIds[0], title: `Use ${suffix}`, stage: "estimate_ready", business_status: "estimate_ready",
     }).select("id").single();
@@ -175,8 +205,8 @@ async function liveMain() {
     if (issued.error) throw new Error(issued.error.message);
     const quote = await admin.from("quotes").insert({
       org_id: orgA, project_id: project.data.id, pricing_document_id: issued.data.id, estimate_id: estimate.data.id,
-      title: "Issued quote", status: "sent", subtotal: 800, total_incl_gst: 920, sent_at: new Date().toISOString(),
-    }).select("id, status, subtotal, total_incl_gst").single();
+      title: "Issued quote", status: "draft", subtotal: 800, total_incl_gst: 920,
+    }).select("id").single();
     if (quote.error) throw new Error(quote.error.message);
     const snapshot = await admin.from("accepted_commercial_snapshots").insert({
       org_id: orgA, project_id: project.data.id, quote_id: quote.data.id, revision_number: 1, currency: "NZD",
@@ -184,8 +214,36 @@ async function liveMain() {
       accepted_at: new Date().toISOString(), acceptance_source: "manual",
     }).select("id, sell_ex_gst").single();
     if (snapshot.error) throw new Error(snapshot.error.message);
-    const variationsBefore = await admin.from("variations").select("id").eq("project_id", project.data.id);
-    if (variationsBefore.error) throw new Error(variationsBefore.error.message);
+    const issuedItem = await admin.from("quote_items").insert({
+      org_id: orgA, quote_id: quote.data.id, project_id: project.data.id, label: "Original wall tiles",
+      quantity: 1, unit: "m²", unit_price: 800, total: 800, visible: true, sort_order: 1,
+    }).select("id, label, total, quantity, unit, unit_price, visible").single();
+    if (issuedItem.error) throw new Error(issuedItem.error.message);
+    const sentQuote = await admin.from("quotes").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", quote.data.id).select("id, status, subtotal, total_incl_gst").single();
+    if (sentQuote.error) throw new Error(sentQuote.error.message);
+    quote.data = sentQuote.data;
+    const variationDraft = await owner.rpc("create_draft_variation_v1", {
+      p_project: project.data.id, p_title: "Extra tiling", p_summary: "Issued before the supplier rate.",
+      p_idempotency_key: `rate-use-${suffix}`,
+    });
+    const variationCreated = variationDraft.data as { ok?: boolean; error?: string; variationId?: string; revisionId?: string } | null;
+    if (!variationCreated?.ok || !variationCreated.variationId || !variationCreated.revisionId) throw new Error(JSON.stringify(variationDraft.data ?? variationDraft.error));
+    const variationItem = await owner.rpc("add_draft_variation_item_v1", {
+      p_variation: variationCreated.variationId, p_revision: variationCreated.revisionId,
+      p_item: {
+        itemType: "addition", clientDescription: "Extra wall tiling", workAreaId: null, snapshotLineId: null,
+        stableComponentKey: null, quantity: 1, unit: "item", unitCost: 400, unitSell: 800, sortOrder: 1,
+        clientInclusion: null, clientExclusion: null, substitutionGroupId: null, internalMetadata: {},
+      },
+    });
+    if (variationItem.data?.ok !== true) throw new Error(JSON.stringify(variationItem.data ?? variationItem.error));
+    const variationIssued = await owner.rpc("issue_variation_revision_v1", {
+      p_variation: variationCreated.variationId, p_revision: variationCreated.revisionId,
+    });
+    if (variationIssued.data?.ok !== true) throw new Error(JSON.stringify(variationIssued.data ?? variationIssued.error));
+    const issuedVariationItems = await admin.from("variation_items").select("client_description, quantity, unit, unit_cost, unit_sell, line_cost_adjustment, line_sell_adjustment_ex_gst").eq("variation_id", variationCreated.variationId);
+    const issuedVariationRevision = await admin.from("variation_revisions").select("status, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst").eq("id", variationCreated.revisionId).single();
+    const variationFingerprint = JSON.stringify({ items: issuedVariationItems.data, revision: issuedVariationRevision.data });
     const business = await owner.rpc("save_subcontractor_v1", {
       p_payload: { trading_name: `Use Co ${suffix}`, work_area_types: ["bathroom"], contacts: [{ name: "Ada", is_primary: true }] },
     });
@@ -266,6 +324,85 @@ async function liveMain() {
     assert("stored line matches the commercial after totals", afterTotals.ok && afterTotals.totals.subtotalCost === metrePrice.choice.after.cost && afterTotals.totals.totalInclGst === metrePrice.choice.after.totalInclGst);
     const reviewed = await admin.from("pricing_documents").select("status").eq("id", pricing.data.id).single();
     assert("reviewed pricing returns to draft", reviewed.data?.status === "draft");
+    const storedLine = await admin.from("pricing_items").select("quantity, unit, unit_cost, unit_sell, total_cost, total_sell, gross_profit, margin_percent, calculation_mode, item_type").eq("id", used.allowanceItemId!).single();
+    const storedSource = await admin.from("subcontractor_rate_applications").select("rate_version_id, version_number, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, minimum_applied, scope").eq("allowance_item_id", used.allowanceItemId!).is("superseded_at", null).single();
+    console.log(`LIVE_STORED_LINE ${JSON.stringify(storedLine.data)}`);
+    console.log(`LIVE_STORED_SOURCE ${JSON.stringify(storedSource.data)}`);
+    const moneyBeforeEdit = JSON.stringify(storedLine.data);
+    const sourceBeforeEdit = JSON.stringify(storedSource.data);
+    async function moneySame(name: string) {
+      const current = await admin.from("pricing_items").select("quantity, unit, unit_cost, unit_sell, total_cost, total_sell, gross_profit, margin_percent, calculation_mode, item_type").eq("id", used.allowanceItemId!).single();
+      const source = await admin.from("subcontractor_rate_applications").select("rate_version_id, version_number, quantity, cost_ex_gst, sell_ex_gst, sell_treatment, minimum_applied, scope").eq("allowance_item_id", used.allowanceItemId!).is("superseded_at", null).single();
+      assert(name, JSON.stringify(current.data) === moneyBeforeEdit && JSON.stringify(source.data) === sourceBeforeEdit, JSON.stringify(current.data));
+    }
+    const sameLabel = await owner.from("pricing_items").update({ client_label: "Wall tiles" }).eq("id", used.allowanceItemId!);
+    assert("saving the same client label is allowed", !sameLabel.error, sameLabel.error?.message);
+    await moneySame("a no-op label save leaves the supplier money and source unchanged");
+    const renamed = await owner.from("pricing_items").update({ client_label: "Wall tiles — supplier" }).eq("id", used.allowanceItemId!);
+    assert("a client label can change", !renamed.error, renamed.error?.message);
+    await moneySame("a label change leaves the supplier money and source unchanged");
+    const lockedFields = [
+      { quantity: 11 }, { unit: "m²" }, { unit_cost: 1 }, { unit_sell: 1 }, { total_cost: 1 }, { total_sell: 1 },
+      { gross_profit: 1 }, { margin_percent: 1 }, { markup_percent: 1 }, { calculation_mode: "quantity_rate" },
+      { item_type: "material" }, { delivery_method: "in_house" }, { visible_on_quote: false }, { optional: true },
+    ];
+    for (const patch of lockedFields) {
+      const refused = await owner.from("pricing_items").update(patch).eq("id", used.allowanceItemId!);
+      assert(`ordinary edit of ${Object.keys(patch)[0]} is refused`, Boolean(refused.error?.message.includes("SUPPLIER_PRICE_LOCKED")), refused.error?.message ?? "no error");
+      await moneySame(`${Object.keys(patch)[0]} stays at the confirmed supplier figures`);
+    }
+    const removed = await owner.from("pricing_items").delete().eq("id", used.allowanceItemId!);
+    assert("deleting the supplier allowance is refused", Boolean(removed.error?.message.includes("SUPPLIER_PRICE_LOCKED")), removed.error?.message ?? "no error");
+    const noted = await owner.from("pricing_items").update({ recalibration_note: "Kept during a pricing recalculation." }).eq("id", used.allowanceItemId!);
+    assert("a recalibration note can be saved", !noted.error, noted.error?.message);
+    await moneySame("a recalibration note does not change the supplier money");
+    const manualPrice = priced(850, { id: used.allowanceItemId!, total_cost: 850, total_sell: 1133.33 }, "manual", 1000);
+    const manualUse = await apply({
+      ...metreBase, target_item_id: used.allowanceItemId, quantity: 10,
+      total_cost: manualPrice.choice.allowance!.totalCost, total_sell: manualPrice.choice.allowance!.totalSell,
+      gross_profit: manualPrice.choice.allowance!.grossProfit, margin_percent: manualPrice.choice.allowance!.marginPercent,
+      markup_percent: manualPrice.choice.allowance!.markupPercent, sell_treatment: "manual", manual_sell: 1000,
+    });
+    assert("a deliberate sell override is recorded on the same allowance", manualUse.ok === true && manualUse.allowanceItemId === used.allowanceItemId, JSON.stringify(manualUse));
+    const override = await admin.from("subcontractor_rate_applications").select("sell_treatment, sell_ex_gst, cost_ex_gst, rate_version_id").eq("allowance_item_id", used.allowanceItemId!).is("superseded_at", null).single();
+    const versionStill = await admin.from("subcontractor_rate_versions").select("cost_ex_gst").eq("id", metre.versionId).single();
+    assert("the override keeps the supplier cost and the original version", override.data?.sell_treatment === "manual" && Number(override.data?.sell_ex_gst) === 1000 && Number(override.data?.cost_ex_gst) === 850 && override.data?.rate_version_id === metre.versionId && Number(versionStill.data?.cost_ex_gst) === 85, JSON.stringify(override.data));
+    const reviewedForQuote = await admin.from("pricing_documents").update({ status: "reviewed", reviewed_at: new Date().toISOString() }).eq("id", pricing.data.id);
+    if (reviewedForQuote.error) throw new Error(reviewedForQuote.error.message);
+    const { mapPricingItem } = await import("../lib/pricing/mappers");
+    const { mapPricingItemsToQuoteItems } = await import("../lib/quotes/from-pricing");
+    const { calculateQuoteBaseTotalsFromItems } = await import("../lib/quotes/base-totals");
+    const pricingRows = await owner.from("pricing_items").select("*").eq("pricing_document_id", pricing.data.id);
+    if (pricingRows.error) throw new Error(pricingRows.error.message);
+    const quoteItems = mapPricingItemsToQuoteItems((pricingRows.data ?? []).map((row) => mapPricingItem(row)), new Map([[area.data.id, "Bathroom"]]));
+    const quoteTotals = calculateQuoteBaseTotalsFromItems(quoteItems, 15, "rate-use-new-quote");
+    if (!quoteTotals.ok) throw new Error(quoteTotals.error);
+    const supplierQuotes = quoteItems.filter((item) => Number(item.total) === Number(manualPrice.choice.sell));
+    assert("the new quote snapshot contains the approved sell once", supplierQuotes.length === 1 && quoteItems.length === 1, JSON.stringify(quoteItems.map((item) => item.total)));
+    const insertedQuote = await owner.rpc("insert_draft_quote_v1", {
+      p_payload: {
+        projectId: project.data.id,
+        quote: {
+          pricing_document_id: pricing.data.id, estimate_id: estimate.data.id, title: `Quote — Use ${suffix}`,
+          client_name: null, site_address: null, issue_date: "2026-10-07", valid_until: "2026-11-06",
+          subtotal: quoteTotals.totals.subtotal, gst_rate: 15, gst_amount: quoteTotals.totals.gstAmount,
+          total_incl_gst: quoteTotals.totals.totalInclGst, scope_summary: null, inclusions: ["Bathroom"],
+          exclusions: [], assumptions: [], terms: null, presentation_mode: "detailed",
+        },
+        items: quoteItems.map((item) => ({
+          pricing_item_id: item.pricing_item_id ?? null, work_area_id: item.work_area_id ?? null,
+          section_title: item.section_title ?? null, section_description: item.section_description ?? null,
+          label: item.label, description: item.description ?? null, quantity: item.quantity ?? null,
+          unit: item.unit ?? null, unit_price: item.unit_price ?? null, total: item.total ?? 0,
+          visible: item.visible ?? true, optional: item.optional ?? false, sort_order: item.sort_order ?? 0,
+        })),
+      },
+    });
+    const newQuoteId = (insertedQuote.data as { quoteId?: string } | null)?.quoteId;
+    assert("the new quote is stored", Boolean(newQuoteId), JSON.stringify(insertedQuote.data ?? insertedQuote.error));
+    const newQuoteItems = await admin.from("quote_items").select("label, total, quantity, unit, unit_price, visible").eq("quote_id", newQuoteId!);
+    const newQuoteFingerprint = JSON.stringify(newQuoteItems.data);
+    assert("the stored quote has the approved sell once", (newQuoteItems.data ?? []).filter((item) => Number(item.total) === 1000).length === 1, newQuoteFingerprint);
     const revised = await saveRate({ rate_id: metre.rateId, scope: "Supply and install wall tiles", unit: "m2", cost_ex_gst: 90, minimum_charge: 200 });
     assert("a revised rate is version 2", revised.versionNumber === 2, JSON.stringify(revised));
     const revisedPrice = priced(900, { id: used.allowanceItemId!, total_cost: 850, total_sell: Number(metrePrice.choice.sell) }, "target_margin", null);
@@ -402,6 +539,8 @@ async function liveMain() {
 
     const viewerUse = await viewer.rpc("apply_subcontractor_rate_to_pricing_v1", { p_payload: metreBase });
     assert("a viewer cannot use a rate", viewerUse.data?.error === "FORBIDDEN");
+    const inactiveUse = await inactive.rpc("apply_subcontractor_rate_to_pricing_v1", { p_payload: metreBase });
+    assert("a member who is not active cannot use a rate", inactiveUse.data?.error === "FORBIDDEN", JSON.stringify(inactiveUse.data ?? inactiveUse.error));
     const foreignUse = await foreign.rpc("apply_subcontractor_rate_to_pricing_v1", { p_payload: metreBase });
     assert("another organisation cannot use the rate", foreignUse.data?.ok !== true);
     const issuedUse = await apply({ ...metreBase, pricing_document_id: issued.data.id, target_mode: "add", target_item_id: null });
@@ -410,12 +549,25 @@ async function liveMain() {
     const afterEstimate = await admin.from("estimates").select("recommended_cost, recommended_sell, assumptions").eq("id", estimate.data.id).single();
     const afterLine = await admin.from("estimate_line_items").select("recommended_cost, recommended_sell").eq("id", line.data.id).single();
     const afterQuote = await admin.from("quotes").select("status, subtotal, total_incl_gst").eq("id", quote.data.id).single();
-    const afterSnapshot = await admin.from("accepted_commercial_snapshots").select("sell_ex_gst").eq("id", snapshot.data.id).single();
-    const variationsAfter = await admin.from("variations").select("id").eq("project_id", project.data.id);
+    const afterIssuedItem = await admin.from("quote_items").select("id, label, total, quantity, unit, unit_price, visible").eq("id", issuedItem.data.id).single();
+    const afterSnapshot = await admin.from("accepted_commercial_snapshots").select("sell_ex_gst, gst_amount, sell_incl_gst").eq("id", snapshot.data.id).single();
+    const afterVariationItems = await admin.from("variation_items").select("client_description, quantity, unit, unit_cost, unit_sell, line_cost_adjustment, line_sell_adjustment_ex_gst").eq("variation_id", variationCreated.variationId);
+    const afterVariationRevision = await admin.from("variation_revisions").select("status, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst").eq("id", variationCreated.revisionId).single();
+    const afterNewQuoteItems = await admin.from("quote_items").select("label, total, quantity, unit, unit_price, visible").eq("quote_id", newQuoteId!);
     assert("the estimate calculation is unchanged", Number(afterEstimate.data?.recommended_cost) === 400 && Number(afterEstimate.data?.recommended_sell) === 800 && Number(afterLine.data?.recommended_cost) === 400);
-    assert("the issued quote is unchanged", afterQuote.data?.status === "sent" && Number(afterQuote.data?.subtotal) === 800 && Number(afterQuote.data?.total_incl_gst) === 920);
-    assert("the accepted snapshot is unchanged", Number(afterSnapshot.data?.sell_ex_gst) === 800);
-    assert("a variation is not created or changed", (variationsBefore.data ?? []).length === 0 && (variationsAfter.data ?? []).length === 0);
+    assert(
+      "the issued quote is unchanged",
+      afterQuote.data?.status === "sent" && Number(afterQuote.data?.subtotal) === 800 && Number(afterQuote.data?.total_incl_gst) === 920
+        && afterIssuedItem.data?.label === "Original wall tiles" && Number(afterIssuedItem.data?.total) === 800
+        && Number(afterIssuedItem.data?.unit_price) === 800 && Number(afterIssuedItem.data?.quantity) === 1
+        && afterIssuedItem.data?.unit === "m²" && afterIssuedItem.data?.visible === true
+        && afterQuote.data?.status === sentQuote.data?.status && Number(afterQuote.data?.subtotal) === Number(sentQuote.data?.subtotal)
+        && Number(afterQuote.data?.total_incl_gst) === Number(sentQuote.data?.total_incl_gst),
+      JSON.stringify({ before: sentQuote.data, after: afterQuote.data, item: afterIssuedItem.data })
+    );
+    assert("the accepted snapshot is unchanged", Number(afterSnapshot.data?.sell_ex_gst) === 800 && Number(afterSnapshot.data?.gst_amount) === 120 && Number(afterSnapshot.data?.sell_incl_gst) === 920);
+    assert("the issued variation is unchanged", JSON.stringify({ items: afterVariationItems.data, revision: afterVariationRevision.data }) === variationFingerprint, JSON.stringify(afterVariationRevision.data));
+    assert("the new quote still contains the approved sell once", JSON.stringify(afterNewQuoteItems.data) === newQuoteFingerprint);
     console.log("Live rate use checks finished.");
   } finally {
     await admin.from("organisations").delete().in("id", [orgA, orgB]);
