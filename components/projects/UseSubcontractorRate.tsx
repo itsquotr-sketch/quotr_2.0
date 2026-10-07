@@ -137,29 +137,34 @@ export function UseSubcontractorRate({
     applyingRef.current = true;
     setPending(true);
     setError(null);
-    const result = await applySubcontractorRateUse({
-      projectId,
-      pricingDocumentId: pricing.documentId,
-      workAreaId: area.id,
-      rateVersionId: rate.versionId,
-      targetMode: chosen.mode,
-      targetItemId: chosen.itemId,
-      quantity: lump ? null : quantity.trim() === "" ? null : Number(quantity),
-      manualSell: manualSell.trim() === "" ? null : Number(manualSell),
-      sellTreatment: treatment,
-      acknowledgeLoss,
-      confirmScope,
-      confirmQuantity,
-      sourceChoice: conflict ? "rate" : null,
-    });
-    applyingRef.current = false;
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await applySubcontractorRateUse({
+        projectId,
+        pricingDocumentId: pricing.documentId,
+        workAreaId: area.id,
+        rateVersionId: rate.versionId,
+        targetMode: chosen.mode,
+        targetItemId: chosen.itemId,
+        quantity: lump ? null : quantity.trim() === "" ? null : Number(quantity),
+        manualSell: manualSell.trim() === "" ? null : Number(manualSell),
+        sellTreatment: treatment,
+        acknowledgeLoss,
+        confirmScope,
+        confirmQuantity,
+        sourceChoice: conflict ? "rate" : null,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setError("Could not use that rate on this job. Nothing was changed.");
+    } finally {
+      applyingRef.current = false;
+      setPending(false);
     }
-    setOpen(false);
-    router.refresh();
   }
 
   return (
