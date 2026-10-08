@@ -10,13 +10,13 @@ import { draftRfqFromJobDetails, saveRfqDraft, sendRfq } from "@/lib/rfqs/action
 import { dueDateIsFuture, localToday, scopeIsMeaningful } from "@/lib/rfqs/validate";
 import type { DraftSource } from "@/lib/rfqs/draft-compose";
 import {
-  emptyScheduleRow,
+  rowFromSuggestion,
   scheduleProblems,
   scheduleRoleLabel,
-  scheduleRowsFromJobDetails,
   scheduleUnitLabel,
   type ScheduleDraftRow,
 } from "@/lib/rfqs/schedule";
+import type { ScheduleSuggestion } from "@/lib/rfqs/scope-selection";
 
 type WorkArea = { id: string; type: string; name: string };
 type Contact = { id: string; name: string; email: string };
@@ -92,10 +92,17 @@ export function RfqComposer({
   const [pending, setPending] = useState<"save" | "send" | "draft" | null>(null);
   const [sources, setSources] = useState<DraftSource[]>([]);
   const [withheld, setWithheld] = useState<Array<{ source: string; reason: string }>>([]);
+  const [suggestions, setSuggestions] = useState<ScheduleSuggestion[]>([]);
+  const [chosenSuggestions, setChosenSuggestions] = useState<string[]>([]);
+  const [fallback, setFallback] = useState<string | null>(null);
+  const [formatNote, setFormatNote] = useState<string | null>(null);
+  const [areaChoice, setAreaChoice] = useState<string | null>(null);
+  const [replacePrompt, setReplacePrompt] = useState(false);
   const [previewApproved, setPreviewApproved] = useState(false);
   const [pricingRequest, setPricingRequest] = useState<"lump_sum" | "schedule">(initial?.pricingRequest ?? "lump_sum");
-  const [rows, setRows] = useState<ScheduleDraftRow[]>(initial?.schedule?.length ? initial.schedule : [emptyScheduleRow()]);
+  const [rows, setRows] = useState<ScheduleDraftRow[]>(initial?.schedule ?? []);
   const [draftNote, setDraftNote] = useState<string | null>(null);
+  const storageKey = `quotr-rfq-draft:${projectId}:${rfqId ?? "new"}`;
   const edited = useRef({ scope: Boolean(initial?.requestedScope), notes: Boolean(initial?.measurementNotes) });
   const draftGeneration = useRef(0);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -177,6 +184,46 @@ export function RfqComposer({
     if (id) document.getElementById(id)?.scrollIntoView({ block: "center" });
   }, [error, fieldErrors, step]);
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(storageKey);
+        if (!raw) return;
+        const saved = JSON.parse(raw) as {
+          requestedScope?: string;
+          measurementNotes?: string;
+          rows?: ScheduleDraftRow[];
+          pricingRequest?: "lump_sum" | "schedule";
+          workAreaId?: string;
+          step?: number;
+        };
+        if (typeof saved.requestedScope === "string") setRequestedScope(saved.requestedScope);
+        if (typeof saved.measurementNotes === "string") setMeasurementNotes(saved.measurementNotes);
+        if (Array.isArray(saved.rows)) setRows(saved.rows);
+        if (saved.pricingRequest === "lump_sum" || saved.pricingRequest === "schedule") setPricingRequest(saved.pricingRequest);
+        if (typeof saved.workAreaId === "string" && saved.workAreaId) setWorkAreaId(saved.workAreaId);
+        if (typeof saved.step === "number") setStep(Math.min(3, Math.max(0, saved.step)));
+      } catch {
+        sessionStorage.removeItem(storageKey);
+      }
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, [storageKey]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      sessionStorage.setItem(storageKey, JSON.stringify({
+        requestedScope,
+        measurementNotes,
+        rows,
+        pricingRequest,
+        workAreaId,
+        step,
+      }));
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [storageKey, requestedScope, measurementNotes, rows, pricingRequest, workAreaId, step]);
+
   async function onSave() {
     setPending("save");
     setError(null);
@@ -188,11 +235,33 @@ export function RfqComposer({
       summaryRef.current?.focus();
       return;
     }
+    sessionStorage.removeItem(storageKey);
     router.push(`/app/projects/${projectId}/requests/${result.id}`);
     router.refresh();
   }
 
+  function problemsForStep(index: number): FieldError[] {
+    return sendProblems().filter((problem) => {
+      if (index === 0) return problem.id === "work-area" || problem.id === "scope-name" || problem.id === "requested-scope" || problem.id === "response-due" || problem.id === "schedule" || problem.id.startsWith("schedule-");
+      if (index === 1) return problem.id === "recipients";
+      if (index === 3) return problem.id === "preview-approval";
+      return false;
+    });
+  }
+
+  function continueStep() {
+    const problems = problemsForStep(step);
+    if (problems.length > 0) {
+      showProblems(problems);
+      return;
+    }
+    setFieldErrors([]);
+    setError(null);
+    setStep((current) => Math.min(3, current + 1));
+  }
+
   async function onSend() {
+    if (pending) return;
     const problems = sendProblems();
     if (problems.length > 0) {
       if (problems.some((problem) => problem.id === "requested-scope" || problem.id === "work-area" || problem.id === "scope-name" || problem.id === "response-due" || problem.id === "schedule" || problem.id.startsWith("schedule-"))) setStep(0);
@@ -210,12 +279,64 @@ export function RfqComposer({
       summaryRef.current?.focus();
       return;
     }
-    router.push(`/app/projects/${projectId}/requests/${result.id}`);
+    sessionStorage.removeItem(storageKey);
+    const delivery = result.failed > 0 ? "failed" : "accepted";
+    router.push(`/app/projects/${projectId}/requests/${result.id}?delivery=${delivery}`);
     router.refresh();
   }
 
-  async function draftFromJob() {
-    if (!workAreaId) return;
+  function chooseArea(nextId: string) {
+    if (nextId === workAreaId) return;
+    const filled = Boolean(requestedScope.trim() || measurementNotes.trim() || rows.some((row) => row.scope.trim()) || suggestions.length > 0);
+    if (filled) {
+      setAreaChoice(nextId);
+      return;
+    }
+    setWorkAreaId(nextId);
+    setSources([]);
+    setSuggestions([]);
+    setFallback(null);
+  }
+
+  function applyArea(nextId: string, replace: boolean) {
+    setWorkAreaId(nextId);
+    setAreaChoice(null);
+    setPreviewApproved(false);
+    if (!replace) return;
+    setRequestedScope("");
+    setMeasurementNotes("");
+    setRows([]);
+    setSuggestions([]);
+    setChosenSuggestions([]);
+    setSources([]);
+    setWithheld([]);
+    setFallback(null);
+    edited.current = { scope: false, notes: false };
+  }
+
+  function addChosenSuggestions() {
+    setRows((current) => {
+      const titles = new Set(current.map((row) => row.scope.trim().toLowerCase()).filter(Boolean));
+      const next = [...current];
+      for (const suggestion of suggestions) {
+        if (!chosenSuggestions.includes(suggestion.id)) continue;
+        const key = suggestion.title.trim().toLowerCase();
+        if (!key || titles.has(key)) continue;
+        titles.add(key);
+        next.push(rowFromSuggestion(suggestion));
+      }
+      return next;
+    });
+    setChosenSuggestions([]);
+    setPreviewApproved(false);
+  }
+
+  async function draftFromJob(force = false) {
+    if (!workAreaId || pending) return;
+    if (!force && (edited.current.scope || edited.current.notes)) {
+      setReplacePrompt(true);
+      return;
+    }
     const generation = draftGeneration.current + 1;
     draftGeneration.current = generation;
     setPending("draft");
@@ -228,23 +349,26 @@ export function RfqComposer({
       return;
     }
     const kept: string[] = [];
-    if (!edited.current.scope) setRequestedScope(result.requestedScope);
-    else kept.push("requested scope");
-    if (!edited.current.notes) setMeasurementNotes(result.measurementNotes);
-    else kept.push("measurements");
+    if (!edited.current.scope || force) {
+      setRequestedScope(result.requestedScope);
+      edited.current.scope = false;
+    } else kept.push("requested scope");
+    if (!edited.current.notes || force) {
+      setMeasurementNotes(result.measurementNotes);
+      edited.current.notes = false;
+    } else kept.push("measurements");
     setPreviewApproved(false);
+    setReplacePrompt(false);
     setSources(result.sources);
     setWithheld(result.withheld);
-    if (pricingRequest === "schedule") {
-      setRows((current) => [
-        ...current.filter((row) => !row.quantitySource && row.scope.trim().length > 0),
-        ...scheduleRowsFromJobDetails(result.sources),
-      ]);
-    }
+    setSuggestions(result.suggestions);
+    setChosenSuggestions([]);
+    setFallback(result.fallback);
     const missing = result.missing.join(" ");
     const keptNote = kept.length > 0 ? `Your ${kept.join(" and ")} stayed as you wrote it.` : "";
-    const aiNote = result.aiUsed ? "The facts were ordered with help." : "The draft uses the recorded facts directly.";
-    setDraftNote([aiNote, missing, keptNote].filter(Boolean).join(" "));
+    const aiNote = result.aiUsed ? "Relevant facts were ordered with help. Nothing was invented." : "The draft uses recorded facts for this Work Area.";
+    const itemNote = result.suggestions.length > 0 ? "Suggested items are listed separately. They are not added until you choose them." : "";
+    setDraftNote([result.fallback, aiNote, missing, keptNote, itemNote].filter(Boolean).join(" "));
   }
 
   function toggleBusiness(business: Business, source: "suggested" | "manual") {
@@ -262,12 +386,18 @@ export function RfqComposer({
   }
 
   return (
-    <div className="grid gap-6 pb-28 md:pb-0" data-rfq-composer data-rfq-step={STEPS[step]}>
-      <ol className="flex flex-wrap gap-2 text-sm">
-        {STEPS.map((label, index) => (
-          <li key={label} className={index === step ? "font-semibold" : "text-foreground/60"}>{index + 1}. {label}</li>
-        ))}
-      </ol>
+    <div className="mx-auto grid w-full max-w-2xl gap-6 pb-36 md:pb-0" data-rfq-composer data-rfq-step={STEPS[step]}>
+      <div data-rfq-progress>
+        <p className="text-sm font-medium lg:hidden">Step {step + 1} of 4 — {STEPS[step]}</p>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted lg:hidden" aria-hidden>
+          <div className="h-full bg-foreground motion-reduce:transition-none" style={{ width: `${((step + 1) / 4) * 100}%` }} />
+        </div>
+        <ol className="hidden gap-2 text-sm lg:flex">
+          {STEPS.map((label, index) => (
+            <li key={label} className={index === step ? "font-semibold" : "text-foreground/60"} aria-current={index === step ? "step" : undefined}>{index + 1}. {label}</li>
+          ))}
+        </ol>
+      </div>
       <div ref={summaryRef} tabIndex={-1} role={error ? "alert" : undefined} className="outline-none">
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
       </div>
@@ -278,14 +408,19 @@ export function RfqComposer({
           <fieldset className="grid gap-2" id="schedule">
             <legend className="text-sm font-medium">How should they price this?</legend>
             <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="radio" name="pricing-request" checked={pricingRequest === "lump_sum"} onChange={() => { setPreviewApproved(false); setPricingRequest("lump_sum"); }} />
+              <input type="radio" name="pricing-request" checked={pricingRequest === "lump_sum"} onChange={() => {
+                setPreviewApproved(false);
+                setPricingRequest("lump_sum");
+                if (rows.some((row) => row.scope.trim())) setFormatNote("These item rows stay in this draft. They are not sent while you ask for one price.");
+              }} />
               One price for this scope
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="radio" name="pricing-request" checked={pricingRequest === "schedule"} onChange={() => { setPreviewApproved(false); setPricingRequest("schedule"); }} />
+              <input type="radio" name="pricing-request" checked={pricingRequest === "schedule"} onChange={() => { setPreviewApproved(false); setFormatNote(null); setPricingRequest("schedule"); }} />
               Price specific items
             </label>
           </fieldset>
+          {formatNote ? <p className="text-sm text-foreground/70">{formatNote}</p> : null}
           {messageFor("schedule") ? <p className="text-sm text-red-700">{messageFor("schedule")}</p> : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="grid gap-1 text-sm">
@@ -298,7 +433,7 @@ export function RfqComposer({
             {scopeKind === "work_area" ? (
               <label className="grid gap-1 text-sm" id="work-area">
                 Work Area
-                <select className={fieldClass} value={workAreaId} onChange={(event) => setWorkAreaId(event.target.value)}>
+                <select className={fieldClass} value={workAreaId} onChange={(event) => chooseArea(event.target.value)}>
                   {workAreas.map((item) => (
                     <option key={item.id} value={item.id}>{item.name}</option>
                   ))}
@@ -318,18 +453,70 @@ export function RfqComposer({
               {pending === "draft" ? "Drafting" : "Draft from job details"}
             </Button>
           ) : null}
+          {areaChoice ? (
+            <div className="grid gap-2 rounded-md border border-border p-3" role="group" aria-labelledby="area-change-title">
+              <p id="area-change-title" className="text-sm">This draft already has writing for the previous Work Area. Keep it, or clear it before using the new Work Area.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => applyArea(areaChoice, false)}>Keep this writing</Button>
+                <Button type="button" className="h-11 min-h-11" onClick={() => applyArea(areaChoice, true)}>Replace with the new Work Area</Button>
+              </div>
+            </div>
+          ) : null}
+          {replacePrompt ? (
+            <div className="grid gap-2 rounded-md border border-border p-3" role="group" aria-labelledby="replace-scope-title">
+              <p id="replace-scope-title" className="text-sm">Replace the requested scope and measurements you wrote? Item rows stay until you remove them.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setReplacePrompt(false)}>Keep what I wrote</Button>
+                <Button type="button" className="h-11 min-h-11" onClick={() => void draftFromJob(true)}>Replace scope</Button>
+              </div>
+            </div>
+          ) : null}
           {draftNote ? <p className="text-sm text-foreground/70" data-rfq-draft-note>{draftNote}</p> : null}
+          {fallback ? <p className="text-sm" data-rfq-scope-fallback>{fallback}</p> : null}
           <label className="grid gap-1 text-sm" id="requested-scope">
             Requested scope
             <textarea className="min-h-28 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={requestedScope} onChange={(event) => { edited.current.scope = true; setPreviewApproved(false); setRequestedScope(event.target.value); }} />
             {messageFor("requested-scope") ? <span className="text-red-700">{messageFor("requested-scope")}</span> : null}
           </label>
-          <SourceList sources={sources.filter((source) => source.field === "scope")} />
           <label className="grid gap-1 text-sm">
             Quantities or measurement notes
             <textarea className="min-h-20 w-full rounded-md border border-border bg-card px-3 py-2 text-base" value={measurementNotes} onChange={(event) => { edited.current.notes = true; setPreviewApproved(false); setMeasurementNotes(event.target.value); }} />
           </label>
-          <SourceList sources={sources.filter((source) => source.field === "measurements")} />
+          {sources.length > 0 || withheld.length > 0 ? (
+            <details className="rounded-md border border-border p-3" data-rfq-sources>
+              <summary className="cursor-pointer text-sm font-medium">Sources used / Review job facts</summary>
+              <div className="grid gap-2 pt-3">
+                <SourceList sources={sources} />
+                {withheld.length > 0 ? (
+                  <ul className="grid gap-1 text-xs text-foreground/70" data-rfq-draft-withheld>
+                    {withheld.map((item) => <li key={`${item.source}-${item.reason}`}>Held back · {item.source}: {item.reason}</li>)}
+                  </ul>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+          {suggestions.length > 0 ? (
+            <fieldset className="grid gap-2 rounded-md border border-border p-3" data-rfq-suggestions>
+              <legend className="px-1 text-sm font-medium">Suggested items</legend>
+              <p className="text-sm text-foreground/70">These are recorded details for this Work Area. Nothing is added until you choose it.</p>
+              {suggestions.map((suggestion) => (
+                <label key={suggestion.id} className="flex min-h-11 items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={chosenSuggestions.includes(suggestion.id)}
+                    onChange={(event) => setChosenSuggestions((current) => event.target.checked ? [...current, suggestion.id] : current.filter((id) => id !== suggestion.id))}
+                  />
+                  <span>
+                    <span className="font-medium">{suggestion.title}</span>
+                    {suggestion.specification ? <span className="block">{suggestion.specification}</span> : null}
+                    <span className="block text-foreground/70">{suggestion.source} · {suggestion.quantity ? `${suggestion.quantity} ${scheduleUnitLabel(suggestion.unit)}` : "No quantity recorded"} · {suggestion.confidence === "check" ? "Check this quantity" : "Recorded"}</span>
+                  </span>
+                </label>
+              ))}
+              <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" disabled={chosenSuggestions.length === 0} onClick={addChosenSuggestions}>Add selected items</Button>
+            </fieldset>
+          ) : null}
           {pricingRequest === "schedule" ? (
             <RfqScheduleEditor rows={rows} onChange={(next) => { setPreviewApproved(false); setRows(next); }} messageFor={messageFor} />
           ) : (
@@ -459,15 +646,20 @@ export function RfqComposer({
         </section>
       ) : null}
 
-      <div className="flex flex-wrap gap-2" data-dialog-actions>
+      <div className="z-30 flex flex-wrap gap-2 border-border bg-background max-md:fixed max-md:inset-x-0 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:border-t max-md:px-4 max-md:py-3" data-dialog-actions>
         {step > 0 ? (
           <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setStep((current) => current - 1)}>Back</Button>
         ) : null}
         {step < 3 ? (
-          <Button type="button" className="h-11 min-h-11" onClick={() => setStep((current) => current + 1)}>Continue</Button>
+          <Button type="button" className="h-11 min-h-11" onClick={continueStep}>Continue</Button>
         ) : (
           <Button type="button" className="h-11 min-h-11" disabled={pending != null} onClick={() => void onSend()}>
-            {pending === "send" ? "Sending" : "Send request"}
+            {pending === "send" ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" aria-hidden />
+                Sending request…
+              </span>
+            ) : "Send request"}
           </Button>
         )}
         <Button type="button" variant="outline" className="h-11 min-h-11" disabled={pending != null} onClick={() => void onSave()}>

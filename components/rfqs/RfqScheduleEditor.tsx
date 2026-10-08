@@ -41,6 +41,7 @@ export function RfqScheduleEditor({
       <p className="text-sm text-foreground/70">
         Each recipient prices this same list. An alternative is priced separately and is not part of the base total. A lump sum is one total.
       </p>
+      {rows.length === 0 ? <p className="text-sm">No price items yet. Add one, or choose a suggested item.</p> : null}
       {rows.map((row, index) => (
         <article key={row.id} id={`schedule-${row.id}`} className="grid gap-2 rounded-md border border-border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,7 +103,7 @@ export function RfqScheduleEditor({
           {messageFor(`schedule-${row.id}`) ? <p className="text-sm text-red-700">{messageFor(`schedule-${row.id}`)}</p> : null}
         </article>
       ))}
-      <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" onClick={() => onChange([...rows, emptyScheduleRow()])}>Add item</Button>
+      <Button type="button" variant="outline" className="h-11 min-h-11 w-fit" onClick={() => onChange([...rows, emptyScheduleRow()])}>Add price item</Button>
     </div>
   );
 }

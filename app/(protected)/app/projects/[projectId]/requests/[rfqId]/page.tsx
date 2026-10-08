@@ -16,11 +16,16 @@ import { memberCanEditPricing, memberCanEditProjects } from "@/lib/team/permissi
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
-type PageProps = { params: Promise<{ projectId: string; rfqId: string }> };
+type PageProps = {
+  params: Promise<{ projectId: string; rfqId: string }>;
+  searchParams: Promise<{ delivery?: string }>;
+};
 
-export default async function RfqDetailPage({ params }: PageProps) {
+export default async function RfqDetailPage({ params, searchParams }: PageProps) {
   await connection();
   const { projectId, rfqId } = await params;
+  const query = await searchParams;
+  const deliveryNotice = query.delivery === "accepted" || query.delivery === "failed" ? query.delivery : null;
   const auth = await requireAuthOrgContext();
   if (!auth.ok) notFound();
   const [project, tabContext, quoteSummary, detail, pricing, access] = await Promise.all([
@@ -55,6 +60,7 @@ export default async function RfqDetailPage({ params }: PageProps) {
           canEdit={memberCanEditProjects(access.role)}
           canPrice={memberCanEditPricing(access.role)}
           pricing={pricing}
+          deliveryNotice={deliveryNotice}
         />
       </WorkspaceContainer>
     </div>

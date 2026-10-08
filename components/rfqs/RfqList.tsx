@@ -16,9 +16,9 @@ export function RfqList({
   const awaiting = rows.reduce((sum, row) => sum + row.awaitingCount, 0);
   const received = rows.reduce((sum, row) => sum + row.respondedCount, 0);
   return (
-    <div className="grid gap-4 pb-28 md:pb-0" data-rfq-list>
+    <div className="grid gap-3 pb-28 md:pb-0" data-rfq-list>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold">Requests</h1>
           <p className="text-sm text-foreground/70">Ask subcontractors to price work. Sending a request does not change the Quote or choose a supplier.</p>
         </div>
@@ -28,33 +28,30 @@ export function RfqList({
           </Button>
         ) : null}
       </div>
-      <div className="grid gap-2 sm:grid-cols-3" data-rfq-queues>
-        <p className="rounded-xl border border-border bg-card p-4 text-sm"><span className="block text-lg font-semibold">{questions}</span>Open questions</p>
-        <p className="rounded-xl border border-border bg-card p-4 text-sm"><span className="block text-lg font-semibold">{awaiting}</span>Awaiting responses</p>
-        <p className="rounded-xl border border-border bg-card p-4 text-sm"><span className="block text-lg font-semibold">{received}</span>Received prices</p>
-      </div>
+      <p className="text-sm text-foreground/70" data-rfq-queues>
+        {questions} open question{questions === 1 ? "" : "s"} · {awaiting} awaiting · {received} received
+      </p>
       {rows.length === 0 ? (
         <p className="rounded-xl border border-border bg-card p-4 text-sm">No requests yet.</p>
       ) : (
         <ul className="grid gap-2">
           {rows.map((row) => (
             <li key={row.id}>
-              <Link href={`/app/projects/${projectId}/requests/${row.id}`} className="grid gap-2 rounded-xl border border-border bg-card p-4">
-                <span className="font-medium">{row.scopeLabel || "Request"}</span>
+              <Link href={`/app/projects/${projectId}/requests/${row.id}`} className="grid min-h-11 gap-1 rounded-xl border border-border bg-card px-4 py-3">
+                <span className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium break-words">{row.scopeLabel || "Request"}</span>
+                  <span className="text-sm">{row.status === "draft" ? "Draft" : "Sent"}</span>
+                </span>
                 <span className="text-sm text-foreground/70">
-                  {row.status === "draft" ? "Draft" : "Sent"}
+                  {row.recipientCount} recipient{row.recipientCount === 1 ? "" : "s"}
                   {" · "}
-                  {row.respondedCount} of {row.recipientCount} responded
+                  {row.respondedCount} response{row.respondedCount === 1 ? "" : "s"}
                   {row.questionCount > 0 ? ` · ${row.questionCount} open question${row.questionCount === 1 ? "" : "s"}` : ""}
                   {row.dueOn ? ` · Due ${row.dueOn}` : ""}
                 </span>
                 {row.recipients.length > 0 ? (
-                  <span className="grid gap-1 text-sm">
-                    {row.recipients.map((recipient) => (
-                      <span key={`${row.id}-${recipient.name}`}>
-                        {recipient.name} · {rfqResponseLabel(recipient.responseState as RfqResponseState)}{recipient.deliveryFailed ? " · Not delivered" : ""}
-                      </span>
-                    ))}
+                  <span className="truncate text-sm text-foreground/70">
+                    {row.recipients.map((recipient) => `${recipient.name} · ${rfqResponseLabel(recipient.responseState as RfqResponseState)}${recipient.deliveryFailed ? " · Not delivered" : ""}`).join(" · ")}
                   </span>
                 ) : null}
               </Link>

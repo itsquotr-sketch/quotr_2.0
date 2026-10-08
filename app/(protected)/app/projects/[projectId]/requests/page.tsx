@@ -57,7 +57,8 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
         <div className="grid gap-6">
           <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
           <details className="rounded-xl border border-border bg-card p-4" data-job-rate-disclosure>
-            <summary className="cursor-pointer text-base font-semibold">Subcontractor rates</summary>
+            <summary className="min-h-11 cursor-pointer text-sm font-medium">Confirmed rates for these work areas</summary>
+            <p className="pt-2 text-sm text-foreground/70">A rate match is not an accepted tender. Using one in Pricing is a separate choice.</p>
             <div className="pt-4">
               <JobRateSuggestions
                 projectId={projectId}

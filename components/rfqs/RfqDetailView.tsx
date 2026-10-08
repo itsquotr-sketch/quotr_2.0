@@ -20,18 +20,22 @@ export function RfqDetailView({
   canEdit,
   canPrice,
   pricing,
+  deliveryNotice = null,
 }: {
   detail: RfqDetail;
   canEdit: boolean;
   canPrice: boolean;
   pricing: RfqPricingTarget | null;
+  deliveryNotice?: "accepted" | "failed" | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const submitted = detail.responses.filter((response) => response.status === "submitted");
+  const openQuestions = detail.clarifications.filter((note) => note.fromRecipient && !note.parentId && !detail.clarifications.some((reply) => reply.parentId === note.id));
   const diagnostics = detail.events.filter((event) => event.kind.includes("delivery") || event.kind.includes("email") || event.kind === "link_prepared" || event.summary.startsWith("Mail service"));
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("question");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("question");
     const hash = window.location.hash.replace(/^#/, "");
     const target = (id ? `question-${id}` : hash);
     if (!target) return;
@@ -79,7 +83,9 @@ export function RfqDetailView({
   }
 
   return (
-    <div className="grid gap-6 pb-28 md:pb-0" data-rfq-detail>
+    <div className="grid gap-4 pb-28 md:pb-0" data-rfq-detail>
+      <DeliveryNotice notice={deliveryNotice} />
+      <NextAction detail={detail} canEdit={canEdit} openQuestions={openQuestions.length} hasPrices={submitted.length > 0} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="break-words text-xl font-semibold">{detail.scopeLabel || "Request"}</h1>
@@ -95,8 +101,9 @@ export function RfqDetailView({
         ) : null}
       </div>
 
-      <section className="grid gap-2 rounded-xl border border-border bg-card p-4 text-sm">
-        <h2 className="text-base font-semibold">Request</h2>
+      <details className="rounded-xl border border-border bg-card p-4 text-sm" data-rfq-request-disclosure>
+        <summary className="min-h-11 cursor-pointer text-base font-semibold">Request content</summary>
+        <div className="grid gap-2 pt-3">
         <p>{detail.requestedScope || "No scope written."}</p>
         {detail.measurementNotes ? <p>Measurements: {detail.measurementNotes}</p> : null}
         <p>Due: {detail.responseDueOn || "Not set"}</p>
@@ -112,7 +119,8 @@ export function RfqDetailView({
             ))}
           </ol>
         ) : null}
-      </section>
+        </div>
+      </details>
 
       <section className="grid gap-3">
         <h2 className="text-base font-semibold">Recipients</h2>
@@ -142,7 +150,7 @@ export function RfqDetailView({
         </ul>
       </section>
 
-      <section className="grid gap-3" data-rfq-compare>
+      <section className="grid gap-3" id="rfq-compare" data-rfq-compare>
         <h2 className="text-base font-semibold">Compare responses</h2>
         <p className="text-sm text-foreground/70">No response is not a decline. Using a price for draft pricing does not award the work or notify the subcontractor.</p>
         <ul className="grid gap-3">
@@ -156,11 +164,13 @@ export function RfqDetailView({
                   <p className="font-medium">{recipient.tradingName}</p>
                   <p>{rfqResponseLabel(recipient.responseState)} · {rfqDeliveryLabel(recipient.deliveryState)}</p>
                 </div>
+                <p>Delivery: {rfqDeliveryLabel(recipient.deliveryState)}{recipient.viewed ? " · Viewed" : ""}</p>
+                <p>Response: {rfqResponseLabel(recipient.responseState)}{latest ? ` · Version ${latest.versionNumber}` : ""}</p>
                 <p>Price ex GST: {detail.pricingRequest === "schedule"
-                  ? (latest?.completeness === "complete" ? latest.priceExGst?.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : latest?.completeness === "partial" ? "Partial" : "None")
+                  ? (latest?.completeness === "complete" ? latest.priceExGst?.toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : latest?.completeness === "partial" ? "Partial — not a complete bid" : "None")
                   : (latest?.priceExGst == null ? "None" : latest.priceExGst.toLocaleString())}</p>
-                {detail.pricingRequest === "schedule" && latest?.qualified ? <p>Qualified</p> : null}
-                <p>GST: {latest ? gstTreatmentLabel(latest.gstTreatment) : "None"}</p>
+                {detail.pricingRequest === "schedule" && latest ? <p>{latest.completeness === "complete" ? "Complete" : "Partial"}{latest.qualified ? " · Qualified" : ""}</p> : null}
+                <p>GST: {latest ? gstTreatmentLabel(latest.gstTreatment) : "Not stated"}</p>
                 <p>Pricing: {pricingUseReason(recipient.responseState, Boolean(latest), used, rfqDeliveryFailed(recipient.deliveryState))}</p>
                 <details>
                   <summary className="cursor-pointer">Response details</summary>
@@ -193,7 +203,7 @@ export function RfqDetailView({
 
       <RfqPricingApply detail={detail} pricing={pricing} canPrice={canPrice} />
 
-      <section className="grid gap-3" data-rfq-conversation>
+      <section className="grid gap-3" id="rfq-conversation" data-rfq-conversation>
         <h2 className="text-base font-semibold">Conversation</h2>
         {detail.clarifications.filter((note) => note.fromRecipient && !note.parentId).length === 0 ? (
           <p className="text-sm text-foreground/70">No questions yet.</p>
@@ -247,6 +257,43 @@ export function RfqDetailView({
       {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
     </div>
   );
+}
+
+function DeliveryNotice({ notice }: { notice: string | null }) {
+  if (notice === "accepted") {
+    return <p className="rounded-md border border-border bg-card p-3 text-sm" role="status">The request was sent. The mail service accepted it for delivery. That is not the same as the recipient having opened it.</p>;
+  }
+  if (notice === "failed") {
+    return <p className="rounded-md border border-red-200 bg-card p-3 text-sm text-red-700" role="alert">The request was saved, but email delivery failed. The draft content is unchanged. You can resend.</p>;
+  }
+  return null;
+}
+
+function NextAction({
+  detail,
+  canEdit,
+  openQuestions,
+  hasPrices,
+}: {
+  detail: RfqDetail;
+  canEdit: boolean;
+  openQuestions: number;
+  hasPrices: boolean;
+}) {
+  if (detail.status === "draft" && canEdit) {
+    return (
+      <p className="rounded-xl border border-border bg-card p-4 text-sm">
+        <Link className="inline-flex min-h-11 items-center font-medium underline" href={`/app/projects/${detail.projectId}/requests/${detail.id}/edit`}>Continue this draft</Link>
+      </p>
+    );
+  }
+  if (openQuestions > 0) {
+    return <p className="rounded-xl border border-border bg-card p-4 text-sm"><a className="inline-flex min-h-11 items-center font-medium underline" href="#rfq-conversation">Answer {openQuestions} open question{openQuestions === 1 ? "" : "s"}</a></p>;
+  }
+  if (hasPrices) {
+    return <p className="rounded-xl border border-border bg-card p-4 text-sm"><a className="inline-flex min-h-11 items-center font-medium underline" href="#rfq-compare">Compare received prices</a>. Using a price does not award the work.</p>;
+  }
+  return <p className="rounded-xl border border-border bg-card p-4 text-sm">Waiting for a response. Sending this request did not award the work.</p>;
 }
 
 function pricingUseReason(state: string, hasPrice: boolean, used: boolean, deliveryFailed: boolean): string {

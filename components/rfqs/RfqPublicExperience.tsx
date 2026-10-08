@@ -32,7 +32,6 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
   const latest = submitted[submitted.length - 1];
   const [price, setPrice] = useState(draft?.priceExGst?.toString() ?? "");
   const [gst, setGst] = useState(draft?.gstTreatment ?? "unknown");
-  const [structure, setStructure] = useState(draft?.pricingStructure ?? "lump_sum");
   const [included, setIncluded] = useState(draft?.includedScope ?? "");
   const [excluded, setExcluded] = useState(draft?.excludedScope ?? "");
   const [assumptions, setAssumptions] = useState(draft?.assumptions ?? "");
@@ -48,6 +47,7 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
   const locked = view.responseState === "declined" || view.responseState === "expired";
 
   async function run(action: () => Promise<{ error?: string }>) {
+    if (pending) return;
     setPending(true);
     setError(null);
     const result = await action();
@@ -59,32 +59,35 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
   return (
     <Shell>
       <div className="grid gap-6" data-rfq-public>
-        <header className="grid gap-1">
+        <header className="grid gap-2 rounded-xl border border-border bg-white p-4">
           <p className="text-sm text-foreground/70">{view.builderName || "Builder"}</p>
           <h1 className="break-words text-2xl font-semibold">{view.scopeLabel || "Request for price"}</h1>
-          <p className="text-sm">This request is only for you. It does not show other subcontractors or their prices.</p>
+          <p className="text-sm">{view.pricingRequest === "schedule" ? "Enter a price for each item." : "Enter one price for this work."}</p>
+          <p className="text-sm">{view.responseDueOn ? `Response due ${view.responseDueOn}.` : "No response date was set."}</p>
+          <p className="text-sm text-foreground/70">This request is only for you. It does not show the client or other subcontractors.</p>
         </header>
         <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm" data-rfq-work>
           <h2 className="text-base font-semibold">The work requested</h2>
-          <p className="whitespace-pre-wrap">{view.requestedScope}</p>
-          {view.measurementNotes ? <p className="whitespace-pre-wrap">Measurements: {view.measurementNotes}</p> : null}
-          {view.questions ? <p className="whitespace-pre-wrap">Questions: {view.questions}</p> : null}
-          {view.message ? <p className="whitespace-pre-wrap">{view.message}</p> : null}
+          <p className="whitespace-pre-wrap leading-6">{view.requestedScope}</p>
           {view.pricingRequest === "schedule" ? (
             <ol className="grid gap-2" data-rfq-public-schedule>
               {view.schedule.map((item, index) => (
                 <li key={item.id} className="break-words">
-                  {index + 1}. {item.scope}{item.specification ? ` — ${item.specification}` : ""} · {item.unit === "lump_sum" ? "Lump sum, one total" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}
+                  {index + 1}. {item.scope}{item.specification ? ` — ${item.specification}` : ""} · {item.unit === "lump_sum" ? "Lump sum, one total" : `${item.quantity ?? ""} × ${scheduleUnitLabel(item.unit)}`} · {scheduleRoleLabel(item.role)}
                 </li>
               ))}
             </ol>
-          ) : <p>One price for this scope.</p>}
+          ) : <p>One price for this scope. A PDF can carry a breakdown. Quotr does not read that PDF into the price.</p>}
         </section>
         <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm">
-          <h2 className="text-base font-semibold">Files and due date</h2>
-          <p>{view.responseDueOn ? `Please respond by ${view.responseDueOn}.` : "No due date was set."}</p>
+          <h2 className="text-base font-semibold">Measurements and site</h2>
+          <p className="whitespace-pre-wrap leading-6">{view.measurementNotes || "No measurements were included."}</p>
           {view.siteAddress ? <p>Site: {view.siteAddress}</p> : null}
           {view.siteDetails ? <p className="whitespace-pre-wrap">{view.siteDetails}</p> : null}
+          {view.message ? <p className="whitespace-pre-wrap">{view.message}</p> : null}
+        </section>
+        <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm">
+          <h2 className="text-base font-semibold">Selected documents</h2>
           {view.files.length === 0 ? <p>No files were shared.</p> : (
             <ul className="grid gap-2">
               {view.files.map((file) => {
@@ -153,12 +156,7 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
                     <option value="unknown">Not stated</option>
                   </select>
                 </label>
-                <label className="grid gap-1 text-sm">Structure
-                  <select className={fieldClass} value={structure} onChange={(event) => setStructure(event.target.value)}>
-                    <option value="lump_sum">Lump sum</option>
-                    <option value="itemised">Itemised</option>
-                  </select>
-                </label>
+                <p className="text-sm text-foreground/70">Enter one amount. A detailed breakdown can go in the PDF beside this form. That file is evidence only. It is not the requested schedule and it is not applied to the builder&apos;s Pricing.</p>
                 <label className="grid gap-1 text-sm">Inclusions
                   <textarea className="min-h-20 w-full rounded-md border border-border px-3 py-2 text-base" value={included} onChange={(event) => setIncluded(event.target.value)} />
                 </label>
@@ -184,12 +182,12 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
                 </label>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="outline" className="h-11 min-h-11" disabled={pending} onClick={() => run(() => saveRfqResponse({
-                    token: view.token, confirm: false, revise, priceExGst: price, gstTreatment: gst, pricingStructure: structure,
+                    token: view.token, confirm: false, revise, priceExGst: price, gstTreatment: gst, pricingStructure: "lump_sum",
                     includedScope: included, excludedScope: excluded, assumptions, leadTime, validUntil, message,
                   }))}>Save draft</Button>
                   <Button type="button" className="h-11 min-h-11" disabled={pending || !confirm} onClick={() => run(async () => {
                     const saved = await saveRfqResponse({
-                      token: view.token, confirm: true, revise, priceExGst: price, gstTreatment: gst, pricingStructure: structure,
+                      token: view.token, confirm: true, revise, priceExGst: price, gstTreatment: gst, pricingStructure: "lump_sum",
                       includedScope: included, excludedScope: excluded, assumptions, leadTime, validUntil, message,
                     });
                     return saved;
@@ -197,7 +195,7 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
                 </div>
                 <PdfUpload token={view.token} responseId={draft?.id ?? null} onNeedDraft={async () => {
                   const saved = await saveRfqResponse({
-                    token: view.token, confirm: false, revise, priceExGst: price, gstTreatment: gst, pricingStructure: structure,
+                    token: view.token, confirm: false, revise, priceExGst: price, gstTreatment: gst, pricingStructure: "lump_sum",
                     includedScope: included, excludedScope: excluded, assumptions, leadTime, validUntil, message,
                   });
                   return saved.responseId ?? null;
@@ -243,7 +241,7 @@ function PdfUpload({
   const [error, setError] = useState<string | null>(null);
   return (
     <label className="grid gap-1 text-sm">
-      Optional PDF quotation
+      Optional PDF quotation. This file is evidence beside your price. Quotr does not read it into the amount.
       <input
         className="block w-full text-sm"
         type="file"

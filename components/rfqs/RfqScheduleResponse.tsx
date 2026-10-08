@@ -70,6 +70,7 @@ export function RfqScheduleResponse({
   const qualified = assumptions.trim().length > 0 || review.some((row) => row.line?.qualification.trim());
 
   async function submit(confirming: boolean) {
+    if (busy || pending) return null;
     setBusy(true);
     const payloadLines: Array<{
       scheduleItemId: string;
@@ -86,9 +87,10 @@ export function RfqScheduleResponse({
         }
         continue;
       }
+      const decision = line.decision === "priced" ? "priced" : item.role === "required" ? "not_priced" : "excluded";
       payloadLines.push({
         scheduleItemId: item.id,
-        decision: line.decision,
+        decision,
         unitPrice: line.unitPrice,
         reason: line.reason,
         qualification: line.qualification,
@@ -117,13 +119,13 @@ export function RfqScheduleResponse({
     <div className="grid gap-4" data-rfq-schedule-response>
       <div className="grid gap-3">
         {view.schedule.map((item) => (
-          <article key={item.id} className="grid gap-3 rounded-xl border border-border bg-white p-4 text-sm md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,1fr)]">
+          <article key={item.id} className="grid gap-3 rounded-xl border border-border bg-white p-4 text-sm">
             <div className="min-w-0">
               <p className="font-medium break-words">{item.scope}</p>
               {item.specification ? <p className="break-words">{item.specification}</p> : null}
+              <p>{item.unit === "lump_sum" ? "Lump sum, one total" : `${item.quantity ?? ""} × ${scheduleUnitLabel(item.unit)}`}</p>
               <p className="text-foreground/70">{scheduleRoleLabel(item.role)}</p>
             </div>
-            <p>{item.unit === "lump_sum" ? "Lump sum, one total" : `${item.quantity ?? ""} ${scheduleUnitLabel(item.unit)}`}</p>
             <PriceControls item={item} line={lines[item.id]} onChange={(patch) => update(item.id, patch)} />
           </article>
         ))}
@@ -160,8 +162,8 @@ export function RfqScheduleResponse({
 
       <section className="grid gap-2 rounded-xl border border-border bg-white p-4 text-sm" data-rfq-schedule-review>
         <h2 className="text-base font-semibold">Review before you submit</h2>
-        <p>Status: {complete ? "Complete" : "Partial"}{qualified ? " · Qualified" : ""}</p>
-        <p>Base total ex GST: {money(base)}. Optional items are excluded. Alternatives are excluded.</p>
+        <p>Status: {complete ? "Complete" : "Partial"}{qualified ? " · Qualified" : ""}. A partial price is not a complete bid.</p>
+        <p>Base total ex GST: {money(base)}. Optional and alternative totals are separate.</p>
         <p>Optional items ex GST: {money(optional)}</p>
         <p>Alternatives ex GST: {money(alternative)}</p>
         <p>Priced required items: {review.filter((row) => row.item.role === "required" && row.line?.decision === "priced").map((row) => row.item.scope).join(", ") || "None"}</p>
@@ -198,24 +200,18 @@ function PriceControls({
         <input type="radio" name={`decision-${item.id}`} checked={line.decision === "priced"} onChange={() => onChange({ decision: "priced" })} />
         Price this item
       </label>
-      {item.role === "required" ? (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="radio" name={`decision-${item.id}`} checked={line.decision === "not_priced"} onChange={() => onChange({ decision: "not_priced" })} />
-          Not priced
-        </label>
-      ) : (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="radio" name={`decision-${item.id}`} checked={line.decision === "unanswered"} onChange={() => onChange({ decision: "unanswered" })} />
-          Leave out of the total
-        </label>
-      )}
+      <label className="flex min-h-11 items-center gap-2">
+        <input type="radio" name={`decision-${item.id}`} checked={line.decision === "not_priced"} onChange={() => onChange({ decision: "not_priced" })} />
+        Not priced
+      </label>
       {line.decision === "priced" ? (
         <label className="grid gap-1">
           {pricedLabel}
           <input className={fieldClass} inputMode="decimal" value={line.unitPrice} onChange={(event) => onChange({ unitPrice: event.target.value })} />
+          <span>Extended total ex GST: {extendedLabel(item, line.unitPrice)}</span>
         </label>
       ) : null}
-      {line.decision === "not_priced" ? (
+      {line.decision === "not_priced" && item.role === "required" ? (
         <label className="grid gap-1">
           Reason
           <input className={fieldClass} value={line.reason} onChange={(event) => onChange({ reason: event.target.value })} />
@@ -241,7 +237,7 @@ function PdfUpload({
   const [error, setError] = useState<string | null>(null);
   return (
     <label className="grid gap-1 text-sm">
-      Optional PDF quotation
+      Optional PDF quotation. This file is evidence beside your prices. Quotr does not read it into the totals.
       <input className="block min-h-11 w-full text-sm" type="file" accept="application/pdf,.pdf" onChange={async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -260,6 +256,12 @@ function PdfUpload({
       {error ? <span className="text-red-700">{error}</span> : null}
     </label>
   );
+}
+
+function extendedLabel(item: OpenView["schedule"][number], unitPrice: string): string {
+  const price = Number(unitPrice);
+  if (!Number.isFinite(price)) return "Enter a price";
+  return money(scheduleExtended(item.unit, item.quantity, price));
 }
 
 function money(value: number): string {
