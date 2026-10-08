@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { PublicRfqView } from "@/lib/rfqs/load";
@@ -44,6 +44,10 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
   const [revise, setRevise] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   const locked = view.responseState === "declined" || view.responseState === "expired";
 
   async function run(action: () => Promise<{ error?: string }>) {
@@ -223,7 +227,7 @@ function Open({ view }: { view: Extract<PublicRfqView, { state: "open" }> }) {
             </div>
           </details>
         ) : null}
-        {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
+        {error ? <p ref={errorRef} tabIndex={-1} className="text-sm text-red-700 outline-none" role="alert">{error}</p> : null}
       </div>
     </Shell>
   );
