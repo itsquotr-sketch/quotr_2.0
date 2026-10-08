@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAnthropicMessage, getAnthropicModel } from "@/lib/ai/anthropic";
 import { composeJobDraft, factIsSafe, type DraftFact, type DraftSource } from "@/lib/rfqs/draft-compose";
 import { withholdReason, type PrivateProjectRecords } from "@/lib/rfqs/draft-privacy";
+import { selectWorkAreaScope, type ScheduleSuggestion } from "@/lib/rfqs/scope-selection";
 
 const NOTE_TYPES = ["measurement", "access", "existing_condition", "material_preference", "exclusion"];
 
@@ -31,6 +32,8 @@ export async function draftRfqJobFacts(
   measurementNotes: string;
   sources: DraftSource[];
   withheld: Array<{ source: string; reason: string }>;
+  suggestions: ScheduleSuggestion[];
+  fallback: string | null;
   missing: string[];
   aiUsed: boolean;
 }> {
@@ -41,7 +44,7 @@ export async function draftRfqJobFacts(
     .eq("org_id", orgId)
     .maybeSingle();
   if (!project.data || project.data.org_id !== orgId) {
-    return { requestedScope: "", measurementNotes: "", sources: [], withheld: [], missing: ["That project is not available."], aiUsed: false };
+    return { requestedScope: "", measurementNotes: "", sources: [], withheld: [], suggestions: [], fallback: null, missing: ["That project is not available."], aiUsed: false };
   }
   const records: PrivateProjectRecords = {
     clientNames: typeof project.data.client_name === "string" ? [project.data.client_name] : [],
@@ -49,39 +52,14 @@ export async function draftRfqJobFacts(
     internalNotes: typeof project.data.notes === "string" ? [project.data.notes] : [],
   };
   const [area, items, facts, notes] = await Promise.all([
-    supabase.from("work_areas").select("name, summary, quote_description, status, org_id").eq("id", workAreaId).eq("project_id", projectId).eq("org_id", orgId).maybeSingle(),
+    supabase.from("work_areas").select("name, type, summary, quote_description, status, org_id").eq("id", workAreaId).eq("project_id", projectId).eq("org_id", orgId).maybeSingle(),
     supabase.from("work_area_scope_items").select("id, title, description").eq("work_area_id", workAreaId).eq("project_id", projectId).eq("org_id", orgId),
     supabase.from("project_facts").select("id, key, label, value, unit, source, confidence").eq("work_area_id", workAreaId).eq("project_id", projectId).eq("org_id", orgId),
     supabase.from("project_notes").select("id, content, note_type").eq("project_id", projectId).eq("org_id", orgId).in("note_type", NOTE_TYPES),
   ]);
-  const collected: DraftFact[] = [];
-  const withheld: Array<{ source: string; reason: string }> = [];
-  function consider(fact: DraftFact) {
-    const reason = withholdReason(fact.text, records);
-    if (reason) {
-      withheld.push({ source: fact.source, reason });
-      return;
-    }
-    collected.push(fact);
-  }
-  const brief = typeof project.data.brief_text === "string" ? project.data.brief_text.trim() : "";
-  if (brief) {
-    consider({ id: "brief", field: "scope", source: "Project description", text: brief, uncertain: false });
-  }
   const areaConfirmed = area.data?.status === "confirmed";
-  if (areaConfirmed && area.data?.summary?.trim()) {
-    consider({ id: "summary", field: "scope", source: "Work area details", text: area.data.summary.trim(), uncertain: false });
-  }
-  if (areaConfirmed && area.data?.quote_description?.trim()) {
-    consider({ id: "description", field: "scope", source: "Work area description", text: area.data.quote_description.trim(), uncertain: false });
-  }
-  for (const item of areaConfirmed ? items.data ?? [] : []) {
-    const title = item.title?.trim() ?? "";
-    const description = item.description?.trim() ?? "";
-    const text = [title, description].filter(Boolean).join(": ");
-    if (!text) continue;
-    consider({ id: `scope-${item.id}`, field: "scope", source: "Captured specification", text, uncertain: false });
-  }
+  const preparedFacts: ScopeSelectionInputFact[] = [];
+  const withheld: Array<{ source: string; reason: string }> = [];
   for (const fact of areaConfirmed ? facts.data ?? [] : []) {
     if (!factIsSafe(fact.key ?? "", fact.label ?? "")) {
       withheld.push({ source: fact.label?.trim() || "Commercial fact", reason: "This is a commercial record, not a supplier scope fact." });
@@ -90,33 +68,65 @@ export async function draftRfqJobFacts(
     const text = factText(fact.value, fact.unit);
     if (!text) continue;
     const uncertain = fact.source === "assumption" || (fact.confidence != null && Number(fact.confidence) < 0.6);
-    const field = fact.unit || fact.key?.toLowerCase().includes("quant") || fact.label?.toLowerCase().includes("quant")
-      ? "measurements"
-      : "scope";
-    consider({
-      id: `fact-${fact.id}`,
-      field,
-      source: field === "measurements" ? "Measured quantity" : "Work area fact",
+    const measurement = Boolean(fact.unit) || Boolean(fact.key?.toLowerCase().includes("quant")) || Boolean(fact.label?.toLowerCase().includes("quant"));
+    preparedFacts.push({
+      id: fact.id,
+      label: fact.label?.trim() || "Work area fact",
       text: fact.label ? `${fact.label}: ${text}` : text,
       uncertain,
+      measurement,
     });
   }
-  for (const note of notes.data ?? []) {
-    const content = note.content?.trim() ?? "";
-    if (!content) continue;
-    const field = note.note_type === "measurement" ? "measurements" : "scope";
-    consider({
-      id: `note-${note.id}`,
-      field,
-      source: note.note_type === "measurement" ? "Measurement note" : "Site note",
-      text: content,
-      uncertain: false,
-    });
+  const selected = selectWorkAreaScope({
+    areaType: typeof area.data?.type === "string" ? area.data.type : "",
+    areaName: typeof area.data?.name === "string" ? area.data.name : "",
+    areaConfirmed,
+    brief: typeof project.data.brief_text === "string" ? project.data.brief_text : "",
+    summary: typeof area.data?.summary === "string" ? area.data.summary : "",
+    description: typeof area.data?.quote_description === "string" ? area.data.quote_description : "",
+    items: (items.data ?? []).map((item) => ({
+      id: item.id,
+      title: item.title ?? "",
+      description: item.description ?? "",
+    })),
+    facts: preparedFacts,
+    notes: (notes.data ?? []).map((note) => ({
+      id: note.id,
+      noteType: note.note_type ?? "",
+      text: note.content ?? "",
+    })),
+  });
+  const collected: DraftFact[] = [];
+  for (const fact of selected.facts) {
+    const reason = withholdReason(fact.text, records);
+    if (reason) {
+      withheld.push({ source: fact.source, reason });
+      continue;
+    }
+    collected.push(fact);
   }
+  const suggestions = selected.suggestions.filter((suggestion) => {
+    const reason = withholdReason(`${suggestion.title} ${suggestion.specification}`, records);
+    if (reason) {
+      withheld.push({ source: suggestion.source, reason });
+      return false;
+    }
+    return true;
+  });
+  withheld.push(...selected.withheld);
   const order = await orderFactIds(collected);
   const draft = composeJobDraft(collected, order.ids);
-  return { ...draft, withheld, aiUsed: order.aiUsed };
+  const fallback = draft.requestedScope.trim() ? null : selected.fallback;
+  return { ...draft, withheld, suggestions, fallback, aiUsed: order.aiUsed };
 }
+
+type ScopeSelectionInputFact = {
+  id: string;
+  label: string;
+  text: string;
+  uncertain: boolean;
+  measurement: boolean;
+};
 
 async function orderFactIds(facts: DraftFact[]): Promise<{ ids: string[]; aiUsed: boolean }> {
   if (!process.env.ANTHROPIC_API_KEY || facts.length < 2) {

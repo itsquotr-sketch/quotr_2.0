@@ -1,4 +1,6 @@
 import { quoteDeliveryFromHeader } from "@/lib/email/application-email";
+import { quoteEmailSafeLogoUrl } from "@/lib/quotes/delivery-email";
+import { isOrganisationBrandingPublicUrl } from "@/lib/settings/logo";
 
 function escapeHtml(value: string): string {
   return value
@@ -12,6 +14,21 @@ export function rfqDeliveryFromHeader(companyName: string): string | null {
   return quoteDeliveryFromHeader(companyName);
 }
 
+export function rfqEmailLogoUrl(
+  logoUrl: string | null | undefined,
+  supabaseUrl?: string | null
+): string | null {
+  const safe = quoteEmailSafeLogoUrl(logoUrl);
+  if (!safe) return null;
+  if (supabaseUrl && isOrganisationBrandingPublicUrl(safe, supabaseUrl)) return safe;
+  try {
+    if (/\.(png|jpe?g|webp)$/i.test(new URL(safe).pathname)) return safe;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export function buildRfqDeliveryEmail(input: {
   builderName: string;
   contactName: string;
@@ -19,6 +36,7 @@ export function buildRfqDeliveryEmail(input: {
   responseDueOn: string | null;
   publicUrl: string;
   pricingRequest?: "lump_sum" | "schedule";
+  logoUrl?: string | null;
 }): { subject: string; html: string; text: string } {
   const builder = input.builderName.trim() || "A builder";
   const contact = input.contactName.trim() || "there";
@@ -43,6 +61,10 @@ export function buildRfqDeliveryEmail(input: {
     "This link is only for you. Submitting a price does not mean the work has been accepted.",
     "Sent securely via Quotr",
   ].join("\n");
+  const logo = rfqEmailLogoUrl(input.logoUrl);
+  const logoHtml = logo
+    ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(builder)}" width="160" style="max-width:160px;height:auto;display:block;padding:0 0 16px 0;border:0" />`
+    : "";
   const html = `<!doctype html>
 <html>
 <body style="padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">
@@ -52,6 +74,7 @@ export function buildRfqDeliveryEmail(input: {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;padding:28px 24px">
           <tr>
             <td>
+              ${logoHtml}
               <p style="padding:0 0 4px 0;font-size:16px;font-weight:700">${escapeHtml(builder)}</p>
               <p style="padding:0 0 16px 0;font-size:14px;color:#52525b">Request for price</p>
               <p style="padding:0 0 8px 0;font-size:15px">Hello ${escapeHtml(contact)},</p>

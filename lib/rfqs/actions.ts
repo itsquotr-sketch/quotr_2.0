@@ -6,7 +6,7 @@ import { readSentRfqLink } from "@/lib/rfqs/sent-link";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
-import { buildRfqAnswerEmail, buildRfqDeliveryEmail, rfqDeliveryFromHeader } from "@/lib/rfqs/email";
+import { buildRfqAnswerEmail, buildRfqDeliveryEmail, rfqDeliveryFromHeader, rfqEmailLogoUrl } from "@/lib/rfqs/email";
 import { draftRfqJobFacts } from "@/lib/rfqs/draft-facts";
 import { sharedAnswerLeak } from "@/lib/rfqs/draft-privacy";
 import {
@@ -181,6 +181,7 @@ async function deliverRecipient(input: {
   rawToken: string;
   idempotencyKey: string;
   pricingRequest: "lump_sum" | "schedule";
+  logoUrl?: string | null;
 }): Promise<{ status: "sent" | "failed" }> {
   const begun = await input.supabase.rpc("begin_rfq_delivery_v1", {
     p_recipient: input.recipientId,
@@ -208,6 +209,7 @@ async function deliverRecipient(input: {
     responseDueOn: input.responseDueOn,
     publicUrl,
     pricingRequest: input.pricingRequest,
+    logoUrl: input.logoUrl,
   });
   const sent = await provider.send({
     to: input.email,
@@ -322,6 +324,12 @@ export async function sendRfq(input: {
     rfq.data?.scope_kind === "work_area"
       ? rfq.data.work_area_name || "Requested work"
       : rfq.data?.written_scope_label || "Requested work";
+  const logoRow = await loaded.context.supabase
+    .from("organisation_settings")
+    .select("logo_url")
+    .eq("org_id", loaded.context.orgId)
+    .maybeSingle();
+  const logoUrl = rfqEmailLogoUrl(logoRow.data?.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL);
   let failed = 0;
   for (const row of rows) {
     const raw = rawByRecipient.get(row.id);
@@ -340,6 +348,7 @@ export async function sendRfq(input: {
       pricingRequest: rfq.data?.pricing_request === "schedule" ? "schedule" : "lump_sum",
       rawToken: raw,
       idempotencyKey: `rfq-send:${row.id}`,
+      logoUrl,
     });
     if (result.status === "failed") failed += 1;
   }
@@ -373,6 +382,11 @@ export async function resendRfqRecipient(input: {
     .eq("id", input.rfqId)
     .maybeSingle();
   if (!recipient.data) return { ok: false, error: SEND_FAILED };
+  const logoRow = await loaded.context.supabase
+    .from("organisation_settings")
+    .select("logo_url")
+    .eq("org_id", loaded.context.orgId)
+    .maybeSingle();
   const scopeLabel =
     rfq.data?.scope_kind === "work_area"
       ? rfq.data.work_area_name || "Requested work"
@@ -388,6 +402,7 @@ export async function resendRfqRecipient(input: {
     pricingRequest: rfq.data?.pricing_request === "schedule" ? "schedule" : "lump_sum",
     rawToken: raw,
     idempotencyKey: `rfq-resend:${input.recipientId}:${Date.now()}`,
+    logoUrl: rfqEmailLogoUrl(logoRow.data?.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
   });
   revalidatePath(`/app/projects/${input.projectId}/requests/${input.rfqId}`);
   return { ok: true, failed: result.status === "failed" };

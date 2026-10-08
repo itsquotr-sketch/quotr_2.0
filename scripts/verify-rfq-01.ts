@@ -17,6 +17,8 @@ import {
   PRODUCTION_SUPABASE_PROJECT_REF,
 } from "../lib/deployment/environment";
 import { composeJobDraft } from "../lib/rfqs/draft-compose";
+import { NO_RELIABLE_SCOPE, selectWorkAreaScope } from "../lib/rfqs/scope-selection";
+import { rfqEmailLogoUrl } from "../lib/rfqs/email";
 import { sharedAnswerLeak, withholdReason } from "../lib/rfqs/draft-privacy";
 import { buildRfqDeliveryEmail } from "../lib/rfqs/email";
 import { scopeIsMeaningful } from "../lib/rfqs/validate";
@@ -192,6 +194,60 @@ function staticMain() {
   });
   assert("a shared answer is blocked when it repeats the question's private details", Boolean(leak) && clean === null);
   assert("email button names the action", mail.html.includes("View request and respond"));
+  assert("logo-absent mail has no image", !mail.html.includes("<img"));
+  const withLogo = buildRfqDeliveryEmail({
+    builderName: "Ada Builders",
+    contactName: "Bea",
+    scopeLabel: "Cladding",
+    responseDueOn: null,
+    publicUrl: "https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/r/rfq_example",
+    logoUrl: "https://cdn.example.test/ada-logo.png",
+  });
+  assert("a saved image logo renders and a webpage logo does not", withLogo.html.includes("ada-logo.png") && rfqEmailLogoUrl("https://example.test/not-a-file") === null);
+  assert("mail does not point at the hardening alias", !withLogo.html.includes("hardening-stage-2a-security") && withLogo.html.includes("quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app"));
+  const mixed = [
+    "Doors: Supply and hang 4 prehung internal doors, including hardware.",
+    "Flooring: Lay 18 m² vinyl plank to the living room. Exclude the kitchen.",
+    "Walls: Line and stop the new internal walls with 10 mm plasterboard.",
+    "Ceilings: Install plasterboard ceilings to the living room, 22 m².",
+    "Cladding: Supply and fix 25 m² vertical cedar cladding to the north elevation.",
+  ].join("\n");
+  const vague = selectWorkAreaScope({
+    areaType: "custom",
+    areaName: "Miscellaneous",
+    areaConfirmed: true,
+    brief: mixed,
+    summary: "",
+    description: "",
+    items: [{ id: "m", title: "Materials", description: "" }, { id: "e", title: "EXPLICIT: whole project", description: mixed }],
+    facts: [],
+    notes: [],
+  });
+  assert("a vague area does not copy the mixed brief", vague.fallback === NO_RELIABLE_SCOPE && vague.facts.every((fact) => !fact.text.includes("vinyl")) && vague.suggestions.length === 0);
+  for (const area of [
+    { type: "doors", name: "Doors", own: "internal doors", other: "vinyl plank" },
+    { type: "flooring", name: "Flooring", own: "vinyl plank", other: "cedar cladding" },
+    { type: "internal_walls", name: "Walls", own: "internal walls", other: "vinyl plank" },
+    { type: "ceilings", name: "Ceilings", own: "plasterboard ceilings", other: "cedar cladding" },
+    { type: "cladding", name: "Cladding", own: "cedar cladding", other: "internal doors" },
+  ]) {
+    const selected = selectWorkAreaScope({
+      areaType: area.type,
+      areaName: area.name,
+      areaConfirmed: true,
+      brief: mixed,
+      summary: "",
+      description: "",
+      items: [],
+      facts: [],
+      notes: [],
+    });
+    const scope = selected.facts.filter((fact) => fact.field === "scope").map((fact) => fact.text).join("\n");
+    const measures = selected.facts.filter((fact) => fact.field === "measurements").map((fact) => fact.text).join("\n");
+    assert(`${area.name} draft stays on its own scope`, scope.includes(area.own) && !scope.includes(area.other) && !scope.includes(mixed));
+    if (area.type === "cladding") assert("cladding quantity is separate from the other trades", measures.includes("25 m²") && !measures.includes("18 m²"));
+    if (area.type === "ceilings") assert("ceilings quantity is separate from cladding", measures.includes("22 m²") && !measures.includes("25 m²"));
+  }
   assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));
   assert("scope change is not an ordinary answer", questions.includes("SCOPE_CHANGE") && actions.includes("SCOPE_CHANGE"));
   assert("questions notify editors only", questions.includes("rfq_question") && questions.includes("'owner', 'admin', 'estimator'") && !questions.includes("'viewer'"));

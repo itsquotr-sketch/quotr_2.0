@@ -1,5 +1,6 @@
 import { roundMoney } from "@/lib/commercial-engine/core/money";
 import type { DraftSource } from "@/lib/rfqs/draft-compose";
+import type { ScheduleSuggestion } from "@/lib/rfqs/scope-selection";
 
 export const SCHEDULE_UNITS = ["m2", "m", "item", "hour", "lump_sum"] as const;
 export const SCHEDULE_ROLES = ["required", "optional", "alternative"] as const;
@@ -98,10 +99,26 @@ export function scheduleExtended(unit: ScheduleUnit, quantity: number | null, un
   return roundMoney((quantity ?? 0) * unitPrice);
 }
 
+export function rowFromSuggestion(suggestion: ScheduleSuggestion): ScheduleDraftRow {
+  const measured = suggestion.confidence === "check" && suggestion.quantity.trim().length > 0;
+  return {
+    id: crypto.randomUUID(),
+    scope: suggestion.title,
+    specification: suggestion.specification,
+    quantity: suggestion.unit === "lump_sum" ? "" : suggestion.quantity,
+    unit: suggestion.unit,
+    role: "required",
+    quantitySource: measured
+      ? `From ${suggestion.source}. Confirm this quantity before sending. It was not taken from an Estimate line.`
+      : null,
+    quantityConfirmed: !measured,
+  };
+}
+
 export function scheduleRowsFromJobDetails(sources: DraftSource[]): ScheduleDraftRow[] {
   return sources.flatMap((source) => {
     const text = source.text.trim();
-    if (text.length < 3) return [];
+    if (!specificScheduleText(text)) return [];
     const measured = source.field === "measurements" ? parseMeasuredQuantity(text) : null;
     return [{
       id: crypto.randomUUID(),
@@ -114,6 +131,14 @@ export function scheduleRowsFromJobDetails(sources: DraftSource[]): ScheduleDraf
       quantityConfirmed: false,
     }];
   });
+}
+
+function specificScheduleText(text: string): boolean {
+  if (text.length < 3 || text.length > 80) return false;
+  if (/\bEXPLICIT\s*:/.test(text)) return false;
+  if (/^(materials?|labour|labor)$/i.test(text)) return false;
+  if (text.split(/\s+/).length > 12) return false;
+  return true;
 }
 
 function parseMeasuredQuantity(text: string): { quantity: string; unit: ScheduleUnit } | null {
