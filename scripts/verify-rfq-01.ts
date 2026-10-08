@@ -245,7 +245,30 @@ function staticMain() {
     const scope = selected.facts.filter((fact) => fact.field === "scope").map((fact) => fact.text).join("\n");
     const measures = selected.facts.filter((fact) => fact.field === "measurements").map((fact) => fact.text).join("\n");
     assert(`${area.name} draft stays on its own scope`, scope.includes(area.own) && !scope.includes(area.other) && !scope.includes(mixed));
-    if (area.type === "cladding") assert("cladding quantity is separate from the other trades", measures.includes("25 m²") && !measures.includes("18 m²"));
+    if (area.type === "cladding") {
+      assert("cladding quantity is separate from the other trades", measures.includes("25 m²") && !measures.includes("18 m²"));
+      const ownedItem = selectWorkAreaScope({
+        areaType: "cladding",
+        areaName: "Cladding",
+        areaConfirmed: true,
+        brief: mixed,
+        summary: "",
+        description: "",
+        items: [
+          { id: "cedar", title: "Vertical cedar boards", description: "North elevation boards only" },
+          { id: "materials", title: "Materials", description: "" },
+          { id: "other", title: "Vinyl plank to the kitchen", description: "" },
+        ],
+        facts: [],
+        notes: [],
+      });
+      assert(
+        "a recorded cladding item is suggested without copying other trades",
+        ownedItem.suggestions.some((item) => item.title === "Vertical cedar boards")
+          && ownedItem.suggestions.every((item) => item.title !== "Materials" && !item.title.toLowerCase().includes("vinyl"))
+          && !ownedItem.facts.some((fact) => fact.text.toLowerCase().includes("vinyl"))
+      );
+    }
     if (area.type === "ceilings") assert("ceilings quantity is separate from cladding", measures.includes("22 m²") && !measures.includes("25 m²"));
   }
   assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));

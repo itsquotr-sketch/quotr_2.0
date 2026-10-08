@@ -105,10 +105,17 @@ export function selectWorkAreaScope(input: ScopeSelectionInput): ScopeSelection 
         continue;
       }
       const combined = [title, description].filter(Boolean).join(": ");
-      if (!reliableText(combined, brief, owned)) {
+      if (mentionsOtherTrade(combined, owned) || mixedWallsAndCeilings(combined)) {
         withheld.push({
           source: title || "Captured specification",
-          reason: "This note is not tied to the selected Work Area.",
+          reason: "This item mentions work outside the selected Work Area.",
+        });
+        continue;
+      }
+      if (brief.trim() && combined.length > 240 && combined.length > brief.trim().length * 0.7) {
+        withheld.push({
+          source: title || "Captured specification",
+          reason: "This item repeats more than the selected Work Area.",
         });
         continue;
       }
