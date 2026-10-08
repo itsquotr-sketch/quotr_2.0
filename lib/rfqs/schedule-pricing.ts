@@ -19,10 +19,14 @@ import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const FAILED = "Could not apply those items to pricing. Nothing was changed.";
 
-function coverageReady(coverage: ScheduleCoverageInput, allowedItemIds: string[]): boolean {
-  if (coverage.decision === "covered_by_item") return Boolean(coverage.itemId && allowedItemIds.includes(coverage.itemId));
+function coverageReady(coverage: ScheduleCoverageInput, allowedItemIds: string[], kind: "qualification" | "exclusion"): boolean {
+  if (coverage.decision === "covered_by_item") {
+    return Boolean(coverage.itemId && allowedItemIds.includes(coverage.itemId) && coverage.note.trim().length >= 3);
+  }
   if (coverage.decision === "client_exclusion") return coverage.wording.trim().length >= 3;
-  return coverage.note.trim().length >= 3;
+  if (kind === "qualification" && coverage.decision === "client_condition") return coverage.wording.trim().length >= 3;
+  if (kind === "qualification" && coverage.decision === "internal_plan") return coverage.note.trim().length >= 3;
+  return false;
 }
 
 function coveragePayload(coverage: ScheduleCoverageInput | null) {
@@ -35,7 +39,7 @@ function coveragePayload(coverage: ScheduleCoverageInput | null) {
   };
 }
 
-export type ScheduleCoverageDecision = "covered_by_item" | "client_exclusion" | "builder_responsibility";
+export type ScheduleCoverageDecision = "covered_by_item" | "client_exclusion" | "client_condition" | "internal_plan";
 
 export type ScheduleCoverageInput = {
   decision: ScheduleCoverageDecision;
@@ -118,7 +122,7 @@ function moneyError(code: string | undefined): string {
     case "QUALIFICATION":
       return "Acknowledge the qualification on each qualified line before using it.";
     case "COVERAGE":
-      return "Choose how the supplier condition is covered. An acknowledgement does not decide the client scope.";
+      return "Choose how this supplier condition is handled. A private note does not decide the client scope.";
     case "ALTERNATIVE":
       return "An alternative cannot be added beside its base item until you review that conflict.";
     case "SOURCE":
@@ -392,7 +396,7 @@ async function buildSchedulePreview(
   const exclusion = String(response.data.excluded_scope ?? "").trim();
   if (exclusion && !input.responseCoverage) return { ok: false, error: moneyError("COVERAGE") };
   if (!exclusion && input.responseCoverage) return { ok: false, error: moneyError("COVERAGE") };
-  if (input.responseCoverage && !coverageReady(input.responseCoverage, sourceItems.filter((item) => item.visible).map((item) => item.id))) {
+  if (input.responseCoverage && !coverageReady(input.responseCoverage, sourceItems.filter((item) => item.visible).map((item) => item.id), "exclusion")) {
     return { ok: false, error: moneyError("COVERAGE") };
   }
   const selectedIds = new Set<string>();
@@ -424,7 +428,7 @@ async function buildSchedulePreview(
       }
     }
     const coverIds = sourceItems.filter((candidate) => candidate.visible && !targets.includes(candidate.id)).map((candidate) => candidate.id);
-    if (qualified && (!row.coverage || !coverageReady(row.coverage, coverIds))) {
+    if (qualified && (!row.coverage || !coverageReady(row.coverage, coverIds, "qualification"))) {
       return { ok: false, error: moneyError("COVERAGE") };
     }
     if (!qualified && row.coverage) return { ok: false, error: moneyError("COVERAGE") };

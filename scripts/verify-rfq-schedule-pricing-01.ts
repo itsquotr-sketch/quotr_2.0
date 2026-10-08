@@ -7,12 +7,13 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import {
   PREVIEW_SUPABASE_PROJECT_REF,
   PRODUCTION_SUPABASE_PROJECT_REF,
 } from "../lib/deployment/environment";
 import { generateRfqAccessToken, hashRfqAccessToken } from "../lib/rfqs/token";
+import { loadScheduleScopeReview } from "../lib/rfqs/schedule-scope-gaps";
 
 function assert(label: string, ok: boolean, detail = "") {
   console.log(ok ? "PASS" : "FAIL", label, detail);
@@ -46,6 +47,7 @@ function cents(value: unknown): number {
 function staticMain() {
   const sql = read("supabase/migrations/102_rfq_schedule_pricing.sql");
   const scope = read("supabase/migrations/103_rfq_schedule_scope_resolution.sql");
+  const commercial = read("supabase/migrations/104_rfq_schedule_commercial_scope.sql");
   const previous = read("supabase/migrations/101_rfq_schedule.sql");
   const head = read("scripts/verify-quote-transaction-01.ts");
   const pricing = read("lib/pricing/actions.ts");
@@ -55,6 +57,7 @@ function staticMain() {
   assert("pricing edits consult schedule provenance", pricing.includes("rfq_schedule_pricing_applications"));
   assert("migration head check is unchanged", head.includes('migrations.at(-1) === "080_project_document_delete.sql"'));
   assert("a qualification needs a coverage decision", scope.includes("COVERAGE") && scope.includes("resolve_rfq_schedule_gap_v1"));
+  assert("a private note does not clear a required row", commercial.includes("A private note does not clear a required row") && commercial.includes("client_condition") && commercial.includes("on delete set null"));
   assert("replaced lines stay out of the active pricing list", read("components/pricing/PricingWorkspace.tsx").includes("isReplacedSubcontractPlaceholder"));
 }
 
@@ -265,8 +268,10 @@ async function liveMain() {
     }).select("id").single();
     if (wallItem.error || metreItem.error || foreignItem.error) throw new Error(wallItem.error?.message ?? metreItem.error?.message ?? "items");
 
-    const responseCoverage = { decision: "builder_responsibility", note: "Painting remains the builder's work." };
-    const itemCoverage = { decision: "client_exclusion", wording: "The client quote excludes weekday site access." };
+    const conditionWording = "Pricing assumes weekday site access and a clear work area.";
+    const exclusionWording = "Painting is not included in this quote.";
+    const responseCoverage = { decision: "client_exclusion", wording: exclusionWording };
+    const itemCoverage = { decision: "client_condition", wording: conditionWording };
     function row(scheduleId: string, extra: Record<string, unknown>) {
       const merged: Record<string, unknown> = {
         schedule_item_id: scheduleId,
@@ -358,14 +363,39 @@ async function liveMain() {
     const wallAllowance = wall.rows?.[0]?.allowanceItemId;
     const replaced = await admin.from("pricing_items").select("total_cost, total_sell, visible_on_quote").eq("id", wallItem.data.id).single();
     assert("the replaced item is not left as charged client scope", cents(replaced.data?.total_cost) === 0 && cents(replaced.data?.total_sell) === 0 && replaced.data?.visible_on_quote === false);
-    const gap = await owner.rpc("resolve_rfq_schedule_gap_v1", {
+    const noteOnly = await owner.rpc("resolve_rfq_schedule_gap_v1", {
       p_payload: {
         pricing_document_id: document.data.id, schedule_item_id: items[2].id, response_id: complete.data.responseId,
         decision: "builder_responsibility", note: "Site set-up stays with the builder until its price is used.",
       },
     });
-    const gapRow = await admin.from("rfq_schedule_scope_resolutions").select("decision").eq("schedule_item_id", items[2].id).is("superseded_at", null).maybeSingle();
-    assert("an unpriced required row can be resolved without a zero line", (gap.data as { ok?: boolean })?.ok === true && gapRow.data?.decision === "builder_responsibility", JSON.stringify(gap.data ?? gap.error));
+    const noteRow = await admin.from("rfq_schedule_scope_resolutions").select("id").eq("schedule_item_id", items[2].id).is("superseded_at", null);
+    assert("a private note does not clear a required row", (noteOnly.data as { error?: string })?.error === "COVERAGE" && (noteRow.data ?? []).length === 0, JSON.stringify(noteOnly.data ?? noteOnly.error));
+    const coverItem = await admin.from("pricing_items").insert({
+      org_id: orgA, pricing_document_id: document.data.id, project_id: projectId, work_area_id: area.data.id,
+      item_type: "allowance", delivery_method: "allowance", internal_label: "Builder site cover", client_label: "Builder site cover",
+      quantity: 1, unit: "lump_sum", unit_cost: 15, unit_sell: 30, total_cost: 15, total_sell: 30,
+      gross_profit: 15, margin_percent: 50, markup_percent: 100, sort_order: 8, visible_on_quote: true,
+    }).select("id").single();
+    const beforeCover = await admin.from("pricing_documents").select("subtotal_cost, subtotal_sell").eq("id", document.data.id).single();
+    const gap = await owner.rpc("resolve_rfq_schedule_gap_v1", {
+      p_payload: {
+        pricing_document_id: document.data.id, schedule_item_id: items[2].id, response_id: complete.data.responseId,
+        decision: "covered_by_item", item_id: coverItem.data?.id, note: "The builder site cover already includes this set-up.",
+      },
+    });
+    const afterCover = await admin.from("pricing_documents").select("subtotal_cost, subtotal_sell").eq("id", document.data.id).single();
+    const gapRow = await admin.from("rfq_schedule_scope_resolutions").select("decision, coverage_item_id, internal_note").eq("schedule_item_id", items[2].id).is("superseded_at", null).maybeSingle();
+    const coverCount = await admin.from("pricing_items").select("id", { count: "exact", head: true }).eq("pricing_document_id", document.data.id).eq("client_label", "Builder site cover");
+    assert("linking an existing item does not add the supplier price", (gap.data as { ok?: boolean })?.ok === true && gapRow.data?.decision === "covered_by_item" && gapRow.data?.coverage_item_id === coverItem.data?.id && (coverCount.count ?? 0) === 1 && cents(beforeCover.data?.subtotal_cost) === cents(afterCover.data?.subtotal_cost) && cents(beforeCover.data?.subtotal_sell) === cents(afterCover.data?.subtotal_sell), JSON.stringify({ gap: gap.data ?? gap.error, before: beforeCover.data, after: afterCover.data }));
+    await admin.from("pricing_items").update({ visible_on_quote: false }).eq("id", coverItem.data?.id);
+    const hiddenReview = await loadScheduleScopeReview(admin, orgA, document.data.id);
+    assert("hiding the linked item reopens the gap", hiddenReview.unresolved.some((item) => item.scheduleItemId === items[2].id), JSON.stringify(hiddenReview.unresolved));
+    await admin.from("pricing_items").update({ visible_on_quote: true }).eq("id", coverItem.data?.id);
+    const removed = await admin.from("pricing_items").delete().eq("id", coverItem.data?.id);
+    const removedRow = await admin.from("rfq_schedule_scope_resolutions").select("coverage_item_id, decision").eq("schedule_item_id", items[2].id).is("superseded_at", null).maybeSingle();
+    const removedReview = await loadScheduleScopeReview(admin, orgA, document.data.id);
+    assert("deleting the linked item reopens the gap", !removed.error && removedRow.data?.coverage_item_id == null && removedReview.unresolved.some((item) => item.scheduleItemId === items[2].id), JSON.stringify({ removed: removed.error?.message, row: removedRow.data, unresolved: removedReview.unresolved }));
     const panels = await apply(complete.data.responseId, [row(items[1].id, { client_label: "Access panels", total_cost: 75.99, total_sell: 100 })]);
     const setup = await apply(complete.data.responseId, [row(items[2].id, { client_label: "Site set-up", total_cost: 400, total_sell: 500 })]);
     assert("panels and the lump sum are separate items", panels.ok === true && cents(panels.rows?.[0]?.costExGst) === 7599 && setup.ok === true && cents(setup.rows?.[0]?.costExGst) === 40000, JSON.stringify({ panels, setup }));
@@ -383,7 +413,9 @@ async function liveMain() {
     assert("selected rows are not copied as one 1080.99 allowance", !costs.includes(108099) && costs.includes(60500) && costs.includes(7599) && costs.includes(40000) && costs.includes(2000) && costs.includes(7500), JSON.stringify(charged.data));
     const wallCopy = (charged.data ?? []).find((item) => item.client_label === "Wall lining");
     assert("client labels do not carry the supplier", labels.every((label) => !String(label).includes(suffix)) && (charged.data ?? []).every((item) => !String(item.notes_internal).includes("Complete Co") && !String(item.client_description).includes("Subject to weekday access") && !String(item.client_description).includes("Painting")), JSON.stringify(labels));
-    assert("the builder exclusion is the client wording", String(wallCopy?.client_description).includes("The client quote excludes weekday site access."), wallCopy?.client_description ?? "");
+    const wallProvenance = await admin.from("rfq_schedule_pricing_applications").select("coverage_decision, coverage_wording, response_exclusion_decision, response_exclusion_wording").eq("schedule_item_id", items[0].id).is("superseded_at", null).maybeSingle();
+    assert("the weekday qualification is the approved condition", wallProvenance.data?.coverage_decision === "client_condition" && wallProvenance.data?.coverage_wording === conditionWording && !String(wallCopy?.client_description ?? "").includes("Excluded:") && !String(wallCopy?.client_description ?? "").includes(conditionWording), JSON.stringify(wallProvenance.data ?? wallCopy?.client_description));
+    assert("the supplier exclusion keeps the builder's exclusion wording", wallProvenance.data?.response_exclusion_decision === "client_exclusion" && wallProvenance.data?.response_exclusion_wording === exclusionWording && !String(wallCopy?.client_description ?? "").includes(exclusionWording), JSON.stringify(wallProvenance.data));
     const repeat = await apply(complete.data.responseId, [row(items[0].id, {
       mode: "replace", replaced_item_ids: [wallItem.data.id], client_label: "Wall lining",
       sell_treatment: "keep", total_cost: 605, total_sell: 900, qualification_acknowledged: "true",

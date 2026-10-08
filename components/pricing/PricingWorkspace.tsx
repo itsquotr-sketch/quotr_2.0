@@ -536,7 +536,7 @@ export function PricingWorkspace({
           review={scopeReview}
           pricingDocumentId={document.id}
           canEdit={canEditPricing}
-          coveringItems={activeItems.filter((item) => item.visible_on_quote).map((item) => ({ id: item.id, label: item.client_label }))}
+          coveringItems={activeItems.filter((item) => item.visible_on_quote).map((item) => ({ id: item.id, label: item.client_label, cost: item.total_cost, sell: item.total_sell }))}
         />
       ) : null}
 

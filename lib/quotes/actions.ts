@@ -731,6 +731,10 @@ export async function createQuoteFromPricing(input: {
     ...quoteFields.exclusions,
     ...scopeReview.clientExclusions.filter((line) => !quoteFields.exclusions.includes(line)),
   ];
+  quoteFields.assumptions = [
+    ...quoteFields.assumptions,
+    ...scopeReview.clientConditions.filter((line) => !quoteFields.assumptions.includes(line)),
+  ];
 
   const created = await runQuoteTxn(supabase, INSERT_DRAFT_QUOTE_RPC, {
     p_payload: {

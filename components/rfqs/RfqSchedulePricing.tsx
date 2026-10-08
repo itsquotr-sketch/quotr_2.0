@@ -64,6 +64,7 @@ function CoverageFields({
   note,
   itemId,
   targets,
+  kind,
   onChange,
 }: {
   decision: ScheduleCoverageDecision | "";
@@ -71,40 +72,63 @@ function CoverageFields({
   note: string;
   itemId: string;
   targets: Array<{ id: string; label: string }>;
+  kind: "qualification" | "exclusion";
   onChange: (patch: { decision?: ScheduleCoverageDecision | ""; wording?: string; note?: string; itemId?: string }) => void;
 }) {
+  const choices: Array<[ScheduleCoverageDecision, string, string]> = kind === "qualification"
+    ? [
+        ["client_condition", "Client-facing condition or assumption", "Example: Pricing assumes weekday site access and a clear work area."],
+        ["client_exclusion", "Client-facing exclusion of work", "Example: Painting is not included in this quote."],
+        ["covered_by_item", "Covered by a named Pricing item", "You confirm that item includes this. Quotr does not compare the two scopes."],
+        ["internal_plan", "Documented plan, kept off the quote", "Use this for a condition the client does not need to read. It does not price missing work."],
+      ]
+    : [
+        ["client_exclusion", "Client-facing exclusion of work", "Example: Painting is not included in this quote."],
+        ["covered_by_item", "Covered by a named Pricing item", "You confirm that item includes this work. Quotr does not compare the two scopes."],
+      ];
   return (
     <fieldset className="grid gap-2">
-      <legend>How is this condition covered?</legend>
-      {([
-        ["covered_by_item", "Another Pricing item already covers it"],
-        ["client_exclusion", "The client quote will exclude it"],
-        ["builder_responsibility", "The builder will cover it, privately"],
-      ] as const).map(([value, label]) => (
+      <legend>{kind === "qualification" ? "How should the client read this condition?" : "How should the client read this excluded work?"}</legend>
+      {choices.map(([value, label, hint]) => (
         <label key={value} className="flex min-h-11 items-start gap-2">
           <input type="radio" className="mt-1" checked={decision === value} onChange={() => onChange({ decision: value })} />
-          <span>{label}</span>
+          <span className="break-words">
+            {label}
+            <span className="block text-muted-foreground">{hint}</span>
+          </span>
         </label>
       ))}
       {decision === "covered_by_item" ? (
-        <label className="grid gap-1">
-          Covering Pricing item
-          <select className="h-11 min-h-11 rounded-md border border-border bg-background px-3" value={itemId} onChange={(event) => onChange({ itemId: event.target.value })}>
-            <option value="">Choose an item</option>
-            {targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
-          </select>
-        </label>
+        <>
+          <label className="grid gap-1">
+            Pricing item
+            <select className="h-11 min-h-11 rounded-md border border-border bg-background px-3" value={itemId} onChange={(event) => onChange({ itemId: event.target.value })}>
+              <option value="">Choose an item</option>
+              {targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            Why this item covers it
+            <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={note} onChange={(event) => onChange({ note: event.target.value })} aria-label="Why this item covers it" />
+          </label>
+        </>
       ) : null}
       {decision === "client_exclusion" ? (
         <label className="grid gap-1">
           Client exclusion wording
-          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={wording} onChange={(event) => onChange({ wording: event.target.value })} />
+          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={wording} onChange={(event) => onChange({ wording: event.target.value })} aria-label="Client exclusion wording" />
         </label>
       ) : null}
-      {decision === "builder_responsibility" ? (
+      {decision === "client_condition" ? (
         <label className="grid gap-1">
-          Internal explanation
-          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={note} onChange={(event) => onChange({ note: event.target.value })} />
+          Client condition wording
+          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={wording} onChange={(event) => onChange({ wording: event.target.value })} aria-label="Client condition wording" />
+        </label>
+      ) : null}
+      {decision === "internal_plan" ? (
+        <label className="grid gap-1">
+          Documented plan
+          <textarea className="min-h-20 rounded-md border border-border bg-background px-3 py-2" value={note} onChange={(event) => onChange({ note: event.target.value })} aria-label="Documented plan" />
         </label>
       ) : null}
     </fieldset>
@@ -157,8 +181,11 @@ export function RfqSchedulePricing({
   useEffect(() => {
     const match = /^rfq-response-([0-9a-f-]{36})-item-([0-9a-f-]{36})$/i.exec(window.location.hash.replace(/^#/, ""));
     if (!match || !submittedIds.split(",").includes(match[1])) return;
-    setResponseId(match[1]);
-    setOpen(true);
+    const id = match[1];
+    queueMicrotask(() => {
+      setResponseId(id);
+      setOpen(true);
+    });
   }, [submittedIds]);
   useEffect(() => {
     if (!open) return;
@@ -311,6 +338,7 @@ export function RfqSchedulePricing({
                 <p className="text-xs text-muted-foreground">Private supplier exclusion</p>
                 <p className="break-words">{response.excludedScope}</p>
                 <CoverageFields
+                  kind="exclusion"
                   decision={responseDecision}
                   wording={responseWording}
                   note={responseNote}
@@ -432,6 +460,7 @@ export function RfqSchedulePricing({
                             <p className="break-words font-medium">{state.clientLabel}</p>
                             <p className="break-words">{item.scope}</p>
                             {state.coverageDecision === "client_exclusion" && state.coverageWording.trim() ? <p className="break-words">Excluded: {state.coverageWording}</p> : null}
+                            {state.coverageDecision === "client_condition" && state.coverageWording.trim() ? <p className="break-words">{state.coverageWording}</p> : null}
                           </div>
                           <label className="flex min-h-11 items-start gap-2 md:col-span-2">
                             <input type="checkbox" className="mt-1" checked={state.qualificationAcknowledged} onChange={(event) => updateRow(item.id, item.scope, { qualificationAcknowledged: event.target.checked })} />
@@ -439,6 +468,7 @@ export function RfqSchedulePricing({
                           </label>
                           <div className="md:col-span-2">
                             <CoverageFields
+                              kind="qualification"
                               decision={state.coverageDecision}
                               wording={state.coverageWording}
                               note={state.coverageNote}
@@ -492,7 +522,7 @@ export function RfqSchedulePricing({
                     {row.qualification ? (
                       <div className="grid gap-2 md:grid-cols-2">
                         <p className="break-words"><span className="text-muted-foreground">Private qualification: </span>{row.qualification}</p>
-                        <p className="break-words"><span className="text-muted-foreground">Client scope: </span>{rows[row.scheduleItemId]?.clientLabel}. {rows[row.scheduleItemId]?.coverageDecision === "client_exclusion" ? `Excluded: ${rows[row.scheduleItemId]?.coverageWording}` : "No client exclusion from this qualification."}</p>
+                        <p className="break-words"><span className="text-muted-foreground">Client scope: </span>{rows[row.scheduleItemId]?.clientLabel}. {rows[row.scheduleItemId]?.coverageDecision === "client_exclusion" ? `Excluded: ${rows[row.scheduleItemId]?.coverageWording}` : rows[row.scheduleItemId]?.coverageDecision === "client_condition" ? rows[row.scheduleItemId]?.coverageWording : "No client wording from this qualification."}</p>
                       </div>
                     ) : null}
                     <p>Supplier cost ex GST: {money(row.cost)}</p>
