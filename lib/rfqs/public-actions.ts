@@ -27,6 +27,7 @@ function publicError(code: string | undefined): string {
   if (code === "STALE_SCHEDULE") return "This request was replaced. Open the latest link before pricing it.";
   if (code === "NOT_PRICED_REASON") return "Give a reason for each required item you cannot price.";
   if (code === "INCOMPLETE") return "Price or mark every required item before submitting.";
+  if (code === "INVALID_INPUT") return "Enter a price for each item you chose to price. A blank price is not zero.";
   if (code === "DUPLICATE_ROW") return "Each schedule item can only be answered once.";
   return UNAVAILABLE;
 }
