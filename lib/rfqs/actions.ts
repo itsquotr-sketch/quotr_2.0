@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
 import { buildRfqAnswerEmail, buildRfqDeliveryEmail, rfqDeliveryFromHeader, rfqEmailLogoUrl } from "@/lib/rfqs/email";
 import { draftRfqJobFacts } from "@/lib/rfqs/draft-facts";
+import { scheduleSendProblems } from "@/lib/rfqs/schedule";
 import { sharedAnswerLeak } from "@/lib/rfqs/draft-privacy";
 import {
   generateRfqAccessToken,
@@ -293,6 +294,10 @@ export async function sendRfq(input: {
 }): Promise<Ok<{ id: string; failed: number }> | Fail> {
   if (input.previewApproved !== true) {
     return { ok: false, error: "Review the request the recipient will see, then approve it before sending." };
+  }
+  if (input.pricingRequest === "schedule") {
+    const scheduleError = scheduleSendProblems(input.schedule ?? [], input.measurementNotes)[0];
+    if (scheduleError) return { ok: false, error: scheduleError };
   }
   const saved = await saveRfqDraft(input);
   if (!saved.ok) return saved;

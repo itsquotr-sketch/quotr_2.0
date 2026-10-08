@@ -77,7 +77,60 @@ export function scheduleRowProblems(row: ScheduleDraftRow): string | null {
   return null;
 }
 
-export function scheduleProblems(rows: ScheduleDraftRow[]): string[] {
+export function parseScheduleMeasure(text: string): { value: string; unit: ScheduleUnit; label: string } | null {
+  const lump = /\blump\s*sum\b/i.test(text);
+  const area = text.match(/(\d+(?:\.\d+)?)\s*(m²|m2|sqm)(?!\w)/i);
+  if (area) return { value: area[1], unit: "m2", label: `${area[1]} m²` };
+  const each = text.match(/(\d+(?:\.\d+)?)\s*(?:each|items?|nr)\b/i);
+  if (each) return { value: each[1], unit: "item", label: `${each[1]} item` };
+  const hour = text.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b/i);
+  if (hour) return { value: hour[1], unit: "hour", label: `${hour[1]} hour` };
+  const length = text.match(/(\d+(?:\.\d+)?)\s*(?:linear\s+)?m(?!m|²|2)\b/i);
+  if (length) return { value: length[1], unit: "m", label: `${length[1]} m` };
+  if (lump) return { value: "", unit: "lump_sum", label: "lump sum" };
+  return null;
+}
+
+/** A number recorded in one unit must not be sent under a different unit. */
+export function mismatchedScheduleQuantity(quantity: string, unit: ScheduleUnit, measurementText: string): string | null {
+  const value = quantity.trim();
+  if (!value || unit === "lump_sum") return null;
+  const recorded = measurementText.match(/(\d+(?:\.\d+)?)\s*(m²|m2|sqm|linear\s+m|m|each|items?|nr|hours?|hrs?)(?!\w)/gi) ?? [];
+  for (const token of recorded) {
+    const measured = parseScheduleMeasure(token);
+    if (!measured || measured.unit === "lump_sum" || measured.value !== value || measured.unit === unit) continue;
+    return `${measured.label} is recorded for this Work Area. It cannot be sent as ${value} ${scheduleUnitLabel(unit)}. Enter the quantity for this unit, or change the unit.`;
+  }
+  return null;
+}
+
+function isScheduleUnit(value: string): value is ScheduleUnit {
+  return (SCHEDULE_UNITS as readonly string[]).includes(value);
+}
+
+/** Server-side send gate. Confirmation is a composer control; the stored notes still reject a unit that does not match the recorded measure. */
+export function scheduleSendProblems(
+  rows: Array<{ id: string; scope: string; specification: string; quantity: string; unit: string; role: string }>,
+  measurementNotes: string,
+): string[] {
+  const drafts: ScheduleDraftRow[] = [];
+  for (const row of rows) {
+    if (!isScheduleUnit(row.unit)) return ["Choose a unit for each item."];
+    drafts.push({
+      id: row.id,
+      scope: row.scope,
+      specification: row.specification,
+      quantity: row.quantity,
+      unit: row.unit,
+      role: row.role === "optional" || row.role === "alternative" ? row.role : "required",
+      quantitySource: null,
+      quantityConfirmed: true,
+    });
+  }
+  return scheduleProblems(drafts, measurementNotes);
+}
+
+export function scheduleProblems(rows: ScheduleDraftRow[], measurementNotes = ""): string[] {
   const problems: string[] = [];
   if (!rows.some((row) => row.role === "required")) problems.push("Add at least one required item. Alternatives stay out of the base total.");
   const seen = new Set<string>();
@@ -85,6 +138,8 @@ export function scheduleProblems(rows: ScheduleDraftRow[]): string[] {
     const key = row.scope.trim().toLowerCase();
     if (key && seen.has(key)) problems.push("Two items use the same scope. Give each item its own wording.");
     if (key) seen.add(key);
+    const mismatch = mismatchedScheduleQuantity(row.quantity, row.unit, measurementNotes);
+    if (mismatch) problems.push(mismatch);
     const problem = scheduleRowProblems(row);
     if (problem) problems.push(problem);
   }
@@ -101,6 +156,7 @@ export function scheduleExtended(unit: ScheduleUnit, quantity: number | null, un
 
 export function rowFromSuggestion(suggestion: ScheduleSuggestion): ScheduleDraftRow {
   const measured = suggestion.confidence === "check" && suggestion.quantity.trim().length > 0;
+  const needsEntry = !measured && suggestion.unit !== "lump_sum" && !suggestion.quantity.trim();
   return {
     id: crypto.randomUUID(),
     scope: suggestion.title,
@@ -110,8 +166,10 @@ export function rowFromSuggestion(suggestion: ScheduleSuggestion): ScheduleDraft
     role: "required",
     quantitySource: measured
       ? `From ${suggestion.source}. Confirm this quantity before sending. It was not taken from an Estimate line.`
-      : null,
-    quantityConfirmed: !measured,
+      : needsEntry
+        ? "No quantity was recorded for this item. Enter the quantity for this unit. An area or length from the Work Area is not copied onto a count."
+        : null,
+    quantityConfirmed: !(measured || needsEntry),
   };
 }
 

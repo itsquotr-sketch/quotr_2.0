@@ -1,5 +1,5 @@
 import type { DraftFact } from "@/lib/rfqs/draft-compose";
-import type { ScheduleUnit } from "@/lib/rfqs/schedule";
+import { parseScheduleMeasure, type ScheduleUnit } from "@/lib/rfqs/schedule";
 
 export const NO_RELIABLE_SCOPE =
   "No reliable scope detail for this Work Area was found; write or confirm the requested scope";
@@ -78,8 +78,8 @@ export function selectWorkAreaScope(input: ScopeSelectionInput): ScopeSelection 
       text: passage,
       uncertain: false,
     });
-    const quantity = quantityNote(passage);
-    if (quantity) {
+    const quantity = parseScheduleMeasure(passage);
+    if (quantity && quantity.unit !== "lump_sum") {
       facts.push({
         id: `brief-measure-${facts.length}`,
         field: "measurements",
@@ -173,12 +173,46 @@ export function selectWorkAreaScope(input: ScopeSelectionInput): ScopeSelection 
     return true;
   });
   const scopeFacts = uniqueFacts.filter((fact) => fact.field === "scope" && fact.text.trim().length >= 12);
+  const measuredSuggestions = areaMeasureSuggestions(uniqueFacts, input.areaName.trim() || "This Work Area");
+  const suggestionKeys = new Set(suggestions.map((item) => `${item.unit}:${item.quantity}:${item.title.toLowerCase()}`));
+  for (const suggestion of measuredSuggestions) {
+    const key = `${suggestion.unit}:${suggestion.quantity}:${suggestion.title.toLowerCase()}`;
+    if (suggestionKeys.has(key)) continue;
+    suggestionKeys.add(key);
+    suggestions.push(suggestion);
+  }
   return {
     facts: uniqueFacts,
     suggestions,
     withheld,
     fallback: scopeFacts.length === 0 ? NO_RELIABLE_SCOPE : null,
   };
+}
+
+function areaMeasureSuggestions(facts: DraftFact[], areaName: string): ScheduleSuggestion[] {
+  const suggestions: ScheduleSuggestion[] = [];
+  const seen = new Set<string>();
+  for (const fact of facts) {
+    if (fact.field !== "measurements") continue;
+    const measured = parseScheduleMeasure(fact.text);
+    if (!measured || (measured.unit !== "m2" && measured.unit !== "m")) continue;
+    const key = `${measured.unit}:${measured.value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const kind = measured.unit === "m2" ? "area" : "length";
+    suggestions.push({
+      id: `measure-${fact.id}`,
+      title: `${areaName} ${kind}`,
+      specification: measured.unit === "m2"
+        ? "Priced by the recorded area. This is not a count of boards or other items."
+        : "Priced by the recorded length. This is not a count of individual items.",
+      quantity: measured.value,
+      unit: measured.unit,
+      source: "Work area measurement",
+      confidence: "check",
+    });
+  }
+  return suggestions;
 }
 
 function pushAreaText(
@@ -278,34 +312,20 @@ function mixedWallsAndCeilings(text: string): boolean {
   return /\bwalls?\b/i.test(text) && /\bceilings?\b/i.test(text);
 }
 
-function quantityNote(text: string): { label: string } | null {
-  const area = text.match(/(\d+(?:\.\d+)?)\s*(m²|m2|sqm)(?!\w)/i);
-  if (area) return { label: `${area[1]} m²` };
-  const length = text.match(/(\d+(?:\.\d+)?)\s*m(?!m)\b/i);
-  if (length) return { label: `${length[1]} m` };
-  return null;
-}
-
 function suggestionFromItem(id: string, title: string, description: string): ScheduleSuggestion | null {
   if (title.length < 3 || title.length > 80 || title.split(/\s+/).length > 12) return null;
   if (description.length > 180) return null;
-  const measured = quantityNote(`${title} ${description}`);
-  const unit = measured ? unitFrom(measured.label) : "item";
+  const measured = parseScheduleMeasure(`${title} ${description}`);
+  const unit: ScheduleUnit = measured?.unit ?? "item";
   return {
     id: `suggestion-${id}`,
     title,
     specification: description && description !== title ? description : "",
-    quantity: measured ? measured.label.split(" ")[0] ?? "" : "",
+    quantity: measured && measured.unit !== "lump_sum" ? measured.value : "",
     unit,
     source: "Captured specification",
-    confidence: measured ? "check" : "recorded",
+    confidence: measured && measured.unit !== "lump_sum" ? "check" : "recorded",
   };
-}
-
-function unitFrom(label: string): ScheduleUnit {
-  if (/m²|m2|sqm/i.test(label)) return "m2";
-  if (/\bm\b|lm/i.test(label)) return "m";
-  return "item";
 }
 
 function isGenericTitle(title: string): boolean {

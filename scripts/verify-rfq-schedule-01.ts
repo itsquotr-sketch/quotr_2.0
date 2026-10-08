@@ -76,6 +76,10 @@ function staticMain() {
   const invalid = row("Wall lining", "m2", "0", "required");
   const duplicate = [row("Same scope", "item", "1", "required"), row("Same scope", "item", "1", "optional")];
   assert("invalid quantity and duplicate scope are rejected before send", scheduleProblems([invalid]).length > 0 && scheduleProblems(duplicate).some((problem) => problem.includes("same scope")));
+  const mismatch = scheduleProblems([row("Vertical cedar boards", "item", "25", "required")], "25 m²");
+  assert("a measured area cannot be sent as the same number of items", mismatch.some((problem) => problem.includes("cannot be sent as 25 item")));
+  const send = read("lib/rfqs/actions.ts");
+  assert("send rejects a mismatched quantity before the mail is sent", send.includes("scheduleSendProblems"));
   const mail = buildRfqDeliveryEmail({
     builderName: "Ada Builders",
     contactName: "Bea",

@@ -163,8 +163,8 @@ export function RfqComposer({
     if (recipients.length === 0) problems.push({ id: "recipients", message: "Choose at least one business with an email contact." });
     if (recipients.some((recipient) => !recipient.contactId)) problems.push({ id: "recipients", message: "Each recipient needs an email contact." });
     if (pricingRequest === "schedule") {
-      for (const problem of scheduleProblems(rows)) {
-        const row = rows.find((item) => scheduleProblems([item]).includes(problem));
+      for (const problem of scheduleProblems(rows, measurementNotes)) {
+        const row = rows.find((item) => scheduleProblems([item], measurementNotes).includes(problem));
         problems.push({ id: row ? `schedule-${row.id}` : "schedule", message: problem });
       }
     }

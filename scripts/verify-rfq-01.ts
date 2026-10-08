@@ -18,6 +18,7 @@ import {
 } from "../lib/deployment/environment";
 import { composeJobDraft } from "../lib/rfqs/draft-compose";
 import { NO_RELIABLE_SCOPE, selectWorkAreaScope } from "../lib/rfqs/scope-selection";
+import { mismatchedScheduleQuantity, parseScheduleMeasure } from "../lib/rfqs/schedule";
 import { rfqEmailLogoUrl } from "../lib/rfqs/email";
 import { sharedAnswerLeak, withholdReason } from "../lib/rfqs/draft-privacy";
 import { buildRfqDeliveryEmail } from "../lib/rfqs/email";
@@ -262,15 +263,51 @@ function staticMain() {
         facts: [],
         notes: [],
       });
+      const boards = ownedItem.suggestions.find((item) => item.title === "Vertical cedar boards");
+      const area = ownedItem.suggestions.find((item) => item.title === "Cladding area");
       assert(
         "a recorded cladding item is suggested without copying other trades",
-        ownedItem.suggestions.some((item) => item.title === "Vertical cedar boards")
+        Boolean(boards)
           && ownedItem.suggestions.every((item) => item.title !== "Materials" && !item.title.toLowerCase().includes("vinyl"))
           && !ownedItem.facts.some((fact) => fact.text.toLowerCase().includes("vinyl"))
       );
+      assert(
+        "a board row does not inherit the cladding area as an item count",
+        boards?.quantity === "" && boards.unit === "item" && area?.quantity === "25" && area.unit === "m2"
+          && ownedItem.suggestions.every((item) => !(item.unit === "item" && item.quantity === "25"))
+      );
     }
     if (area.type === "ceilings") assert("ceilings quantity is separate from cladding", measures.includes("22 m²") && !measures.includes("25 m²"));
+    if (area.type === "flooring") {
+      const flooringArea = selected.suggestions.find((item) => item.title === "Flooring area");
+      assert("flooring area stays 18 m² and is not the cladding count", flooringArea?.quantity === "18" && flooringArea.unit === "m2");
+    }
   }
+  const units = selectWorkAreaScope({
+    areaType: "cladding",
+    areaName: "Cladding",
+    areaConfirmed: true,
+    brief: "Cladding: Supply and fix 25 m² vertical cedar cladding.",
+    summary: "",
+    description: "",
+    items: [
+      { id: "area-line", title: "Fix 25 m² of cladding", description: "" },
+      { id: "length", title: "Install 12 m of cladding trim", description: "" },
+      { id: "each", title: "Supply 6 each cladding corners", description: "" },
+      { id: "lump", title: "Price the cladding as a lump sum", description: "" },
+      { id: "boards", title: "Vertical cedar boards", description: "North elevation boards only" },
+      { id: "mm", title: "10 mm cladding packers", description: "" },
+    ],
+    facts: [],
+    notes: [],
+  });
+  const byTitle = (title: string) => units.suggestions.find((item) => item.title === title);
+  assert("an m² line keeps m²", byTitle("Fix 25 m² of cladding")?.quantity === "25" && byTitle("Fix 25 m² of cladding")?.unit === "m2");
+  assert("a linear metre stays metres", byTitle("Install 12 m of cladding trim")?.quantity === "12" && byTitle("Install 12 m of cladding trim")?.unit === "m");
+  assert("an each line stays a count", byTitle("Supply 6 each cladding corners")?.quantity === "6" && byTitle("Supply 6 each cladding corners")?.unit === "item");
+  assert("a lump sum has no borrowed quantity", byTitle("Price the cladding as a lump sum")?.unit === "lump_sum" && byTitle("Price the cladding as a lump sum")?.quantity === "");
+  assert("millimetres are not read as metres", parseScheduleMeasure("10 mm plasterboard") === null && byTitle("10 mm cladding packers")?.quantity === "");
+  assert("25 m² cannot be sent as 25 item", Boolean(mismatchedScheduleQuantity("25", "item", "25 m²")) && mismatchedScheduleQuantity("25", "m2", "25 m²") === null);
   assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));
   assert("scope change is not an ordinary answer", questions.includes("SCOPE_CHANGE") && actions.includes("SCOPE_CHANGE"));
   assert("questions notify editors only", questions.includes("rfq_question") && questions.includes("'owner', 'admin', 'estimator'") && !questions.includes("'viewer'"));
