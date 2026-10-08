@@ -28,7 +28,9 @@ export default async function SubcontractorProfilePage({
     <ContactsPageFrame
       section="subcontractors"
       archived={Boolean(subcontractor.archived_at)}
-      description={subcontractor.trading_name}
+      title={subcontractor.trading_name}
+      description="Subcontractor"
+      showSectionNav={false}
     >
       <SubcontractorProfile
         subcontractor={subcontractor}

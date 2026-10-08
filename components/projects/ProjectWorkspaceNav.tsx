@@ -31,7 +31,7 @@ export function ProjectWorkspaceNav({
   variations = null,
 }: ProjectWorkspaceNavProps) {
   return (
-    <div className="border-b bg-background">
+    <div className="shrink-0 border-b bg-background">
       <div className={cn("mx-auto w-full px-4 py-2.5 sm:px-6 lg:px-8", LAYOUT_MAX_WIDTH.workspace)}>
         <ProjectSectionHeader
           projectId={projectId}

@@ -49,9 +49,9 @@ export function JobRateSuggestions({
 
   return (
     <section className="grid gap-3" data-job-rate-suggestions>
-      <h2 className="text-base font-semibold">Subcontractor rates</h2>
+      <h2 className="text-base font-semibold">Confirmed rates</h2>
       <p className="text-sm text-foreground/70">
-        A work-area match is only a suggestion. It does not mean the supplier scope matches the job. Choosing one previews a cost only. It is not applied to the Estimate or to Pricing.
+        These are saved rates for a matching work area. A match does not mean the supplier scope matches the job, and it is not an accepted tender. It is not applied to the Estimate or to Pricing until you preview and use it.
       </p>
       <label className="grid max-w-xs gap-1 text-sm">Job unit for this preview
         <select className="h-11 min-h-11 rounded-md border border-border bg-background px-3" value={jobUnit} onChange={(event) => setJobUnit(event.target.value)}>

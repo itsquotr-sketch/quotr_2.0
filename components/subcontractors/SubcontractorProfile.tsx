@@ -303,7 +303,8 @@ export function SubcontractorProfile({
         <div className="min-w-0">
           <Link
             href={archived ? "/app/contacts/subcontractors?archived=1" : "/app/contacts/subcontractors"}
-            className="inline-flex min-h-11 items-center text-sm font-medium underline-offset-2 hover:underline"
+            className="inline-flex h-11 min-h-11 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium"
+            data-back-to-subcontractors
           >
             Back to subcontractors
           </Link>

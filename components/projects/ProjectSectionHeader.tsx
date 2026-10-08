@@ -172,8 +172,14 @@ export function ProjectSectionHeader({
               focusClass
             )}
             onChange={(event) => {
-              const next = sections.find((section) => section.id === event.target.value);
-              if (!next || next.disabled || next.id === topLevel) return;
+              const value = event.target.value;
+              if (value === "requests") {
+                if (!requestsCurrent) router.push(requestsHref);
+                return;
+              }
+              const next = sections.find((section) => section.id === value);
+              if (!next || next.disabled) return;
+              if (!requestsCurrent && next.id === workflowInput.activeTab) return;
               if (next.id === "pricing" && pricingCanCreate) {
                 setCreatePricingOpen(true);
                 return;
@@ -182,7 +188,7 @@ export function ProjectSectionHeader({
               router.push(next.href);
             }}
           >
-            {requestsCurrent ? <option value="requests">Requests</option> : null}
+            <option value="requests">Requests</option>
             {sections.map((section) => (
               <option key={section.id} value={section.id} disabled={section.disabled}>
                 {section.disabled && section.hint
@@ -220,8 +226,9 @@ export function ProjectSectionHeader({
         <Link
           href={requestsHref}
           className={cn(
-            "inline-flex min-h-11 items-center text-sm font-medium text-foreground",
-            focusClass
+            "inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-foreground",
+            focusClass,
+            requestsCurrent && "underline"
           )}
           data-rfq-nav="true"
           aria-current={requestsCurrent ? "page" : undefined}
