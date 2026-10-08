@@ -386,7 +386,7 @@ export function RfqComposer({
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl gap-6 pb-36 md:pb-0" data-rfq-composer data-rfq-step={STEPS[step]}>
+    <div className="mx-auto grid w-full max-w-2xl gap-6 pb-56 md:pb-0" data-rfq-composer data-rfq-step={STEPS[step]}>
       <div data-rfq-progress>
         <p className="text-sm font-medium lg:hidden">Step {step + 1} of 4 — {STEPS[step]}</p>
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted lg:hidden" aria-hidden>
