@@ -102,6 +102,7 @@ function staticMain() {
   assert("document totals use the existing pricing persist", apply.includes("persistPricingDocumentTotals"));
   assert("the decision names the four steps", panel.includes("Supplier offer") && panel.includes("What this price covers") && panel.includes("Choose the client sell") && panel.includes("Review and confirm"));
   assert("draft pricing is an explicit action", panel.includes("Use for draft Pricing") && panel.includes("Go to Pricing") && panel.includes("does not award the work"));
+  assert("add-only overlap is confirmed separately from using the response", panel.includes("I confirm the existing lines stay charged and this supplier allowance is added as well.") && panel.includes("Use this response for draft pricing"));
   assert("an empty replacement is an explicit add", addOnlySql.includes("v_add_only") && addOnlySql.includes("rfq_pricing_applications_replaced_present"));
   assert("hidden and replaced lines are refused", reapplySql.includes("visible_on_quote is distinct from true") && reapplySql.includes("Replaced for draft pricing%") && reapplySql.includes("v_active.replaced_item_ids"));
   assert("estimate rate resolver is untouched by this path", !apply.includes("resolveRate") && rates.includes("export function resolveRate"));
@@ -608,6 +609,21 @@ async function liveMain() {
     const addedAllowance = (addedAfter.data ?? []).filter((row) => String(row.client_label).startsWith("Subcontract"));
     const keptAfter = (addedAfter.data ?? []).find((row) => row.client_label === "Kept lining");
     assert("an explicit add leaves the existing line charged once", (addOnlyApply.data as { ok?: boolean } | null)?.ok === true && addedAllowance.length === 1 && Number(addedAllowance[0]?.total_cost) === 1800 && Number(addedAllowance[0]?.total_sell) === 2000 && Number(keptAfter?.total_cost) === 100 && Number(keptAfter?.total_sell) === 150, JSON.stringify(addOnlyApply.data ?? addOnlyApply.error));
+    const viewerAdd = await viewer.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: first.id, pricing_document_id: addedDocument.data.id, work_area_id: area.data.id,
+        replaced_item_ids: [], sell_treatment: "manual", total_cost: 1800, total_sell: 2000,
+      },
+    });
+    const foreignAdd = await foreign.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: first.id, pricing_document_id: addedDocument.data.id, work_area_id: area.data.id,
+        replaced_item_ids: [], sell_treatment: "manual", total_cost: 1800, total_sell: 2000,
+      },
+    });
+    const addOnlyCount = await admin.from("pricing_items").select("id", { count: "exact", head: true }).eq("pricing_document_id", addedDocument.data.id).like("client_label", "Subcontract%");
+    assert("Viewer cannot add an allowance without replacing lines", (viewerAdd.data as { error?: string } | null)?.error === "FORBIDDEN");
+    assert("another organisation cannot add an allowance without replacing lines", (foreignAdd.data as { ok?: boolean } | null)?.ok !== true && (addOnlyCount.count ?? 0) === 1, JSON.stringify(foreignAdd.data ?? foreignAdd.error));
     const archived = await admin.from("pricing_documents").update({ status: "archived" }).eq("id", addedDocument.data.id);
     if (archived.error) throw new Error(archived.error.message);
     const restored = await admin.from("pricing_documents").update({ status: "draft" }).eq("id", document.data.id);

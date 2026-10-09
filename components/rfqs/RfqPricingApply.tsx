@@ -101,6 +101,7 @@ function LumpPricingApply({
   const [responseId, setResponseId] = useState(appliedId ?? newestId);
   const [selected, setSelected] = useState<string[]>([]);
   const [addOnly, setAddOnly] = useState(false);
+  const [acknowledgeOverlap, setAcknowledgeOverlap] = useState(false);
   const [preview, setPreview] = useState<RfqPricingPreviewResult | null>(null);
   const [treatment, setTreatment] = useState<RfqSellTreatment | "">("");
   const [manualSell, setManualSell] = useState("");
@@ -145,6 +146,7 @@ function LumpPricingApply({
     !saving &&
     !previewing &&
     (selected.length > 0 || addOnly) &&
+    (selected.length > 0 || activeApplication || lines.length === 0 || acknowledgeOverlap) &&
     (!selectedChoice.loss || acknowledgeLoss) &&
     (!needsScopeDecision || acknowledgeScope)
   );
@@ -158,6 +160,7 @@ function LumpPricingApply({
     setTreatment("");
     setAcknowledgeLoss(false);
     setAcknowledgeScope(false);
+    setAcknowledgeOverlap(false);
     setConfirmed(false);
     setDone(false);
   }
@@ -416,7 +419,7 @@ function LumpPricingApply({
             <p>
               {activeApplication
                 ? "No lines selected. This updates the allowance already used for this work area and keeps the lines it already replaced hidden. It does not add a second allowance. The lines listed above stay charged."
-                : "No lines selected. This adds one new subcontract allowance. Every line listed above stays charged, so the same work can be counted twice if this price already covers it."}
+                : `No lines selected. Every line listed above stays charged. This adds the supplier allowance of ${response?.priceExGst == null ? "the submitted price" : "$" + money(response.priceExGst)} ex GST on top of those lines. The same work can be billed twice if this price already covers it.`}
             </p>
             {lines.length > 0 ? (
               <details>
@@ -440,7 +443,7 @@ function LumpPricingApply({
                   schedulePreview(selected, next, manualSell, responseId);
                 }}
               />
-              <span>I am adding this price without replacing any of these lines.</span>
+              <span>Add this supplier allowance without replacing any line.</span>
             </label>
           </div>
         ) : (
@@ -592,6 +595,17 @@ function LumpPricingApply({
               onChange={(event) => setAcknowledgeScope(event.target.checked)}
             />
             <span>I have decided how this qualification or exclusion is covered for the client. It stays on the private response until I write the client wording into Pricing.</span>
+          </label>
+        ) : null}
+        {selected.length === 0 && !activeApplication && lines.length > 0 ? (
+          <label className="flex min-h-11 items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+              checked={acknowledgeOverlap}
+              onChange={(event) => setAcknowledgeOverlap(event.target.checked)}
+            />
+            <span>I confirm the existing lines stay charged and this supplier allowance is added as well.</span>
           </label>
         ) : null}
         {selectedChoice?.loss ? (
