@@ -144,10 +144,14 @@ export function RfqSchedulePricing({
   detail,
   pricing,
   canPrice,
+  reviewRequest = null,
+  onResponseId,
 }: {
   detail: RfqDetail;
   pricing: RfqPricingTarget | null;
   canPrice: boolean;
+  reviewRequest?: { id: string; nonce: number } | null;
+  onResponseId?: (id: string) => void;
 }) {
   const router = useRouter();
   const submitted = detail.responses
@@ -165,6 +169,7 @@ export function RfqSchedulePricing({
   const [responseNote, setResponseNote] = useState("");
   const [responseItemId, setResponseItemId] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const consumedReview = useRef<number | null>(null);
   const response = submitted.find((item) => item.id === responseId) ?? null;
   const recipient = detail.recipients.find((item) => item.id === response?.recipientId);
   const names = new Map(detail.recipients.map((item) => [item.id, item.tradingName]));
@@ -193,6 +198,28 @@ export function RfqSchedulePricing({
     if (!match || responseId !== match[1]) return;
     document.querySelector(`[data-rfq-schedule-row="${CSS.escape(match[2])}"]`)?.scrollIntoView({ block: "center" });
   }, [open, responseId]);
+  useEffect(() => {
+    if (responseId) onResponseId?.(responseId);
+  }, [responseId, onResponseId]);
+  useEffect(() => {
+    if (!reviewRequest || consumedReview.current === reviewRequest.nonce) return;
+    consumedReview.current = reviewRequest.nonce;
+    const nextId = reviewRequest.id;
+    if (!submittedIds.split(",").includes(nextId)) return;
+    const same = nextId === responseId;
+    queueMicrotask(() => {
+      setOpen(true);
+      if (same) return;
+      setResponseId(nextId);
+      setRows({});
+      setResponseDecision("");
+      setResponseWording("");
+      setResponseNote("");
+      setResponseItemId("");
+      setPreview(null);
+      setConfirmed(false);
+    });
+  }, [reviewRequest, submittedIds, responseId]);
 
   if (!canPrice || detail.status !== "sent" || submitted.length === 0) return null;
 
@@ -293,7 +320,7 @@ export function RfqSchedulePricing({
   }
 
   return (
-    <section className="grid gap-3 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-schedule-pricing>
+    <section id="rfq-pricing-apply" className="grid scroll-mt-6 gap-3 rounded-xl border border-border bg-card p-4 text-sm" data-rfq-schedule-pricing>
       <h2 className="text-base font-semibold">Use items in Pricing</h2>
       <p>This uses the items you choose on draft pricing. It does not award the work or notify the subcontractor.</p>
       {!pricing ? <p>Create draft pricing before using a response.</p> : null}

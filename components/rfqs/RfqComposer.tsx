@@ -386,15 +386,15 @@ export function RfqComposer({
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl gap-6 pb-56 md:pb-0" data-rfq-composer data-rfq-step={STEPS[step]}>
+    <div className="grid w-full min-w-0 max-w-[1000px] gap-6 overflow-x-hidden pb-56 md:pb-0" data-rfq-composer data-rfq-reading data-rfq-step={STEPS[step]}>
       <div data-rfq-progress>
-        <p className="text-sm font-medium lg:hidden">Step {step + 1} of 4 — {STEPS[step]}</p>
+        <p className="text-xs font-medium text-foreground/60 lg:hidden">Step {step + 1} of 4 — {STEPS[step]}</p>
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted lg:hidden" aria-hidden>
-          <div className="h-full bg-foreground motion-reduce:transition-none" style={{ width: `${((step + 1) / 4) * 100}%` }} />
+          <div className="h-full bg-foreground/70 motion-reduce:transition-none" style={{ width: `${((step + 1) / 4) * 100}%` }} />
         </div>
-        <ol className="hidden gap-2 text-sm lg:flex">
+        <ol className="hidden gap-2 text-xs text-foreground/60 lg:flex" aria-label="This request">
           {STEPS.map((label, index) => (
-            <li key={label} className={index === step ? "font-semibold" : "text-foreground/60"} aria-current={index === step ? "step" : undefined}>{index + 1}. {label}</li>
+            <li key={label} className={index === step ? "font-semibold text-foreground" : undefined} aria-current={index === step ? "step" : undefined}>{index + 1}. {label}</li>
           ))}
         </ol>
       </div>
@@ -646,7 +646,7 @@ export function RfqComposer({
         </section>
       ) : null}
 
-      <div className="z-30 flex flex-wrap gap-2 border-border bg-background max-md:fixed max-md:inset-x-0 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:border-t max-md:px-4 max-md:py-3" data-dialog-actions>
+      <div className="z-30 flex flex-wrap gap-2 border-border bg-background max-md:fixed max-md:inset-x-0 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:border-t max-md:px-4 max-md:py-3 sm:max-md:px-6" data-dialog-actions>
         {step > 0 ? (
           <Button type="button" variant="outline" className="h-11 min-h-11" onClick={() => setStep((current) => current - 1)}>Back</Button>
         ) : null}
