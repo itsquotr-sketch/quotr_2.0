@@ -12,6 +12,11 @@ import type { RfqPricingPreviewResult } from "@/lib/rfqs/pricing-apply";
 import type { RfqPricingMoneyView, RfqSellTreatment } from "@/lib/rfqs/pricing-preview";
 import { gstTreatmentLabel, pricingStructureLabel } from "@/lib/rfqs/shared";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { formatPricingBadgeLabel } from "@/lib/pricing/status";
+import type { PricingDocumentStatus } from "@/lib/pricing/types";
+import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import { scrollWorkspaceTarget } from "@/lib/rfqs/scroll-workspace";
+import type { QuoteStatus } from "@/lib/quotes/types";
 
 const fieldClass =
   "min-h-11 w-full rounded-md border border-border bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]";
@@ -21,7 +26,23 @@ const choiceClass = (selected: boolean) =>
     ? "grid gap-2 rounded-lg border border-[var(--brand-orange)] bg-[var(--brand-orange)]/5 p-3 ring-1 ring-[var(--brand-orange)]"
     : "grid gap-2 rounded-lg border border-border p-3";
 
-export type RfqReviewRequest = { id: string; nonce: number };
+const focusClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]";
+
+const ISSUED_QUOTE = new Set<QuoteStatus>(["sent", "viewed", "accepted", "declined", "expired"]);
+
+export type RfqReviewRequest = { id: string; nonce: number; focus?: "decision" | "compare" };
+
+type QuoteLock = { id: string; status: QuoteStatus };
+
+type SavedDecision = {
+  responseId: string;
+  versionNumber: number;
+  supplier: string;
+  costExGst: number;
+  sellExGst: number | null;
+  sellKnown: boolean;
+  replacedCount: number;
+};
 
 function money(value: number | null, unknownLabel = "Pricing Required"): string {
   if (value == null) return unknownLabel;
@@ -59,18 +80,6 @@ function lineKnown(line: { totalCost: number; totalSell: number }): boolean {
   return line.totalCost > 0 || line.totalSell > 0;
 }
 
-function lineSuggested(label: string, supplierScope: string, areaName: string): boolean {
-  const stems = areaName
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length >= 4)
-    .flatMap((word) => [word, word.endsWith("s") ? word.slice(0, -1) : word]);
-  const skip = new Set([...stems, "supply", "install", "installation", "materials", "labour", "labor", "included", "allowance"]);
-  const words = label.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 5 && !skip.has(word));
-  const haystack = supplierScope.toLowerCase();
-  return words.length > 0 && words.some((word) => haystack.includes(word));
-}
-
 function supplierConditions(response: RfqResponseView): Array<{ title: string; body: string }> {
   const items: Array<{ title: string; body: string }> = [];
   if (response.excludedScope.trim()) items.push({ title: "Exclusion", body: response.excludedScope.trim() });
@@ -79,6 +88,20 @@ function supplierConditions(response: RfqResponseView): Array<{ title: string; b
     items.push({ title: "Qualified response", body: "The supplier marked this response as qualified and did not write the condition." });
   }
   return items;
+}
+
+function choiceReason(treatment: RfqSellTreatment, reason: string | null): string {
+  if (treatment === "keep" && reason === "That sell cannot be stored on a pricing line.") {
+    return "Keep is unavailable because the stored margin limit would be exceeded.";
+  }
+  return reason ?? "Checking this choice.";
+}
+
+function pricingStatusLabel(status: string): string {
+  if (status === "draft" || status === "reviewed" || status === "converted_to_quote" || status === "archived") {
+    return formatPricingBadgeLabel(status as PricingDocumentStatus);
+  }
+  return "Pricing";
 }
 
 function MoneyRows({
@@ -136,8 +159,9 @@ export function RfqPricingApply(props: {
   detail: RfqDetail;
   pricing: RfqPricingTarget | null;
   canPrice: boolean;
+  quote?: QuoteLock | null;
   reviewRequest?: RfqReviewRequest | null;
-  onResponseId?: (id: string) => void;
+  onResponseId?: (id: string | null) => void;
 }) {
   if (props.detail.pricingRequest === "schedule") {
     return (
@@ -147,7 +171,7 @@ export function RfqPricingApply(props: {
           pricing={props.pricing}
           canPrice={props.canPrice}
           reviewRequest={props.reviewRequest}
-          onResponseId={props.onResponseId}
+          onResponseId={props.onResponseId ?? undefined}
         />
       </RfqApplyColumn>
     );
@@ -159,22 +183,26 @@ function LumpPricingApply({
   detail,
   pricing,
   canPrice,
+  quote = null,
   reviewRequest,
   onResponseId,
 }: {
   detail: RfqDetail;
   pricing: RfqPricingTarget | null;
   canPrice: boolean;
+  quote?: QuoteLock | null;
   reviewRequest?: RfqReviewRequest | null;
-  onResponseId?: (id: string) => void;
+  onResponseId?: (id: string | null) => void;
 }) {
   const router = useRouter();
   const submitted = detail.responses.filter((response) => response.status === "submitted");
-  const appliedId = detail.applications.find((application) => submitted.some((response) => response.id === application.responseId))?.responseId;
-  const newestId = [...submitted].sort((a, b) => b.versionNumber - a.versionNumber)[0]?.id ?? "";
-  const [responseId, setResponseId] = useState(appliedId ?? newestId);
+  const activeApplication = detail.applications.find((application) => !detail.workAreaId || application.workAreaId === detail.workAreaId) ?? null;
+  const activeResponse = submitted.find((item) => item.id === activeApplication?.responseId) ?? null;
+  const [responseId, setResponseId] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [coverMode, setCoverMode] = useState<"" | "replace" | "add">("");
+  const [changeIntent, setChangeIntent] = useState<"" | "update" | "add">("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [addOnly, setAddOnly] = useState(false);
   const [acknowledgeOverlap, setAcknowledgeOverlap] = useState(false);
   const [preview, setPreview] = useState<RfqPricingPreviewResult | null>(null);
   const [treatment, setTreatment] = useState<RfqSellTreatment | "">("");
@@ -182,9 +210,11 @@ function LumpPricingApply({
   const [acknowledgeLoss, setAcknowledgeLoss] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  const [settled, setSettled] = useState<SavedDecision | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const flight = useRef(false);
   const request = useRef(0);
@@ -192,55 +222,64 @@ function LumpPricingApply({
   const consumedReview = useRef<number | null>(null);
   const response = submitted.find((item) => item.id === responseId) ?? null;
   const names = new Map(detail.recipients.map((recipient) => [recipient.id, recipient.tradingName]));
-  const lines = (pricing?.items ?? []).filter((item) => {
-    if (detail.workAreaId && item.workAreaId !== detail.workAreaId) return false;
-    if (item.visibleOnQuote === false) return false;
-    if ((item.recalibrationNote ?? "").startsWith("Replaced for draft pricing")) return false;
-    if (detail.applications.some((application) => application.allowanceItemId === item.id)) return false;
-    return true;
-  });
-  const omitted = (pricing?.items ?? []).filter((item) => {
-    if (detail.workAreaId && item.workAreaId !== detail.workAreaId) return false;
-    return !lines.some((line) => line.id === item.id);
-  }).length;
+  const areaItems = (pricing?.items ?? []).filter((item) => !detail.workAreaId || item.workAreaId === detail.workAreaId);
+  const allowanceIds = new Set(detail.applications.map((application) => application.allowanceItemId));
+  const hiddenLines = areaItems.filter((item) => !allowanceIds.has(item.id) && !(item.recalibrationNote ?? "").startsWith("Replaced for draft pricing") && item.visibleOnQuote === false);
+  const replacedLines = areaItems.filter((item) => (item.recalibrationNote ?? "").startsWith("Replaced for draft pricing") || (activeApplication?.replacedItemIds ?? []).includes(item.id));
+  const allowanceLines = areaItems.filter((item) => allowanceIds.has(item.id));
+  const lines = areaItems.filter((item) => !allowanceIds.has(item.id) && item.visibleOnQuote !== false && !(item.recalibrationNote ?? "").startsWith("Replaced for draft pricing"));
+  const unavailableCount = hiddenLines.length + replacedLines.filter((item) => !lines.includes(item)).length + allowanceLines.length;
   const workAreaId = detail.workAreaId || lines.find((line) => selected.includes(line.id))?.workAreaId || "";
-  const activeApplication = detail.applications.find((application) => !detail.workAreaId || application.workAreaId === detail.workAreaId) ?? null;
-  const activeResponse = submitted.find((item) => item.id === activeApplication?.responseId) ?? null;
-  const newerThanApplied = Boolean(
-    response && activeResponse && response.id !== activeResponse.id && response.versionNumber > activeResponse.versionNumber
-  );
-  const picked = lines.filter((line) => selected.includes(line.id));
-  const remaining = lines.length - picked.length;
+  const newer = activeResponse
+    ? submitted
+        .filter((item) => item.recipientId === activeResponse.recipientId && item.versionNumber > activeResponse.versionNumber)
+        .sort((a, b) => b.versionNumber - a.versionNumber)[0] ?? null
+    : null;
+  const issuedQuote = quote && ISSUED_QUOTE.has(quote.status) ? quote : null;
+  const pricingClosed = !pricing || !["draft", "reviewed", "converted_to_quote"].includes(pricing.documentStatus);
+  const quoteLocked = Boolean(pricing && (pricing.documentStatus === "converted_to_quote" || issuedQuote));
+  const locked = Boolean(pricing && (pricingClosed || quoteLocked));
+  const sameApplied = Boolean(response && activeResponse && response.id === activeResponse.id);
+  const updatingExisting = Boolean(activeApplication && response && response.id !== activeApplication.responseId);
+  const showForm = Boolean(response && pricing) && !locked && (saving || editing || !sameApplied) && !(settled && response?.id === settled.responseId && !editing);
+  const showSummary = Boolean((activeApplication && activeResponse) || settled) && !showForm;
   const conditions = response ? supplierConditions(response) : [];
   const fresh = previewing ? null : preview;
   const selectedChoice = fresh?.choices.find((choice) => choice.treatment === treatment) ?? null;
-  const overlapRequired = selected.length === 0 && !activeApplication && lines.length > 0;
+  const overlapRequired = coverMode === "add" && !activeApplication && lines.length > 0;
+  const replacedIds = updatingExisting
+    ? activeApplication?.replacedItemIds ?? []
+    : coverMode === "add"
+      ? []
+      : selected;
   const canApply = Boolean(
+    !sameApplied &&
+    !locked &&
     selectedChoice?.available &&
     confirmed &&
     !saving &&
     !previewing &&
-    (selected.length > 0 || addOnly) &&
+    (updatingExisting || (coverMode === "replace" && selected.length > 0) || coverMode === "add") &&
     (!overlapRequired || acknowledgeOverlap) &&
     (!selectedChoice.loss || acknowledgeLoss)
   );
   const supplierName = response ? names.get(response.recipientId) || "Supplier" : "Supplier";
-  const statedScope = response?.includedScope.trim() || "";
-
-  useEffect(() => {
-    if (!error) return;
-    errorRef.current?.focus();
-  }, [error]);
-
-  useEffect(() => {
-    if (responseId) onResponseId?.(responseId);
-  }, [responseId, onResponseId]);
+  const decisionState = saving
+    ? "saving"
+    : locked
+      ? "locked"
+      : showForm
+        ? "selected"
+        : newer
+          ? "newer"
+          : showSummary
+            ? "applied"
+            : "none";
 
   function resetAcknowledgements() {
     setAcknowledgeLoss(false);
     setAcknowledgeOverlap(false);
     setConfirmed(false);
-    setDone(false);
   }
 
   function schedulePreview(nextSelected: string[], nextAddOnly: boolean, nextManual: string, nextResponseId: string) {
@@ -284,19 +323,50 @@ function LumpPricingApply({
   }
 
   useEffect(() => {
+    if (!error) return;
+    errorRef.current?.focus();
+  }, [error]);
+
+  useEffect(() => {
+    onResponseId?.(responseId || null);
+  }, [responseId, onResponseId]);
+
+  useEffect(() => {
+    if (focusNonce === 0) return;
+    const node = document.getElementById("rfq-pricing-decision");
+    if (node instanceof HTMLElement) scrollWorkspaceTarget(node, { focus: true });
+  }, [focusNonce]);
+
+  useEffect(() => {
     if (!reviewRequest || consumedReview.current === reviewRequest.nonce) return;
     consumedReview.current = reviewRequest.nonce;
     const nextId = reviewRequest.id;
-    if (!submitted.some((item) => item.id === nextId) || nextId === responseId) return;
-    queueMicrotask(() => {
-      setResponseId(nextId);
-      setSelected([]);
-      setAddOnly(false);
-      setManualSell("");
-      resetAcknowledgements();
-      schedulePreview([], false, "", nextId);
-    });
-    // The review nonce is the only trigger. schedulePreview closes over the latest lines.
+    if (!submitted.some((item) => item.id === nextId)) return;
+    if (nextId !== responseId) {
+      const nextActive = detail.applications.find((application) => !detail.workAreaId || application.workAreaId === detail.workAreaId) ?? null;
+      queueMicrotask(() => {
+        setResponseId(nextId);
+        setEditing(false);
+        setCoverMode("");
+        setChangeIntent("");
+        setSelected([]);
+        setTreatment("");
+        setManualSell("");
+        setNotice(null);
+        setSettled(null);
+        resetAcknowledgements();
+        if (nextActive && nextId !== nextActive.responseId) {
+          schedulePreview(nextActive.replacedItemIds, nextActive.replacedItemIds.length === 0, "", nextId);
+        } else {
+          schedulePreview([], false, "", "");
+        }
+        if (reviewRequest.focus !== "compare") setFocusNonce((current) => current + 1);
+      });
+      return;
+    }
+    if (reviewRequest.focus === "compare") return;
+    queueMicrotask(() => setFocusNonce((current) => current + 1));
+    // The review nonce is the only trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewRequest]);
 
@@ -305,9 +375,59 @@ function LumpPricingApply({
   function toggle(id: string) {
     const next = selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id];
     setSelected(next);
-    setAddOnly(false);
+    setCoverMode("replace");
     resetAcknowledgements();
     schedulePreview(next, false, manualSell, responseId);
+  }
+
+  function openEdit() {
+    if (!activeResponse) return;
+    setResponseId(activeResponse.id);
+    setEditing(true);
+    setCoverMode("");
+    setChangeIntent("");
+    setSelected([]);
+    setTreatment("");
+    setManualSell("");
+    setNotice(null);
+    setSettled(null);
+    resetAcknowledgements();
+    schedulePreview([], false, "", "");
+    setFocusNonce((current) => current + 1);
+  }
+
+  async function confirmSameVersion() {
+    if (!response || !pricing || !activeApplication || flight.current) return;
+    const treatment = activeApplication.sellTreatment;
+    if (!treatment) {
+      setError("Choose how the sell should be set before using this response.");
+      return;
+    }
+    flight.current = true;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    const result = await applyRfqPricingApplication({
+      responseId: response.id,
+      pricingDocumentId: pricing.documentId,
+      workAreaId: activeApplication.workAreaId || detail.workAreaId || "",
+      replacedItemIds: activeApplication.replacedItemIds,
+      sellTreatment: treatment,
+      manualSell: treatment === "manual" ? activeApplication.sellExGst : null,
+      acknowledgeLoss: true,
+    });
+    flight.current = false;
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setNotice(result.alreadyApplied
+      ? "This application is unchanged. No second charge was added."
+      : "This application was updated. One allowance remains.");
+    setEditing(false);
+    setChangeIntent("");
+    setConfirmed(false);
   }
 
   async function apply() {
@@ -315,12 +435,13 @@ function LumpPricingApply({
     flight.current = true;
     setSaving(true);
     setError(null);
+    setNotice(null);
     const parsedSell = manualSell.trim() === "" ? null : Number(manualSell);
     const result = await applyRfqPricingApplication({
       responseId: response.id,
       pricingDocumentId: pricing.documentId,
       workAreaId,
-      replacedItemIds: selected,
+      replacedItemIds: replacedIds,
       sellTreatment: treatment,
       manualSell: parsedSell != null && Number.isFinite(parsedSell) ? parsedSell : null,
       acknowledgeLoss,
@@ -331,8 +452,24 @@ function LumpPricingApply({
       setError(result.error);
       return;
     }
-    setDone(true);
+    if (result.alreadyApplied) {
+      setNotice("This application is unchanged. No second charge was added.");
+      setEditing(false);
+      setConfirmed(false);
+      return;
+    }
+    setSettled({
+      responseId: response.id,
+      versionNumber: response.versionNumber,
+      supplier: supplierName,
+      costExGst: response.priceExGst ?? selectedChoice?.cost ?? 0,
+      sellExGst: selectedChoice?.sell ?? null,
+      sellKnown: Boolean(selectedChoice?.sellKnown),
+      replacedCount: replacedIds.length,
+    });
+    setEditing(false);
     setConfirmed(false);
+    setNotice("Saved to draft Pricing.");
     router.refresh();
   }
 
@@ -346,470 +483,690 @@ function LumpPricingApply({
     return "Enter a client sell ex GST";
   }
 
-  function sellTreatmentLabel() {
-    if (treatment === "keep") return "keeps the current client sell";
-    if (treatment === "target_margin") return "reprices at the target margin";
-    if (selectedChoice?.sellKnown && selectedChoice.sell != null) {
-      return `uses a client sell of ${money(selectedChoice.sell)} ex GST`;
+  function openReviewedVersion(id: string) {
+    setEditing(false);
+    setResponseId(id);
+    setChangeIntent("");
+    setCoverMode("");
+    setSelected([]);
+    setTreatment("");
+    setManualSell("");
+    setNotice(null);
+    setSettled(null);
+    resetAcknowledgements();
+    if (activeApplication && id !== activeApplication.responseId) {
+      schedulePreview(activeApplication.replacedItemIds, activeApplication.replacedItemIds.length === 0, "", id);
     }
-    return "uses an entered client sell ex GST";
+    setFocusNonce((current) => current + 1);
   }
 
-  const confirmSummary = response && fresh && selectedChoice?.available
-    ? [
-        `Use ${supplierName}, response version ${response.versionNumber}, for draft pricing.`,
-        selected.length === 0
-          ? "This adds the supplier allowance and does not replace a line."
-          : `This replaces ${selected.length === 1 ? "1 line" : `${selected.length} lines`}.`,
-        `${remaining === 1 ? "1 line remains" : `${remaining} lines remain`} charged.`,
-        `The allowance is “${fresh.label}”.`,
-        `The sell treatment ${sellTreatmentLabel()}.`,
-        conditions.length === 0
-          ? "No supplier conditions are on this version."
-          : "No client-facing scope wording is stored. The supplier conditions stay on the private response.",
-      ].join(" ")
-    : "";
+  const summaryResponse = settled && activeApplication?.responseId !== settled.responseId
+    ? null
+    : activeResponse;
+  const summaryApplication = summaryResponse ? activeApplication : null;
+  const summarySupplier = summaryApplication
+    ? names.get(summaryApplication.recipientId) || settled?.supplier || "Supplier"
+    : settled?.supplier || "Supplier";
+  const summaryVersion = summaryResponse?.versionNumber ?? settled?.versionNumber ?? null;
+  const summaryCost = summaryApplication?.costExGst ?? settled?.costExGst ?? null;
+  const summarySellKnown = summaryApplication ? summaryApplication.sellKnown : Boolean(settled?.sellKnown);
+  const summarySell = summaryApplication ? summaryApplication.sellExGst : settled?.sellExGst ?? null;
+  const summaryReplaced = summaryApplication ? summaryApplication.replacedItemIds.length : settled?.replacedCount ?? 0;
+  const replacedLabels = (summaryApplication?.replacedItemIds ?? [])
+    .map((id) => pricing?.items.find((item) => item.id === id)?.label)
+    .filter((label): label is string => Boolean(label));
 
   return (
     <RfqApplyColumn>
       <section
         id="rfq-pricing-apply"
-        className="grid scroll-mt-6 gap-8 rounded-xl border border-border bg-card p-4 sm:p-6"
+        className="grid scroll-mt-6 gap-4 rounded-xl border border-border bg-card p-4 sm:p-6"
         data-rfq-pricing-apply
-        aria-busy={previewing || saving}
+        data-rfq-decision-state={decisionState}
+        aria-busy={saving}
       >
-        <div className="grid gap-2">
-          <h2 className="text-base font-semibold">Use for pricing</h2>
-          <p className="text-sm text-foreground/70">This puts the response onto draft pricing.</p>
-        </div>
+        <h2 id="rfq-pricing-decision" tabIndex={-1} className={`text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--brand-orange)] ${focusClass}`}>
+          Pricing decision
+        </h2>
+        {notice ? <p className="text-sm" role="status">{notice}</p> : null}
+        {error ? (
+          <p ref={errorRef} tabIndex={-1} className="text-sm text-red-700 outline-none" role="alert">{error}</p>
+        ) : null}
+        {locked ? <LockNotice detail={detail} pricing={pricing} quote={issuedQuote} documentConverted={pricing?.documentStatus === "converted_to_quote"} /> : null}
+        {!pricing && !locked ? <p className="text-sm">Create draft Pricing before using a response.</p> : null}
 
-        {done && pricing ? (
-          <div className="grid gap-3 rounded-lg border border-border bg-background p-4" data-rfq-pricing-applied>
-            <p className="font-medium">Draft pricing has this allowance.</p>
-            <ol className="list-decimal pl-5 text-sm">
-              <li>Check the client description and scope.</li>
-              <li>Mark Pricing reviewed.</li>
-              <li>Create the Quote.</li>
-            </ol>
-            <p className="text-sm">This step did not create or send a Quote.</p>
-            <Link
-              href={`/app/projects/${detail.projectId}/pricing/${pricing.documentId}`}
-              className="inline-flex min-h-11 w-fit items-center rounded-md bg-[var(--brand-orange)] px-4 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
-            >
-              Go to Pricing
-            </Link>
-          </div>
-        ) : (
-          <>
+        {showSummary && summaryVersion != null && summaryCost != null ? (
+          <AppliedSummary
+            supplier={summarySupplier}
+            versionNumber={summaryVersion}
+            costExGst={summaryCost}
+            sellKnown={summarySellKnown}
+            sellExGst={summarySell}
+            replacedCount={summaryReplaced}
+            replacedLabels={replacedLabels}
+            pricingHref={pricing ? `/app/projects/${detail.projectId}/pricing/${pricing.documentId}` : null}
+            pricingLabel={pricing ? pricingStatusLabel(pricing.documentStatus) : "Pricing"}
+            newer={newer}
+            emphasizePricing={!locked}
+            onReviewNewer={newer ? () => openReviewedVersion(newer.id) : undefined}
+            onChange={locked ? undefined : openEdit}
+          />
+        ) : null}
+
+        {!response && !showSummary && !locked ? (
+          <p className="text-sm">Choose a response above. Nothing is applied until you confirm a pricing decision.</p>
+        ) : null}
+
+        {response && locked ? (
+          <p className="text-sm">Version {response.versionNumber} is selected for pricing review. There is no save on this page while Pricing or the Quote is locked.</p>
+        ) : null}
+
+        {showForm && response ? (
+          <form className="grid gap-6" onSubmit={(event) => { event.preventDefault(); void apply(); }}>
+            <fieldset disabled={saving} className="m-0 grid min-w-0 gap-6 border-0 p-0">
             <section className="grid gap-3" aria-labelledby="rfq-offer-heading">
-              <h3 id="rfq-offer-heading" tabIndex={-1} className="text-sm font-semibold outline-none">Supplier offer</h3>
-              {!pricing ? <p className="text-sm">Create draft pricing before using a response.</p> : null}
-              {submitted.length > 1 ? (
-                <label className="grid gap-1 text-sm" htmlFor="rfq-response">
-                  Response version
-                  <select
-                    id="rfq-response"
-                    className={fieldClass}
-                    value={responseId}
-                    onChange={(event) => {
-                      const nextId = event.target.value;
-                      setResponseId(nextId);
-                      setSelected([]);
-                      setAddOnly(false);
-                      setManualSell("");
-                      resetAcknowledgements();
-                      schedulePreview([], false, "", nextId);
-                    }}
-                  >
-                    {submitted.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {names.get(item.recipientId) || "Supplier"} · version {item.versionNumber}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {response ? (
-                <article className="grid gap-2 rounded-lg border border-border bg-background p-4" data-rfq-offer>
-                  <p className="break-words text-base font-semibold">
-                    {supplierName}
-                    {" · "}
-                    {detail.scopeLabel || "Requested work"}
-                    {" · "}
-                    Response version {response.versionNumber}
-                    {" · "}
-                    {response.priceExGst == null ? "No price" : `${money(response.priceExGst)} ex GST`}
-                  </p>
-                  <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="text-foreground/70">GST treatment</dt>
-                      <dd>{gstTreatmentLabel(response.gstTreatment)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-foreground/70">Submitted</dt>
-                      <dd>{submittedLabel(response.submittedAt)}</dd>
-                    </div>
-                  </dl>
-                  <div className="grid gap-1 text-sm">
-                    <p className="font-medium">Supplier scope</p>
-                    <p className="whitespace-pre-wrap">{statedScope || "The supplier did not write what this price includes."}</p>
-                    <p className="text-foreground/70">{pricingStructureLabel(response.pricingStructure)}. This becomes one subcontract allowance.</p>
-                  </div>
-                  {conditions.length > 0 ? (
-                    <div className="grid gap-2">
-                      <p className="text-sm font-medium" role="status">
-                        {conditions.length === 1 ? "1 supplier condition" : `${conditions.length} supplier conditions`} to review. No client-facing decision is stored.
-                      </p>
-                      <details className="rounded-md border border-border px-3 py-2 text-sm">
-                        <summary className="min-h-11 cursor-pointer py-2">Review supplier conditions</summary>
-                        <div className="grid gap-3 pb-2">
-                          {conditions.map((condition) => (
-                            <div key={condition.title} className="grid gap-1">
-                              <p className="font-medium">{condition.title}</p>
-                              <p className="whitespace-pre-wrap">{condition.body}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-foreground/70">No qualification or exclusion on this version.</p>
-                  )}
-                </article>
-              ) : null}
-              {newerThanApplied && response && activeResponse ? (
+              <h3 id="rfq-offer-heading" className="text-sm font-semibold">Supplier offer</h3>
+              {updatingExisting && activeResponse && activeApplication ? (
                 <p className="rounded-md border border-border bg-background px-3 py-2 text-sm" role="status">
-                  Version {response.versionNumber} is newer than version {activeResponse.versionNumber}, which is already on draft pricing.
-                  Using this version replaces that allowance. Nothing is replaced until you confirm below.
+                  Draft Pricing still uses version {activeResponse.versionNumber}: supplier cost {money(activeApplication.costExGst)} ex GST
+                  {activeApplication.sellKnown ? `, client sell ${money(activeApplication.sellExGst)} ex GST` : ", client sell Pricing Required"}.
+                  {" "}Newer price available. Nothing changes until you confirm an update. This does not add another charge.
                 </p>
               ) : null}
-              {response && detail.applications.some((application) => application.responseId === response.id) ? (
-                <p className="text-sm">This version is already used for draft pricing. Confirming again keeps that choice.</p>
-              ) : null}
+              <article className="grid gap-2 rounded-lg border border-border bg-background p-4" data-rfq-offer>
+                <p className="break-words font-semibold">
+                  {supplierName}
+                  {" · "}
+                  Version {response.versionNumber}
+                  {" · "}
+                  {response.priceExGst == null ? "No price" : `${money(response.priceExGst)} ex GST`}
+                </p>
+                <p className="text-sm text-foreground/70">
+                  {gstTreatmentLabel(response.gstTreatment)}
+                  {" · "}
+                  Submitted {submittedLabel(response.submittedAt)}
+                  {" · "}
+                  {pricingStructureLabel(response.pricingStructure)}
+                </p>
+                <div className="grid gap-1 text-sm">
+                  <p className="font-medium">Supplier scope</p>
+                  <p className="whitespace-pre-wrap">{response.includedScope.trim() || "The supplier did not write what this price includes."}</p>
+                </div>
+                {conditions.length > 0 ? (
+                  <details className="rounded-md border border-border px-3 py-2 text-sm">
+                    <summary className={`min-h-11 cursor-pointer py-2 ${focusClass}`}>
+                      {conditions.length === 1 ? "1 qualification or exclusion" : `${conditions.length} qualifications or exclusions`}
+                    </summary>
+                    <div className="grid gap-3 pb-2">
+                      {conditions.map((condition) => (
+                        <div key={condition.title} className="grid gap-1">
+                          <p className="font-medium">{condition.title}</p>
+                          <p className="whitespace-pre-wrap">{condition.body}</p>
+                        </div>
+                      ))}
+                      <p>These conditions stay on the supplier response. This step does not copy them onto the client Quote.</p>
+                    </div>
+                  </details>
+                ) : <p className="text-sm text-foreground/70">No qualifications or exclusions on this version.</p>}
+              </article>
             </section>
 
-            <section className="grid gap-3" aria-labelledby="rfq-cover-heading">
-              <h3 id="rfq-cover-heading" className="text-sm font-semibold">Work this price covers</h3>
-              <div className="grid gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm" data-rfq-line-summary>
-                <p>
-                  {previewing ? (
-                    <>{picked.length === 1 ? "1 line selected" : `${picked.length} lines selected`}. Updating the current cost and client sell.</>
-                  ) : fresh && picked.length > 0 ? (
-                    <>
-                      {fresh.affected.length === 1 ? "1 line replaced" : `${fresh.affected.length} lines replaced`}
-                      {" · "}
-                      current cost {money(fresh.selectedBefore.cost)}
-                      {" · "}
-                      current client sell {money(fresh.selectedBefore.sell)}
-                    </>
+            {sameApplied ? (
+              <SameVersionChange
+                intent={changeIntent}
+                onIntent={setChangeIntent}
+                newer={newer}
+                allowanceLabel={pricing?.items.find((item) => item.id === activeApplication?.allowanceItemId)?.label || "the supplier allowance"}
+                replacedLabels={replacedLabels}
+                saving={saving}
+                onSave={() => void confirmSameVersion()}
+                onReviewNewer={newer ? () => openReviewedVersion(newer.id) : undefined}
+              />
+            ) : (
+              <>
+                <section className="grid gap-3" aria-labelledby="rfq-cover-heading">
+                  <h3 id="rfq-cover-heading" className="text-sm font-semibold">Work this price covers</h3>
+                  {updatingExisting ? (
+                    <div className="grid gap-2 text-sm">
+                      <p>Update this application. The allowance already on draft Pricing changes. A second charge is not added.</p>
+                      <p>
+                        {summaryReplaced === 0
+                          ? "No Pricing lines were replaced. The allowance stays as an extra charge."
+                          : `${summaryReplaced === 1 ? "1 Pricing line stays replaced" : `${summaryReplaced} Pricing lines stay replaced`}${replacedLabels.length > 0 ? `: ${replacedLabels.join(", ")}` : ""}.`}
+                      </p>
+                      <p>Add another charge is not available while this work area already has a subcontract allowance.</p>
+                    </div>
+                  ) : lines.length === 0 ? (
+                    <div className="grid gap-2 text-sm">
+                      <p>
+                        No Pricing lines in this work area can be replaced.
+                        {" "}
+                        {unavailableReason(hiddenLines.length, replacedLines.length, allowanceLines.length)}
+                      </p>
+                      <label className={choiceClass(coverMode === "add")}>
+                        <span className="flex min-h-11 items-start gap-3 font-medium">
+                          <input
+                            type="radio"
+                            name="rfq-cover"
+                            className="mt-0.5 size-5 shrink-0"
+                            checked={coverMode === "add"}
+                            onChange={() => {
+                              setCoverMode("add");
+                              setSelected([]);
+                              resetAcknowledgements();
+                              schedulePreview([], true, manualSell, responseId);
+                            }}
+                          />
+                          <span>Add a separate allowance</span>
+                        </span>
+                      </label>
+                    </div>
                   ) : (
-                    <>{picked.length === 1 ? "1 line selected" : `${picked.length} lines selected`}.</>
+                    <fieldset className="grid gap-3">
+                      <legend className="text-sm">Choose one. Nothing is selected for you.</legend>
+                      <label className={choiceClass(coverMode === "replace")}>
+                        <span className="flex min-h-11 items-start gap-3 font-medium">
+                          <input
+                            type="radio"
+                            name="rfq-cover"
+                            className="mt-0.5 size-5 shrink-0"
+                            checked={coverMode === "replace"}
+                            onChange={() => {
+                              setCoverMode("replace");
+                              resetAcknowledgements();
+                              schedulePreview(selected, false, manualSell, responseId);
+                            }}
+                          />
+                          <span>Replace selected Pricing lines</span>
+                        </span>
+                        {coverMode === "replace" ? <span className="pl-8 text-sm font-normal">Unselected lines remain charged.</span> : null}
+                      </label>
+                      <label className={choiceClass(coverMode === "add")}>
+                        <span className="flex min-h-11 items-start gap-3 font-medium">
+                          <input
+                            type="radio"
+                            name="rfq-cover"
+                            className="mt-0.5 size-5 shrink-0"
+                            checked={coverMode === "add"}
+                            onChange={() => {
+                              setCoverMode("add");
+                              setSelected([]);
+                              resetAcknowledgements();
+                              schedulePreview([], true, manualSell, responseId);
+                            }}
+                          />
+                          <span>Add a separate allowance</span>
+                        </span>
+                      </label>
+                    </fieldset>
                   )}
-                </p>
-                <p>Unselected lines remain charged.</p>
-              </div>
-              <div className="grid gap-4 text-sm lg:grid-cols-2">
-                <div className="grid min-w-0 gap-1">
-                  <p className="font-medium">Supplier’s stated scope</p>
-                  <p className="whitespace-pre-wrap text-foreground/80">{statedScope || "No supplier scope was written."}</p>
-                  <p className="text-foreground/70">Quotr has not checked that this matches the selected lines.</p>
-                </div>
-                <div className="grid min-w-0 gap-1">
-                  <p className="font-medium">Selected work</p>
-                  {picked.length === 0 ? (
-                    <p className="text-foreground/80">No pricing lines selected.</p>
-                  ) : (
-                    <ul className="grid gap-1">
-                      {picked.map((line) => (
-                        <li key={line.id} className="break-words">{line.label}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-              {conditions.length > 0 ? (
-                <p className="text-sm">
-                  Supplier conditions need a client-facing assumption, a client exclusion, a linked item, or private handling. None of those decisions is stored, so this step does not write client scope wording.
-                </p>
-              ) : null}
-              {selected.length === 0 ? (
-                <div className="grid gap-2 rounded-md border border-border bg-background p-3 text-sm">
-                  <p>
-                    {activeApplication
-                      ? "No lines selected. This updates the allowance already used for this work area and keeps the lines it already replaced hidden. It does not add a second allowance. The lines listed below stay charged."
-                      : `No lines selected. Every line listed below stays charged. This adds the supplier allowance of ${response?.priceExGst == null ? "the submitted price" : money(response.priceExGst)} ex GST on top of those lines. The same work can be billed twice if this price already covers it.`}
-                  </p>
-                  {lines.length > 0 ? (
-                    <details>
-                      <summary className="min-h-11 cursor-pointer py-2">Lines that stay charged</summary>
-                      <ul className="grid gap-1 pb-2">
-                        {lines.map((line) => (
-                          <li key={line.id} className="break-words">{line.label}</li>
-                        ))}
-                      </ul>
-                    </details>
+
+                  {coverMode === "replace" && !updatingExisting ? (
+                    <div className="grid gap-2">
+                      <p className="text-sm">Quotr has not checked that the supplier scope matches these lines.</p>
+                      {lines.map((line) => {
+                        const known = lineKnown(line);
+                        return (
+                          <label key={line.id} className="flex min-h-11 items-start gap-3 rounded-md border border-border px-3 py-2 text-sm">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 size-6 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                              checked={selected.includes(line.id)}
+                              onChange={() => toggle(line.id)}
+                            />
+                            <span className="grid min-w-0 gap-1">
+                              <span className="break-words font-medium">{line.label}</span>
+                              <span className="text-foreground/70">
+                                {quantityLabel(line.quantity, line.unit)}
+                                {" · "}
+                                Cost {known ? money(line.totalCost) : "Pricing Required"}
+                                {" · "}
+                                Client sell {known ? money(line.totalSell) : "Pricing Required"}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {selected.length === 0 ? <p className="text-sm">Choose the Pricing lines this price replaces.</p> : <p className="text-sm">Unselected lines remain charged.</p>}
+                    </div>
                   ) : null}
-                  <label className="flex min-h-11 items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-                    checked={addOnly}
-                    onChange={(event) => {
-                      const next = event.target.checked;
-                      setAddOnly(next);
-                      setAcknowledgeLoss(false);
-                      setConfirmed(false);
-                      setDone(false);
-                      schedulePreview(selected, next, manualSell, responseId);
-                    }}
-                    />
-                    <span>Add this supplier allowance without replacing any line.</span>
-                  </label>
-                  {overlapRequired ? (
-                    <label className="flex min-h-11 items-start gap-3">
+
+                  {coverMode === "add" && overlapRequired ? (
+                    <label className="flex min-h-11 items-start gap-3 text-sm">
                       <input
                         type="checkbox"
                         className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
                         checked={acknowledgeOverlap}
-                        onChange={(event) => setAcknowledgeOverlap(event.target.checked)}
+                        onChange={(event) => {
+                          setAcknowledgeOverlap(event.target.checked);
+                          setConfirmed(false);
+                        }}
                       />
                       <span>I confirm the existing lines stay charged and this supplier allowance is added as well.</span>
                     </label>
                   ) : null}
-                </div>
-              ) : null}
-              {omitted > 0 ? (
-                <p className="text-sm text-foreground/70">
-                  {omitted === 1 ? "1 line" : `${omitted} lines`} in this work area {omitted === 1 ? "is" : "are"} hidden, already replaced, or already a supplier allowance, so {omitted === 1 ? "it is" : "they are"} not offered.
-                </p>
-              ) : null}
-              <fieldset className="grid gap-2">
-                <legend className="sr-only">Pricing lines this price can replace</legend>
-                {lines.length === 0 ? <p className="text-sm">No active pricing lines in this work area.</p> : null}
-                {lines.map((line) => {
-                  const known = lineKnown(line);
-                  const suggested = lineSuggested(line.label, statedScope, detail.scopeLabel || "");
-                  return (
-                    <label key={line.id} className="flex min-h-11 items-start gap-3 rounded-md border border-border px-3 py-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 size-6 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-                        checked={selected.includes(line.id)}
-                        onChange={() => toggle(line.id)}
-                      />
-                      <span className="grid min-w-0 gap-1">
-                        <span className="break-words font-medium">{line.label}</span>
-                        <span className="text-foreground/70">
-                          {quantityLabel(line.quantity, line.unit)}
-                          {" · "}
-                          Cost {known ? money(line.totalCost) : "Pricing Required"}
-                          {" · "}
-                          Client sell {known ? money(line.totalSell) : "Pricing Required"}
-                        </span>
-                        {suggested ? <span>Some words also appear in the supplier scope. Quotr has not checked that this is the same work.</span> : null}
-                      </span>
-                    </label>
-                  );
-                })}
-              </fieldset>
-              {picked.length > 0 ? (
-                <details>
-                  <summary className="min-h-11 cursor-pointer py-2 text-sm">Show line details</summary>
-                  <ul className="grid gap-2 pb-2 text-sm">
-                    {picked.map((line) => {
-                      const known = lineKnown(line);
-                      const suggested = lineSuggested(line.label, statedScope, detail.scopeLabel || "");
-                      return (
-                        <li key={line.id} className="break-words">
-                          {line.label}
-                          {" · "}
-                          {quantityLabel(line.quantity, line.unit)}
-                          {" · "}
-                          cost {known ? money(line.totalCost) : "Pricing Required"}
-                          {" · "}
-                          sell {known ? money(line.totalSell) : "Pricing Required"}
-                          {" · "}
-                          Pricing line in {detail.scopeLabel || "this work area"}
-                          {suggested ? ". Some words also appear in the supplier scope. Quotr has not checked that this is the same work." : "."}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </details>
-              ) : null}
-            </section>
 
-            <section className="grid gap-3" aria-labelledby="rfq-sell-heading" data-rfq-pricing-preview>
-              <h3 id="rfq-sell-heading" className="text-sm font-semibold">Client sell</h3>
-              {previewing ? <p className="text-sm">Checking these lines…</p> : null}
-              {!fresh && !previewing ? <p className="text-sm">Select the lines this price replaces, or confirm that it adds a new allowance.</p> : null}
-              {fresh || previewing ? (
-                <fieldset className="grid gap-3">
-                  <legend className="text-sm">Choose one. Nothing is selected for you.</legend>
-                  {(["keep", "target_margin", "manual"] as const).map((choiceTreatment) => {
-                    const choice = fresh?.choices.find((item) => item.treatment === choiceTreatment) ?? null;
-                    const chosen = treatment === choiceTreatment;
-                    return (
-                      <label key={choiceTreatment} className={choiceClass(chosen)} data-rfq-sell-choice={choiceTreatment}>
-                        <span className="flex min-h-11 items-start gap-3 font-medium">
-                          <input
-                            type="radio"
-                            name="rfq-sell-treatment"
-                            className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-                            disabled={!choice || (choiceTreatment !== "manual" && !choice.available)}
-                            checked={chosen}
-                            onChange={() => {
-                              setTreatment(choiceTreatment);
-                              setAcknowledgeLoss(false);
-                              setConfirmed(false);
-                            }}
-                          />
-                          <span>{choiceTitle(choiceTreatment)}</span>
-                        </span>
-                        {choiceTreatment === "manual" && chosen ? (
-                          <span className="grid gap-1 pl-8 text-sm font-normal">
-                            Client sell ex GST
-                            <input
-                              className={fieldClass}
-                              inputMode="decimal"
-                              aria-label="Client sell ex GST"
-                              value={manualSell}
-                              onChange={(event) => {
-                                const next = event.target.value;
-                                setManualSell(next);
-                                setTreatment("manual");
-                                setAcknowledgeLoss(false);
-                                setConfirmed(false);
-                                schedulePreview(selected, addOnly, next, responseId);
-                              }}
-                            />
-                          </span>
-                        ) : null}
-                        {previewing ? (
-                          <span className="pl-8 text-sm font-normal">Updating this preview…</span>
-                        ) : choice?.available ? (
-                          <span className="grid gap-1 pl-8 text-sm font-normal">
-                            <span>Client sell {choice.sellKnown ? money(choice.sell) : "Pricing Required"}</span>
-                            <span>Gross profit {money(choice.grossProfit)}</span>
-                            <span>Margin {percent(choice.marginPercent)}</span>
-                            {choice.loss ? <span className="font-medium text-destructive">Loss. The supplier cost is higher than the client sell.</span> : null}
-                          </span>
-                        ) : (
-                          <span className="pl-8 text-sm font-normal">{choice?.unavailableReason ?? "Checking this choice."}</span>
-                        )}
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              ) : null}
-            </section>
-
-            <section className="grid gap-4" aria-labelledby="rfq-review-heading">
-              <h3 id="rfq-review-heading" className="text-sm font-semibold">Review and confirm</h3>
-              {previewing ? <p className="text-sm">Updating the before and after.</p> : null}
-              {!previewing && fresh && selectedChoice?.available ? (
-                <>
-                  <dl className="grid gap-2 text-sm" data-rfq-confirm-primary>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Supplier cost for selected work</dt>
-                      <dd className="tabular-nums">{money(selectedChoice.cost)}</dd>
-                    </div>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Approved client sell for that work</dt>
-                      <dd className="tabular-nums">{selectedChoice.sellKnown ? money(selectedChoice.sell) : "Pricing Required"}</dd>
-                    </div>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Gross profit and margin</dt>
-                      <dd className="tabular-nums">{money(selectedChoice.grossProfit)} · {percent(selectedChoice.marginPercent)}</dd>
-                    </div>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Whole-job client sell</dt>
-                      <dd className="tabular-nums">{money(fresh.before.sell)} → {money(selectedChoice.after.sell)}</dd>
-                    </div>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Whole-job total incl GST</dt>
-                      <dd className="tabular-nums">{money(fresh.before.totalInclGst)} → {money(selectedChoice.after.totalInclGst)}</dd>
-                    </div>
-                    <div className="flex flex-wrap justify-between gap-2">
-                      <dt>Lines</dt>
-                      <dd>{fresh.affected.length === 1 ? "1 replaced" : `${fresh.affected.length} replaced`} · {remaining === 1 ? "1 remaining" : `${remaining} remaining`}</dd>
-                    </div>
-                  </dl>
-                  <details className="rounded-md border border-border px-3 py-2 text-sm">
-                    <summary className="min-h-11 cursor-pointer py-2">Full money breakdown</summary>
-                    <div className="grid gap-4 pb-2">
-                      <div className="grid gap-2">
-                        <p className="font-medium">Selected work before and after</p>
-                        <p className="text-foreground/70">GST in this block is on the selected-work subtotal. It is not calculated on each line, and it is not the document GST.</p>
-                        {fresh.affected.length === 0 ? <p>No existing lines are included. The new allowance is the selected work.</p> : null}
-                        <MoneyRows
-                          before={fresh.selectedBefore}
-                          after={selectedChoice.selectedAfter}
-                          gstLabel="GST on the selected-work subtotal"
-                          totalLabel="Selected-work total incl GST"
-                        />
+                  {unavailableCount > 0 ? (
+                    <details className="text-sm">
+                      <summary className={`min-h-11 cursor-pointer py-2 ${focusClass}`}>Why some lines are unavailable</summary>
+                      <div className="grid gap-2 pb-2">
+                        {hiddenLines.length > 0 ? <p>{hiddenLines.length === 1 ? "1 line is hidden from the Quote." : `${hiddenLines.length} lines are hidden from the Quote.`} {hiddenLines.map((line) => line.label).join(", ")}</p> : null}
+                        {replacedLines.length > 0 ? <p>{replacedLines.length === 1 ? "1 line is already replaced." : `${replacedLines.length} lines are already replaced.`} {replacedLines.map((line) => line.label).join(", ")}</p> : null}
+                        {allowanceLines.length > 0 ? <p>{allowanceLines.length === 1 ? "1 line is already a supplier allowance." : `${allowanceLines.length} lines are already supplier allowances.`} {allowanceLines.map((line) => line.label).join(", ")}</p> : null}
                       </div>
-                      <div className="grid gap-2">
-                        <p className="font-medium">Whole pricing document before and after</p>
-                        <p className="text-foreground/70">Document GST is calculated on the document sell. It is not mixed with the selected-work GST above.</p>
-                        <MoneyRows
-                          before={fresh.before}
-                          after={selectedChoice.after}
-                          gstLabel="Document GST"
-                          totalLabel="Document total incl GST"
-                        />
-                      </div>
-                    </div>
-                  </details>
-                  {fresh.quoteExists ? (
-                    <p className="text-sm">
-                      An issued quote on this job stays unchanged. A revised client price needs the normal new quote or revision path.
-                    </p>
+                    </details>
                   ) : null}
-                  <p className="text-sm" data-rfq-confirm-summary>{confirmSummary}</p>
-                </>
-              ) : !previewing ? (
-                <p className="text-sm">Choose a client sell to see the before and after.</p>
-              ) : null}
-              {selectedChoice?.loss ? (
-                <label className="flex min-h-11 items-start gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-                    checked={acknowledgeLoss}
-                    onChange={(event) => setAcknowledgeLoss(event.target.checked)}
-                  />
-                  <span>Confirm that this cost is higher than the sell before using it.</span>
-                </label>
-              ) : null}
-              <label className="flex min-h-11 items-start gap-3 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
-                  checked={confirmed}
-                  onChange={(event) => setConfirmed(event.target.checked)}
+                </section>
+
+                <SellAndReview
+                  fresh={fresh}
+                  previewing={previewing}
+                  treatment={treatment}
+                  manualSell={manualSell}
+                  selectedChoice={selectedChoice}
+                  ready={updatingExisting || (coverMode === "replace" && selected.length > 0) || (coverMode === "add" && (!overlapRequired || acknowledgeOverlap))}
+                  waiting={lines.length === 0 && coverMode === "" ? "Add a separate allowance if this price should still go on draft Pricing." : coverMode === "" ? "Choose whether to replace Pricing lines or add a separate allowance." : coverMode === "replace" && selected.length === 0 ? "Choose the Pricing lines this price replaces." : coverMode === "add" && overlapRequired && !acknowledgeOverlap ? "Confirm that the existing lines stay charged before choosing a client sell." : "Choose a client sell to see the before and after."}
+                  remaining={Math.max(lines.length - selected.length, 0)}
+                  replacedCount={updatingExisting ? (activeApplication?.replacedItemIds.length ?? 0) : selected.length}
+                  choiceTitle={choiceTitle}
+                  onTreatment={(next) => {
+                    setTreatment(next);
+                    setAcknowledgeLoss(false);
+                    setConfirmed(false);
+                  }}
+                  onManual={(next) => {
+                    setManualSell(next);
+                    setTreatment("manual");
+                    setAcknowledgeLoss(false);
+                    setConfirmed(false);
+                    schedulePreview(replacedIds, coverMode === "add" || replacedIds.length === 0, next, responseId);
+                  }}
+                  confirmed={confirmed}
+                  onConfirmed={setConfirmed}
+                  acknowledgeLoss={acknowledgeLoss}
+                  onAcknowledgeLoss={setAcknowledgeLoss}
+                  saving={saving}
+                  canApply={canApply}
+                  onApply={() => void apply()}
+                  reviewed={pricing?.documentStatus === "reviewed"}
+                  actionLabel={updatingExisting ? "Update this application" : "Use for draft Pricing"}
+                  supplierName={supplierName}
+                  versionNumber={response.versionNumber}
+                  added={!updatingExisting && coverMode === "add"}
+                  updating={updatingExisting}
                 />
-                <span>Use this response for draft pricing. This does not award the work or notify the supplier.</span>
-              </label>
-              {error ? (
-                <p ref={errorRef} tabIndex={-1} className="text-sm text-red-700 outline-none" role="alert">
-                  {error}
-                </p>
-              ) : null}
-              <div className="scroll-mb-28">
-                <Button
-                  type="button"
-                  className="h-11 min-h-11 w-full sm:w-fit"
-                  disabled={!canApply}
-                  onClick={apply}
-                >
-                  {saving ? "Saving draft pricing…" : "Use for draft Pricing"}
-                </Button>
-              </div>
-            </section>
-          </>
-        )}
+              </>
+            )}
+            </fieldset>
+          </form>
+        ) : null}
       </section>
     </RfqApplyColumn>
+  );
+}
+
+function unavailableReason(hidden: number, replaced: number, allowance: number): string {
+  const parts: string[] = [];
+  if (hidden > 0) parts.push(hidden === 1 ? "1 line is hidden" : `${hidden} lines are hidden`);
+  if (replaced > 0) parts.push(replaced === 1 ? "1 line is already replaced" : `${replaced} lines are already replaced`);
+  if (allowance > 0) parts.push(allowance === 1 ? "1 line is already a supplier allowance" : `${allowance} lines are already supplier allowances`);
+  if (parts.length === 0) return "This work area has no pricing lines.";
+  return `${parts.join(", ")}.`;
+}
+
+function LockNotice({
+  detail,
+  pricing,
+  quote,
+  documentConverted,
+}: {
+  detail: RfqDetail;
+  pricing: RfqPricingTarget | null;
+  quote: QuoteLock | null;
+  documentConverted: boolean;
+}) {
+  const href = quote
+    ? `/app/projects/${detail.projectId}/quotes/${quote.id}`
+    : pricing
+      ? `/app/projects/${detail.projectId}/pricing/${pricing.documentId}`
+      : null;
+  const message = !pricing || !["draft", "reviewed", "converted_to_quote"].includes(pricing.documentStatus)
+    ? "This Pricing can no longer be changed."
+    : quote
+      ? `${formatQuoteBadgeLabel(quote.status)}. This Quote stays as issued. Create a revision on the Quote to change the client price.`
+      : documentConverted
+        ? "This Pricing has been converted to a Quote. Create a revision on the Quote to change the client price."
+        : "This Pricing can no longer be changed.";
+  return (
+    <div className="grid gap-3 rounded-lg border border-border bg-background p-4 text-sm" data-rfq-pricing-lock>
+      <p>{message}</p>
+      {href ? (
+        <Link href={href} className={`inline-flex min-h-11 w-fit items-center rounded-md bg-[var(--brand-orange)] px-4 text-sm font-medium text-white ${focusClass}`}>
+          {quote ? "Open Quote" : "Open Pricing"}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function AppliedSummary({
+  supplier,
+  versionNumber,
+  costExGst,
+  sellKnown,
+  sellExGst,
+  replacedCount,
+  replacedLabels,
+  pricingHref,
+  pricingLabel,
+  newer,
+  emphasizePricing = true,
+  onReviewNewer,
+  onChange,
+}: {
+  supplier: string;
+  versionNumber: number;
+  costExGst: number;
+  sellKnown: boolean;
+  sellExGst: number | null;
+  replacedCount: number;
+  replacedLabels: string[];
+  pricingHref: string | null;
+  pricingLabel: string;
+  newer: RfqResponseView | null;
+  emphasizePricing?: boolean;
+  onReviewNewer?: () => void;
+  onChange?: () => void;
+}) {
+  return (
+    <div className="grid gap-3 rounded-lg border border-border bg-background p-4" data-rfq-pricing-applied>
+      <p className="font-medium">Applied to draft Pricing</p>
+      <dl className="grid gap-2 text-sm">
+        <div className="flex flex-wrap justify-between gap-2"><dt>Response</dt><dd>{supplier} · version {versionNumber}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2"><dt>Supplier cost</dt><dd className="tabular-nums">{money(costExGst)} ex GST</dd></div>
+        <div className="flex flex-wrap justify-between gap-2"><dt>Approved client sell</dt><dd className="tabular-nums">{sellKnown ? `${money(sellExGst)} ex GST` : "Pricing Required"}</dd></div>
+        <div className="flex flex-wrap justify-between gap-2">
+          <dt>What changed</dt>
+          <dd className="text-right">
+            {replacedCount === 0
+              ? "Added an allowance. No Pricing lines were replaced."
+              : replacedCount === 1
+                ? `Replaced 1 Pricing line${replacedLabels[0] ? `: ${replacedLabels[0]}` : ""}.`
+                : `Replaced ${replacedCount} Pricing lines${replacedLabels.length > 0 ? `: ${replacedLabels.join(", ")}` : ""}.`}
+          </dd>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2"><dt>Pricing</dt><dd>{pricingLabel}</dd></div>
+      </dl>
+      {newer ? (
+        <div className="grid gap-2 rounded-md border border-border p-3 text-sm" data-rfq-newer-price>
+          <p className="font-medium">Newer price available</p>
+          <p>Version {newer.versionNumber} is not on Pricing. The applied version and its money stay as they are.</p>
+          {onReviewNewer ? (
+            <button type="button" className={`inline-flex min-h-11 w-fit items-center rounded-md border border-border bg-background px-3 font-medium ${focusClass}`} onClick={onReviewNewer}>
+              Review version {newer.versionNumber}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        {pricingHref ? (
+          <Link
+            href={pricingHref}
+            className={emphasizePricing
+              ? `inline-flex min-h-11 w-fit items-center rounded-md bg-[var(--brand-orange)] px-4 text-sm font-medium text-white ${focusClass}`
+              : `inline-flex min-h-11 w-fit items-center text-sm font-medium underline ${focusClass}`}
+          >
+            Open Pricing
+          </Link>
+        ) : null}
+        {onChange ? (
+          <button type="button" className={`inline-flex min-h-11 w-fit items-center rounded-md border border-border bg-background px-4 text-sm font-medium ${focusClass}`} onClick={onChange}>
+            Change pricing decision
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SameVersionChange({
+  intent,
+  onIntent,
+  newer,
+  allowanceLabel,
+  replacedLabels,
+  saving,
+  onSave,
+  onReviewNewer,
+}: {
+  intent: "" | "update" | "add";
+  onIntent: (intent: "" | "update" | "add") => void;
+  newer: RfqResponseView | null;
+  allowanceLabel: string;
+  replacedLabels: string[];
+  saving: boolean;
+  onSave: () => void;
+  onReviewNewer?: () => void;
+}) {
+  const replaced = replacedLabels.length > 0 ? replacedLabels.join(", ") : "none";
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="text-sm font-semibold">Change pricing decision</legend>
+      <p className="text-sm">This version is already applied. The existing allowance is {allowanceLabel}. Replaced lines: {replaced}.</p>
+      <p className="text-sm">Updating it keeps that one allowance. Adding a second charge is a different decision, and this same version cannot do it.</p>
+      <label className={choiceClass(intent === "update")}>
+        <span className="flex min-h-11 items-start gap-3 font-medium">
+          <input type="radio" name="rfq-change-intent" className="mt-0.5 size-5" checked={intent === "update"} onChange={() => onIntent("update")} />
+          <span>Update this application</span>
+        </span>
+        {intent === "update" ? (
+          <span className="pl-8 text-sm font-normal">Saving this version again updates the existing allowance. It does not add another charge.</span>
+        ) : null}
+      </label>
+      {intent === "update" ? (
+        <button type="button" className={`inline-flex min-h-11 w-fit items-center rounded-md bg-[var(--brand-orange)] px-4 text-sm font-medium text-white ${focusClass}`} disabled={saving} onClick={onSave}>
+          Save this decision
+        </button>
+      ) : null}
+      {intent === "update" && newer && onReviewNewer ? (
+        <button type="button" className={`inline-flex min-h-11 w-fit items-center rounded-md border border-border bg-background px-3 text-sm font-medium ${focusClass}`} onClick={onReviewNewer}>
+          Review version {newer.versionNumber}
+        </button>
+      ) : null}
+      {intent === "update" && !newer ? <p className="text-sm">A newer response version can update this allowance. This version cannot.</p> : null}
+      <label className={choiceClass(intent === "add")}>
+        <span className="flex min-h-11 items-start gap-3 font-medium">
+          <input type="radio" name="rfq-change-intent" className="mt-0.5 size-5" checked={intent === "add"} onChange={() => onIntent("add")} />
+          <span>Add another charge</span>
+        </span>
+        {intent === "add" ? (
+          <span className="pl-8 text-sm font-normal">Adding another charge is not available from this version. It would not create a second allowance, and this page will not pretend that it does.</span>
+        ) : null}
+      </label>
+    </fieldset>
+  );
+}
+
+function SellAndReview(props: {
+  fresh: RfqPricingPreviewResult | null;
+  previewing: boolean;
+  treatment: RfqSellTreatment | "";
+  manualSell: string;
+  selectedChoice: RfqPricingPreviewResult["choices"][number] | null;
+  ready: boolean;
+  waiting: string;
+  remaining: number;
+  replacedCount: number;
+  choiceTitle: (treatment: RfqSellTreatment) => string;
+  onTreatment: (treatment: RfqSellTreatment) => void;
+  onManual: (value: string) => void;
+  confirmed: boolean;
+  onConfirmed: (value: boolean) => void;
+  acknowledgeLoss: boolean;
+  onAcknowledgeLoss: (value: boolean) => void;
+  saving: boolean;
+  canApply: boolean;
+  onApply: () => void;
+  reviewed: boolean;
+  actionLabel: string;
+  supplierName: string;
+  versionNumber: number;
+  added: boolean;
+  updating: boolean;
+}) {
+  const { fresh, selectedChoice } = props;
+  const lossAmount = selectedChoice?.loss && selectedChoice.sell != null
+    ? Math.round((selectedChoice.cost - selectedChoice.sell) * 100) / 100
+    : null;
+  const showDecision = props.ready || props.previewing || props.saving;
+  if (!showDecision) return <p className="text-sm">{props.waiting}</p>;
+  return (
+    <>
+      <section className="grid gap-3" aria-labelledby="rfq-sell-heading" data-rfq-pricing-preview>
+        <h3 id="rfq-sell-heading" className="text-sm font-semibold">Client sell</h3>
+        {props.previewing ? <p className="text-sm">Checking these lines…</p> : null}
+        {!props.ready && !props.previewing ? <p className="text-sm">{props.waiting}</p> : null}
+        {props.ready && (fresh || props.previewing) ? (
+          <fieldset className="grid gap-3" disabled={props.saving}>
+            <legend className="text-sm">Choose one. Nothing is selected for you.</legend>
+            {(["keep", "target_margin", "manual"] as const).map((choiceTreatment) => {
+              const choice = fresh?.choices.find((item) => item.treatment === choiceTreatment) ?? null;
+              const chosen = props.treatment === choiceTreatment;
+              return (
+                <label key={choiceTreatment} className={choiceClass(chosen)} data-rfq-sell-choice={choiceTreatment}>
+                  <span className="flex min-h-11 items-start gap-3 font-medium">
+                    <input
+                      type="radio"
+                      name="rfq-sell-treatment"
+                      className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                      disabled={!choice || (choiceTreatment !== "manual" && !choice.available)}
+                      checked={chosen}
+                      onChange={() => props.onTreatment(choiceTreatment)}
+                    />
+                    <span>{props.choiceTitle(choiceTreatment)}</span>
+                  </span>
+                  {choiceTreatment === "manual" && chosen ? (
+                    <span className="grid gap-1 pl-8 text-sm font-normal">
+                      Client sell ex GST
+                      <input
+                        className={fieldClass}
+                        inputMode="decimal"
+                        aria-label="Client sell ex GST"
+                        value={props.manualSell}
+                        onChange={(event) => props.onManual(event.target.value)}
+                      />
+                    </span>
+                  ) : null}
+                  {props.previewing ? (
+                    <span className="pl-8 text-sm font-normal">Updating this preview…</span>
+                  ) : choice?.available ? (
+                    <span className="grid gap-1 pl-8 text-sm font-normal">
+                      <span>Client sell {choice.sellKnown ? money(choice.sell) : "Pricing Required"}</span>
+                      <span>Gross profit {money(choice.grossProfit)}</span>
+                      <span>Margin {percent(choice.marginPercent)}</span>
+                    </span>
+                  ) : (
+                    <span className="pl-8 text-sm font-normal">{choiceReason(choiceTreatment, choice?.unavailableReason ?? null)}</span>
+                  )}
+                </label>
+              );
+            })}
+          </fieldset>
+        ) : null}
+      </section>
+
+      <section className="grid gap-4" aria-labelledby="rfq-review-heading">
+        <h3 id="rfq-review-heading" className="text-sm font-semibold">Review and confirm</h3>
+        {props.previewing ? <p className="text-sm">Updating the before and after.</p> : null}
+        {!props.previewing && fresh && selectedChoice?.available ? (
+          <>
+            <dl className="grid gap-2 text-sm" data-rfq-confirm-primary>
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt>Selected work cost</dt>
+                <dd className="tabular-nums">{money(fresh.selectedBefore.cost)} → {money(selectedChoice.selectedAfter.cost)}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt>Selected work client sell</dt>
+                <dd className="tabular-nums">{money(fresh.selectedBefore.sell)} → {selectedChoice.sellKnown ? money(selectedChoice.sell) : "Pricing Required"}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt>Whole-job client sell</dt>
+                <dd className="tabular-nums">{money(fresh.before.sell)} → {money(selectedChoice.after.sell)}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt>Whole-job total incl GST</dt>
+                <dd className="tabular-nums">{money(fresh.before.totalInclGst)} → {money(selectedChoice.after.totalInclGst)}</dd>
+              </div>
+            </dl>
+            <details className="rounded-md border border-border px-3 py-2 text-sm">
+              <summary className={`min-h-11 cursor-pointer py-2 ${focusClass}`}>Full money breakdown</summary>
+              <div className="grid gap-4 pb-2">
+                <div className="grid gap-2">
+                  <p className="font-medium">Selected work before and after</p>
+                  <p className="text-foreground/70">GST in this block is on the selected-work subtotal. It is not the document GST.</p>
+                  {props.replacedCount === 0 ? <p>No existing lines are included. The new allowance is the selected work.</p> : null}
+                  <MoneyRows before={fresh.selectedBefore} after={selectedChoice.selectedAfter} gstLabel="GST on the selected-work subtotal" totalLabel="Selected-work total incl GST" />
+                </div>
+                <div className="grid gap-2">
+                  <p className="font-medium">Whole pricing document before and after</p>
+                  <p className="text-foreground/70">Document GST is calculated on the document sell.</p>
+                  <MoneyRows before={fresh.before} after={selectedChoice.after} gstLabel="Document GST" totalLabel="Document total incl GST" />
+                </div>
+              </div>
+            </details>
+          </>
+        ) : !props.previewing && props.ready ? <p className="text-sm">{props.waiting}</p> : null}
+
+        {selectedChoice?.loss && lossAmount != null ? (
+          <div className="grid gap-2 rounded-md border border-destructive p-3 text-sm" role="alert">
+            <p className="font-medium">Selected work would make a loss of {money(lossAmount)}.</p>
+            <p>
+              Whole job after this: gross profit {money(selectedChoice.after.grossProfit)}, margin {percent(selectedChoice.after.marginPercent)}.
+            </p>
+            <label className="flex min-h-11 items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                checked={props.acknowledgeLoss}
+                onChange={(event) => props.onAcknowledgeLoss(event.target.checked)}
+              />
+              <span>Confirm that this cost is higher than the sell before using it.</span>
+            </label>
+          </div>
+        ) : null}
+
+        {selectedChoice?.available || props.saving ? (
+          <>
+            <label className="flex min-h-11 items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]"
+                checked={props.confirmed}
+                onChange={(event) => props.onConfirmed(event.target.checked)}
+              />
+              <span>
+                Use this response for draft pricing. This changes draft Pricing and does not award the work or notify the subcontractor.
+                {" "}
+                {props.supplierName}, version {props.versionNumber}.
+                {" "}
+                {props.updating
+                  ? "This updates the allowance already on draft Pricing. It does not add another charge."
+                  : props.added
+                    ? "This adds the supplier allowance and does not replace a line."
+                    : `This replaces ${props.replacedCount === 1 ? "1 line" : `${props.replacedCount} lines`}.`}
+                {" "}
+                {props.remaining === 1 ? "1 other line remains charged." : `${props.remaining} other lines remain charged.`}
+              </span>
+            </label>
+            {props.reviewed ? <p className="text-sm">Saving returns reviewed Pricing to draft.</p> : null}
+            <div className="scroll-mb-[calc(5.75rem+env(safe-area-inset-bottom))]" aria-live="polite">
+              <Button type="button" className="h-11 min-h-11 w-full sm:w-fit" disabled={!props.canApply || props.saving} onClick={props.onApply}>
+                {props.saving ? "Saving draft Pricing…" : props.actionLabel}
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </section>
+    </>
   );
 }

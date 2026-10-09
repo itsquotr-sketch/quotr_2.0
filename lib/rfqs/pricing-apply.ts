@@ -306,7 +306,7 @@ export async function applyRfqPricingApplication(input: {
   if (applied.error) {
     const message = applied.error.message ?? "";
     if (message.includes("RFQ_APPLY_FORCED") || message.includes("RFQ_COST_MISMATCH") || message.includes("RFQ_SELL_MISMATCH")) {
-      return { ok: false, error: "The pricing update was rolled back." };
+      return { ok: false, error: "That save was rolled back. Nothing was written. Your selections are still here." };
     }
     return { ok: false, error: FAILED };
   }

@@ -112,6 +112,9 @@ export type RfqDetail = {
     allowanceItemId: string;
     replacedItemIds: string[];
     costExGst: number;
+    sellExGst: number;
+    sellKnown: boolean;
+    sellTreatment: "keep" | "target_margin" | "manual" | null;
     workAreaId: string;
   }>;
   scheduleApplications: Array<{
@@ -337,7 +340,7 @@ export async function loadRfqDetail(
   const [applications, scheduleApplications] = await Promise.all([
     supabase
       .from("rfq_pricing_applications")
-      .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, work_area_id")
+      .select("id, response_id, recipient_id, allowance_item_id, replaced_item_ids, cost_ex_gst, sell_ex_gst, sell_known, sell_treatment, work_area_id")
       .eq("rfq_id", rfqId)
       .is("superseded_at", null),
     supabase
@@ -440,6 +443,9 @@ export async function loadRfqDetail(
       allowanceItemId: row.allowance_item_id,
       replacedItemIds: Array.isArray(row.replaced_item_ids) ? row.replaced_item_ids : [],
       costExGst: Number(row.cost_ex_gst ?? 0),
+      sellExGst: Number(row.sell_ex_gst ?? 0),
+      sellKnown: row.sell_known === true,
+      sellTreatment: row.sell_treatment === "keep" || row.sell_treatment === "target_margin" || row.sell_treatment === "manual" ? row.sell_treatment : null,
       workAreaId: row.work_area_id,
     })),
     scheduleApplications: (scheduleApplications.data ?? []).map((row) => ({

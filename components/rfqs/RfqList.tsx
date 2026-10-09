@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { RFQ_LIST_FILTER_KEYS, rfqListStorageKey } from "@/components/rfqs/rfq-layout";
 import type { RfqListRow } from "@/lib/rfqs/load";
 import { rfqResponseLabel, type RfqResponseState } from "@/lib/rfqs/states";
 
@@ -12,6 +16,21 @@ export function RfqList({
   rows: RfqListRow[];
   canEdit: boolean;
 }) {
+  useEffect(() => {
+    const current = new URLSearchParams(window.location.search);
+    const kept = new URLSearchParams();
+    for (const key of RFQ_LIST_FILTER_KEYS) {
+      const value = current.get(key);
+      if (value) kept.set(key, value);
+    }
+    try {
+      const storageKey = rfqListStorageKey(projectId);
+      if ([...kept.keys()].length === 0) sessionStorage.removeItem(storageKey);
+      else sessionStorage.setItem(storageKey, kept.toString());
+    } catch {
+      /* Private browsing can block storage. The list link still works. */
+    }
+  }, [projectId]);
   const questions = rows.reduce((sum, row) => sum + row.questionCount, 0);
   const awaiting = rows.reduce((sum, row) => sum + row.awaitingCount, 0);
   const received = rows.reduce((sum, row) => sum + row.respondedCount, 0);

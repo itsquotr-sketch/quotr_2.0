@@ -101,7 +101,7 @@ function staticMain() {
   assert("public token is not granted the pricing function", sql.includes("revoke all on function public.apply_rfq_response_to_pricing_v1(jsonb) from public, anon"));
   assert("document totals use the existing pricing persist", apply.includes("persistPricingDocumentTotals"));
   assert("the decision names the four steps", panel.includes("Supplier offer") && panel.includes("Work this price covers") && panel.includes("Client sell") && panel.includes("Review and confirm"));
-  assert("draft pricing is an explicit action", panel.includes("Use for draft Pricing") && panel.includes("Go to Pricing") && panel.includes("does not award the work"));
+  assert("draft pricing is an explicit action", panel.includes("Use for draft Pricing") && panel.includes("Open Pricing") && panel.includes("does not award the work"));
   assert("add-only overlap is confirmed separately from using the response", panel.includes("I confirm the existing lines stay charged and this supplier allowance is added as well.") && panel.includes("Use this response for draft pricing"));
   assert("an empty replacement is an explicit add", addOnlySql.includes("v_add_only") && addOnlySql.includes("rfq_pricing_applications_replaced_present"));
   assert("hidden and replaced lines are refused", reapplySql.includes("visible_on_quote is distinct from true") && reapplySql.includes("Replaced for draft pricing%") && reapplySql.includes("v_active.replaced_item_ids"));

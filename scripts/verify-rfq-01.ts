@@ -148,7 +148,7 @@ function staticMain() {
   });
   assert("email carries the link and not a price", mail.text.includes("https://example.test/r/rfq_example") && !mail.text.includes("$") && !email.includes("client_name") && mail.html.includes("Sent securely via Quotr") && mail.text.includes("Submitting a price does not mean the work has been accepted."));
   assert("no award control", !detail.includes("Award") && !detail.includes("notify the subcontractor of acceptance"));
-  assert("using a price does not award work", detail.includes("does not award the work or notify the subcontractor"));
+  assert("using a price does not award work", read("components/rfqs/RfqPricingApply.tsx").includes("does not award the work or notify the subcontractor"));
   assert("rate resolver is untouched", rates.includes("export function resolveRate") && !actions.includes("resolveRate"));
   assert("inbound mail is not parsed into a price", actions.includes("Inbound email is not captured"));
   assert("tokens are hashed", sql.includes("token_hash") && !sql.includes("raw_token"));
@@ -311,6 +311,17 @@ function staticMain() {
   assert("public request names the work", pub.includes("The work requested") && pub.includes("Your price and qualifications"));
   assert("scope change is not an ordinary answer", questions.includes("SCOPE_CHANGE") && actions.includes("SCOPE_CHANGE"));
   assert("questions notify editors only", questions.includes("rfq_question") && questions.includes("'owner', 'admin', 'estimator'") && !questions.includes("'viewer'"));
+  const priceNotice = read("supabase/migrations/107_rfq_price_notification.sql");
+  assert(
+    "a priced response notifies editors only",
+    priceNotice.includes("'rfq_price'")
+      && priceNotice.includes("submitted a revised price")
+      && priceNotice.includes("membership.status = 'active'")
+      && priceNotice.includes("'owner', 'admin', 'estimator'")
+      && !priceNotice.includes("client_name")
+      && !priceNotice.includes("access_token")
+      && !priceNotice.includes("storage_object")
+  );
   assert("file download stays on the request page", pub.includes('target="_blank"') && pub.includes("download=1"));
   assert("token format is unguessable length", isRfqAccessTokenFormat(generateRfqAccessToken()) && hashRfqAccessToken("rfq_x").length === 64);
 }
@@ -369,6 +380,23 @@ async function liveMain() {
     const owner = await userFor("owner", orgA);
     const viewer = await userFor("viewer", orgA);
     const foreign = await userFor("owner", orgB);
+    async function membershipOnly(role: "estimator" | "admin", status: "pending_billing" | "removed") {
+      const email = `rfq-${status}-${role}-${suffix}@example.invalid`;
+      const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+      if (created.error || !created.data.user) throw new Error(created.error?.message ?? "member");
+      userIds.push(created.data.user.id);
+      const profile = await admin.from("profiles").upsert({
+        id: created.data.user.id, org_id: orgA, role, full_name: `RFQ ${status}`,
+      });
+      if (profile.error) throw new Error(profile.error.message);
+      const membership = await admin.from("organisation_memberships").insert({
+        org_id: orgA, user_id: created.data.user.id, role, status,
+      });
+      if (membership.error) throw new Error(membership.error.message);
+      return created.data.user.id;
+    }
+    const pendingId = await membershipOnly("estimator", "pending_billing");
+    const removedId = await membershipOnly("admin", "removed");
     const project = await admin.from("projects").insert({
       id: projectId,
       org_id: orgA,
@@ -603,6 +631,13 @@ async function liveMain() {
         && !cleanPayload.includes("$400")
         && String(originalQuestion.data?.body).includes("0215550199")
     );
+    const draftPrice = await anon.rpc("public_rfq_save_response_v1", {
+      p_token_hash: hashRfqAccessToken(rawA),
+      p_payload: { price_ex_gst: "1800", gst_treatment: "extra", pricing_structure: "lump_sum", included_scope: "Wall tiles" },
+      p_confirm: false,
+      p_revise: false,
+    });
+    const draftNotes = await admin.from("notifications").select("id").eq("org_id", orgA).eq("notification_type", "rfq_price");
     const offer = await anon.rpc("public_rfq_save_response_v1", {
       p_token_hash: hashRfqAccessToken(rawA),
       p_payload: { price_ex_gst: "1800", gst_treatment: "extra", pricing_structure: "lump_sum", included_scope: "Wall tiles", excluded_scope: "Floor tiles", valid_until: "2027-01-01" },
@@ -633,6 +668,38 @@ async function liveMain() {
       "states stay independent",
       states.data?.find((row) => row.id === recipientA.id)?.response_state === "responded" &&
         states.data?.find((row) => row.id === recipientB.id)?.response_state === "declined"
+    );
+    const notices = await admin.from("notifications").select("id, recipient_user_id, body, resource_id, payload").eq("org_id", orgA).eq("notification_type", "rfq_price");
+    const priceNotes = (notices.data ?? []).filter((row) => row.recipient_user_id === userIds[0]);
+    const priceViewerNotes = (notices.data ?? []).filter((row) => row.recipient_user_id === userIds[1]);
+    const foreignNotes = await admin.from("notifications").select("id").eq("org_id", orgB).eq("notification_type", "rfq_price");
+    const versionsById = await admin.from("rfq_responses").select("id, version_number").eq("recipient_id", recipientA.id);
+    const versionOne = versionsById.data?.find((row) => row.version_number === 1);
+    const versionTwo = versionsById.data?.find((row) => row.version_number === 2);
+    const firstBody = `Tile Co ${suffix} submitted a price for Bathroom on Client secret ${suffix}.`;
+    const revisedBody = `Tile Co ${suffix} submitted a revised price for Bathroom on Client secret ${suffix}.`;
+    assert("a saved public draft does not notify", draftPrice.data?.ok === true && (draftNotes.data?.length ?? 0) === 0);
+    assert(
+      "a priced response notifies the owner once per version",
+      priceNotes.length === 2
+        && priceNotes.some((row) => row.body === firstBody && row.resource_id === versionOne?.id)
+        && priceNotes.some((row) => row.body === revisedBody && row.resource_id === versionTwo?.id)
+        && priceNotes.every((row) => !String(row.body).includes("1800") && !String(row.body).includes("2100") && !String(row.body).includes(`Hidden Client ${suffix}`) && !String(row.body).includes(`hidden-${suffix}`))
+        && priceViewerNotes.length === 0
+        && !notices.data?.some((row) => row.recipient_user_id === pendingId || row.recipient_user_id === removedId)
+        && (foreignNotes.data?.length ?? 0) === 0
+    );
+    const action = priceNotes.find((row) => row.resource_id === versionTwo?.id)?.payload as { actionUrl?: string } | null;
+    const marked = await owner.rpc("mark_notifications_read_v1", { p_ids: priceNotes.map((row) => row.id) });
+    const afterRead = await owner.from("notifications").select("read_at").eq("notification_type", "rfq_price");
+    const foreignPriceRead = await foreign.from("notifications").select("id").eq("notification_type", "rfq_price");
+    assert(
+      "the price notification opens that version and only the owner can read it",
+      String(action?.actionUrl).includes(`/requests/`) && String(action?.actionUrl).includes(`response=${versionTwo?.id}`)
+        && marked.error == null
+        && (afterRead.data?.length ?? 0) === 2
+        && afterRead.data?.every((row) => row.read_at != null) === true
+        && (foreignPriceRead.data?.length ?? 0) === 0
     );
     const cross = await anon.rpc("lookup_rfq_by_token_hash_v1", { p_token_hash: hashRfqAccessToken(rawB) });
     assert("declined recipient cannot see the other price", cross.data?.ok === true && !JSON.stringify(cross.data).includes("2100") && !JSON.stringify(cross.data).includes("1800"));

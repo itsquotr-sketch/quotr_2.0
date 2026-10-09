@@ -39,8 +39,8 @@ export default async function RfqDetailPage({ params, searchParams }: PageProps)
   if (!project || !detail) notFound();
   await markRfqQuestionNotificationsRead({ projectId, rfqId });
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/30">
-      <header className="shrink-0 border-b bg-background">
+    <div className="min-h-0 flex-1 overflow-auto overflow-x-hidden bg-muted/30" data-workspace-scroll="">
+      <header className="border-b bg-background">
         <WorkspaceHeaderBar actions={<UserMenu className="hidden md:inline-flex" />}>
           <ProjectWorkspaceHeader project={project} subtitle="Request" />
         </WorkspaceHeaderBar>
@@ -54,13 +54,14 @@ export default async function RfqDetailPage({ params, searchParams }: PageProps)
         hasEstimate={tabContext.hasEstimate}
         estimateIsStale={tabContext.estimateIsStale}
       />
-      <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
+      <WorkspaceContainer scrollable={false} className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <RfqDetailView
           detail={detail}
           canEdit={memberCanEditProjects(access.role)}
           canPrice={memberCanEditPricing(access.role)}
           pricing={pricing}
           deliveryNotice={deliveryNotice}
+          quote={quoteSummary ? { id: quoteSummary.id, status: quoteSummary.status } : null}
         />
       </WorkspaceContainer>
     </div>

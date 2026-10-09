@@ -223,18 +223,6 @@ export function ProjectSectionHeader({
             />
           </div>
         ) : null}
-        <Link
-          href={requestsHref}
-          className={cn(
-            "inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-foreground",
-            focusClass,
-            requestsCurrent && "underline"
-          )}
-          data-rfq-nav="true"
-          aria-current={requestsCurrent ? "page" : undefined}
-        >
-          Requests
-        </Link>
       </div>
       <CreateFinalPricingDialog
         projectId={workflowInput.projectId}

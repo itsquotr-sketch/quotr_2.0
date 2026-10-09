@@ -626,7 +626,7 @@ export async function markRfqQuestionNotificationsRead(input: {
     .from("notifications")
     .select("id, payload")
     .eq("recipient_user_id", context.user.id)
-    .eq("notification_type", "rfq_question")
+    .in("notification_type", ["rfq_question", "rfq_price"])
     .is("read_at", null);
   const ids = (notes.data ?? []).flatMap((note) => {
     const payload = note.payload as { rfqId?: string } | null;

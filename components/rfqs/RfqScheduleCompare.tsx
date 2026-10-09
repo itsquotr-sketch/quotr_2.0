@@ -32,7 +32,7 @@ export function RfqScheduleCompare({
       {detail.responses.filter((response) => response.status === "submitted").map((response) => (
         <span key={response.id} id={`rfq-response-${response.id}`} />
       ))}
-      <h2 className="text-base font-semibold">Item comparison</h2>
+      <h2 className="text-base font-semibold">Item-by-item comparison</h2>
       <p className="text-sm text-foreground/70">A partial total is not ranked against a complete price. A qualification does not make the response cheaper.</p>
       <ul className="grid gap-3 md:hidden">
         {detail.schedule.map((item) => (
@@ -129,7 +129,8 @@ export function RfqScheduleCompare({
 }
 
 function lineStatus(line: { decision: string; unitPriceExGst: number | null; amountExGst: number | null; reason: string; qualification: string } | undefined): string {
-  if (!line || line.decision === "excluded") return "Excluded from the total";
+  if (!line) return "Not priced";
+  if (line.decision === "excluded") return "Excluded from the total";
   if (line.decision === "not_priced") return `Not priced. ${line.reason}`;
   const unit = line.unitPriceExGst == null ? "" : `${money(line.unitPriceExGst)} unit · `;
   return `${unit}${money(line.amountExGst)} ex GST${line.qualification ? `. ${line.qualification}` : ""}`;

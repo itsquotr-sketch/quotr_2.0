@@ -1,10 +1,16 @@
 import { cn } from "@/lib/utils";
 
-/** Prose and forms share this left edge inside the project workspace. */
-export const rfqReadingClass = "w-full min-w-0 max-w-[1000px] overflow-x-hidden";
+/** The request page uses the workspace width. Phone layout stays one column. */
+export const rfqReadingClass = "w-full min-w-0 max-w-none overflow-x-hidden";
 
-/** Line selection and before/after stay readable without filling the workspace. */
-export const rfqApplyClass = "w-full min-w-0 max-w-[880px]";
+/** The pricing decision uses the same width as the request. */
+export const rfqApplyClass = "w-full min-w-0 max-w-none";
+
+export const RFQ_LIST_FILTER_KEYS = ["queue", "status", "q", "filter", "workArea"] as const;
+
+export function rfqListStorageKey(projectId: string): string {
+  return `quotr-rfq-list:${projectId}`;
+}
 
 export function RfqReadingColumn({
   children,

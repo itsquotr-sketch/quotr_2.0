@@ -83,13 +83,13 @@ export function AppShell({
         <Link href="/app/profile" prefetch tabIndex={-1} />
         <Link href="/app/settings/billing" prefetch tabIndex={-1} />
       </div>
-      <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
+      <div className="flex h-dvh min-h-0 w-full overflow-hidden print:h-auto print:overflow-visible">
         <AppSidebarNav
           setupIncomplete={setupIncomplete}
           showTeamNav={showTeamNav}
           deploymentLabel={deploymentLabel}
         />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background print:overflow-visible print:bg-white">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4 md:hidden print:hidden">
             <div className="flex min-w-0 items-center gap-2.5">
               <QuotrLogo
@@ -121,8 +121,8 @@ export function AppShell({
           <div
             className={
               showMobileNav
-                ? `flex min-h-0 flex-1 flex-col md:overflow-hidden ${mobileNavPaddingClass}`
-                : "flex min-h-0 flex-1 flex-col md:overflow-hidden"
+                ? `flex min-h-0 flex-1 flex-col overflow-hidden ${mobileNavPaddingClass}`
+                : "flex min-h-0 flex-1 flex-col overflow-hidden"
             }
           >
             {children}

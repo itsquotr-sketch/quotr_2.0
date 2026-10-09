@@ -8,6 +8,7 @@ import type { ScheduleCoverageDecision, ScheduleCoverageInput, SchedulePricingPr
 import type { RfqSellTreatment } from "@/lib/rfqs/pricing-preview";
 import { scheduleRoleLabel, scheduleUnitLabel } from "@/lib/rfqs/schedule";
 import { gstTreatmentLabel } from "@/lib/rfqs/shared";
+import { scrollWorkspaceTarget } from "@/lib/rfqs/scroll-workspace";
 import { useRouter } from "next/navigation";
 
 function money(value: number | null, unknownLabel = "Unknown"): string {
@@ -196,7 +197,8 @@ export function RfqSchedulePricing({
     if (!open) return;
     const match = /^rfq-response-([0-9a-f-]{36})-item-([0-9a-f-]{36})$/i.exec(window.location.hash.replace(/^#/, ""));
     if (!match || responseId !== match[1]) return;
-    document.querySelector(`[data-rfq-schedule-row="${CSS.escape(match[2])}"]`)?.scrollIntoView({ block: "center" });
+    const row = document.querySelector(`[data-rfq-schedule-row="${CSS.escape(match[2])}"]`);
+    if (row instanceof HTMLElement) scrollWorkspaceTarget(row);
   }, [open, responseId]);
   useEffect(() => {
     if (responseId) onResponseId?.(responseId);
