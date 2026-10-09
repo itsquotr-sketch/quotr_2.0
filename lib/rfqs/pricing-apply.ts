@@ -32,6 +32,7 @@ export type RfqPricingPreviewResult = {
   ok: true;
   label: string;
   affected: Array<{ id: string; label: string; cost: number | null; sell: number | null }>;
+  selectedBefore: RfqPricingMoneyView;
   before: RfqPricingMoneyView;
   choices: RfqSellChoice[];
   targetMarginPercent: number | null;
@@ -63,7 +64,9 @@ function moneyError(code: string | undefined): string {
     case "WORK_AREA":
       return "Choose the work area this request was sent for.";
     case "LINES":
-      return "Choose pricing lines in that work area.";
+      return "Those pricing lines cannot be replaced. Choose active lines in this work area.";
+    case "INVALID_INPUT":
+      return "Check the selected pricing lines and try again.";
     case "PRICING_CLOSED":
       return "That pricing document can no longer be changed.";
     case "FORBIDDEN":
@@ -249,6 +252,7 @@ export async function previewRfqPricingApplication(input: {
       ...line,
       label: context.labels.get(line.id) || "Pricing line",
     })),
+    selectedBefore: context.preview.selectedBefore,
     before: context.preview.before,
     choices: context.preview.choices,
     targetMarginPercent: context.target?.percent ?? null,

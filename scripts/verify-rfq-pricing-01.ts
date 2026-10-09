@@ -56,7 +56,10 @@ function staticMain() {
   console.log("=== rfq pricing application ===");
   const sql = read("supabase/migrations/091_rfq_pricing_application.sql");
   const sellSql = read("supabase/migrations/092_rfq_sell_treatment.sql");
+  const addOnlySql = read("supabase/migrations/105_rfq_allowance_without_replacement.sql");
+  const reapplySql = read("supabase/migrations/106_rfq_replaced_line_reapply.sql");
   const apply = read("lib/rfqs/pricing-apply.ts");
+  const panel = read("components/rfqs/RfqPricingApply.tsx");
   const actions = read("lib/rfqs/actions.ts");
   const rates = read("lib/estimate/rates.ts");
   assert("pricing.access already exists for Builder and Business", planAllowsCapability("builder", "pricing.access") && planAllowsCapability("business", "pricing.access"));
@@ -97,6 +100,10 @@ function staticMain() {
   assert("apply recomputes the chosen sell and does not call the rate resolver", apply.includes("buildRfqSellChoices") && apply.includes("acknowledgeLoss") && !apply.includes("resolveRate"));
   assert("public token is not granted the pricing function", sql.includes("revoke all on function public.apply_rfq_response_to_pricing_v1(jsonb) from public, anon"));
   assert("document totals use the existing pricing persist", apply.includes("persistPricingDocumentTotals"));
+  assert("the decision names the four steps", panel.includes("Supplier offer") && panel.includes("What this price covers") && panel.includes("Choose the client sell") && panel.includes("Review and confirm"));
+  assert("draft pricing is an explicit action", panel.includes("Use for draft Pricing") && panel.includes("Go to Pricing") && panel.includes("does not award the work"));
+  assert("an empty replacement is an explicit add", addOnlySql.includes("v_add_only") && addOnlySql.includes("rfq_pricing_applications_replaced_present"));
+  assert("hidden and replaced lines are refused", reapplySql.includes("visible_on_quote is distinct from true") && reapplySql.includes("Replaced for draft pricing%") && reapplySql.includes("v_active.replaced_item_ids"));
   assert("estimate rate resolver is untouched by this path", !apply.includes("resolveRate") && rates.includes("export function resolveRate"));
   assert("preview branch host is the RFQ link", resolveRfqPublicOrigin({
     VERCEL_ENV: "preview",
@@ -142,6 +149,7 @@ function staticMain() {
     assert("a manual sell is priced by the commercial engine", manual.available && !manual.loss && manual.sell === 2500 && manual.grossProfit === 700 && manual.marginPercent === 28 && manual.after.gstAmount === 375 && manual.after.totalInclGst === 2875);
     assert("the unpriced line stays out of the replacement and is not shown as zero sell", preview.preview.affected.length === 1 && preview.preview.affected[0]?.cost === 400 && preview.preview.affected[0]?.sell === 800);
     assert("pricing before the response is the known line", preview.preview.before.cost === 400 && preview.preview.before.sell === 800 && preview.preview.before.marginPercent === 50 && preview.preview.before.gstAmount === 120 && preview.preview.before.totalInclGst === 920);
+    assert("selected work is priced apart from the whole document", preview.preview.selectedBefore.cost === 400 && preview.preview.selectedBefore.sell === 800 && preview.preview.selectedBefore.gstAmount === 120 && keep.selectedAfter.cost === 1800 && keep.selectedAfter.sell === 800 && keep.selectedAfter.gstAmount === 120);
   }
   const both = buildRfqSellChoices({
     responseId: "00000000-0000-4000-8000-0000000000ab",
@@ -174,6 +182,22 @@ function staticMain() {
   const missingTarget = negative.ok ? negative.preview.choices.find((choice) => choice.treatment === "target_margin") : null;
   assert("a negative manual sell is rejected by the existing money rule", negativeManual?.available === false && (negativeManual.unavailableReason ?? "").includes("zero or greater"));
   assert("reprice is unavailable when the job has no target margin", missingTarget?.available === false);
+  const added = buildRfqSellChoices({
+    responseId: "00000000-0000-4000-8000-0000000000ad",
+    priceExGst: 1800,
+    gstRate: 15,
+    items: [
+      { id: unpriced, totalCost: 0, totalSell: 0 },
+      { id: known, totalCost: 400, totalSell: 800 },
+    ],
+    replacedIds: [],
+    existingAllowanceId: null,
+    targetMarginPercent: 25,
+    manualSell: 2000,
+  });
+  const addedKeep = added.ok ? added.preview.choices.find((choice) => choice.treatment === "keep") : null;
+  const addedTarget = added.ok ? added.preview.choices.find((choice) => choice.treatment === "target_margin") : null;
+  assert("adding without a replacement leaves the existing lines in the document total", added.ok && addedKeep?.available === false && addedTarget?.available === true && addedTarget.after.cost === 2200 && addedTarget.after.sell === 3200 && added.preview.affected.length === 0);
   const replacedLine = {
     id: "replaced",
     client_label: "Known allowance",
@@ -539,6 +563,55 @@ async function liveMain() {
     const liveApps = (activeApps.data ?? []).filter((row) => row.superseded_at == null);
     assert("a newer lump-sum response replaces the applied cost instead of adding it", revisedApply.error == null && revisedBody?.ok === true && (allowanceNow.data ?? []).length === 1 && Number(allowanceNow.data?.[0]?.total_cost) === 2100 && Number(allowanceNow.data?.[0]?.total_sell) === targetChoice.allowance.totalSell && String(allowanceNow.data?.[0]?.client_label).startsWith("Subcontract allowance") && liveApps.length === 1 && liveApps[0]?.response_id === revised.id && liveApps[0]?.sell_treatment === "target_margin", JSON.stringify(revisedApply.data ?? revisedApply.error));
     assert("repricing the revised cost uses the target margin", targetChoice.allowance.totalSell === 2800 && targetChoice.allowance.grossProfit === 700 && targetChoice.allowance.marginPercent === 25);
+
+    const parked = await admin.from("pricing_documents").update({ status: "converted_to_quote" }).eq("id", document.data.id);
+    if (parked.error) throw new Error(parked.error.message);
+    const addedDocument = await owner.from("pricing_documents").insert({
+      org_id: orgA, project_id: projectId, title: "Add only", status: "draft", gst_rate: 15,
+      subtotal_cost: 140, subtotal_sell: 210, gross_profit: 70, margin_percent: 33.33, markup_percent: 50,
+      gst_amount: 31.5, total_incl_gst: 241.5,
+    }).select("id").single();
+    if (addedDocument.error) throw new Error(addedDocument.error.message);
+    const addedItems = await owner.from("pricing_items").insert([
+      {
+        org_id: orgA, pricing_document_id: addedDocument.data.id, project_id: projectId, work_area_id: area.data.id,
+        item_type: "allowance", delivery_method: "allowance", internal_label: "Kept lining", client_label: "Kept lining",
+        quantity: 1, unit: "m2", total_cost: 100, total_sell: 150, gross_profit: 50, margin_percent: 33.33, markup_percent: 50,
+        sort_order: 1, visible_on_quote: true,
+      },
+      {
+        org_id: orgA, pricing_document_id: addedDocument.data.id, project_id: projectId, work_area_id: area.data.id,
+        item_type: "allowance", delivery_method: "allowance", internal_label: "Hidden lining", client_label: "Hidden lining",
+        quantity: 1, total_cost: 40, total_sell: 60, gross_profit: 20, margin_percent: 33.33, markup_percent: 50,
+        sort_order: 2, visible_on_quote: false,
+      },
+    ]).select("id, client_label, total_cost, total_sell");
+    if (addedItems.error || !addedItems.data) throw new Error(addedItems.error?.message ?? "added items");
+    const keptLine = addedItems.data.find((row) => row.client_label === "Kept lining");
+    const hiddenLine = addedItems.data.find((row) => row.client_label === "Hidden lining");
+    if (!keptLine || !hiddenLine) throw new Error("added lines");
+    const hiddenApply = await owner.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: first.id, pricing_document_id: addedDocument.data.id, work_area_id: area.data.id,
+        replaced_item_ids: [hiddenLine.id], sell_treatment: "manual", total_cost: 1800, total_sell: 2000,
+      },
+    });
+    const hiddenAfter = await admin.from("pricing_items").select("total_cost, total_sell, visible_on_quote").eq("id", hiddenLine.id).single();
+    assert("a hidden line cannot be replaced", (hiddenApply.data as { error?: string } | null)?.error === "LINES" && Number(hiddenAfter.data?.total_cost) === 40 && hiddenAfter.data?.visible_on_quote === false, JSON.stringify(hiddenApply.data ?? hiddenApply.error));
+    const addOnlyApply = await owner.rpc("apply_rfq_response_to_pricing_v1", {
+      p_payload: {
+        response_id: first.id, pricing_document_id: addedDocument.data.id, work_area_id: area.data.id,
+        replaced_item_ids: [], sell_treatment: "manual", total_cost: 1800, total_sell: 2000,
+      },
+    });
+    const addedAfter = await admin.from("pricing_items").select("client_label, total_cost, total_sell, visible_on_quote").eq("pricing_document_id", addedDocument.data.id);
+    const addedAllowance = (addedAfter.data ?? []).filter((row) => String(row.client_label).startsWith("Subcontract"));
+    const keptAfter = (addedAfter.data ?? []).find((row) => row.client_label === "Kept lining");
+    assert("an explicit add leaves the existing line charged once", (addOnlyApply.data as { ok?: boolean } | null)?.ok === true && addedAllowance.length === 1 && Number(addedAllowance[0]?.total_cost) === 1800 && Number(addedAllowance[0]?.total_sell) === 2000 && Number(keptAfter?.total_cost) === 100 && Number(keptAfter?.total_sell) === 150, JSON.stringify(addOnlyApply.data ?? addOnlyApply.error));
+    const archived = await admin.from("pricing_documents").update({ status: "archived" }).eq("id", addedDocument.data.id);
+    if (archived.error) throw new Error(archived.error.message);
+    const restored = await admin.from("pricing_documents").update({ status: "draft" }).eq("id", document.data.id);
+    if (restored.error) throw new Error(restored.error.message);
 
     const expired = await respond(900, "lump_sum", "2020-01-01", true);
     const expiredApply = await owner.rpc("apply_rfq_response_to_pricing_v1", {

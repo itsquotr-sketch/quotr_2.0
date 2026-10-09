@@ -135,8 +135,12 @@ export type RfqPricingTarget = {
     id: string;
     workAreaId: string | null;
     label: string;
+    quantity: number | null;
+    unit: string | null;
     totalCost: number;
     totalSell: number;
+    visibleOnQuote: boolean;
+    recalibrationNote: string | null;
   }>;
 };
 
@@ -467,7 +471,7 @@ export async function loadRfqPricingTargets(
   const [items, quotes] = await Promise.all([
     supabase
       .from("pricing_items")
-      .select("id, work_area_id, client_label, total_cost, total_sell")
+      .select("id, work_area_id, client_label, quantity, unit, total_cost, total_sell, visible_on_quote, recalibration_note")
       .eq("pricing_document_id", document.data.id)
       .order("sort_order"),
     supabase.from("quotes").select("id").eq("project_id", projectId).limit(1),
@@ -481,8 +485,12 @@ export async function loadRfqPricingTargets(
       id: item.id,
       workAreaId: item.work_area_id,
       label: item.client_label,
+      quantity: item.quantity == null ? null : Number(item.quantity),
+      unit: item.unit ?? null,
       totalCost: Number(item.total_cost ?? 0),
       totalSell: Number(item.total_sell ?? 0),
+      visibleOnQuote: item.visible_on_quote !== false,
+      recalibrationNote: item.recalibration_note ?? null,
     })),
   };
 }

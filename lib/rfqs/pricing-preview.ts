@@ -61,11 +61,15 @@ export type RfqSellChoice = {
   marginPercent: number | null;
   loss: boolean;
   allowance: PersistedPricingItemMoneyFields | null;
+  /** The selected lines only, after this sell. Document totals stay on `after`. */
+  selectedAfter: RfqPricingMoneyView;
   after: RfqPricingMoneyView;
 };
 
 export type RfqSellChoices = {
   affected: RfqAffectedLine[];
+  /** Money for the lines the builder selected, before they are replaced. */
+  selectedBefore: RfqPricingMoneyView;
   before: RfqPricingMoneyView;
   choices: RfqSellChoice[];
 };
@@ -129,6 +133,7 @@ function choiceFromAllowance(input: {
   priceExGst: number;
   sellKnown: boolean;
   fields: PersistedPricingItemMoneyFields;
+  selectedAfter: RfqPricingMoneyView;
   after: RfqPricingMoneyView;
 }): RfqSellChoice {
   const sell = input.sellKnown ? input.fields.totalSell : null;
@@ -145,11 +150,18 @@ function choiceFromAllowance(input: {
     marginPercent: marginUnknown ? null : input.fields.marginPercent,
     loss,
     allowance: input.fields,
+    selectedAfter: input.selectedAfter,
     after: input.after,
   };
 }
 
-function unavailable(treatment: RfqSellTreatment, priceExGst: number, reason: string, after: RfqPricingMoneyView): RfqSellChoice {
+function unavailable(
+  treatment: RfqSellTreatment,
+  priceExGst: number,
+  reason: string,
+  selectedAfter: RfqPricingMoneyView,
+  after: RfqPricingMoneyView
+): RfqSellChoice {
   return {
     treatment,
     available: false,
@@ -161,6 +173,7 @@ function unavailable(treatment: RfqSellTreatment, priceExGst: number, reason: st
     marginPercent: null,
     loss: false,
     allowance: null,
+    selectedAfter,
     after,
   };
 }
@@ -200,6 +213,20 @@ export function buildRfqSellChoices(input: {
   const beforeTotals = calculateAuthoritativeDocumentTotals(beforeLines, input.gstRate, `rfq-before-${input.responseId}`);
   if (!beforeTotals.ok) return { ok: false, error: "Pricing totals could not be previewed." };
   const before = viewFromTotals(beforeTotals.totals, true);
+  const selectedTotals = calculateAuthoritativeDocumentTotals(
+    replaced.map((line) => {
+      const known = rfqLineSellKnown(line);
+      return {
+        total_cost: known ? line.totalCost : 0,
+        total_sell: known ? line.totalSell : 0,
+        cost_known: known,
+      };
+    }),
+    input.gstRate,
+    `rfq-selected-before-${input.responseId}`
+  );
+  if (!selectedTotals.ok) return { ok: false, error: "Pricing totals could not be previewed." };
+  const selectedBefore = viewFromTotals(selectedTotals.totals, replaced.length === 0 || current.known);
 
   function afterFor(fields: PersistedPricingItemMoneyFields | null, sellKnown: boolean): RfqPricingMoneyView | null {
     const remaining = input.items.filter((item) => item.id !== input.existingAllowanceId);
@@ -256,27 +283,42 @@ export function buildRfqSellChoices(input: {
           requestId: `rfq-apply-${input.responseId}-${treatment}`,
           sourceReferences: ["rfq:pricing_apply"],
         });
-    if (!allowance.ok) return unavailable(treatment, input.priceExGst, allowance.error, emptyAfter);
+    if (!allowance.ok) return unavailable(treatment, input.priceExGst, allowance.error, selectedBefore, emptyAfter);
     if (Math.abs(allowance.fields.totalCost - input.priceExGst) > 0.001) {
-      return unavailable(treatment, input.priceExGst, "The subcontract cost could not be kept as entered.", emptyAfter);
+      return unavailable(treatment, input.priceExGst, "The subcontract cost could not be kept as entered.", selectedBefore, emptyAfter);
     }
     if (!storedFits(allowance.fields.marginPercent) || !storedFits(allowance.fields.markupPercent)) {
-      return unavailable(treatment, input.priceExGst, "That sell cannot be stored on a pricing line.", emptyAfter);
+      return unavailable(treatment, input.priceExGst, "That sell cannot be stored on a pricing line.", selectedBefore, emptyAfter);
+    }
+    const selectedAfterTotals = calculateAuthoritativeDocumentTotals(
+      [{
+        total_cost: allowance.fields.totalCost,
+        total_sell: sellKnown ? allowance.fields.totalSell : 0,
+        cost_known: true,
+      }],
+      input.gstRate,
+      `rfq-selected-after-${input.responseId}-${treatment}`
+    );
+    if (!selectedAfterTotals.ok) {
+      return unavailable(treatment, input.priceExGst, "Pricing totals could not be previewed.", selectedBefore, emptyAfter);
     }
     const after = afterFor(allowance.fields, sellKnown);
-    if (!after) return unavailable(treatment, input.priceExGst, "Pricing totals could not be previewed.", emptyAfter);
+    if (!after) return unavailable(treatment, input.priceExGst, "Pricing totals could not be previewed.", selectedBefore, emptyAfter);
     return choiceFromAllowance({
       treatment,
       priceExGst: input.priceExGst,
       sellKnown,
       fields: allowance.fields,
+      selectedAfter: viewFromTotals(selectedAfterTotals.totals, sellKnown),
       after,
     });
   }
 
-  const keep = current.known
-    ? pricedChoice("keep", true, current.amount, true, null)
-    : unavailable("keep", input.priceExGst, "The current sell is unknown. That line is Pricing Required.", emptyAfter);
+  const keep = replaced.length === 0
+    ? unavailable("keep", input.priceExGst, "No existing sell is selected. Choose a target margin or enter a sell.", selectedBefore, emptyAfter)
+    : current.known
+      ? pricedChoice("keep", true, current.amount, true, null)
+      : unavailable("keep", input.priceExGst, "The current sell is unknown. That line is Pricing Required.", selectedBefore, emptyAfter);
 
   const marginCheck = input.targetMarginPercent == null ? null : validateMarginPercent(input.targetMarginPercent);
   const target = marginCheck?.ok
@@ -289,6 +331,7 @@ export function buildRfqSellChoices(input: {
           : marginCheck?.ok === false
             ? marginCheck.message
             : "This job has no target margin.",
+        selectedBefore,
         emptyAfter
       );
 
@@ -299,11 +342,12 @@ export function buildRfqSellChoices(input: {
         "manual",
         input.priceExGst,
         input.manualSell == null ? "Enter a sell ex GST." : "Sell must be zero or greater.",
+        selectedBefore,
         emptyAfter
       );
 
   return {
     ok: true,
-    preview: { affected, before, choices: [keep, target, manual] },
+    preview: { affected, selectedBefore, before, choices: [keep, target, manual] },
   };
 }
