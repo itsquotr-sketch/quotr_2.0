@@ -173,7 +173,7 @@ export function h5SedStockIdentity(stockLengthM: number): MaterialIdentity {
   };
 }
 
-/** Reuses Deck 125×125 H5 house-pile identity semantics; RW-specific rate key. */
+/** Same serialized identity as Deck. Description does not create a second rate key. */
 export const HOUSE_PILE_125_RW_IDENTITY: MaterialIdentity = {
   ...HOUSE_PILE_125_IDENTITY,
   originalDescription:

@@ -284,7 +284,11 @@ export function isLegacyScopePackageKey(itemKey: string): boolean {
 export function formatRateUnit(unit: string): string {
   switch (unit) {
     case "m2":
+    case "m²":
       return "per m²";
+    case "m3":
+    case "m³":
+      return "per m³";
     case "lm":
       return "per lineal metre";
     case "hour":

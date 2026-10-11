@@ -141,22 +141,22 @@ export const CLADDING_MATERIAL_BENCHMARKS: readonly CladdingMaterialBenchmark[] 
 ];
 
 export const CLADDING_PRODUCTIVITY_BENCHMARKS: readonly CladdingProductivityBenchmark[] = [
-  hours("install", CLADDING_TIMBER_BEVELBACK_INSTALL_HOURS_PER_LM, "Bevelback weatherboard install", "lm", 0.12),
-  hours("install", CLADDING_TIMBER_RUSTICATED_INSTALL_HOURS_PER_LM, "Rusticated weatherboard install", "lm", 0.12),
-  hours("install", CLADDING_TIMBER_VERTICAL_SHIPLAP_INSTALL_HOURS_PER_LM, "Vertical shiplap install", "lm", 0.11),
-  hours("install", CLADDING_FIBRE_CEMENT_WEATHERBOARD_INSTALL_HOURS_PER_LM, "Fibre-cement weatherboard install", "lm", 0.13),
-  hours("install", CLADDING_BOARD_AND_BATTEN_SHEET_INSTALL_HOURS_PER_M2, "Board-and-batten sheet install", "m2", 0.65),
-  hours("install", CLADDING_BOARD_AND_BATTEN_BATTEN_INSTALL_HOURS_PER_LM, "Board-and-batten batten install", "lm", 0.08),
-  hours("removal", CLADDING_TIMBER_BEVELBACK_REMOVE_HOURS_PER_M2, "Bevelback weatherboard removal", "m2", 0.3),
-  hours("removal", CLADDING_TIMBER_RUSTICATED_REMOVE_HOURS_PER_M2, "Rusticated weatherboard removal", "m2", 0.3),
-  hours("removal", CLADDING_TIMBER_VERTICAL_SHIPLAP_REMOVE_HOURS_PER_M2, "Vertical shiplap removal", "m2", 0.35),
-  hours("removal", CLADDING_BOARD_AND_BATTEN_REMOVE_HOURS_PER_M2, "Board-and-batten removal", "m2", 0.4),
-  hours("removal", CLADDING_FIBRE_CEMENT_WEATHERBOARD_REMOVE_HOURS_PER_M2, "Fibre-cement weatherboard removal", "m2", 0.4),
+  hours("install", CLADDING_TIMBER_BEVELBACK_INSTALL_HOURS_PER_LM, "Bevelback weatherboard install", "lm", 0.11666666666666667),
+  hours("install", CLADDING_TIMBER_RUSTICATED_INSTALL_HOURS_PER_LM, "Rusticated weatherboard install", "lm", 0.11666666666666667),
+  hours("install", CLADDING_TIMBER_VERTICAL_SHIPLAP_INSTALL_HOURS_PER_LM, "Vertical shiplap install", "lm", 0.11666666666666667),
+  hours("install", CLADDING_FIBRE_CEMENT_WEATHERBOARD_INSTALL_HOURS_PER_LM, "Fibre-cement weatherboard install", "lm", 0.11666666666666667),
+  hours("install", CLADDING_BOARD_AND_BATTEN_SHEET_INSTALL_HOURS_PER_M2, "Board-and-batten sheet install", "m2", 0.16666666666666666),
+  hours("install", CLADDING_BOARD_AND_BATTEN_BATTEN_INSTALL_HOURS_PER_LM, "Board-and-batten batten install", "lm", 0.16666666666666666),
+  hours("removal", CLADDING_TIMBER_BEVELBACK_REMOVE_HOURS_PER_M2, "Bevelback weatherboard removal", "m2", 0.08333333333333333),
+  hours("removal", CLADDING_TIMBER_RUSTICATED_REMOVE_HOURS_PER_M2, "Rusticated weatherboard removal", "m2", 0.08333333333333333),
+  hours("removal", CLADDING_TIMBER_VERTICAL_SHIPLAP_REMOVE_HOURS_PER_M2, "Vertical shiplap removal", "m2", 0.08333333333333333),
+  hours("removal", CLADDING_BOARD_AND_BATTEN_REMOVE_HOURS_PER_M2, "Board-and-batten removal", "m2", 0.08333333333333333),
+  hours("removal", CLADDING_FIBRE_CEMENT_WEATHERBOARD_REMOVE_HOURS_PER_M2, "Fibre-cement weatherboard removal", "m2", 0.08333333333333333),
   {
     key: CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
     label: "Drained timber cavity install",
     unit: "m2",
-    hoursPerUnit: 0.15,
+    hoursPerUnit: 0.03333333333333333,
     group: "accessory",
     description:
       "Person-hours to install ordinary cavity battens on the net cladding area. Labour COST uses labour.carpenter.hour. Excludes structural framing, proprietary systems, flashings, wrap and scaffold.",
@@ -165,7 +165,7 @@ export const CLADDING_PRODUCTIVITY_BENCHMARKS: readonly CladdingProductivityBenc
     key: CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
     label: "Flexible wall underlay install",
     unit: "m2",
-    hoursPerUnit: 0.08,
+    hoursPerUnit: 0.03333333333333333,
     group: "accessory",
     description:
       "Person-hours to install flexible wall underlay on the gross wall area. Labour COST uses labour.carpenter.hour. Separate from rigid air barrier.",
@@ -174,7 +174,7 @@ export const CLADDING_PRODUCTIVITY_BENCHMARKS: readonly CladdingProductivityBenc
     key: CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
     label: "Rigid air barrier install",
     unit: "m2",
-    hoursPerUnit: 0.18,
+    hoursPerUnit: 0.03333333333333333,
     group: "accessory",
     description:
       "Person-hours to install a rigid air barrier on the gross wall area. Labour COST uses labour.carpenter.hour. Separate from flexible wall underlay.",

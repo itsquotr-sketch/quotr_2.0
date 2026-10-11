@@ -229,9 +229,9 @@ check(
     BATHROOM_PLYWOOD_SHEET_BENCHMARK
 );
 check(
-  "03 fibre cement $95",
-  getCatalogueEntry("sheet.fibre_cement.18mm.2400x1200.each")?.defaultCostRate ===
-    BATHROOM_FIBRE_CEMENT_SHEET_BENCHMARK
+  "03 fibre cement has no approved cost",
+  BATHROOM_FIBRE_CEMENT_SHEET_BENCHMARK == null &&
+    getCatalogueEntry("sheet.fibre_cement.18mm.2400x1200.each")?.defaultCostRate == null
 );
 check(
   "03 H1.2 $6.20",

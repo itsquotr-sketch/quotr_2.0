@@ -262,6 +262,8 @@ export function resolveMaterialRate(params: {
   // workAreaType is accepted for call-site compatibility but must not first-match
   // an arbitrary work-area material rate (unit/material identity errors).
   void params.workAreaType;
+  void params.categoryBenchmarkCostRate;
+  void params.categoryBenchmarkSellRate;
 
   if (params.scopeKey) {
     const scopeRate = findActiveRate(
@@ -286,7 +288,11 @@ export function resolveMaterialRate(params: {
     }
   }
 
-  if (benchmarkAllowed) {
+  if (
+    benchmarkAllowed &&
+    Number.isFinite(params.benchmarkCostRate) &&
+    params.benchmarkCostRate > 0
+  ) {
     return buildResolvedMaterialRate({
       costRate: params.benchmarkCostRate,
       sellRate: params.benchmarkSellRate,
@@ -298,29 +304,13 @@ export function resolveMaterialRate(params: {
     });
   }
 
-  if (
-    benchmarkAllowed &&
-    params.categoryBenchmarkCostRate != null
-  ) {
-    return buildResolvedMaterialRate({
-      costRate: params.categoryBenchmarkCostRate,
-      sellRate: params.categoryBenchmarkSellRate,
-      unit: params.unit,
-      materialRateSource: "benchmark_category",
-      itemKey: params.categoryKey ?? params.materialKey,
-      label,
-      organisationSettings: params.organisationSettings,
-    });
-  }
-
-  const fallbackCost = benchmarkAllowed ? params.benchmarkCostRate : 0;
-  const fallbackSell = benchmarkAllowed ? params.benchmarkSellRate : null;
-
+  // A missing specific benchmark is Pricing Required. The old category-benchmark
+  // branch was unreachable and is not used to invent a price. Zero is not a rate.
   return buildResolvedMaterialRate({
-    costRate: fallbackCost,
-    sellRate: fallbackSell,
+    costRate: 0,
+    sellRate: null,
     unit: params.unit,
-    materialRateSource: benchmarkAllowed ? "benchmark_specific" : "missing",
+    materialRateSource: "missing",
     itemKey: params.materialKey,
     label,
     organisationSettings: params.organisationSettings,

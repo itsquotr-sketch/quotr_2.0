@@ -6,6 +6,7 @@
  * Future (not built): in-situ vs loose spoil vs truck/load vs tip vs haulage.
  * Separate from excavation labour/plant. Not backfill m³. Not material carry.
  */
+import { LOOSE_SPOIL_SWELL_NOTE } from "@/lib/rates/approved-benchmark-review";
 import { getBooleanFact, getNumberFact, getStringFact, round2 } from "@/lib/estimate/facts";
 import {
   RW_SPOIL_REMOVAL_PORTION_KEY,
@@ -118,6 +119,11 @@ export function resolveSpoilRemoval(params: {
     "retaining_wall.disposal_included"
   );
   const assumptions: string[] = [];
+  if (excavationVolumeM3 != null) {
+    assumptions.push(
+      `Bank excavation ${round2(excavationVolumeM3)} m³. ${LOOSE_SPOIL_SWELL_NOTE}`
+    );
+  }
   const missingInfo: string[] = [];
 
   if (removalRequired !== true) {

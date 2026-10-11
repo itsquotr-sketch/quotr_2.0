@@ -26,6 +26,7 @@ import {
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { findCompanyProductivityRate } from "@/lib/estimate/productivity";
+import { approvedProductivityHours } from "@/lib/rates/approved-benchmark-review";
 import { rateUnitsMatch, resolveLabourRate } from "@/lib/estimate/rates";
 import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
 import type {
@@ -1058,6 +1059,7 @@ function labourSlot(params: {
         params.productivityKey,
         params.unit
       );
+  const approved = approvedProductivityHours(params.productivityKey);
   const starter =
     timber1DProductivityStarter(params.productivityKey) ??
     sleeper2AProductivityStarter(params.productivityKey) ??
@@ -1065,9 +1067,11 @@ function labourSlot(params: {
   const hoursPerUnit =
     company?.cost_rate != null
       ? Number(company.cost_rate)
-      : params.fallbackHoursPerUnit != null
-        ? params.fallbackHoursPerUnit
-        : starter?.hoursPerUnit ?? null;
+      : approved
+        ? approved.hoursPerUnit
+        : params.fallbackHoursPerUnit != null
+          ? params.fallbackHoursPerUnit
+          : starter?.hoursPerUnit ?? null;
   const hoursSource: RequirementRateSource =
     company?.cost_rate != null
       ? params.rateProvenance
@@ -1654,7 +1658,7 @@ export function commercializeRetainingWall(params: {
       labourSlot({
         workAreaId,
         componentKey: RW_TIMBER_PILE_LABOUR_COMPONENT,
-        description: "Pile installation labour",
+        description: "Pile placement labour",
         productivityKey: RW_PRODUCTIVITY_KEYS.timberPilesEa,
         unit: "ea",
         quantity: qtyOf(pricedMaterials, RW_TIMBER_PILES_EA_COMPONENT),
@@ -1665,6 +1669,13 @@ export function commercializeRetainingWall(params: {
         ignoreCompanyRate:
           pilingMethod.method === RW_TIMBER_PILING_METHOD_MANUAL,
       }),
+    );
+    if (qtyOf(pricedMaterials, RW_TIMBER_PILES_EA_COMPONENT) > 0) {
+      missingInfo.push(
+        "Hole excavation labour is Pricing Required. Approved pile hours are placement only. Bank hole volume stays separate from loose spoil; swell is held for owner review."
+      );
+    }
+    labour.push(
       labourSlot({
         workAreaId,
         componentKey: RW_TIMBER_FACE_LABOUR_COMPONENT,

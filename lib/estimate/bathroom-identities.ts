@@ -63,16 +63,17 @@ export const BATHROOM_PRODUCTIVITY_KEYS = {
   floorSubstrateM2: "bathroom.floor_substrate.install.hours_per_m2",
   tileUnderlayM2: "bathroom.tile_underlay.install.hours_per_m2",
   wallLiningM2: "bathroom.lining.wall.install.hours_per_m2",
+  wallLiningFibreCementM2: "bathroom.lining.wall.fibre_cement.hours_per_m2",
   ceilingLiningM2: "bathroom.lining.ceiling.install.hours_per_m2",
   framingLm: "bathroom.framing.install.hours_per_lm",
 } as const;
 
 export const BATHROOM_PRODUCTIVITY_BENCHMARKS = {
-  floorSubstrateM2: 0.4,
-  tileUnderlayM2: 0.25,
-  wallLiningM2: 0.3,
-  ceilingLiningM2: 0.4,
-  framingLm: 0.2,
+  floorSubstrateM2: 0.9166666666666666,
+  tileUnderlayM2: 0.9166666666666666,
+  wallLiningM2: 0.1736111111111111,
+  ceilingLiningM2: 0.25,
+  framingLm: 0.11666666666666667,
 } as const;
 
 export const BATHROOM_FRAMING_INTENSITY_LM_PER_M2 = {
@@ -165,7 +166,8 @@ export const BATHROOM_SHEET_VINYL_INSTALL_BENCHMARK = 45;
 export const BATHROOM_VINYL_PLANK_MATERIAL_BENCHMARK = 65;
 export const BATHROOM_VINYL_PLANK_INSTALL_BENCHMARK = 50;
 export const BATHROOM_PLYWOOD_SHEET_BENCHMARK = 145;
-export const BATHROOM_FIBRE_CEMENT_SHEET_BENCHMARK = 95;
+/** No approved ex-GST cost. Workbook row 300 is specification / quote required. */
+export const BATHROOM_FIBRE_CEMENT_SHEET_BENCHMARK = null;
 export const BATHROOM_FRAMING_H12_BENCHMARK = 6.2;
 
 export const BATHROOM_SHOWER_ASSUMPTION_STATEMENT =
@@ -395,13 +397,13 @@ export const BATHROOM_DEMOLITION_PRODUCTIVITY_KEYS = {
 
 export const BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS = {
   floor_finish: 0.25,
-  wall_lining: 0.2,
-  ceiling: 0.25,
-  vanity: 1,
-  toilet: 0.75,
+  wall_lining: 0.08333333333333333,
+  ceiling: 0.2,
+  vanity: 0.3333333333333333,
+  toilet: 0.16666666666666666,
   shower: 1.5,
   bath: 1.5,
-  fixture: 0.75,
+  fixture: 0.06666666666666667,
 } as const;
 
 export const BATHROOM_WASTE_COMPONENT = "bathroom.waste.disposal" as const;

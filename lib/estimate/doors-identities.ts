@@ -77,9 +77,9 @@ export const DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY =
 export const DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY =
   "doors.hardware.install.hours_per_set" as const;
 
-export const DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR = 2 as const;
-export const DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR = 1.5 as const;
-export const DOORS_HARDWARE_INSTALL_HOURS_PER_SET = 0.5 as const;
+export const DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR = 1.5 as const;
+export const DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR = 2 as const;
+export const DOORS_HARDWARE_INSTALL_HOURS_PER_SET = 1.5 as const;
 
 export const DOORS_PREHUNG_INSTALL_LABEL =
   "Prehung internal door-set installation" as const;

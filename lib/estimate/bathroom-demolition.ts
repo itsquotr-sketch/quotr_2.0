@@ -7,6 +7,10 @@
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
 import {
+  BATHROOM_COMPLETE_STRIP_HOURS_PER_M2,
+  BATHROOM_COMPLETE_STRIP_KEY,
+} from "@/lib/rates/approved-benchmark-review";
+import {
   BATHROOM_DEMOLITION_COMPONENTS,
   BATHROOM_DEMOLITION_NESTED_STATEMENT,
   BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS,
@@ -448,7 +452,63 @@ export function buildBathroomDemolitionEnvelope(params: {
     );
   };
 
-  if (components.includes("floor_finish")) {
+  const completeStrip =
+    components.includes("floor_finish") &&
+    components.includes("wall_lining") &&
+    (["vanity", "toilet", "bath", "shower"] as const).some((id) =>
+      components.includes(id)
+    );
+
+  if (completeStrip) {
+    const area = geometry.floorAreaM2;
+    if (area == null || area <= 0) {
+      missingInfo.push("Bathroom floor area is required for complete strip-out.");
+    } else {
+      const productivity = resolveProductivity({
+        productivityKey: BATHROOM_COMPLETE_STRIP_KEY,
+        unit: "m2",
+        fallbackHoursPerUnit: BATHROOM_COMPLETE_STRIP_HOURS_PER_M2,
+        rates: context.rates,
+      });
+      const adjustedHours = round2(
+        round2(area * productivity.hoursPerUnit) * params.accessFactor
+      );
+      assumptions.push(
+        "Complete strip-out is 4.5 person-hours per m² of floor (workbook row 99). Component demolition lines for this bathroom are not also priced."
+      );
+      if (productivity.sourceType !== "missing" && productivity.hoursPerUnit > 0 && !specialist) {
+        const identity = `${presentBathroomAreaM2(area)} · ${presentBathroomHours(adjustedHours)} · complete strip-out`;
+        lineItems.push(
+          withPricingOwnership(
+            {
+              ...createFixedLabourLineItem({
+                workAreaId: workArea.id,
+                workAreaName: workArea.name,
+                label: "Complete bathroom strip-out",
+                labourHours: adjustedHours,
+                labourCostRate: labourRate.costRate,
+                labourSellRate: labourRate.sellRate,
+                rateSource: labourRate.sourceLabel,
+                itemKey: "labour.carpenter.hour",
+                notes: identity,
+                sortOrder: sortOrder++,
+                organisationSettings: context.organisationSettings,
+              }),
+              componentKey: "bathroom.demolition.complete_strip",
+              identitySummary: identity,
+            },
+            {
+              pricingOwner: "in_house_labour",
+              scopeKey: "bathroom.demolition.complete_strip",
+              overlapGroup: "bathroom_demolition",
+            }
+          )
+        );
+      }
+    }
+  }
+
+  if (!completeStrip && components.includes("floor_finish")) {
     emitAreaLabour({
       id: "floor_finish",
       label: "Floor finish removal",
@@ -456,7 +516,7 @@ export function buildBathroomDemolitionEnvelope(params: {
       missing: "Bathroom floor area is required for floor finish removal.",
     });
   }
-  if (components.includes("wall_lining")) {
+  if (!completeStrip && components.includes("wall_lining")) {
     emitAreaLabour({
       id: "wall_lining",
       label: "Wall lining removal",
@@ -464,7 +524,7 @@ export function buildBathroomDemolitionEnvelope(params: {
       missing: "Bathroom wall area is required for wall lining removal.",
     });
   }
-  if (components.includes("ceiling")) {
+  if (!completeStrip && components.includes("ceiling")) {
     emitAreaLabour({
       id: "ceiling",
       label: "Ceiling lining removal",
@@ -472,19 +532,19 @@ export function buildBathroomDemolitionEnvelope(params: {
       missing: "Bathroom ceiling area is required for ceiling lining removal.",
     });
   }
-  if (components.includes("vanity")) {
+  if (!completeStrip && components.includes("vanity")) {
     emitEachLabour({ id: "vanity", label: "Vanity removal" });
   }
-  if (components.includes("toilet")) {
+  if (!completeStrip && components.includes("toilet")) {
     emitEachLabour({ id: "toilet", label: "Toilet removal" });
   }
-  if (components.includes("shower")) {
+  if (!completeStrip && components.includes("shower")) {
     emitEachLabour({ id: "shower", label: "Shower / enclosure removal" });
   }
-  if (components.includes("bath")) {
+  if (!completeStrip && components.includes("bath")) {
     emitEachLabour({ id: "bath", label: "Bath removal" });
   }
-  if (components.includes("fixture")) {
+  if (!completeStrip && components.includes("fixture")) {
     emitEachLabour({ id: "fixture", label: "Fixture removal" });
   }
 

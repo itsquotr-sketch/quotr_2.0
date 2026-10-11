@@ -349,8 +349,8 @@ check(
   getCatalogueEntry(BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY)?.defaultCostRate === 145
 );
 check(
-  "fibre cement $95",
-  getCatalogueEntry("sheet.fibre_cement.18mm.2400x1200.each")?.defaultCostRate === 95
+  "fibre cement has no approved cost",
+  getCatalogueEntry("sheet.fibre_cement.18mm.2400x1200.each")?.defaultCostRate == null
 );
 check(
   "H1.2 framing $6.20",

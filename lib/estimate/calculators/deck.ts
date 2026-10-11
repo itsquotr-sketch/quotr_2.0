@@ -630,7 +630,7 @@ export function calculateDeck(
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
           notes: labourExpandedNotes({
-            physicalDriver: `Physical driver: ${supportCount} supports. Includes set-out, hole excavation, hole preparation, positioning, cutting/setting, and normal installation. Excludes concrete placement.`,
+            physicalDriver: `Physical driver: ${supportCount} supports. Post placement uses the approved person-hours for this key. Hole excavation labour is separate and Pricing Required — bank hole volume is not calculated because deck hole diameter is not a measured fact. Loose spoil swell is held for owner review and is not multiplied by 3. Excludes concrete placement.`,
             adjustmentDetail: labourAdjustmentDetail,
             productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
           }),
@@ -640,6 +640,27 @@ export function calculateDeck(
           ...labourRateFields,
         })
       );
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Hole excavation",
+          category: "labour",
+          quantity: supportCount,
+          unit: "hole",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          itemKey: "deck.hole.excavate.hours_per_hole",
+          componentKey: "deck.hole.excavate",
+          notes:
+            "Pricing required. No approved person-hours for hole excavation. The zero is not a rate. Not subtracted from post placement. Bank m³ is not calculated without a measured hole diameter. Loose spoil swell is held for owner review.",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        }),
+        includedInTotal: false,
+      });
     }
     let elevatedHours = shapeLabourHours({
       quantity: 0,

@@ -18,6 +18,7 @@ import {
   fenceRailMaterialKey,
 } from "@/lib/estimate/fence-identities";
 import { FENCE_PRODUCTIVITY_KEYS } from "@/lib/estimate/fence-productivity";
+import { approvedProductivityHours } from "@/lib/rates/approved-benchmark-review";
 import type { FenceTimberSpecies } from "@/lib/estimate/fence-systems";
 
 export const FENCE_TIMBER_1B_AUTHORITY = "DETAILED_COMPONENT_AUTHORITY" as const;
@@ -292,6 +293,10 @@ export function timber1BMaterialStarter(
 export function timber1BProductivityStarter(
   productivityKey: string
 ): { hoursPerUnit: number; unit: string } | null {
+  const approved = approvedProductivityHours(productivityKey);
+  if (approved) {
+    return { hoursPerUnit: approved.hoursPerUnit, unit: approved.unit };
+  }
   const row = FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[productivityKey];
   return row
     ? { hoursPerUnit: row.hoursPerUnit, unit: row.unit }

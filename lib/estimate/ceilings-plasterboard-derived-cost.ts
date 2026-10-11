@@ -8,6 +8,7 @@
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
+import { PRODUCT_IDENTITY_CORRECTION_KEYS } from "@/lib/rates/approved-benchmark-review";
 import { round2 } from "@/lib/estimate/facts";
 
 export const CANONICAL_PLASTERBOARD_SHEET_AREA_M2 = 2.88;
@@ -115,6 +116,7 @@ export function derivedDimensionedPlasterboardCost(
   itemKey: string | null | undefined
 ): DerivedPlasterboardCost | null {
   if (!itemKey) return null;
+  if (PRODUCT_IDENTITY_CORRECTION_KEYS.has(itemKey)) return null;
   const parsed = parseDimensionedPlasterboardKey(itemKey);
   if (!parsed) return null;
   const baseKey = canonicalPlasterboard2400x1200Key(

@@ -970,7 +970,7 @@ export function commercializeFenceWithLabour(params: {
     });
     slot(
       FENCE_POST_LABOUR_COMPONENT,
-      "Post installation",
+      "Post placement",
       FENCE_PRODUCTIVITY_KEYS.postInstall,
       "post",
       modular.postCount,
@@ -995,6 +995,14 @@ export function commercializeFenceWithLabour(params: {
     const materials = first.requirements.filter(
       (row): row is MaterialRequirement => row.kind === "material"
     );
+    first.assumptions.push(
+      "Post placement, hole excavation, and concrete placement are separate. Approved post hours stay on post placement. Hole excavation person-hours are Pricing Required. Bank hole volume is not converted to loose spoil; the swell factor is held for owner review."
+    );
+    if (modular.postCount > 0) {
+      first.missingInfo.push(
+        "Hole excavation labour is Pricing Required — no approved person-hours."
+      );
+    }
     return finishModularFenceCommercial({
       physical: params.physical,
       pricedMaterials: materials,

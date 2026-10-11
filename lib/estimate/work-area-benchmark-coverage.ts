@@ -1810,6 +1810,8 @@ export const SUPPORTED_BENCHMARK_COVERAGE_WORK_AREAS = [
   "ceilings",
   "internal_walls",
   "doors",
+  "flooring",
+  "cladding",
 ] as const;
 
 export function listOwnerApprovalGaps(workAreaType: string) {

@@ -377,7 +377,7 @@ const framingCat = getCatalogueEntry(BATHROOM_FRAMING_TIMBER_KEY);
 const genericPlywood = getCatalogueEntry("sheet.plywood.each");
 check("19 mm H3.2 plywood catalogue identity exists", plywoodCat?.item_key === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY);
 check("19 mm plywood Quotr benchmark $145", plywoodCat?.defaultCostRate === 145);
-check("fibre cement Quotr benchmark $95", fibreCat?.defaultCostRate === 95);
+check("fibre cement has no approved cost", fibreCat?.defaultCostRate == null);
 check("H1.2 framing Quotr benchmark $6.20", framingCat?.defaultCostRate === 6.2);
 check(
   "Aqualine reuses existing sheet identity with Quotr benchmark",
@@ -414,15 +414,15 @@ check(
   "floor productivity key",
   BATHROOM_PRODUCTIVITY_KEYS.floorSubstrateM2 ===
     "bathroom.floor_substrate.install.hours_per_m2" &&
-    near(BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2, 0.4)
+    near(BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2, 0.9166666666666666)
 );
 check(
-  "wall productivity 0.30",
-  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.wallLiningM2, 0.3)
+  "wall productivity is GIB sheet conversion",
+  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.wallLiningM2, 0.1736111111111111)
 );
 check(
-  "ceiling productivity 0.40 and distinct from wall",
-  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.ceilingLiningM2, 0.4) &&
+  "ceiling productivity 0.25 and distinct from wall",
+  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.ceilingLiningM2, 0.25) &&
     BATHROOM_PRODUCTIVITY_KEYS.ceilingLiningM2 !==
       BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2
 );

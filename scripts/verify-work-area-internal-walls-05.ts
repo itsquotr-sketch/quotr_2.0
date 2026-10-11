@@ -385,7 +385,7 @@ check(
 check(
   "Fixture A lining labour priced on both faces from Quotr hours/sheet",
   aLabour.length === 2 &&
-    aLabour.every((row) => row.priced === true && near(row.baseHours, 4) && near(row.productivityBasis.hoursPerUnit, 0.4))
+    aLabour.every((row) => row.priced === true && near(row.baseHours, 5) && near(row.productivityBasis.hoursPerUnit, 0.5))
 );
 check(
   "Fixture A Standard uses legacy 13/2400 shared key",

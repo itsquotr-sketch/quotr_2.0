@@ -40,8 +40,8 @@ export const RW_EXCAVATION_MACHINE_HOURS_KEY =
 export const RW_EXCAVATION_MANUAL_HOURS_KEY =
   "retaining_wall.excavation.manual.hours_per_m3" as const;
 
-export const RW_EXCAVATION_MACHINE_HOURS_STARTER = 0.45;
-export const RW_EXCAVATION_MANUAL_HOURS_STARTER = 1.6;
+export const RW_EXCAVATION_MACHINE_HOURS_STARTER = 0.4166666666666667;
+export const RW_EXCAVATION_MANUAL_HOURS_STARTER = 4;
 
 export const RW_TIMBER_CONCRETE_HOURS_KEY =
   "retaining_wall.timber.concrete.place.hours_per_hole" as const;

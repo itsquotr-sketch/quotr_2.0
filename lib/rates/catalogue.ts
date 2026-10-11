@@ -41,7 +41,7 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     trade: "carpenter",
     unit: "hour",
     description: "Primary trade rate used across most estimates. Quotr fallback is cost-only; charge-out uses company gross margin.",
-    defaultCostRate: 60,
+    defaultCostRate: 60, // QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR
     recommended: true,
     calculatorSupport: "used_now",
     section: "labour",
@@ -81,7 +81,8 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     trade: "apprentice",
     unit: "hour",
-    description: "Optional lower-rate labour tier.",
+    description: "Optional lower-rate labour tier. Workbook approved cost $40/hour ex GST. Not the carpenter fallback. Sell follows the company margin.",
+    defaultCostRate: 40,
     calculatorSupport: "planned",
     section: "labour",
   }),
@@ -616,8 +617,10 @@ export function getCatalogueEntry(
 export function formatRateUnit(unit: string): string {
   switch (unit) {
     case "m2":
+    case "m²":
       return "m²";
     case "m3":
+    case "m³":
       return "m³";
     case "lm":
       return "lm";

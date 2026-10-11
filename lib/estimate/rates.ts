@@ -15,7 +15,13 @@ import type {
 import type { ResolvedLabourRate, ResolvedRate } from "@/lib/estimate/types";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 
-const DEFAULT_LABOUR_COST_RATE = 60;
+/**
+ * One labour cost authority: the carpenter catalogue default.
+ * Sell is margin-derived here. Company rows, including paired sells, win above.
+ * When benchmark fallback is off, cost is not this number — absence is Pricing Required.
+ */
+export const QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR = 60;
+const DEFAULT_LABOUR_COST_RATE = QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR;
 
 /** Legacy onboarding keys mapped to current catalogue keys */
 const ITEM_KEY_ALIASES: Record<string, string[]> = {
@@ -393,17 +399,19 @@ export function resolveLabourRate(params: {
 
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   const sourceType: RateSourceType = benchmarkAllowed ? "default" : "missing";
+  const costRate = benchmarkAllowed ? DEFAULT_LABOUR_COST_RATE : 0;
   // Quotr default labour is COST only. Sell derives from applicable GM
   // (EST-COMMERCIAL-01A). Company rows with sell_rate stay paired above.
+  // A disallowed benchmark is Pricing Required, not a silent $60.
   const classified = classifyResolvedSell({
-    costRate: DEFAULT_LABOUR_COST_RATE,
+    costRate,
     sellRate: null,
     applicableGrossMarginPercent: marginPercent,
   });
 
   return {
-    costRate: DEFAULT_LABOUR_COST_RATE,
-    sellRate: classified.sellRate,
+    costRate,
+    sellRate: benchmarkAllowed ? classified.sellRate : 0,
     sourceLabel: getRateSourceLabel(sourceType),
     sourceType,
     itemKey: labourKeys[0],

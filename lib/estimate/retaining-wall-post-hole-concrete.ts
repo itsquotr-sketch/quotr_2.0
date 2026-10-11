@@ -104,7 +104,7 @@ export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER = 3.5;
  * canonical 0.01 m³/bag yield: 3.5 × 0.01 = 0.035 labour-h/bag.
  * Not a fixture-derived calibration.
  */
-export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER = 0.035;
+export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER = 0.1;
 export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_CONFIDENCE = "low" as const;
 export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_RATIONALE =
   "LOW-CONFIDENCE QUOTR STARTER. Total person-hours to mix and place one bag of post-hole concrete. Dimensional conversion of the prior 3.5 labour-h/m³ starter × 0.01 m³/bag yield. Company/Project exact overrides.";

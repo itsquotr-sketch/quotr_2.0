@@ -11,6 +11,8 @@ import {
   BATHROOM_AQUALINE_CEILING_ASSUMPTION,
   BATHROOM_AQUALINE_LABEL,
   BATHROOM_AQUALINE_SHEET_KEY,
+  BATHROOM_FIBRE_CEMENT_LABEL,
+  BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY as BATHROOM_FIBRE_CEMENT_SHEET_KEY,
   BATHROOM_AQUALINE_WALL_ASSUMPTION,
   BATHROOM_CEILING_LINING_COMPONENT,
   BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
@@ -78,7 +80,7 @@ import type { BathroomGeometryResolution } from "@/lib/estimate/bathroom-geometr
 export type BathroomPhysicalSelection = {
   floorSubstrate: BathroomFloorSubstrateSystem | null;
   floorSubstrateAssumed: boolean;
-  wallLining: "aqualine" | "other" | "none" | null;
+  wallLining: "aqualine" | "fibre_cement" | "other" | "none" | null;
   wallLiningAssumed: boolean;
   ceilingLining: "aqualine" | "other" | "none" | null;
   ceilingLiningAssumed: boolean;
@@ -122,7 +124,13 @@ export function resolveBathroomPhysicalSelection(params: {
     const lower = wallSystem.toLowerCase();
     if (lower === "none" || lower === "no") wallLining = "none";
     else if (lower.includes("other")) wallLining = "other";
-    else if (lower.includes("aqualine") || lower.includes("gib")) {
+    else if (
+      lower.includes("fibre") ||
+      lower.includes("hardie") ||
+      lower.includes("cement")
+    ) {
+      wallLining = "fibre_cement";
+    } else if (lower.includes("aqualine") || lower.includes("gib")) {
       wallLining = "aqualine";
     }
   }
@@ -738,22 +746,34 @@ export function buildBathroomPhysicalEnvelope(params: {
     );
   }
 
-  if (selection.wallLining === "aqualine" && wallArea != null) {
+  if (
+    (selection.wallLining === "aqualine" || selection.wallLining === "fibre_cement") &&
+    wallArea != null
+  ) {
+    const fibreCement = selection.wallLining === "fibre_cement";
+    const liningKey = fibreCement
+      ? BATHROOM_PRODUCTIVITY_KEYS.wallLiningFibreCementM2
+      : BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2;
+    const liningFallback = fibreCement
+      ? 0.29
+      : BATHROOM_PRODUCTIVITY_BENCHMARKS.wallLiningM2;
+    const sheetKey = fibreCement ? BATHROOM_FIBRE_CEMENT_SHEET_KEY : BATHROOM_AQUALINE_SHEET_KEY;
+    const sheetLabel = fibreCement ? BATHROOM_FIBRE_CEMENT_LABEL : BATHROOM_AQUALINE_LABEL;
     const takeoff = bathroomSheetTakeoff(wallArea);
     const productivity = resolveProductivity({
-      productivityKey: BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2,
+      productivityKey: liningKey,
       unit: "m2",
-      fallbackHoursPerUnit: BATHROOM_PRODUCTIVITY_BENCHMARKS.wallLiningM2,
+      fallbackHoursPerUnit: liningFallback,
       rates: context.rates,
     });
     const hours = bathroomLiningHours(wallArea, productivity.hoursPerUnit);
     const adjustedHours = hours * params.accessFactor;
     const rate = resolveExactMaterialRate({
-      itemKey: BATHROOM_AQUALINE_SHEET_KEY,
+      itemKey: sheetKey,
       unit: "each",
       context,
     });
-    const identity = `${presentBathroomAreaM2(wallArea)} net · ${presentBathroomAreaM2(takeoff.purchaseAreaM2)} purchase (10% waste) · ${takeoff.sheetCount} sheets · ${BATHROOM_AQUALINE_LABEL}`;
+    const identity = `${presentBathroomAreaM2(wallArea)} net · ${presentBathroomAreaM2(takeoff.purchaseAreaM2)} purchase (10% waste) · ${takeoff.sheetCount} sheets · ${sheetLabel}`;
     assumptions.push(BATHROOM_OPENINGS_NOT_DEDUCTED_STATEMENT);
     assumptions.push(BATHROOM_SHEET_WASTE_STATEMENT);
     const buildUp = createSheetCountBuildUp({
@@ -764,15 +784,17 @@ export function buildBathroomPhysicalEnvelope(params: {
       },
       areaM2: takeoff.physicalAreaM2,
       wastagePercent: takeoff.wasteFactor * 100,
-      materialLabel: BATHROOM_AQUALINE_LABEL,
+      materialLabel: sheetLabel,
     });
     requirements.push(
       buildMaterialRequirement({
         workAreaId: workArea.id,
         workAreaType: "bathroom",
         componentKey: BATHROOM_WALL_LINING_COMPONENT,
-        variantKey: "aqualine",
-        description: "Wall lining — 13 mm GIB Aqualine",
+        variantKey: fibreCement ? "fibre_cement" : "aqualine",
+        description: fibreCement
+          ? "Wall lining — 18 mm fibre cement"
+          : "Wall lining — 13 mm GIB Aqualine",
         confidence: "high",
         assumptions: [
           {
@@ -783,9 +805,9 @@ export function buildBathroomPhysicalEnvelope(params: {
         ],
         provenance: provenanceBase,
         priced: rate.priced,
-        materialKey: BATHROOM_AQUALINE_SHEET_KEY,
+        materialKey: sheetKey,
         category: "sheet",
-        specification: `${BATHROOM_AQUALINE_LABEL} 2400 × 1200`,
+        specification: `${sheetLabel} 2400 × 1200`,
         baseQuantity: takeoff.physicalAreaM2,
         baseUnit: "m2",
         wasteFactor: takeoff.wasteFactor,
@@ -833,7 +855,9 @@ export function buildBathroomPhysicalEnvelope(params: {
             ...createRateLineItem({
               workAreaId: workArea.id,
               workAreaName: workArea.name,
-              label: "Wall lining — 13 mm GIB Aqualine",
+              label: fibreCement
+                ? "Wall lining — 18 mm fibre cement"
+                : "Wall lining — 13 mm GIB Aqualine",
               category: "materials",
               quantity: takeoff.sheetCount,
               unit: "each",
@@ -841,7 +865,7 @@ export function buildBathroomPhysicalEnvelope(params: {
               sellRate: rate.sellRate,
               rateSource: rate.sourceLabel,
               rateSourceType: rate.sourceType,
-              itemKey: BATHROOM_AQUALINE_SHEET_KEY,
+              itemKey: sheetKey,
               componentKey: BATHROOM_WALL_LINING_COMPONENT,
               notes: identity,
               sortOrder: sortOrder++,
@@ -863,10 +887,12 @@ export function buildBathroomPhysicalEnvelope(params: {
       lineItems.push(
         unpricedMaterialLine({
           workArea,
-          label: "Wall lining — 13 mm GIB Aqualine",
+          label: fibreCement
+            ? "Wall lining — 18 mm fibre cement"
+            : "Wall lining — 13 mm GIB Aqualine",
           quantity: takeoff.sheetCount,
           unit: "each",
-          itemKey: BATHROOM_AQUALINE_SHEET_KEY,
+          itemKey: sheetKey,
           componentKey: BATHROOM_WALL_LINING_COMPONENT,
           identitySummary: identity,
           notes: `${identity}. Pricing required — no approved sheet rate.`,
@@ -887,7 +913,7 @@ export function buildBathroomPhysicalEnvelope(params: {
             labourSellRate: labourRate.sellRate,
             rateSource: labourRate.sourceLabel,
             rateSourceType: labourRate.sourceType,
-            itemKey: BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2,
+            itemKey: liningKey,
             notes: presentBathroomHours(hours),
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,

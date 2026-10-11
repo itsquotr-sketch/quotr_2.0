@@ -33,11 +33,11 @@ export const HOUSE_PILE_BENCHMARK_EVIDENCE = {
   identityKey: HOUSE_PILE_125_IDENTITY_KEY,
   rateUnit: HOUSE_PILE_BENCHMARK_UNIT,
   normalizedRateExGst: HOUSE_PILE_BENCHMARK_COST_EX_GST,
-  sourceName: "Quotr starter benchmark",
+  sourceName: "Published supplier cost reference",
   sourceType: "quotr_starter" as const,
   gstBasis: "exclusive" as const,
   notes:
-    "Owner-approved 125×125 H5 sawn house pile $23.50/lm ex GST. Not a company, trade, laminated, or H4 fence-post rate.",
+    "Published supplier cost reference, $23.50/lm ex GST, shared by Deck and Retaining Wall. Not a second product and not an H4 fence-post rate.",
   evidenceId: "DECK-2B-R1-H5-125",
 };
 

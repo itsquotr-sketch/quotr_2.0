@@ -670,8 +670,8 @@ for (const key of [
 
 console.log("\n--- Substrate labour ---\n");
 check(
-  "single substrate productivity 0.40 h/m² still used",
-  BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2 === 0.4
+  "single substrate productivity uses the approved 0.9167 h/m²",
+  BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2 === 0.9166666666666666
 );
 check(
   "tile underlay is Quotr benchmark productivity, not DNA",

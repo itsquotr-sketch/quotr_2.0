@@ -25,7 +25,6 @@ import {
   RW_DRAINAGE_SOCK_KEY,
   RW_DRAINAGE_SOCK_STARTER_COST_PER_LM,
 } from "@/lib/estimate/retaining-wall-family-coverage";
-import { RW_HOUSE_PILE_125_KEY } from "@/lib/estimate/retaining-wall-identities";
 import { FENCE_PRODUCTIVITY_KEYS } from "@/lib/estimate/fence-productivity";
 import {
   FENCE_FIXINGS_MODULAR_KEY,
@@ -455,8 +454,7 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom sheet materials",
     unit: "each",
     description:
-      "2400 × 1200 18 mm fibre cement sheet. Owner-approved Quotr benchmark $95 ex GST / sheet. Company exact rate wins. LEGACY Bathroom structural selection only — not 19 mm flooring and not Secura.",
-    defaultCostRate: 95,
+      "2400 × 1200 18 mm fibre cement sheet. Workbook row 300: specification or quote required. No Quotr cost. Company exact rate wins. Not 19 mm flooring and not Secura.",
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1177,20 +1175,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
   }),
   entry({
-    item_key: RW_HOUSE_PILE_125_KEY,
-    label: "125×125 H5 house pile (retaining post alternative)",
-    rate_type: "material",
-    category: "material",
-    work_area_type: "retaining_wall",
-    workAreaLabel: "Retaining wall timber",
-    unit: "lm",
-    description:
-      "Reuses Deck house-pile Quotr starter $23.50/lm EX GST. Purchase is stock-length lm when builder selects house pile instead of H5 SED pole.",
-    defaultCostRate: HOUSE_PILE_BENCHMARK_COST_EX_GST,
-    recommended: true,
-    calculatorSupport: "used_now",
-  }),
-  entry({
     item_key: RW_DRAINAGE_SOCK_KEY,
     label: "Drainage coil filter sock",
     rate_type: "material",
@@ -1713,7 +1697,7 @@ export const DECK_POST_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
           workAreaLabel: "Deck posts",
           unit: "lm",
           description:
-            "Quotr starter benchmark $23.50/lm EX GST for 125×125 H5 sawn house pile. Not laminated post. Not H4. Company exact override wins.",
+            "Published supplier cost reference $23.50/lm ex GST. One identity shared by Deck and Retaining Wall. Not laminated post. Not H4. Company exact override wins.",
           defaultCostRate: HOUSE_PILE_BENCHMARK_COST_EX_GST,
           calculatorSupport: "used_now",
           recommended: true,
@@ -1772,7 +1756,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "m2",
-    defaultCostRate: 0.35,
+    defaultCostRate: 0.4166666666666667,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1785,7 +1769,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "Hours per installed decking lm, not dollars. Uses required installed lm (waste is procurement, not labour). Includes normal handling at the workface. Abnormal access/carry is a Project Condition, applied once. Do not enter a legacy h/m² value here.",
-    defaultCostRate: 0.077,
+    defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1799,7 +1783,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Legacy hours per m². Not consumed for detailed Deck money. Do not reinterpret this number as hours/lm. Set Decking installation (labour-h / decking lm) for a compatible company override.",
-    defaultCostRate: 0.55,
+    defaultCostRate: 0.06666666666666667,
     calculatorSupport: "leftover",
   }),
   entry({
@@ -1812,7 +1796,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "LOW-CONFIDENCE starter. Hours per required installed joist+bearer+rim lm, not dollars. Waste is not labour. Excludes pile/post installation. Abnormal access/carry is a Project Condition, applied once. Do not enter a legacy h/m² value here.",
-    defaultCostRate: 0.13,
+    defaultCostRate: 0.16666666666666666,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1839,7 +1823,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "ea",
     description:
       "Hours per support, not dollars. Includes normal set-out, hole excavation, hole preparation, positioning, cutting/setting, and installation. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
-    defaultCostRate: 0.2,
+    defaultCostRate: 1,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1853,7 +1837,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "Hours per installed fascia / edge-board lm, not dollars. Uses exposed perimeter × courses. Not height-driven. Abnormal access/carry is a Project Condition, applied once.",
-    defaultCostRate: 0.45,
+    defaultCostRate: 0.1,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1867,7 +1851,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "Hours per installed full-height skirting / screening lm, not dollars. Only when full-height deck skirting / screening is explicitly included. Height-sensitive. Not inferred from elevation or fascia.",
-    defaultCostRate: 0.45,
+    defaultCostRate: 0.13333333333333333,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1880,7 +1864,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Hours per m² of tread area, not dollars. Includes normal handling of step materials at the workface. Used when Steps are commercially included and the detailed step chain is complete.",
-    defaultCostRate: 4.0,
+    defaultCostRate: 4,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1893,7 +1877,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "bag",
     description:
       "LOW_CONFIDENCE starter 0.16 labour-h/bag (0.4 h/hole mixing/placing/finishing ÷ 2.5 bags/hole canonical default). Driver is whole purchased bags. Hole excavation stays in pile/post installation. Not Fence 0.06 or RW 0.035. Company exact hours/bag wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
-    defaultCostRate: 0.16,
+    defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1977,8 +1961,8 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Retaining wall productivity",
     unit: "m3",
     description:
-      "Hours per m³ placing/spreading/basic consolidation of drainage aggregate. Timber 1D starter 0.55 h/m³ in-place. Access/carry stays Project Conditions.",
-    defaultCostRate: 0.55,
+      "Hours per m³ placing/spreading/basic consolidation of drainage aggregate. Approved 0.5 person-hours per m³. Access/carry stays Project Conditions.",
+    defaultCostRate: 0.5,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -2002,8 +1986,8 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "ea",
-    description: "Hours per pile including set-out, hole, place, plumb. Timber 1D starter 0.85 h/ea. Excludes bulk excavation.",
-    defaultCostRate: 0.85,
+    description: "Hours per pile. Approved 0.4167 person-hours each. Excludes bulk excavation.",
+    defaultCostRate: 0.4166666666666667,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -2014,8 +1998,8 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
-    description: "Hours per m² face area. Timber 1D starter 0.55 h/m². Driver is face area, not board lm.",
-    defaultCostRate: 0.55,
+    description: "Hours per m² face area. Approved 0.3333 person-hours per m². Driver is face area, not board lm.",
+    defaultCostRate: 0.3333333333333333,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -2465,7 +2449,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Hours per m² of physical floor area. Includes measure, cut, fit, fix, and normal penetrations. Excludes demolition, major levelling, joist repair, floor finish, waterproofing, and tile underlay. Hours, not dollars.",
-    defaultCostRate: 0.4,
+    defaultCostRate: 0.9166666666666666,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2479,7 +2463,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Independent Quotr benchmark hours per m² of bathroom floor area for 6 mm Hardie Ceramic Tile Underlay. Includes set out, measure, cut, fit, fix, and normal penetrations. Excludes structural floor substrate, waterproofing, tiling, demolition, and major floor levelling. Not a Tier 1 Bathroom DNA task. Hours, not dollars.",
-    defaultCostRate: 0.25,
+    defaultCostRate: 0.9166666666666666,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2492,8 +2476,36 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom productivity",
     unit: "m2",
     description:
-      "Hours per m² of gross wall area. Includes measure, cut, fit, screw, and normal service penetrations. Excludes stopping, painting, tiling, demolition, and full partition framing. Hours, not dollars.",
-    defaultCostRate: 0.3,
+      "GIB / Aqualine wall lining. 0.5 person-hours per 2400×1200 sheet (2.88 m²) = 0.1736 h/m². Fibre cement uses bathroom.lining.wall.fibre_cement.hours_per_m2 at 0.29 h/m². Hours, not dollars.",
+    defaultCostRate: 0.1736111111111111,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.lining.wall.fibre_cement.hours_per_m2",
+    label: "Bathroom fibre-cement wall lining (hours/m²)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "m2",
+    description:
+      "Workbook row 105, plain language Hardies. 0.29 person-hours per m². About twice the GIB sheet rate converted to m². Hours, not dollars.",
+    defaultCostRate: 0.29,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.demolition.complete_strip.hours_per_m2",
+    label: "Bathroom complete strip-out (hours/m²)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "m2",
+    description:
+      "Workbook row 99. 4.5 person-hours per m² of floor for a complete strip-out (walls, floor, vanity, toilet and similar). Not hours per bath. Replaces component demolition labour for that room so the same work is not priced twice.",
+    defaultCostRate: 4.5,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2507,7 +2519,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Hours per m² of ceiling area. Separate from wall lining productivity. Nested Bathroom ceiling lining, not a standalone Ceilings Work Area. Hours, not dollars.",
-    defaultCostRate: 0.4,
+    defaultCostRate: 0.25,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2521,7 +2533,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "Hours per derived lineal metre of local bathroom nogging / fixture support. Not complete partition walls. Hours, not dollars.",
-    defaultCostRate: 0.2,
+    defaultCostRate: 0.11666666666666667,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2535,7 +2547,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "each",
     description:
       "Builder person-hours to install a vanity unit. Not plumbing services. Hours, not dollars.",
-    defaultCostRate: 2.5,
+    defaultCostRate: 4,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2548,7 +2560,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom productivity",
     unit: "each",
     description: "Builder person-hours to install a bathroom mirror. Hours, not dollars.",
-    defaultCostRate: 0.75,
+    defaultCostRate: 0.5833333333333334,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2603,7 +2615,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom productivity",
     unit: "m2",
     description: "Person-hours per m² of existing wet-area wall lining removal. Hours, not dollars.",
-    defaultCostRate: 0.2,
+    defaultCostRate: 0.08333333333333333,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2616,7 +2628,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom productivity",
     unit: "m2",
     description: "Person-hours per m² of existing bathroom ceiling lining removal. Hours, not dollars.",
-    defaultCostRate: 0.25,
+    defaultCostRate: 0.2,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2628,7 +2640,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "bathroom",
     workAreaLabel: "Bathroom productivity",
     unit: "each",
-    defaultCostRate: 1,
+    defaultCostRate: 0.3333333333333333,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2640,7 +2652,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "bathroom",
     workAreaLabel: "Bathroom productivity",
     unit: "each",
-    defaultCostRate: 0.75,
+    defaultCostRate: 0.16666666666666666,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2658,7 +2670,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "bathroom.demolition.bath.hours_each",
-    label: "Bath removal (hours/each)",
+    label: "Bath fixture removal (hours/each)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "bathroom",
@@ -2677,7 +2689,7 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom productivity",
     unit: "each",
     description: "Used only when a dedicated fixture removal benchmark does not exist.",
-    defaultCostRate: 0.75,
+    defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,
   }),

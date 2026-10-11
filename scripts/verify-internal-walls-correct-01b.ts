@@ -276,7 +276,7 @@ const type1LabourH = estType1Lab.reduce(
   0
 );
 check(
-  "F Type 1 lining labour = 6.4h from 16 installed × 0.40",
+  "F Type 1 lining labour = installed sheets × approved 0.50 h/sheet",
   reqType1Lab.length === 2 &&
     near(
       reqType1Lab.reduce((sum, row) => sum + row.baseHours, 0),
@@ -415,8 +415,8 @@ check(
 );
 
 check(
-  "productivity remains 0.40 h/sheet",
-  INTERNAL_WALLS_LINING_HOURS_PER_SHEET === 0.4
+  "productivity is the approved 0.50 h/sheet",
+  INTERNAL_WALLS_LINING_HOURS_PER_SHEET === 0.5
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

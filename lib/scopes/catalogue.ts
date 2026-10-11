@@ -138,10 +138,10 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     label: "Cladding",
     category: "External",
     description:
-      "Exterior cladding sections. Canonical nested domain only; calculation is not available yet.",
-    estimateSupport: "not_supported",
+      "Exterior cladding. Component calculator is available. Custom and specialist portions stay Pricing Required.",
+    estimateSupport: "calculator",
     defaultEnabled: false,
-    suggestedRateTypes: [],
+    suggestedRateTypes: ["labour", "material"],
   },
   {
     type: "plastering",

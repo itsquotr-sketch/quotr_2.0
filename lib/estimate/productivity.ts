@@ -46,6 +46,10 @@ import {
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
 } from "@/lib/estimate/internal-walls-identities";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  approvedProductivityHours,
+  isUnresolvedProductivityKey,
+} from "@/lib/rates/approved-benchmark-review";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
 /**
@@ -678,7 +682,20 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
 export function getQuotrProductivityBenchmark(
   productivityKey: string
 ): ProductivityRate | undefined {
-  return BENCHMARK_PRODUCTIVITY[productivityKey];
+  if (isUnresolvedProductivityKey(productivityKey)) {
+    return undefined;
+  }
+  const approved = approvedProductivityHours(productivityKey);
+  const base = BENCHMARK_PRODUCTIVITY[productivityKey];
+  if (approved) {
+    return productivityEntry(
+      productivityKey,
+      base?.label ?? productivityKey,
+      approved.hoursPerUnit,
+      approved.unit || base?.unit || "unit"
+    );
+  }
+  return base;
 }
 
 export function resolveProductivity(params: {
@@ -706,7 +723,18 @@ export function resolveProductivity(params: {
     };
   }
 
-  const benchmark = BENCHMARK_PRODUCTIVITY[params.productivityKey];
+  if (isUnresolvedProductivityKey(params.productivityKey)) {
+    return {
+      key: params.productivityKey,
+      label: params.productivityKey,
+      hoursPerUnit: 0,
+      unit: params.unit ?? "unit",
+      sourceLabel: "Pricing required",
+      sourceType: "missing",
+    };
+  }
+
+  const benchmark = getQuotrProductivityBenchmark(params.productivityKey);
 
   if (benchmark) {
     return benchmark;

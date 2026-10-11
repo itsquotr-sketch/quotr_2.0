@@ -126,7 +126,8 @@ export const INTERNAL_WALLS_LINING_LABOUR_OWNER_REQUIRED_MESSAGE =
  * / waste sheets, not bathroom 0.3 h/m², not legacy 1.4 h/m²). Company
  * hours/sheet wins. Labour $ remains labour.carpenter.hour cost-first.
  */
-export const INTERNAL_WALLS_LINING_HOURS_PER_SHEET = 0.4 as const;
+/** Workbook conversion column: two people × 15 minutes = 0.5 person-hours per sheet. The sheet's other column of 0.25 is not the authority. */
+export const INTERNAL_WALLS_LINING_HOURS_PER_SHEET = 0.5 as const;
 
 export const INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION =
   "Lining sheet count stays on the full-height sheet run. Known openings are deducted from net lined area only." as const;
@@ -333,7 +334,7 @@ export const INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION =
 export const INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY =
   "internal_walls.cornice.install.hours_per_lm" as const;
 /** Owner-approved ordinary straight wall cornice / scotia productivity. */
-export const INTERNAL_WALLS_CORNICE_HOURS_PER_LM = 0.2;
+export const INTERNAL_WALLS_CORNICE_HOURS_PER_LM = 0.1;
 export const INTERNAL_WALLS_CORNICE_HOURS_DERIVATION =
   "Quotr benchmark · 0.20 person-hours/lm ordinary straight wall cornice/scotia. Company productivity wins. Not ornate, curved, or specialist profiles." as const;
 
