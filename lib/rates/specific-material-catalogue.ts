@@ -1768,7 +1768,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "lm",
     description:
-      "Hours per installed decking lm, not dollars. Uses required installed lm (waste is procurement, not labour). Includes normal handling at the workface. Abnormal access/carry is a Project Condition, applied once. Do not enter a legacy h/m² value here.",
+      "Workbook lm factor is held pending a specific lm decision. Detailed money uses the approved h/m² times the selected board width on one installed-lm line. A company hours/lm override still wins. Do not copy the m² number onto this key.",
     defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,
@@ -1782,8 +1782,8 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Legacy hours per m². Not consumed for detailed Deck money. Do not reinterpret this number as hours/lm. Set Decking installation (labour-h / decking lm) for a compatible company override.",
-    defaultCostRate: 0.06666666666666667,
+      "Owner 11 Oct 2026: one person for 35 minutes per m². Detailed money converts this by the selected board width onto the single installed-lm labour line.",
+    defaultCostRate: 35 / 60,
     calculatorSupport: "leftover",
   }),
   entry({
@@ -2417,8 +2417,8 @@ export const FENCE_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Fence productivity",
     unit: "bag",
     description:
-      "Fence-specific mix and place one bag. Starter 0.06. Not the RW 0.035 h/bag starter. Not h/m³ or h/hole.",
-    defaultCostRate: 0.06,
+      "Owner 11 Oct 2026: two people × two minutes per one 20 kg bag. Not included in post installation. No separate mixing line.",
+    defaultCostRate: (2 * 2) / 60,
     calculatorSupport: "used_now",
     recommended: true,
   }),

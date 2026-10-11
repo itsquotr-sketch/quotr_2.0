@@ -17,7 +17,9 @@
       "blocked": 3
     },
     "previewMigration": "108_approved_benchmark_productivity.sql",
-    "note": "Import of listed numbers is not release sign-off."
+    "note": "Import of listed numbers is not release sign-off.",
+    "ownerDecisionsDate": "2026-10-11",
+    "ownerDecisionNote": "Four owner decisions supersede workbook conversions for ceiling timber lining, fence concrete placement, and deck decking. Workbook export checksum is unchanged."
   },
   "materials": [
     {
@@ -4271,8 +4273,12 @@
       "plain": "2 people 1 hour",
       "consumerLocations": "internal walls / ceilings calculators; company rate wins first",
       "proposedAction": "Import the conversion column exactly. It is person-hours, not a sell rate.",
-      "appliedResult": "imported",
-      "exceptionReason": "Applied the supplied factor without reinterpretation."
+      "appliedResult": "corrected",
+      "exceptionReason": "Owner 11 Oct 2026: two people × five minutes per lm. Replaces workbook 2 h/lm. Calculator quantity is lm.",
+      "ownerDecisionDate": "2026-10-11",
+      "ownerHoursPerUnit": 0.16666666666666666,
+      "ownerUnit": "lm",
+      "workbookConversionRetained": 2
     },
     {
       "workbookRow": 35,
@@ -4635,8 +4641,12 @@
       "plain": "1 person 4 minutes",
       "consumerLocations": "lib/estimate/calculators/deck.ts; company rate wins first",
       "proposedAction": "Import the conversion column exactly. It is person-hours, not a sell rate.",
-      "appliedResult": "imported",
-      "exceptionReason": "Applied the supplied factor without reinterpretation."
+      "appliedResult": "blocked",
+      "exceptionReason": "Held. Workbook 0.0667 h/lm is retained and is not replaced by the m² factor. Detailed money uses h/m² × board width. No second decking charge.",
+      "ownerDecisionDate": "2026-10-11",
+      "ownerHoursPerUnit": null,
+      "ownerUnit": "lm",
+      "workbookConversionRetained": 0.06666666666666667
     },
     {
       "workbookRow": 63,
@@ -4648,8 +4658,12 @@
       "plain": "1 person 4 minutes",
       "consumerLocations": "lib/estimate/calculators/deck.ts; company rate wins first",
       "proposedAction": "Import the conversion column exactly. It is person-hours, not a sell rate.",
-      "appliedResult": "imported",
-      "exceptionReason": "Applied the supplied factor without reinterpretation."
+      "appliedResult": "corrected",
+      "exceptionReason": "Owner 11 Oct 2026: one person × 35 minutes per m². Replaces workbook 0.0667 h/m². Converted to the single lm labour line by selected board width.",
+      "ownerDecisionDate": "2026-10-11",
+      "ownerHoursPerUnit": 0.5833333333333334,
+      "ownerUnit": "m²",
+      "workbookConversionRetained": 0.06666666666666667
     },
     {
       "workbookRow": 64,
@@ -4778,8 +4792,12 @@
       "plain": "2 people 15 minutes",
       "consumerLocations": "lib/estimate/fence-commercial.ts; company rate wins first",
       "proposedAction": "Import the conversion column exactly. It is person-hours, not a sell rate.",
-      "appliedResult": "imported",
-      "exceptionReason": "Applied the supplied factor without reinterpretation."
+      "appliedResult": "corrected",
+      "exceptionReason": "Owner 11 Oct 2026: two people × two minutes per 20 kg bag. Replaces workbook 0.5 h/bag. Not a second mixing or post-install charge.",
+      "ownerDecisionDate": "2026-10-11",
+      "ownerHoursPerUnit": 0.06666666666666667,
+      "ownerUnit": "bag",
+      "workbookConversionRetained": 0.5
     },
     {
       "workbookRow": 74,

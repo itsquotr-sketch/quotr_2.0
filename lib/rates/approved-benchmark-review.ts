@@ -47,7 +47,7 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
   "ceilings.steel.primary_channel.install.hours_per_lm": { hoursPerUnit: 0.1, unit: "lm", workbookRow: 31, plain: "1 person 6 minutes per lm" },
   "ceilings.tile.install.hours_per_each": { hoursPerUnit: 0.025, unit: "each", workbookRow: 32, plain: "1 person 1.5 minutes per each" },
   "ceilings.timber_framing.install.hours_per_lm": { hoursPerUnit: 0.3333333333333333, unit: "lm", workbookRow: 33, plain: "2 people 10 minutes" },
-  "ceilings.timber_lining.install.hours_per_lm": { hoursPerUnit: 2, unit: "lm", workbookRow: 34, plain: "2 people 1 hour" },
+  "ceilings.timber_lining.install.hours_per_lm": { hoursPerUnit: (2 * 5) / 60, unit: "lm", workbookRow: 34, plain: "Owner 11 Oct 2026: two people for five minutes per lm" },
   "doors.prehung.install.hours_per_door": { hoursPerUnit: 1.5, unit: "door", workbookRow: 35, plain: "1 person 1.5 hours" },
   "doors.replacement_leaf.install.hours_per_door": { hoursPerUnit: 2, unit: "door", workbookRow: 36, plain: "1 person 2 hours" },
   "doors.hardware.install.hours_per_set": { hoursPerUnit: 1.5, unit: "set", workbookRow: 37, plain: "1 person 1.5 hours" },
@@ -75,7 +75,7 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
   "deck.base_labour_hours_per_m2": { hoursPerUnit: 1.2, unit: "m²", workbookRow: 60, plain: "1 person 72 minutes per m²" },
   "deck.post_hole_concrete.place.hours_per_bag": { hoursPerUnit: 0.06666666666666667, unit: "bag", workbookRow: 61, plain: "1 person 4 minutes" },
   "deck.decking.install.hours_per_lm": { hoursPerUnit: 0.06666666666666667, unit: "lm", workbookRow: 62, plain: "1 person 4 minutes" },
-  "deck.decking.install.hours_per_m2": { hoursPerUnit: 0.06666666666666667, unit: "m²", workbookRow: 63, plain: "1 person 4 minutes" },
+  "deck.decking.install.hours_per_m2": { hoursPerUnit: 35 / 60, unit: "m²", workbookRow: 63, plain: "Owner 11 Oct 2026: one person for 35 minutes per m²" },
   "deck.elevated_extra_hours_per_m2": { hoursPerUnit: 0.25, unit: "m²", workbookRow: 64, plain: "1 person 15 minutes per m²" },
   "deck.fascia.install.hours_per_lm": { hoursPerUnit: 0.1, unit: "lm", workbookRow: 65, plain: "1 person 6 minutes" },
   "deck.skirting.install.hours_per_lm": { hoursPerUnit: 0.13333333333333333, unit: "lm", workbookRow: 66, plain: "1 person 8 minutes" },
@@ -85,7 +85,7 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
   "deck.substructure.install.hours_per_m2": { hoursPerUnit: 0.52, unit: "m²", workbookRow: 70, plain: "1 person 31.2 minutes per m²" },
   "fence.capping.hours_per_lm": { hoursPerUnit: 0.125, unit: "lm", workbookRow: 71, plain: "1 person 7.5 minutes" },
   "fence.post.install.hours_per_post": { hoursPerUnit: 1.8, unit: "post", workbookRow: 72, plain: "2 people 54 minutes" },
-  "fence.post_hole_concrete.place.hours_per_bag": { hoursPerUnit: 0.5, unit: "bag", workbookRow: 73, plain: "2 people 15 minutes" },
+  "fence.post_hole_concrete.place.hours_per_bag": { hoursPerUnit: (2 * 2) / 60, unit: "bag", workbookRow: 73, plain: "Owner 11 Oct 2026: two people for two minutes per bag" },
   "fence.rail.install.hours_per_lm": { hoursPerUnit: 0.05, unit: "lm", workbookRow: 74, plain: "1 person 3 minutes" },
   "fence.board.horizontal.hours_per_lm": { hoursPerUnit: 0.05, unit: "lm", workbookRow: 75, plain: "1 person 3 minutes" },
   "fence.section.install.hours_per_section": { hoursPerUnit: 0.5, unit: "section", workbookRow: 76, plain: "2 people 15 minutes" },
@@ -155,6 +155,54 @@ export const BATHROOM_GIB_WALL_LINING_HOURS_PER_M2 =
  * Work Area Changes mention about 3 m³ loose spoil per 1 m³ bank.
  * That factor is not an approved Shared Decision. Do not apply it.
  */
+/**
+ * Owner decisions of 11 Oct 2026. They replace the workbook conversion for
+ * these keys. The workbook export itself is unchanged.
+ */
+export const OWNER_PRODUCTIVITY_DECISIONS = [
+  {
+    date: "2026-10-11",
+    key: "ceilings.timber_lining.install.hours_per_lm",
+    unit: "lm",
+    hoursPerUnit: (2 * 5) / 60,
+    workbookRow: 34,
+    workbookHoursPerUnit: 2,
+    reason:
+      "Two people for five minutes per linear metre. The ceiling calculator quantity is installed lm.",
+  },
+  {
+    date: "2026-10-11",
+    key: "fence.post_hole_concrete.place.hours_per_bag",
+    unit: "bag",
+    hoursPerUnit: (2 * 2) / 60,
+    workbookRow: 73,
+    workbookHoursPerUnit: 0.5,
+    reason:
+      "Two people for two minutes per 20 kg bag. One bag is one premix bag. Placement is not also charged on post installation, and there is no second mixing line.",
+  },
+  {
+    date: "2026-10-11",
+    key: "deck.decking.install.hours_per_m2",
+    unit: "m2",
+    hoursPerUnit: 35 / 60,
+    workbookRow: 63,
+    workbookHoursPerUnit: 0.06666666666666667,
+    reason:
+      "One person for 35 minutes per square metre. Detailed deck labour converts this by the selected board width onto the single installed-lm line.",
+  },
+  {
+    date: "2026-10-11",
+    key: "deck.decking.install.hours_per_lm",
+    unit: "lm",
+    hoursPerUnit: null,
+    workbookRow: 62,
+    workbookHoursPerUnit: 0.06666666666666667,
+    status: "held_pending_owner_decision",
+    reason:
+      "The lm key is not given the m² factor. Installed lm = area / selected board width, so money uses h/m² × that width. The workbook lm value stays recorded and is not a second charge.",
+  },
+] as const;
+
 export const LOOSE_SPOIL_SWELL_FACTOR: number | null = null;
 export const LOOSE_SPOIL_SWELL_STATUS = "held_for_owner_review" as const;
 export const LOOSE_SPOIL_SWELL_NOTE =

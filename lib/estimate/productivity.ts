@@ -323,7 +323,7 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   "fence.post_hole_concrete.place.hours_per_bag": productivityEntry(
     "fence.post_hole_concrete.place.hours_per_bag",
     "Fence post-hole concrete placement",
-    0.06,
+    (2 * 2) / 60,
     "bag"
   ),
   "fence.section.install.hours_per_section": productivityEntry(

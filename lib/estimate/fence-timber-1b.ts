@@ -273,11 +273,11 @@ export const FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS: Record<
       "LOW-CONFIDENCE. 2.0 labour-h/gate for frame assembly, hanging, hinges/latch and alignment. 1.5 was too aggressive for that combined scope. Face-board install stays on paling/slat labour. Not elapsed crew time.",
   },
   [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]: {
-    hoursPerUnit: 0.06,
+    hoursPerUnit: (2 * 2) / 60,
     unit: "bag",
     label: "Fence post-hole concrete placement",
     basis:
-      "LOW-CONFIDENCE Fence-specific. 0.06 labour-h/bag (3.6 person-minutes) for mix and place at the workface. 0.035 (2.1 min) was too tight as a Fence field default. Not the RW R6 0.035 starter. Not h/m³ or h/hole.",
+      "Owner 11 Oct 2026: two people × two minutes per 20 kg bag. Placement only. Not included in post installation. No separate mixing line. Not h/m³ or h/hole.",
   },
 };
 

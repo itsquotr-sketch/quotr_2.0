@@ -1003,6 +1003,7 @@ export const BATHROOM_DEMOLITION_COMPONENT_VALUES = [
   "shower",
   "bath",
   "fixture",
+  "complete_strip",
 ] as const;
 
 export type BathroomDemolitionComponentId =
@@ -1017,6 +1018,7 @@ export const BATHROOM_DEMOLITION_COMPONENT_OPTIONS = [
   "Shower / enclosure",
   "Bath",
   "Other fixtures",
+  "Complete strip-out",
 ] as const;
 
 const DEMOLITION_COMPONENT_BY_NORMALISED: Record<
@@ -1041,6 +1043,10 @@ const DEMOLITION_COMPONENT_BY_NORMALISED: Record<
   fixture: "fixture",
   fixtures: "fixture",
   "other fixtures": "fixture",
+  complete_strip: "complete_strip",
+  "complete strip": "complete_strip",
+  "complete strip-out": "complete_strip",
+  "complete strip out": "complete_strip",
 };
 
 export function parseBathroomDemolitionComponent(

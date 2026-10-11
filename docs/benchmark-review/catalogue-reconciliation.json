@@ -1,0 +1,1950 @@
+{
+  "materialNumericRows": 258,
+  "materialUniqueKeys": 257,
+  "materialCurrentMatchesApproved": 168,
+  "materialExceptions": [
+    {
+      "workbookRow": 7,
+      "key": "paint.litre",
+      "unit": "l",
+      "approvedExGst": 15.72,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 8,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 12,
+      "key": "cornice.wall.scotia.mdf.lm",
+      "unit": "lm",
+      "approvedExGst": 4.35,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 14,
+      "key": "cornice.wall.scotia.pine.lm",
+      "unit": "lm",
+      "approvedExGst": 5.53,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 15,
+      "key": "sheet.plasterboard.aqualine.10mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 45.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 26,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 16,
+      "key": "sheet.plasterboard.aqualine.10mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 57.17,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 17,
+      "key": "sheet.plasterboard.aqualine.10mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 59.92,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 18,
+      "key": "sheet.plasterboard.aqualine.10mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 68,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 19,
+      "key": "sheet.plasterboard.aqualine.10mm.4800x1200.each",
+      "unit": "each",
+      "approvedExGst": 90.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 21,
+      "key": "sheet.plasterboard.aqualine.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 65.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 22,
+      "key": "sheet.plasterboard.aqualine.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 72.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 23,
+      "key": "sheet.plasterboard.aqualine.13mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 87.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 26,
+      "key": "sheet.plasterboard.aqualine.each",
+      "unit": "each",
+      "approvedExGst": 58.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 26,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 39,
+      "key": "sheet.plasterboard.braceline.10mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 35.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 40,
+      "key": "sheet.plasterboard.braceline.10mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 39.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 41,
+      "key": "sheet.plasterboard.braceline.10mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 43.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 42,
+      "key": "sheet.plasterboard.braceline.10mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 52,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 43,
+      "key": "sheet.plasterboard.braceline.10mm.4800x1200.each",
+      "unit": "each",
+      "approvedExGst": 68.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 45,
+      "key": "sheet.plasterboard.braceline.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 47.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 46,
+      "key": "sheet.plasterboard.braceline.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 52,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 47,
+      "key": "sheet.plasterboard.braceline.13mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 62.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 50,
+      "key": "sheet.plasterboard.braceline.each",
+      "unit": "each",
+      "approvedExGst": 41.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 22,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 51,
+      "key": "sheet.plasterboard.fyreline.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 40.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 52,
+      "key": "sheet.plasterboard.fyreline.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 45.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 53,
+      "key": "sheet.plasterboard.fyreline.13mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 54.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 56,
+      "key": "sheet.plasterboard.fyreline.16mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 58.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 57,
+      "key": "sheet.plasterboard.fyreline.16mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 65.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 58,
+      "key": "sheet.plasterboard.fyreline.16mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 73.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 62,
+      "key": "sheet.plasterboard.fyreline.each",
+      "unit": "each",
+      "approvedExGst": 36.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 24,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 63,
+      "key": "sheet.plasterboard.noiseline.10mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 35.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 64,
+      "key": "sheet.plasterboard.noiseline.10mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 39.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 65,
+      "key": "sheet.plasterboard.noiseline.10mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 43.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 66,
+      "key": "sheet.plasterboard.noiseline.10mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 52,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 67,
+      "key": "sheet.plasterboard.noiseline.10mm.4800x1200.each",
+      "unit": "each",
+      "approvedExGst": 68.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 69,
+      "key": "sheet.plasterboard.noiseline.13mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 41.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 70,
+      "key": "sheet.plasterboard.noiseline.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 47.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 71,
+      "key": "sheet.plasterboard.noiseline.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 52,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 72,
+      "key": "sheet.plasterboard.noiseline.13mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 62.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 75,
+      "key": "sheet.plasterboard.standard.10mm.2400x1200.each",
+      "unit": "each",
+      "approvedExGst": 22.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 18,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 76,
+      "key": "sheet.plasterboard.standard.10mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 25.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 77,
+      "key": "sheet.plasterboard.standard.10mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 28,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 78,
+      "key": "sheet.plasterboard.standard.10mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 33.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 79,
+      "key": "sheet.plasterboard.standard.10mm.4800x1200.each",
+      "unit": "each",
+      "approvedExGst": 44.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 80,
+      "key": "sheet.plasterboard.standard.10mm.6000x1200.each",
+      "unit": "each",
+      "approvedExGst": 55.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 81,
+      "key": "sheet.plasterboard.standard.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 32,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 82,
+      "key": "sheet.plasterboard.standard.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 35.2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 83,
+      "key": "sheet.plasterboard.standard.13mm.3600x1200.each",
+      "unit": "each",
+      "approvedExGst": 42.4,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 84,
+      "key": "sheet.plasterboard.standard.13mm.4800x1200.each",
+      "unit": "each",
+      "approvedExGst": 56,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 85,
+      "key": "sheet.plasterboard.standard.13mm.6000x1200.each",
+      "unit": "each",
+      "approvedExGst": 69.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 86,
+      "key": "sheet.plasterboard.standard.each",
+      "unit": "each",
+      "approvedExGst": 28,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 18,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 88,
+      "key": "sheet.plasterboard.weatherline.10mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 46.19,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 89,
+      "key": "sheet.plasterboard.weatherline.10mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 61.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 94,
+      "key": "sheet.plasterboard.weatherline.13mm.2700x1200.each",
+      "unit": "each",
+      "approvedExGst": 60.73,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 95,
+      "key": "sheet.plasterboard.weatherline.13mm.3000x1200.each",
+      "unit": "each",
+      "approvedExGst": 85.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 106,
+      "key": "insulation.wall.acoustic.m2",
+      "unit": "m2",
+      "approvedExGst": 13.51,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 108,
+      "key": "painting.wall.m2",
+      "unit": "m2",
+      "approvedExGst": 4.93,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 110,
+      "key": "skirting.wall.lm",
+      "unit": "lm",
+      "approvedExGst": 5.8,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 28,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 121,
+      "key": "steel.ceiling.crossover_clip.each",
+      "unit": "each",
+      "approvedExGst": 1.13,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 2,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 122,
+      "key": "steel.ceiling.furring_channel.lm",
+      "unit": "lm",
+      "approvedExGst": 6.44,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 4.2,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 123,
+      "key": "steel.ceiling.perimeter_track.lm",
+      "unit": "lm",
+      "approvedExGst": 5.87,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 5.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 124,
+      "key": "steel.ceiling.primary_channel.lm",
+      "unit": "lm",
+      "approvedExGst": 9.5,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 7.25,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 129,
+      "key": "ceiling.tile.1200x600.each",
+      "unit": "each",
+      "approvedExGst": 16.5,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 19,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 131,
+      "key": "ceiling.tile.600x600.each",
+      "unit": "each",
+      "approvedExGst": 9,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 16,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 132,
+      "key": "painting.material.m2",
+      "unit": "m2",
+      "approvedExGst": 4.93,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 18,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 174,
+      "key": "deck.material.composite.m2",
+      "unit": "m2",
+      "approvedExGst": 83.72,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 260,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 178,
+      "key": "deck.material.hardwood.m2",
+      "unit": "m2",
+      "approvedExGst": 69.79,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 230,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 179,
+      "key": "deck.material.treated_pine.m2",
+      "unit": "m2",
+      "approvedExGst": 39.89,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 160,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 184,
+      "key": "deck.concrete.premix.20kg.bag",
+      "unit": "bag",
+      "approvedExGst": 9.77,
+      "parentLiteral": 9.8,
+      "atB0b68e8Literal": 9.8,
+      "currentCatalogue": 9.8,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 185,
+      "key": "timber.post.100x100.h5.lm",
+      "unit": "lm",
+      "approvedExGst": 12.84,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 188,
+      "key": "deck.material.composite.lm",
+      "unit": "lm",
+      "approvedExGst": 11.47,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 24,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 189,
+      "key": "deck.material.hardwood.lm",
+      "unit": "lm",
+      "approvedExGst": 9.77,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 22,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 190,
+      "key": "deck.material.kwila.lm",
+      "unit": "lm",
+      "approvedExGst": 9.77,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 28,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 191,
+      "key": "deck.material.treated_pine.lm",
+      "unit": "lm",
+      "approvedExGst": 3.51,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 14,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 200,
+      "key": "fence.gate.frame.75x50.h4",
+      "unit": "lm",
+      "approvedExGst": 2.83,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 6,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 202,
+      "key": "fence.concrete.premix.20kg.bag",
+      "unit": "bag",
+      "approvedExGst": 9.77,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 11.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 203,
+      "key": "fence.rail.100x50.h4",
+      "unit": "lm",
+      "approvedExGst": 5.08,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 8,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 205,
+      "key": "fence.rail.75x50.h4",
+      "unit": "lm",
+      "approvedExGst": 2.83,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 6,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 211,
+      "key": "fence.board.macrocarpa.150x25",
+      "unit": "lm",
+      "approvedExGst": 4.52,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 7.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 219,
+      "key": "fence.board.radiata_pine.150x19",
+      "unit": "lm",
+      "approvedExGst": 2,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 3.2,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 220,
+      "key": "fence.board.radiata_pine.150x25",
+      "unit": "lm",
+      "approvedExGst": 2.28,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 4.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 225,
+      "key": "plant.mini_excavator.day",
+      "unit": "day",
+      "approvedExGst": 270,
+      "parentLiteral": 420,
+      "atB0b68e8Literal": 420,
+      "currentCatalogue": 420,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 235,
+      "key": "retaining_wall.drainage.sock.lm",
+      "unit": "lm",
+      "approvedExGst": 2.45,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 4.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 246,
+      "key": "retaining_wall.masonry.core_fill.m3",
+      "unit": "m3",
+      "approvedExGst": 258.5,
+      "parentLiteral": 260,
+      "atB0b68e8Literal": 260,
+      "currentCatalogue": 260,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 248,
+      "key": "retaining_wall.masonry.rebar.lm",
+      "unit": "lm",
+      "approvedExGst": 1.86,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 255,
+      "key": "retaining_wall.sleeper.premix.20kg.bag",
+      "unit": "bag",
+      "approvedExGst": 9.77,
+      "parentLiteral": 11.5,
+      "atB0b68e8Literal": 11.5,
+      "currentCatalogue": 11.5,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 257,
+      "key": "retaining_wall.timber.face_board.150x50.h4",
+      "unit": "lm",
+      "approvedExGst": 5.61,
+      "parentLiteral": 12.8,
+      "atB0b68e8Literal": 12.8,
+      "currentCatalogue": 12.8,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 258,
+      "key": "retaining_wall.timber.face_board.200x50.h4",
+      "unit": "lm",
+      "approvedExGst": 7.28,
+      "parentLiteral": 17.4,
+      "atB0b68e8Literal": 17.4,
+      "currentCatalogue": 17.4,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 304,
+      "key": "sheet.fibre_cement.flooring.19mm.2700x600.each",
+      "unit": "each",
+      "approvedExGst": 113.13,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 305,
+      "key": "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each",
+      "unit": "each",
+      "approvedExGst": 42.12,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": null,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 317,
+      "key": "pergola.roof.colorsteel.m2",
+      "unit": "m2",
+      "approvedExGst": 36.58,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 140,
+      "currentMatchesApproved": false
+    },
+    {
+      "workbookRow": 323,
+      "key": "pergola.roof.polycarbonate.m2",
+      "unit": "m2",
+      "approvedExGst": 42.6,
+      "parentLiteral": null,
+      "atB0b68e8Literal": null,
+      "currentCatalogue": 95,
+      "currentMatchesApproved": false
+    }
+  ],
+  "productivityNumericRows": 104,
+  "productivity": [
+    {
+      "workbookRow": 7,
+      "key": "painting.labour_hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.12,
+      "atB0b68e8": 0.12,
+      "currentApproved": 0.12,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 8,
+      "key": "internal_walls.lining.aqualine.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 9,
+      "key": "internal_walls.lining.barrierline.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 10,
+      "key": "internal_walls.lining.braceline.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 11,
+      "key": "internal_walls.lining.fyreline.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 12,
+      "key": "internal_walls.lining.noiseline.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 13,
+      "key": "internal_walls.lining.standard_gib.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 14,
+      "key": "internal_walls.lining.weatherline.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 15,
+      "key": "internal_walls.cornice.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 16,
+      "key": "internal_walls.skirting.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 17,
+      "key": "internal_walls.insulation.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 18,
+      "key": "bathroom.lining.ceiling.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.25,
+      "atB0b68e8": 0.25,
+      "currentApproved": 0.25,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 19,
+      "key": "bathroom.demolition.ceiling.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.2,
+      "atB0b68e8": 0.2,
+      "currentApproved": 0.2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 20,
+      "key": "ceilings.grid.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.18,
+      "atB0b68e8": 0.18,
+      "currentApproved": 0.18,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 21,
+      "key": "ceilings.bulkhead.lining.install.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.25,
+      "atB0b68e8": 0.25,
+      "currentApproved": 0.25,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 22,
+      "key": "ceilings.bulkhead.framing.steel.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.2,
+      "atB0b68e8": 0.2,
+      "currentApproved": 0.2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 23,
+      "key": "ceilings.bulkhead.framing.timber.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.2,
+      "atB0b68e8": 0.2,
+      "currentApproved": 0.2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 24,
+      "key": "ceilings.steel.crossover_clip.install.hours_per_each",
+      "unit": "each",
+      "workbookConversion": 0.015,
+      "atB0b68e8": 0.015,
+      "currentApproved": 0.015,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 25,
+      "key": "ceilings.steel.dropper.install.hours_per_each",
+      "unit": "each",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 26,
+      "key": "ceilings.steel.furring_channel.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.08,
+      "atB0b68e8": 0.08,
+      "currentApproved": 0.08,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 27,
+      "key": "ceilings.insulation.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 28,
+      "key": "ceilings.steel.perimeter_track.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.08,
+      "atB0b68e8": 0.08,
+      "currentApproved": 0.08,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 29,
+      "key": "ceilings.plasterboard.install.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.4166666666666667,
+      "atB0b68e8": 0.4166666666666667,
+      "currentApproved": 0.4166666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 30,
+      "key": "ceilings.plywood.install.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 1.1666666666666667,
+      "atB0b68e8": 1.1666666666666667,
+      "currentApproved": 1.1666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 31,
+      "key": "ceilings.steel.primary_channel.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 32,
+      "key": "ceilings.tile.install.hours_per_each",
+      "unit": "each",
+      "workbookConversion": 0.025,
+      "atB0b68e8": 0.025,
+      "currentApproved": 0.025,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 33,
+      "key": "ceilings.timber_framing.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.3333333333333333,
+      "atB0b68e8": 0.3333333333333333,
+      "currentApproved": 0.3333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 34,
+      "key": "ceilings.timber_lining.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 2,
+      "atB0b68e8": 2,
+      "currentApproved": 0.16666666666666666,
+      "ownerHours": 0.16666666666666666,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 35,
+      "key": "doors.prehung.install.hours_per_door",
+      "unit": "door",
+      "workbookConversion": 1.5,
+      "atB0b68e8": 1.5,
+      "currentApproved": 1.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 36,
+      "key": "doors.replacement_leaf.install.hours_per_door",
+      "unit": "door",
+      "workbookConversion": 2,
+      "atB0b68e8": 2,
+      "currentApproved": 2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 37,
+      "key": "doors.hardware.install.hours_per_set",
+      "unit": "set",
+      "workbookConversion": 1.5,
+      "atB0b68e8": 1.5,
+      "currentApproved": 1.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 38,
+      "key": "flooring.carpet.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 39,
+      "key": "flooring.tile.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.20833333333333334,
+      "atB0b68e8": 0.20833333333333334,
+      "currentApproved": 0.20833333333333334,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 40,
+      "key": "flooring.substrate.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.3,
+      "atB0b68e8": 0.3,
+      "currentApproved": 0.3,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 41,
+      "key": "flooring.substrate.install.hours_per_sheet",
+      "unit": "sheet",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 42,
+      "key": "flooring.hardwood.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.25,
+      "atB0b68e8": 0.25,
+      "currentApproved": 0.25,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 43,
+      "key": "flooring.vinyl_plank.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 44,
+      "key": "cladding.timber.bevelback.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.11666666666666667,
+      "atB0b68e8": 0.11666666666666667,
+      "currentApproved": 0.11666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 45,
+      "key": "cladding.timber.bevelback.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 46,
+      "key": "cladding.timber.board_and_batten.batten.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.16666666666666666,
+      "atB0b68e8": 0.16666666666666666,
+      "currentApproved": 0.16666666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 47,
+      "key": "cladding.timber.board_and_batten.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 48,
+      "key": "cladding.timber.board_and_batten.sheet_board.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.16666666666666666,
+      "atB0b68e8": 0.16666666666666666,
+      "currentApproved": 0.16666666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 49,
+      "key": "cladding.cavity.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.03333333333333333,
+      "atB0b68e8": 0.03333333333333333,
+      "currentApproved": 0.03333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 50,
+      "key": "cladding.fibre_cement.weatherboard.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.11666666666666667,
+      "atB0b68e8": 0.11666666666666667,
+      "currentApproved": 0.11666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 51,
+      "key": "cladding.fibre_cement.weatherboard.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 52,
+      "key": "cladding.wall_underlay.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.03333333333333333,
+      "atB0b68e8": 0.03333333333333333,
+      "currentApproved": 0.03333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 53,
+      "key": "cladding.rigid_air_barrier.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.03333333333333333,
+      "atB0b68e8": 0.03333333333333333,
+      "currentApproved": 0.03333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 54,
+      "key": "cladding.timber.rusticated.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.11666666666666667,
+      "atB0b68e8": 0.11666666666666667,
+      "currentApproved": 0.11666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 55,
+      "key": "cladding.timber.rusticated.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 56,
+      "key": "cladding.timber.vertical_shiplap.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.11666666666666667,
+      "atB0b68e8": 0.11666666666666667,
+      "currentApproved": 0.11666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 57,
+      "key": "cladding.timber.vertical_shiplap.remove.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 59,
+      "key": "deck.demolition_hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.4166666666666667,
+      "atB0b68e8": 0.4166666666666667,
+      "currentApproved": 0.4166666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 60,
+      "key": "deck.base_labour_hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 1.2,
+      "atB0b68e8": 1.2,
+      "currentApproved": 1.2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 61,
+      "key": "deck.post_hole_concrete.place.hours_per_bag",
+      "unit": "bag",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 62,
+      "key": "deck.decking.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "blocked"
+    },
+    {
+      "workbookRow": 63,
+      "key": "deck.decking.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.5833333333333334,
+      "ownerHours": 0.5833333333333334,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 64,
+      "key": "deck.elevated_extra_hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.25,
+      "atB0b68e8": 0.25,
+      "currentApproved": 0.25,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 65,
+      "key": "deck.fascia.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 66,
+      "key": "deck.skirting.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.13333333333333333,
+      "atB0b68e8": 0.13333333333333333,
+      "currentApproved": 0.13333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 67,
+      "key": "deck.posts.install.hours_per_ea",
+      "unit": "ea",
+      "workbookConversion": 1,
+      "atB0b68e8": 1,
+      "currentApproved": 1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 68,
+      "key": "deck.steps.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 4,
+      "atB0b68e8": 4,
+      "currentApproved": 4,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 69,
+      "key": "deck.substructure.install.hours_per_framing_lm",
+      "unit": "lm",
+      "workbookConversion": 0.16666666666666666,
+      "atB0b68e8": 0.16666666666666666,
+      "currentApproved": 0.16666666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 70,
+      "key": "deck.substructure.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.52,
+      "atB0b68e8": 0.52,
+      "currentApproved": 0.52,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 71,
+      "key": "fence.capping.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.125,
+      "atB0b68e8": 0.125,
+      "currentApproved": 0.125,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 72,
+      "key": "fence.post.install.hours_per_post",
+      "unit": "post",
+      "workbookConversion": 1.8,
+      "atB0b68e8": 1.8,
+      "currentApproved": 1.8,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 73,
+      "key": "fence.post_hole_concrete.place.hours_per_bag",
+      "unit": "bag",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": 0.06666666666666667,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 74,
+      "key": "fence.rail.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.05,
+      "atB0b68e8": 0.05,
+      "currentApproved": 0.05,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 75,
+      "key": "fence.board.horizontal.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.05,
+      "atB0b68e8": 0.05,
+      "currentApproved": 0.05,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 76,
+      "key": "fence.section.install.hours_per_section",
+      "unit": "section",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 77,
+      "key": "fence.gate.install.hours_per_gate",
+      "unit": "gate",
+      "workbookConversion": 3.5,
+      "atB0b68e8": 3.5,
+      "currentApproved": 3.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 78,
+      "key": "fence.board.vertical.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.041666666666666664,
+      "atB0b68e8": 0.041666666666666664,
+      "currentApproved": 0.041666666666666664,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 79,
+      "key": "retaining_wall.sleeper.sleepers.install.hours_per_ea",
+      "unit": "ea",
+      "workbookConversion": 0.22,
+      "atB0b68e8": 0.22,
+      "currentApproved": 0.22,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 81,
+      "key": "retaining_wall.drainage.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.15,
+      "atB0b68e8": 0.15,
+      "currentApproved": 0.15,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 82,
+      "key": "retaining_wall.masonry.block_lay.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 1.8,
+      "atB0b68e8": 1.8,
+      "currentApproved": 1.8,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 83,
+      "key": "retaining_wall.masonry.core_fill.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 0.85,
+      "atB0b68e8": 0.85,
+      "currentApproved": 0.85,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 84,
+      "key": "retaining_wall.masonry.footing.concrete.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 1.2,
+      "atB0b68e8": 1.2,
+      "currentApproved": 1.2,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 85,
+      "key": "retaining_wall.masonry.rebar.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.08,
+      "atB0b68e8": 0.08,
+      "currentApproved": 0.08,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 86,
+      "key": "retaining_wall.masonry.subbase.compact.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.15,
+      "atB0b68e8": 0.15,
+      "currentApproved": 0.15,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 87,
+      "key": "retaining_wall.masonry.waterproofing.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.28,
+      "atB0b68e8": 0.28,
+      "currentApproved": 0.28,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 88,
+      "key": "retaining_wall.backfill.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 90,
+      "key": "retaining_wall.excavation.machine.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 0.4166666666666667,
+      "atB0b68e8": 0.4166666666666667,
+      "currentApproved": 0.4166666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 91,
+      "key": "retaining_wall.excavation.manual.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 4,
+      "atB0b68e8": 4,
+      "currentApproved": 4,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 92,
+      "key": "retaining_wall.post_hole_concrete.place.hours_per_bag",
+      "unit": "bag",
+      "workbookConversion": 0.1,
+      "atB0b68e8": 0.1,
+      "currentApproved": 0.1,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 93,
+      "key": "retaining_wall.post_hole_concrete.place.hours_per_m3",
+      "unit": "m3",
+      "workbookConversion": 3.5,
+      "atB0b68e8": 3.5,
+      "currentApproved": 3.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 94,
+      "key": "retaining_wall.sleeper.concrete.place.hours_per_hole",
+      "unit": "hole",
+      "workbookConversion": 0.12,
+      "atB0b68e8": 0.12,
+      "currentApproved": 0.12,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 95,
+      "key": "retaining_wall.sleeper.posts.install.hours_per_ea",
+      "unit": "ea",
+      "workbookConversion": 0.95,
+      "atB0b68e8": 0.95,
+      "currentApproved": 0.95,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 96,
+      "key": "retaining_wall.timber.face_boards.install.hours_per_m2",
+      "unit": "m2",
+      "workbookConversion": 0.3333333333333333,
+      "atB0b68e8": 0.3333333333333333,
+      "currentApproved": 0.3333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 97,
+      "key": "retaining_wall.timber.piles.install.hours_per_ea",
+      "unit": "ea",
+      "workbookConversion": 0.4166666666666667,
+      "atB0b68e8": 0.4166666666666667,
+      "currentApproved": 0.4166666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 98,
+      "key": "retaining_wall.timber.concrete.place.hours_per_hole",
+      "unit": "hole",
+      "workbookConversion": 0.12,
+      "atB0b68e8": 0.12,
+      "currentApproved": 0.12,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 99,
+      "key": "bathroom.demolition.bath.hours_each",
+      "unit": "each",
+      "workbookConversion": 4.5,
+      "atB0b68e8": null,
+      "currentApproved": null,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 100,
+      "key": "bathroom.fixture.accessories.install.hours_each",
+      "unit": "each",
+      "workbookConversion": 0.5,
+      "atB0b68e8": 0.5,
+      "currentApproved": 0.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 101,
+      "key": "bathroom.demolition.floor_finish.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.25,
+      "atB0b68e8": 0.25,
+      "currentApproved": 0.25,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 102,
+      "key": "bathroom.floor_substrate.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.9166666666666666,
+      "atB0b68e8": 0.9166666666666666,
+      "currentApproved": 0.9166666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 103,
+      "key": "bathroom.framing.install.hours_per_lm",
+      "unit": "lm",
+      "workbookConversion": 0.11666666666666667,
+      "atB0b68e8": 0.11666666666666667,
+      "currentApproved": 0.11666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 104,
+      "key": "bathroom.tile_underlay.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.9166666666666666,
+      "atB0b68e8": 0.9166666666666666,
+      "currentApproved": 0.9166666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 105,
+      "key": "bathroom.lining.wall.install.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.29,
+      "atB0b68e8": null,
+      "currentApproved": null,
+      "ownerHours": null,
+      "appliedResult": "corrected"
+    },
+    {
+      "workbookRow": 106,
+      "key": "bathroom.demolition.wall_lining.hours_per_m2",
+      "unit": "m²",
+      "workbookConversion": 0.08333333333333333,
+      "atB0b68e8": 0.08333333333333333,
+      "currentApproved": 0.08333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 107,
+      "key": "bathroom.demolition.fixture.hours_each",
+      "unit": "each",
+      "workbookConversion": 0.06666666666666667,
+      "atB0b68e8": 0.06666666666666667,
+      "currentApproved": 0.06666666666666667,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 108,
+      "key": "bathroom.fixture.mirror.install.hours_each",
+      "unit": "each",
+      "workbookConversion": 0.5833333333333334,
+      "atB0b68e8": 0.5833333333333334,
+      "currentApproved": 0.5833333333333334,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 109,
+      "key": "bathroom.demolition.shower.hours_each",
+      "unit": "each",
+      "workbookConversion": 1.5,
+      "atB0b68e8": 1.5,
+      "currentApproved": 1.5,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 110,
+      "key": "bathroom.fixture.shower_enclosure.install.hours_each",
+      "unit": "each",
+      "workbookConversion": 3,
+      "atB0b68e8": 3,
+      "currentApproved": 3,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 111,
+      "key": "bathroom.demolition.toilet.hours_each",
+      "unit": "each",
+      "workbookConversion": 0.16666666666666666,
+      "atB0b68e8": 0.16666666666666666,
+      "currentApproved": 0.16666666666666666,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 112,
+      "key": "bathroom.demolition.vanity.hours_each",
+      "unit": "each",
+      "workbookConversion": 0.3333333333333333,
+      "atB0b68e8": 0.3333333333333333,
+      "currentApproved": 0.3333333333333333,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    },
+    {
+      "workbookRow": 113,
+      "key": "bathroom.fixture.vanity.install.hours_each",
+      "unit": "each",
+      "workbookConversion": 4,
+      "atB0b68e8": 4,
+      "currentApproved": 4,
+      "ownerHours": null,
+      "appliedResult": "imported"
+    }
+  ]
+}

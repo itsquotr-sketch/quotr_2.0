@@ -16,7 +16,10 @@ import type { BathroomGeometryResolution } from "../lib/estimate/bathroom-geomet
 import { derivedDimensionedPlasterboardCost } from "../lib/estimate/ceilings-plasterboard-derived-cost";
 import { HOUSE_PILE_BENCHMARK_COST_EX_GST } from "../lib/estimate/house-pile-benchmarks";
 import { resolveProductivity } from "../lib/estimate/productivity";
+import { resolveMaterialRate } from "../lib/estimate/resolve-material-rate";
 import { resolveLabourRate } from "../lib/estimate/rates";
+import { CEILINGS_PRODUCTIVITY_KEYS, CEILINGS_QUOTR_PRODUCTIVITY_HOURS } from "../lib/estimate/ceilings-identities";
+import { resolveDeckDeckingInstallProductivity } from "../lib/estimate/deck-productivity";
 import { buildMaterialRateItemKey } from "../lib/materials/identity";
 import {
   HOUSE_PILE_125_RW_IDENTITY,
@@ -25,6 +28,7 @@ import {
 import { formatRateUnit as formatCatalogueRateUnit, getCatalogueEntry } from "../lib/rates/catalogue";
 import {
   APPROVED_PRODUCTIVITY,
+  approvedProductivityHours,
   BATHROOM_COMPLETE_STRIP_HOURS_PER_M2,
   BATHROOM_COMPLETE_STRIP_KEY,
   BATHROOM_FIBRE_CEMENT_WALL_LINING_HOURS_PER_M2,
@@ -105,13 +109,16 @@ const workArea = {
   sort_order: 1,
 } as EstimateWorkArea;
 
-const geometry = {
-  floorAreaM2: 8,
-  ceilingAreaM2: 8,
-  grossWallAreaM2: 24,
-} as BathroomGeometryResolution;
-
-function demo(components: string[], rates: OrganisationRate[] = []) {
+function demo(
+  components: string[],
+  rates: OrganisationRate[] = [],
+  floorAreaM2 = 8
+) {
+  const geometry = {
+    floorAreaM2,
+    ceilingAreaM2: floorAreaM2,
+    grossWallAreaM2: 24,
+  } as BathroomGeometryResolution;
   return buildBathroomDemolitionEnvelope({
     context: ctx(
       [
@@ -179,7 +186,7 @@ check(
       ?.defaultCostRate === fibre
 );
 
-const strip = demo(["floor_finish", "wall_lining", "bath"]);
+const strip = demo(["complete_strip", "floor_finish", "wall_lining", "bath"]);
 const stripLine = strip.lineItems.find((row) =>
   row.label.includes("Complete bathroom strip-out")
 );
@@ -191,6 +198,29 @@ check(
   `hours=${stripHours} lines=${strip.lineItems.map((row) => `${row.category}:${row.label}`).join(" | ")}`
 );
 
+const inferred = demo(["floor_finish", "wall_lining", "bath"]);
+check(
+  "complete strip-out is not inferred from a bath plus finishes",
+  !inferred.lineItems.some((row) => row.label.includes("Complete bathroom")) &&
+    inferred.lineItems.some((row) => /bath/i.test(row.label))
+);
+const five = demo(["complete_strip"], [], 5);
+check(
+  "5 m² complete strip-out is 22.5 person-hours",
+  near(
+    Number(
+      five.lineItems.find((row) => row.label.includes("Complete bathroom"))
+        ?.labourHours ?? 0
+    ),
+    22.5
+  )
+);
+const floorOnly = demo(["floor_finish"]);
+check(
+  "floor-only removal stays on the floor path",
+  floorOnly.lineItems.some((row) => row.label.includes("Floor finish")) &&
+    !floorOnly.lineItems.some((row) => row.label.includes("Complete bathroom"))
+);
 const bathOnly = demo(["bath"]);
 const bathLine = bathOnly.lineItems.find((row) => /bath/i.test(row.label));
 check(
@@ -201,7 +231,7 @@ check(
 );
 
 const overridden = demo(
-  ["floor_finish", "wall_lining", "bath"],
+  ["complete_strip"],
   [productivityRate(BATHROOM_COMPLETE_STRIP_KEY, 2)]
 );
 const overrideHours = Number(
@@ -214,7 +244,7 @@ check(
   `hours=${overrideHours}`
 );
 
-const again = demo(["floor_finish", "wall_lining", "bath"]);
+const again = demo(["complete_strip"]);
 check(
   "regeneration repeats the same strip-out hours",
   near(Number(again.lineItems[0]?.labourHours ?? 0), stripHours)
@@ -263,6 +293,54 @@ check(
       null
 );
 check("loose spoil swell is held, not hardcoded at 3", LOOSE_SPOIL_SWELL_FACTOR == null);
+check(
+  "ceiling timber lining is 2 × 5 minutes per lm",
+  near(
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm],
+    (2 * 5) / 60
+  ) &&
+    approvedProductivityHours("ceilings.timber_lining.install.hours_per_lm")
+      ?.unit === "lm"
+);
+check(
+  "12 lm of ceiling timber lining is 2 person-hours",
+  near(12 * ((2 * 5) / 60), 2)
+);
+check(
+  "fence concrete placement is 2 × 2 minutes per bag",
+  near(
+    approvedProductivityHours("fence.post_hole_concrete.place.hours_per_bag")
+      ?.hoursPerUnit ?? 0,
+    (2 * 2) / 60
+  )
+);
+check(
+  "decking m² converts by board width and is not copied onto the held lm key",
+  near(
+    resolveDeckDeckingInstallProductivity([], 140).hoursPerUnit,
+    (35 / 60) * 0.14
+  ) &&
+    resolveDeckDeckingInstallProductivity([]).hoursPerUnit !== 35 / 60
+);
+const fibreSheet = resolveMaterialRate({
+  orgRates: [],
+  materialKey: "sheet.fibre_cement.18mm.2400x1200.each",
+  unit: "each",
+  benchmarkCostRate: 0,
+  organisationSettings: {
+    allow_benchmark_rates: true,
+    default_margin_percent: 20,
+    premium_rate_factor: 1.15,
+  },
+});
+check(
+  "18 mm fibre cement with no benchmark is Pricing Required, not a known zero",
+  fibreSheet.materialRateSource === "missing" &&
+    fibreSheet.sourceType === "missing" &&
+    fibreSheet.sourceLabel === "Pricing required" &&
+    fibreSheet.costRate === 0 &&
+    fibreSheet.sellRate === 0
+);
 
 const identityKey = [...PRODUCT_IDENTITY_CORRECTION_KEYS][0];
 check(

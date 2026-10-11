@@ -95,6 +95,7 @@ export function inferBathroomWasteLevel(
     if (id === "floor_finish") score += 1;
     else if (id === "wall_lining" || id === "ceiling") score += 2;
     else if (id === "shower" || id === "bath") score += 2;
+    else if (id === "complete_strip") score += 6;
     else score += 1;
   }
   if (score <= 2) return "minor";
@@ -327,7 +328,10 @@ export function buildBathroomDemolitionEnvelope(params: {
   };
 
   const emitEachLabour = (opts: {
-    id: Exclude<BathroomDemolitionComponentId, "floor_finish" | "wall_lining" | "ceiling">;
+    id: Exclude<
+      BathroomDemolitionComponentId,
+      "floor_finish" | "wall_lining" | "ceiling" | "complete_strip"
+    >;
     label: string;
     count?: number;
   }) => {
@@ -452,12 +456,7 @@ export function buildBathroomDemolitionEnvelope(params: {
     );
   };
 
-  const completeStrip =
-    components.includes("floor_finish") &&
-    components.includes("wall_lining") &&
-    (["vanity", "toilet", "bath", "shower"] as const).some((id) =>
-      components.includes(id)
-    );
+  const completeStrip = components.includes("complete_strip");
 
   if (completeStrip) {
     const area = geometry.floorAreaM2;
@@ -474,7 +473,7 @@ export function buildBathroomDemolitionEnvelope(params: {
         round2(area * productivity.hoursPerUnit) * params.accessFactor
       );
       assumptions.push(
-        "Complete strip-out is 4.5 person-hours per m² of floor (workbook row 99). Component demolition lines for this bathroom are not also priced."
+        "Complete strip-out is explicitly selected. 4.5 person-hours per m² of bathroom floor area covers the selected floor finishes, wall linings, vanity, toilet, and bath or shower fittings, including ordinary protection and moving debris to the on-site disposal point. Floor area is the measurement basis for the whole room, not a flooring-only scope. It does not price new construction, new lining, waterproofing, licensed plumbing or electrical disconnection, hazardous materials, structural demolition, skip hire, tip fees, or off-site cartage. The workbook did not itemise protection and on-site movement separately; the 11 Oct 2026 owner decision includes them in the 4.5 rate, so no second labour allowance is added."
       );
       if (productivity.sourceType !== "missing" && productivity.hoursPerUnit > 0 && !specialist) {
         const identity = `${presentBathroomAreaM2(area)} · ${presentBathroomHours(adjustedHours)} · complete strip-out`;
@@ -524,7 +523,7 @@ export function buildBathroomDemolitionEnvelope(params: {
       missing: "Bathroom wall area is required for wall lining removal.",
     });
   }
-  if (!completeStrip && components.includes("ceiling")) {
+  if (components.includes("ceiling")) {
     emitAreaLabour({
       id: "ceiling",
       label: "Ceiling lining removal",
@@ -544,7 +543,7 @@ export function buildBathroomDemolitionEnvelope(params: {
   if (!completeStrip && components.includes("bath")) {
     emitEachLabour({ id: "bath", label: "Bath removal" });
   }
-  if (!completeStrip && components.includes("fixture")) {
+  if (components.includes("fixture")) {
     emitEachLabour({ id: "fixture", label: "Fixture removal" });
   }
 

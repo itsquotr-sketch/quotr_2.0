@@ -996,7 +996,7 @@ export function commercializeFenceWithLabour(params: {
       (row): row is MaterialRequirement => row.kind === "material"
     );
     first.assumptions.push(
-      "Post placement, hole excavation, and concrete placement are separate. Approved post hours stay on post placement. Hole excavation person-hours are Pricing Required. Bank hole volume is not converted to loose spoil; the swell factor is held for owner review."
+      `Post placement, hole excavation, and concrete placement are separate. Bank hole volume is ${round2(modular.concrete.grossHoleVolumeM3)} m³. Loose spoil is not estimated; the 3× swell factor is held. Concrete placement is ${modular.concrete.bagCount} bags of 20 kg premix and is not included in post installation. There is no second mixing charge. Hole excavation person-hours remain Pricing Required.`
     );
     if (modular.postCount > 0) {
       first.missingInfo.push(

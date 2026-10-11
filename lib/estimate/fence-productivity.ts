@@ -59,7 +59,7 @@ export const FENCE_PRODUCTIVITY_STARTERS: Record<
   [FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm]: 0.06,
   [FENCE_PRODUCTIVITY_KEYS.cappingLm]: 0.08,
   [FENCE_PRODUCTIVITY_KEYS.gateInstall]: 2,
-  [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]: 0.06,
+  [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]: (2 * 2) / 60,
   [FENCE_PRODUCTIVITY_KEYS.sectionInstall]: 0.35,
   [FENCE_PRODUCTIVITY_KEYS.packageLm]: 0.6,
   [FENCE_PRODUCTIVITY_KEYS.gateAllowance]: 2,
@@ -67,7 +67,7 @@ export const FENCE_PRODUCTIVITY_STARTERS: Record<
 };
 
 export const FENCE_ACCESS_SENSITIVE_ACTIVITIES = [
-  "post installation (includes layout, hole digging, set, plumb, normal carry)",
+  "post placement (layout, set, plumb, normal carry). Hole excavation is separate and Pricing Required",
   "framing / rails",
   "board / slat / section installation",
   "gate installation",

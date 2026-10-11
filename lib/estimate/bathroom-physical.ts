@@ -80,7 +80,7 @@ import type { BathroomGeometryResolution } from "@/lib/estimate/bathroom-geometr
 export type BathroomPhysicalSelection = {
   floorSubstrate: BathroomFloorSubstrateSystem | null;
   floorSubstrateAssumed: boolean;
-  wallLining: "aqualine" | "fibre_cement" | "other" | "none" | null;
+  wallLining: "aqualine" | "fibre_cement" | "other" | "unknown" | "none" | null;
   wallLiningAssumed: boolean;
   ceilingLining: "aqualine" | "other" | "none" | null;
   ceilingLiningAssumed: boolean;
@@ -118,8 +118,7 @@ export function resolveBathroomPhysicalSelection(params: {
   let wallLining: BathroomPhysicalSelection["wallLining"] = null;
   let wallLiningAssumed = false;
   if (!stripOutOnly && (isNotSureValue(wallRaw) || isNotSureValue(wallSystem))) {
-    wallLining = "aqualine";
-    wallLiningAssumed = true;
+    wallLining = "unknown";
   } else if (wallSystem) {
     const lower = wallSystem.toLowerCase();
     if (lower === "none" || lower === "no") wallLining = "none";
@@ -136,7 +135,7 @@ export function resolveBathroomPhysicalSelection(params: {
   }
   if (wallLining == null) {
     const wallBool = getBooleanFact(facts as never, workAreaId, "bathroom.wall_lining_included");
-    if (wallBool === true) wallLining = "aqualine";
+    if (wallBool === true) wallLining = "unknown";
     else if (wallBool === false) wallLining = "none";
   }
 
@@ -355,8 +354,10 @@ export function buildBathroomPhysicalEnvelope(params: {
   if (selection.floorSubstrate === "other") {
     missingInfo.push("Specify the floor substrate type so Quotr can price it.");
   }
-  if (selection.wallLining === "other") {
-    missingInfo.push("Specify the wall lining type so Quotr can price it.");
+  if (selection.wallLining === "other" || selection.wallLining === "unknown") {
+    missingInfo.push(
+      "Confirm whether the bathroom wall lining is GIB or fibre cement. Quotr will not assume the lower labour rate."
+    );
   }
   if (selection.ceilingLining === "other") {
     missingInfo.push("Specify the ceiling lining type so Quotr can price it.");
@@ -768,6 +769,9 @@ export function buildBathroomPhysicalEnvelope(params: {
     });
     const hours = bathroomLiningHours(wallArea, productivity.hoursPerUnit);
     const adjustedHours = hours * params.accessFactor;
+    assumptions.push(
+      `Wall lining is ${sheetLabel}. Area ${presentBathroomAreaM2(wallArea)}. Labour ${presentBathroomHours(adjustedHours)} at ${productivity.hoursPerUnit} person-hours/m². Source: ${productivity.sourceLabel}.`
+    );
     const rate = resolveExactMaterialRate({
       itemKey: sheetKey,
       unit: "each",

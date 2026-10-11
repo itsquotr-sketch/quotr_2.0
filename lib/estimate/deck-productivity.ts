@@ -95,15 +95,52 @@ export function requiredInstalledFramingLm(params: {
   );
 }
 
+/** Owner 11 Oct 2026. Person-hours per m² of decking. */
+export const OWNER_DECK_DECKING_HOURS_PER_M2 = 35 / 60;
+
+/**
+ * Installed lm = area / board width, so h/lm = h/m² × width in metres.
+ * This is the relationship the deck takeoff already uses. It is not a copied unit.
+ */
+export function deckDeckingHoursPerLm(
+  hoursPerM2: number,
+  boardWidthMm: number
+): number {
+  return hoursPerM2 * (boardWidthMm / 1000);
+}
+
 export function resolveDeckDeckingInstallProductivity(
-  rates: readonly OrganisationRate[] | undefined
+  rates: readonly OrganisationRate[] | undefined,
+  boardWidthMm?: number | null
 ): ProductivityRate {
-  return resolveProductivity({
+  const lm = resolveProductivity({
     productivityKey: DECK_DECKING_INSTALL_HOURS_PER_LM_KEY,
     unit: "lm",
     fallbackHoursPerUnit: DECK_DECKING_INSTALL_HOURS_PER_LM,
     rates,
   });
+  if (
+    lm.sourceType === "user_rate" ||
+    lm.sourceType === "calibrated_productivity"
+  ) {
+    return lm;
+  }
+  if (boardWidthMm != null && boardWidthMm > 0) {
+    const area = resolveProductivity({
+      productivityKey: DECK_DECKING_INSTALL_HOURS_PER_M2_LEGACY_KEY,
+      unit: "m2",
+      fallbackHoursPerUnit: OWNER_DECK_DECKING_HOURS_PER_M2,
+      rates,
+    });
+    return {
+      ...area,
+      key: DECK_DECKING_INSTALL_HOURS_PER_LM_KEY,
+      unit: "lm",
+      hoursPerUnit: deckDeckingHoursPerLm(area.hoursPerUnit, boardWidthMm),
+      sourceLabel: `${area.hoursPerUnit} h/m² × ${boardWidthMm} mm board coverage`,
+    };
+  }
+  return lm;
 }
 
 export function resolveDeckSubstructureInstallProductivity(

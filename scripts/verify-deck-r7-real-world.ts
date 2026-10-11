@@ -434,9 +434,9 @@ check(
     Math.abs((deckingLab?.quantity ?? 0) - 150) < 0.05
 );
 check(
-  "14 decking base 11.55 → final 13.28 not 15.27",
-  Math.abs((deckingLab?.labourHours ?? 0) - 13.28) < 0.03 &&
-    Math.abs(round2(150 * 0.077 * 1.15) - (deckingLab?.labourHours ?? 0)) < 0.03
+  "14 decking uses 35 min/m² × 21 m² × 1.15 = 14.09 h, one line",
+  Math.abs((deckingLab?.labourHours ?? 0) - round2(21 * (35 / 60) * 1.15)) < 0.03 &&
+    after.lineItems.filter((item) => item.componentKey === "deck.decking.install").length === 1
 );
 check(
   "15 pile 16 × 0.20 × 1.15 = 3.68 not 4.23",
@@ -739,9 +739,11 @@ check(
     )
 );
 check(
-  "43 resolve helpers use lm starters",
-  resolveDeckDeckingInstallProductivity([]).hoursPerUnit === 0.077 &&
-    resolveDeckSubstructureInstallProductivity([]).hoursPerUnit === 0.13
+  "43 140 mm decking converts 35 min/m²; bare lm helper is not that m² number",
+  Math.abs(
+    resolveDeckDeckingInstallProductivity([], 140).hoursPerUnit - (35 / 60) * 0.14
+  ) < 1e-9 &&
+    resolveDeckDeckingInstallProductivity([]).hoursPerUnit !== 35 / 60
 );
 
 const materialsCost = after.lineItems

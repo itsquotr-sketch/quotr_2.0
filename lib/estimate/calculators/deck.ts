@@ -501,7 +501,8 @@ export function calculateDeck(
   });
 
   const deckingInstallProductivity = resolveDeckDeckingInstallProductivity(
-    context.rates
+    context.rates,
+    boardWidthFact
   );
   const substructureInstallProductivity =
     resolveDeckSubstructureInstallProductivity(context.rates);
