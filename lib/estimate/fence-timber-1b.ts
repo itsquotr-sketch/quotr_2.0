@@ -89,14 +89,14 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
       "LOW-CONFIDENCE Quotr starter $/lm for H4 100×100 fence post (not H5 SED / house pile). NZ merchant band, ex GST. Company/Project exact overrides.",
   },
   [fenceRailMaterialKey("75x50")]: {
-    costPerUnit: 6,
+    costPerUnit: 2.83,
     unit: "lm",
     identity: "Treated H4 75×50 timber fence rail",
     confidence: "low",
     basis: "LOW-CONFIDENCE Quotr starter $/lm for H4 75×50 rail. Company/Project exact overrides.",
   },
   [fenceRailMaterialKey("100x50")]: {
-    costPerUnit: 8,
+    costPerUnit: 5.08,
     unit: "lm",
     identity: "Treated H4 100×50 timber fence rail",
     confidence: "low",
@@ -110,14 +110,14 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
     basis: "LOW-CONFIDENCE Quotr starter $/lm for H4 75×40 rail. Company/Project exact overrides.",
   },
   [fenceBoardMaterialKey("radiata_pine", 19)]: {
-    costPerUnit: 3.2,
+    costPerUnit: 2,
     unit: "lm",
     identity: "Radiata Pine 150×19 fence board/paling",
     confidence: "low",
     basis: "LOW-CONFIDENCE Quotr starter $/lm. Not a universal timber rate.",
   },
   [fenceBoardMaterialKey("radiata_pine", 25)]: {
-    costPerUnit: 4.5,
+    costPerUnit: 2.28,
     unit: "lm",
     identity: "Radiata Pine 150×25 fence board/paling",
     confidence: "low",
@@ -131,7 +131,7 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
     basis: "LOW-CONFIDENCE Quotr starter $/lm. Distinct from Radiata.",
   },
   [fenceBoardMaterialKey("macrocarpa", 25)]: {
-    costPerUnit: 7.5,
+    costPerUnit: 4.52,
     unit: "lm",
     identity: "Macrocarpa 150×25 fence board/paling",
     confidence: "low",
@@ -195,7 +195,7 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
     basis: "LOW-CONFIDENCE GENERIC hardwood capping starter.",
   },
   [fenceGateFrameMaterialKey()]: {
-    costPerUnit: 6,
+    costPerUnit: 2.83,
     unit: "lm",
     identity: "Treated H4 75×50 timber gate frame",
     confidence: "low",
@@ -210,7 +210,7 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
       "LOW-CONFIDENCE Quotr starter per gate. Not the legacy $450 package gate allowance. Ordinary fence fixings are separate.",
   },
   [FENCE_PREMIX_20KG_KEY]: {
-    costPerUnit: 11.5,
+    costPerUnit: 9.77,
     unit: "bag",
     identity: "20 kg bagged premix concrete",
     confidence: "low",
@@ -218,7 +218,7 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
       "Reuses the current RW sleeper 20 kg premix starter band (~$11.50/bag ex GST). Company/Project exact on fence.concrete.premix.20kg.bag or deck.concrete.premix.20kg.bag wins.",
   },
   [RW_PREMIX_20KG_KEY]: {
-    costPerUnit: 9.80,
+    costPerUnit: 9.77,
     unit: "bag",
     identity: "20 kg bagged premix concrete (shared commercial bag key)",
     confidence: "low",

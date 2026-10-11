@@ -361,6 +361,7 @@ export type EstimateAggregateLine = {
   readonly sellHigh: number;
   readonly includedInTotal?: boolean;
   readonly costKnown?: boolean;
+  readonly rateSourceType?: string;
 };
 
 export type EstimateAggregateResult = {
@@ -384,7 +385,9 @@ export function aggregateEstimateLines(
   lines: readonly EstimateAggregateLine[],
   requestId = "estimate-aggregate"
 ): EstimateAggregateResult {
-  const included = lines.filter((l) => l.includedInTotal !== false);
+  const included = lines.filter(
+    (l) => l.includedInTotal !== false && l.rateSourceType !== "missing"
+  );
 
   const costLow = round2(included.reduce((s, l) => s + l.costLow, 0));
   const costHigh = round2(included.reduce((s, l) => s + l.costHigh, 0));
@@ -416,10 +419,12 @@ export function aggregateEstimateLines(
       total_cost: l.recommendedCost,
       total_sell: l.recommendedSell,
       visible: true,
-      included_in_total: true,
       cost_known:
-        l.costKnown ??
-        !(l.recommendedCost === 0 && l.recommendedSell > 0),
+        l.rateSourceType === "missing"
+          ? false
+          : (l.costKnown ??
+            !(l.recommendedCost === 0 && l.recommendedSell > 0)),
+      included_in_total: l.rateSourceType === "missing" ? false : true,
     })),
     source: {
       source_references: ["estimate:aggregate"],

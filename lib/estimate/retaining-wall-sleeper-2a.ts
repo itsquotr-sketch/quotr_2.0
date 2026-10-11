@@ -221,7 +221,7 @@ export const RW_SLEEPER_2A_MATERIAL_STARTERS: Record<
       "LOW-CONFIDENCE QUOTR STARTER BENCHMARK. Indicative H-section $/lm only — not a supplier quote. Stock-length SKUs are not invented. Company/Project exact overrides.",
   },
   [RW_SLEEPER_PREMIX_20KG_KEY]: {
-    costPerUnit: 11.5,
+    costPerUnit: 9.77,
     unit: "bag",
     identity: "20 kg general-purpose premix bag",
     confidence: "medium",

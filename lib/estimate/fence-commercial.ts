@@ -6,6 +6,7 @@
  */
 
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { round2 } from "@/lib/estimate/facts";
 import {
@@ -202,6 +203,19 @@ function priceMaterial(
 
   if (quotrStartersAllowed(organisationSettings)) {
     for (const key of namedKeys) {
+      const approved = approvedMaterialCostExGst(key, unit);
+      if (approved != null && approved > 0) {
+        inherited.push(
+          `${requirement.componentKey} used approved Quotr benchmark ${approved}/${unit}`
+        );
+        return {
+          ...requirement,
+          priced: true,
+          unitCost: approved,
+          totalCost: round2(requirement.purchaseQuantity * approved),
+          rateSource: "benchmark",
+        };
+      }
       const starter =
         timber1BMaterialStarter(key) ?? modular1CMaterialStarter(key);
       if (starter && rateUnitsMatch(starter.unit, unit) && starter.costPerUnit > 0) {

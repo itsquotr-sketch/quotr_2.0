@@ -47,7 +47,7 @@ export const RW_TIMBER_CONCRETE_HOURS_KEY =
   "retaining_wall.timber.concrete.place.hours_per_hole" as const;
 export const RW_TIMBER_CONCRETE_HOURS_STARTER = 0.12;
 
-export const RW_DRAINAGE_SOCK_STARTER_COST_PER_LM = 4.5;
+export const RW_DRAINAGE_SOCK_STARTER_COST_PER_LM = 2.45;
 
 export function parseDiggerAccess(
   raw: string | null | undefined

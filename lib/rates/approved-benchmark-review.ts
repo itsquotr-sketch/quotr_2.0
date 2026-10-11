@@ -32,6 +32,8 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
   "internal_walls.skirting.install.hours_per_lm": { hoursPerUnit: 0.1, unit: "lm", workbookRow: 16, plain: "2 people 3 minutes" },
   "internal_walls.insulation.install.hours_per_m2": { hoursPerUnit: 0.06666666666666667, unit: "m2", workbookRow: 17, plain: "1 person 4 minutes" },
   "bathroom.lining.ceiling.install.hours_per_m2": { hoursPerUnit: 0.25, unit: "m²", workbookRow: 18, plain: "2 people 7.5 minutes" },
+  "bathroom.lining.wall.install.hours_per_m2": { hoursPerUnit: 0.5 / (2.4 * 1.2), unit: "m2", workbookRow: 105, plain: "Owner 11 Oct 2026: 0.5 h per 2.88 m² GIB sheet. Workbook 0.29 is fibre cement, not this key." },
+  "bathroom.lining.wall.fibre_cement.hours_per_m2": { hoursPerUnit: 0.29, unit: "m2", workbookRow: 105, plain: "Owner 11 Oct 2026: fibre cement 0.29 h/m² from the Hardies row." },
   "bathroom.demolition.ceiling.hours_per_m2": { hoursPerUnit: 0.2, unit: "m²", workbookRow: 19, plain: "1 person 12 minutes" },
   "ceilings.grid.install.hours_per_m2": { hoursPerUnit: 0.18, unit: "m2", workbookRow: 20, plain: "1 person 10.8 minutes per m2" },
   "ceilings.bulkhead.lining.install.hours_per_sheet": { hoursPerUnit: 0.25, unit: "sheet", workbookRow: 21, plain: "2 people 7.5 minutes" },

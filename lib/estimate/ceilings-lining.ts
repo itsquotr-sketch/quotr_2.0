@@ -76,8 +76,8 @@ export const CEILING_TILE_1200_600_KEY = "ceiling.tile.1200x600.each" as const;
 export const CEILING_TILE_GRID_QUOTR_COST = {
   gridM2: 15,
   tile300Each: 4,
-  tile600Each: 16,
-  tile1200x600Each: 19,
+  tile600Each: 9,
+  tile1200x600Each: 16.5,
 } as const;
 
 export const CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION =

@@ -1,5 +1,6 @@
 import { round2 } from "@/lib/estimate/facts";
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
+import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 import { getDefaultMarginPercent } from "@/lib/estimate/rates";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
@@ -288,14 +289,16 @@ export function resolveMaterialRate(params: {
     }
   }
 
+  const approvedCost = approvedMaterialCostExGst(params.materialKey, params.unit);
+  const benchmarkCost = approvedCost ?? params.benchmarkCostRate;
   if (
     benchmarkAllowed &&
-    Number.isFinite(params.benchmarkCostRate) &&
-    params.benchmarkCostRate > 0
+    Number.isFinite(benchmarkCost) &&
+    benchmarkCost > 0
   ) {
     return buildResolvedMaterialRate({
-      costRate: params.benchmarkCostRate,
-      sellRate: params.benchmarkSellRate,
+      costRate: benchmarkCost,
+      sellRate: approvedCost != null ? undefined : params.benchmarkSellRate,
       unit: params.unit,
       materialRateSource: "benchmark_specific",
       itemKey: params.materialKey,

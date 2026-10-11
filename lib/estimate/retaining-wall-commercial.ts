@@ -11,6 +11,7 @@ import type {
   OrganisationRate,
   OrganisationSettings,
 } from "@/components/setup/types";
+import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 import {
   hasTrustedPhysicalQuantity,
   resolveComponentCommercialAuthority,
@@ -956,6 +957,22 @@ function priceMaterial(
           named.rate_type === "project_material" ? "project_override" : "company",
       };
     }
+  }
+
+  const approvedKey = requirement.materialKey ?? namedKeys[0] ?? null;
+  const approved =
+    approvedKey != null ? approvedMaterialCostExGst(approvedKey, unit) : null;
+  if (approved != null && approved > 0) {
+    inherited.push(
+      `${requirement.componentKey} used approved Quotr benchmark ${approved}/${unit}`
+    );
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: approved,
+      totalCost: round2(requirement.purchaseQuantity * approved),
+      rateSource: "benchmark",
+    };
   }
 
   const timberStarter = timber1DMaterialStarter(

@@ -202,13 +202,19 @@ import {
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
 } from "@/lib/estimate/flooring-identities";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
+import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 
 function entry(
   partial: Omit<RateCatalogueEntry, "recommended"> & {
     recommended?: boolean;
   }
 ): RateCatalogueEntry {
-  return { recommended: false, ...partial };
+  const approved = approvedMaterialCostExGst(partial.item_key, partial.unit);
+  return {
+    recommended: false,
+    ...partial,
+    ...(approved != null ? { defaultCostRate: approved } : {}),
+  };
 }
 
 /** Specific material rates used with quantity build-ups (Sprint 3). */
@@ -466,7 +472,7 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Sheet materials",
     unit: "each",
     description:
-      "Structural 19 mm fibre-cement flooring board 2700 × 600 (1.62 m²/sheet). Shared physical identity. No invented dollar rate — Pricing Required until company rate exists.",
+      "Structural 19 mm fibre-cement flooring board 2700 × 600 (1.62 m²/sheet). Owner-approved Quotr COST $113.13 ex GST / sheet. Company exact wins.",
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -513,7 +519,7 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Sheet materials",
     unit: "each",
     description:
-      "Shared Hardie Ceramic Tile Underlay 6 mm, 1800 × 1200 (2.16 m²/sheet). Used over 19 mm plywood when the floor finish is tile. Legacy key sheet.fibre_cement.tile_underlay.6mm.each is an alias only. No invented dollar rate — Pricing Required.",
+      "Shared Hardie Ceramic Tile Underlay 6 mm, 1800 × 1200 (2.16 m²/sheet). Owner-approved Quotr COST $42.12 ex GST / sheet. Legacy key sheet.fibre_cement.tile_underlay.6mm.each is an alias only. Company exact wins.",
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -958,7 +964,7 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Insulation",
     unit: "m2",
     description:
-      "Acoustic wall insulation. No Quotr V1 COST — Pricing Required until a company exact rate exists. Distinct from ordinary thermal wall insulation.",
+      "Acoustic wall insulation. Owner-approved Quotr COST $13.51/m² ex GST. Distinct from ordinary thermal wall insulation. Company exact wins.",
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1020,7 +1026,7 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Trim",
     unit: "lm",
     description:
-      "Ordinary MDF scotia. No owner-approved Quotr material COST — Pricing Required until a company exact rate exists.",
+      "Ordinary MDF scotia. Owner-approved Quotr COST $4.35/lm ex GST. Company exact wins.",
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1032,7 +1038,7 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Trim",
     unit: "lm",
     description:
-      "Ordinary pine timber scotia. No owner-approved Quotr material COST — Pricing Required until a company exact rate exists.",
+      "Ordinary pine timber scotia. Owner-approved Quotr COST $5.53/lm ex GST. Company exact wins.",
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1044,7 +1050,7 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Painting",
     unit: "m2",
     description:
-      "Internal Walls nested wall paint materials. Distinct from painting.material.m2 / Ceiling painting. No Quotr V1 COST — Pricing Required until a company exact rate exists. Sibling Painting work area is preferred for full paint scope.",
+      "Internal Walls nested wall paint materials. Owner-approved Quotr COST $4.93/m² ex GST. Distinct key from painting.material.m2. Company exact wins.",
     calculatorSupport: "used_now",
   }),
 ];
@@ -1074,7 +1080,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "150×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
-    defaultCostRate: 12.8,
+    defaultCostRate: 5.61,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1088,7 +1094,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "lm",
     description:
       "200×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
-    defaultCostRate: 17.4,
+    defaultCostRate: 7.28,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1197,7 +1203,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "day",
     description:
       "Accessible-site starter for machine-assisted timber pile holes. Dry hire, ex GST. Not priced when access cannot take a machine.",
-    defaultCostRate: 420,
+    defaultCostRate: 270,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1251,8 +1257,8 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Concrete sleeper wall",
     unit: "bag",
     description:
-      "MEDIUM-CONFIDENCE Quotr starter in the current NZ 20 kg GP/rapid retail band (~$11–12/bag ex GST). Bags = ceil(hole m³ / 0.01 m³ yield). Estimating-grade premix — not a specified structural mix. Company exact overrides.",
-    defaultCostRate: 11.5,
+      "20 kg premix bag. Owner-approved Quotr COST $9.77 ex GST / bag. Bags = ceil(hole m³ / 0.01 m³ yield). Estimating-grade premix — not a specified structural mix. Company exact overrides.",
+    defaultCostRate: 9.77,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1307,7 +1313,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m3",
     description:
       "LOW-CONFIDENCE Quotr starter $/m³ for core fill/grout. Distinct from drainage aggregate and footing concrete unless company unifies. Company/Project exact overrides.",
-    defaultCostRate: 260,
+    defaultCostRate: 258.5,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1768,10 +1774,9 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "lm",
     description:
-      "Workbook lm factor is held pending a specific lm decision. Detailed money uses the approved h/m² times the selected board width on one installed-lm line. A company hours/lm override still wins. Do not copy the m² number onto this key.",
-    defaultCostRate: 0.06666666666666667,
-    calculatorSupport: "used_now",
-    recommended: true,
+      "Held workbook value 0.0667 h/lm. This is not the effective Quotr rate. Detailed estimates convert the approved 0.5833333333 h/m² by the selected board width onto one installed-lm line. A company hours/lm override on this key still wins and is stored on that line.",
+    calculatorSupport: "leftover",
+    recommended: false,
   }),
   entry({
     item_key: "deck.decking.install.hours_per_m2",
@@ -1782,9 +1787,10 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Owner 11 Oct 2026: one person for 35 minutes per m². Detailed money converts this by the selected board width onto the single installed-lm labour line.",
+      "Owner 11 Oct 2026: one person for 35 minutes per m². This is the effective Quotr decking labour rate. Detailed money converts it by the selected board width onto the single installed-lm labour line. The held 0.0667 h/lm workbook value is not used when board width is known.",
     defaultCostRate: 35 / 60,
-    calculatorSupport: "leftover",
+    calculatorSupport: "used_now",
+    recommended: true,
   }),
   entry({
     item_key: "deck.substructure.install.hours_per_framing_lm",
@@ -1905,8 +1911,8 @@ export const DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck concrete",
     unit: "bag",
     description:
-      "20 kg general-purpose premixed concrete bag. Owner-approved Quotr benchmark $9.80 EX GST / bag. Estimating default — not a merchant quote and not a guaranteed purchase price. Company exact rate remains authoritative.",
-    defaultCostRate: 9.80,
+      "20 kg general-purpose premixed concrete bag. Owner-approved Quotr benchmark $9.77 EX GST / bag. Estimating default — not a merchant quote and not a guaranteed purchase price. Company exact rate remains authoritative.",
+    defaultCostRate: 9.77,
     calculatorSupport: "used_now",
   }),
 ];

@@ -260,14 +260,14 @@ export const RW_TIMBER_1D_MATERIAL_STARTERS: Record<
   { costPerUnit: number; unit: string; identity: string; rationale: string }
 > = {
   [RW_FACE_BOARD_150_H4_KEY]: {
-    costPerUnit: 12.8,
+    costPerUnit: 5.61,
     unit: "lm",
     identity: "150×50 H4 No.2 / retaining-grade face board (not SG8)",
     rationale:
       "2025/26 NZ merchant band for H4 No.2 / retaining RS 150×50, ex GST. Not an SG8 structural rate.",
   },
   [RW_FACE_BOARD_200_H4_KEY]: {
-    costPerUnit: 17.4,
+    costPerUnit: 7.28,
     unit: "lm",
     identity: "200×50 H4 No.2 / retaining-grade face board (not SG8)",
     rationale:

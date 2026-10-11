@@ -52,10 +52,10 @@ export const CEILINGS_SUSPENSION_WIRE_COMPONENT =
 
 /** EST-BENCHMARK-01B — owner-approved ordinary V1 COST. Not sell. */
 export const CEILING_STEEL_QUOTR_COST = {
-  perimeterLm: 5.5,
-  primaryLm: 7.25,
-  furringLm: 4.2,
-  clipEach: 2,
+  perimeterLm: 5.87,
+  primaryLm: 9.5,
+  furringLm: 6.44,
+  clipEach: 1.13,
   dropperEach: 2,
   wireLm: 0.42,
 } as const;

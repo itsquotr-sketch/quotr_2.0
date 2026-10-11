@@ -160,6 +160,7 @@ export function mapPricingItemsToQuoteItems(
     .filter((item) => doorsPricingItemIsClientPriced(item))
     .filter((item) => flooringPricingItemIsClientPriced(item))
     .filter((item) => claddingPricingItemIsClientPriced(item))
+    .filter((item) => item.cost_known !== false)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item) => {
       let sectionDescription: string | null = null;
