@@ -738,7 +738,7 @@ export function calculateCeilings(
           : `${ceilingType} ceiling lining`,
         recommendedCost: 0,
         recommendedSell: 0,
-        labourHours: null,
+        labourHours: undefined,
         rateSource: "Pricing required",
         rateSourceType: "missing" as const,
         includedInTotal: false,
