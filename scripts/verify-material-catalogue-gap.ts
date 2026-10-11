@@ -11,6 +11,20 @@ import { resolveDeckDeckingInstallProductivity } from "../lib/estimate/deck-prod
 import { derivedDimensionedPlasterboardCost } from "../lib/estimate/ceilings-plasterboard-derived-cost";
 import { aggregateEstimateLines } from "../lib/estimate/estimate-commercial-engine-adapter";
 import { mapPricingItemsToQuoteItems } from "../lib/quotes/from-pricing";
+import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
+import {
+  pricingDocumentViewModel,
+  pricingItemViewModel,
+} from "../lib/pricing/financial-view-model";
+import {
+  MARGIN_UNAVAILABLE_LABEL,
+  PROFITABILITY_UNAVAILABLE_LABEL,
+} from "../lib/financial-presentation/format";
+import type { PricingDocument } from "../lib/pricing/types";
+import {
+  unknownCostWithoutClientSell,
+  unknownMaterialCostQuoteBlock,
+} from "../lib/work-areas/manual-pricing-route";
 import type { PricingItem } from "../lib/pricing/types";
 
 const manifest = JSON.parse(
@@ -158,37 +172,125 @@ const aggregate = aggregateEstimateLines([
 assert(aggregate.recommendedCost === 100, `aggregate cost ${aggregate.recommendedCost}`);
 assert(aggregate.recommendedSell === 120, `aggregate sell ${aggregate.recommendedSell}`);
 
-const quote = mapPricingItemsToQuoteItems(
-  [
-    {
-      id: "priced",
-      visible_on_quote: true,
-      cost_known: true,
-      total_cost: 100,
-      total_sell: 120,
-      sort_order: 1,
-      client_label: "Priced",
-      internal_label: "Priced",
-      unit: "each",
-      quantity: 1,
-    } as PricingItem,
-    {
-      id: "missing",
-      visible_on_quote: true,
-      cost_known: false,
-      total_cost: 0,
-      total_sell: 0,
-      sort_order: 2,
-      client_label: "Unpriced",
-      internal_label: "Unpriced",
-      unit: "each",
-      quantity: 1,
-    } as PricingItem,
-  ],
+function pricingLine(
+  partial: Partial<PricingItem> & Pick<PricingItem, "id" | "total_sell" | "cost_known">
+): PricingItem {
+  return {
+    visible_on_quote: true,
+    total_cost: 0,
+    sort_order: 1,
+    client_label: partial.id,
+    internal_label: partial.id,
+    unit: "each",
+    quantity: 1,
+    ...partial,
+  } as PricingItem;
+}
+
+const ordinary = pricingLine({
+  id: "priced",
+  cost_known: true,
+  total_cost: 100,
+  total_sell: 120,
+  sort_order: 1,
+  client_label: "Ordinary lining",
+});
+const caseA = pricingLine({
+  id: "missing-unsold",
+  cost_known: false,
+  total_cost: 0,
+  total_sell: 0,
+  sort_order: 2,
+  client_label: "18 mm fibre cement",
+});
+const caseB = pricingLine({
+  id: "missing-sold",
+  cost_known: false,
+  total_cost: 0,
+  total_sell: 80,
+  sort_order: 3,
+  client_label: "18 mm fibre cement",
+});
+const caseC = pricingLine({
+  id: "excluded",
+  cost_known: false,
+  total_cost: 0,
+  total_sell: 80,
+  sort_order: 4,
+  visible_on_quote: false,
+  client_label: "Excluded sheet",
+});
+
+assert(unknownCostWithoutClientSell(caseA), "case A blocks");
+assert(!unknownCostWithoutClientSell(caseB), "case B has a client sell");
+assert(!unknownCostWithoutClientSell(caseC), "case C is not visible");
+assert(
+  unknownMaterialCostQuoteBlock([ordinary, caseA]) != null,
+  "case A blocks review"
+);
+assert(
+  unknownMaterialCostQuoteBlock([ordinary, caseB]) == null,
+  "case B does not block review"
+);
+
+const quoteA = mapPricingItemsToQuoteItems([ordinary, caseA], new Map(), new Map());
+assert(
+  quoteA.length === 1 && quoteA[0]?.pricing_item_id === "priced",
+  "case A stays off the quote"
+);
+const quoteB = mapPricingItemsToQuoteItems(
+  [ordinary, caseB, caseC],
   new Map(),
   new Map()
 );
-assert(quote.length === 1 && quote[0]?.pricing_item_id === "priced", "quote omits unknown cost");
+assert(quoteB.length === 2, `case B quote lines ${quoteB.length}`);
+assert(quoteB[0]?.total === 120 && quoteB[1]?.total === 80, "case B keeps both sells once");
+assert(
+  quoteB.every((line) => line.pricing_item_id !== "excluded"),
+  "case C stays off the quote"
+);
+
+const document = calculateAuthoritativeDocumentTotals(
+  [
+    { total_cost: 100, total_sell: 120, cost_known: true },
+    { total_cost: 0, total_sell: 80, cost_known: false },
+  ],
+  15,
+  "missing-cost-case-b"
+);
+assert(document.ok, "document totals");
+if (document.ok) {
+  assert(document.totals.subtotalSell === 200, `document sell ${document.totals.subtotalSell}`);
+  assert(document.totals.subtotalCost === 100, `document cost ${document.totals.subtotalCost}`);
+  assert(document.totals.costKnown === false, "mixed document cost stays unknown");
+  assert(
+    document.totals.marginPercent !== 50 && document.totals.markupPercent !== 100,
+    "mixed document does not compute margin from the known-cost portion"
+  );
+  assert(document.totals.gstAmount === 30, `gst ${document.totals.gstAmount}`);
+  const mixedView = pricingDocumentViewModel(
+    {
+      subtotal_cost: document.totals.subtotalCost,
+      subtotal_sell: document.totals.subtotalSell,
+      gross_profit: document.totals.grossProfit,
+      margin_percent: document.totals.marginPercent,
+      markup_percent: document.totals.markupPercent,
+      gst_rate: 15,
+      gst_amount: document.totals.gstAmount,
+      total_incl_gst: document.totals.totalInclGst,
+    } as PricingDocument,
+    [ordinary, caseB]
+  );
+  const soldUnknown = pricingItemViewModel(caseB);
+  assert(mixedView.costKnown === false, "summary cost is incomplete");
+  assert(mixedView.directCostLabel.startsWith("Known cost"), mixedView.directCostLabel);
+  assert(mixedView.directCostLabel.includes("100.00"), mixedView.directCostLabel);
+  assert(mixedView.profitLabel === PROFITABILITY_UNAVAILABLE_LABEL, mixedView.profitLabel);
+  assert(mixedView.marginLabel === MARGIN_UNAVAILABLE_LABEL, mixedView.marginLabel);
+  assert(soldUnknown.totalCostFormatted === "Cost unknown", soldUnknown.totalCostFormatted);
+  assert(soldUnknown.marginLabel === MARGIN_UNAVAILABLE_LABEL, soldUnknown.marginLabel);
+  assert(soldUnknown.totalSellFormatted.includes("80.00"), soldUnknown.totalSellFormatted);
+}
 
 const gib = resolveProductivity({
   productivityKey: "bathroom.lining.wall.install.hours_per_m2",

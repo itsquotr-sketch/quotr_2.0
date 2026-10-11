@@ -1084,11 +1084,13 @@ function labourSlot(params: {
   const hoursPerUnit =
     company?.cost_rate != null
       ? Number(company.cost_rate)
-      : approved
-        ? approved.hoursPerUnit
-        : params.fallbackHoursPerUnit != null
-          ? params.fallbackHoursPerUnit
-          : starter?.hoursPerUnit ?? null;
+      : params.ignoreCompanyRate && params.fallbackHoursPerUnit != null
+        ? params.fallbackHoursPerUnit
+        : approved
+          ? approved.hoursPerUnit
+          : params.fallbackHoursPerUnit != null
+            ? params.fallbackHoursPerUnit
+            : starter?.hoursPerUnit ?? null;
   const hoursSource: RequirementRateSource =
     company?.cost_rate != null
       ? params.rateProvenance
@@ -2168,8 +2170,9 @@ export function commercializeRetainingWall(params: {
         rate.item_key === RW_MINI_EXCAVATOR_DAY_KEY &&
         rate.cost_rate != null
     );
+    const approvedDay = approvedMaterialCostExGst(RW_MINI_EXCAVATOR_DAY_KEY, "day");
     const unitCost = machine
-      ? Number(namedPlant?.cost_rate ?? RW_MINI_EXCAVATOR_DAY_COST_EX_GST)
+      ? Number(namedPlant?.cost_rate ?? approvedDay ?? RW_MINI_EXCAVATOR_DAY_COST_EX_GST)
       : 0;
     const plantComponent = timberSystem
       ? RW_TIMBER_PLANT_COMPONENT

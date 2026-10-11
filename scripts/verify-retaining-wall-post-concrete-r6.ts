@@ -574,7 +574,7 @@ check(
 check(
   "37 labour copy uses labour-h/bag",
   builderCopySrc.includes("labour-h/") &&
-    formatProductivityHours(0.035, "bag").includes("labour-h/bag")
+    formatProductivityHours(0.1, "bag").includes("labour-h/bag")
 );
 const sleeperPhys = buildRetainingWallPhysicalModel({
   context: ctx(sleeperFacts),
@@ -688,8 +688,8 @@ check(
 );
 check(
   "F8 Starter is dimensional h/bag conversion",
-  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.035 &&
-    near(0.035, 3.5 * 0.01, 1e-12)
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.1 &&
+    near(0.1, 6 / 60, 1e-12)
 );
 
 const ownerEstimate = calculateEstimate(ctx(timberFacts, labourRates));
@@ -904,14 +904,14 @@ check(
       RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_KEY
 );
 check(
-  "R3-10 starter = 0.035 labour-h/bag",
-  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.035
+  "R3-10 starter = 0.1 labour-h/bag",
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.1
 );
 check(
   "R3-11 placement hours = bags × h/bag",
   near(
     timberConcreteLab?.baseHours ?? -1,
-    sedPiles.bagCount * 0.035,
+    sedPiles.bagCount * 0.1,
     0.02
   )
 );

@@ -39,7 +39,10 @@ import {
   isPendingPricingItemId,
 } from "@/lib/pricing/manual-requirement-promotion";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
-import { unresolvedManualPricingQuoteBlock } from "@/lib/work-areas/manual-pricing-route";
+import {
+  UNKNOWN_MATERIAL_COST_QUOTE_BLOCK,
+  unresolvedManualPricingQuoteBlock,
+} from "@/lib/work-areas/manual-pricing-route";
 import {
   groupPricingItems,
   isManuallyAddedPricingItem,
@@ -758,7 +761,10 @@ export function PricingWorkspace({
                 onMarkReviewed={handleMarkReviewed}
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
-                blockedReason={manualQuoteBlock}
+                blockedReason={
+                  manualQuoteBlock ??
+                  (unresolvedPriceCount > 0 ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK : null)
+                }
               />
             </div>
           ) : null}

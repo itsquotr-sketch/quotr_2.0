@@ -86,6 +86,7 @@ import {
   manualWorkAreaScopeText,
   pricingRowsForOpenManualHandoff,
   unresolvedManualPricingQuoteBlock,
+  unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
 import {
   buildScopeSummaryFromWorkAreas,
@@ -1992,7 +1993,7 @@ export async function markPricingReviewed(
 
   const { data: reviewItems, error: reviewItemsError } = await supabase
     .from("pricing_items")
-    .select("notes_internal, total_sell, visible_on_quote")
+    .select("notes_internal, total_sell, visible_on_quote, cost_known")
     .eq("pricing_document_id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
   if (reviewItemsError) {
@@ -2002,6 +2003,8 @@ export async function markPricingReviewed(
   }
   const manualBlock = unresolvedManualPricingQuoteBlock(reviewItems ?? []);
   if (manualBlock) return { error: manualBlock };
+  const unknownCostBlock = unknownMaterialCostQuoteBlock(reviewItems ?? []);
+  if (unknownCostBlock) return { error: unknownCostBlock };
 
   const { error } = await supabase
     .from("pricing_documents")

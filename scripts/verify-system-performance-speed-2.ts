@@ -818,8 +818,8 @@ const realEstimate = calculateEstimate({
   rates: [],
 } as unknown as EstimateContext);
 check(
-  "estimator economic parity REAL-JOB-01 10775.44",
-  realEstimate.recommendedSell === 10775.44,
+  "estimator economic parity REAL-JOB-01 8976.16",
+  realEstimate.recommendedSell === 8976.16,
   `got ${realEstimate.recommendedSell}`
 );
 

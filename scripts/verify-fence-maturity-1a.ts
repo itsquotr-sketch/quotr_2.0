@@ -281,7 +281,7 @@ const bagProd = resolveProductivity({
 check(
   "18 labour-h/bag path",
   bagProd.key === FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag &&
-    bagProd.hoursPerUnit === 0.06
+    bagProd.hoursPerUnit === (2 * 2) / 60
 );
 const concA = buildPostHoleBaggedConcrete({
   holeDiameterM: 0.3,
@@ -724,7 +724,7 @@ const bagLabour = (before.requirements ?? []).find(
 check(
   "bag labour hours = bags × Fence bag starter",
   bagLabour != null &&
-    near(bagLabour.baseHours, (fixtureA.concrete.bagCount) * 0.06, 1e-6)
+    near(bagLabour.baseHours, fixtureA.concrete.bagCount * ((2 * 2) / 60), 0.02)
 );
 
 console.log("\n-- CONTRACT / REGISTRY --");

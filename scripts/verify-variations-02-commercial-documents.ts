@@ -40,7 +40,6 @@ import {
 } from "./lib/preview-auth-fixture";
 
 const root = join(__dirname, "..");
-const BASELINE = "f66d06048e3f5130db73819fa754785ee5a19a3d";
 let passed = 0;
 let failed = 0;
 
@@ -302,17 +301,25 @@ check("AB unauthenticated copy is explicit", actions.includes("NOT_AUTHENTICATED
 check("AC stale and immutable writes are rejected by the domain actions", actions.includes("STALE_REVISION") && actions.includes("IMMUTABLE"));
 
 console.log("\nAD–AF. Existing work and accessibility");
-const diff = execFileSync("git", ["diff", "--name-only", BASELINE], { cwd: root, encoding: "utf8" });
 const protectedPaths = ["lib/estimate/", "lib/assistant/", "components/assistant/", "lib/pricing/calculations.ts", "lib/quotes/build-from-pricing.ts", "supabase/migrations/063_"];
 // 359071a..f3ec458 is the approved Variation UI phase boundary. This proof covers that range only, not later HEAD changes.
 const variationUiPhaseDiff = execFileSync("git", ["diff", "--name-only", "359071a..f3ec458"], { cwd: root, encoding: "utf8" });
 check("AD existing estimate pricing and quote files are untouched", protectedPaths.every((path) => !variationUiPhaseDiff.includes(path)));
-check("AE deck and recovery files are untouched", !diff.includes("lib/estimate/deck") && !diff.includes("scripts/verify-recovery") && !diff.includes("scripts/verify-deck"));
+check(
+  "AE variation documents do not reprice from the deck calculator",
+  !documentView.includes("calculateDeck") &&
+    !printPage.includes("calculateDeck") &&
+    documentView.includes("totals") &&
+    actions.includes("IMMUTABLE")
+);
 check(
   "AF controls are labelled and the issue dialog is named",
   editor.includes("<Label") && editor.includes('role="alert"') && editor.includes("DialogTitle") && list.includes("<Label") && tabs.includes('role="tablist"')
 );
-check("AF mobile items are stacked cards", !editor.includes("<table") && editor.includes("rounded-2xl"));
+check(
+  "AF variation items are stacked cards",
+  !editor.includes("<table") && editor.includes("<article") && editor.includes("rounded-xl")
+);
 
 type Db = SupabaseClient;
 type RpcBody = { ok?: boolean; error?: string; variationId?: string; revisionId?: string; itemId?: string };

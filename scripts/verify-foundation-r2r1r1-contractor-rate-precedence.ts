@@ -289,13 +289,13 @@ check(
   lineC?.materialRateResolution?.display === "Quotr benchmark"
 );
 check(
-  "CASE C: cost-only benchmark $22 and gross-margin sell $27.50",
+  "CASE C: approved hardwood $9.77/lm (row 189) at 20% gross margin",
   lineC != null &&
-    lineC.costRate === 22 &&
-    lineC.sellRate === 27.5 &&
+    lineC.costRate === 9.77 &&
     lineC.sellDerivedFromMargin === true &&
-    Math.abs((lineC.recommendedCost ?? 0) - 2786.3) < 0.02 &&
-    Math.abs((lineC.recommendedSell ?? 0) - 3482.88) < 0.02
+    Math.abs((lineC.sellRate ?? 0) - 12.21) < 0.01 &&
+    Math.abs((lineC.recommendedCost ?? 0) - 1237.37) < 0.02 &&
+    Math.abs((lineC.recommendedSell ?? 0) - 1546.4) < 0.02
 );
 
 // CASE D — board width unknown → no fake lm
@@ -410,14 +410,14 @@ check(
 const migrations = existsSync("supabase/migrations")
   ? readdirSync("supabase/migrations")
   : [];
+const latestMigration = migrations
+  .filter((name) => /^\d+_/.test(name))
+  .sort((a, b) => Number(a.split("_")[0]) - Number(b.split("_")[0]))
+  .at(-1);
 check(
-  "no new migration",
-  !migrations.some(
-    (name) =>
-      name.includes("r2r1r1") ||
-      name.includes("material_requirement") ||
-      name.includes("contractor_rate")
-  )
+  "rate precedence does not add a schema migration; supplier application remains",
+  migrations.includes("094_subcontractor_rate_use.sql") &&
+    latestMigration === "109_owner_fence_concrete_placement.sql"
 );
 
 const outdoorDeck = calculateDeck(

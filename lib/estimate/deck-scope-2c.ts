@@ -39,11 +39,11 @@ export const DECK_CONCRETE_PRODUCTIVITY_KEY =
 export const DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY =
   "deck.concrete.place.hours_per_hole";
 /**
- * 0.4 h/hole mixing/placing/finishing ÷ canonical 2.5 bags/hole = 0.16 h/bag.
- * LOW-CONFIDENCE starter. Hole excavation stays in pile/post labour.
- * Not Fence 0.06 or RW 0.035.
+ * Owner row 61: 1 person for 4 minutes per bag. The old 0.16 h/bag starter
+ * (0.4 h/hole ÷ 2.5 bags) is not the approved rate.
+ * Hole excavation stays in pile/post labour.
  */
-export const DECK_CONCRETE_PLACE_HOURS_PER_BAG = 0.16;
+export const DECK_CONCRETE_PLACE_HOURS_PER_BAG = 4 / 60;
 export const DECK_CONCRETE_LEGACY_HOURS_PER_HOLE = 0.4;
 export const DECK_CONCRETE_PRODUCTIVITY_CLASS = "LOW_CONFIDENCE" as const;
 export const DECK_CONCRETE_MATERIAL_LABEL = "Post-hole concrete";

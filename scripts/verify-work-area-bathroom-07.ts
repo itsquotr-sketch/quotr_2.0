@@ -313,6 +313,7 @@ const comprehensiveFacts: EstimateFact[] = [
   fact("bathroom.demolition.components", "b1", fullDemoComponents),
   fact("bathroom.floor_substrate_system", "b1", "treated_plywood"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.framing_level", "b1", "standard"),
@@ -553,20 +554,20 @@ check("electrical Standard+4 lights+fan+rail $3170", near(electrical?.totalCost,
 check("stopping 33.12 × $28", near(stopping?.totalCost, 927.36));
 check("painting paintable 20.16 × $30", near(painting?.totalCost, 604.8));
 check("waste major $1000", near(wasteRow?.totalCost, 1000));
-check("floor labour 2.88 h × $60", near(floorLab?.adjustedHours, 2.88) && near(floorLab?.totalCost, 172.8));
+check("floor labour 6.6 h × $60", near(floorLab?.adjustedHours, 6.6) && near(floorLab?.totalCost, 396));
 const underlayLab = labour(full).find(
   (row) => row.componentKey === BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT
 );
 check(
-  "tile underlay labour 1.8 h × $60 via carpenter hour",
-  near(underlayLab?.adjustedHours, 1.8) &&
-    near(underlayLab?.totalCost, 108) &&
+  "tile underlay labour 6.6 h × $60 via carpenter hour",
+  near(underlayLab?.adjustedHours, 6.6) &&
+    near(underlayLab?.totalCost, 396) &&
     underlayLab?.rateKey === "labour.carpenter.hour"
 );
-check("wall labour 7.776 h", near(wallLab?.adjustedHours, 7.776));
-check("ceiling labour 2.88 h", near(ceilLab?.adjustedHours, 2.88));
-check("framing labour 2.592 h", near(framingLab?.adjustedHours, 2.592));
-check("vanity install 2.5 h", near(vanityLab?.adjustedHours, 2.5));
+check("wall labour 4.5 h", near(wallLab?.adjustedHours, 4.5));
+check("ceiling labour 1.8 h", near(ceilLab?.adjustedHours, 1.8));
+check("framing labour 1.512 h", near(framingLab?.adjustedHours, 1.512));
+check("vanity install 4 h", near(vanityLab?.adjustedHours, 4));
 check("demo floor 1.8 h × $60", near(demoFloor?.adjustedHours, 1.8) && near(demoFloor?.totalCost, 108));
 check(
   "no tiled-surface paint (paintable < gross wall + ceiling)",
@@ -678,18 +679,18 @@ check(
   near(
     labour(labourCo).find((row) => row.componentKey === BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT)
       ?.adjustedHours,
-    2.88
+    6.6
   ) &&
     near(
       labour(labourCo).find((row) => row.componentKey === BATHROOM_WALL_LINING_LABOUR_COMPONENT)
         ?.adjustedHours,
-      7.776
+      4.5
     ) &&
     near(
       labour(labourCo).find(
         (row) => row.componentKey === BATHROOM_FIXTURE_INSTALL_COMPONENTS.vanity
       )?.adjustedHours,
-      2.5
+      4
     )
 );
 check(
@@ -805,7 +806,7 @@ const vanityOnly = bathroom([
   fact("bathroom.plumbing.level", "b1", "minor"),
 ]);
 check(
-  "vanity-only: PC + 2.5h + plumbing $1950",
+  "vanity-only: PC + 4h + plumbing $1950",
   near(
     materials(vanityOnly).find((row) => row.componentKey === BATHROOM_FIXTURE_SUPPLY_COMPONENTS.vanity)
       ?.totalCost,
@@ -815,7 +816,7 @@ check(
       labour(vanityOnly).find(
         (row) => row.componentKey === BATHROOM_FIXTURE_INSTALL_COMPONENTS.vanity
       )?.adjustedHours,
-      2.5
+      4
     ) &&
     near(
       subcontracts(vanityOnly).find((row) => row.componentKey === BATHROOM_PLUMBING_COMPONENT)

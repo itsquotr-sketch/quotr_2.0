@@ -309,7 +309,7 @@ check(
   numberedMigrations().some((name) => name === "056_bathroom_company_dna_catalogue_seed.sql")
 );
 check(
-  "latest numbered migration is 071 attachments and 063 remains",
+  "variation migrations through 071 remain",
   numberedMigrations().includes("057_repeated_work_area_acceptance.sql") &&
     numberedMigrations().includes("058_project_lifecycle_foundation.sql") &&
     numberedMigrations().includes("062_remove_preview_lifecycle_cleanup.sql") &&
@@ -322,7 +322,7 @@ check(
     numberedMigrations().includes("069_variation_client_delivery.sql") &&
     numberedMigrations().includes("070_variation_document_identity.sql") &&
     numberedMigrations().includes("071_variation_attachments.sql") &&
-    numberedMigrations().at(-1) === "071_variation_attachments.sql"
+    numberedMigrations().at(-1) === "109_owner_fence_concrete_placement.sql"
 );
 const sql056 = readFileSync(
   join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql"),
@@ -441,7 +441,10 @@ const noDna = resolveProductivity({
   fallbackHoursPerUnit: 0.3,
   rates: [],
 });
-check("no DNA → Quotr benchmark 0.3, not Pricing Required", near(noDna.hoursPerUnit, 0.3) && noDna.sourceType === "benchmark");
+check(
+  "no DNA → Quotr GIB benchmark 0.1736 h/m², not Pricing Required",
+  near(noDna.hoursPerUnit, 0.1736111111111111) && noDna.sourceType === "benchmark"
+);
 
 console.log("\n--- Shared materials ---\n");
 const materialKeys = SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => group.entries.map((entry) => entry.item_key));
@@ -528,8 +531,14 @@ const pricedMissing = full.lineItems.filter(
 check("no priced line outside envelope", pricedMissing.length === 0, pricedMissing.map((item) => item.label).join(", "));
 const cost = full.lineItems.reduce((sum, item) => sum + (item.recommendedCost ?? 0), 0);
 const sell = full.lineItems.reduce((sum, item) => sum + (item.recommendedSell ?? 0), 0);
-check("comprehensive cost ~19328", near(cost, 19328.51, 1));
-check("comprehensive sell ~24161 (01B F-SFM 20% GM)", near(sell, 24160.65, 1));
+check(
+  "comprehensive cost follows approved productivity and 6 mm underlay",
+  near(cost, 19904.99, 0.02)
+);
+check(
+  "comprehensive sell is that cost at 20% gross margin",
+  near(sell, 24881.25, 0.02) && near(sell, cost / 0.8, 0.05)
+);
 check("painting label is not 'Painting allowance'", !full.lineItems.some((item) => item.label === "Painting allowance"));
 check("painting line exists", full.lineItems.some((item) => /^Painting$/i.test(item.label)));
 

@@ -523,8 +523,7 @@ check(
     piling.productivityBasis.unit === "ea" &&
     near(
       piling.productivityBasis.hoursPerUnit,
-      RW_TIMBER_1D_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.timberPilesEa]!
-        .hoursPerUnit
+      25 / 60
     )
 );
 check(
@@ -533,8 +532,7 @@ check(
     faceLab.productivityBasis.unit === "m2" &&
     near(
       faceLab.productivityBasis.hoursPerUnit,
-      RW_TIMBER_1D_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.timberFaceM2]!
-        .hoursPerUnit
+      20 / 60
     ) &&
     faceLab.productivityBasis.hoursPerUnit < 1
 );
@@ -579,8 +577,7 @@ check(
     near(
       lab(prodOverride.requirements, RW_TIMBER_FACE_LABOUR_COMPONENT)
         ?.productivityBasis.hoursPerUnit ?? 0,
-      RW_TIMBER_1D_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.timberFaceM2]!
-        .hoursPerUnit
+      20 / 60
     )
 );
 
@@ -655,7 +652,9 @@ check(
 );
 check(
   "37 productivity rows on Rates labour-productivity section",
-  ratesPage.includes("RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE") &&
+  readFileSync("components/rates/ProductivityByWorkArea.tsx", "utf8").includes(
+    "Labour productivity"
+  ) &&
     RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.some(
       (row) => row.item_key === RW_PRODUCTIVITY_KEYS.timberFaceM2
     )
@@ -732,7 +731,7 @@ check("46 sleeper 2A detailed", !hasPackage(sleeperCalc.lineItems));
 check("47 masonry package until reinforcement allowance", hasPackage(masonryCalc.lineItems));
 check(
   "48 1D starters live in the rate system, not calculator hardcoded NZD",
-  RW_TIMBER_1D_MATERIAL_STARTERS[RW_FACE_BOARD_150_H4_KEY]!.costPerUnit === 12.8 &&
+  RW_TIMBER_1D_MATERIAL_STARTERS[RW_FACE_BOARD_150_H4_KEY]!.costPerUnit === 5.61 &&
     !readFileSync("lib/estimate/calculators/retaining-wall.ts", "utf8").includes(
       "cost_rate: 12.8"
     )
@@ -846,8 +845,7 @@ check(
   "R1-13 pile productivity and plant method agree",
   near(
     piling?.productivityBasis.hoursPerUnit ?? 0,
-    RW_TIMBER_1D_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.timberPilesEa]!
-      .hoursPerUnit
+    25 / 60
   ) && ownerMethod.method === RW_TIMBER_PILING_METHOD_MACHINE
 );
 const difficultCalc = calculateRetainingWall(
@@ -918,8 +916,8 @@ check(
 );
 check(
   "R1-21 Owner fixture reconciles",
-  near(ownerEstimate.recommendedCost, 6121.58, 0.5) &&
-    near(ownerEstimate.recommendedSell, 7652.25, 0.5) &&
+  near(ownerEstimate.recommendedCost, 4481.52, 0.5) &&
+    near(ownerEstimate.recommendedSell, 5601.58, 0.5) &&
     ownerProcurement?.purchaseEa === 14 &&
     near(ownerProcurement?.purchaseTotalLm ?? 0, 28.8)
 );
@@ -1096,11 +1094,11 @@ check(
 );
 check(
   "R2-15 Owner direct cost reconciles after excavation-only modifier change",
-  near(ownerEstimate.recommendedCost, 6121.58, 0.5)
+  near(ownerEstimate.recommendedCost, 4481.52, 0.5)
 );
 check(
   "R2-16 Owner sell reconciles at 20% GM",
-  near(ownerEstimate.recommendedSell, 7652.25, 0.5) &&
+  near(ownerEstimate.recommendedSell, 5601.58, 0.5) &&
     near(ownerEstimate.marginPercent, 20)
 );
 check(

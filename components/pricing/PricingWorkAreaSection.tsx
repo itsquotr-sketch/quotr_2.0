@@ -95,7 +95,11 @@ export function PricingWorkAreaSection({
       : `pricing-group-${sectionKey}`;
   const costLabel = sectionTotals.costKnown
     ? formatPricingMoney(sectionTotals.subtotalCost)
-    : "Pricing required";
+    : requiredCount > 0
+      ? "Pricing required"
+      : sectionTotals.subtotalCost > 0
+        ? `Known cost ${formatPricingMoney(sectionTotals.subtotalCost)}`
+        : "Cost unknown";
   const sellLabel =
     requiredCount === items.length && requiredCount > 0
       ? "Pricing required"

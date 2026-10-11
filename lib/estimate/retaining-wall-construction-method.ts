@@ -22,7 +22,8 @@ export const RW_TIMBER_COMPACTION_METHOD =
   "MANUAL_BASIC_CONSOLIDATION_NO_COMPACTOR" as const;
 
 export const RW_MINI_EXCAVATOR_DAY_KEY = "plant.mini_excavator.day";
-export const RW_MINI_EXCAVATOR_DAY_COST_EX_GST = 420;
+/** Approved workbook row 225. Replaces the old $420/day starter. */
+export const RW_MINI_EXCAVATOR_DAY_COST_EX_GST = 270;
 export const RW_MINI_EXCAVATOR_DAY_BASIS =
   "QUOTR_STARTER_DRY_HIRE_DAY_EX_GST" as const;
 

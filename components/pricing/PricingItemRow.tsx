@@ -336,8 +336,10 @@ function PricingItemRowComponent({
           </dt>
           <dd className="text-right tabular-nums">
             {line.hourlyCostLabel ??
-              (moneyView.pricingRequired || item.unit_cost == null
-                ? "—"
+              (moneyView.pricingRequired || !moneyView.costKnown || item.unit_cost == null
+                ? moneyView.costKnown === false && !moneyView.pricingRequired
+                  ? moneyView.totalCostFormatted
+                  : "—"
                 : formatPricingMoney(item.unit_cost))}
           </dd>
         </div>

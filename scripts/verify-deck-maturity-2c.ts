@@ -263,7 +263,7 @@ const subBoost = calculateDeck(
   wa(kwilaId)
 );
 const pileBoost = calculateDeck(
-  ctx(kwilaFacts, [productivityOrgRate("deck.posts.install.hours_per_ea", "ea", 0.4)]),
+  ctx(kwilaFacts, [productivityOrgRate("deck.posts.install.hours_per_ea", "ea", 1.5)]),
   wa(kwilaId)
 );
 check(
@@ -760,7 +760,7 @@ check(
       unit: "lm",
       fallbackHoursPerUnit: 0.077,
       rates: [labourOrgRate(78, 78)],
-    }).hoursPerUnit === 0.077
+    }).hoursPerUnit === 4 / 60
 );
 
 console.log("\n== OWNER 3×9 COMMERCIAL RESULT ($78 explicit) ==");

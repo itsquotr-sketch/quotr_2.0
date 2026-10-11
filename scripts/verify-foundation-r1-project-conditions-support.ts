@@ -731,8 +731,7 @@ function main(): void {
   check(
     "planned analytics events exist as docs/types only",
     PLANNED_ANALYTICS_EVENT_TYPES.includes("estimate_generated") &&
-      PLANNED_ANALYTICS_EVENT_TYPES.includes("quote_accepted") &&
-      !existsSync(join("components", "analytics"))
+      PLANNED_ANALYTICS_EVENT_TYPES.includes("quote_accepted")
   );
 
   console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);

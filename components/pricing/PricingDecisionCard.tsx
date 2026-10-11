@@ -25,12 +25,13 @@ type PricingDecisionCardProps = {
 
 export function PricingDecisionCard({
   document,
+  items,
   recommendedSell,
   disabled = false,
   readOnly = false,
   onApplyFinalSell,
 }: PricingDecisionCardProps) {
-  const view = pricingDocumentViewModel(document);
+  const view = pricingDocumentViewModel(document, items);
   const usingRecommended = sellsMatchRecommended(
     document.subtotal_sell,
     recommendedSell
@@ -45,8 +46,9 @@ export function PricingDecisionCard({
   const [isPending, startTransition] = useTransition();
 
   const typedSell = Number(ownPrice);
-  const previewMargin =
-    mode === "own" && Number.isFinite(typedSell)
+  const previewMargin = !view.costKnown
+    ? ({ ok: false, error: "Margin unavailable until every cost is known." } as const)
+    : mode === "own" && Number.isFinite(typedSell)
       ? presentExpectedGrossMarginPercent(document.subtotal_cost, typedSell)
       : presentExpectedGrossMarginPercent(
           document.subtotal_cost,
@@ -146,7 +148,11 @@ export function PricingDecisionCard({
               disabled={disabled || isPending}
               onChange={(event) => setOwnPrice(event.target.value)}
             />
-            {previewMargin.ok ? (
+            {!view.costKnown ? (
+              <p className="text-xs text-muted-foreground" data-pricing-own-margin-preview>
+                Margin unavailable until every cost is known.
+              </p>
+            ) : previewMargin.ok ? (
               <p className="text-xs text-muted-foreground" data-pricing-own-margin-preview>
                 Expected gross margin {formatPricingPercent(previewMargin.marginPercent)}
               </p>

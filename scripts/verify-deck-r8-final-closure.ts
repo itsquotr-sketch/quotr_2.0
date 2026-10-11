@@ -758,9 +758,9 @@ check(
       .includes("24.0 lm required")
 );
 check(
-  "live concrete 54 bags × 0.16 h/bag",
+  "live concrete 54 bags × 4 min/bag",
   concLab?.quantity === 54 &&
-    Math.abs((concLab?.labourHours ?? 0) - round2(54 * 0.16)) < 0.03
+    Math.abs((concLab?.labourHours ?? 0) - round2(54 * (4 / 60))) < 0.03
 );
 
 console.log("\n== REGRESSION SPAWNS ==");

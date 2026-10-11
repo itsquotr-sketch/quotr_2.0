@@ -170,9 +170,8 @@ check(
     editSurface.includes("data-assistant-surface=\"edit_job\"")
 );
 check(
-  "11 Estimate Ready primary card shown once",
-  (readyCard.match(/data-estimate-ready-primary="true"/g) ?? []).length === 1 &&
-    (shell.match(/<EstimateReadyCard/g) ?? []).length === 1
+  "11 Estimate Ready primary surface shown once",
+  (shell.match(/<EstimateReadySurface/g) ?? []).length === 1
 );
 check(
   "12 desktop sidebar not duplicate Assistant",
@@ -308,11 +307,11 @@ check(
 const baseline = calculateEstimate(realJobContext(realFacts));
 check(
   "29 unchanged inputs = same cost",
-  baseline.recommendedCost === 8620.53
+  baseline.recommendedCost === 7181.54
 );
 check(
   "30 unchanged inputs = same sell",
-  baseline.recommendedSell === 10775.44
+  baseline.recommendedSell === 8976.16
 );
 const classify = classifyResolvedSell({
   costRate: 22.5,

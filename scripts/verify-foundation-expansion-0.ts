@@ -84,7 +84,7 @@ check(
   7,
   "Job Plan remove shows confirmation dialog",
   workAreaCard.includes("data-job-plan-remove-confirm") &&
-    workAreaCard.includes("Remove from estimate?")
+    workAreaCard.includes("Remove from estimate")
 );
 check(
   8,

@@ -527,7 +527,7 @@ check(
     )
   )
     .workAreas[0]?.categories.flatMap((c) => c.lines)
-    .some((line) => (line.rateContext ?? "").includes("12.80")) === true
+    .some((line) => (line.rateContext ?? "").includes("5.61")) === true
 );
 check(
   "28 assumptions collapsed",

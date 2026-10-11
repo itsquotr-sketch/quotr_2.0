@@ -219,6 +219,7 @@ const answeredCore: EstimateFact[] = [
   fact("bathroom.floor_substrate_system", "b1", "treated_plywood"),
   fact("bathroom.framing_level", "b1", "standard"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
 ];
 
@@ -303,8 +304,9 @@ check(
 const refineAdapter = read("lib/assistant/refine/adapters/bathroom.ts");
 check(
   "multi-select Continue commits the full set and advances without waiting",
-  /advance\(candidate\);\s*void Promise\.resolve\(\s*onAnswerValue/.test(clarifySrc) &&
-    clarifySrc.includes("setHeldMultiId")
+  /advance\(candidate\);[\s\S]{0,120}void Promise\.resolve\(\s*onAnswerValue\?\.\(candidate, set\)/.test(
+    clarifySrc
+  ) && clarifySrc.includes("setHeldMultiId")
 );
 const demoCalc = bathroom(answeredCore);
 const demoKeys = (demoCalc.requirements ?? [])
@@ -507,27 +509,28 @@ check(
     aUnderlayMat?.purchaseUnit === "each"
 );
 check(
-  "A underlay productivity 0.25 h/m² and 1.8 person-hours",
-  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.25 &&
-    near(aUnderlayLab?.baseHours, 1.8) &&
-    near(aUnderlayLab?.adjustedHours, 1.8) &&
+  "A underlay productivity 0.9167 h/m² and 6.6 person-hours",
+  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.9166666666666666 &&
+    near(aUnderlayLab?.baseHours, 6.6) &&
+    near(aUnderlayLab?.adjustedHours, 6.6) &&
     aUnderlayLab?.rateKey === "labour.carpenter.hour"
 );
 check(
-  "A underlay labour is priced; material stays Pricing Required with no invented $",
+  "A underlay labour is priced; 6 mm sheet uses the approved $42.12 benchmark",
   aUnderlayLab?.priced === true &&
-    aUnderlayMat?.priced === false &&
-    getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_KEY)?.defaultCostRate == null &&
+    aUnderlayMat?.priced === true &&
+    getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_KEY)?.defaultCostRate === 42.12 &&
     fixtureA.lineItems.some(
       (item) =>
         item.componentKey === BATHROOM_TILE_UNDERLAY_COMPONENT &&
-        /Pricing required/i.test(item.notes ?? "") &&
+        item.rateSourceType === "benchmark" &&
+        near(item.costRate, 42.12) &&
         /4 sheets/i.test(item.identitySummary ?? "")
     ) &&
     fixtureA.lineItems.some(
       (item) =>
         item.componentKey === BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT &&
-        near(item.labourHours, 1.8)
+        near(item.labourHours, 6.6)
     )
 );
 check(
@@ -643,14 +646,14 @@ check(
     /1800/i.test(floorBlob)
 );
 check(
-  "Review Floor labour shows plywood plus 1.8 h underlay",
+  "Review Floor labour shows plywood plus 6.6 h underlay",
   reviewA.workAreas
     .flatMap((row) => row.categories)
     .flatMap((cat) => cat.lineGroups)
     .some(
       (group) =>
         group.label === "Floor labour" &&
-        /1\.8 person-hours/i.test(JSON.stringify(group))
+        /6\.6 person-hours/i.test(JSON.stringify(group))
     )
 );
 
@@ -675,7 +678,7 @@ check(
 );
 check(
   "tile underlay is Quotr benchmark productivity, not DNA",
-  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.25 &&
+  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.9166666666666666 &&
     !read("lib/company-dna/v2-foundation.ts").includes("bathroom.tile_underlay")
 );
 

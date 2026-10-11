@@ -6,6 +6,7 @@
 import { presentPricingDocumentCostKnown } from "@/lib/pricing/presentation-section-totals";
 import type { PricingDocument, PricingItem } from "@/lib/pricing/types";
 import {
+  COST_UNKNOWN_LABEL,
   formatMoneyOrDash,
   formatProfitabilityDisplay,
 } from "@/lib/financial-presentation/format";
@@ -52,21 +53,46 @@ export function pricingItemViewModel(item: PricingItem) {
       : formatPricingMoney(item.total_sell),
     totalCostFormatted: pricingRequired
       ? "—"
-      : formatPricingMoney(item.total_cost),
+      : item.cost_known === false
+        ? COST_UNKNOWN_LABEL
+        : formatPricingMoney(item.total_cost),
     profitLabel: profitability.profitLabel,
     marginLabel: profitability.marginLabel,
     markupLabel: profitability.markupLabel,
   };
 }
 
-export function pricingDocumentViewModel(document: PricingDocument) {
-  const costKnown = presentPricingDocumentCostKnown(document);
+/**
+ * A stored gross_profit of 0 is only a complete result when every line cost
+ * is known. Mixed documents keep the known-cost sum in subtotal_cost and
+ * must not present that 0 as profit or a margin.
+ */
+export function pricingDocumentCostComplete(
+  items: readonly Pick<PricingItem, "cost_known">[] | undefined
+): boolean | null {
+  if (items == null) return null;
+  return items.every((item) => item.cost_known !== false);
+}
+
+export function pricingDocumentViewModel(
+  document: PricingDocument,
+  items?: readonly Pick<PricingItem, "cost_known">[]
+) {
+  const fromItems = pricingDocumentCostComplete(items);
+  const costKnown =
+    fromItems == null ? presentPricingDocumentCostKnown(document) : fromItems;
   const profitability = formatProfitabilityDisplay({
     costKnown,
-    grossProfit: document.gross_profit,
-    marginPercent: document.margin_percent,
-    markupPercent: document.markup_percent,
+    grossProfit: costKnown ? document.gross_profit : 0,
+    marginPercent: costKnown ? document.margin_percent : 0,
+    markupPercent: costKnown ? document.markup_percent : 0,
   });
+  const knownCostFormatted = formatPricingMoney(document.subtotal_cost);
+  const directCostLabel = costKnown
+    ? knownCostFormatted
+    : document.subtotal_cost > 0
+      ? `Known cost ${knownCostFormatted}`
+      : COST_UNKNOWN_LABEL;
 
   const gst = presentStoredGst({
     gstRate: document.gst_rate,
@@ -77,7 +103,10 @@ export function pricingDocumentViewModel(document: PricingDocument) {
 
   return {
     costKnown,
-    subtotalCostFormatted: formatPricingMoney(document.subtotal_cost),
+    costIncomplete: !costKnown,
+    knownCostFormatted,
+    directCostLabel,
+    subtotalCostFormatted: knownCostFormatted,
     subtotalSellFormatted: formatPricingMoney(document.subtotal_sell),
     gstRate: document.gst_rate,
     gstAmountFormatted: formatPricingMoney(document.gst_amount),

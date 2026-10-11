@@ -524,7 +524,7 @@ check(
 check(
   "28 YES + missing company h/bag uses Quotr starter, not Pricing Required",
   !isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL)) &&
-    hoursByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL) === 7.2
+    hoursByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL) === 3
 );
 check(
   "29 no package caused by missing concrete rate",
@@ -635,7 +635,7 @@ check(
     productivityKey: "deck.decking.install.hours_per_m2",
     unit: "m²",
     fallbackHoursPerUnit: 0,
-  }).hoursPerUnit === 0.55 &&
+  }).hoursPerUnit === 35 / 60 &&
     resolveProductivity({
       productivityKey: "deck.substructure.install.hours_per_m2",
       unit: "m²",
@@ -645,12 +645,12 @@ check(
       productivityKey: "deck.posts.install.hours_per_ea",
       unit: "ea",
       fallbackHoursPerUnit: 0,
-    }).hoursPerUnit === 0.2 &&
+    }).hoursPerUnit === 1 &&
     resolveProductivity({
       productivityKey: "deck.fascia.install.hours_per_lm",
       unit: "lm",
       fallbackHoursPerUnit: 0,
-    }).hoursPerUnit === 0.45 &&
+    }).hoursPerUnit === 0.1 &&
     resolveProductivity({
       productivityKey: "deck.steps.install.hours_per_m2",
       unit: "m2",
@@ -660,7 +660,7 @@ check(
       productivityKey: "deck.demolition_hours_per_m2",
       unit: "m²",
       fallbackHoursPerUnit: 0,
-    }).hoursPerUnit === 0.35
+    }).hoursPerUnit === 25 / 60
 );
 check(
   "43 normal handling contract unchanged",

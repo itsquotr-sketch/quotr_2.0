@@ -439,22 +439,23 @@ check(
     after.lineItems.filter((item) => item.componentKey === "deck.decking.install").length === 1
 );
 check(
-  "15 pile 16 × 0.20 × 1.15 = 3.68 not 4.23",
-  Math.abs((pileLab?.labourHours ?? 0) - 3.68) < 0.03
+  "15 pile 16 × 1 h × 1.15 = 18.4",
+  Math.abs((pileLab?.labourHours ?? 0) - 16 * 1 * 1.15) < 0.03
 );
 check(
   "16 elevated 21 × 0.25 × 1.15 = 6.04 not 6.94",
   Math.abs((elevLab?.labourHours ?? 0) - 6.04) < 0.03
 );
 check(
-  "17 demo 21 × 0.35 × 1.15 = 8.45 once",
-  Math.abs((demoLab?.labourHours ?? 0) - 8.45) < 0.03
+  "17 demo 21 × 0.4167 h/m² × 1.15 once",
+  Math.abs((demoLab?.labourHours ?? 0) - 21 * (25 / 60) * 1.15) < 0.03 &&
+    after.lineItems.filter((item) => /demolition|removal/i.test(item.componentKey ?? item.label)).length === 1
 );
 check(
-  "18 concrete 40 bags × 0.16 × 1.15 = 7.36 not 8.46",
+  "18 concrete 40 bags × 4 min × 1.15",
   concLab?.unit === "bag" &&
     concLab?.quantity === 40 &&
-    Math.abs((concLab?.labourHours ?? 0) - 7.36) < 0.03 &&
+    Math.abs((concLab?.labourHours ?? 0) - 40 * (4 / 60) * 1.15) < 0.03 &&
     Math.abs(
       round2(40 * DECK_CONCRETE_PLACE_HOURS_PER_BAG * 1.15) -
         (concLab?.labourHours ?? 0)
@@ -530,12 +531,13 @@ const wide90 = calculateDeck(
   wa(OWNER_ID)
 );
 check(
-  "27 narrower boards increase required lm and decking labour",
+  "27 narrower boards increase required lm; labour stays with 35 min/m²",
   (line(wide90.lineItems, "Decking installation")?.quantity ?? 0) >
     (deckingLab?.quantity ?? 0) &&
-    (line(wide90.lineItems, "Decking installation")?.labourHours ?? 0) >
-      (deckingLab?.labourHours ?? 0) &&
-    Math.abs(21 - 21) === 0
+    Math.abs(
+      (line(wide90.lineItems, "Decking installation")?.labourHours ?? 0) -
+        (deckingLab?.labourHours ?? 0)
+    ) < 0.05
 );
 
 const closerJoists = calculateDeck(
@@ -617,11 +619,9 @@ const legacyM2 = calculateDeck(
   wa(OWNER_ID)
 );
 check(
-  "33 legacy company h/m² is not consumed for detailed money",
-  Math.abs(
-    (line(legacyM2.lineItems, "Decking installation")?.labourHours ?? 0) -
-      (deckingLab?.labourHours ?? 0)
-  ) < 0.001 &&
+  "33 company decking h/m² wins; leftover substructure h/m² does not",
+  (line(legacyM2.lineItems, "Decking installation")?.labourHours ?? 0) >
+    (deckingLab?.labourHours ?? 0) + 0.5 &&
     Math.abs(
       (line(legacyM2.lineItems, "Substructure framing")?.labourHours ?? 0) -
         (subLab?.labourHours ?? 0)
@@ -721,16 +721,16 @@ check(
     DECK_INFORMATION_CONTRACT.some((row) => row.factKey === "deck.skirting_included")
 );
 check(
-  "42 catalogue has new h/lm keys and leftover h/m²",
+  "42 held h/lm is leftover; 35 min/m² is the decking money rate",
   DECK_PRODUCTIVITY_RATE_CATALOGUE.some(
     (row) =>
       row.item_key === DECK_DECKING_INSTALL_HOURS_PER_LM_KEY &&
-      row.calculatorSupport === "used_now"
+      row.calculatorSupport === "leftover"
   ) &&
     DECK_PRODUCTIVITY_RATE_CATALOGUE.some(
       (row) =>
         row.item_key === DECK_DECKING_INSTALL_HOURS_PER_M2_LEGACY_KEY &&
-        row.calculatorSupport === "leftover"
+        row.calculatorSupport === "used_now"
     ) &&
     DECK_PRODUCTIVITY_RATE_CATALOGUE.some(
       (row) =>

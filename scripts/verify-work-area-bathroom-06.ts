@@ -304,18 +304,18 @@ check(
       0.25
 );
 check(
-  "wall lining productivity 0.20 h/m²",
-  BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.wall_lining === 0.2
+  "wall lining productivity 0.0833 h/m²",
+  BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.wall_lining === 0.08333333333333333
 );
 check(
-  "ceiling productivity 0.25 h/m²",
-  BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.ceiling === 0.25
+  "ceiling productivity 0.20 h/m²",
+  BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.ceiling === 0.2
 );
-check("vanity removal 1.0 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.vanity === 1);
-check("toilet removal 0.75 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.toilet === 0.75);
+check("vanity removal 0.3333 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.vanity === 0.3333333333333333);
+check("toilet removal 0.1667 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.toilet === 0.16666666666666666);
 check("shower removal 1.5 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.shower === 1.5);
 check("bath removal 1.5 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.bath === 1.5);
-check("generic fixture 0.75 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.fixture === 0.75);
+check("generic fixture 0.0667 h", BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS.fixture === 0.06666666666666667);
 check("waste minor $350", BATHROOM_WASTE_LEVEL_BENCHMARKS.minor === 350);
 check("waste standard $650", BATHROOM_WASTE_LEVEL_BENCHMARKS.standard === 650);
 check("waste major $1000", BATHROOM_WASTE_LEVEL_BENCHMARKS.major === 1000);
@@ -403,9 +403,9 @@ const stripToilet = labour(strip).find(
 );
 const stripWaste = waste(strip).find((row) => row.componentKey === BATHROOM_WASTE_COMPONENT);
 check("31 floor 7.2 m² → 1.8 h", near(stripFloor?.adjustedHours, 1.8));
-check("31 wall 25.92 m² → 5.184 h", near(stripWall?.adjustedHours, 5.184));
-check("31 vanity 1.0 h", near(stripVanity?.adjustedHours, 1));
-check("31 toilet 0.75 h", near(stripToilet?.adjustedHours, 0.75));
+check("31 wall 25.92 m² → 2.16 h", near(stripWall?.adjustedHours, 25.92 * 0.08333333333333333));
+check("31 vanity 0.3333 h", near(stripVanity?.adjustedHours, 0.3333333333333333));
+check("31 toilet 0.1667 h", near(stripToilet?.adjustedHours, 0.16666666666666666));
 check("31 waste $650", near(stripWaste?.totalCost, 650));
 check(
   "31 no generic demolition package",
@@ -497,12 +497,12 @@ check(
     !demoKeys.includes(BATHROOM_DEMOLITION_COMPONENTS.fixture)
 );
 check(
-  "32 ceiling 7.2 m² → 1.8 h",
+  "32 ceiling 7.2 m² → 1.44 h",
   near(
     labour(fullDemo).find(
       (row) => row.componentKey === BATHROOM_DEMOLITION_COMPONENTS.ceiling
     )?.adjustedHours,
-    1.8
+    1.44
   )
 );
 check(
@@ -611,6 +611,7 @@ const stoppingFacts = [
   fact("bathroom.job_scope", "b1", "full_renovation"),
   ...room,
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
   fact("bathroom.tile_extent", "b1", "full_height"),
@@ -721,6 +722,7 @@ const coexist = bathroom([
   fact("bathroom.demolition.components", "b1", ["Floor finish"]),
   fact("bathroom.floor_finish_system", "b1", "tile"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
   fact("bathroom.fixtures_included", "b1", ["Vanity"]),
   fact("bathroom.plumbing.level", "b1", "minor"),
@@ -803,6 +805,7 @@ const reviewFacts = [
   fact("bathroom.stopping_included", "b1", true),
   fact("bathroom.painting_included", "b1", true),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
 ];

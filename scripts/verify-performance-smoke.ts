@@ -65,7 +65,7 @@ function testResponsivePatterns(): void {
   assert(
     fileContains(
       "components/pricing/PricingWorkAreaSection.tsx",
-      "useIsDesktop"
+      "useMediaQuery"
     ),
     "Pricing work areas should use single-layout mount"
   );

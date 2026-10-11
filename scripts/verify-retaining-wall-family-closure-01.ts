@@ -292,7 +292,7 @@ check(
     quickSpec.includes('<option value="Timber">Timber</option>') &&
     quickSpec.includes('<option value="Concrete sleeper">Concrete sleeper</option>') &&
     quickSpec.includes('<option value="Masonry">Masonry</option>') &&
-    quickSpec.includes('Label htmlFor={`rw-material-${workAreaId}`}') &&
+    quickSpec.includes("htmlFor={`rw-material-${workAreaId}`}") &&
     !quickSpec.includes("TIMBER_RETAINING_WALL\">Timber")
 );
 

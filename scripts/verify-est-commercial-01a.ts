@@ -187,9 +187,9 @@ check("C formula hardwood 22 @15% → 25.88", gm15(22) === 25.88);
 const hardwood20 = calculateDeck(ctx({ facts: hardwoodFacts("d1"), margin: 20 }), wa("d1"));
 const decking20 = line(hardwood20.lineItems, "Decking");
 check(
-  "A hardwood Quotr fallback cost 22 sell 27.50 not 34",
-  decking20?.costRate === 22 &&
-    near(decking20.sellRate ?? 0, 27.5) &&
+  "A hardwood Quotr fallback cost 9.77 sell 12.21 at 20% GM, not paired 34",
+  decking20?.costRate === 9.77 &&
+    near(decking20.sellRate ?? 0, gm20(9.77)) &&
     decking20.sellAuthority === "derived_from_gross_margin" &&
     decking20.rateSourceType === "benchmark" &&
     !near(decking20.sellRate ?? 0, 34)
@@ -198,9 +198,9 @@ check(
 const hardwood10 = calculateDeck(ctx({ facts: hardwoodFacts("d1"), margin: 10 }), wa("d1"));
 const decking10 = line(hardwood10.lineItems, "Decking");
 check(
-  "B hardwood Quotr fallback cost 22 sell 24.44 at 10% GM",
-  decking10?.costRate === 22 &&
-    near(decking10.sellRate ?? 0, 24.44) &&
+  "B hardwood Quotr fallback cost 9.77 sell at 10% GM",
+  decking10?.costRate === 9.77 &&
+    near(decking10.sellRate ?? 0, gm10(9.77)) &&
     decking10.sellAuthority === "derived_from_gross_margin"
 );
 
@@ -236,9 +236,9 @@ function speciesDecking(material: string, expectedCost: number) {
   );
 }
 
-check("D pine Quotr cost-first 14 → 17.50", speciesDecking("Treated pine", 14));
-check("D kwila Quotr cost-first 28 → 35.00", speciesDecking("Kwila", 28));
-check("D composite Quotr cost-first 24 → 30.00", speciesDecking("Composite", 24));
+check("D pine Quotr cost-first 3.51 → 20% GM", speciesDecking("Treated pine", 3.51));
+check("D kwila Quotr cost-first 9.77 → 20% GM", speciesDecking("Kwila", 9.77));
+check("D composite Quotr cost-first 11.47 → 20% GM", speciesDecking("Composite", 11.47));
 
 const fasciaFacts = hardwoodFacts("d1", {
   "deck.vertical_face_boards_required": true,
@@ -470,12 +470,12 @@ const realJobEstimate = calculateEstimate({
 } as unknown as EstimateContext);
 
 check(
-  "N REAL-JOB-01 cost fingerprint stays $8,620.53",
-  near(realJobEstimate.recommendedCost, 8620.53)
+  "N REAL-JOB-01 cost is $7,181.54 after approved board rates (was $8,620.53)",
+  near(realJobEstimate.recommendedCost, 7181.54)
 );
 check(
-  "N REAL-JOB-01 sell is ~20% GM ($10,775.44), not paired $12,878.01",
-  near(realJobEstimate.recommendedSell, 10775.44) &&
+  "N REAL-JOB-01 sell is ~20% GM ($8,976.16), not the old paired sell",
+  near(realJobEstimate.recommendedSell, 8976.16) &&
     near(realJobEstimate.marginPercent, 20, 0.05) &&
     !near(realJobEstimate.recommendedSell, 12878.01)
 );

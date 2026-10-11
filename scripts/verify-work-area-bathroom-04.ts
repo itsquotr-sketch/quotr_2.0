@@ -668,6 +668,7 @@ const coexist = bathroom([
   fact("bathroom.floor_finish_system", "b1", "tile"),
   fact("bathroom.floor_substrate_system", "b1", "treated_plywood"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.framing_level", "b1", "standard"),
 ]);

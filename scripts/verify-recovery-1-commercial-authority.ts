@@ -195,8 +195,8 @@ function round2(value: number) {
 }
 
 /** DEFAULT-RATE ENGINE FIXTURE — empty company rates, not Owner $78 labour. */
-const DEFAULT_RATE_REAL_JOB_COST = 8620.53;
-const DEFAULT_RATE_REAL_JOB_SELL = 10775.44;
+const DEFAULT_RATE_REAL_JOB_COST = 7181.54;
+const DEFAULT_RATE_REAL_JOB_SELL = 8976.16;
 
 console.log("=== RECOVERY-1 commercial authority ===\n");
 
@@ -303,9 +303,9 @@ check(
   ) < 0.05
 );
 check(
-  "10 DEFAULT-RATE split labour hours are 32.49 not the 1.2 lump",
-  labourHoursTotal(empty.lineItems) === 32.49 &&
-    labourCostTotal(empty.lineItems) === 1949.4 &&
+  "10 DEFAULT-RATE split labour hours are 51.75 not the 1.2 lump",
+  labourHoursTotal(empty.lineItems) === 51.75 &&
+    labourCostTotal(empty.lineItems) === 3105 &&
     emptyLabourLines.length === 3 &&
     !empty.lineItems.some((item) => item.label === "Deck labour")
 );
@@ -354,7 +354,7 @@ const previewTotals = aggregateEstimateLineTotals(previewAfterGm);
 const expectedPreviewSell = deriveSellFromCost(previewTotals.recommendedCost, PREVIEW_GM);
 check(
   "14 Preview-shaped DEFAULT-RATE cost is 2B engine not package-era $8,127",
-  Math.abs(previewTotals.recommendedCost - 6221.11) < 0.02,
+  Math.abs(previewTotals.recommendedCost - 7376.71) < 0.02,
   `cost=${previewTotals.recommendedCost}`
 );
 check(
@@ -600,7 +600,7 @@ check(
         0
       ) - previewLabourSell
     ) < 0.05 &&
-    Math.abs(previewLabourCost - 1949.4) < 0.02
+    Math.abs(previewLabourCost - 3105) < 0.02
 );
 check(
   "53 target-GM surface Pricing sell is 2964.55",
@@ -803,9 +803,9 @@ check(
 );
 
 check(
-  "43 surface A: Quotr hardwood fallback is cost 22 with derived sell 27.50",
-  emptySurface?.costRate === 22 &&
-    emptySurface.sellRate === 27.5 &&
+  "43 surface A: Quotr hardwood fallback is cost 9.77 with derived sell 12.21",
+  emptySurface?.costRate === 9.77 &&
+    emptySurface.sellRate === 12.21 &&
     emptySurface.rateSourceType === "benchmark" &&
     emptySurface.sellDerivedFromMargin === true &&
     emptySurface.sellAuthority === "derived_from_gross_margin"
@@ -841,7 +841,7 @@ const blankPackage = calculateEstimate(
 );
 check(
   "44 blank work-area package does not steal named surface or timber",
-  surface(blankPackage.lineItems)?.costRate === 22 &&
+  surface(blankPackage.lineItems)?.costRate === 9.77 &&
     line(blankPackage.lineItems, "Joists")?.costRate === emptyJoists?.costRate
 );
 

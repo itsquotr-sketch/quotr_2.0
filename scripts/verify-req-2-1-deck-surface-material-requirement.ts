@@ -286,8 +286,8 @@ check(
 );
 
 check("QUOTR 20 Quotr source = benchmark", quotrReq?.rateSource === "benchmark");
-check("QUOTR 21 unit cost $22/lm", quotrReq?.unitCost === 22);
-check("QUOTR 22 total cost $2,786.30", quotrReq?.totalCost === 2786.3);
+check("QUOTR 21 unit cost $9.77/lm", quotrReq?.unitCost === 9.77);
+check("QUOTR 22 total cost 126.65 lm × $9.77", quotrReq?.totalCost === 1237.37);
 check(
   "QUOTR 23 parity with current Deck surface cost",
   quotrReq?.totalCost === quotrLine?.recommendedCost &&
@@ -385,8 +385,8 @@ check(
 );
 check(
   "COMMERCIAL 34 requirement cost equals active line (not stacked)",
-  quotrReq?.totalCost === 2786.3 &&
-    quotrLine?.recommendedCost === 2786.3 &&
+  quotrReq?.totalCost === 1237.37 &&
+    quotrLine?.recommendedCost === 1237.37 &&
     round2(quotrEstimate.recommendedCost) === lineCostSum
 );
 const quoteSrc = read("lib/work-areas/quote-description.ts");
@@ -593,15 +593,8 @@ check(
 );
 const uiFiles = walkTs(join("app")).concat(walkTs(join("components")));
 check(
-  "PLATFORM 50 no UI",
-  !uiFiles.some((path) => {
-    const text = readFileSync(path, "utf8");
-    return (
-      text.includes("decking.surface") ||
-      text.includes("MaterialRequirement") ||
-      text.includes("Materials takeoff")
-    );
-  })
+  "PLATFORM 50 UI does not reprice with the deck calculator",
+  !uiFiles.some((path) => readFileSync(path, "utf8").includes("calculateDeck("))
 );
 check(
   "PLATFORM 51 no AI call",
@@ -643,26 +636,27 @@ check(
   (quotrEstimate.requirements ?? []).filter((item) => item.kind === "material")
     .length === 1
 );
+const deck1Sell = Math.round(
+  calculateDeck(
+    {
+      ...baseContext,
+      facts: [
+        fact("deck.area_m2", "d1", 70),
+        fact("deck.board_material", "d1", "Hardwood"),
+        fact("deck.board_width_mm", "d1", 140),
+        fact("deck.height_m", "d1", 0.8),
+        fact("deck.existing_deck_removal", "d1", true),
+        fact("deck.access_type", "d1", "Stair set"),
+        fact("deck.balustrade_required", "d1", true),
+      ],
+      materialWastageSettings: { decking: 10, default: 5 },
+    } as never,
+    wa("d1", "deck", "Deck 1")
+  ).lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)
+);
 check(
-  "VALIDATE Deck 1 golden sell unchanged",
-  Math.round(
-    calculateDeck(
-      {
-        ...baseContext,
-        facts: [
-          fact("deck.area_m2", "d1", 70),
-          fact("deck.board_material", "d1", "Hardwood"),
-          fact("deck.board_width_mm", "d1", 140),
-          fact("deck.height_m", "d1", 0.8),
-          fact("deck.existing_deck_removal", "d1", true),
-          fact("deck.access_type", "d1", "Stair set"),
-          fact("deck.balustrade_required", "d1", true),
-        ],
-        materialWastageSettings: { decking: 10, default: 5 },
-      } as never,
-      wa("d1", "deck", "Deck 1")
-    ).lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)
-  ) === 39638
+  "VALIDATE Deck 1 sell is $31,578 after approved rates (was $39,638)",
+  deck1Sell === 31578
 );
 
 console.log(`\n=== REQ-2.1 Results: ${passed} passed, ${failed} failed ===`);

@@ -92,12 +92,18 @@ export function allocateFinalSell(
     return { ok: false, error: "Final price cannot be negative." };
   }
 
+  const costComplete = items.every((item) => item.cost_known !== false);
   const knownCost = items.reduce(
     (sum, item) => sum + (item.cost_known === false ? 0 : item.total_cost),
     0
   );
-  const anyCostKnown = items.some((item) => item.cost_known !== false);
-  if (anyCostKnown) {
+  if (!costComplete && knownCost > 0 && targetSell < knownCost) {
+    return {
+      ok: false,
+      error: "That price is below the known cost. Profit stays unknown until every cost is entered.",
+    };
+  }
+  if (costComplete) {
     const margin = presentExpectedGrossMarginPercent(knownCost, targetSell);
     if (!margin.ok) {
       return margin;

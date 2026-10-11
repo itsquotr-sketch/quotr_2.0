@@ -499,12 +499,12 @@ const afterClarify = calculateEstimate(realJobContext(realFacts));
 check(
   "43 unchanged facts = unchanged cost",
   baseline.recommendedCost === afterClarify.recommendedCost &&
-    baseline.recommendedCost === 8620.53
+    baseline.recommendedCost === 7181.54
 );
 check(
   "44 unchanged facts = unchanged sell",
   baseline.recommendedSell === afterClarify.recommendedSell &&
-    baseline.recommendedSell === 10775.44
+    baseline.recommendedSell === 8976.16
 );
 
 const classify = classifyResolvedSell({
@@ -514,8 +514,8 @@ const classify = classifyResolvedSell({
 });
 check(
   "45 RECOVERY-1 parity",
-  baseline.recommendedCost === 8620.53 &&
-    baseline.recommendedSell === 10775.44 &&
+  baseline.recommendedCost === 7181.54 &&
+    baseline.recommendedSell === 8976.16 &&
     classify.sellAuthority === "derived_from_gross_margin" &&
     classify.sellRate === deriveSellFromCost(22.5, 23.5) &&
     existsSync("scripts/verify-recovery-1-commercial-authority.ts")

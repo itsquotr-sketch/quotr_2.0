@@ -152,7 +152,8 @@ check(
 
 check(
   "source 01A labour remains cost-only (no 60/90 reintroduction)",
-  ratesSrc.includes("const DEFAULT_LABOUR_COST_RATE = 60") &&
+  ratesSrc.includes("QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR = 60") &&
+    ratesSrc.includes("sellRate: null") &&
     !ratesSrc.includes("sellRate: 90") &&
     !fenceSrc.includes("60, sell: 90") &&
     !bathroomSrc.includes("60, sell: 90") &&

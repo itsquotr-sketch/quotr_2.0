@@ -307,8 +307,8 @@ const plumbingA = subcontracts(fixtureA).find(
 check("A vanity PC $1200", near(vanityPc?.totalCost, 1200));
 check("A toilet PC $650", near(toiletPc?.totalCost, 650));
 check("A mirror PC $350", near(mirrorPc?.totalCost, 350));
-check("A vanity 2.5 h", near(vanityHours?.adjustedHours, 2.5));
-check("A mirror 0.75 h", near(mirrorHours?.adjustedHours, 0.75));
+check("A vanity 4 h", near(vanityHours?.adjustedHours, 4));
+check("A mirror 0.5833 h", near(mirrorHours?.adjustedHours, 0.5833333333333334));
 check(
   "A no builder toilet labour",
   !labour(fixtureA).some((row) => /toilet/i.test(row.description))
@@ -348,7 +348,7 @@ check(
     labour(fixtureAPremium).find(
       (row) => row.componentKey === BATHROOM_FIXTURE_INSTALL_COMPONENTS.vanity
     )?.adjustedHours,
-    2.5
+    4
   )
 );
 
@@ -418,7 +418,7 @@ check(
     labour(fixtureC).find(
       (row) => row.componentKey === BATHROOM_FIXTURE_INSTALL_COMPONENTS.vanity
     )?.adjustedHours,
-    2.5
+    4
   )
 );
 check(
@@ -460,12 +460,12 @@ check(
   )
 );
 check(
-  "D builder 2.5 h",
+  "D builder 4 h",
   near(
     labour(fixtureD).find(
       (row) => row.componentKey === BATHROOM_FIXTURE_INSTALL_COMPONENTS.vanity
     )?.adjustedHours,
-    2.5
+    4
   )
 );
 check(
@@ -520,6 +520,7 @@ console.log("\n--- Shared Aqualine + company rate ---\n");
 const liningFacts = [
   ...full,
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
   fact("bathroom.plumbing.level", "b1", "none"),
@@ -551,6 +552,7 @@ const coexist = bathroom([
   ...full,
   fact("bathroom.floor_finish_system", "b1", "tile"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.wall_lining_system", "b1", "aqualine"),
   fact("bathroom.fixtures_included", "b1", ["Vanity"]),
   fact("bathroom.plumbing.level", "b1", "minor"),

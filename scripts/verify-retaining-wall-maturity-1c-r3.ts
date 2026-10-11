@@ -429,10 +429,13 @@ check(
 check(
   "trace generate path uses package Quick Estimate gate",
   readFileSync("lib/assistant/actions.ts", "utf8").includes(
-    "evaluatePackageQuickEstimateReadiness"
+    "evaluateGenerateEstimatePermission"
   ) &&
     readFileSync("lib/assistant/actions.ts", "utf8").includes(
       "filterEstimateBlockingProjectConditionKeys"
+    ) &&
+    readFileSync("lib/assistant/actions.ts", "utf8").includes(
+      "canGenerateQuickEstimate"
     )
 );
 
@@ -463,7 +466,11 @@ const clarify = composeClarifyView({
 });
 check(
   "trace Clarify does not hard-block Owner fixture",
-  !clarify.blocksEstimate && clarify.canEstimateNow
+  !clarify.blocksEstimate &&
+    !clarify.canEstimateNow &&
+    clarify.candidates.some(
+      (c) => c.factKey === "retaining_wall.drainage_required" && c.askClass === "ASK_NOW"
+    )
 );
 
 const refine = composeRefineView({
@@ -475,12 +482,13 @@ const refine = composeRefineView({
   jobPlan,
 });
 check(
-  "trace Refine does not re-ask known access/carry",
-  ![...refine.highValue, ...refine.advanced].some(
-    (c) =>
-      c.constraintKey === "site_access" ||
-      c.constraintKey === "material_carry_distance"
-  )
+  "trace Refine keeps known access/carry as answered values",
+  ["site_access", "material_carry_distance"].every((key) => {
+    const row = [...refine.highValue, ...refine.advanced].find(
+      (c) => c.constraintKey === key
+    );
+    return row != null && row.currentValue != null && row.write == null;
+  })
 );
 
 console.log("\n--- NON-REGRESSION (spawn) ---\n");

@@ -447,7 +447,7 @@ check(
   timberRateVarianceContext({
     itemKey: RW_FACE_BOARD_150_H4_KEY,
     unit: "lm",
-    appliedCostRate: 13,
+    appliedCostRate: 5.7,
     rateLabel: "Company rate",
   }) == null && (board13?.costRate ?? 0) > 0
 );
@@ -463,7 +463,7 @@ check(
 check(
   "22 no auto override",
   near(board32?.costRate ?? 0, 32) &&
-    (board32Line?.rateContext ?? "").includes("12.80")
+    (board32Line?.rateContext ?? "").includes("5.61")
 );
 
 console.log("\n--- PILE UX ---\n");

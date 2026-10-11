@@ -100,15 +100,15 @@ check(
   "duplicate-save token is per-field",
   valueField.includes("${fieldKey}:${parsed.value}")
 );
-const valueHandler =
-  shell.match(
-    /const handleClarifyValue = useCallback\([\s\S]*?tagOverlayFactSeq,\n    \]\n  \);/
-  )?.[0] ?? "";
+const valueHandler = shell.slice(
+  shell.indexOf("const handleClarifyValue = useCallback"),
+  shell.indexOf("const handleJobPlanSpecFact")
+);
 const persistIdx = valueHandler.indexOf("answerClarifySelectFact");
-const overlayIdx = valueHandler.lastIndexOf("setJobPlanFactOverlay");
+const numericOverlayIdx = valueHandler.indexOf("if (isNumericOrText && !nestedWrite)");
 check(
   "numeric persist completes before question overlay",
-  persistIdx >= 0 && overlayIdx > persistIdx
+  persistIdx >= 0 && numericOverlayIdx > persistIdx
 );
 check(
   "clarify write pending disables Save during persist",

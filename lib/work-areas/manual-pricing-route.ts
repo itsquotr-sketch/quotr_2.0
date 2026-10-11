@@ -20,6 +20,37 @@ export const MANUAL_PRICING_NOTICE_BODY =
 export const MANUAL_PRICING_QUOTE_BLOCK =
   "Enter your price for work Quotr cannot calculate before creating a Quote.";
 
+export const UNKNOWN_MATERIAL_COST_QUOTE_BLOCK =
+  "Enter a client price for lines that still have no cost before creating a Quote.";
+
+/**
+ * Case A: visible line, cost unknown, no positive client sell.
+ * Case B (positive sell) stays on the quote. Case C (hidden or replaced)
+ * is handled by visibility and the replaced-line filter.
+ */
+export function unknownCostWithoutClientSell(item: {
+  cost_known?: boolean | null;
+  total_sell?: number | null;
+  visible_on_quote?: boolean | null;
+}): boolean {
+  if (item.visible_on_quote === false) return false;
+  if (item.cost_known !== false) return false;
+  const sell = Number(item.total_sell ?? 0);
+  return !Number.isFinite(sell) || sell <= 0;
+}
+
+export function unknownMaterialCostQuoteBlock(
+  items: readonly {
+    cost_known?: boolean | null;
+    total_sell?: number | null;
+    visible_on_quote?: boolean | null;
+  }[]
+): string | null {
+  return items.some(unknownCostWithoutClientSell)
+    ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK
+    : null;
+}
+
 export const MANUAL_ESTIMATE_SKIPPED_MESSAGE =
   "Quotr cannot build a detailed estimate for this work. Continue with manual pricing and enter your price.";
 

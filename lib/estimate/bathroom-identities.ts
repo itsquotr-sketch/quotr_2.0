@@ -277,8 +277,8 @@ export const BATHROOM_FIXTURE_PRODUCTIVITY_KEYS = {
 } as const;
 
 export const BATHROOM_FIXTURE_PRODUCTIVITY_BENCHMARKS = {
-  vanity: 2.5,
-  mirror: 0.75,
+  vanity: 4,
+  mirror: 0.5833333333333334,
   accessories: 0.5,
   shower_enclosure: 3,
 } as const;

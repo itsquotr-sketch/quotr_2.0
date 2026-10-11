@@ -169,6 +169,7 @@ const fixtureAFacts: EstimateFact[] = [
   fact("bathroom.wall_height_m", "b1", 2.4),
   fact("bathroom.floor_substrate_system", "b1", "treated_plywood"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.framing_level", "b1", "standard"),
 ];
@@ -211,10 +212,22 @@ check("ceiling base 7.2 m²", near(ceilingMat?.baseQuantity, 7.2));
 check("framing 12.96 lm", near(framingMat?.baseQuantity, 12.96) && near(framingMat?.purchaseQuantity, 12.96));
 check("framing H1.2 identity", framingMat?.materialKey === BATHROOM_FRAMING_TIMBER_KEY);
 check("framing waste 0", framingMat?.wasteFactor === 0);
-check("floor labour 2.88 h", near(floorLab?.baseHours, 2.88));
-check("wall labour 7.776 h", near(wallLab?.baseHours, 7.776));
-check("ceiling labour 2.88 h", near(ceilingLab?.baseHours, 2.88));
-check("framing labour 2.592 h", near(framingLab?.baseHours, 2.592));
+check(
+  "floor labour 6.6 h",
+  near(floorLab?.baseHours, 7.2 * BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2)
+);
+check(
+  "wall labour 4.5 h",
+  near(wallLab?.baseHours, 25.92 * BATHROOM_PRODUCTIVITY_BENCHMARKS.wallLiningM2)
+);
+check(
+  "ceiling labour 1.8 h",
+  near(ceilingLab?.baseHours, 7.2 * BATHROOM_PRODUCTIVITY_BENCHMARKS.ceilingLiningM2)
+);
+check(
+  "framing labour 1.512 h",
+  near(framingLab?.baseHours, 12.96 * BATHROOM_PRODUCTIVITY_BENCHMARKS.framingLm)
+);
 check(
   "no generic carpentry on mature Fixture A",
   !a.lineItems.some((item) => /carpentry\/prep/i.test(item.label))
@@ -256,11 +269,12 @@ check(
 );
 
 console.log("\n--- Framing intensities ---\n");
-for (const [level, expectedLm, expectedHours] of [
-  ["minor", 5.184, 1.0368],
-  ["standard", 12.96, 2.592],
-  ["major", 25.92, 5.184],
+for (const [level, expectedLm] of [
+  ["minor", 5.184],
+  ["standard", 12.96],
+  ["major", 25.92],
 ] as const) {
+  const expectedHours = expectedLm * BATHROOM_PRODUCTIVITY_BENCHMARKS.framingLm;
   const takeoff = bathroomFramingTakeoff({
     level,
     grossWallAreaM2: 25.92,
@@ -322,6 +336,7 @@ const assumed = bathroom([
   fact("bathroom.width_m", "b1", 2.4),
   fact("bathroom.floor_substrate_system", "b1", "treated_plywood"),
   fact("bathroom.wall_lining_included", "b1", true),
+  fact("bathroom.wall_lining_system", "b1", "GIB Aqualine"),
   fact("bathroom.ceiling_lining_included", "b1", true),
   fact("bathroom.framing_level", "b1", "standard"),
 ]);
@@ -359,9 +374,15 @@ check(
     notSureFloor.assumptions.some((line) => /19 mm H3\.2 treated plywood/i.test(line))
 );
 check(
-  "Not sure linings → disclosed Aqualine",
-  notSureFloor.assumptions.some((line) => /Aqualine wall lining/i.test(line)) &&
-    notSureFloor.assumptions.some((line) => /Aqualine ceiling lining/i.test(line))
+  "Not sure wall lining asks for GIB or fibre cement",
+  notSureFloor.missingInfo.some((line) =>
+    /Confirm whether the bathroom wall lining is GIB or fibre cement/i.test(line)
+  ) &&
+    !materials(notSureFloor).some(
+      (row) =>
+        row.componentKey === BATHROOM_WALL_LINING_COMPONENT &&
+        row.materialKey === BATHROOM_AQUALINE_SHEET_KEY
+    )
 );
 check(
   "unknown framing is INFO_REQUIRED, not silent Standard",
@@ -427,8 +448,8 @@ check(
       BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2
 );
 check(
-  "framing productivity 0.20 h/lm",
-  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.framingLm, 0.2)
+  "framing productivity 0.1167 h/lm",
+  near(BATHROOM_PRODUCTIVITY_BENCHMARKS.framingLm, 0.11666666666666667)
 );
 
 console.log("\n--- Legacy path ---\n");
@@ -536,8 +557,8 @@ check(
   migrations.includes("054_company_dna_v2_catalogue_seed.sql")
 );
 check(
-  "latest numbered migration is 056 Bathroom DNA seed",
-  migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+  "latest numbered migration is 109 owner fence concrete",
+  migrations.at(-1) === "109_owner_fence_concrete_placement.sql"
 );
 check("no production supabase project in 03 files", !read("lib/estimate/bathroom-physical.ts").includes("production"));
 

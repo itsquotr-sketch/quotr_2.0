@@ -492,7 +492,7 @@ check(
   "23 Concrete procurement × correct rate",
   concreteLine?.unit === "bag" &&
     (concreteLine.quantity ?? 0) === takeoff.bagCount &&
-    near(concreteLine.costRate ?? 0, 11.5)
+    near(concreteLine.costRate ?? 0, 9.77)
 );
 check(
   "24 Drainage materials price correctly",
@@ -810,7 +810,7 @@ check(
   near(
     sleeper2AMaterialStarter("retaining_wall.sleeper.premix.20kg.bag", "bag")
       ?.costPerUnit ?? 0,
-    11.5
+    9.77
   ) && RW_PREMIX_20KG_YIELD_M3 === 0.01
 );
 check(

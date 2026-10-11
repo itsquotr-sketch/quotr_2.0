@@ -323,7 +323,7 @@ const calc = calculateRetainingWall(ctx(ownerFacts(), [
   { key: "site_access", value: "Moderate" },
   { key: "material_carry_distance", value: "10–30m" },
 ]), wa());
-const pileLine = calc.lineItems.find((item) => item.label === "Pile installation labour");
+const pileLine = calc.lineItems.find((item) => item.label === "Pile placement labour");
 const drainLine = calc.lineItems.find((item) => item.label === "Drainage installation labour");
 check("43 detailed labour equation includes base vs adjusted", Boolean(pileLine?.notes?.includes("base hrs")));
 check(
@@ -346,7 +346,7 @@ check(
 check(
   "49 package XOR detailed labour money",
   !calc.lineItems.some((item) => item.label === "Retaining wall labour") &&
-    calc.lineItems.some((item) => item.label === "Pile installation labour")
+    calc.lineItems.some((item) => item.label === "Pile placement labour")
 );
 
 console.log("\n--- PRODUCTIVITY / AUTHORITY ---\n");

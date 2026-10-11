@@ -14,6 +14,7 @@ import {
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
+import { unknownCostWithoutClientSell } from "@/lib/work-areas/manual-pricing-route";
 import { claddingPricingItemIsClientPriced } from "@/lib/estimate/cladding-quote";
 import { doorsPricingItemIsClientPriced } from "@/lib/estimate/doors-quote";
 import { flooringPricingItemIsClientPriced } from "@/lib/estimate/flooring-quote";
@@ -160,7 +161,7 @@ export function mapPricingItemsToQuoteItems(
     .filter((item) => doorsPricingItemIsClientPriced(item))
     .filter((item) => flooringPricingItemIsClientPriced(item))
     .filter((item) => claddingPricingItemIsClientPriced(item))
-    .filter((item) => item.cost_known !== false)
+    .filter((item) => !unknownCostWithoutClientSell(item))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item) => {
       let sectionDescription: string | null = null;
@@ -216,7 +217,8 @@ export function buildInclusionsFromPricing(
       item.visible_on_quote &&
       !item.optional &&
       !isReplacedSubcontractPlaceholder(item) &&
-      doorsPricingItemIsClientPriced(item)
+      doorsPricingItemIsClientPriced(item) &&
+      !unknownCostWithoutClientSell(item)
   );
   const inclusions = new Set<string>();
 

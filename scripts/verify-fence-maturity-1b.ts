@@ -255,7 +255,7 @@ check(
 );
 check(
   "2 rail identity/rate",
-  FENCE_TIMBER_1B_MATERIAL_STARTERS[fenceRailMaterialKey("75x50")]?.costPerUnit === 6
+  FENCE_TIMBER_1B_MATERIAL_STARTERS[fenceRailMaterialKey("75x50")]?.costPerUnit === 2.83
 );
 check(
   "3 species × section board identities",
@@ -270,7 +270,7 @@ check(
 );
 check(
   "5 gate frame identity",
-  FENCE_TIMBER_1B_MATERIAL_STARTERS[fenceGateFrameMaterialKey()]?.costPerUnit === 6
+  FENCE_TIMBER_1B_MATERIAL_STARTERS[fenceGateFrameMaterialKey()]?.costPerUnit === 2.83
 );
 check(
   "6 gate hardware",
@@ -278,7 +278,7 @@ check(
 );
 check(
   "7 concrete premix starter",
-  FENCE_TIMBER_1B_MATERIAL_STARTERS[FENCE_PREMIX_20KG_KEY]?.costPerUnit === 11.5
+  FENCE_TIMBER_1B_MATERIAL_STARTERS[FENCE_PREMIX_20KG_KEY]?.costPerUnit === 9.77
 );
 check("8 fixings percent", FENCE_TIMBER_FIXINGS_PERCENT === 0.08);
 
@@ -289,7 +289,7 @@ check(
 check(
   "10 concrete bag productivity",
   FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]
-    ?.hoursPerUnit === 0.06
+    ?.hoursPerUnit === (2 * 2) / 60
 );
 check(
   "11 rail productivity unit",
@@ -809,7 +809,7 @@ check(
   "R1.16-18 locked starters",
   FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.postInstall]?.hoursPerUnit === 0.7 &&
     FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]
-      ?.hoursPerUnit === 0.06 &&
+      ?.hoursPerUnit === (2 * 2) / 60 &&
     FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.gateInstall]?.hoursPerUnit === 2
 );
 check(
@@ -866,7 +866,7 @@ check(
   "R1.RW bag starter isolated at 0.035",
   POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.035 &&
     FENCE_TIMBER_1B_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]
-      ?.hoursPerUnit === 0.06
+      ?.hoursPerUnit === (2 * 2) / 60
 );
 check(
   "R1.sku helper",

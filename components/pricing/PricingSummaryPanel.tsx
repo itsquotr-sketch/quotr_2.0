@@ -14,6 +14,7 @@ import {
 import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
+  unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
 import {
   Card,
@@ -72,7 +73,7 @@ export function PricingSummaryPanel({
   scopeQuoteBlock = null,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
-  const view = pricingDocumentViewModel(document);
+  const view = pricingDocumentViewModel(document, items);
   const pricingRequiredCount = items.filter(
     (item) => pricingItemViewModel(item).pricingRequired
   ).length;
@@ -86,16 +87,14 @@ export function PricingSummaryPanel({
   const inclGstValue = sellIncomplete
     ? "Pricing required"
     : view.totalInclGstFormatted;
-  const costValue =
-    sellIncomplete && document.subtotal_cost <= 0
-      ? "Pricing required"
-      : view.costKnown
-        ? view.subtotalCostFormatted
-        : "Pricing required";
+  const costValue = sellIncomplete && document.subtotal_cost <= 0
+    ? "Pricing required"
+    : view.directCostLabel;
   const quoteBlockedReason = scopeQuoteBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
-      : unresolvedManualPricingQuoteBlock(items));
+      : unresolvedManualPricingQuoteBlock(items) ??
+        unknownMaterialCostQuoteBlock(items));
 
   return (
     <Card
