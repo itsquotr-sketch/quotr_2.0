@@ -116,7 +116,7 @@ export function resolveBathroomPhysicalSelection(params: {
     "bathroom.wall_lining_system"
   );
   let wallLining: BathroomPhysicalSelection["wallLining"] = null;
-  let wallLiningAssumed = false;
+  const wallLiningAssumed = false;
   if (!stripOutOnly && (isNotSureValue(wallRaw) || isNotSureValue(wallSystem))) {
     wallLining = "unknown";
   } else if (wallSystem) {
