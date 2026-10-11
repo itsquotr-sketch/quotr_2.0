@@ -47,7 +47,7 @@ export type RateCategory =
   | "allowance"
   | "subcontractor";
 
-export type CalculatorSupport = "used_now" | "planned" | "leftover";
+export type CalculatorSupport = "used_now" | "planned" | "leftover" | "inactive";
 
 export type RateCatalogueEntry = {
   item_key: string;

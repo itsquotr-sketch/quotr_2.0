@@ -1896,8 +1896,8 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "hole",
     description:
-      "LEGACY hours/hole. Mature Deck path uses Deck post-hole concrete placement (labour-h/bag). Do not reinterpret this numeric as h/bag.",
-    calculatorSupport: "leftover",
+      "Inactive. No money consumer. Live deck concrete placement is hours per bag. An existing company row on this key can still be read and is not a second rate to approve.",
+    calculatorSupport: "inactive",
   }),
 ];
 
@@ -2076,15 +2076,15 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperFaceM2,
-    label: "Concrete sleeper installation (hours/m²) — leftover",
+    label: "Concrete sleeper installation (hours/m²) — inactive",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
     description:
-      "Leftover face-m² sleeper labour. 2A prices discrete sleeper EA instead.",
-    calculatorSupport: "leftover",
+      "Inactive. No money consumer. Live sleeper installation is 0.22 hours per sleeper. An existing company row on this key can still be read and is not a second rate to approve.",
+    calculatorSupport: "inactive",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperSleepersEa,

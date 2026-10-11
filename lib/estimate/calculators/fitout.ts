@@ -19,6 +19,7 @@ import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import { PAINTING_LABOUR_HOURS_PER_M2_KEY } from "@/lib/estimate/ceilings-identities";
+import { flatCeilingHasSelectedLining } from "@/lib/estimate/ceilings-portions";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   calculateFlooringAreaWithWastage,
@@ -31,7 +32,6 @@ import {
   createLinealMetresBuildUp,
   createPaintLitresBuildUp,
   createSheetCountBuildUp,
-  isSheetMaterialLining,
   sheetMaterialLabel,
   withMaterialBuildUp,
 } from "@/lib/estimate/material-buildup-meta";
@@ -726,31 +726,44 @@ export function calculateCeilings(
 
   const ceilingArea = getNumberFact(facts, workArea.id, "ceilings.area_m2");
   const ceilingType = getStringFact(facts, workArea.id, "ceilings.ceiling_type");
-  if (ceilingArea && isSheetMaterialLining(ceilingType)) {
+  const selectedLining = flatCeilingHasSelectedLining(ceilingType);
+  if (selectedLining) {
+    const areaLabel = ceilingArea ?? result.lineItems[0]?.quantity ?? 0;
+    result.lineItems = result.lineItems.map((item) => {
+      const labour = item.category === "labour" || /labour/i.test(item.label);
+      return {
+        ...item,
+        label: labour
+          ? `${ceilingType} ceiling labour`
+          : `${ceilingType} ceiling lining`,
+        recommendedCost: 0,
+        recommendedSell: 0,
+        labourHours: null,
+        rateSource: "Pricing required",
+        rateSourceType: "missing" as const,
+        includedInTotal: false,
+        sellDerivedFromMargin: false,
+        notes: labour
+          ? `Pricing Required. ${areaLabel} m². Install hours are not assessed because the sheet or board product, thickness, and sheet size are not confirmed. This is not the 0.9 h/m² package.`
+          : `Pricing Required. ${areaLabel} m² of selected ${ceilingType}. This is not the $75/m² materials allowance and not a sheet count. A company sheet rate is not applied because the number of sheets is unknown. Fixings, stopping, insulation, and new framing are not included.`,
+      };
+    });
+    result.missingInfo.push(
+      `${workArea.name}: ${ceilingType} is selected. Confirm the sheet or board product, thickness, and sheet size, and whether stopping, fixings, and insulation are included, before this lining can be priced.`
+    );
+    result.assumptions.push(
+      `Selected lining “${ceilingType}” stays Pricing Required. The $75/m² provisional package is not used for a named lining.`
+    );
+  } else {
     const materialsIndex = result.lineItems.findIndex((item) =>
       item.label.includes("materials allowance")
     );
     if (materialsIndex >= 0) {
-      const wastagePercent = resolveMaterialWastage(
-        context.materialWastageSettings,
-        "sheet_material"
-      );
-      const sheetResult = calculateSheetCount({
-        areaM2: ceilingArea,
-        wastagePercent,
-      });
-      if (sheetResult) {
-        const baseItem = result.lineItems[materialsIndex];
-        result.lineItems[materialsIndex] = withMaterialBuildUp(
-          baseItem,
-          createSheetCountBuildUp({
-            result: sheetResult,
-            areaM2: ceilingArea,
-            wastagePercent,
-            materialLabel: sheetMaterialLabel(ceilingType),
-          })
-        );
-      }
+      const baseItem = result.lineItems[materialsIndex];
+      result.lineItems[materialsIndex] = {
+        ...baseItem,
+        notes: `Provisional materials package at $75/m² for an unspecified ceiling. It is not a named lining, not a sheet takeoff, and not a company material rate. Review or replace it in Pricing. It is not added when a lining is selected or when a ceiling portion exists.`,
+      };
     }
   }
 

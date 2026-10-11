@@ -131,7 +131,7 @@ export function timberMiniExcavatorWorkload(params: {
     hoursPerPile,
     hoursPerM3,
     basis: machineScope
-      ? `${RW_TIMBER_PLANT_SCALING_RULE}. ${pileCount} piles × ${hoursPerPile} machine h/ea = ${pileMachineHours}h · ${measured} m³ measured bulk × ${hoursPerM3} machine h/m³ = ${excavationMachineHours}h · setup ${setupHours}h · total ${totalMachineHours}h / ${productiveHoursPerDay} productive h/day → ${days} day(s). Unknown excavation allowance does not add plant hours.`
+      ? `${RW_TIMBER_PLANT_SCALING_RULE}. ${pileCount} piles × ${hoursPerPile} machine h/ea = ${pileMachineHours}h · ${measured} m³ measured bulk × ${hoursPerM3} machine h/m³ = ${excavationMachineHours}h · setup ${setupHours}h · total ${totalMachineHours}h / ${productiveHoursPerDay} productive h/day → ${days} day(s). Unmeasured wall-face excavation does not add plant hours.`
       : "No machine scope.",
   };
 }

@@ -230,6 +230,6 @@ export function adaptUnpricedLabourRequirementToEstimateLine(params: {
     componentKey: requirement.componentKey,
     sortOrder: params.sortOrder,
     organisationSettings: params.organisationSettings,
-    notes: `Needs productivity. ${qty} ${unit}. ${requirement.description}`,
+    notes: `Pricing Required. ${qty} ${unit}. ${requirement.description}. These hours are not assessed and this line is not in the estimate total.`,
   });
 }

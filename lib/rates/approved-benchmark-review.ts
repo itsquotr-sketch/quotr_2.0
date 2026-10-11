@@ -126,11 +126,23 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
   "bathroom.fixture.vanity.install.hours_each": { hoursPerUnit: 4, unit: "each", workbookRow: 113, plain: "2 people 2 hours" },
 };
 
-/** Workbook says Review required and supplies no person-hours. */
+/**
+ * Workbook says Review required and supplies no person-hours.
+ * Deck hole excavation stays unresolved on its own line
+ * (deck.hole.excavate.hours_per_hole). It is not a second concrete rate.
+ */
 export const UNRESOLVED_PRODUCTIVITY_KEYS = [
+  "retaining_wall.excavation.hours_per_m3",
+] as const;
+
+/**
+ * No live, historical, calibration, or company-override money consumer.
+ * Live deck concrete is hours per bag. Live sleeper install is 0.22 h/ea.
+ * Kept so an existing company row can still be read. Not an owner decision.
+ */
+export const DORMANT_PRODUCTIVITY_KEYS = [
   "deck.concrete.place.hours_per_hole",
   "retaining_wall.sleeper.sleepers.install.hours_per_m2",
-  "retaining_wall.excavation.hours_per_m3",
 ] as const;
 
 /**
@@ -255,4 +267,8 @@ export function approvedProductivityHours(
 
 export function isUnresolvedProductivityKey(key: string): boolean {
   return (UNRESOLVED_PRODUCTIVITY_KEYS as readonly string[]).includes(key);
+}
+
+export function isDormantProductivityKey(key: string): boolean {
+  return (DORMANT_PRODUCTIVITY_KEYS as readonly string[]).includes(key);
 }

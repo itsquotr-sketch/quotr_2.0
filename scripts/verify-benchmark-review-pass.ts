@@ -35,6 +35,7 @@ import {
   BATHROOM_GIB_WALL_LINING_HOURS_PER_M2,
   LOOSE_SPOIL_SWELL_FACTOR,
   PRODUCT_IDENTITY_CORRECTION_KEYS,
+  DORMANT_PRODUCTIVITY_KEYS,
   UNRESOLVED_PRODUCTIVITY_KEYS,
 } from "../lib/rates/approved-benchmark-review";
 import { SPECIFIC_MATERIAL_RATE_GROUPS } from "../lib/rates/specific-material-catalogue";
@@ -141,16 +142,20 @@ check(
   Object.keys(APPROVED_PRODUCTIVITY).length === 104
 );
 check(
-  "three review-required keys stay unresolved",
-  UNRESOLVED_PRODUCTIVITY_KEYS.length === 3 &&
-    UNRESOLVED_PRODUCTIVITY_KEYS.every(
-      (key) => !(key in APPROVED_PRODUCTIVITY)
-    )
+  "retaining-wall excavation m³ stays unresolved",
+  UNRESOLVED_PRODUCTIVITY_KEYS.length === 1 &&
+    UNRESOLVED_PRODUCTIVITY_KEYS[0] === "retaining_wall.excavation.hours_per_m3" &&
+    !(UNRESOLVED_PRODUCTIVITY_KEYS[0] in APPROVED_PRODUCTIVITY)
+);
+check(
+  "two unused productivity keys are dormant, not an owner decision",
+  DORMANT_PRODUCTIVITY_KEYS.length === 2 &&
+    DORMANT_PRODUCTIVITY_KEYS.every((key) => !(key in APPROVED_PRODUCTIVITY))
 );
 
 const unresolved = resolveProductivity({
-  productivityKey: "deck.concrete.place.hours_per_hole",
-  unit: "hole",
+  productivityKey: "retaining_wall.excavation.hours_per_m3",
+  unit: "m3",
   fallbackHoursPerUnit: 9,
   rates: [],
 });
@@ -158,6 +163,42 @@ check(
   "unresolved productivity does not use the caller fallback",
   unresolved.hoursPerUnit === 0 && unresolved.sourceType === "missing",
   `hours=${unresolved.hoursPerUnit} source=${unresolved.sourceType}`
+);
+
+const dormant = resolveProductivity({
+  productivityKey: "deck.concrete.place.hours_per_hole",
+  unit: "hole",
+  fallbackHoursPerUnit: 9,
+  rates: [],
+});
+check(
+  "dormant productivity does not become a priced default",
+  dormant.hoursPerUnit === 0 && dormant.sourceType === "missing",
+  `hours=${dormant.hoursPerUnit} source=${dormant.sourceType}`
+);
+const dormantCompany = resolveProductivity({
+  productivityKey: "deck.concrete.place.hours_per_hole",
+  unit: "hole",
+  fallbackHoursPerUnit: 9,
+  rates: [
+    {
+      id: "co-dormant-hole",
+      rate_type: "productivity",
+      trade: null,
+      work_area_type: null,
+      item_key: "deck.concrete.place.hours_per_hole",
+      label: "Stored hole rate",
+      unit: "hole",
+      cost_rate: 0.4,
+      sell_rate: null,
+      markup_percent: null,
+      active: true,
+    },
+  ],
+});
+check(
+  "a stored company row on a dormant key can still be read",
+  dormantCompany.hoursPerUnit === 0.4 && dormantCompany.sourceType === "user_rate"
 );
 
 const sheet = resolveProductivity({

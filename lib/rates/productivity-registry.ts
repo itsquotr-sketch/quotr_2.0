@@ -127,7 +127,12 @@ export function isLegacyProductivityCatalogueEntry(
 ): boolean {
   // Prefer catalogue support flag. Label-only fallback avoids treating
   // active keys whose descriptions merely mention legacy alternatives.
-  if (entry.calculatorSupport === "leftover") return true;
+  if (
+    entry.calculatorSupport === "leftover" ||
+    entry.calculatorSupport === "inactive"
+  ) {
+    return true;
+  }
   const label = entry.label.toLowerCase();
   return (
     /\blegacy\b/.test(label) ||
@@ -148,7 +153,8 @@ export function productivityLegacyKind(
     /\bnot used for detailed\b/.test(blob) ||
     /\bnot consumed for detailed\b/.test(blob) ||
     /\bleftover\b/.test(entry.label.toLowerCase()) ||
-    entry.calculatorSupport === "leftover"
+    entry.calculatorSupport === "leftover" ||
+    entry.calculatorSupport === "inactive"
   ) {
     return "not_used_for_detailed_estimating";
   }

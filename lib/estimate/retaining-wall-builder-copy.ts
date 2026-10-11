@@ -225,7 +225,7 @@ export function timberLabourLabel(componentKey: string, unknownAllowance: boolea
   if (componentKey.endsWith("novacoil.install")) return "Drainage installation";
   if (componentKey.endsWith("backfill.place")) return "Drainage backfill";
   if (componentKey.includes("excavation.bulk.labour")) {
-    return unknownAllowance ? "Excavation allowance" : "Excavation";
+    return unknownAllowance ? "Unmeasured bulk excavation" : "Excavation";
   }
   if (componentKey.endsWith("posts.install")) return "Post installation";
   if (componentKey.endsWith("sleepers.install")) return "Sleeper installation";

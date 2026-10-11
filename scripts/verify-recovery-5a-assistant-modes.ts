@@ -17,6 +17,10 @@ import {
 import { resolveAttentionNavigation } from "../lib/assistant/mode/attention";
 import { ASSISTANT_MODES_PRIMARY } from "../lib/assistant/mode/flags";
 import { ASSISTANT_ACTION_LABELS } from "../lib/assistant/presentation/action-labels";
+import {
+  estimateReadyLayoutAt,
+  estimateReadySidebarPolicy,
+} from "../lib/assistant/presentation/estimate-ready-layout";
 import { resolveActiveDisclosureStage } from "../lib/assistant/progressive-disclosure";
 import { classifyResolvedSell } from "../lib/commercial-engine/core/cost-first-authority";
 import { deriveSellFromCost } from "../lib/commercial-engine/core/sell-from-margin";
@@ -173,18 +177,30 @@ check(
   "11 Estimate Ready primary surface shown once",
   (shell.match(/<EstimateReadySurface/g) ?? []).length === 1
 );
+const readyLayout = estimateReadySidebarPolicy("estimate_ready");
+const planningLayout = estimateReadySidebarPolicy("planning");
+const readyWidths = [1280, 1024, 768, 390, 320].map((width) =>
+  estimateReadyLayoutAt(width)
+);
 check(
   "12 desktop sidebar not duplicate Assistant",
-  estimatePanel.includes("compactCommercialSidebar") &&
+  readyLayout.singleColumn &&
+    !readyLayout.mountsCommercialSidebar &&
+    planningLayout.mountsCommercialSidebar &&
+    !planningLayout.singleColumn &&
+    shell.includes("estimateReadySidebarPolicy(assistantMode)") &&
+    estimatePanel.includes("compactCommercialSidebar") &&
     estimatePanel.includes("!compactCommercialSidebar") &&
     !estimatePanel.includes("ClarifyPanel") &&
     !estimatePanel.includes("<JobPlanPanel") &&
-    shell.includes('compactCommercialSidebar={assistantMode === "estimate_ready"}')
+    readFileSync("components/assistant/mode/EstimateOverview.tsx", "utf8").includes(
+      "data-estimate-overview-commercial"
+    )
 );
 check(
   "13 mobile sidebar absent",
-  readySurface.includes("lg:hidden") &&
-    shell.includes('assistantMode === "estimate_ready" && "hidden lg:block"') &&
+  readyWidths.every((layout) => layout.columns === 1 && layout.commercialSidebar === false) &&
+    readySurface.includes("lg:hidden") &&
     !readySurface.includes("lg:grid-cols")
 );
 check(
@@ -349,7 +365,9 @@ check(
 );
 check(
   "34 no permanent sidebar",
-  shell.includes('assistantMode === "estimate_ready" && "hidden lg:block"') &&
+  !estimateReadySidebarPolicy("estimate_ready").mountsCommercialSidebar &&
+    estimateReadyLayoutAt(1280).commercialSidebar === false &&
+    estimateReadyLayoutAt(390).columns === 1 &&
     readySurface.includes("data-estimate-ready-mobile-pricing")
 );
 check(
@@ -556,7 +574,8 @@ check(
 );
 check(
   "59 mobile stale mode has no sidebar",
-  shell.includes('assistantMode === "estimate_ready" && "hidden lg:block"') &&
+  estimateReadyLayoutAt(390).commercialSidebar === false &&
+    estimateReadyLayoutAt(320).columns === 1 &&
     readySurface.includes('data-estimate-stale={isStale ? "true" : "false"}') &&
     !readySurface.includes("lg:grid-cols")
 );

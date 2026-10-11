@@ -825,9 +825,16 @@ const legacyFacts: EstimateFact[] = [
 ];
 const legacyEstimate = calculateEstimate(estimateCtx(legacyFacts));
 check(
-  "AF flat legacy Ceiling still uses old calculator unchanged",
+  "AF selected plasterboard on the flat path stays Pricing Required",
   !hasCanonicalCeilingsPortions(legacyFacts, "c1") &&
-    legacyEstimate.lineItems.some((item) => /materials allowance/i.test(item.label)) &&
+    !legacyEstimate.lineItems.some((item) => /materials allowance/i.test(item.label)) &&
+    legacyEstimate.lineItems.some(
+      (item) =>
+        /plasterboard ceiling lining/i.test(item.label) &&
+        item.includedInTotal === false &&
+        item.rateSourceType === "missing"
+    ) &&
+    legacyEstimate.missingInfo.some((row) => /sheet size/i.test(row)) &&
     !legacyEstimate.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&

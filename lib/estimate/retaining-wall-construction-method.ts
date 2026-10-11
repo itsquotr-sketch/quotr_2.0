@@ -60,7 +60,7 @@ export function resolveTimberExcavationMethod(
 
 /**
  * Integer plant days from machine hours (1E).
- * Manual method: 0. Unknown excavation allowance is not a plant driver.
+ * Manual method: 0. Unmeasured wall-face excavation is not a plant driver.
  */
 export function timberMiniExcavatorDays(params: {
   method: RwTimberPilingMethod;

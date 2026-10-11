@@ -9,6 +9,11 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import {
+  estimateBasisExpandedAt,
+  estimateReadyLayoutAt,
+  estimateReadySidebarPolicy,
+} from "../lib/assistant/presentation/estimate-ready-layout";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -92,9 +97,12 @@ check(
 check(
   3,
   "Estimate Basis desktop expanded / mobile collapsed",
-  shell.includes("matchMedia") &&
-    shell.includes("(min-width: 1024px)") &&
-    shell.includes("return false;")
+  estimateBasisExpandedAt(1280) &&
+    estimateBasisExpandedAt(1024) &&
+    !estimateBasisExpandedAt(768) &&
+    !estimateBasisExpandedAt(390) &&
+    !estimateBasisExpandedAt(320) &&
+    shell.includes("readEstimateBasisDesktop")
 );
 
 check(
@@ -109,8 +117,11 @@ check(
 check(
   5,
   "Mobile hides Commercial Overview sidebar",
-  shell.includes("hidden lg:block") &&
-    shell.includes('assistantMode === "estimate_ready"')
+  estimateReadyLayoutAt(768).commercialSidebar === false &&
+    estimateReadyLayoutAt(390).commercialSidebar === false &&
+    estimateReadyLayoutAt(320).columns === 1 &&
+    !estimateReadySidebarPolicy("estimate_ready").mountsCommercialSidebar &&
+    shell.includes("estimateReadySidebarPolicy(assistantMode)")
 );
 
 check(

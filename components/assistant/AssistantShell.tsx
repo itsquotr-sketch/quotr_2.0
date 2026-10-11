@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { StepperNav } from "@/components/assistant/StepperNav";
@@ -24,6 +32,13 @@ import {
   parseEstimateSection,
 } from "@/lib/assistant/presentation/estimate-section";
 import {
+  ESTIMATE_BASIS_DESKTOP_QUERY,
+  estimateBasisBrief,
+  estimateBasisStartsExpanded,
+  estimateBasisWorkAreas,
+  estimateReadySidebarPolicy,
+} from "@/lib/assistant/presentation/estimate-ready-layout";
+import {
   AssumptionsChecks,
   LabourTakeoff,
   MaterialsTakeoff,
@@ -35,6 +50,18 @@ import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator"
 import { PlanningSurface } from "@/components/assistant/mode/PlanningSurface";
 import { EstimateReadySurface } from "@/components/assistant/mode/EstimateReadySurface";
 import { EditJobSurface } from "@/components/assistant/mode/EditJobSurface";
+
+function subscribeEstimateBasisDesktop(onStoreChange: () => void): () => void {
+  const media = window.matchMedia(ESTIMATE_BASIS_DESKTOP_QUERY);
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
+}
+
+function readEstimateBasisDesktop(): boolean {
+  return estimateBasisStartsExpanded(
+    window.matchMedia(ESTIMATE_BASIS_DESKTOP_QUERY).matches
+  );
+}
 import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
 import {
   QuestionBlock,
@@ -401,7 +428,15 @@ export function AssistantShell({
   const [jobPlanEditFocus, setJobPlanEditFocus] = useState<JobPlanEditFocus | null>(
     null
   );
-  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+  const estimateBasisDesktop = useSyncExternalStore(
+    subscribeEstimateBasisDesktop,
+    readEstimateBasisDesktop,
+    () => false
+  );
+  const [estimateBasisOverride, setEstimateBasisOverride] = useState<boolean | null>(
+    null
+  );
+  const jobDetailsOpen = estimateBasisOverride ?? estimateBasisDesktop;
   const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
     useState(false);
   const marginSaveLockRef = useRef(false);
@@ -2851,7 +2886,7 @@ export function AssistantShell({
           assistantMode === "planning" &&
             !briefSubmitted &&
             "xl:grid-cols-[200px_minmax(0,1fr)]",
-          assistantMode === "estimate_ready" && "grid-cols-1",
+          estimateReadySidebarPolicy(assistantMode).singleColumn && "grid-cols-1",
           assistantMode === "edit_job" && "grid-cols-1"
         )}
         data-assistant-main-grid
@@ -3094,16 +3129,16 @@ export function AssistantShell({
                     summaryLine={setupSummaryLine}
                     chips={setupChips}
                     expanded={jobDetailsOpen}
-                    onExpandedChange={setJobDetailsOpen}
+                    onExpandedChange={setEstimateBasisOverride}
                   >
                     <div className="space-y-4 text-sm">
-                      {(briefText || project.briefText) ? (
+                      {estimateBasisBrief(briefText, project.briefText) ? (
                         <dl>
                           <dt className="text-sm font-semibold text-foreground/80">
                             Project brief
                           </dt>
                           <dd className="mt-1 text-sm leading-6 text-foreground/80">
-                            {briefText || project.briefText}
+                            {estimateBasisBrief(briefText, project.briefText)}
                           </dd>
                         </dl>
                       ) : null}
@@ -3113,7 +3148,7 @@ export function AssistantShell({
                         </dt>
                         <dd>
                           <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
-                            {workAreaLists.included.map((name) => (
+                            {estimateBasisWorkAreas(workAreaLists.included).map((name) => (
                               <li key={name}>{name}</li>
                             ))}
                           </ul>
@@ -3880,7 +3915,8 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        {assistantMode === "planning" && briefSubmitted ? (
+        {estimateReadySidebarPolicy(assistantMode).mountsCommercialSidebar &&
+        briefSubmitted ? (
         <div
           ref={estimatePanelAnchorRef}
           className="order-3 min-w-0 lg:order-none lg:self-start"

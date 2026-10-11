@@ -27,7 +27,10 @@ import {
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { findCompanyProductivityRate } from "@/lib/estimate/productivity";
-import { approvedProductivityHours } from "@/lib/rates/approved-benchmark-review";
+import {
+  approvedProductivityHours,
+  isUnresolvedProductivityKey,
+} from "@/lib/rates/approved-benchmark-review";
 import { rateUnitsMatch, resolveLabourRate } from "@/lib/estimate/rates";
 import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
 import type {
@@ -133,8 +136,6 @@ import {
   RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS,
   RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR,
   RW_DRAINAGE_AGGREGATE_PROCUREMENT_NOTE,
-  RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2,
-  RW_EXCAVATION_UNKNOWN_TREATMENT,
   RW_TIMBER_AUTHORITY_WITH_ALLOWANCE,
   RW_TIMBER_1D_ACCESS_RULE,
   RW_TIMBER_CONCRETE_TREATMENT,
@@ -1068,21 +1069,30 @@ function labourSlot(params: {
    * the manual path. Manual stays on method fallback until DNA-V2-EST-1.
    */
   ignoreCompanyRate?: boolean;
+  /** Wall-face scope with no bank volume. Do not attach an hours/m³ key. */
+  forceUnpriced?: boolean;
+  unpricedNote?: string;
 }): LabourRequirement {
-  const company = params.ignoreCompanyRate
-    ? null
-    : findCompanyProductivityRate(
-        params.rates,
-        params.productivityKey,
-        params.unit
-      );
+  const company =
+    params.forceUnpriced || params.ignoreCompanyRate
+      ? null
+      : findCompanyProductivityRate(
+          params.rates,
+          params.productivityKey,
+          params.unit
+        );
   const approved = approvedProductivityHours(params.productivityKey);
   const starter =
     timber1DProductivityStarter(params.productivityKey) ??
     sleeper2AProductivityStarter(params.productivityKey) ??
     masonry2BProductivityStarter(params.productivityKey);
-  const hoursPerUnit =
-    company?.cost_rate != null
+  const unresolvedWithoutCompany =
+    !params.forceUnpriced &&
+    company?.cost_rate == null &&
+    isUnresolvedProductivityKey(params.productivityKey);
+  const hoursPerUnit = params.forceUnpriced || unresolvedWithoutCompany
+    ? null
+    : company?.cost_rate != null
       ? Number(company.cost_rate)
       : params.ignoreCompanyRate && params.fallbackHoursPerUnit != null
         ? params.fallbackHoursPerUnit
@@ -1116,8 +1126,12 @@ function labourSlot(params: {
       ? []
       : [
           {
-            key: "productivity_required",
-            text: `Needs productivity for ${params.description} (${params.quantity} ${params.unit}). Not zero hours.`,
+            key: params.forceUnpriced
+              ? "excavation_cross_section_required"
+              : "productivity_required",
+            text:
+              params.unpricedNote ??
+              `Needs productivity for ${params.description} (${params.quantity} ${params.unit}). Not zero hours.`,
             source: "calculator_default",
           },
         ],
@@ -1130,14 +1144,16 @@ function labourSlot(params: {
     trade: "carpenter",
     baseHours,
     productivityBasis: {
-      key: params.productivityKey,
+      key: params.forceUnpriced ? null : params.productivityKey,
       hoursPerUnit: hoursPerUnit ?? 0,
       unit: params.unit,
       quantity: params.quantity,
     },
     adjustmentRef: { factors: [] },
     adjustedHours: baseHours,
-    rateKey: params.productivityKey,
+    rateKey: params.forceUnpriced
+      ? "retaining_wall.excavation.unmeasured_face"
+      : params.productivityKey,
     hourlyCost: priced ? params.hourlyCost : null,
     totalCost: priced ? round2(baseHours * params.hourlyCost) : null,
     rateProvenance: priced
@@ -2069,19 +2085,22 @@ export function commercializeRetainingWall(params: {
       labourSlot({
         workAreaId,
         componentKey: RW_EXCAVATION_LABOUR_COMPONENT,
-        description:
-          "Excavation labour (EXCAVATION ALLOWANCE — bulk volume not measured, not m³ productivity)",
-        productivityKey: RW_PRODUCTIVITY_KEYS.excavationM3,
+        description: `Unmeasured bulk excavation — wall face ${face} m², bank volume unknown`,
+        productivityKey: "retaining_wall.excavation.unmeasured_face",
         unit: "m2",
         quantity: face,
         rates,
         hourlyCost: labourRate.costRate,
         rateProvenance: timberLabourSource,
-        fallbackHoursPerUnit: RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2,
+        forceUnpriced: true,
+        unpricedNote: `Wall face area is ${face} m² from length × average retained height. Depth and cross-section are not confirmed, so bank volume is not calculated. This square metre is not a volume and is not multiplied by hours per m³.`,
       })
     );
     assumptions.push(
-      `Excavation required without measured m³. ${RW_EXCAVATION_UNKNOWN_TREATMENT} at ${RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2} h/face-m². ${sleeperSystem ? "Post-hole work stays in post installation labour." : "Pile-hole work stays in piling labour."} No invented bulk m³.`
+      `Excavation is required. Confirmed geometry is wall face ${face} m². No depth or cross-section is confirmed, so bank m³ is not calculated and this square metre is not priced as a volume. Manual bulk-excavation labour is Pricing Required. ${sleeperSystem ? "Post-hole work stays in post installation labour." : "Pile-hole work stays in piling labour."} Mini-excavator hire, when the machine path runs, covers piles and measured bulk only.`
+    );
+    missingInfo.push(
+      `Bulk excavation: wall face is ${face} m². Enter the excavation depth and cross-section, or an explicit bank volume in m³, before this dig can be priced.`
     );
   }
 
@@ -2238,6 +2257,9 @@ export function commercializeRetainingWall(params: {
   }
 
   const requirements = [...pricedMaterials, ...labour, ...plant];
+  const excavationLabour = labour.find(
+    (item) => item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT
+  );
   let coverage = evaluateRetainingWallCommercialCoverage({
     physical,
     requirements,
@@ -2245,13 +2267,7 @@ export function commercializeRetainingWall(params: {
   });
   coverage = coverage.map((row) => {
     if (row.key !== "excavation_labour") return row;
-    const excavationLabour = labour.find(
-      (item) => item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT
-    );
-    if (
-      excavationLabour?.priced === true &&
-      excavationLabour.description.includes("allowance")
-    ) {
+    if (/unmeasured bulk excavation|allowance/i.test(excavationLabour?.description ?? "")) {
       return {
         ...row,
         state: "EXPLICIT_ALLOWANCE" as const,
@@ -2274,17 +2290,19 @@ export function commercializeRetainingWall(params: {
   const excavationAllowance = labour.some(
     (item) =>
       item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT &&
-      item.description.includes("EXCAVATION ALLOWANCE")
+      /unmeasured bulk excavation|allowance/i.test(item.description)
   );
   const reason = commerciallyReady
     ? excavationAllowance
-      ? `${
-          timberSystem
-            ? RW_TIMBER_AUTHORITY_WITH_ALLOWANCE
-            : sleeperSystem
-              ? RW_SLEEPER_AUTHORITY_WITH_ALLOWANCE
-              : RW_MASONRY_AUTHORITY_WITH_ALLOWANCE
-        }. Detailed component money is authoritative. Excavation is an explicit allowance, not measured m³.`
+      ? excavationLabour?.priced === true
+        ? `${
+            timberSystem
+              ? RW_TIMBER_AUTHORITY_WITH_ALLOWANCE
+              : sleeperSystem
+                ? RW_SLEEPER_AUTHORITY_WITH_ALLOWANCE
+                : RW_MASONRY_AUTHORITY_WITH_ALLOWANCE
+          }. Detailed component money is authoritative. Excavation is an explicit allowance, not measured m³.`
+        : "Excavation labour is Pricing Required and is not in the estimate total. Other detailed component money stays."
       : "Required commercial categories are covered. Detailed component money is authoritative."
     : detailedMoney
       ? "Detailed money remains after promotion. A missing exact material rate is Pricing Required and does not restore package."

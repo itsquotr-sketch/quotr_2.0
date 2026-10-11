@@ -547,18 +547,21 @@ const unknownReview = composeBuilderReview({
   requirements: unknown.requirements,
 });
 check(
-  "32 unknown excavation still called allowance",
+  "32 unknown excavation is wall face area, not a volume",
   unknownReview.workAreas[0]?.categories
     .flatMap((cat) => cat.lines)
     .some(
       (line) =>
         line.componentKey === RW_EXCAVATION_LABOUR_COMPONENT &&
-        line.label === "Excavation allowance"
+        line.label === "Unmeasured bulk excavation" &&
+        line.unit === "m2"
     ) &&
     unknown.lineItems.some(
       (item) =>
         item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT &&
-        /EXCAVATION ALLOWANCE/i.test(item.label)
+        /unmeasured bulk excavation/i.test(item.label) &&
+        item.unit === "m2" &&
+        item.itemKey !== "retaining_wall.excavation.hours_per_m3"
     )
 );
 check(

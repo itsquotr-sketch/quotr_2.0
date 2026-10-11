@@ -56,10 +56,8 @@ import { RW_PRODUCTIVITY_KEYS } from "../lib/estimate/retaining-wall-productivit
 import {
   RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS,
   RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR,
-  RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2,
   RW_TIMBER_1D_MATERIAL_STARTERS,
   RW_TIMBER_1D_PRODUCTIVITY_STARTERS,
-  RW_TIMBER_AUTHORITY_WITH_ALLOWANCE,
   RW_TIMBER_CONCRETE_TREATMENT,
   RW_TIMBER_FIXINGS_KIND,
   RW_TIMBER_FIXINGS_METHOD,
@@ -507,15 +505,22 @@ const piling = lab(ownerCommercial.requirements, RW_TIMBER_PILE_LABOUR_COMPONENT
 const faceLab = lab(ownerCommercial.requirements, RW_TIMBER_FACE_LABOUR_COMPONENT);
 const drainLab = lab(ownerCommercial.requirements, RW_DRAINAGE_LABOUR_COMPONENT);
 const backfillLab = lab(ownerCommercial.requirements, RW_BACKFILL_LABOUR_COMPONENT);
+const unknownExcavLine = ownerCalc.lineItems.find(
+  (item) => item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT
+);
 check(
-  "18 excavation unknown uses labelled face-m² allowance, not 0 m³",
-  excav?.priced === true &&
+  "18 excavation unknown shows face area as Pricing Required, not assessed hours",
+  excav?.priced !== true &&
+    excav?.productivityBasis.unit === "m2" &&
+    (excav?.productivityBasis.quantity ?? 0) > 0 &&
+    excav.description.toLowerCase().includes("unmeasured bulk excavation") &&
+    excav.productivityBasis.key == null &&
     excav.productivityBasis.unit === "m2" &&
-    near(
-      excav.productivityBasis.hoursPerUnit,
-      RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2
-    ) &&
-    excav.description.toLowerCase().includes("allowance")
+    unknownExcavLine?.includedInTotal === false &&
+    unknownExcavLine.rateSourceType === "missing" &&
+    (unknownExcavLine.labourHours == null || unknownExcavLine.labourHours === 0) &&
+    (unknownExcavLine.quantity ?? 0) > 0 &&
+    (unknownExcavLine.recommendedCost ?? 0) === 0
 );
 check(
   "19 piling is h/ea",
@@ -605,7 +610,14 @@ check(
       4
     )
 );
-check("29 required + unknown m³ never prices zero excavation", (excav?.totalCost ?? 0) > 0);
+check(
+  "29 required + unknown m³ never prices zero excavation",
+  excav?.priced !== true &&
+    (unknownExcavLine?.quantity ?? 0) > 0 &&
+    unknownExcavLine?.includedInTotal === false &&
+    unknownExcavLine.rateSourceType === "missing" &&
+    (unknownExcavLine.recommendedCost ?? 0) === 0
+);
 check(
   "30 backfill m³ is not inferred as bulk excavation",
   ownerPhysical.excavationMode !== "EXPLICIT_VOLUME"
@@ -827,9 +839,12 @@ check(
     (fixings?.specification ?? "").includes("QUOTR_STARTER_ALLOWANCE")
 );
 check(
-  "R1-11 excavation unknown remains explicit allowance",
-  excav?.description.includes("EXCAVATION ALLOWANCE") === true &&
-    ownerCommercial.reason.includes(RW_TIMBER_AUTHORITY_WITH_ALLOWANCE)
+  "R1-11 unmeasured excavation stays wall face area and Pricing Required",
+  excav?.description.toLowerCase().includes("unmeasured bulk excavation") === true &&
+    excav.productivityBasis.unit === "m2" &&
+    excav.productivityBasis.key == null &&
+    ownerCommercial.reason.includes("Pricing Required") &&
+    ownerCommercial.reason.includes("not in the estimate total")
 );
 const ownerMethod = resolveTimberPilingMethod(
   OWNER_CONSTRAINTS as never,
@@ -864,7 +879,7 @@ check(
 check(
   "R1-15 detailed RW labour is cost-first",
   ownerCalc.lineItems
-    .filter((item) => item.category === "labour")
+    .filter((item) => item.category === "labour" && item.includedInTotal !== false)
     .every(
       (item) =>
         item.sellAuthority === "derived_from_gross_margin" &&
@@ -886,13 +901,13 @@ const companyLabourCalc = calculateRetainingWall(
 check(
   "R1-17 company labour cost override wins",
   companyLabourCalc.lineItems
-    .filter((item) => item.category === "labour")
+    .filter((item) => item.category === "labour" && item.includedInTotal !== false)
     .every((item) => near(item.costRate ?? 0, 78))
 );
 check(
   "R1-18 target GM derives sell correctly",
   companyLabourCalc.lineItems
-    .filter((item) => item.category === "labour")
+    .filter((item) => item.category === "labour" && item.includedInTotal !== false)
     .every((item) =>
       near(item.recommendedSell / item.recommendedCost, 1.25, 0.02)
     ) &&
@@ -916,8 +931,8 @@ check(
 );
 check(
   "R1-21 Owner fixture reconciles",
-  near(ownerEstimate.recommendedCost, 4481.52, 0.5) &&
-    near(ownerEstimate.recommendedSell, 5601.58, 0.5) &&
+  near(ownerEstimate.recommendedCost, 3857.52, 0.5) &&
+    near(ownerEstimate.recommendedSell, 4821.58, 0.5) &&
     ownerProcurement?.purchaseEa === 14 &&
     near(ownerProcurement?.purchaseTotalLm ?? 0, 28.8)
 );
@@ -974,15 +989,15 @@ const intentInward = getIntentLabourAdjustmentFactor({
 });
 check(
   "R2-1 material carry does not affect bulk excavation",
-  near(labourFactor(excavCarryOnly), 1) &&
-    near(labourFactor(excavLine), 1.05) &&
-    !(excavLine?.notes ?? "").toLowerCase().includes("carry")
+  excavCarryOnly?.includedInTotal === false &&
+    unknownExcavLine?.includedInTotal === false &&
+    !(unknownExcavLine?.notes ?? "").toLowerCase().includes("base hrs")
 );
 check(
   "R2-2 site access may affect excavation",
-  near(labourFactor(excavAccessOnly), 1.05) &&
-    near(labourFactor(excavLine), 1.05) &&
-    (excavLine?.notes ?? "").includes("site access")
+  excavAccessOnly?.includedInTotal === false &&
+    (unknownExcavLine?.labourHours == null || unknownExcavLine.labourHours === 0) &&
+    !(unknownExcavLine?.notes ?? "").includes("site access")
 );
 check(
   "R2-3 material carry affects inward-material intents",
@@ -1004,8 +1019,8 @@ check(
   near(intentExcav, 1.05) &&
     near(intentInward, 1.1) &&
     near(accessFactor, 1.1) &&
-    !near(labourFactor(excavLine), 1.155) &&
-    near(labourFactor(excavLine), intentExcav)
+    unknownExcavLine?.includedInTotal === false &&
+    (unknownExcavLine?.labourHours == null || unknownExcavLine.labourHours === 0)
 );
 check(
   "R2-9 spoil distance is not inferred from material carry",
@@ -1094,11 +1109,11 @@ check(
 );
 check(
   "R2-15 Owner direct cost reconciles after excavation-only modifier change",
-  near(ownerEstimate.recommendedCost, 4481.52, 0.5)
+  near(ownerEstimate.recommendedCost, 3857.52, 0.5)
 );
 check(
   "R2-16 Owner sell reconciles at 20% GM",
-  near(ownerEstimate.recommendedSell, 5601.58, 0.5) &&
+  near(ownerEstimate.recommendedSell, 4821.58, 0.5) &&
     near(ownerEstimate.marginPercent, 20)
 );
 check(
@@ -1118,7 +1133,7 @@ check(
 check(
   "R2-19 cost-first labour unchanged",
   ownerCalc.lineItems
-    .filter((item) => item.category === "labour")
+    .filter((item) => item.category === "labour" && item.includedInTotal !== false)
     .every(
       (item) =>
         item.sellAuthority === "derived_from_gross_margin" &&

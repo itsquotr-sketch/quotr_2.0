@@ -18,8 +18,22 @@ import { calculateRetainingWall } from "../lib/estimate/calculators/retaining-wa
 import { buildBathroomDemolitionEnvelope } from "../lib/estimate/bathroom-demolition";
 import type { BathroomGeometryResolution } from "../lib/estimate/bathroom-geometry";
 import { aggregateEstimateLines } from "../lib/estimate/estimate-commercial-engine-adapter";
+import { lineVisibleInEstimateReview } from "../lib/assistant/builder-review/compose";
+import { unpricedLabourStatus } from "../lib/assistant/presentation/estimate-ready-layout";
+import { unknownCostWithoutClientSell } from "../lib/work-areas/manual-pricing-route";
 import { resolveProductivity } from "../lib/estimate/productivity";
-import { UNRESOLVED_PRODUCTIVITY_KEYS } from "../lib/rates/approved-benchmark-review";
+import {
+  DORMANT_PRODUCTIVITY_KEYS,
+  UNRESOLVED_PRODUCTIVITY_KEYS,
+} from "../lib/rates/approved-benchmark-review";
+import {
+  CEILINGS_PORTIONS_FACT_KEY,
+  createEmptyCeilingPortion,
+} from "../lib/estimate/ceilings-portions";
+import {
+  DECK_PRODUCTIVITY_RATE_CATALOGUE,
+  RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
+} from "../lib/rates/specific-material-catalogue";
 import { applyInternalWallsFactWrite } from "../lib/estimate/internal-walls-wall-types";
 import { INTERNAL_WALLS_JOB_SCOPE_FACT_KEY } from "../lib/estimate/internal-walls-scope";
 import { INTERNAL_WALLS_ADD_WALL_TYPE_KEY } from "../lib/estimate/internal-walls-wall-types";
@@ -319,6 +333,76 @@ const ceilings = calculateCeilings(
   ceilingsArea
 );
 report("Ceilings 30 m² plasterboard on existing structure", ceilings);
+const unspecifiedCeilings = calculateCeilings(
+  ctx(
+    [ceilingsArea],
+    [
+      fact("ceilings.area_m2", "c1", 30),
+      fact("ceilings.structure_type", "c1", "Existing structure"),
+    ]
+  ),
+  ceilingsArea
+);
+report("Ceilings 30 m² unspecified lining", unspecifiedCeilings);
+const sheetRate: OrganisationRate = {
+  id: "co-sheet",
+  rate_type: "material",
+  trade: null,
+  work_area_type: null,
+  item_key: "ceilings.plasterboard.standard.13mm.sheet",
+  label: "Company plasterboard sheet",
+  unit: "sheet",
+  cost_rate: 42,
+  sell_rate: null,
+  markup_percent: null,
+  active: true,
+};
+const ceilingsWithSheetRate = calculateCeilings(
+  ctx(
+    [ceilingsArea],
+    [
+      fact("ceilings.area_m2", "c1", 30),
+      fact("ceilings.structure_type", "c1", "Existing structure"),
+      fact("ceilings.ceiling_type", "c1", "Plasterboard"),
+    ],
+    [sheetRate]
+  ),
+  ceilingsArea
+);
+report("Ceilings 30 m² plasterboard with a company sheet rate", ceilingsWithSheetRate);
+const nestedPortion = createEmptyCeilingPortion({
+  id: "fa_book_ceiling_000000000000000001",
+  label: "Lounge",
+});
+nestedPortion.structure.family = "existing_framing";
+nestedPortion.structure.job_scope = "reline_existing_suitable_framing";
+nestedPortion.lining.family = "plasterboard";
+nestedPortion.lining.plasterboard_product = "standard";
+nestedPortion.lining.thickness_mm = 13;
+nestedPortion.lining.sheet_length_mm = 3000;
+nestedPortion.lining.sheet_width_mm = 1200;
+nestedPortion.geometry.mode = "area_only";
+nestedPortion.geometry.area_m2 = 30;
+nestedPortion.finish.insulation_included = false;
+nestedPortion.finish.painting_included = false;
+nestedPortion.finish.stopping_included = false;
+nestedPortion.finish.demolition_included = false;
+nestedPortion.has_bulkheads = false;
+const nestedCeilings = calculateCeilings(
+  ctx(
+    [ceilingsArea],
+    [
+      {
+        key: CEILINGS_PORTIONS_FACT_KEY,
+        work_area_id: "c1",
+        source: "user",
+        value: [nestedPortion],
+      },
+    ]
+  ),
+  ceilingsArea
+);
+report("Ceilings nested 30 m² plasterboard portion", nestedCeilings);
 
 const deckArea = wa("d1", "deck", "Deck");
 const deckFacts = [
@@ -515,9 +599,183 @@ assert(
 );
 
 const hole = deck.lineItems.find((row) => row.itemKey === "deck.hole.excavate.hours_per_hole");
+const holeStatus = unpricedLabourStatus(hole?.quantity ?? null, hole?.unit ?? null);
 assert(
   "deck hole excavation stays unresolved and out of the total",
-  hole?.rateSourceType === "missing" && hole.includedInTotal === false && (hole.recommendedCost ?? 0) === 0
+  hole?.rateSourceType === "missing" &&
+    hole.includedInTotal === false &&
+    (hole.recommendedCost ?? 0) === 0 &&
+    (hole.quantity ?? 0) > 0 &&
+    (hole.labourHours == null || hole.labourHours === 0) &&
+    holeStatus.includes(String(hole.quantity)) &&
+    holeStatus.includes("Pricing Required") &&
+    !holeStatus.startsWith("0 ") &&
+    lineVisibleInEstimateReview(hole) &&
+    unknownCostWithoutClientSell({
+      cost_known: false,
+      total_sell: hole.recommendedSell,
+      visible_on_quote: true,
+    })
+);
+const selectedLining = ceilings.lineItems.find((row) =>
+  /plasterboard ceiling lining/i.test(row.label)
+);
+const selectedLabour = ceilings.lineItems.find((row) =>
+  /plasterboard ceiling labour/i.test(row.label)
+);
+assert(
+  "selected plasterboard ceiling is Pricing Required, not the $75/m² allowance",
+  !ceilings.lineItems.some((row) => /materials allowance/i.test(row.label)) &&
+    selectedLining?.quantity === 30 &&
+    selectedLining.unit === "m²" &&
+    selectedLining.includedInTotal === false &&
+    selectedLining.rateSourceType === "missing" &&
+    (selectedLining.recommendedCost ?? 0) === 0 &&
+    (selectedLining.recommendedSell ?? 0) === 0 &&
+    (selectedLining.notes ?? "").includes("not the $75/m²") &&
+    (selectedLining.notes ?? "").includes("number of sheets is unknown") &&
+    selectedLabour?.includedInTotal === false &&
+    (selectedLabour.labourHours == null || selectedLabour.labourHours === 0) &&
+    money(ceilings.lineItems).cost === 0 &&
+    money(ceilings.lineItems).sell === 0 &&
+    ceilings.missingInfo.some((row) => /sheet size/i.test(row)) &&
+    lineVisibleInEstimateReview(selectedLining) &&
+    unknownCostWithoutClientSell({
+      cost_known: false,
+      total_sell: selectedLining.recommendedSell,
+      visible_on_quote: true,
+    })
+);
+const provisional = unspecifiedCeilings.lineItems.find((row) =>
+  /materials allowance/i.test(row.label)
+);
+assert(
+  "unspecified ceiling keeps an explicit provisional $75/m² package",
+  provisional?.quantity === 30 &&
+    provisional.recommendedCost === 2250 &&
+    provisional.unit === "m²" &&
+    (provisional.notes ?? "").includes("Provisional materials package") &&
+    (provisional.notes ?? "").includes("not a named lining") &&
+    money(unspecifiedCeilings.lineItems).cost === 3870 &&
+    money(unspecifiedCeilings.lineItems).sell === 4837.5 &&
+    money(unspecifiedCeilings.lineItems).gst === 725.63
+);
+assert(
+  "a company sheet rate is not applied to an uncounted plasterboard ceiling",
+  money(ceilingsWithSheetRate.lineItems).cost === 0 &&
+    money(ceilingsWithSheetRate.lineItems).sell === 0 &&
+    ceilingsWithSheetRate.lineItems.every(
+      (row) => row.includedInTotal === false && (row.recommendedCost ?? 0) === 0
+    )
+);
+const nestedSheets = nestedCeilings.lineItems.find((row) =>
+  row.itemKey === "sheet.plasterboard.standard.13mm.3000x1200.each"
+);
+const nestedLabour = nestedCeilings.lineItems.find((row) =>
+  row.itemKey === "ceilings.plasterboard.install.hours_per_sheet"
+);
+assert(
+  "nested plasterboard ceiling prices sheets and does not add the flat allowance",
+  nestedCeilings.lineItems.length > 0 &&
+    !nestedCeilings.lineItems.some((row) => /materials allowance/i.test(row.label)) &&
+    nestedSheets?.quantity === 10 &&
+    nestedSheets.recommendedCost === 352 &&
+    nestedLabour?.quantity === 9 &&
+    nestedLabour.labourHours === 3.75 &&
+    nestedLabour.recommendedCost === 225 &&
+    money(nestedCeilings.lineItems).cost === 652 &&
+    money(nestedCeilings.lineItems).sell === 815.15 &&
+    money(nestedCeilings.lineItems).gst === 122.27
+);
+const unmeasuredWall = calculateRetainingWall(
+  ctx(
+    [rwArea],
+    [
+      fact("retaining_wall.length_m", "r1", 10),
+      fact("retaining_wall.height_m", "r1", 1.2),
+      fact("retaining_wall.material", "r1", "Timber"),
+      fact("retaining_wall.excavation_required", "r1", true),
+    ]
+  ),
+  rwArea
+);
+report("Retaining wall 10 m × 1.2 m timber, excavation required, no depth", unmeasuredWall);
+const unmeasuredExcavation = unmeasuredWall.lineItems.find(
+  (row) => row.componentKey === "retaining_wall.excavation.bulk.labour"
+);
+const unmeasuredPlant = unmeasuredWall.lineItems.find(
+  (row) => row.itemKey === "plant.mini_excavator.day"
+);
+assert(
+  "10 m × 1.2 m wall face stays m² and Pricing Required",
+  unmeasuredExcavation?.quantity === 12 &&
+    unmeasuredExcavation.unit === "m2" &&
+    unmeasuredExcavation.includedInTotal === false &&
+    unmeasuredExcavation.rateSourceType === "missing" &&
+    (unmeasuredExcavation.recommendedCost ?? 0) === 0 &&
+    (unmeasuredExcavation.labourHours == null || unmeasuredExcavation.labourHours === 0) &&
+    unmeasuredExcavation.itemKey !== "retaining_wall.excavation.hours_per_m3" &&
+    !/m³|m3|hours_per_m3/i.test(unmeasuredExcavation.label) &&
+    lineVisibleInEstimateReview(unmeasuredExcavation) &&
+    unknownCostWithoutClientSell({
+      cost_known: false,
+      total_sell: unmeasuredExcavation.recommendedSell,
+      visible_on_quote: true,
+    }) &&
+    Math.abs((unmeasuredPlant?.recommendedCost ?? 0) - 270) < 1e-6 &&
+    unmeasuredWall.missingInfo.some((row) => /bank volume/i.test(row)) &&
+    money(unmeasuredWall.lineItems).cost === 2730.35 &&
+    money(unmeasuredWall.lineItems).sell === 3412.69
+);
+const measuredWall = calculateRetainingWall(
+  ctx(
+    [rwArea],
+    [
+      fact("retaining_wall.length_m", "r1", 10),
+      fact("retaining_wall.height_m", "r1", 1.2),
+      fact("retaining_wall.material", "r1", "Timber"),
+      fact("retaining_wall.excavation_required", "r1", true),
+      fact("retaining_wall.excavation_volume_m3", "r1", 4),
+    ]
+  ),
+  rwArea
+);
+report("Retaining wall 10 m × 1.2 m timber, explicit 4 m³ bank", measuredWall);
+const measuredExcavation = measuredWall.lineItems.filter(
+  (row) => row.componentKey === "retaining_wall.excavation.bulk.labour"
+);
+assert(
+  "measured bank volume does not also charge the wall-face line",
+  measuredExcavation.length === 1 &&
+    measuredExcavation[0]?.unit === "m3" &&
+    measuredExcavation[0]?.quantity === 4 &&
+    measuredExcavation[0]?.includedInTotal !== false &&
+    measuredExcavation[0]?.labourHours === 1.67 &&
+    measuredExcavation[0]?.recommendedCost === 100.2 &&
+    !measuredExcavation.some((row) => /unmeasured bulk excavation/i.test(row.label)) &&
+    money(measuredWall.lineItems).cost === 2830.55
+);
+assert(
+  "dormant productivity keys are inactive and not review-required",
+  DORMANT_PRODUCTIVITY_KEYS.every((key) => {
+    const row = [
+      ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
+      ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
+    ].find((entry) => entry.item_key === key);
+    const resolved = resolveProductivity({
+      productivityKey: key,
+      unit: row?.unit,
+      fallbackHoursPerUnit: 9,
+      rates: [],
+    });
+    return (
+      row?.calculatorSupport === "inactive" &&
+      resolved.hoursPerUnit === 0 &&
+      resolved.sourceType === "missing" &&
+      !UNRESOLVED_PRODUCTIVITY_KEYS.includes(key as never)
+    );
+  }) &&
+    UNRESOLVED_PRODUCTIVITY_KEYS.includes("retaining_wall.excavation.hours_per_m3")
 );
 for (const key of UNRESOLVED_PRODUCTIVITY_KEYS) {
   const resolved = resolveProductivity({

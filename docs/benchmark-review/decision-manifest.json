@@ -4584,13 +4584,13 @@
       "key": "deck.concrete.place.hours_per_hole",
       "unit": "hole",
       "previous": null,
-      "approvedConversion": "Review required",
+      "approvedConversion": "Inactive",
       "approvedPersonHoursColumn": null,
-      "plain": "Review required — no current person-hours supplied",
-      "consumerLocations": "lib/estimate/calculators/deck.ts; company rate wins first",
-      "proposedAction": "Hold for an owner person-hour decision.",
-      "appliedResult": "blocked",
-      "exceptionReason": "Review required. Existing starter or Pricing Required path kept. No manufactured hours."
+      "plain": "Inactive — live path is hours per bag",
+      "consumerLocations": "No dynamic, historical, calibration, or company-override money consumer. Catalogue row kept so an existing company rate can still be read.",
+      "proposedAction": "Do not ask for an owner rate. Live deck concrete placement is hours per bag.",
+      "appliedResult": "inactive_dormant",
+      "exceptionReason": "Dormant. Not a second rate. Deck hole excavation stays unresolved on its own line."
     },
     {
       "workbookRow": 59,
@@ -4882,13 +4882,13 @@
       "key": "retaining_wall.sleeper.sleepers.install.hours_per_m2",
       "unit": "m2",
       "previous": null,
-      "approvedConversion": "Review required",
+      "approvedConversion": "Inactive",
       "approvedPersonHoursColumn": null,
-      "plain": "Review required — no current person-hours supplied",
-      "consumerLocations": "lib/estimate/retaining-wall-commercial.ts; company rate wins first",
-      "proposedAction": "Hold for an owner person-hour decision.",
-      "appliedResult": "blocked",
-      "exceptionReason": "Review required. Existing starter or Pricing Required path kept. No manufactured hours."
+      "plain": "Inactive — live path is 0.22 hours per sleeper",
+      "consumerLocations": "No dynamic, historical, calibration, or company-override money consumer. Catalogue row kept so an existing company rate can still be read.",
+      "proposedAction": "Do not ask for an owner rate. Live sleeper installation is 0.22 hours per sleeper.",
+      "appliedResult": "inactive_dormant",
+      "exceptionReason": "Dormant. Not a second rate. Retaining-wall excavation hours per m³ stays unresolved."
     },
     {
       "workbookRow": 81,

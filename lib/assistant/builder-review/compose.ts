@@ -197,10 +197,18 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
 
 const MAX_IMPROVEMENTS = 4;
 
+export function lineVisibleInEstimateReview(item: {
+  includedInTotal?: boolean;
+  rateSource?: string | null;
+}): boolean {
+  if (item.includedInTotal !== false) return true;
+  return classifyRateSource(item.rateSource ?? "") === "missing";
+}
+
 function activeLines(
   items: readonly EstimateLineItem[]
 ): EstimateLineItem[] {
-  return items.filter((item) => item.includedInTotal !== false);
+  return items.filter((item) => lineVisibleInEstimateReview(item));
 }
 
 export function mapLineCategory(
@@ -302,7 +310,9 @@ function mapRwBuilderLabel(label: string): string {
   if (label === "Drainage installation labour") return "Drainage installation";
   if (label === "Drainage backfill labour") return "Drainage backfill";
   if (label === "Excavation labour") return "Excavation";
-  if (/EXCAVATION ALLOWANCE/i.test(label)) return "Excavation allowance";
+  if (/unmeasured bulk excavation|EXCAVATION ALLOWANCE/i.test(label)) {
+    return "Unmeasured bulk excavation";
+  }
   if (/mini-excavator/i.test(label)) return "Mini-excavator / auger";
   if (/fixings, connectors and sundries/i.test(label)) {
     return "Fixings and connectors allowance";

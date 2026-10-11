@@ -48,6 +48,7 @@ import {
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   approvedProductivityHours,
+  isDormantProductivityKey,
   isUnresolvedProductivityKey,
 } from "@/lib/rates/approved-benchmark-review";
 import type { ProductivityRate } from "@/lib/estimate/types";
@@ -682,7 +683,10 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
 export function getQuotrProductivityBenchmark(
   productivityKey: string
 ): ProductivityRate | undefined {
-  if (isUnresolvedProductivityKey(productivityKey)) {
+  if (
+    isUnresolvedProductivityKey(productivityKey) ||
+    isDormantProductivityKey(productivityKey)
+  ) {
     return undefined;
   }
   const approved = approvedProductivityHours(productivityKey);
@@ -723,7 +727,10 @@ export function resolveProductivity(params: {
     };
   }
 
-  if (isUnresolvedProductivityKey(params.productivityKey)) {
+  if (
+    isUnresolvedProductivityKey(params.productivityKey) ||
+    isDormantProductivityKey(params.productivityKey)
+  ) {
     return {
       key: params.productivityKey,
       label: params.productivityKey,

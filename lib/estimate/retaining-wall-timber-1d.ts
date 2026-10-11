@@ -75,10 +75,9 @@ export const RW_TIMBER_AUTHORITY_WITH_ALLOWANCE =
   "DETAILED_COMPONENT_AUTHORITY_WITH_ALLOWANCE" as const;
 
 /**
- * When excavation is required but bulk m³ is unknown:
- * do not price 0 m³. Use the former package excavation add-on
- * (0.6 h / face-m²) as an explicit EXCAVATION ALLOWANCE.
- * This is not measured m³ productivity.
+ * Retired. 0.6 h/face-m² was the old package add-on. Do not multiply
+ * wall face area by this figure. Unmeasured bulk excavation stays
+ * Pricing Required until a depth, cross-section, or bank m³ is confirmed.
  */
 export const RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2 = 0.6;
 export const RW_EXCAVATION_UNKNOWN_TREATMENT =
@@ -159,7 +158,7 @@ export const RW_TIMBER_1D_PRODUCTIVITY_STARTERS: Record<
     crewMethod: "Carpenter/labourer attending mini-excavator",
     plantAssumption: "Mini-excavator day when digger access allows; manual 1.6 labour-h/m³ if no machine",
     rationale:
-      "Measured bulk cut with machine on site is attendance, not 1.6 labour-h/m³ hand digging. Unknown volume stays a labelled face-m² EXCAVATION ALLOWANCE.",
+      "Measured bulk cut with machine on site is attendance, not 1.6 labour-h/m³ hand digging. Unknown volume stays unmeasured wall-face scope and is not priced.",
   },
   [RW_EXCAVATION_MACHINE_HOURS_KEY]: {
     hoursPerUnit: RW_EXCAVATION_MACHINE_HOURS_STARTER,

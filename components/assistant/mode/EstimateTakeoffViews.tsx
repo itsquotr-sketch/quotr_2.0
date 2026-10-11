@@ -14,6 +14,7 @@ import {
   type TakeoffGroup,
   type TakeoffRow,
 } from "@/lib/assistant/presentation/estimate-takeoffs";
+import { unpricedLabourStatus } from "@/lib/assistant/presentation/estimate-ready-layout";
 import { cn } from "@/lib/utils";
 
 const actionClassName = "h-11 min-h-11 w-full text-sm lg:w-auto";
@@ -264,7 +265,12 @@ function CompactTakeoffRow({
         .filter(Boolean)
         .join(" · ")
     : null;
-  const labourSummary = [row.hours, money].filter((part) => part && part !== "—").join(" · ");
+  const labourSummary = row.pricingRequired
+    ? unpricedLabourStatus(
+        row.quantity == null ? null : Number(row.quantity),
+        row.unit
+      )
+    : [row.hours, money].filter((part) => part && part !== "—").join(" · ");
   return (
     <div className="lg:hidden" data-takeoff-compact={row.id}>
       <button
@@ -441,7 +447,17 @@ function TakeoffRows({
                   </>
                 ) : (
                   <>
-                    <Cell label="Hours" value={row.hours ?? "—"} />
+                    <Cell
+                      label="Hours"
+                      value={
+                        row.pricingRequired
+                          ? unpricedLabourStatus(
+                              row.quantity == null ? null : Number(row.quantity),
+                              row.unit
+                            )
+                          : (row.hours ?? "—")
+                      }
+                    />
                     <Cell label="Productivity basis" value={row.productivityBasis ?? "—"} />
                     <Cell label="Productivity source" value={row.productivitySource ?? "—"} />
                     <Cell label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />

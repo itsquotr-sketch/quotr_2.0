@@ -8,6 +8,13 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import {
+  estimateBasisBrief,
+  estimateBasisExpandedAt,
+  estimateBasisWorkAreas,
+  estimateReadyLayoutAt,
+  estimateReadySidebarPolicy,
+} from "../lib/assistant/presentation/estimate-ready-layout";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -186,11 +193,33 @@ console.log("\n== ESTIMATE BASIS ==");
 
 check(28, "CompletedSetupDisclosure title defaults to 'Estimate Basis'", completedSetup.includes(`title = "Estimate Basis"`));
 
-check(29, "Desktop expanded by default (lazy useState with matchMedia)", shell.includes("matchMedia") && shell.includes("(min-width: 1024px)") && shell.includes("jobDetailsOpen"));
+check(
+  29,
+  "Desktop expanded by default (lazy useState with matchMedia)",
+  estimateBasisExpandedAt(1280) &&
+    estimateBasisExpandedAt(1024) &&
+    !estimateBasisExpandedAt(768) &&
+    shell.includes("readEstimateBasisDesktop") &&
+    shell.includes("estimateBasisStartsExpanded") &&
+    completedSetup.includes("data-expanded")
+);
 
-check(30, "Project Brief displayed in Estimate Basis", shell.includes("Project Brief") && shell.includes("briefText || project.briefText"));
+check(
+  30,
+  "Project Brief displayed in Estimate Basis",
+  estimateBasisBrief("Replace the deck", null) === "Replace the deck" &&
+    estimateBasisBrief(null, "Project brief text") === "Project brief text" &&
+    estimateBasisBrief("", null) === null &&
+    shell.includes("estimateBasisBrief(briefText, project.briefText)")
+);
 
-check(31, "Work Areas displayed in Estimate Basis", shell.includes("Work Areas") && shell.includes("workAreaLists.included.join"));
+check(
+  31,
+  "Work Areas displayed in Estimate Basis",
+  estimateBasisWorkAreas(["Deck", " Fence "]).join("|") === "Deck|Fence" &&
+    shell.includes("estimateBasisWorkAreas(workAreaLists.included)") &&
+    shell.includes("Work Areas")
+);
 
 check(32, "Scope items displayed in Estimate Basis", shell.includes(`data-job-plan-section`) || shell.includes("jobPlan.cards.flatMap"));
 
@@ -212,7 +241,15 @@ check(
     estimatePanel.includes('data-mobile-qe-header="pending"')
 );
 
-check(37, "compactCommercialSidebar='estimate_ready' mode triggers rename", shell.includes(`compactCommercialSidebar={assistantMode === "estimate_ready"}`));
+check(
+  37,
+  "compactCommercialSidebar='estimate_ready' mode triggers rename",
+  !estimateReadySidebarPolicy("estimate_ready").mountsCommercialSidebar &&
+    estimateReadySidebarPolicy("planning").mountsCommercialSidebar &&
+    shell.includes("estimateReadySidebarPolicy(assistantMode)") &&
+    estimatePanel.includes('"Commercial Overview"') &&
+    estimatePanel.includes("compactCommercialSidebar")
+);
 
 check(38, "Direct cost shown in Commercial Overview sidebar", estimatePanel.includes("Direct cost"));
 
@@ -276,7 +313,15 @@ check(59, "Clarify CTA footer width-full on mobile", clarifyPanel.includes("min-
 
 check(60, "Commercial Overview not rendered as sidebar on mobile (hidden lg:block)", estimatePanel.includes("lg:block") && estimatePanel.includes("data-compact-commercial-summary"));
 
-check(61, "Estimate Basis collapsed by default on mobile (matchMedia initializer)", shell.includes("matchMedia") && shell.includes("return false;"));
+check(
+  61,
+  "Estimate Basis collapsed by default on mobile (matchMedia initializer)",
+  !estimateBasisExpandedAt(768) &&
+    !estimateBasisExpandedAt(390) &&
+    !estimateBasisExpandedAt(320) &&
+    estimateReadyLayoutAt(390).estimateBasisExpanded === false &&
+    shell.includes("ESTIMATE_BASIS_DESKTOP_QUERY")
+);
 
 // ── SUMMARY ──────────────────────────────────────────────────────────────────
 

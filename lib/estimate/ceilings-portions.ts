@@ -1395,6 +1395,18 @@ function mapLegacyLiningFamily(value: string | null): CeilingLiningFamily | null
   return null;
 }
 
+const UNSPECIFIED_CEILING_LINING =
+  /^(unknown|unspecified|not sure|tbc|to be confirmed|n\/a|na)$/i;
+
+/** Named lining on the flat ceiling path. Blank or "unknown" is not a selection. */
+export function flatCeilingHasSelectedLining(
+  value: string | null | undefined
+): boolean {
+  const text = value?.trim() ?? "";
+  if (!text || UNSPECIFIED_CEILING_LINING.test(text)) return false;
+  return true;
+}
+
 export function legacyPortionFromFlatFacts(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;

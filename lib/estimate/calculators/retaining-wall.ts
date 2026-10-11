@@ -1072,15 +1072,16 @@ export function calculateRetainingWall(
           identitySummary: labourSupporting,
         });
       } else {
-        lineItems.push(
-          adaptUnpricedLabourRequirementToEstimateLine({
+        lineItems.push({
+          ...adaptUnpricedLabourRequirementToEstimateLine({
             requirement,
             workAreaName: workArea.name,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
             label: requirement.description,
-          })
-        );
+          }),
+          includedInTotal: false,
+        });
       }
     }
     for (const requirement of detailedPlant(commercial.requirements)) {
