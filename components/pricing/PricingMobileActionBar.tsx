@@ -9,6 +9,10 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import {
+  ceilingProvisionalDecision,
+  ceilingProvisionalLineFromPricingItem,
+} from "@/lib/estimate/ceilings-provisional-package";
+import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
@@ -59,7 +63,12 @@ export function PricingMobileActionBar({
   const view = pricingDocumentViewModel(document, items);
   const manualQuoteBlock = unresolvedManualPricingQuoteBlock(items);
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
-  const reviewBlock = manualQuoteBlock ?? unknownCostBlock;
+  const provisionalBlock = ceilingProvisionalDecision({
+    lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
+    confirmation: document.provisional_ceiling_confirmation ?? null,
+    documentOrgId: document.org_id,
+  }).block;
+  const reviewBlock = provisionalBlock ?? manualQuoteBlock ?? unknownCostBlock;
   const quoteBlockedReason = scopeQuoteBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE

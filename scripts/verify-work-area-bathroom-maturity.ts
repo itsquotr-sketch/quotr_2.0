@@ -322,7 +322,7 @@ check(
     numberedMigrations().includes("069_variation_client_delivery.sql") &&
     numberedMigrations().includes("070_variation_document_identity.sql") &&
     numberedMigrations().includes("071_variation_attachments.sql") &&
-    numberedMigrations().at(-1) === "109_owner_fence_concrete_placement.sql"
+    numberedMigrations().at(-1) === "110_ceiling_provisional_confirmation.sql"
 );
 const sql056 = readFileSync(
   join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql"),

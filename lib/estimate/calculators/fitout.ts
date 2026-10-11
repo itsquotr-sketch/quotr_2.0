@@ -20,6 +20,18 @@ import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/
 import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import { PAINTING_LABOUR_HOURS_PER_M2_KEY } from "@/lib/estimate/ceilings-identities";
 import { flatCeilingHasSelectedLining } from "@/lib/estimate/ceilings-portions";
+import {
+  CEILING_PROVISIONAL_INSTALL_KEY,
+  CEILING_PROVISIONAL_INSTALL_NOTE,
+  CEILING_PROVISIONAL_MATERIALS_KEY,
+  CEILING_PROVISIONAL_MATERIALS_NOTE,
+  CEILING_PROVISIONAL_SOURCE,
+  ceilingProvisionalAssumption,
+} from "@/lib/estimate/ceilings-provisional-package";
+import {
+  buildPersistedLineItemNotes,
+  parseLineItemNotes,
+} from "@/lib/estimate/line-item-metadata";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   calculateFlooringAreaWithWastage,
@@ -189,6 +201,24 @@ function calculateAreaBasedFitout(
     exclusions: [],
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
+  };
+}
+
+function annotateProvisionalCeilingLine(
+  item: CalculatorResult["lineItems"][number],
+  params: { label: string; componentKey: string; note: string }
+): CalculatorResult["lineItems"][number] {
+  const parsed = parseLineItemNotes(item.notes);
+  const display = [params.note, parsed.displayNotes].filter(Boolean).join(" ");
+  return {
+    ...item,
+    label: params.label,
+    componentKey: params.componentKey,
+    rateSource: CEILING_PROVISIONAL_SOURCE,
+    notes: buildPersistedLineItemNotes({
+      notes: display,
+      metadata: parsed.metadata,
+    }) ?? undefined,
   };
 }
 
@@ -817,22 +847,29 @@ export function calculateCeilings(
       item.label.includes("materials allowance")
     );
     if (materialsIndex >= 0) {
-      const baseItem = result.lineItems[materialsIndex];
-      result.lineItems[materialsIndex] = {
-        ...baseItem,
-        notes: `Provisional materials package at $75/m² for an unspecified ceiling. It is not a named lining, not a sheet takeoff, and not a company material rate. Review or replace it in Pricing. It is not added when a lining is selected or when a ceiling portion exists.`,
-      };
+      result.lineItems[materialsIndex] = annotateProvisionalCeilingLine(
+        result.lineItems[materialsIndex]!,
+        {
+          label: "Provisional ceiling materials allowance",
+          componentKey: CEILING_PROVISIONAL_MATERIALS_KEY,
+          note: CEILING_PROVISIONAL_MATERIALS_NOTE,
+        }
+      );
     }
     const labourIndex = result.lineItems.findIndex(
       (item) => item.category === "labour" || /labour/i.test(item.label)
     );
     if (labourIndex >= 0) {
-      const labourItem = result.lineItems[labourIndex];
-      result.lineItems[labourIndex] = {
-        ...labourItem,
-        notes: `Provisional installation at 0.9 person-hours/m² for an unspecified ceiling. It has no workbook row. It is not the approved plasterboard rate of 0.4167 hours per sheet. Stopping, fixings, insulation, and new framing are separate and are included only when selected.`,
-      };
+      result.lineItems[labourIndex] = annotateProvisionalCeilingLine(
+        result.lineItems[labourIndex]!,
+        {
+          label: "Provisional ceiling installation",
+          componentKey: CEILING_PROVISIONAL_INSTALL_KEY,
+          note: CEILING_PROVISIONAL_INSTALL_NOTE,
+        }
+      );
     }
+    result.assumptions.push(ceilingProvisionalAssumption());
   }
 
   const edgeLm = getNumberFact(facts, workArea.id, "ceilings.edge_lining_length_lm");

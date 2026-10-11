@@ -20,6 +20,7 @@ import {
   type EstimateLineItemRow,
   type RecalibrationPreview,
 } from "@/lib/pricing/recalibration-helpers";
+import { isCeilingProvisionalComponentKey } from "@/lib/estimate/ceilings-provisional-package";
 import { RATE_RECONCILIATION_REQUIRED } from "@/lib/subcontractors/rate-use";
 import type {
   PricingActionState,
@@ -364,6 +365,7 @@ export async function applyRecalibration(
   const inserts: Record<string, unknown>[] = [];
   const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
   let itemsChanged = false;
+  let provisionalTouched = false;
   let nextSort = maxSort;
 
   try {
@@ -387,26 +389,41 @@ export async function applyRecalibration(
           continue;
         }
         if (existing.manually_edited) {
-          updates.push({
-            id: existing.id,
-            patch: {
-              source_estimate_line_item_id: lineItem.id,
-              recalibration_note: MANUAL_PRESERVED_NOTE,
-            },
-          });
-          itemsChanged = true;
-          continue;
-        }
-
         updates.push({
           id: existing.id,
-          patch: buildPricingItemUpdateFromEstimate(lineItem, existing),
+          patch: {
+            source_estimate_line_item_id: lineItem.id,
+            recalibration_note: MANUAL_PRESERVED_NOTE,
+          },
         });
         itemsChanged = true;
+        if (
+          isCeilingProvisionalComponentKey(existing.component_key) ||
+          isCeilingProvisionalComponentKey(lineItem.component_key)
+        ) {
+          provisionalTouched = true;
+        }
         continue;
       }
 
-      inserts.push(
+      updates.push({
+        id: existing.id,
+        patch: buildPricingItemUpdateFromEstimate(lineItem, existing),
+      });
+      itemsChanged = true;
+      if (
+        isCeilingProvisionalComponentKey(existing.component_key) ||
+        isCeilingProvisionalComponentKey(lineItem.component_key)
+      ) {
+        provisionalTouched = true;
+      }
+      continue;
+    }
+
+    if (isCeilingProvisionalComponentKey(lineItem.component_key)) {
+      provisionalTouched = true;
+    }
+    inserts.push(
         buildPricingItemRowFromEstimate(
           lineItem,
           orgId,
@@ -436,6 +453,9 @@ export async function applyRecalibration(
     if (hasSource && (sourceMissing || unmatched)) {
       if (!item.orphaned) {
         itemsChanged = true;
+      }
+      if (isCeilingProvisionalComponentKey(item.component_key)) {
+        provisionalTouched = true;
       }
       updates.push({
         id: item.id,
@@ -504,6 +524,13 @@ export async function applyRecalibration(
       recalibration_status: "recalibrated",
       recalibrated_at: now,
       recalibration_dismissed_at: null,
+      ...(provisionalTouched
+        ? {
+            provisional_ceiling_confirmation: null,
+            status: "draft",
+            reviewed_at: null,
+          }
+        : {}),
     })
     .eq("id", pricingDocumentId)
     .eq("org_id", orgId);

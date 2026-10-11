@@ -1,3 +1,5 @@
+import type { CeilingProvisionalConfirmation } from "@/lib/estimate/ceilings-provisional-package";
+
 export type CalculationMode =
   | "quantity_rate"
   | "productivity_labour"
@@ -63,6 +65,8 @@ export type PricingDocument = {
     | "recalibrated";
   recalibration_dismissed_at: string | null;
   recalibrated_at: string | null;
+  /** Draft-only decision for the legacy flat ceiling package. Absent on older rows. */
+  provisional_ceiling_confirmation?: CeilingProvisionalConfirmation | null;
 };
 
 export type PricingItem = {

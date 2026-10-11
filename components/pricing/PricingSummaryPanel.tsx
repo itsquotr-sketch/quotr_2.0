@@ -12,6 +12,10 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import {
+  ceilingProvisionalDecision,
+  ceilingProvisionalLineFromPricingItem,
+} from "@/lib/estimate/ceilings-provisional-package";
+import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -90,7 +94,13 @@ export function PricingSummaryPanel({
   const costValue = sellIncomplete && document.subtotal_cost <= 0
     ? "Pricing required"
     : view.directCostLabel;
+  const provisionalBlock = ceilingProvisionalDecision({
+    lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
+    confirmation: document.provisional_ceiling_confirmation ?? null,
+    documentOrgId: document.org_id,
+  }).block;
   const quoteBlockedReason = scopeQuoteBlock
+    || provisionalBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : unresolvedManualPricingQuoteBlock(items) ??

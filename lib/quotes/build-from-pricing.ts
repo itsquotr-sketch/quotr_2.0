@@ -9,6 +9,10 @@ import {
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
 import {
+  ceilingProvisionalDecision,
+  ceilingProvisionalLineFromPricingItem,
+} from "@/lib/estimate/ceilings-provisional-package";
+import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
@@ -129,6 +133,12 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (manualBlock) return { error: manualBlock };
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
   if (unknownCostBlock) return { error: unknownCostBlock };
+  const provisionalBlock = ceilingProvisionalDecision({
+    lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
+    confirmation: document.provisional_ceiling_confirmation ?? null,
+    documentOrgId: orgId,
+  }).block;
+  if (provisionalBlock) return { error: provisionalBlock };
   const workAreaNames = new Map(
     (workAreas ?? []).map((workArea) => [workArea.id, workArea.name])
   );

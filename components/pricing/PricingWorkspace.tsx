@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { ChevronDown } from "lucide-react";
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { EmptyState } from "@/components/layout/empty-state";
+import { CeilingProvisionalDecision } from "@/components/pricing/CeilingProvisionalDecision";
 import { PricingBulkToolbar } from "@/components/pricing/PricingBulkToolbar";
 import { PricingDecisionCard } from "@/components/pricing/PricingDecisionCard";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
@@ -34,6 +35,10 @@ import {
   updatePricingItem,
 } from "@/lib/pricing/actions";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import {
+  ceilingProvisionalDecision,
+  ceilingProvisionalLineFromPricingItem,
+} from "@/lib/estimate/ceilings-provisional-package";
 import {
   identityFromPricingItem,
   isPendingPricingItemId,
@@ -167,6 +172,15 @@ export function PricingWorkspace({
     () => unresolvedManualPricingQuoteBlock(items),
     [items]
   );
+  const provisionalQuoteBlock = useMemo(
+    () =>
+      ceilingProvisionalDecision({
+        lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
+        confirmation: document.provisional_ceiling_confirmation ?? null,
+        documentOrgId: document.org_id,
+      }).block,
+    [document.org_id, document.provisional_ceiling_confirmation, items]
+  );
 
   const activeItems = useMemo(
     () => items.filter((item) => !isReplacedSubcontractPlaceholder(item)),
@@ -266,6 +280,15 @@ export function PricingWorkspace({
 
   const handleMarkReviewed = async () => {
     if (reviewInFlight.current || saveInFlight.current) return;
+    const provisionalBlock = ceilingProvisionalDecision({
+      lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
+      confirmation: document.provisional_ceiling_confirmation ?? null,
+      documentOrgId: document.org_id,
+    }).block;
+    if (provisionalBlock) {
+      setSaveError(provisionalBlock);
+      return;
+    }
     reviewInFlight.current = true;
     const dirty = hasUnsavedRef.current;
     setReviewLabel(dirty ? "Saving and reviewing…" : "Marking as reviewed…");
@@ -592,6 +615,16 @@ export function PricingWorkspace({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-5">
+          <CeilingProvisionalDecision
+            items={items}
+            document={document}
+            canEdit={canEditPricing}
+            onConfirmed={(updated) => {
+              setDocument(updated);
+              setSaveError(null);
+            }}
+            onError={setSaveError}
+          />
           <details
             className="rounded-xl border border-border/60 bg-card shadow-none"
             open={workAreaPricingOpen}
@@ -762,6 +795,7 @@ export function PricingWorkspace({
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
                 blockedReason={
+                  provisionalQuoteBlock ??
                   manualQuoteBlock ??
                   (unresolvedPriceCount > 0 ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK : null)
                 }

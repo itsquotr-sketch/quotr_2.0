@@ -4,6 +4,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import {
+  ceilingProvisionalDecision,
+  ceilingProvisionalLineFromPricingItem,
+} from "@/lib/estimate/ceilings-provisional-package";
+import { clearStaleCeilingProvisionalConfirmation } from "@/lib/pricing/ceiling-provisional-sync";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
@@ -1395,6 +1400,13 @@ export async function updatePricingItem(
     true
   );
 
+  const provisionalSyncError = await clearStaleCeilingProvisionalConfirmation(
+    supabase,
+    orgId,
+    existing.pricing_document_id
+  );
+  if (provisionalSyncError) return { error: provisionalSyncError };
+
   const [updatedItem, updatedDocument] = await Promise.all([
     supabase
       .from("pricing_items")
@@ -1856,6 +1868,13 @@ export async function duplicatePricingItem(
     true
   );
 
+  const duplicateSyncError = await clearStaleCeilingProvisionalConfirmation(
+    supabase,
+    orgId,
+    source.pricing_document_id
+  );
+  if (duplicateSyncError) return { error: duplicateSyncError };
+
   const updatedDocument = await loadPricingDocumentById(
     supabase,
     orgId,
@@ -1955,6 +1974,13 @@ export async function deletePricingItem(
     true
   );
 
+  const deleteSyncError = await clearStaleCeilingProvisionalConfirmation(
+    supabase,
+    orgId,
+    existing.pricing_document_id
+  );
+  if (deleteSyncError) return { error: deleteSyncError };
+
   const updatedDocument = await loadPricingDocumentById(
     supabase,
     orgId,
@@ -1993,7 +2019,9 @@ export async function markPricingReviewed(
 
   const { data: reviewItems, error: reviewItemsError } = await supabase
     .from("pricing_items")
-    .select("notes_internal, total_sell, visible_on_quote, cost_known")
+    .select(
+      "id, component_key, quantity, unit, client_label, internal_label, client_description, notes_internal, total_cost, total_sell, visible_on_quote, cost_known, productivity_rate, calculated_quantity"
+    )
     .eq("pricing_document_id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
   if (reviewItemsError) {
@@ -2005,6 +2033,14 @@ export async function markPricingReviewed(
   if (manualBlock) return { error: manualBlock };
   const unknownCostBlock = unknownMaterialCostQuoteBlock(reviewItems ?? []);
   if (unknownCostBlock) return { error: unknownCostBlock };
+  const provisionalBlock = ceilingProvisionalDecision({
+    lines: (reviewItems ?? []).map((row) =>
+      ceilingProvisionalLineFromPricingItem(row)
+    ),
+    confirmation: document.provisional_ceiling_confirmation ?? null,
+    documentOrgId: orgId,
+  }).block;
+  if (provisionalBlock) return { error: provisionalBlock };
 
   const { error } = await supabase
     .from("pricing_documents")
@@ -2026,6 +2062,83 @@ export async function markPricingReviewed(
     parsed.data.pricingDocumentId
   );
   return { success: true };
+}
+
+export async function confirmCeilingProvisionalPackage(
+  pricingDocumentId: string
+): Promise<PricingActionState> {
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) return { error: loaded.error };
+
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+  if (document.org_id !== orgId) {
+    return { error: "You cannot confirm Pricing for another organisation." };
+  }
+
+  const { data: packageItems, error: packageItemsError } = await supabase
+    .from("pricing_items")
+    .select(
+      "id, component_key, quantity, unit, client_label, internal_label, client_description, notes_internal, total_cost, total_sell, visible_on_quote, productivity_rate, calculated_quantity"
+    )
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (packageItemsError) {
+    return {
+      error: toUserError(packageItemsError, "pricing-ceiling-provisional", PRICING_SAVE_FAILED),
+    };
+  }
+
+  const decision = ceilingProvisionalDecision({
+    lines: (packageItems ?? []).map((row) =>
+      ceilingProvisionalLineFromPricingItem(row)
+    ),
+    confirmation: document.provisional_ceiling_confirmation ?? null,
+    documentOrgId: orgId,
+  });
+  if (!decision.confirmable) {
+    return {
+      error:
+        decision.block ??
+        "These ceiling lines no longer match the provisional package. Price the ceiling scope before creating a Quote.",
+    };
+  }
+  if (decision.confirmed) {
+    return { success: true, document };
+  }
+
+  const { error } = await supabase
+    .from("pricing_documents")
+    .update({
+      provisional_ceiling_confirmation: {
+        confirmedAt: new Date().toISOString(),
+        confirmedBy: user.id,
+        orgId,
+        fingerprint: decision.fingerprint,
+      },
+    })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-ceiling-provisional", PRICING_SAVE_FAILED),
+    };
+  }
+
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updatedDocument) return { error: "Failed to load updated pricing document." };
+  revalidatePricingDashboard(document.project_id, parsed.data.pricingDocumentId);
+  return { success: true, document: updatedDocument };
 }
 
 export async function setPricingItemsQuoteVisibility(input: {
@@ -2090,6 +2203,13 @@ export async function setPricingItemsQuoteVisibility(input: {
     })
     .eq("id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
+
+  const visibilitySyncError = await clearStaleCeilingProvisionalConfirmation(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (visibilitySyncError) return { error: visibilitySyncError };
 
   await logPricingAuditEvent({
     supabase,
@@ -2212,6 +2332,13 @@ export async function deleteManualPricingItems(input: {
     ).rate,
     true
   );
+
+  const bulkDeleteSyncError = await clearStaleCeilingProvisionalConfirmation(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (bulkDeleteSyncError) return { error: bulkDeleteSyncError };
 
   const updatedDocument = await loadPricingDocumentById(
     supabase,

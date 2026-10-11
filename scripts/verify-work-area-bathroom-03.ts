@@ -557,8 +557,8 @@ check(
   migrations.includes("054_company_dna_v2_catalogue_seed.sql")
 );
 check(
-  "latest numbered migration is 109 owner fence concrete",
-  migrations.at(-1) === "109_owner_fence_concrete_placement.sql"
+  "latest numbered migration is 110 ceiling provisional confirmation",
+  migrations.at(-1) === "110_ceiling_provisional_confirmation.sql"
 );
 check("no production supabase project in 03 files", !read("lib/estimate/bathroom-physical.ts").includes("production"));
 

@@ -1,3 +1,4 @@
+import { parseCeilingProvisionalConfirmation } from "@/lib/estimate/ceilings-provisional-package";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { parseStringArray } from "@/lib/pricing/calculations";
 import { inferPersistedLineCostKnown } from "@/lib/pricing/authoritative-document-totals";
@@ -48,6 +49,9 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
     recalibration_dismissed_at:
       (row.recalibration_dismissed_at as string | null) ?? null,
     recalibrated_at: (row.recalibrated_at as string | null) ?? null,
+    provisional_ceiling_confirmation: parseCeilingProvisionalConfirmation(
+      row.provisional_ceiling_confirmation
+    ),
   };
 }
 
