@@ -650,7 +650,7 @@ export function classifyMaterialPresentation(
         familyId: "wall-specialty-insulation",
         familyName: "Wall insulation",
         familyDescription:
-          "Acoustic and fire-acoustic wall insulation. Pricing Required until a company rate exists — no Quotr V1 COST.",
+          "Acoustic wall insulation has a Quotr benchmark of $13.51/m². Fire-and-acoustic wall insulation has no Quotr cost and stays Pricing Required until a company rate exists.",
         variantLayout: "generic",
         thickness: null,
         sheetSize: null,
@@ -769,7 +769,7 @@ export function classifyMaterialPresentation(
       familyId: "wall-painting",
       familyName: "Wall painting",
       familyDescription:
-        "Internal Walls nested wall paint materials. Pricing Required until a company rate exists. Distinct from shared painting.material.m2.",
+        "Internal Walls wall paint materials. Quotr benchmark $4.93/m² ex GST. A company rate still wins. Distinct from shared painting.material.m2. Application labour is a separate rate.",
       variantLayout: "generic",
       thickness: null,
       sheetSize: null,

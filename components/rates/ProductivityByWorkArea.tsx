@@ -21,6 +21,8 @@ import {
   DNA_RESET_CTA,
   DNA_SOURCE_QUOTR_BENCHMARK,
   DNA_SOURCE_YOUR_CALIBRATION,
+  dnaRatesBenchmarkCopy,
+  dnaRatesEstimateUsedLabel,
   formatDnaCompactHoursPerUnit,
   formatDnaOptionalRemaining,
   formatDnaRwSystemLine,
@@ -751,12 +753,15 @@ function DnaTaskRow(params: {
       item.rate_type === "productivity" &&
       item.active
   );
-  const used =
+  const used = dnaRatesEstimateUsedLabel(
+    params.row.task.calibrationTaskKey,
     rate?.active && rate.cost_rate != null
       ? rate.source === "calibrated_productivity"
         ? DNA_SOURCE_YOUR_CALIBRATION
         : "Your company rate"
-      : DNA_SOURCE_QUOTR_BENCHMARK;
+      : DNA_SOURCE_QUOTR_BENCHMARK
+  );
+  const benchmark = dnaRatesBenchmarkCopy(params.row.task);
   const calibrated =
     rate?.active &&
     rate.cost_rate != null &&
@@ -769,12 +774,11 @@ function DnaTaskRow(params: {
     >
       <p className="text-sm font-medium">{params.row.task.label}</p>
       <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-        {DNA_SOURCE_QUOTR_BENCHMARK}:{" "}
-        {formatDnaCompactHoursPerUnit(
-          params.row.task.benchmarkProductivity,
-          params.row.task.authorityUnit
-        )}
+        {benchmark.label}: {benchmark.value}
       </p>
+      {benchmark.note ? (
+        <p className="mt-1 text-xs text-muted-foreground">{benchmark.note}</p>
+      ) : null}
       <p className="text-xs text-muted-foreground tabular-nums">
         {DNA_SOURCE_YOUR_CALIBRATION}:{" "}
         {rate?.cost_rate != null

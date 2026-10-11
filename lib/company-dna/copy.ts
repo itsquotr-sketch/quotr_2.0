@@ -233,15 +233,17 @@ export function formatDnaDeckResultPrimary(params: {
 export function formatDnaDeckResultComparison(params: {
   faster: boolean;
   percentVsBenchmark: number;
+  baselineLabel?: string;
 }): string {
+  const baseline = params.baselineLabel ?? "the Quotr benchmark";
   const abs = Math.round(Math.abs(params.percentVsBenchmark));
   if (!Number.isFinite(abs) || abs < 5) {
-    return "That's about the same as the Quotr benchmark.";
+    return `That's about the same as ${baseline}.`;
   }
   if (params.faster) {
-    return `That's about ${abs}% faster than the Quotr benchmark.`;
+    return `That's about ${abs}% faster than ${baseline}.`;
   }
-  return `That's about ${abs}% slower than the Quotr benchmark.`;
+  return `That's about ${abs}% slower than ${baseline}.`;
 }
 
 export function formatDnaOutlierPrompt(faster: boolean): string {
@@ -355,7 +357,7 @@ export function dnaV2ScenarioCopy(task: {
   const lm = (value: number) => formatDnaScenarioMeasure(value, "lm");
   switch (task.calibrationTaskKey) {
     case "deck.posts.v1":
-      return `Install ${qty} deck posts — include normal hole digging, setting, plumbing and securing the posts. Do not include mixing or placing concrete; that is a separate task.`;
+      return `Install ${qty} deck posts — set-out, positioning, cutting, setting and plumbing. Do not include hole-excavation hours or mixing and placing concrete. Hole excavation stays a separate unpriced line until an owner hours decision exists.`;
     case "deck.framing.v1":
       return `Install ${lm(qty)} of deck framing — roughly the framing for a straightforward 20 m² deck.`;
     case "deck.decking.v1":
@@ -629,6 +631,56 @@ export function formatDnaSupportedTaskCoverage(params: {
 export function formatDnaCompactHoursPerUnit(value: number, unit: string): string {
   const displayUnit = unit === "m2" ? "m²" : unit === "m3" ? "m³" : unit;
   return `${formatDnaProductivityHours(value)} h/${displayUnit}`;
+}
+
+/**
+ * Rates "Show tasks" benchmark line.
+ * Deck decking must not present the historical 0.077 h/lm calibration
+ * baseline as the approved universal rate. Deck concrete shows the
+ * approved 4-minute bag rate. Company calibrations are not rewritten.
+ */
+export function dnaRatesBenchmarkCopy(task: {
+  calibrationTaskKey: string;
+  benchmarkProductivity: number;
+  authorityUnit: string;
+}): { label: string; value: string; note: string | null } {
+  if (task.calibrationTaskKey === "deck.decking.v1") {
+    return {
+      label: "Approved benchmark",
+      value: "35 minutes/m² (0.583333 h/m²)",
+      note:
+        "A new estimate converts that area rate by the selected board width onto one installed-lm line. At 140 mm that is about 0.081667 h per installed lm before access adjustments. The 0.077 h/lm figure is an old 140 mm illustration of 0.55 h/m² and is only this task’s calibration comparison. It is not the approved rate for every board width. A company calibration saved on deck.decking.install.hours_per_lm is used instead of the width conversion.",
+    };
+  }
+  if (task.calibrationTaskKey === "deck.concrete.v1") {
+    return {
+      label: DNA_SOURCE_QUOTR_BENCHMARK,
+      value: formatDnaCompactHoursPerUnit(
+        task.benchmarkProductivity,
+        task.authorityUnit
+      ),
+      note:
+        "Approved rate: 1 person for 4 minutes per bag. The old 0.16 h/bag starter is not used for a new estimate. A company hours/bag calibration on this key still wins.",
+    };
+  }
+  return {
+    label: DNA_SOURCE_QUOTR_BENCHMARK,
+    value: formatDnaCompactHoursPerUnit(
+      task.benchmarkProductivity,
+      task.authorityUnit
+    ),
+    note: null,
+  };
+}
+
+export function dnaRatesEstimateUsedLabel(
+  taskKey: string,
+  used: string
+): string {
+  if (taskKey === "deck.decking.v1" && used === DNA_SOURCE_QUOTR_BENCHMARK) {
+    return "35 min/m² converted by board width";
+  }
+  return used;
 }
 
 export function dnaV2CompleteCopy(

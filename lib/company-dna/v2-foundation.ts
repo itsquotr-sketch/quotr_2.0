@@ -21,7 +21,10 @@ import {
   type CompanyDnaWorkAreaType,
 } from "@/lib/company-dna/catalogue";
 import { companyDnaWorkAreaStatusV2 } from "@/lib/company-dna/derive";
-import { DECK_CONCRETE_PRODUCTIVITY_KEY } from "@/lib/estimate/deck-scope-2c";
+import {
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_PRODUCTIVITY_KEY,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
   DECK_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
@@ -101,8 +104,9 @@ const V1_BOUNDARIES: Record<
     priorityTier: 1,
     baselineMethod: "hand-holes",
     workIncluded:
-      "Set-out, hole excavation, hole prep, position, cut/set, plumb, ordinary workface handling",
-    workExcluded: "Concrete mix/place, framing, decking, spoil export off site",
+      "Set-out, position, cut/set, plumb, ordinary workface handling",
+    workExcluded:
+      "Hole excavation person-hours (separate Pricing Required line), concrete mix/place, framing, decking, spoil export off site",
     normalAssumptions: `${NORMAL_ACCESS} · ground-level · normal soil · not pouring concrete`,
   },
   "deck.demolition.v1": {
@@ -235,7 +239,7 @@ export const COMPANY_DNA_V2B_NEW_TASKS: readonly CompanyDnaFoundationTask[] = [
     referenceUnit: "bag",
     authorityQuantity: 20,
     authorityUnit: "bag",
-    benchmarkProductivity: 0.16,
+    benchmarkProductivity: DECK_CONCRETE_PLACE_HOURS_PER_BAG,
     rateLabel: "Deck post-hole concrete placement (labour-h/bag)",
     sortOrder: 70,
     priorityTier: 2,

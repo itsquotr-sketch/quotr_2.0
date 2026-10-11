@@ -1828,7 +1828,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "ea",
     description:
-      "Hours per support, not dollars. Includes normal set-out, hole excavation, hole preparation, positioning, cutting/setting, and installation. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
+      "Hours per support, not dollars. Includes set-out, positioning, cutting/setting, and installation. Hole excavation is a separate Pricing Required line (deck.hole.excavate.hours_per_hole) and is not included in these hours. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 1,
     calculatorSupport: "used_now",
     recommended: true,
@@ -1882,7 +1882,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "bag",
     description:
-      "LOW_CONFIDENCE starter 0.16 labour-h/bag (0.4 h/hole mixing/placing/finishing ÷ 2.5 bags/hole canonical default). Driver is whole purchased bags. Hole excavation stays in pile/post installation. Not Fence 0.06 or RW 0.035. Company exact hours/bag wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
+      "Owner-approved rate: 0.06666666666666667 labour-h/bag (1 person for 4 minutes). The old 0.16 labour-h/bag figure is a historical calibration comparison and is not used for a new estimate. Driver is whole purchased bags. Hole excavation is a separate Pricing Required line, not this placement rate. A company hours/bag calibration on this key wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
     defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,

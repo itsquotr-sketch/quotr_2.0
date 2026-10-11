@@ -558,7 +558,7 @@ check(
 );
 check(
   "latest numbered migration is 110 ceiling provisional confirmation",
-  migrations.at(-1) === "110_ceiling_provisional_confirmation.sql"
+  migrations.at(-1) === "111_deck_concrete_calibration_benchmark.sql"
 );
 check("no production supabase project in 03 files", !read("lib/estimate/bathroom-physical.ts").includes("production"));
 

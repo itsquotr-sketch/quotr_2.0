@@ -10,6 +10,8 @@ import {
   DNA_RESET_CTA,
   DNA_SOURCE_QUOTR_BENCHMARK,
   DNA_SOURCE_YOUR_CALIBRATION,
+  dnaRatesBenchmarkCopy,
+  dnaRatesEstimateUsedLabel,
   formatDnaCompactHoursPerUnit,
   formatDnaOptionalRemaining,
   formatDnaRwSystemLine,
@@ -276,7 +278,11 @@ function RatesTaskRow(params: {
       item.rate_type === "productivity" &&
       item.active
   );
-  const used = usedProductivitySource(rate);
+  const used = dnaRatesEstimateUsedLabel(
+    params.row.task.calibrationTaskKey,
+    usedProductivitySource(rate)
+  );
+  const benchmark = dnaRatesBenchmarkCopy(params.row.task);
   const calibrated =
     rate?.active &&
     rate.cost_rate != null &&
@@ -288,12 +294,11 @@ function RatesTaskRow(params: {
     >
       <p className="text-sm font-medium">{params.row.task.label}</p>
       <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-        {DNA_SOURCE_QUOTR_BENCHMARK}:{" "}
-        {formatDnaCompactHoursPerUnit(
-          params.row.task.benchmarkProductivity,
-          params.row.task.authorityUnit
-        )}
+        {benchmark.label}: {benchmark.value}
       </p>
+      {benchmark.note ? (
+        <p className="mt-1 text-xs text-muted-foreground">{benchmark.note}</p>
+      ) : null}
       <p className="text-xs text-muted-foreground tabular-nums">
         {DNA_SOURCE_YOUR_CALIBRATION}:{" "}
         {rate?.cost_rate != null

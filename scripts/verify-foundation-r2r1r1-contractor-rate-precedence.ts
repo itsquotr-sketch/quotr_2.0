@@ -417,7 +417,7 @@ const latestMigration = migrations
 check(
   "rate precedence does not add a schema migration; supplier application remains",
   migrations.includes("094_subcontractor_rate_use.sql") &&
-    latestMigration === "110_ceiling_provisional_confirmation.sql"
+    latestMigration === "111_deck_concrete_calibration_benchmark.sql"
 );
 
 const outdoorDeck = calculateDeck(

@@ -41,6 +41,7 @@ import {
   dnaV2CompleteCopy,
   formatDnaClockTimePerUnit,
   formatDnaDeckProgressIndicator,
+  dnaRatesBenchmarkCopy,
   formatDnaDeckResultComparison,
   formatDnaDeckResultPrimary,
   formatDnaHoursPerUnit,
@@ -426,17 +427,25 @@ export function CompanyDnaDeckTaskFlow({
               {formatDnaDeckResultComparison({
                 faster: savedFaster,
                 percentVsBenchmark: savedPercent,
+                baselineLabel:
+                  task.calibrationTaskKey === "deck.decking.v1"
+                    ? "this task's 0.077 h/lm comparison baseline"
+                    : undefined,
               })}
             </p>
             <p className="text-xs text-muted-foreground" data-company-dna-deck-technical>
               Your productivity:{" "}
               {formatDnaHoursPerUnit(productivity, task.authorityUnit)}
               <br />
-              Quotr benchmark:{" "}
-              {formatDnaHoursPerUnit(task.benchmarkProductivity, task.authorityUnit)}
+              {dnaRatesBenchmarkCopy(task).label}: {dnaRatesBenchmarkCopy(task).value}
               <br />
               Used in estimates: Your calibration
             </p>
+            {dnaRatesBenchmarkCopy(task).note ? (
+              <p className="text-xs text-muted-foreground">
+                {dnaRatesBenchmarkCopy(task).note}
+              </p>
+            ) : null}
             {formatDnaClockTimePerUnit({
               crewSize: Number(crewSize),
               productivityHoursPerUnit: productivity,

@@ -35,6 +35,7 @@ import {
   formatDnaClockTimePerUnit,
   formatDnaDeckDashboardCta,
   formatDnaDeckResultComparison,
+  dnaRatesBenchmarkCopy,
   formatDnaDeckResultPrimary,
   formatDnaOutlierPrompt,
   formatDnaPersonMinutesPerUnit,
@@ -46,7 +47,10 @@ import {
   listCompanyDnaTasksVisibleInCurrentUi,
 } from "../lib/company-dna/v2-foundation";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
-import { DECK_CONCRETE_TO_SUPPORTS_FACT_KEY } from "../lib/estimate/deck-scope-2c";
+import {
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
+} from "../lib/estimate/deck-scope-2c";
 import { round2 } from "../lib/estimate/facts";
 import { summarizeProductivityWorkAreas } from "../lib/rates/productivity-work-area-summary";
 import { resolvePersonalisationNextStep } from "../lib/setup/personalisation-ladder";
@@ -177,8 +181,8 @@ check(
   migrations.includes("054_company_dna_v2_catalogue_seed.sql")
 );
 check(
-  "latest is 056 Bathroom DNA seed",
-  migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+  "latest is the deck concrete calibration benchmark",
+  migrations.at(-1) === "111_deck_concrete_calibration_benchmark.sql"
 );
 
 const deckTasks = listCompanyDnaDeckV2UiTasks();
@@ -236,8 +240,10 @@ const concrete = getCompanyDnaFoundationTask("deck.concrete.v1")!;
 const framing = getCompanyDnaFoundationTask("deck.framing.v1")!;
 const decking = getCompanyDnaFoundationTask("deck.decking.v1")!;
 check(
-  "posts exclude concrete",
-  /concrete/i.test(posts.workExcluded) && /hole/i.test(posts.workIncluded)
+  "posts exclude concrete and unpriced hole excavation",
+  /concrete/i.test(posts.workExcluded) &&
+    /hole excavation/i.test(posts.workExcluded) &&
+    !/hole excavation/i.test(posts.workIncluded)
 );
 check(
   "concrete excludes hole/post setting",
@@ -246,7 +252,8 @@ check(
 check(
   "posts scenario names exact quantity",
   deckV2ScenarioCopy(posts).includes(String(posts.authorityQuantity)) &&
-    deckV2ScenarioCopy(posts).includes("Do not include mixing or placing concrete")
+    deckV2ScenarioCopy(posts).includes("mixing and placing concrete") &&
+    deckV2ScenarioCopy(posts).includes("separate unpriced line")
 );
 check(
   "framing scenario uses 80 lm not fake m² authority",
@@ -266,6 +273,20 @@ check(
   "concrete scenario is bags not material price",
   deckV2ScenarioCopy(concrete).includes("20 kg") &&
     deckV2ScenarioCopy(concrete).includes("labour time only")
+);
+const deckingBenchmark = dnaRatesBenchmarkCopy(decking);
+check(
+  "concrete show-tasks benchmark is the approved bag rate",
+  concrete.benchmarkProductivity === DECK_CONCRETE_PLACE_HOURS_PER_BAG &&
+    concrete.benchmarkProductivity !== 0.16
+);
+check(
+  "decking show-tasks does not call 0.077 the approved universal benchmark",
+  decking.benchmarkProductivity === 0.077 &&
+    deckingBenchmark.value.includes("0.583333") &&
+    deckingBenchmark.value !== "0.077 h/lm" &&
+    (deckingBenchmark.note ?? "").includes("0.081667") &&
+    (deckingBenchmark.note ?? "").includes("not the approved rate for every board width")
 );
 
 check("0/3", companyDnaWorkAreaStatusV2({ tier1Total: 3, tier1Calibrated: 0 }) === "benchmarks");
@@ -467,8 +488,8 @@ check(
       qtyByLabel(afterPosts.lineItems, postLabel)
 );
 check(
-  "posts calibration changes post labour hours",
-  hoursByLabel(afterPosts.lineItems, postLabel) >
+  "posts calibration of 0.4 h/ea is below the approved 1 h/ea",
+  hoursByLabel(afterPosts.lineItems, postLabel) <
     hoursByLabel(before.lineItems, postLabel)
 );
 check(

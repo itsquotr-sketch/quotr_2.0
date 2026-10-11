@@ -17,7 +17,6 @@ import {
   DECK_CONCRETE_MATERIAL_LABEL,
   DECK_CONCRETE_PLACE_COMPONENT_KEY,
   DECK_CONCRETE_PLACE_LABEL,
-  DECK_CONCRETE_PRODUCTIVITY_CLASS,
   DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
   DECK_CONCRETE_PRODUCTIVITY_KEY,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
@@ -454,20 +453,21 @@ check(
 check(
   "33 concrete productivity is hours/bag with leftover hours/hole",
   prodKeys.includes(DECK_CONCRETE_PRODUCTIVITY_KEY) &&
-    catalogueSrc.includes(DECK_CONCRETE_PRODUCTIVITY_CLASS) &&
+    catalogueSrc.includes("0.06666666666666667") &&
     prodSrc.includes(`"${DECK_CONCRETE_PRODUCTIVITY_KEY}"`) &&
     catalogueSrc.includes(DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY) &&
     catalogueSrc.includes("leftover")
 );
 check(
   "34 concrete labour does not duplicate digging",
-  deckCalc.includes("Excludes hole excavation") &&
+  deckCalc.includes("Hole excavation labour is separate") &&
     !deckCalc.includes("hole digging labour")
 );
 check(
-  "35 pile labour includes hole excavation/prep",
-  deckCalc.includes("hole excavation") &&
-    catalogueSrc.includes("hole excavation")
+  "35 pile hours do not claim excavation is included",
+  deckCalc.includes("Hole excavation labour is separate") &&
+    catalogueSrc.includes("not included in these hours") &&
+    !catalogueSrc.includes("Includes normal set-out, hole excavation")
 );
 
 console.log("\n== STEPS ==");
