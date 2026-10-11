@@ -250,8 +250,8 @@ function siblingCostExcludingPainting(
 console.log("=== CEILINGS-PAINTING-01B ===\n");
 
 check(
-  "canonical painting.material.m2 catalogue is $18 materials-only",
-  getCatalogueEntry(CEILINGS_PAINTING_MATERIAL_KEY)?.defaultCostRate === 18 &&
+  "canonical painting.material.m2 catalogue is $4.93 materials-only",
+  getCatalogueEntry(CEILINGS_PAINTING_MATERIAL_KEY)?.defaultCostRate === 4.93 &&
     /materials only|not complete supply-and-apply/i.test(
       getCatalogueEntry(CEILINGS_PAINTING_MATERIAL_KEY)?.description ?? ""
     )
@@ -333,12 +333,12 @@ const prePaint = siblingCostExcludingPainting(included);
 const paintTotal = paintingCost(included);
 
 check(
-  "B. painting included → 16m² material $288",
+  "B. painting included → 16m² material $78.88",
   paintMat != null &&
     paintMat.materialKey === CEILINGS_PAINTING_MATERIAL_KEY &&
     near(paintMat.baseQuantity, 16) &&
-    near(paintMat.unitCost, 18) &&
-    near(paintMat.totalCost, 288) &&
+    near(paintMat.unitCost, 4.93) &&
+    near(paintMat.totalCost, 78.88) &&
     paintMat.priced === true &&
     paintMat.rateSource === "benchmark"
 );
@@ -354,8 +354,8 @@ check(
     paintLab.priced === true
 );
 check(
-  "B. painting total $403.20 and no Pricing Required for painting",
-  near(paintTotal, 403.2) &&
+  "B. painting total $194.08 and no Pricing Required for painting",
+  near(paintTotal, 194.08) &&
     paintMat?.priced === true &&
     paintLab?.priced === true &&
     !included.missingInfo.some((row) =>
@@ -367,13 +367,13 @@ const prePaintFromExcluded = excludedBaseline.recommendedCost;
 check(
   "H. sibling stability — excluded baseline unchanged by painting money",
   near(prePaint, prePaintFromExcluded) &&
-    near(included.recommendedCost, prePaintFromExcluded + 403.2) &&
+    near(included.recommendedCost, prePaintFromExcluded + 194.08) &&
     near(prePaint + paintTotal, included.recommendedCost)
 );
 check(
-  "H. accepted painting add-on is exactly $403.20 (16×$18 + 1.92×$60)",
-  near(paintTotal, 403.2) &&
-    near(included.recommendedCost - prePaintFromExcluded, 403.2)
+  "H. accepted painting add-on is exactly $194.08 (16×$4.93 + 1.92×$60)",
+  near(paintTotal, 194.08) &&
+    near(included.recommendedCost - prePaintFromExcluded, 194.08)
 );
 check(
   "H. stopping remains 16m² × $28",
@@ -443,7 +443,7 @@ const prodMat = material(
 check(
   "D. company productivity override changes hours, not material qty",
   near(prodMat?.baseQuantity, 16) &&
-    near(prodMat?.totalCost, 288) &&
+    near(prodMat?.totalCost, 78.88) &&
     near(prodLab?.productivityBasis.hoursPerUnit, 0.2) &&
     near(prodLab?.adjustedHours, 3.2) &&
     near(prodLab?.totalCost, 192) &&
@@ -475,7 +475,7 @@ check(
   "overrides removed restore Quotr benchmarks",
   near(
     material(restored.requirements ?? [], CEILINGS_PAINTING_COMPONENT)?.unitCost,
-    18
+    4.93
   ) &&
     near(
       labour(restored.requirements ?? [], CEILINGS_PAINTING_LABOUR)?.adjustedHours,

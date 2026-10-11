@@ -386,8 +386,8 @@ check(
     liveQuotrMaterialCost(WALL_INSULATION_THERMAL_KEY) === ORDINARY_THERMAL_INSULATION_COST
 );
 check(
-  "10 mm Standard resolves at owner-approved $18",
-  liveQuotrMaterialCost("sheet.plasterboard.standard.10mm.2400x1200.each") === 18 &&
+  "10 mm Standard resolves at the approved $22.40",
+  liveQuotrMaterialCost("sheet.plasterboard.standard.10mm.2400x1200.each") === 22.4 &&
     listOwnerApprovalGaps("ceilings").length === 0
 );
 

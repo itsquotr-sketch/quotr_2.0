@@ -264,8 +264,11 @@ const aInsLab = labs(aCalc).find(
   (row) => row.componentKey === INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT
 );
 check(
-  "Fixture A insulation material quantity",
-  aInsMat != null && near(aInsMat.baseQuantity, 27.1962) && aInsMat.priced === false
+  "Fixture A insulation material quantity uses the approved acoustic cost",
+  aInsMat != null &&
+    near(aInsMat.baseQuantity, 27.1962) &&
+    aInsMat.priced === true &&
+    near(aInsMat.unitCost, 13.51)
 );
 check(
   "Fixture A insulation labour Pricing Required",
@@ -314,14 +317,14 @@ check("Fixture C 12 lm each side", cCornice != null && near(cCornice.sideALm, 12
 check("Fixture C total 24 lm", cCornice != null && near(cCornice.totalLm, 24));
 const cCalc = calculateInternalWalls(ctx([walls], cFacts), walls);
 check(
-  "Fixture C cornice labour uses approved 0.20 h/lm",
+  "Fixture C cornice labour uses approved 0.10 h/lm",
   labs(cCalc).some(
     (row) =>
       row.componentKey === INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT &&
       row.priced === true &&
-      near(row.productivityBasis.hoursPerUnit, 0.2) &&
+      near(row.productivityBasis.hoursPerUnit, 0.1) &&
       near(row.productivityBasis.quantity, 24) &&
-      near(row.baseHours, 4.8)
+      near(row.baseHours, 2.4)
   )
 );
 check(

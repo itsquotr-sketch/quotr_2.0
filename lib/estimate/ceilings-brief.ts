@@ -413,7 +413,13 @@ function splitPortionSnippets(brief: string): string[] {
     }
   }
   const explicitCeiling = expanded.filter((row) => /\bceilings?\b/i.test(row));
-  if (explicitCeiling.length >= 1) return explicitCeiling;
+  if (explicitCeiling.length >= 1) {
+    const bulkheadOnly = expanded.filter(
+      (row) => !explicitCeiling.includes(row) && /\bbulkheads?\b/i.test(row)
+    );
+    if (bulkheadOnly.length > 0 && explicitCeiling.length === 1) return [trimmed];
+    return explicitCeiling;
+  }
   const withCeilingSignal = expanded.filter(snippetHasCeilingSignal);
   if (withCeilingSignal.length >= 2) return withCeilingSignal;
   if (expanded.length >= 2) {

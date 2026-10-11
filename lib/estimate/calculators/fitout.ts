@@ -729,30 +729,88 @@ export function calculateCeilings(
   const selectedLining = flatCeilingHasSelectedLining(ceilingType);
   if (selectedLining) {
     const areaLabel = ceilingArea ?? result.lineItems[0]?.quantity ?? 0;
+    const flatProductivity = resolveProductivity({
+      productivityKey: "ceilings.labour_hours_per_m2",
+      unit: "m²",
+      fallbackHoursPerUnit: 0.9,
+      rates: context.rates,
+    });
+    const companyInstall =
+      flatProductivity.sourceType === "user_rate" ||
+      flatProductivity.sourceType === "calibrated_productivity";
+    const labourRate = resolveLabourRate({
+      rates: context.rates,
+      organisationSettings: context.organisationSettings,
+    });
     result.lineItems = result.lineItems.map((item) => {
       const labour = item.category === "labour" || /labour/i.test(item.label);
+      if (labour && companyInstall) {
+        return {
+          ...createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: `${ceilingType} ceiling installation`,
+            quantity: areaLabel,
+            unit: "m²",
+            productivityHoursPerUnit: flatProductivity.hoursPerUnit,
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            rateSource: flatProductivity.sourceLabel,
+            rateSourceType: flatProductivity.sourceType,
+            sortOrder: item.sortOrder,
+            organisationSettings: context.organisationSettings,
+            notes: `Company ceiling installation rate ${flatProductivity.hoursPerUnit} h/m² on ${areaLabel} m². Sheet material, fixings, stopping, and insulation are not included.`,
+          }),
+          includedInTotal: true,
+        };
+      }
+      if (labour) {
+        return {
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: `${ceilingType} ceiling installation`,
+            category: "labour",
+            quantity: areaLabel,
+            unit: "m²",
+            costRate: 0,
+            sellRate: 0,
+            rateSource: "Pricing required",
+            rateSourceType: "missing",
+            sortOrder: item.sortOrder,
+            organisationSettings: context.organisationSettings,
+            notes: `Pricing Required. ${areaLabel} m². Approved plasterboard installation is 0.4167 person-hours per sheet, and other named linings use their own piece rate. Sheet size is not confirmed, so those hours are not calculated. The 0.9 h/m² flat fallback has no workbook row and is not used.`,
+          }),
+          includedInTotal: false,
+          labourHours: undefined,
+        };
+      }
       return {
-        ...item,
-        label: labour
-          ? `${ceilingType} ceiling labour`
-          : `${ceilingType} ceiling lining`,
-        recommendedCost: 0,
-        recommendedSell: 0,
-        labourHours: undefined,
-        rateSource: "Pricing required",
-        rateSourceType: "missing" as const,
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: `${ceilingType} ceiling lining`,
+          category: "materials",
+          quantity: areaLabel,
+          unit: "m²",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: "Pricing required",
+          rateSourceType: "missing",
+          sortOrder: item.sortOrder,
+          organisationSettings: context.organisationSettings,
+          notes: `Pricing Required. ${areaLabel} m² of selected ${ceilingType}. This is not the $75/m² materials allowance and not a sheet count. A company sheet rate is not applied because the number of sheets is unknown. Fixings, stopping, insulation, and new framing are not included.`,
+        }),
         includedInTotal: false,
-        sellDerivedFromMargin: false,
-        notes: labour
-          ? `Pricing Required. ${areaLabel} m². Install hours are not assessed because the sheet or board product, thickness, and sheet size are not confirmed. This is not the 0.9 h/m² package.`
-          : `Pricing Required. ${areaLabel} m² of selected ${ceilingType}. This is not the $75/m² materials allowance and not a sheet count. A company sheet rate is not applied because the number of sheets is unknown. Fixings, stopping, insulation, and new framing are not included.`,
       };
     });
     result.missingInfo.push(
       `${workArea.name}: ${ceilingType} is selected. Confirm the sheet or board product, thickness, and sheet size, and whether stopping, fixings, and insulation are included, before this lining can be priced.`
     );
     result.assumptions.push(
-      `Selected lining “${ceilingType}” stays Pricing Required. The $75/m² provisional package is not used for a named lining.`
+      companyInstall
+        ? `Selected lining “${ceilingType}” uses the company flat installation rate only. Sheet material stays Pricing Required. The $75/m² package is not used.`
+        : `Selected lining “${ceilingType}” has no approved area installation rate. Installation hours and sheet material stay Pricing Required. The $75/m² package and the 0.9 h/m² fallback are not used.`
     );
   } else {
     const materialsIndex = result.lineItems.findIndex((item) =>
@@ -763,6 +821,16 @@ export function calculateCeilings(
       result.lineItems[materialsIndex] = {
         ...baseItem,
         notes: `Provisional materials package at $75/m² for an unspecified ceiling. It is not a named lining, not a sheet takeoff, and not a company material rate. Review or replace it in Pricing. It is not added when a lining is selected or when a ceiling portion exists.`,
+      };
+    }
+    const labourIndex = result.lineItems.findIndex(
+      (item) => item.category === "labour" || /labour/i.test(item.label)
+    );
+    if (labourIndex >= 0) {
+      const labourItem = result.lineItems[labourIndex];
+      result.lineItems[labourIndex] = {
+        ...labourItem,
+        notes: `Provisional installation at 0.9 person-hours/m² for an unspecified ceiling. It has no workbook row. It is not the approved plasterboard rate of 0.4167 hours per sheet. Stopping, fixings, insulation, and new framing are separate and are included only when selected.`,
       };
     }
   }

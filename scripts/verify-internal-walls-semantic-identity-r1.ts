@@ -470,48 +470,48 @@ check(
 );
 
 const baseline = {
-  // CORRECT-01: lining labour 0.4 h/installed sheet (was 0 / Pricing Required);
-  // fixings $8/m² COST (was unpriced). Sell follows 20% GM.
+  // Approved lining labour is 0.5 h/installed sheet (workbook row 13).
+  // Sheet and timber costs are the approved catalogue amounts. Sell follows 20% GM.
   A: {
-    labourHours: 20.96,
-    recommendedCost: 2555.09,
-    recommendedSell: 3193.86,
+    labourHours: 22.96,
+    recommendedCost: 2895.09,
+    recommendedSell: 3618.86,
     lineCount: 7,
     length: 12,
     height: 2.4,
     centres: 600,
     requirementsFingerprint:
-      "labour:internal_walls.framing.timber.90x45.install=12.96|labour:internal_walls.lining.standard_gib.install=8|material:internal_walls.framing.fixings.allowance=28.8|material:internal_walls.framing.timber.90x45.material=108.24|material:internal_walls.lining.standard_gib.material=22",
+      "labour:internal_walls.framing.timber.90x45.install=12.96|labour:internal_walls.lining.standard_gib.install=10|material:internal_walls.framing.fixings.allowance=28.8|material:internal_walls.framing.timber.90x45.material=108.24|material:internal_walls.lining.standard_gib.material=22",
   },
   B: {
-    labourHours: 16.4,
-    recommendedCost: 1878.46,
-    recommendedSell: 2348.08,
+    labourHours: 17.8,
+    recommendedCost: 2525.66,
+    recommendedSell: 3157.08,
     lineCount: 7,
     length: 8,
     height: 3,
     centres: 400,
     requirementsFingerprint:
-      "labour:internal_walls.framing.timber.90x45.install=10.8|labour:internal_walls.lining.standard_gib.install=5.6|material:internal_walls.framing.fixings.allowance=24|material:internal_walls.framing.timber.90x45.material=113.3|material:internal_walls.lining.standard_gib.material=16",
+      "labour:internal_walls.framing.timber.90x45.install=10.8|labour:internal_walls.lining.standard_gib.install=7|material:internal_walls.framing.fixings.allowance=24|material:internal_walls.framing.timber.90x45.material=113.3|material:internal_walls.lining.standard_gib.material=16",
   },
   C: {
-    labourHours: 10.75,
-    recommendedCost: 753,
-    recommendedSell: 941.25,
+    labourHours: 11.75,
+    recommendedCost: 1863.62,
+    recommendedSell: 2329.35,
     lineCount: 7,
     length: 5,
     height: 2.7,
     centres: 400,
     requirementsFingerprint:
-      "labour:internal_walls.framing.timber.140x45.install=6.75|labour:internal_walls.lining.standard_gib.install=4|material:internal_walls.framing.fixings.allowance=13.5|material:internal_walls.framing.timber.140x45.material=69.08|material:internal_walls.lining.standard_gib.material=12",
+      "labour:internal_walls.framing.timber.140x45.install=6.75|labour:internal_walls.lining.standard_gib.install=5|material:internal_walls.framing.fixings.allowance=13.5|material:internal_walls.framing.timber.140x45.material=69.08|material:internal_walls.lining.standard_gib.material=12",
   },
   D: {
-    labourHours: 21.76,
-    recommendedCost: 2723.46,
-    recommendedSell: 3404.32,
+    labourHours: 23.96,
+    recommendedCost: 3205.06,
+    recommendedSell: 4006.32,
     lineCount: 14,
     requirementsFingerprint:
-      "labour:internal_walls.framing.timber.90x45.install=12.96|labour:internal_walls.lining.aqualine.install=1.2|labour:internal_walls.lining.standard_gib.install=7.6|material:internal_walls.framing.fixings.allowance=28.8|material:internal_walls.framing.timber.90x45.material=110.88|material:internal_walls.lining.aqualine.material=4|material:internal_walls.lining.standard_gib.material=22",
+      "labour:internal_walls.framing.timber.90x45.install=12.96|labour:internal_walls.lining.aqualine.install=1.5|labour:internal_walls.lining.standard_gib.install=9.5|material:internal_walls.framing.fixings.allowance=28.8|material:internal_walls.framing.timber.90x45.material=110.88|material:internal_walls.lining.aqualine.material=4|material:internal_walls.lining.standard_gib.material=22",
   },
 } as const;
 const live = internalWallsIdentityInvariantFixtures();

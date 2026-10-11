@@ -370,6 +370,32 @@ const ceilingsWithSheetRate = calculateCeilings(
   ceilingsArea
 );
 report("Ceilings 30 m² plasterboard with a company sheet rate", ceilingsWithSheetRate);
+const companyInstallRate: OrganisationRate = {
+  id: "co-install",
+  rate_type: "productivity",
+  trade: null,
+  work_area_type: null,
+  item_key: "ceilings.labour_hours_per_m2",
+  label: "Company flat ceiling install",
+  unit: "m²",
+  cost_rate: 0.5,
+  sell_rate: null,
+  markup_percent: null,
+  active: true,
+};
+const ceilingsWithInstallRate = calculateCeilings(
+  ctx(
+    [ceilingsArea],
+    [
+      fact("ceilings.area_m2", "c1", 30),
+      fact("ceilings.structure_type", "c1", "Existing structure"),
+      fact("ceilings.ceiling_type", "c1", "Plasterboard"),
+    ],
+    [companyInstallRate]
+  ),
+  ceilingsArea
+);
+report("Ceilings 30 m² plasterboard with a company area installation rate", ceilingsWithInstallRate);
 const nestedPortion = createEmptyCeilingPortion({
   id: "fa_book_ceiling_000000000000000001",
   label: "Lounge",
@@ -621,7 +647,7 @@ const selectedLining = ceilings.lineItems.find((row) =>
   /plasterboard ceiling lining/i.test(row.label)
 );
 const selectedLabour = ceilings.lineItems.find((row) =>
-  /plasterboard ceiling labour/i.test(row.label)
+  /plasterboard ceiling installation/i.test(row.label)
 );
 assert(
   "selected plasterboard ceiling is Pricing Required, not the $75/m² allowance",
@@ -635,7 +661,10 @@ assert(
     (selectedLining.notes ?? "").includes("not the $75/m²") &&
     (selectedLining.notes ?? "").includes("number of sheets is unknown") &&
     selectedLabour?.includedInTotal === false &&
+    selectedLabour.rateSourceType === "missing" &&
     (selectedLabour.labourHours == null || selectedLabour.labourHours === 0) &&
+    (selectedLabour.notes ?? "").includes("0.9 h/m²") &&
+    (selectedLabour.notes ?? "").includes("not used") &&
     money(ceilings.lineItems).cost === 0 &&
     money(ceilings.lineItems).sell === 0 &&
     ceilings.missingInfo.some((row) => /sheet size/i.test(row)) &&
@@ -656,6 +685,9 @@ assert(
     provisional.unit === "m²" &&
     (provisional.notes ?? "").includes("Provisional materials package") &&
     (provisional.notes ?? "").includes("not a named lining") &&
+    (unspecifiedCeilings.lineItems.find((row) => row.category === "labour")?.notes ?? "").includes(
+      "Provisional installation"
+    ) &&
     money(unspecifiedCeilings.lineItems).cost === 3870 &&
     money(unspecifiedCeilings.lineItems).sell === 4837.5 &&
     money(unspecifiedCeilings.lineItems).gst === 725.63
@@ -667,6 +699,27 @@ assert(
     ceilingsWithSheetRate.lineItems.every(
       (row) => row.includedInTotal === false && (row.recommendedCost ?? 0) === 0
     )
+);
+const companyInstallLabour = ceilingsWithInstallRate.lineItems.find((row) =>
+  /installation/i.test(row.label)
+);
+const companyInstallSheet = ceilingsWithInstallRate.lineItems.find((row) =>
+  /lining/i.test(row.label)
+);
+assert(
+  "a company flat installation rate stays priced while the sheet stays unknown",
+  companyInstallLabour?.includedInTotal !== false &&
+    companyInstallLabour?.rateSourceType === "user_rate" &&
+    Math.abs((companyInstallLabour?.labourHours ?? 0) - 15) < 1e-6 &&
+    Math.abs((companyInstallLabour?.recommendedCost ?? 0) - 900) < 0.02 &&
+    Math.abs((companyInstallLabour?.recommendedSell ?? 0) - 1125) < 0.02 &&
+    companyInstallSheet?.includedInTotal === false &&
+    companyInstallSheet?.rateSourceType === "missing" &&
+    (companyInstallSheet?.recommendedCost ?? 0) === 0 &&
+    !ceilingsWithInstallRate.lineItems.some((row) => /materials allowance/i.test(row.label)) &&
+    money(ceilingsWithInstallRate.lineItems).cost === 900 &&
+    money(ceilingsWithInstallRate.lineItems).sell === 1125 &&
+    money(ceilingsWithInstallRate.lineItems).gst === 168.75
 );
 const nestedSheets = nestedCeilings.lineItems.find((row) =>
   row.itemKey === "sheet.plasterboard.standard.13mm.3000x1200.each"

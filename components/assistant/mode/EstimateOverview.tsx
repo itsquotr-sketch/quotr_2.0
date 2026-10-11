@@ -228,11 +228,16 @@ export function EstimateOverview({
               {sell.gst} GST · {sell.inclGst} incl GST
             </p>
           ) : null}
+          {sell.presentation === "partial" ? (
+            <p className="mt-1 text-sm leading-6 text-foreground/80" data-estimate-overview-partial>
+              Priced work only. This is not the complete job price.
+            </p>
+          ) : null}
         </Stat>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {direct ? (
-            <Stat label="Direct cost">
+            <Stat label={direct.label}>
               <p className="text-lg font-medium tabular-nums" data-composition-id="direct">
                 {direct.value}
               </p>

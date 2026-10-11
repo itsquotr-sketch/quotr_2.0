@@ -470,14 +470,14 @@ const bhLiningLab = labour(
 check("L framing material COST = $173.60", near(bhFrame?.totalCost, 173.6));
 check("M framing fixings COST = $21", near(bhFix?.totalCost, 21));
 check(
-  "N raw framing labour = 5.04h / $302.40",
-  near(bhFrameLab?.baseHours, 5.04) && near(bhFrameLab?.totalCost, 302.4)
+  "N raw framing labour = 5.6h / $336",
+  near(bhFrameLab?.baseHours, 5.6) && near(bhFrameLab?.totalCost, 336)
 );
-check("O lining material COST = $67.50", near(bhLining?.totalCost, 67.5));
+check("O lining material COST = $105.60", near(bhLining?.totalCost, 105.6));
 check("P lining consumables COST = $12.50", near(bhLiningFix?.totalCost, 12.5));
 check(
-  "Q raw lining labour = 1h / $60",
-  near(bhLiningLab?.baseHours, 1) && near(bhLiningLab?.totalCost, 60)
+  "Q raw lining labour = 0.5h / $30",
+  near(bhLiningLab?.baseHours, 0.5) && near(bhLiningLab?.totalCost, 30)
 );
 
 const bulkheadRaw =
@@ -487,7 +487,7 @@ const bulkheadRaw =
   (bhLining?.totalCost ?? 0) +
   (bhLiningFix?.totalCost ?? 0) +
   (bhLiningLab?.totalCost ?? 0);
-check("R raw fixture COST = $637", near(bulkheadRaw, 637));
+check("R raw fixture COST = $678.70", near(bulkheadRaw, 678.7));
 check(
   "S standard Bulkhead has no PR",
   fixtureRun.commercial.requirements
@@ -654,10 +654,10 @@ check(
   "AB Project Conditions adjust labour only, not quantities",
   near(accessTakeoff.framingLm, 28) &&
     near(accessTakeoff.liningAreaM2, 5) &&
-    near(accessFrame?.baseHours, 5.04) &&
-    (accessFrame?.adjustedHours ?? 0) > 5.04 &&
-    near(accessLining?.baseHours, 1) &&
-    (accessLining?.adjustedHours ?? 0) > 1
+    near(accessFrame?.baseHours, 5.6) &&
+    (accessFrame?.adjustedHours ?? 0) > 5.6 &&
+    near(accessLining?.baseHours, 0.5) &&
+    (accessLining?.adjustedHours ?? 0) > 0.5
 );
 
 const islandRunPortion = ordinaryLounge();
@@ -938,11 +938,11 @@ check(
   "R5 F ordinary hosted fixture COST unchanged",
   near(bhFrame?.totalCost, 173.6) &&
     near(bhFix?.totalCost, 21) &&
-    near(bhFrameLab?.totalCost, 302.4) &&
-    near(bhLining?.totalCost, 67.5) &&
+    near(bhFrameLab?.totalCost, 336) &&
+    near(bhLining?.totalCost, 105.6) &&
     near(bhLiningFix?.totalCost, 12.5) &&
-    near(bhLiningLab?.totalCost, 60) &&
-    near(bulkheadRaw, 637) &&
+    near(bhLiningLab?.totalCost, 30) &&
+    near(bulkheadRaw, 678.7) &&
     fixtureRun.commercial.completeness === "COMPLETE_COMMERCIAL"
 );
 

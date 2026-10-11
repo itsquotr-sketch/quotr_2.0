@@ -411,8 +411,8 @@ check(
 check(
   "painting resolves with approved material authority (not false $0)",
   paintingPriced &&
-    near(painting?.unitCost, 18) &&
-    near(painting?.totalCost, 288) &&
+    near(painting?.unitCost, 4.93) &&
+    near(painting?.totalCost, 78.88) &&
     painting?.rateSource === "benchmark" &&
     painting?.materialKey === CEILINGS_PAINTING_MATERIAL_KEY
 );

@@ -557,7 +557,7 @@ check(
   companyPbMat.priced === true &&
     near(companyPbMat.unitCost, 30) &&
     companyPbMat.rateSource === "company" &&
-    near(pbMat.unitCost, 18)
+    near(pbMat.unitCost, 28)
 );
 
 const companyProd = runCommercial(
@@ -575,7 +575,7 @@ check(
     near(companyPbLab.productivityBasis.hoursPerUnit, 0.55) &&
     companyPbLab.rateProvenance === "company" &&
     pbLab.priced === true &&
-    near(pbLab.productivityBasis.hoursPerUnit, 0.5) &&
+    near(pbLab.productivityBasis.hoursPerUnit, 0.4166666666666667) &&
     resolveCeilingProductivity({
       productivityKey: CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
       unit: "sheet",
@@ -597,7 +597,7 @@ check(
 check(
   "V ordinary steel material now resolves independently of labour",
   steelPrimary.priced === true &&
-    near(steelPrimary.unitCost, 7.25) &&
+    near(steelPrimary.unitCost, 9.5) &&
     steelPrimary.rateSource === "benchmark" &&
     labour(steel.commercial.requirements, "ceilings.steel.primary_channel.install")
       ?.priced === true
@@ -808,11 +808,11 @@ check(
 const dim3000 = runCommercial([plasterPortion({ sheetLength: 3000 })]);
 const dimMat = material(dim3000.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT)!;
 check(
-  "dimensioned 3000×1200 Standard derives from 2400×1200 Quotr COST",
+  "dimensioned 3000×1200 Standard uses the direct approved sheet cost",
   dimMat.materialKey === "sheet.plasterboard.standard.13mm.3000x1200.each" &&
     dimMat.priced === true &&
-    near(dimMat.unitCost, 22.5) &&
-    dimMat.conversion?.basis === "quotr_derived_same_family_thickness_2400x1200"
+    near(dimMat.unitCost, 35.2) &&
+    dimMat.conversion == null
 );
 
 const timber140 = material(timber.commercial.requirements, CEILINGS_TIMBER_FRAMING_COMPONENT)!;
@@ -882,7 +882,7 @@ check(
         rate_type: "productivity",
       }),
     ],
-  }).hoursPerUnit === 0.5
+  }).hoursPerUnit === 0.4166666666666667
 );
 
 const coverage = ceilingCommercialCoverageTable();

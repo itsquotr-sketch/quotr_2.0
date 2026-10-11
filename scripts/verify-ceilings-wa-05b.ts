@@ -432,7 +432,7 @@ check(
   derived3000 != null &&
     near(derived3000.targetAreaM2, 3.6) &&
     near(derived3000.ratio, 1.25) &&
-    near(derived3000.derivedCost, 22.5) &&
+    near(derived3000.derivedCost, 35) &&
     near(CANONICAL_PLASTERBOARD_SHEET_AREA_M2, 2.88)
 );
 check(
@@ -446,8 +446,15 @@ check(
     derivedDimensionedPlasterboardCost(
       "sheet.plasterboard.standard.10mm.3000x1200.each"
     )?.baseKey !== "sheet.plasterboard.standard.each" &&
-    derivedDimensionedPlasterboardCost("sheet.plasterboard.noiseline.13mm.3000x1200.each") ==
-      null
+    derivedDimensionedPlasterboardCost("sheet.plasterboard.noiseline.13mm.3000x1200.each")
+      ?.baseKey === "sheet.plasterboard.noiseline.13mm.2400x1200.each" &&
+    near(
+      derivedDimensionedPlasterboardCost("sheet.plasterboard.noiseline.13mm.3000x1200.each")
+        ?.derivedCost ?? -1,
+      52
+    ) &&
+    derivedDimensionedPlasterboardCost("sheet.plasterboard.noiseline.13mm.3000x1200.each")
+      ?.baseKey !== "sheet.plasterboard.standard.each"
 );
 
 check(
@@ -545,7 +552,7 @@ const f1PbLine = fixture1.commercial.lineItems.find(
 check(
   "O margin applied once",
   f1PbLine.sellAuthority === "derived_from_gross_margin" &&
-    near(f1PbLine.sellRate ?? -1, 22.5 / 0.8) &&
+    near(f1PbLine.sellRate ?? -1, 35.2 / 0.8) &&
     near(f1PbLine.recommendedSell, 5 * (f1PbLine.sellRate ?? 0)) &&
     f1PbLine.sellDerivedFromMargin === true
 );
@@ -553,7 +560,7 @@ check(
   "P no hidden sell benchmark",
   getCatalogueEntry(TIMBER_FRAMING_140X45_H12_KEY)?.defaultSellRate == null &&
     getCatalogueEntry("sheet.plasterboard.standard.13mm.3000x1200.each")
-      ?.defaultCostRate == null &&
+      ?.defaultCostRate === 35.2 &&
     !read("lib/estimate/ceilings-commercial.ts").includes("FITOUT_BENCHMARKS") &&
     !read("lib/estimate/ceilings-commercial.ts").includes("ceilingsPerM2")
 );
@@ -563,13 +570,13 @@ check(
     fixture1.physical.portions[0]?.geometry.area_m2 === 12 &&
     near(f1Pb.baseQuantity, 4) &&
     near(f1Pb.purchaseQuantity, 5) &&
-    near(f1Pb.unitCost, 22.5) &&
-    near(f1Pb.totalCost, 112.5) &&
+    near(f1Pb.unitCost, 35.2) &&
+    near(f1Pb.totalCost, 176) &&
     near(f1Fix.unitCost, 2.5) &&
     near(f1Fix.purchaseQuantity, 12) &&
     near(f1Fix.totalCost, 30) &&
-    near(f1Lab.adjustedHours, 2) &&
-    near(f1Lab.totalCost, 120) &&
+    near(f1Lab.adjustedHours, 1.67) &&
+    near(f1Lab.totalCost, 100.2) &&
     fixture1.commercial.completeness === "COMPLETE_COMMERCIAL" &&
     fixture1.commercial.requirements.every((row) => row.priced)
 );
@@ -603,11 +610,11 @@ check(
     near(f2Timber.unitCost, 9.65) &&
     near(f2Timber.totalCost, 308.8) &&
     near(f2TimberFix.totalCost, 24) &&
-    near(f2TimberLab.adjustedHours, 3.84) &&
-    near(f2TimberLab.totalCost, 230.4) &&
+    near(f2TimberLab.adjustedHours, 10.67) &&
+    near(f2TimberLab.totalCost, 640.2) &&
     near(
       material(fixture2.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT)?.totalCost,
-      112.5
+      176
     )
 );
 
@@ -618,7 +625,7 @@ check(
   "T steel fixture now resolves ordinary Quotr COST + labour",
   fixture3.commercial.completeness === "COMPLETE_COMMERCIAL" &&
     f3SteelMat.priced === true &&
-    near(f3SteelMat.unitCost, 7.25) &&
+    near(f3SteelMat.unitCost, 9.5) &&
     near(f3SteelMat.baseQuantity, 32) &&
     f3SteelLab.priced === true &&
     near(
@@ -643,7 +650,7 @@ check(
     near(grid.unitCost, 15) &&
     near(grid.totalCost, 450) &&
     tiles.priced === true &&
-    near(tiles.unitCost, 16) &&
+    near(tiles.unitCost, 9) &&
     gridLab.priced === true &&
     tileLab.priced === true &&
     near(gridLab.adjustedHours, 5.4) &&
@@ -834,6 +841,14 @@ check(
         item.includedInTotal === false &&
         item.rateSourceType === "missing"
     ) &&
+    legacyEstimate.lineItems.some(
+      (item) =>
+        /plasterboard ceiling installation/i.test(item.label) &&
+        item.includedInTotal === false &&
+        item.rateSourceType === "missing" &&
+        (item.labourHours == null || item.labourHours === 0) &&
+        (item.notes ?? "").includes("not used")
+    ) &&
     legacyEstimate.missingInfo.some((row) => /sheet size/i.test(row)) &&
     !legacyEstimate.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
@@ -935,11 +950,11 @@ check(
 
 check(
   "steel / grid / tile catalogue COST is the approved V1 Quotr COST",
-  quotrCatalogueCost("steel.ceiling.primary_channel.lm") === 7.25 &&
+  quotrCatalogueCost("steel.ceiling.primary_channel.lm") === 9.5 &&
     quotrCatalogueCost("ceiling.grid.m2") === 15 &&
-    quotrCatalogueCost("ceiling.tile.600x600.each") === 16 &&
+    quotrCatalogueCost("ceiling.tile.600x600.each") === 9 &&
     quotrCeilingMaterialCost("sheet.plasterboard.standard.13mm.3000x1200.each")
-      ?.unitCost === 22.5
+      ?.unitCost === 35.2
 );
 
 function spawnVerifier(script: string): boolean {

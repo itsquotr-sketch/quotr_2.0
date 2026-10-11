@@ -80,7 +80,7 @@ export type EstimateOverviewReconciliation = {
 };
 
 export type EstimateOverviewSell = {
-  readonly presentation: "hidden" | "current" | "previous" | "unresolved";
+  readonly presentation: "hidden" | "current" | "previous" | "unresolved" | "partial";
   readonly label: string;
   readonly exGst: string | null;
   readonly gst: string | null;
@@ -411,6 +411,7 @@ function compositionRows(input: {
     | readonly { readonly id: string; readonly label: string; readonly cost: number }[]
     | undefined;
   readonly costKnown: boolean;
+  readonly knownCostOnly: boolean;
 }): { rows: EstimateOverviewCompositionRow[]; reconciliation: EstimateOverviewReconciliation } {
   if (!input.show || !input.estimate) {
     return { rows: [], reconciliation: { state: "hidden", note: null } };
@@ -424,10 +425,13 @@ function compositionRows(input: {
     categorySummary: input.categorySummary,
     breakdown: input.breakdown,
   });
-  const directCost = input.costKnown ? knownAmount(input.estimate.recommendedCost) : null;
+  const directAmount = knownAmount(input.estimate.recommendedCost);
+  const directCost = input.costKnown ? directAmount : null;
 
   if (directCost != null) {
     push("direct", "Direct cost", formatCurrency(directCost));
+  } else if (input.knownCostOnly && directAmount != null && directAmount > 0) {
+    push("direct", "Known cost", formatCurrency(directAmount));
   }
   for (const category of categories) {
     push(category.id, category.label, formatCurrency(category.cost));
@@ -455,6 +459,7 @@ function sellPresentation(input: {
   readonly hasEstimate: boolean;
   readonly isStale: boolean;
   readonly unresolved: boolean;
+  readonly partial: boolean;
   readonly estimate: EstimateOverviewMoney | null;
   readonly gstRate: number | null;
 }): EstimateOverviewSell {
@@ -470,6 +475,17 @@ function sellPresentation(input: {
     };
   }
   const amount = input.estimate.recommendedSell;
+  if (input.partial && Number.isFinite(amount) && amount > 0) {
+    const gst = presentEstimateGst(amount, input.gstRate);
+    return {
+      presentation: "partial",
+      label: "Known sell, not the complete price",
+      exGst: formatCurrency(gst.exGst),
+      gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
+      inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
+      boundaryCopy,
+    };
+  }
   if (input.unresolved || !Number.isFinite(amount) || amount <= 0) {
     return {
       presentation: "unresolved",
@@ -623,8 +639,14 @@ export function projectEstimateOverview(
   const costKnown =
     input.hasEstimate &&
     estimate != null &&
+    !hasPricingRequired &&
     inferDisplayCostKnown(estimate.recommendedCost, estimate.recommendedSell) &&
     !unresolvedSell;
+  const knownSellPartial =
+    hasPricingRequired &&
+    estimate != null &&
+    Number.isFinite(estimate.recommendedSell) &&
+    estimate.recommendedSell > 0;
 
   let status: EstimateOverviewStatus = "current";
   if (!input.hasEstimate) status = "incomplete";
@@ -634,7 +656,7 @@ export function projectEstimateOverview(
   }
 
   const statusLabel =
-    status === "incomplete"
+    status === "incomplete" || status === "pricing_required"
       ? "Incomplete"
       : status === "stale"
         ? "Stale"
@@ -675,6 +697,7 @@ export function projectEstimateOverview(
     breakdown: input.breakdown,
     categorySummary: input.review?.overview.categorySummary,
     costKnown,
+    knownCostOnly: knownSellPartial && (estimate?.recommendedCost ?? 0) > 0,
   });
 
   return {
@@ -685,6 +708,7 @@ export function projectEstimateOverview(
       hasEstimate: input.hasEstimate,
       isStale: input.isStale,
       unresolved: unresolvedSell,
+      partial: knownSellPartial,
       estimate,
       gstRate: input.gstRate,
     }),

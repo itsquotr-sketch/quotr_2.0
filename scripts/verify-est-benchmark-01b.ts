@@ -475,10 +475,10 @@ check(
   "C dimensioned derivation same-family + same-thickness only",
   derived10Std3000 != null &&
     near(derived10Std3000.ratio, 1.25) &&
-    near(derived10Std3000.derivedCost, 22.5) &&
+    near(derived10Std3000.derivedCost, 28) &&
     derived10Std3000.baseKey === PLASTERBOARD_10MM_STANDARD_2400_KEY &&
     derived10Aq3000 != null &&
-    near(derived10Aq3000.derivedCost, 32.5) &&
+    near(derived10Aq3000.derivedCost, 57) &&
     derived10Aq3000.baseKey === PLASTERBOARD_10MM_AQUALINE_2400_KEY &&
     derived10Fyre3000 == null
 );
@@ -575,7 +575,7 @@ check(
   common.commercial.completeness === "COMPLETE_COMMERCIAL" &&
     common.commercial.requirements.every((row) => row.priced) &&
     commonBoard.priced === true &&
-    near(commonBoard.unitCost, 22.5) &&
+    near(commonBoard.unitCost, 35.2) &&
     commonBoard.rateSource === "benchmark"
 );
 const thermal = runCeiling(plasterPortion({ sheetLength: 3000, insulation: true }));
@@ -589,8 +589,8 @@ check(
     near(thermalMat.unitCost, ORDINARY_THERMAL_INSULATION_COST) &&
     near(thermalMat.totalCost, 12 * ORDINARY_THERMAL_INSULATION_COST) &&
     thermalLab?.priced === true &&
-    near(thermalLab.productivityBasis.hoursPerUnit, 0.05) &&
-    near(thermalLab.baseHours, 0.6)
+    near(thermalLab.productivityBasis.hoursPerUnit, 0.06666666666666667) &&
+    near(thermalLab.baseHours, 0.8)
 );
 const hostedThermal = hostedCeiling(plasterPortion({ sheetLength: 3000, insulation: true }));
 const hostedBoard = hostedThermal.requirements.find(
@@ -602,7 +602,7 @@ const hostedThermalMat = hostedThermal.requirements.find(
 check(
   "T-hosted calculateEstimate thermal 4×3 resolves Quotr fallbacks",
   hostedBoard?.priced === true &&
-    near(hostedBoard?.unitCost, 22.5) &&
+    near(hostedBoard?.unitCost, 35.2) &&
     hostedThermalMat?.priced === true &&
     near(hostedThermalMat?.unitCost, ORDINARY_THERMAL_INSULATION_COST) &&
     hostedThermal.lineItems.every((item) => item.rateSourceType !== "missing")
@@ -633,12 +633,12 @@ check(
   "T-hosted disclosed sheets + ordinary bulkhead still prices lounge lining",
   disclosedBoard?.priced === true &&
     disclosedBoard.materialKey === "sheet.plasterboard.standard.13mm.3000x1200.each" &&
-    near(disclosedBoard.unitCost, 22.5) &&
+    near(disclosedBoard.unitCost, 35.2) &&
     hostedDisclosedBh.lineItems.some(
       (item) =>
         item.componentKey === CEILINGS_PLASTERBOARD_COMPONENT &&
         item.rateSourceType !== "missing" &&
-        near(item.costRate, 22.5)
+        near(item.costRate, 35.2)
     )
 );
 const direct = runCeiling(steelPortion());
@@ -649,10 +649,10 @@ check(
     near(material(direct.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.baseQuantity, 32) &&
     near(material(direct.commercial.requirements, CEILINGS_STEEL_FURRING_COMPONENT)?.baseQuantity, 30) &&
     near(material(direct.commercial.requirements, CEILINGS_STEEL_CLIP_COMPONENT)?.baseQuantity, 80) &&
-    near(material(direct.commercial.requirements, CEILINGS_STEEL_PERIMETER_COMPONENT)?.unitCost, 5.5) &&
-    near(material(direct.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.unitCost, 7.25) &&
-    near(material(direct.commercial.requirements, CEILINGS_STEEL_FURRING_COMPONENT)?.unitCost, 4.2) &&
-    near(material(direct.commercial.requirements, CEILINGS_STEEL_CLIP_COMPONENT)?.unitCost, 2) &&
+    near(material(direct.commercial.requirements, CEILINGS_STEEL_PERIMETER_COMPONENT)?.unitCost, 5.87) &&
+    near(material(direct.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.unitCost, 9.5) &&
+    near(material(direct.commercial.requirements, CEILINGS_STEEL_FURRING_COMPONENT)?.unitCost, 6.44) &&
+    near(material(direct.commercial.requirements, CEILINGS_STEEL_CLIP_COMPONENT)?.unitCost, 1.13) &&
     direct.commercial.requirements.every((row) => row.priced)
 );
 const suspended = runCeiling(steelPortion({ suspended: true }));
@@ -677,7 +677,7 @@ check(
     near(grid.unitCost, 15) &&
     near(grid.totalCost, 450) &&
     near(tileMat.baseQuantity, 84) &&
-    near(tileMat.unitCost, 16) &&
+    near(tileMat.unitCost, 9) &&
     near(labour(tiles.commercial.requirements, "ceilings.grid.install")?.adjustedHours, 5.4) &&
     near(labour(tiles.commercial.requirements, "ceilings.tile.install")?.adjustedHours, 2.1) &&
     tiles.commercial.requirements.every((row) => row.priced)
@@ -723,11 +723,11 @@ const labourCost = resolveLabourRate({ rates: [], organisationSettings: SETTINGS
 check(
   "Y ordinary IW skirting completes",
   skirtMat?.priced === true &&
-    near(skirtMat.unitCost, 28) &&
+    near(skirtMat.unitCost, 5.8) &&
     skirtLab?.priced === true &&
     near(skirtLab.productivityBasis.hoursPerUnit, 0.1) &&
     labourCost.costRate === 60 &&
-    getCatalogueEntry(INTERNAL_WALLS_SKIRTING_MATERIAL_KEY)?.defaultCostRate === 28
+    getCatalogueEntry(INTERNAL_WALLS_SKIRTING_MATERIAL_KEY)?.defaultCostRate === 5.8
 );
 
 console.log("\n--- Z / AA–AC specialty, margin, quantities ---\n");
@@ -764,7 +764,7 @@ const boardLine = common.commercial.lineItems.find(
 check(
   "AA margin applied once",
   boardLine.sellAuthority === "derived_from_gross_margin" &&
-    near(boardLine.sellRate ?? -1, 22.5 / 0.8) &&
+    near(boardLine.sellRate ?? -1, 35.2 / 0.8) &&
     boardLine.sellDerivedFromMargin === true
 );
 check(
@@ -788,10 +788,10 @@ check(
 const tenMmCeiling = runCeiling(plasterPortion({ thicknessMm: 10, sheetLength: 2400 }));
 const tenMmBoard = material(tenMmCeiling.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT);
 check(
-  "18 ceiling 10mm Standard resolves at $18 shared identity",
+  "ceiling 10mm Standard resolves at the approved $22.40 shared identity",
   tenMmBoard?.priced === true &&
     tenMmBoard.materialKey === PLASTERBOARD_10MM_STANDARD_2400_KEY &&
-    near(tenMmBoard.unitCost, 18)
+    near(tenMmBoard.unitCost, 22.4)
 );
 const iwTen = calculateInternalWalls(iwCtx(tenMmIwFacts()), wa("internal_walls", "w1", "Internal walls"));
 const iwTenMat = (iwTen.requirements ?? []).find(
@@ -799,14 +799,14 @@ const iwTenMat = (iwTen.requirements ?? []).find(
     row.kind === "material" && row.materialKey === PLASTERBOARD_10MM_STANDARD_2400_KEY
 );
 check(
-  "18 IW 10mm Standard uses the same shared $18 identity",
+  "IW 10mm Standard uses the same approved $22.40 identity",
   internalWallsLiningMaterialKey({
     product: "standard_gib",
     thicknessMm: 10,
     lengthMm: 2400,
   }).materialKey === PLASTERBOARD_10MM_STANDARD_2400_KEY &&
     iwTenMat?.priced === true &&
-    near(iwTenMat.unitCost, 18)
+    near(iwTenMat.unitCost, 22.4)
 );
 
 console.log("\n--- AD–AF Project Conditions ---\n");
@@ -903,9 +903,9 @@ check(
   "preserved approved rates unchanged",
   liveQuotrMaterialCost("timber.framing.90x45.h1.2.lm") === 6.2 &&
     liveQuotrMaterialCost("timber.framing.140x45.h1.2.lm") === 9.65 &&
-    liveQuotrMaterialCost("sheet.plasterboard.standard.each") === 18 &&
-    liveQuotrMaterialCost("sheet.plasterboard.aqualine.each") === 26 &&
-    liveQuotrMaterialCost("sheet.plasterboard.fyreline.each") === 24
+    liveQuotrMaterialCost("sheet.plasterboard.standard.each") === 28 &&
+    liveQuotrMaterialCost("sheet.plasterboard.aqualine.each") === 58.4 &&
+    liveQuotrMaterialCost("sheet.plasterboard.fyreline.each") === 36.8
 );
 
 check(

@@ -306,9 +306,9 @@ check(
   getCatalogueEntry("bathroom.stopping.m2")?.work_area_type === "bathroom"
 );
 check(
-  "painting.wall.m2 catalogue identity stays Pricing Required (no Quotr COST)",
+  "painting.wall.m2 uses the approved $4.93/m² cost",
   getCatalogueEntry("painting.wall.m2") != null &&
-    getCatalogueEntry("painting.wall.m2")?.defaultCostRate == null
+    getCatalogueEntry("painting.wall.m2")?.defaultCostRate === 4.93
 );
 check(
   "do not reuse painting.material.m2 for IW nested paint",
@@ -401,7 +401,15 @@ const pLines = pCalc.lineItems.filter((row) => row.componentKey === INTERNAL_WAL
 check("paint two face lines", pLines.length === 2);
 check("paint uses painting.wall.m2", pLines.every((row) => row.itemKey === INTERNAL_WALLS_PAINTING_MATERIAL_KEY));
 check("paint no litres", pLines.every((row) => row.unit === "m2" && !/litre/i.test(row.notes ?? "")));
-check("paint Pricing Required", pLines.every((row) => row.rateSourceType === "missing"));
+check(
+  "paint uses the approved $4.93/m² cost",
+  pLines.every(
+    (row) =>
+      row.rateSourceType === "benchmark" &&
+      Math.abs((row.recommendedCost ?? 0) - 134.1) < 0.02 &&
+      Math.abs((row.recommendedSell ?? 0) - 167.55) < 0.02
+  )
+);
 check("paint coats do not triple area", pLines.every((row) => near(row.quantity, 27.1962)));
 
 console.log("\n--- One-side finish ---\n");

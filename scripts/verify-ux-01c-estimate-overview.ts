@@ -175,7 +175,51 @@ const pricingRequired = projectEstimateOverview(
 check("5 Pricing Required stays unresolved with no invented money", pricingRequired.status === "pricing_required" && pricingRequired.sell.presentation === "unresolved" && pricingRequired.sell.exGst == null && pricingRequired.composition.length === 0);
 check("5 Pricing Required needs attention and does not block Pricing", pricingRequired.requiredCount === 0 && pricingRequired.pricingAttentionCount === 1 && pricingRequired.pricingAttention[0]?.title === "Manufactured gate" && pricingRequired.pricingAttention[0]?.blocksPricing === false && pricingRequired.pricingAttention[0]?.money == null && pricingRequired.pricingAttention[0]?.group === "pricing_attention");
 check("5 Pricing Required does not add a new Pricing-creation block", !pricingRequired.pricingCreationBlocked && pricingRequired.pricingEntry === "create");
-check("5 missing prices stay Estimate ready and name the count", pricingRequired.statusLabel === "Estimate ready" && pricingRequired.statusDetail === "1 item still needs a price. Complete this in Pricing.");
+check("5 missing prices stay Incomplete and name the count", pricingRequired.statusLabel === "Incomplete" && pricingRequired.statusDetail === "1 item still needs a price. Complete this in Pricing.");
+
+const knownBesideMissing = projectEstimateOverview(
+  input({
+    review: review({
+      overview: {
+        workAreaNames: ["Fence"],
+        partialEstimateLabel: "Some Fence items still require pricing.",
+        recommendedSellIsPartial: true,
+      },
+      workAreas: [
+        {
+          workAreaName: "Fence",
+          partialEstimateLabel: "Some Fence items still require pricing.",
+          categories: [
+            {
+              id: "PRICING_REQUIRED",
+              lineGroups: [
+                {
+                  id: "gate",
+                  label: "Manufactured gate",
+                  pricingRequired: true,
+                  children: [{ id: "gate-line" }],
+                },
+              ],
+              lines: [{ id: "gate-line", label: "Manufactured gate" }],
+            },
+          ],
+        },
+      ],
+    }),
+  })
+);
+check(
+  "5 known sell beside Pricing Required is incomplete and not the job price",
+  knownBesideMissing.status === "pricing_required" &&
+    knownBesideMissing.statusLabel === "Incomplete" &&
+    knownBesideMissing.sell.presentation === "partial" &&
+    knownBesideMissing.sell.label === "Known sell, not the complete price" &&
+    knownBesideMissing.sell.exGst === "$1,000" &&
+    knownBesideMissing.composition.some(
+      (row) => row.id === "direct" && row.label === "Known cost" && row.value === "$800"
+    ) &&
+    !knownBesideMissing.composition.some((row) => row.id === "profit" || row.id === "margin")
+);
 
 const known = projectEstimateOverview(input({}));
 check("6 known material cost is shown", known.composition.some((row) => row.id === "materials" && row.value === "$400"));
@@ -290,13 +334,13 @@ check("work areas list names and do not invent a confidence score", workAreas.wo
 check("Pricing Required work area is counted without a dollar amount", pricingRequired.workAreas.missingPricingCount === 1 && pricingRequired.workAreas.summaryLine === "1 Work Area · 1 needs a price" && pricingRequired.workAreas.rows[0]?.note === "Pricing Required");
 
 const linkSource = read("components/pricing/PrepareFinalPricingButton.tsx");
-check("R1 no duplicate commercial summary on the Estimate page", !componentSource.includes("Commercial Overview") && shellSource.includes('assistantMode === "estimate_ready" && "grid-cols-1"') && !/estimate_ready"\s*&&\s*\n\s*"lg:grid-cols-\[minmax\(0,1fr\)_380px\]"/.test(shellSource) && shellSource.includes('assistantMode === "planning" ? (') && shellSource.includes("compactCommercialSidebar={false}"));
+check("R1 no duplicate commercial summary on the Estimate page", !componentSource.includes("Commercial Overview") && shellSource.includes('estimateReadySidebarPolicy(assistantMode).singleColumn && "grid-cols-1"') && !/estimate_ready"\s*&&\s*\n\s*"lg:grid-cols-\[minmax\(0,1fr\)_380px\]"/.test(shellSource) && shellSource.includes('assistantMode === "planning" ? (') && shellSource.includes("compactCommercialSidebar={false}"));
 check("R1 zero blockers say Estimate ready", componentSource.includes("Estimate ready") && componentSource.includes("data-estimate-overview-ready") && !componentSource.includes("Required items are listed below") && !componentSource.includes("Ready for Pricing"));
 check("R1 Pricing Required wording does not say it blocks Pricing", componentSource.includes("Pricing Required") && componentSource.includes("data-estimate-missing-prices") && componentSource.includes('data-estimate-overview-pricing-attention="true"'));
 check("R1 optional assumptions and benchmarks are collapsed disclosures", componentSource.includes("<details") && !componentSource.includes("<details open") && componentSource.includes("data-estimate-overview-disclosure") && componentSource.includes('marker="assumptions"') && componentSource.includes('marker="benchmark"') && componentSource.includes("assumptionSummary"));
 check("R1 action labels keep existing destinations", componentSource.includes("View work area breakdown") && componentSource.includes("editJobDetails") && componentSource.includes("label={model.primaryLabel}") && linkSource.includes("pricing/${pricingDocumentId}") && linkSource.includes('label = "Open Pricing"') && shellSource.includes("setBuilderReviewOpen(true)") && shellSource.includes("openEditJob(null)"));
 check("R1 only Continue to Pricing uses the orange primary", componentSource.includes("pricingPrimaryClassName") && componentSource.includes("var(--brand-orange)") && componentSource.includes('data-estimate-overview-primary="continue_pricing"'));
-check("R1 Estimate Basis is collapsed and keeps its sections", shellSource.includes("const [jobDetailsOpen, setJobDetailsOpen] = useState(false)") && shellSource.includes("Project brief") && shellSource.includes("Finish level") && shellSource.includes("Project conditions") && !shellSource.includes(".slice(0, 8)") && !shellSource.includes(".slice(0, 4)"));
+check("R1 Estimate Basis starts from the desktop breakpoint and keeps its sections", shellSource.includes("estimateBasisStartsExpanded") && shellSource.includes("const jobDetailsOpen = estimateBasisOverride ?? estimateBasisDesktop") && shellSource.includes("Project brief") && shellSource.includes("Finish level") && shellSource.includes("Project conditions") && !shellSource.includes(".slice(0, 8)") && !shellSource.includes(".slice(0, 4)"));
 check("R1 no new query or fetch contract", !/supabase|\.from\(|fetch\(/.test(overviewSource + componentSource) && pageSource.includes('measureServerLoad("project"') && pageSource.includes("getAssistantStateWithContext"));
 
 if (failed > 0) {
