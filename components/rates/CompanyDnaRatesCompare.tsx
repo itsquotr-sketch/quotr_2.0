@@ -7,11 +7,11 @@ import {
   DNA_CALIBRATE,
   DNA_RECALIBRATE,
   DNA_RATES_PRODUCTIVITY_HELPER,
-  DNA_RESET_CTA,
   DNA_SOURCE_QUOTR_BENCHMARK,
   DNA_SOURCE_YOUR_CALIBRATION,
   dnaRatesBenchmarkCopy,
   dnaRatesEstimateUsedLabel,
+  dnaRatesResetAction,
   formatDnaCompactHoursPerUnit,
   formatDnaOptionalRemaining,
   formatDnaRwSystemLine,
@@ -283,6 +283,7 @@ function RatesTaskRow(params: {
     usedProductivitySource(rate)
   );
   const benchmark = dnaRatesBenchmarkCopy(params.row.task);
+  const reset = dnaRatesResetAction(params.row.task.calibrationTaskKey);
   const calibrated =
     rate?.active &&
     rate.cost_rate != null &&
@@ -329,8 +330,11 @@ function RatesTaskRow(params: {
               disabled={params.resetting === params.row.task.calibrationTaskKey}
               onClick={() => params.onReset(params.row.task.calibrationTaskKey)}
             >
-              {DNA_RESET_CTA}
+              {reset.cta}
             </Button>
+          ) : null}
+          {calibrated ? (
+            <p className="w-full text-xs text-muted-foreground">{reset.explanation}</p>
           ) : null}
         </div>
       ) : null}

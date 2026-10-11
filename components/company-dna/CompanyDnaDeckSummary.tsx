@@ -26,9 +26,8 @@ import {
   DNA_DONE,
   DNA_KEEP_REFINING,
   DNA_RECALIBRATE,
-  DNA_RESET_CONSEQUENCE,
   DNA_RESET_CONFIRM_TITLE,
-  DNA_RESET_CTA,
+  dnaRatesResetAction,
   DNA_SOURCE_QUOTR_BENCHMARK,
   DNA_SOURCE_YOUR_CALIBRATION,
   deckV2TaskTitle,
@@ -189,7 +188,7 @@ export function CompanyDnaDeckSummary({
                                 disabled={resetting === task.calibrationTaskKey}
                                 onClick={() => setConfirmKey(task.calibrationTaskKey)}
                               >
-                                {DNA_RESET_CTA}
+                                {dnaRatesResetAction(task.calibrationTaskKey).cta}
                               </Button>
                             ) : null}
                           </div>
@@ -238,7 +237,7 @@ export function CompanyDnaDeckSummary({
                         disabled={resetting === task.calibrationTaskKey}
                         onClick={() => setConfirmKey(task.calibrationTaskKey)}
                       >
-                        {DNA_RESET_CTA}
+                        {dnaRatesResetAction(task.calibrationTaskKey).cta}
                       </Button>
                   ) : null}
                 </div>
@@ -286,7 +285,11 @@ export function CompanyDnaDeckSummary({
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>{DNA_RESET_CONFIRM_TITLE}</DialogTitle>
-            <DialogDescription>{DNA_RESET_CONSEQUENCE}</DialogDescription>
+            <DialogDescription>
+              {confirmKey
+                ? dnaRatesResetAction(confirmKey).explanation
+                : null}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" size="touch" onClick={() => setConfirmKey(null)}>
@@ -298,7 +301,7 @@ export function CompanyDnaDeckSummary({
               disabled={!confirmKey || resetting === confirmKey}
               onClick={() => confirmKey && void onReset(confirmKey)}
             >
-              {DNA_RESET_CTA}
+              {confirmKey ? dnaRatesResetAction(confirmKey).cta : DNA_RESET_CONFIRM_TITLE}
             </Button>
           </DialogFooter>
         </DialogContent>

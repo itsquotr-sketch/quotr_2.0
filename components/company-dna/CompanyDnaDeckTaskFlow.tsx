@@ -31,9 +31,7 @@ import {
   DNA_OUTLIER_BACK,
   DNA_OUTLIER_YES,
   DNA_RECALIBRATE,
-  DNA_RESET_CONSEQUENCE,
   DNA_RESET_CONFIRM_TITLE,
-  DNA_RESET_CTA,
   DNA_SAVE_CONTINUE,
   DNA_SKIP_FOR_NOW,
   deckV2IncludedCopy,
@@ -42,6 +40,7 @@ import {
   formatDnaClockTimePerUnit,
   formatDnaDeckProgressIndicator,
   dnaRatesBenchmarkCopy,
+  dnaRatesResetAction,
   formatDnaDeckResultComparison,
   formatDnaDeckResultPrimary,
   formatDnaHoursPerUnit,
@@ -386,7 +385,7 @@ export function CompanyDnaDeckTaskFlow({
                   disabled={saving}
                   onClick={() => setResetOpen(true)}
                 >
-                  {DNA_RESET_CTA}
+                  {dnaRatesResetAction(task.calibrationTaskKey).cta}
                 </Button>
               ) : null}
               {!currentIsTier1 ? (
@@ -541,14 +540,16 @@ export function CompanyDnaDeckTaskFlow({
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>{DNA_RESET_CONFIRM_TITLE}</DialogTitle>
-            <DialogDescription>{DNA_RESET_CONSEQUENCE}</DialogDescription>
+            <DialogDescription>
+              {dnaRatesResetAction(task.calibrationTaskKey).explanation}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" size="touch" onClick={() => setResetOpen(false)}>
               Cancel
             </Button>
             <Button type="button" size="touch" disabled={saving} onClick={() => void onReset()}>
-              {DNA_RESET_CTA}
+              {dnaRatesResetAction(task.calibrationTaskKey).cta}
             </Button>
           </DialogFooter>
         </DialogContent>

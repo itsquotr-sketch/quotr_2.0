@@ -414,7 +414,7 @@ const ratesTable = read("components/rates/RatesTableSection.tsx");
 assert("rates productivity helper", DNA_RATES_PRODUCTIVITY_HELPER.includes("Lower means fewer labour hours"));
 assert("rates compare uses helper", ratesCompare.includes("DNA_RATES_PRODUCTIVITY_HELPER"));
 assert("rates compare Recalibrate", ratesCompare.includes("DNA_RECALIBRATE"));
-assert("rates compare Use Quotr benchmark", ratesCompare.includes("DNA_RESET_CTA"));
+assert("rates compare reset action", ratesCompare.includes("dnaRatesResetAction"));
 assert("no raw enums in rates compare", !ratesCompare.includes("explicit_company") && !ratesCompare.includes("legacy_scope_rate"));
 assert("no raw enums in hub", !hub.includes("calibrated_productivity") && !hub.includes("explicit_company"));
 assert("friendly labels", RATE_SOURCE_FRIENDLY_LABELS.calibrated_productivity === "Your calibrated productivity");

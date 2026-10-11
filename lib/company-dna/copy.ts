@@ -4,6 +4,7 @@
  */
 
 import { formatDnaProductivityHours, formatDnaScenarioMeasure } from "@/lib/company-dna/quantity-format";
+import { approvedProductivityHours } from "@/lib/rates/approved-benchmark-review";
 
 export const DNA_CREW_HELPER =
   "How many people from your team would normally work on this task? Include everyone on it — an approximate answer is fine.";
@@ -641,6 +642,7 @@ export function formatDnaCompactHoursPerUnit(value: number, unit: string): strin
  */
 export function dnaRatesBenchmarkCopy(task: {
   calibrationTaskKey: string;
+  productivityRateKey: string;
   benchmarkProductivity: number;
   authorityUnit: string;
 }): { label: string; value: string; note: string | null } {
@@ -663,6 +665,21 @@ export function dnaRatesBenchmarkCopy(task: {
         "Approved rate: 1 person for 4 minutes per bag. The old 0.16 h/bag starter is not used for a new estimate. A company hours/bag calibration on this key still wins.",
     };
   }
+  const approved = approvedProductivityHours(task.productivityRateKey);
+  if (
+    approved &&
+    Math.abs(approved.hoursPerUnit - task.benchmarkProductivity) > 1e-9
+  ) {
+    const comparison = formatDnaCompactHoursPerUnit(
+      task.benchmarkProductivity,
+      task.authorityUnit
+    );
+    return {
+      label: "Approved benchmark",
+      value: formatDnaCompactHoursPerUnit(approved.hoursPerUnit, approved.unit),
+      note: `The ${comparison} figure is this task’s calibration comparison, not the estimate rate. Clearing a calibration does not store that comparison. A typed company rate on ${task.productivityRateKey} still wins.`,
+    };
+  }
   return {
     label: DNA_SOURCE_QUOTR_BENCHMARK,
     value: formatDnaCompactHoursPerUnit(
@@ -671,6 +688,40 @@ export function dnaRatesBenchmarkCopy(task: {
     ),
     note: null,
   };
+}
+
+export function dnaRatesResetAction(taskKey: string): {
+  cta: string;
+  explanation: string;
+} {
+  if (taskKey === "deck.decking.v1") {
+    return {
+      cta: "Clear calibration",
+      explanation:
+        "Removes the saved hours/lm calibration. It does not store 0.077 h/lm. A new estimate uses 35 min/m² converted by the selected board width. A typed company rate on this key stays and still wins.",
+    };
+  }
+  if (taskKey === "deck.concrete.v1") {
+    return {
+      cta: DNA_RESET_CTA,
+      explanation:
+        "Removes the saved calibration. It does not write a new rate. A new estimate uses 4 minutes per bag. A typed company hours/bag rate stays and still wins.",
+    };
+  }
+  if (
+    taskKey === "deck.framing.v1" ||
+    taskKey === "deck.posts.v1" ||
+    taskKey === "deck.demolition.v1" ||
+    taskKey === "deck.fascia.v1" ||
+    taskKey === "deck.skirting.v1"
+  ) {
+    return {
+      cta: "Clear calibration",
+      explanation:
+        "Removes the saved calibration. It does not write the comparison figure as a company rate. A new estimate uses the approved benchmark above. A typed company rate on the same key stays and still wins.",
+    };
+  }
+  return { cta: DNA_RESET_CTA, explanation: DNA_RESET_CONSEQUENCE };
 }
 
 export function dnaRatesEstimateUsedLabel(
