@@ -75,6 +75,7 @@ type PricingWorkspaceProps = {
   canEditPricing?: boolean;
   supplierReview?: SupplierPriceReview | null;
   scopeReview?: ScheduleScopeReview | null;
+  estimateUpdateRequired?: string | null;
 };
 
 export function PricingWorkspace({
@@ -84,6 +85,7 @@ export function PricingWorkspace({
   canEditPricing = true,
   supplierReview = null,
   scopeReview = null,
+  estimateUpdateRequired = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -280,6 +282,10 @@ export function PricingWorkspace({
 
   const handleMarkReviewed = async () => {
     if (reviewInFlight.current || saveInFlight.current) return;
+    if (estimateUpdateRequired?.trim()) {
+      setSaveError(estimateUpdateRequired.trim());
+      return;
+    }
     const provisionalBlock = ceilingProvisionalDecision({
       lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
       confirmation: document.provisional_ceiling_confirmation ?? null,
@@ -577,6 +583,7 @@ export function PricingWorkspace({
         quoteSummary={quoteSummary}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
+        estimateUpdateRequired={estimateUpdateRequired}
       />
 
       {quoteSummary != null ? (
@@ -795,8 +802,9 @@ export function PricingWorkspace({
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
                 blockedReason={
-                  provisionalQuoteBlock ??
-                  manualQuoteBlock ??
+                  estimateUpdateRequired?.trim() ||
+                  provisionalQuoteBlock ||
+                  manualQuoteBlock ||
                   (unresolvedPriceCount > 0 ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK : null)
                 }
               />
@@ -813,6 +821,7 @@ export function PricingWorkspace({
           pricingChangedAfterQuote={pricingChangedAfterQuote}
           canEdit={canEditPricing}
           scopeQuoteBlock={scopeReview?.blocking ?? null}
+          estimateUpdateRequired={estimateUpdateRequired}
         />
       </div>
 
@@ -826,6 +835,7 @@ export function PricingWorkspace({
         needsRecalibration={document.needs_recalibration}
         canEdit={canEditPricing}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
+        estimateUpdateRequired={estimateUpdateRequired}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

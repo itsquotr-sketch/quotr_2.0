@@ -43,6 +43,7 @@ export default async function EditRfqPage({ params }: PageProps) {
         quoteSummary={quoteSummary}
         hasEstimate={tabContext.hasEstimate}
         estimateIsStale={tabContext.estimateIsStale}
+        quantityConflictDetail={tabContext.quantityConflictDetail}
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <RfqComposer

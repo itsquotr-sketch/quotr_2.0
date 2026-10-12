@@ -130,6 +130,8 @@ type EstimatePanelProps = {
   pricingProgressionPrimary?: boolean;
   /** Hide sidebar Continue to Pricing while Builder Review owns the CTA. */
   hidePricingProgression?: boolean;
+  /** Saved quantities disagree with the stated count. Pricing creation stays closed. */
+  pricingBlockedDetail?: string | null;
   /** R3 — optional cost breakdown for Commercial Overview. */
   commercialBreakdown?: {
     materialsCost?: number | null;
@@ -344,6 +346,7 @@ export function EstimatePanel({
   workAreasConfirmed = false,
   pricingProgressionPrimary = false,
   hidePricingProgression = false,
+  pricingBlockedDetail = null,
   commercialBreakdown = null,
   onViewBreakdown,
   onGenerate,
@@ -686,6 +689,22 @@ export function EstimatePanel({
               </p>
             </>
           )}
+        </div>
+      ) : pricingBlockedDetail ? (
+        <div className="space-y-2" role="status" data-pricing-creation-blocked="true">
+          <p className="text-sm font-medium">This estimate needs updating</p>
+          <p className="text-xs leading-4 text-foreground/75">{pricingBlockedDetail}</p>
+          {onRegenerate ? (
+            <Button
+              type="button"
+              className="h-11 min-h-11 w-full"
+              data-estimate-update-action="true"
+              disabled={isRegenerating || isGenerating}
+              onClick={onRegenerate}
+            >
+              {isRegenerating ? "Updating estimate…" : "Update estimate"}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <PrepareFinalPricingButton

@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
-import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
+import {
+  deckStatedCountPricingBlock,
+  quoteCreationDecision,
+} from "@/lib/estimate/deck-stated-count-guard";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import {
   parseQuoteInput,
@@ -703,9 +706,13 @@ export async function createQuoteFromPricing(input: {
     pricingDocumentId,
   });
   const existing = pickLatestQuoteSummary(existingQuote);
-  if (existing) {
-    revalidateQuoteProjectPath(projectId, existing.id, pricingDocumentId);
-    redirect(`/app/projects/${projectId}/quotes/${existing.id}`);
+  const existingDecision = quoteCreationDecision({
+    existingQuoteId: existing?.id ?? null,
+    statedCountConflict: null,
+  });
+  if (existingDecision.action === "open_existing") {
+    revalidateQuoteProjectPath(projectId, existingDecision.quoteId, pricingDocumentId);
+    redirect(`/app/projects/${projectId}/quotes/${existingDecision.quoteId}`);
   }
 
   const { data: pricingSource } = await supabase
@@ -714,14 +721,20 @@ export async function createQuoteFromPricing(input: {
     .eq("id", pricingDocumentId)
     .eq("org_id", orgId)
     .maybeSingle();
-  if (pricingSource?.estimate_id) {
-    const statedCountBlock = await deckStatedCountPricingBlock(
-      supabase,
-      projectId,
-      pricingSource.estimate_id,
-      orgId
-    );
-    if (statedCountBlock) return { error: statedCountBlock };
+  const statedCountBlock = pricingSource?.estimate_id
+    ? await deckStatedCountPricingBlock(
+        supabase,
+        projectId,
+        pricingSource.estimate_id,
+        orgId
+      )
+    : null;
+  const newQuoteDecision = quoteCreationDecision({
+    existingQuoteId: null,
+    statedCountConflict: statedCountBlock,
+  });
+  if (newQuoteDecision.action === "refuse") {
+    return { error: newQuoteDecision.error };
   }
 
   const snapshot = await buildQuoteSnapshotFromReviewedPricing({

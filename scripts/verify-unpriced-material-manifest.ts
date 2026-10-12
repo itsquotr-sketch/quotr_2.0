@@ -147,18 +147,27 @@ if (!spoil || spoil.presentation.ordinary || spoil.entry.calculatorSupport !== "
 if (
   !precast ||
   !precast.presentation.ordinary ||
-  precast.entry.defaultCostRate !== 36
+  precast.entry.defaultCostRate != null ||
+  precast.entry.recommended !== true ||
+  precast.entry.calculatorSupport !== "used_now"
 ) {
-  console.error("precast sleeper stays selectable at its existing starter");
+  console.error("precast sleeper stays selectable without the unapproved $36 starter");
+  process.exit(1);
+}
+const precastRow = rows.find((row) => row.key === "retaining_wall.sleeper.precast");
+if (!precastRow || precastRow.disposition !== "retain unpriced") {
+  console.error("precast sleeper must stay unpriced rather than carry $36");
   process.exit(1);
 }
 if (
   !fibrePresentation ||
+  !fibrePresentation.presentation.ordinary ||
+  fibrePresentation.presentation.legacyKind != null ||
   fibrePresentation.entry.recommended !== true ||
   fibrePresentation.entry.defaultCostRate != null ||
   fibrePresentation.entry.calculatorSupport !== "used_now"
 ) {
-  console.error("18 mm fibre cement must stay a used specification with no invented cost");
+  console.error("18 mm fibre cement must stay a selectable specification with no invented cost");
   process.exit(1);
 }
 

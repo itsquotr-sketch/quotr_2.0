@@ -438,6 +438,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
     return {
       hasEstimate: false,
       estimateIsStale: false,
+      quantityConflictDetail: null,
       pricingSummary: null,
     };
   }

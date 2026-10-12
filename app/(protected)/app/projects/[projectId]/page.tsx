@@ -41,7 +41,7 @@ export const runtime = "nodejs";
 
 type ProjectPageProps = {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ estimate?: string }>;
+  searchParams: Promise<{ estimate?: string; updateEstimate?: string }>;
 };
 
 export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
@@ -126,6 +126,8 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       initialHasEstimate={hasEstimate || tabContext.hasEstimate}
       initialEstimateIsStale={estimateIsStale}
       initialPricingSummary={pricingSummary ?? tabContext.pricingSummary}
+      initialQuantityConflictDetail={tabContext.quantityConflictDetail}
+      initialUpdateDialogOpen={query.updateEstimate === "1"}
     >
     <WorkspacePage
       header={

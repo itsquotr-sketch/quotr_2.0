@@ -460,6 +460,7 @@ function compositionRows(input: {
 function sellPresentation(input: {
   readonly hasEstimate: boolean;
   readonly isStale: boolean;
+  readonly countConflict: boolean;
   readonly unresolved: boolean;
   readonly partial: boolean;
   readonly estimate: EstimateOverviewMoney | null;
@@ -477,6 +478,24 @@ function sellPresentation(input: {
     };
   }
   const amount = input.estimate.recommendedSell;
+  if (
+    (input.countConflict || input.isStale) &&
+    Number.isFinite(amount) &&
+    amount > 0
+  ) {
+    const gst = presentEstimateGst(amount, input.gstRate);
+    return {
+      presentation: "previous",
+      label:
+        input.countConflict && !input.isStale
+          ? "Old working estimate"
+          : "Previous estimate",
+      exGst: formatCurrency(gst.exGst),
+      gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
+      inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
+      boundaryCopy,
+    };
+  }
   if (input.partial && Number.isFinite(amount) && amount > 0) {
     const gst = presentEstimateGst(amount, input.gstRate);
     return {
@@ -499,16 +518,6 @@ function sellPresentation(input: {
     };
   }
   const gst = presentEstimateGst(amount, input.gstRate);
-  if (input.isStale) {
-    return {
-      presentation: "previous",
-      label: "Previous estimate",
-      exGst: formatCurrency(gst.exGst),
-      gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
-      inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
-      boundaryCopy,
-    };
-  }
   return {
     presentation: "current",
     label: "Recommended client sell",
@@ -724,6 +733,7 @@ export function projectEstimateOverview(
     sell: sellPresentation({
       hasEstimate: input.hasEstimate,
       isStale: input.isStale,
+      countConflict: Boolean(statedCountConflict),
       unresolved: unresolvedSell,
       partial: knownSellPartial,
       estimate,

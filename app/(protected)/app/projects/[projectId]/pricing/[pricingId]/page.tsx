@@ -97,6 +97,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
           quoteSummary={quoteSummaryForDoc ?? quoteSummary}
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
+          quantityConflictDetail={tabContext.quantityConflictDetail}
           pricingUnresolvedRequired={data.items.some(
             (item) => pricingItemViewModel(item).pricingRequired
           )}
@@ -126,6 +127,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         canEditPricing={memberCanEditPricing(access.role)}
         supplierReview={supplierReview}
         scopeReview={scopeReview}
+        estimateUpdateRequired={tabContext.quantityConflictDetail}
       />
     </WorkspacePage>
   );

@@ -36,6 +36,8 @@ export type ProjectWorkflowInput = {
   activeTab: "information" | "assistant" | "pricing" | "quote" | "variations" | "requests";
   hasEstimate: boolean;
   estimateIsStale: boolean;
+  /** Saved deck quantities disagree with the stated count. Does not rewrite the draft. */
+  quantityConflictDetail?: string | null;
   pricingSummary: Pick<PricingSummary, "id" | "status" | "needsRecalibration"> | null;
   /**
    * True when the page already loaded pricing lines and at least one
@@ -90,6 +92,7 @@ export function projectWorkflowRoutes(input: {
   projectId: string;
   hasEstimate: boolean;
   estimateIsStale: boolean;
+  quantityConflictDetail?: string | null;
   pricingSummary: { id: string } | null;
   quoteSummary: { id: string } | null;
 }): {
@@ -104,7 +107,10 @@ export function projectWorkflowRoutes(input: {
     pricingHref: input.pricingSummary
       ? `/app/projects/${input.projectId}/pricing/${input.pricingSummary.id}`
       : null,
-    pricingBlocked: input.estimateIsStale || !input.hasEstimate,
+    pricingBlocked:
+      input.estimateIsStale ||
+      !input.hasEstimate ||
+      Boolean(input.quantityConflictDetail?.trim()),
     quoteHref: input.quoteSummary
       ? `/app/projects/${input.projectId}/quotes/${input.quoteSummary.id}`
       : null,
@@ -149,6 +155,16 @@ function estimateStage(
       href,
     });
   }
+  if (input.quantityConflictDetail?.trim()) {
+    return stage({
+      id: "estimate",
+      viewing,
+      status: "Needs attention",
+      detail: input.quantityConflictDetail.trim(),
+      locked: false,
+      href,
+    });
+  }
   if (input.estimateIsStale) {
     return stage({
       id: "estimate",
@@ -176,13 +192,16 @@ function pricingStage(
   const viewing = input.activeTab === "pricing";
   if (!input.pricingSummary) {
     if (routes.pricingBlocked) {
+      const conflict = input.quantityConflictDetail?.trim() || null;
       return stage({
         id: "pricing",
         viewing,
-        status: "Locked",
-        detail: input.estimateIsStale
-          ? ESTIMATE_STALE_DETAIL
-          : ESTIMATE_MISSING_DETAIL,
+        status: conflict ? "Needs attention" : "Locked",
+        detail: conflict
+          ? conflict
+          : input.estimateIsStale
+            ? ESTIMATE_STALE_DETAIL
+            : ESTIMATE_MISSING_DETAIL,
         locked: true,
         href: null,
       });

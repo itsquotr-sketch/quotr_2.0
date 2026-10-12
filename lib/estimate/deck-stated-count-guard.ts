@@ -216,3 +216,23 @@ export async function deckStatedCountPricingBlock(
     })?.summary ?? null
   );
 }
+
+/**
+ * An existing quote is opened unchanged. A new quote is refused while the
+ * saved draft still disagrees with the stated count. This does not write.
+ */
+export function quoteCreationDecision(input: {
+  existingQuoteId: string | null;
+  statedCountConflict: string | null;
+}):
+  | { readonly action: "open_existing"; readonly quoteId: string }
+  | { readonly action: "refuse"; readonly error: string }
+  | { readonly action: "continue" } {
+  if (input.existingQuoteId) {
+    return { action: "open_existing", quoteId: input.existingQuoteId };
+  }
+  if (input.statedCountConflict) {
+    return { action: "refuse", error: input.statedCountConflict };
+  }
+  return { action: "continue" };
+}

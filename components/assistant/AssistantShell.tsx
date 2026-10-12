@@ -2744,6 +2744,34 @@ export function AssistantShell({
     [builderReviewView]
   );
 
+  const deckCountConflict = useMemo(
+    () =>
+      estimate
+        ? deckStatedCountConflict({
+            facts: jobPlanFacts,
+            lines: estimate.lineItems,
+          })
+        : null,
+    [estimate, jobPlanFacts]
+  );
+  const deckCountSummary = deckCountConflict?.summary ?? null;
+  if (
+    estimateNavProjection &&
+    estimateNavProjection.quantityConflictDetail !== deckCountSummary
+  ) {
+    estimateNavProjection.setQuantityConflictDetail(deckCountSummary);
+  }
+  useEffect(() => {
+    if (!canRunEstimates) {
+      estimateNavProjection?.setEstimateUpdate(null);
+      return;
+    }
+    estimateNavProjection?.setEstimateUpdate(() => {
+      handleRegenerateEstimate();
+    });
+    return () => estimateNavProjection?.setEstimateUpdate(null);
+  }, [canRunEstimates, estimateNavProjection, handleRegenerateEstimate]);
+
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
         isStale: displayEstimateStale,
@@ -2774,12 +2802,7 @@ export function AssistantShell({
             ? estimateReadiness.heading
             : null,
         workAreaNames: workAreaLists.included,
-        statedCountConflictDetail: estimate
-          ? deckStatedCountConflict({
-              facts: jobPlanFacts,
-              lines: estimate.lineItems,
-            })?.summary ?? null
-          : null,
+        statedCountConflictDetail: deckCountConflict?.summary ?? null,
       });
 
   const estimateReviewActionable =
@@ -2933,6 +2956,7 @@ export function AssistantShell({
               pricingCtaEnabled={
                 canRunEstimates &&
                 !pricingSummary &&
+                !deckCountConflict &&
                 (refineAfterEstimateOpen || builderReviewOpen)
               }
               pricingCtaPrimary={builderReviewCompleted}
@@ -2977,7 +3001,10 @@ export function AssistantShell({
                   pricingDocumentId={pricingSummary?.id ?? null}
                   gstRate={initialState.defaultGstRate}
                   showContinueToPricing={
-                    canRunEstimates && !pricingSummary && !displayEstimateStale
+                    canRunEstimates &&
+                    !pricingSummary &&
+                    !displayEstimateStale &&
+                    !deckCountConflict
                   }
                   onBack={() => setBuilderReviewOpen(false)}
                   onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
@@ -3981,6 +4008,7 @@ export function AssistantShell({
             workAreasConfirmed={workAreasConfirmed}
             pricingProgressionPrimary={builderReviewCompleted}
             hidePricingProgression={builderReviewOpen}
+            pricingBlockedDetail={deckCountConflict?.summary ?? null}
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);

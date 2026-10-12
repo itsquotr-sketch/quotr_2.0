@@ -65,6 +65,7 @@ export default async function QuotePage({ params }: QuotePageProps) {
           quoteSummary={quoteSummary}
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
+        quantityConflictDetail={tabContext.quantityConflictDetail}
         />
       </div>
 

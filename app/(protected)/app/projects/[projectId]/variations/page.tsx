@@ -47,6 +47,7 @@ export default async function VariationsPage({ params, searchParams }: PageProps
         quoteSummary={quoteSummary}
         hasEstimate={tabContext.hasEstimate}
         estimateIsStale={tabContext.estimateIsStale}
+        quantityConflictDetail={tabContext.quantityConflictDetail}
         variations={{
           eligible: workspace.eligible,
           reason: workspace.reason,

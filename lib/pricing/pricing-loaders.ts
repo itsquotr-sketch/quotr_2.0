@@ -17,6 +17,7 @@ import type {
 } from "@/lib/pricing/types";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
 import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
 import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
 
@@ -60,6 +61,7 @@ export async function getProjectWorkspaceTabContextWithContext(
 ): Promise<{
   hasEstimate: boolean;
   estimateIsStale: boolean;
+  quantityConflictDetail: string | null;
   pricingSummary: PricingSummary | null;
 }> {
   const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
@@ -67,6 +69,7 @@ export async function getProjectWorkspaceTabContextWithContext(
     return {
       hasEstimate: false,
       estimateIsStale: false,
+      quantityConflictDetail: null,
       pricingSummary: null,
     };
   }
@@ -81,15 +84,25 @@ export async function getProjectWorkspaceTabContextWithContext(
     pricingSummaryPromise,
     auth.supabase
       .from("estimates")
-      .select("is_stale")
+      .select("id, is_stale")
       .eq("project_id", projectId)
       .eq("org_id", auth.orgId)
       .maybeSingle(),
   ]);
 
+  const quantityConflictDetail = estimateResult.data?.id
+    ? await deckStatedCountPricingBlock(
+        auth.supabase,
+        projectId,
+        estimateResult.data.id,
+        auth.orgId
+      )
+    : null;
+
   return {
     hasEstimate: Boolean(estimateResult.data),
     estimateIsStale: estimateResult.data?.is_stale ?? false,
+    quantityConflictDetail,
     pricingSummary,
   };
 }
@@ -242,6 +255,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
     return {
       hasEstimate: false,
       estimateIsStale: false,
+      quantityConflictDetail: null,
       pricingSummary: null as PricingSummary | null,
     };
   }

@@ -2,6 +2,7 @@
  * RETAINING-WALL-MATURITY-1E — rate variance context.
  * Informative only. Never overrides Project / Company / Quotr hierarchy.
  */
+import { RW_CONCRETE_SLEEPER_KEY } from "@/lib/estimate/retaining-wall-identities";
 import { timber1DMaterialStarter } from "@/lib/estimate/retaining-wall-timber-1d";
 import { sleeper2AMaterialStarter } from "@/lib/estimate/retaining-wall-sleeper-2a";
 import { masonry2BMaterialStarter } from "@/lib/estimate/retaining-wall-masonry-2b";
@@ -34,7 +35,9 @@ function quotrBenchmarkForKey(
   }
   const starter =
     timber1DMaterialStarter(itemKey) ??
-    sleeper2AMaterialStarter(itemKey, unit) ??
+    (itemKey === RW_CONCRETE_SLEEPER_KEY
+      ? null
+      : sleeper2AMaterialStarter(itemKey, unit)) ??
     masonry2BMaterialStarter(itemKey, unit);
   if (!starter) return null;
   if (starter.unit !== unit) return null;

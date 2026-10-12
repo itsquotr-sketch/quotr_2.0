@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 
 type ProjectSectionHeaderProps = ProjectWorkflowInput & {
   projectContext: string;
+  onUpdateEstimate?: () => void;
+  updateDialogOpen?: boolean;
 };
 
 const focusClass =
@@ -26,11 +28,14 @@ const focusClass =
 
 export function ProjectSectionHeader({
   projectContext,
+  onUpdateEstimate,
+  updateDialogOpen = false,
   ...workflowInput
 }: ProjectSectionHeaderProps) {
   const router = useRouter();
-  const [createPricingOpen, setCreatePricingOpen] = useState(false);
+  const [createPricingOpen, setCreatePricingOpen] = useState(updateDialogOpen);
   const model = deriveProjectWorkflow(workflowInput);
+  const quantityConflict = workflowInput.quantityConflictDetail?.trim() || null;
   const estimate = stageById(model.stages, "estimate");
   const pricing = stageById(model.stages, "pricing");
   const quote = stageById(model.stages, "quote");
@@ -39,7 +44,19 @@ export function ProjectSectionHeader({
   const informationCurrent = workflowInput.activeTab === "information";
   const requestsCurrent = workflowInput.activeTab === "requests";
   const quoteColumnCurrent = workflowInput.activeTab === "quote" || workflowInput.activeTab === "variations";
-  const pricingCanCreate = !pricing.locked && pricing.href == null && pricing.status === "Ready";
+  const pricingCanCreate =
+    !quantityConflict && !pricing.locked && pricing.href == null && pricing.status === "Ready";
+  const pricingNeedsUpdate = Boolean(quantityConflict) && pricing.href == null;
+  const estimateLabel = estimateStatusText(
+    estimate,
+    workflowInput.estimateIsStale,
+    Boolean(quantityConflict)
+  );
+  const pricingLabel = pricingNeedsUpdate
+    ? pricing.viewing
+      ? "Needs updating · Current"
+      : "Needs updating"
+    : stageStatusText(pricing);
   const topLevel = quoteColumnCurrent ? "quote" : requestsCurrent ? "information" : workflowInput.activeTab;
   const requestsHref = `/app/projects/${workflowInput.projectId}/requests`;
 
@@ -64,9 +81,11 @@ export function ProjectSectionHeader({
       id: "pricing",
       step: "3",
       label: "Pricing",
-      href: pricingCanCreate ? null : pricing.href,
-      disabled: pricing.locked || (pricing.href == null && !pricingCanCreate),
-      hint: pricingLockReason(pricing) ?? "",
+      href: pricingCanCreate || pricingNeedsUpdate ? null : pricing.href,
+      disabled: pricingNeedsUpdate
+        ? false
+        : pricing.locked || (pricing.href == null && !pricingCanCreate),
+      hint: quantityConflict ? "Needs updating" : pricingLockReason(pricing) ?? "",
     },
     {
       id: "quote",
@@ -83,13 +102,18 @@ export function ProjectSectionHeader({
     topLevel === "information"
       ? projectContext
       : topLevel === "assistant"
-        ? statusDetail(estimateStatusText(estimate, workflowInput.estimateIsStale))
+        ? quantityConflict ?? statusDetail(estimateLabel)
         : topLevel === "pricing"
-          ? statusDetail(stageStatusText(pricing))
+          ? quantityConflict ?? statusDetail(pricingLabel)
           : statusDetail(stageStatusText(quote));
 
   return (
-    <nav aria-label="Project sections" data-project-section-header="true" className="overflow-x-hidden">
+    <nav
+      aria-label="Project sections"
+      data-project-section-header="true"
+      data-estimate-needs-update={quantityConflict ? "true" : "false"}
+      className="overflow-x-hidden"
+    >
       <div className="hidden lg:block" data-project-progression="rail">
         <div
           className="grid grid-cols-4 gap-1 rounded-lg border border-border bg-muted/30 p-1 lg:grid-cols-4"
@@ -106,7 +130,8 @@ export function ProjectSectionHeader({
           <Stage
             step="2"
             title="Estimate"
-            status={estimateStatusText(estimate, workflowInput.estimateIsStale)}
+            status={estimateLabel}
+            reason={quantityConflict}
             href={estimate.viewing ? null : estimate.href}
             current={estimate.viewing}
             column="estimate"
@@ -114,12 +139,16 @@ export function ProjectSectionHeader({
           <Stage
             step="3"
             title="Pricing"
-            status={stageStatusText(pricing)}
-            reason={pricingLockReason(pricing)}
+            status={pricingLabel}
+            reason={quantityConflict ?? pricingLockReason(pricing)}
             href={pricing.viewing ? null : pricing.href}
             current={pricing.viewing}
             column="pricing"
-            onCreate={pricingCanCreate ? () => setCreatePricingOpen(true) : undefined}
+            onCreate={
+              pricingNeedsUpdate || pricingCanCreate
+                ? () => setCreatePricingOpen(true)
+                : undefined
+            }
           />
           <Stage
             step="4"
@@ -180,7 +209,7 @@ export function ProjectSectionHeader({
               const next = sections.find((section) => section.id === value);
               if (!next || next.disabled) return;
               if (!requestsCurrent && next.id === workflowInput.activeTab) return;
-              if (next.id === "pricing" && pricingCanCreate) {
+              if (next.id === "pricing" && (pricingCanCreate || pricingNeedsUpdate)) {
                 setCreatePricingOpen(true);
                 return;
               }
@@ -224,10 +253,25 @@ export function ProjectSectionHeader({
           </div>
         ) : null}
       </div>
+      {quantityConflict ? (
+        <p className="mt-1.5 text-xs leading-4 text-foreground/75 lg:hidden" data-estimate-update-required="true">
+          {quantityConflict}{" "}
+          <button
+            type="button"
+            className="font-medium text-foreground underline"
+            data-estimate-update-action="true"
+            onClick={() => setCreatePricingOpen(true)}
+          >
+            Update estimate
+          </button>
+        </p>
+      ) : null}
       <CreateFinalPricingDialog
         projectId={workflowInput.projectId}
         open={createPricingOpen}
         onOpenChange={setCreatePricingOpen}
+        blockedDetail={quantityConflict}
+        onUpdateEstimate={onUpdateEstimate}
       />
     </nav>
   );

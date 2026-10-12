@@ -20,6 +20,9 @@ type CreateFinalPricingDialogProps = {
   estimateId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Saved quantities disagree with the stated count. Creating Pricing stays disabled. */
+  blockedDetail?: string | null;
+  onUpdateEstimate?: () => void;
 };
 
 export function CreateFinalPricingDialog({
@@ -27,6 +30,8 @@ export function CreateFinalPricingDialog({
   estimateId,
   open,
   onOpenChange,
+  blockedDetail = null,
+  onUpdateEstimate,
 }: CreateFinalPricingDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -37,8 +42,19 @@ export function CreateFinalPricingDialog({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null>(null);
 
+  const blocked = Boolean(blockedDetail?.trim());
+
+  const handleUpdate = () => {
+    onOpenChange(false);
+    if (onUpdateEstimate) {
+      onUpdateEstimate();
+      return;
+    }
+    router.push(`/app/projects/${projectId}?updateEstimate=1`);
+  };
+
   const handleCreate = () => {
-    if (isPending || createLockRef.current) return;
+    if (blocked || isPending || createLockRef.current) return;
     createLockRef.current = true;
     setError(null);
     setDenial(null);
@@ -70,11 +86,13 @@ export function CreateFinalPricingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Continue to Pricing?</DialogTitle>
+          <DialogTitle>
+            {blocked ? "This estimate needs updating" : "Continue to Pricing?"}
+          </DialogTitle>
           <DialogDescription>
-            Pricing is where you decide what to charge. Quotr’s estimate stays
-            as the working recommendation. You can still adjust Work Area
-            prices before creating a quote.
+            {blocked
+              ? blockedDetail
+              : "Pricing is where you decide what to charge. Quotr’s estimate stays as the working recommendation. You can still adjust Work Area prices before creating a quote."}
           </DialogDescription>
         </DialogHeader>
         {error ? (
@@ -98,22 +116,33 @@ export function CreateFinalPricingDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            size="touch"
-            disabled={isPending}
-            data-pricing-create-pending={isPending ? "true" : undefined}
-            onClick={handleCreate}
-          >
-            {isPending ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                Creating…
-              </span>
-            ) : (
-              "Continue to Pricing"
-            )}
-          </Button>
+          {blocked ? (
+            <Button
+              type="button"
+              size="touch"
+              data-estimate-update-action="true"
+              onClick={handleUpdate}
+            >
+              Update estimate
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="touch"
+              disabled={isPending}
+              data-pricing-create-pending={isPending ? "true" : undefined}
+              onClick={handleCreate}
+            >
+              {isPending ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  Creating…
+                </span>
+              ) : (
+                "Continue to Pricing"
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

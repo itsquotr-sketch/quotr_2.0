@@ -253,6 +253,9 @@ export function sleeper2AMaterialStarter(
   confidence: RwSleeperStarterConfidence;
 } | null {
   if (!itemKey) return null;
+  // $36 has no approved workbook cost. The identity stays in the starter
+  // map, but a new estimate must not treat it as known benchmark money.
+  if (itemKey === RW_CONCRETE_SLEEPER_KEY) return null;
   const row = RW_SLEEPER_2A_MATERIAL_STARTERS[itemKey];
   if (!row || row.costPerUnit <= 0) return null;
   if (unit && row.unit !== unit) return null;

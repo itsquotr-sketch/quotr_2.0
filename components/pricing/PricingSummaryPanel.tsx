@@ -38,6 +38,7 @@ type PricingSummaryPanelProps = {
   compact?: boolean;
   canEdit?: boolean;
   scopeQuoteBlock?: string | null;
+  estimateUpdateRequired?: string | null;
 };
 
 function SummaryRow({
@@ -75,6 +76,7 @@ export function PricingSummaryPanel({
   compact = false,
   canEdit = true,
   scopeQuoteBlock = null,
+  estimateUpdateRequired = null,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document, items);
@@ -99,7 +101,8 @@ export function PricingSummaryPanel({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
-  const quoteBlockedReason = scopeQuoteBlock
+  const quoteBlockedReason = estimateUpdateRequired?.trim()
+    || scopeQuoteBlock
     || provisionalBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE

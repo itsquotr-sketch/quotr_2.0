@@ -53,6 +53,7 @@ export default async function RfqDetailPage({ params, searchParams }: PageProps)
         quoteSummary={quoteSummary}
         hasEstimate={tabContext.hasEstimate}
         estimateIsStale={tabContext.estimateIsStale}
+        quantityConflictDetail={tabContext.quantityConflictDetail}
       />
       <WorkspaceContainer scrollable={false} className="bg-muted/30" innerClassName="bg-muted/30 py-6">
         <RfqDetailView

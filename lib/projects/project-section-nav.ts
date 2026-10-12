@@ -8,10 +8,12 @@ import { VARIATION_UNAVAILABLE_BEFORE_ACCEPTANCE } from "@/lib/variations/presen
 
 export function estimateStatusText(
   stage: WorkflowStageModel,
-  estimateIsStale: boolean
+  estimateIsStale: boolean,
+  quantityConflict = false
 ): string {
-  const label =
-    stage.status === "Needs attention" && estimateIsStale
+  const label = quantityConflict
+    ? "Needs updating"
+    : stage.status === "Needs attention" && estimateIsStale
       ? "Previous estimate"
       : stage.status === "Not started"
         ? "Not started"
@@ -29,6 +31,7 @@ export function stageStatusText(stage: WorkflowStageModel): string {
 
 export function pricingLockReason(stage: WorkflowStageModel): string | null {
   if (!stage.locked) return null;
+  if (stage.detail.startsWith("Recalculate this draft")) return stage.detail;
   return "Complete the Estimate first";
 }
 

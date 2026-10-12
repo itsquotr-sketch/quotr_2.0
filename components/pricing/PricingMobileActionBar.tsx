@@ -40,6 +40,7 @@ type PricingMobileActionBarProps = {
   canEdit?: boolean;
   className?: string;
   scopeQuoteBlock?: string | null;
+  estimateUpdateRequired?: string | null;
 };
 
 export function PricingMobileActionBar({
@@ -57,6 +58,7 @@ export function PricingMobileActionBar({
   canEdit = true,
   className,
   scopeQuoteBlock = null,
+  estimateUpdateRequired = null,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
@@ -68,8 +70,13 @@ export function PricingMobileActionBar({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
-  const reviewBlock = provisionalBlock ?? manualQuoteBlock ?? unknownCostBlock;
-  const quoteBlockedReason = scopeQuoteBlock
+  const reviewBlock =
+    estimateUpdateRequired?.trim() ||
+    provisionalBlock ||
+    manualQuoteBlock ||
+    unknownCostBlock;
+  const quoteBlockedReason = estimateUpdateRequired?.trim()
+    || scopeQuoteBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : reviewBlock);

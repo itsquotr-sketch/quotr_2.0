@@ -1229,8 +1229,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Concrete sleeper wall",
     unit: "ea",
     description:
-      "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for a 2000×200 mm class sleeper. Not a trusted current market price. Company/Project exact overrides. Purchase EA — cut/end bays still buy a full unit.",
-    defaultCostRate: 36,
+      "Precast concrete sleeper, purchased each. No approved workbook cost. Pricing Required until a company or job rate exists. Purchase EA — cut/end bays still buy a full unit.",
     recommended: true,
     calculatorSupport: "used_now",
   }),

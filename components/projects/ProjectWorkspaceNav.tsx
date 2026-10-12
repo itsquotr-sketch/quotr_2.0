@@ -15,6 +15,9 @@ type ProjectWorkspaceNavProps = {
   quoteSummary?: QuoteSummary | null;
   hasEstimate?: boolean;
   estimateIsStale?: boolean;
+  quantityConflictDetail?: string | null;
+  onUpdateEstimate?: () => void;
+  updateDialogOpen?: boolean;
   pricingUnresolvedRequired?: boolean | null;
   variations?: ProjectWorkflowInput["variations"];
 };
@@ -27,6 +30,9 @@ export function ProjectWorkspaceNav({
   quoteSummary = null,
   hasEstimate,
   estimateIsStale,
+  quantityConflictDetail = null,
+  onUpdateEstimate,
+  updateDialogOpen = false,
   pricingUnresolvedRequired = null,
   variations = null,
 }: ProjectWorkspaceNavProps) {
@@ -39,6 +45,9 @@ export function ProjectWorkspaceNav({
           projectContext={projectContext}
           hasEstimate={hasEstimate ?? false}
           estimateIsStale={estimateIsStale ?? false}
+          quantityConflictDetail={quantityConflictDetail}
+          onUpdateEstimate={onUpdateEstimate}
+          updateDialogOpen={updateDialogOpen}
           pricingSummary={pricingSummary}
           pricingUnresolvedRequired={pricingUnresolvedRequired}
           quoteSummary={quoteSummary ?? null}

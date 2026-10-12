@@ -57,7 +57,15 @@ import {
 import { sleeperBayLayout, sleeperWallTakeoff } from "../lib/estimate/retaining-wall-sleeper";
 import { RW_PRODUCTIVITY_KEYS } from "../lib/estimate/retaining-wall-productivity";
 import { classifyRetainingWallSystem } from "../lib/estimate/retaining-wall-systems";
+import { buildLineItemNotes } from "../lib/estimate/line-items";
+import { timberRateVarianceContext } from "../lib/estimate/retaining-wall-rate-context";
+import {
+  formatProfitabilityDisplay,
+  PROFITABILITY_UNAVAILABLE_LABEL,
+} from "../lib/financial-presentation/format";
+import { calculateAuthoritativeFieldsFromEstimateLine } from "../lib/pricing/estimate-to-pricing-adapter";
 import { buildPricingItemFieldsFromEstimateLineItem } from "../lib/pricing/pricing-item-calculation";
+import { unknownCostWithoutClientSell } from "../lib/work-areas/manual-pricing-route";
 import type {
   EstimateContext,
   EstimateFact,
@@ -465,16 +473,61 @@ const sleeperLine = ownerCalc.lineItems.find(
   (item) => item.componentKey === RW_SLEEPER_COMPONENT
 );
 check(
-  "21 Sleeper EA × rate",
+  "21 Precast sleeper is Pricing Required, not the unapproved $36",
   sleeperLine?.unit === "ea" &&
-    near(
-      sleeperLine.costRate ?? 0,
-      sleeper2AMaterialStarter(RW_CONCRETE_SLEEPER_KEY, "ea")?.costPerUnit ?? -1
-    ) &&
-    near(
-      sleeperLine.recommendedCost,
-      (takeoff.sleeperCount ?? 0) * (sleeperLine.costRate ?? 0)
-    )
+    sleeperLine.quantity === takeoff.sleeperCount &&
+    sleeperLine.rateSourceType === "missing" &&
+    (sleeperLine.costRate ?? 0) === 0 &&
+    sleeperLine.recommendedCost === 0 &&
+    RW_SLEEPER_2A_MATERIAL_STARTERS[RW_CONCRETE_SLEEPER_KEY]?.costPerUnit === 36 &&
+    sleeper2AMaterialStarter(RW_CONCRETE_SLEEPER_KEY, "ea") == null
+);
+const sleeperNotes = sleeperLine ? buildLineItemNotes(sleeperLine) : null;
+const sleeperPricing = calculateAuthoritativeFieldsFromEstimateLine({
+  category: "materials",
+  recommended_cost: sleeperLine?.recommendedCost ?? 0,
+  recommended_sell: sleeperLine?.recommendedSell ?? 0,
+  notes: sleeperNotes,
+});
+check(
+  "21b missing precast price stays unknown",
+  sleeperPricing.ok && sleeperPricing.fields.costKnown === false
+);
+check(
+  "21c quote stays blocked without a client sell",
+  sleeperPricing.ok &&
+    unknownCostWithoutClientSell({
+      visible_on_quote: true,
+      cost_known: sleeperPricing.fields.costKnown,
+      total_sell: 0,
+    })
+);
+check(
+  "21d a positive client sell clears the quote block",
+  sleeperPricing.ok &&
+    !unknownCostWithoutClientSell({
+      visible_on_quote: true,
+      cost_known: sleeperPricing.fields.costKnown,
+      total_sell: 80,
+    })
+);
+check(
+  "21e an explicit sell keeps profit unknown",
+  sleeperPricing.ok &&
+    formatProfitabilityDisplay({
+      costKnown: sleeperPricing.fields.costKnown,
+      grossProfit: 80,
+      marginPercent: 100,
+    }).profitLabel === PROFITABILITY_UNAVAILABLE_LABEL
+);
+check(
+  "21f a company rate is not compared with the unapproved $36",
+  timberRateVarianceContext({
+    itemKey: RW_CONCRETE_SLEEPER_KEY,
+    unit: "ea",
+    appliedCostRate: 50,
+    rateLabel: "Company rate",
+  }) == null
 );
 const postLine = ownerCalc.lineItems.find(
   (item) => item.componentKey === RW_SLEEPER_POSTS_PROCURE_COMPONENT
@@ -602,7 +655,11 @@ check(
     (postGroup?.supporting ?? "").includes("posts") &&
     postGroup?.showChangeMaterial === true
 );
-const sleeperUi = materials?.lines.find((line) => line.componentKey === RW_SLEEPER_COMPONENT);
+const sleeperUi =
+  materials?.lines.find((line) => line.componentKey === RW_SLEEPER_COMPONENT) ??
+  ownerReview.workAreas[0]?.categories
+    .find((category) => category.id === "PRICING_REQUIRED")
+    ?.lines.find((line) => line.componentKey === RW_SLEEPER_COMPONENT);
 check(
   "40 Sleepers compact",
   /sleeper/i.test(sleeperUi?.label ?? "") && (sleeperUi?.supporting ?? "").includes("EA")

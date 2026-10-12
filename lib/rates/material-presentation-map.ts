@@ -377,9 +377,10 @@ export function classifyMaterialPresentation(
   if (key === "sheet.fibre_cement.18mm.2400x1200.each") {
     return base({
       categoryId: "other_sheet",
-      familyId: "fc-18mm-legacy",
+      familyId: "fc-18mm",
       familyName: "18 mm fibre cement",
-      familyDescription: "Legacy bathroom structural sheet — not 19 mm flooring.",
+      familyDescription:
+        "Exact 18 mm fibre-cement sheet. Pricing Required until a company or job rate exists. Not 19 mm flooring.",
       variantLayout: "sheet",
       thickness: "18 mm",
       sheetSize: "2400 × 1200",
@@ -387,8 +388,8 @@ export function classifyMaterialPresentation(
       gradeTreatment: null,
       colourType: null,
       usedInWorkAreaTypes: ["bathroom"],
-      ordinary: false,
-      legacyKind: "legacy_identity",
+      ordinary: true,
+      legacyKind: null,
       aliasOfKey: null,
     });
   }

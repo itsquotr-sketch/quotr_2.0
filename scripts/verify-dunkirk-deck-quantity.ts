@@ -10,8 +10,17 @@ import { DECK_CONCRETE_PRODUCTIVITY_KEY } from "../lib/estimate/deck-scope-2c";
 import { calculateAuthoritativeFieldsFromEstimateLine } from "../lib/pricing/estimate-to-pricing-adapter";
 import { unknownCostWithoutClientSell } from "../lib/work-areas/manual-pricing-route";
 import { nextWorkspaceScrollTop } from "../lib/ui/scroll-workspace";
-import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
+import {
+  deckStatedCountConflict,
+  deckStatedCountConflictFromPersisted,
+  quoteCreationDecision,
+} from "../lib/estimate/deck-stated-count-guard";
 import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
+import { deriveProjectWorkflow } from "../lib/projects/workflow-orientation";
+import {
+  estimateStatusText,
+  pricingLockReason,
+} from "../lib/projects/project-section-nav";
 import {
   formatProfitabilityDisplay,
   PROFITABILITY_UNAVAILABLE_LABEL,
@@ -296,7 +305,144 @@ check(
   overview.primary === "regenerate" &&
     overview.pricingCreationBlocked &&
     overview.pricingEntry === "blocked" &&
-    overview.required.some((item) => item.id === "deck-stated-count")
+    overview.required.some((item) => item.id === "deck-stated-count") &&
+    overview.sell.presentation === "previous" &&
+    overview.sell.label === "Old working estimate" &&
+    overview.sell.exGst != null
+);
+const header = deriveProjectWorkflow({
+  projectId: "dunkirk",
+  activeTab: "assistant",
+  hasEstimate: true,
+  estimateIsStale: false,
+  quantityConflictDetail: conflict?.summary ?? null,
+  pricingSummary: null,
+  quoteSummary: null,
+});
+const estimateStage = header.stages.find((stage) => stage.id === "estimate");
+const pricingStage = header.stages.find((stage) => stage.id === "pricing");
+check(
+  "the header says the estimate needs updating",
+  estimateStage != null &&
+    pricingStage != null &&
+    estimateStatusText(estimateStage, false, true) === "Needs updating · Current" &&
+    pricingStage.status !== "Ready" &&
+    pricingStage.locked &&
+    (pricingLockReason(pricingStage) ?? "").startsWith("Recalculate this draft")
+);
+const persistedRefusal = deckStatedCountConflictFromPersisted({
+  facts: [
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.substructure_included", true),
+    fact("deck.concrete_to_supports", true),
+  ],
+  lines: staleLines.map((row) => ({
+    label: row.label,
+    component_key: row.componentKey,
+    notes: buildLineItemNotes({
+      workAreaId: "deck",
+      workAreaName: "Deck",
+      label: row.label,
+      category: row.componentKey === "deck.concrete.place" ? "labour" : "materials",
+      quantity: row.quantity,
+      unit: row.unit,
+      labourHours: row.labourHours,
+      componentKey: row.componentKey,
+      costLow: 0,
+      costHigh: 0,
+      sellLow: 0,
+      sellHigh: 0,
+      recommendedCost: 0,
+      recommendedSell: 0,
+      grossProfit: 0,
+      marginPercent: 0,
+      markupPercent: 0,
+      rateSource: "saved",
+      sortOrder: 1,
+    }),
+  })),
+});
+check(
+  "the server reads the saved draft and refuses it",
+  persistedRefusal?.summary === conflict?.summary &&
+    (persistedRefusal?.summary ?? "").includes("15 → 16")
+);
+const issuedQuote = quoteCreationDecision({
+  existingQuoteId: "issued-quote",
+  statedCountConflict: conflict?.summary ?? "blocked",
+});
+const newQuote = quoteCreationDecision({
+  existingQuoteId: null,
+  statedCountConflict: conflict?.summary ?? null,
+});
+check(
+  "an issued quote stays open and a new quote is refused",
+  issuedQuote.action === "open_existing" &&
+    issuedQuote.quoteId === "issued-quote" &&
+    newQuote.action === "refuse"
+);
+function included(
+  result: ReturnType<typeof calculateDeck>,
+  category: "materials" | "labour",
+  field: "recommendedCost" | "recommendedSell"
+) {
+  return result.lineItems
+    .filter((item) => item.category === category && item.includedInTotal !== false)
+    .reduce((sum, item) => sum + item[field], 0);
+}
+function clientSell(result: ReturnType<typeof calculateDeck>) {
+  return result.lineItems
+    .filter((item) => item.includedInTotal !== false)
+    .reduce((sum, item) => sum + item.recommendedSell, 0);
+}
+const beforeMaterials = included(spacing, "materials", "recommendedCost");
+const afterMaterials = included(stated, "materials", "recommendedCost");
+const beforeLabour = included(spacing, "labour", "recommendedCost");
+const afterLabour = included(stated, "labour", "recommendedCost");
+const beforeSell = clientSell(spacing);
+const afterSell = clientSell(stated);
+const afterGst = Math.round(afterSell * 0.15 * 100) / 100;
+check(
+  "updating the draft changes material, labour, sell, and GST",
+  afterMaterials > beforeMaterials &&
+    afterLabour > beforeLabour &&
+    afterSell > beforeSell &&
+    afterGst > 0,
+  `materials ${beforeMaterials.toFixed(2)} → ${afterMaterials.toFixed(2)}; labour ${beforeLabour.toFixed(2)} → ${afterLabour.toFixed(2)}; sell ${beforeSell.toFixed(2)} → ${afterSell.toFixed(2)}; GST ${afterGst.toFixed(2)}`
+);
+console.log(
+  `disposable update materials $${beforeMaterials.toFixed(2)} → $${afterMaterials.toFixed(2)}; labour $${beforeLabour.toFixed(2)} → $${afterLabour.toFixed(2)}; sell $${beforeSell.toFixed(2)} → $${afterSell.toFixed(2)}; GST $${afterGst.toFixed(2)}`
+);
+const clearedConflict = deckStatedCountConflict({
+  facts: [...base, fact("deck.pile_or_post_count", 16)],
+  lines: stated.lineItems,
+});
+const clearedOverview = projectEstimateOverview({
+  hasEstimate: true,
+  isStale: false,
+  detailsOutstanding: false,
+  estimate: {
+    recommendedSell: afterSell,
+    recommendedCost: afterMaterials + afterLabour,
+    grossProfit: afterSell - (afterMaterials + afterLabour),
+    marginPercent: 20,
+  },
+  gstRate: 15,
+  breakdown: null,
+  review: null,
+  readinessBlockers: [],
+  rateSourceSummary: null,
+  pricingDocumentExists: false,
+  specialistPricingNotice: null,
+  workAreaNames: ["Deck"],
+  statedCountConflictDetail: clearedConflict?.summary ?? null,
+});
+check(
+  "the warning clears and Pricing can be created",
+  clearedConflict == null &&
+    clearedOverview.pricingCreationBlocked === false &&
+    clearedOverview.pricingEntry === "create" &&
+    clearedOverview.sell.label === "Recommended client sell"
 );
 const pricedHole = formatProfitabilityDisplay({
   costKnown: priced.ok ? priced.fields.costKnown : true,

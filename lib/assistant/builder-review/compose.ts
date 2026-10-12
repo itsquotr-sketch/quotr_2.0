@@ -446,12 +446,16 @@ function lineHierarchy(
   }
 
   if (item.componentKey === RW_SLEEPER_COMPONENT) {
+    const purchased = qtyUnit?.replace(/ ea$/i, " EA") ?? null;
+    const missing = classifyRateSource(item.rateSource ?? "") === "missing";
+    const identity = missing ? null : item.identitySummary || spec;
     return {
-      supporting: item.identitySummary || spec || qtyUnit,
-      detail:
-        item.notes &&
-        item.identitySummary &&
-        item.notes !== item.identitySummary
+      supporting: [purchased, identity].filter(Boolean).join(" · ") || spec || purchased,
+      detail: missing
+        ? "Pricing Required"
+        : item.notes &&
+            item.identitySummary &&
+            item.notes !== item.identitySummary
           ? item.notes
           : null,
     };
