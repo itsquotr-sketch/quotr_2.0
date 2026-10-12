@@ -1468,6 +1468,7 @@ export function calculateDeck(
     const identitySummary = formatDeckIdentityLine([
       concreteIdentity.originalDescription,
       bags > 0 ? `${bags} bags` : null,
+      concrete.authority === "measured" ? "Confirmed" : null,
       concrete.authority === "provisional" ? "Provisional" : null,
       concrete.authority === "company" ? "Company quantity" : null,
       concrete.authority === "measured" && concrete.netM3 != null

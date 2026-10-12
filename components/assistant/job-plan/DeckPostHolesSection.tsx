@@ -11,8 +11,19 @@ import {
   DECK_HOLE_CONFIRM_ACTION,
   deckHoleCountError,
   deckHoleMillimetreError,
-  planDeckPostConcrete,
+  planDeckHoleExcavation,
 } from "@/lib/estimate/deck-hole-excavation";
+import {
+  DECK_COMPANY_BAG_WARNING,
+  DECK_POST_HOLE_FINISH,
+  deckConcreteCalculationLines,
+  deckConcreteResultLabel,
+  deckConcreteYieldCard,
+  deckExcavationResultLabel,
+  deckPostHoleFinishItems,
+  deckPostSizeStatus,
+  type DeckPostHoleFinishId,
+} from "@/lib/estimate/deck-post-hole-result";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 type HoleFactWrite = (input: {
@@ -24,7 +35,7 @@ type HoleFactWrite = (input: {
 }) => void;
 
 const fieldClass =
-  "h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm";
+  "h-11 min-h-11 w-full scroll-mb-40 rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:scroll-mb-24 md:text-sm";
 
 function write(
   onSpecFact: HoleFactWrite | undefined,
@@ -90,7 +101,75 @@ export function DeckPostHolesSection({
   const [countError, setCountError] = useState<string | null>(null);
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
+  const [companyToggle, setCompanyToggle] = useState<boolean | null>(null);
+  const companyOpen = companyToggle ?? companyBags != null;
   const displayCount = savedCount ?? postCount ?? "";
+  const holeCountForPlan = savedCount ?? postCount ?? 0;
+  const holePlan =
+    holeCountForPlan > 0
+      ? planDeckHoleExcavation({
+          facts,
+          workAreaId,
+          holeCount: holeCountForPlan,
+        })
+      : null;
+  const concretePlan = holePlan?.concrete ?? null;
+  const postSize = deckPostSizeStatus(postSection);
+  const finishItems = deckPostHoleFinishItems({
+    sizeConfirmed: holePlan?.draftStamp?.sizeConfirmed ?? false,
+    ground,
+    method,
+    spoil,
+    concreteOn,
+    fill,
+    fillDepthMm: fillDepth,
+    postSection,
+    embedmentMm: embedment,
+  });
+  const concreteLabel =
+    concretePlan && concreteOn
+      ? deckConcreteResultLabel(concretePlan.authority, concretePlan.bags)
+      : null;
+  const geometry = holePlan?.geometry ?? null;
+  const calculationLines =
+    geometry && concretePlan && concreteOn
+      ? deckConcreteCalculationLines({
+          holeCount: holeCountForPlan,
+          geometry,
+          concrete: concretePlan,
+        })
+      : geometry
+        ? [
+            geometry.shape === "rectangular"
+              ? `${holeCountForPlan} rectangular holes.`
+              : `${holeCountForPlan} circular holes.`,
+            geometry.formula,
+          ]
+        : [];
+
+  function focusFinish(id: DeckPostHoleFinishId) {
+    const target =
+      id === "dimensions"
+        ? document.getElementById(`deck-hole-confirm-${workAreaId}`) ??
+          document.getElementById(
+            rectangular
+              ? `deck-hole-length-${workAreaId}`
+              : `deck-hole-diameter-${workAreaId}`
+          )
+        : id === "ground"
+          ? document.getElementById(`deck-hole-ground-${workAreaId}`)
+          : id === "method"
+            ? document.getElementById(`deck-hole-method-${workAreaId}`)
+            : id === "spoil"
+              ? document.getElementById(`deck-spoil-${workAreaId}`)
+              : id === "fill"
+                ? document.getElementById(`deck-concrete-fill-${workAreaId}`)
+                : id === "post"
+                  ? document.getElementById(`deck-concrete-post-${workAreaId}`)
+                  : document.getElementById(`deck-post-embedment-${workAreaId}`);
+    target?.scrollIntoView({ block: "center" });
+    if (target instanceof HTMLElement) target.focus();
+  }
 
   function saveCount(raw: string) {
     const trimmed = raw.trim();
@@ -163,13 +242,103 @@ export function DeckPostHolesSection({
         </p>
       </div>
 
+      <div className="space-y-2 rounded-lg bg-muted/40 p-3" data-post-hole-result="">
+        {concreteOn ? (
+          concreteLabel ? (
+            <p className="text-sm font-medium" data-concrete-status="">
+              {concreteLabel}
+            </p>
+          ) : (
+            <p className="text-sm font-medium" data-concrete-status="">
+              Concrete: add the hole count to see the bags.
+            </p>
+          )
+        ) : (
+          <p className="text-sm text-muted-foreground" data-concrete-status="">
+            Concrete footings are off.
+          </p>
+        )}
+        <p className="text-sm" data-excavation-volume="">
+          {deckExcavationResultLabel(geometry?.bankVolumeM3 ?? null)}
+        </p>
+        {concreteOn ? (
+          <p className="text-xs text-muted-foreground" data-concrete-yield="">
+            {deckConcreteYieldCard(
+              concretePlan?.yieldM3 ?? null,
+              yieldOverride != null && yieldOverride > 0
+            )}
+          </p>
+        ) : null}
+        {finishItems.length > 0 ? (
+          <div className="space-y-1" data-post-hole-todo="">
+            <p className="text-xs font-medium">To finish</p>
+            <ul className="space-y-1">
+              {finishItems.map((id) => (
+                <li key={id}>
+                  <button
+                    type="button"
+                    className="min-h-11 w-full scroll-mb-40 rounded-md px-2 text-left text-sm underline-offset-2 hover:bg-background md:scroll-mb-24"
+                    onClick={() => focusFinish(id)}
+                  >
+                    {DECK_POST_HOLE_FINISH[id]}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {calculationLines.length > 0 ? (
+          <details className="scroll-mb-40 md:scroll-mb-24" data-concrete-calculation="">
+            <summary className="min-h-11 cursor-pointer py-2 text-sm">
+              How this was calculated
+            </summary>
+            <ul className="space-y-2 pb-1 text-xs leading-5 text-muted-foreground">
+              {calculationLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {concreteOn ? (
+              <div className="space-y-1.5 pb-1">
+                <Label className="text-xs" htmlFor={`deck-concrete-yield-${workAreaId}`}>
+                  Company yield, m³ per 20 kg bag
+                </Label>
+                <Input
+                  className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
+                  id={`deck-concrete-yield-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.001"
+                  min={0.001}
+                  defaultValue={yieldOverride ?? ""}
+                  placeholder="0.01"
+                  onBlur={(event) => {
+                    const raw = event.target.value.trim();
+                    if (!raw) return;
+                    const next = Number(raw);
+                    if (!Number.isFinite(next) || next <= 0) return;
+                    write(
+                      onSpecFact,
+                      workAreaId,
+                      "deck.concrete_bag_yield_m3",
+                      "Concrete bag yield",
+                      next,
+                      "number"
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
+          </details>
+        ) : null}
+      </div>
+
       <div className="space-y-1.5">
         <Label className="text-xs" htmlFor={`deck-hole-count-${workAreaId}`}>
           Number of holes
           {postCount != null ? ` · suggested from ${postCount} posts` : ""}
         </Label>
         <Input
-          className="h-11 md:h-9"
+          className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
           id={`deck-hole-count-${workAreaId}`}
           type="number"
           inputMode="numeric"
@@ -179,7 +348,7 @@ export function DeckPostHolesSection({
           onBlur={(event) => saveCount(event.target.value)}
         />
         {countError ? (
-          <p className="text-xs text-destructive" data-hole-count-error="">
+          <p className="scroll-mb-40 text-xs text-destructive md:scroll-mb-24" data-hole-count-error="">
             {countError}
           </p>
         ) : null}
@@ -191,7 +360,7 @@ export function DeckPostHolesSection({
         </Label>
         <Input
           ref={reasonRef}
-          className="h-11 md:h-9"
+          className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
           id={`deck-hole-reason-${workAreaId}`}
           type="text"
           defaultValue={savedReason}
@@ -215,7 +384,7 @@ export function DeckPostHolesSection({
           }}
         />
         {reasonError ? (
-          <p className="text-xs text-destructive" data-hole-reason-error="">
+          <p className="scroll-mb-40 text-xs text-destructive md:scroll-mb-24" data-hole-reason-error="">
             {reasonError}
           </p>
         ) : null}
@@ -302,7 +471,8 @@ export function DeckPostHolesSection({
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 w-full"
+                className="min-h-11 w-full scroll-mb-40 md:scroll-mb-24"
+                id={`deck-hole-confirm-${workAreaId}`}
                 data-hole-confirm=""
                 onClick={confirmAssumedSize}
               >
@@ -313,7 +483,7 @@ export function DeckPostHolesSection({
         </div>
       )}
       {sizeError ? (
-        <p className="text-xs text-destructive" data-hole-size-error="">
+        <p className="scroll-mb-40 text-xs text-destructive md:scroll-mb-24" data-hole-size-error="">
           {sizeError}
         </p>
       ) : null}
@@ -369,130 +539,121 @@ export function DeckPostHolesSection({
         }
       />
 
-      <div className="space-y-3 border-t border-border/60 pt-3" data-post-hole-concrete="true">
-        <div className="space-y-1">
+      {concreteOn ? (
+        <div className="space-y-3 border-t border-border/60 pt-3" data-post-hole-concrete="true">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Concrete in the holes
           </p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Bags follow the concrete fill and the 20 kg bag yield of 0.01 m³ per bag.
-            {postSection
-              ? ` Post size ${postSection}.`
-              : " Set the post size before the displacement can be deducted."}
-          </p>
-        </div>
-        <Choice
-          id={`deck-concrete-fill-${workAreaId}`}
-          label="Concrete fill"
-          value={fill}
-          placeholder="Not confirmed"
-          options={[
-            ["full", "Full hole"],
-            ["partial", "Part of the hole"],
-          ]}
-          onChange={(value) =>
-            write(onSpecFact, workAreaId, "deck.concrete_fill", "Concrete fill", value, "select")
-          }
-        />
-        {fill === "partial" ? (
-          <MillimetreField
-            id={`deck-concrete-fill-depth-${workAreaId}`}
-            label="Concrete depth"
-            current={fillDepth}
-            onCommit={(raw) =>
-              saveMillimetres(
-                "deck.concrete_fill_depth_mm",
-                "Concrete fill depth",
-                raw,
-                fillDepth
-              )
+          <Choice
+            id={`deck-concrete-fill-${workAreaId}`}
+            label="Concrete fill"
+            value={fill}
+            placeholder="Not confirmed"
+            options={[
+              ["full", "Full hole"],
+              ["partial", "Part of the hole"],
+            ]}
+            onChange={(value) =>
+              write(onSpecFact, workAreaId, "deck.concrete_fill", "Concrete fill", value, "select")
             }
           />
-        ) : null}
-        <MillimetreField
-          id={`deck-post-embedment-${workAreaId}`}
-          label="Post embedded depth"
-          current={embedment}
-          onCommit={(raw) =>
-            saveMillimetres("deck.post_embedment_mm", "Post embedded depth", raw, embedment)
-          }
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor={`deck-concrete-yield-${workAreaId}`}>
-              Bag yield m³
+          {fill === "partial" ? (
+            <MillimetreField
+              id={`deck-concrete-fill-depth-${workAreaId}`}
+              label="Concrete depth"
+              current={fillDepth}
+              onCommit={(raw) =>
+                saveMillimetres(
+                  "deck.concrete_fill_depth_mm",
+                  "Concrete fill depth",
+                  raw,
+                  fillDepth
+                )
+              }
+            />
+          ) : null}
+          <div className="space-y-1.5" data-post-size="">
+            <Label className="text-xs" htmlFor={`deck-concrete-post-${workAreaId}`}>
+              Post size
             </Label>
-            <Input
-              className="h-11 md:h-9"
-              id={`deck-concrete-yield-${workAreaId}`}
-              type="number"
-              inputMode="decimal"
-              step="0.001"
-              min={0.001}
-              defaultValue={yieldOverride ?? ""}
-              placeholder="0.01"
-              onBlur={(event) => {
-                const raw = event.target.value.trim();
-                if (!raw) return;
-                const next = Number(raw);
-                if (!Number.isFinite(next) || next <= 0) return;
+            <select
+              id={`deck-concrete-post-${workAreaId}`}
+              className={fieldClass}
+              value={postSection}
+              onChange={(event) =>
                 write(
                   onSpecFact,
                   workAreaId,
-                  "deck.concrete_bag_yield_m3",
-                  "Concrete bag yield",
-                  next,
-                  "number"
-                );
-              }}
-            />
+                  "deck.support_section",
+                  "Pile/post section",
+                  event.target.value,
+                  "select"
+                )
+              }
+            >
+              <option value="">125×125 H5 house pile (estimating default)</option>
+              <option value="100x100">100×100 H5 timber post</option>
+              <option value="125x125">125×125 H5 house pile</option>
+            </select>
+            <p
+              className="text-xs text-muted-foreground"
+              data-post-size-status={postSize.confirmed ? "confirmed" : "default"}
+            >
+              {postSize.text}
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor={`deck-company-bags-${workAreaId}`}>
-              Company bags per hole
-            </Label>
-            <Input
-              className="h-11 md:h-9"
-              id={`deck-company-bags-${workAreaId}`}
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              min={0.1}
-              defaultValue={companyBags ?? ""}
-              placeholder="Volume takeoff"
-              onBlur={(event) => {
-                const raw = event.target.value.trim();
-                if (!raw) return;
-                const next = Number(raw);
-                if (!Number.isFinite(next) || next <= 0) return;
-                write(
-                  onSpecFact,
-                  workAreaId,
-                  "deck.concrete_bags_per_hole",
-                  "Concrete bags per hole",
-                  next,
-                  "number"
-                );
-              }}
-            />
-          </div>
-        </div>
-        {concreteOn && (savedCount ?? postCount) != null ? (
-          <p className="text-xs leading-5 text-muted-foreground" data-concrete-takeoff="">
-            {
-              planDeckPostConcrete({
-                facts,
-                workAreaId,
-                holeCount: savedCount ?? postCount ?? 0,
-              }).disclosure
+          <MillimetreField
+            id={`deck-post-embedment-${workAreaId}`}
+            label="Post embedded depth"
+            current={embedment}
+            onCommit={(raw) =>
+              saveMillimetres("deck.post_embedment_mm", "Post embedded depth", raw, embedment)
             }
-          </p>
-        ) : (
-          <p className="text-xs leading-5 text-muted-foreground">
-            Turn on concrete footings to include this quantity. Spoil stays the excavated bank volume.
-          </p>
-        )}
-      </div>
+          />
+          <details
+            className="scroll-mb-40 rounded-lg border border-border/60 p-3 md:scroll-mb-24"
+            data-company-bags-override=""
+            open={companyOpen}
+            onToggle={(event) => setCompanyToggle(event.currentTarget.open)}
+          >
+            <summary className="min-h-11 cursor-pointer text-sm">
+              Company bags per hole
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              <p className="text-xs leading-5 text-muted-foreground" data-company-bag-warning="">
+                {DECK_COMPANY_BAG_WARNING} Source: this job.
+              </p>
+              <Label className="text-xs" htmlFor={`deck-company-bags-${workAreaId}`}>
+                Bags per hole
+              </Label>
+              <Input
+                className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
+                id={`deck-company-bags-${workAreaId}`}
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min={0.1}
+                defaultValue={companyBags ?? ""}
+                placeholder="Leave blank to use the hole volume"
+                onBlur={(event) => {
+                  const raw = event.target.value.trim();
+                  if (!raw) return;
+                  const next = Number(raw);
+                  if (!Number.isFinite(next) || next <= 0) return;
+                  write(
+                    onSpecFact,
+                    workAreaId,
+                    "deck.concrete_bags_per_hole",
+                    "Concrete bags per hole",
+                    next,
+                    "number"
+                  );
+                }}
+              />
+            </div>
+          </details>
+        </div>
+      ) : null}
 
       {outsideOrdinary ? (
         <div className="space-y-1.5" data-hole-productivity-needed="true">
@@ -500,7 +661,7 @@ export function DeckPostHolesSection({
             Hours per hole for this job
           </Label>
           <Input
-            className="h-11 md:h-9"
+            className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
             id={`deck-hole-hours-${workAreaId}`}
             type="number"
             inputMode="decimal"
@@ -556,7 +717,7 @@ function MillimetreField({
         {assumed != null ? " · Assumed" : ""}
       </Label>
       <Input
-        className="h-11 md:h-9"
+        className="h-11 scroll-mb-40 md:h-9 md:scroll-mb-24"
         id={id}
         type="number"
         inputMode="numeric"

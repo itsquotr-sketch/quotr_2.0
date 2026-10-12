@@ -183,7 +183,7 @@ export function JobPlanPanel({
           {WORK_AREA_INTRODUCTION}
         </p>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 max-md:pb-36">
         {cardsToRender.map((card) => (
           <JobPlanWorkAreaCardView
             key={card.workAreaId}

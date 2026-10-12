@@ -9,6 +9,15 @@ import {
   planDeckHoleExcavation,
   rectangularBankVolumeM3,
 } from "../lib/estimate/deck-hole-excavation";
+import {
+  DECK_POST_HOLE_FINISH,
+  deckConcreteCalculationLines,
+  deckConcreteResultLabel,
+  deckConcreteYieldCard,
+  deckExcavationResultLabel,
+  deckPostHoleFinishItems,
+  deckPostSizeStatus,
+} from "../lib/estimate/deck-post-hole-result";
 import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
 import { round2 } from "../lib/estimate/facts";
 import { resolveLabourRate } from "../lib/estimate/rates";
@@ -674,6 +683,151 @@ const settled = measuredStamp
     })
   : { summary: "missing" };
 check("a measured unchanged concrete draft is not stale", settled == null);
+
+const openFacts = [
+  fact("deck.pile_or_post_count", 16),
+  fact("deck.concrete_to_supports", true),
+];
+const openPlan = planDeckHoleExcavation({
+  facts: openFacts,
+  workAreaId: "deck",
+  holeCount: 16,
+});
+const openTodo = deckPostHoleFinishItems({
+  sizeConfirmed: openPlan.draftStamp?.sizeConfirmed ?? false,
+  ground: "",
+  method: "",
+  spoil: "",
+  concreteOn: true,
+  fill: "",
+  fillDepthMm: null,
+  postSection: "",
+  embedmentMm: null,
+});
+check(
+  "the unconfirmed card says 93 bags provisional",
+  deckConcreteResultLabel(openPlan.concrete.authority, openPlan.concrete.bags) ===
+    "Concrete: 93 bags · Provisional"
+);
+check(
+  "the unconfirmed card says 0.924 m³ bank volume",
+  deckExcavationResultLabel(openPlan.geometry?.bankVolumeM3 ?? null) ===
+    "Excavation: 0.924 m³ bank volume."
+);
+check(
+  "the unconfirmed card names every open decision",
+  openTodo.map((id) => DECK_POST_HOLE_FINISH[id]).join(" | ") ===
+    [
+      "Confirm hole dimensions",
+      "Choose ground",
+      "Choose excavation method",
+      "Choose spoil destination",
+      "Confirm concrete fill",
+      "Select post size",
+      "Enter embedded depth",
+    ].join(" | ")
+);
+check(
+  "the yield card shows 0.01 m³ per 20 kg bag",
+  deckConcreteYieldCard(openPlan.concrete.yieldM3, false) === "Yield: 0.01 m³ per 20 kg bag"
+);
+const openCalculation = openPlan.geometry
+  ? deckConcreteCalculationLines({
+      holeCount: 16,
+      geometry: openPlan.geometry,
+      concrete: openPlan.concrete,
+    }).join(" ")
+  : "";
+check(
+  "the calculation disclosure keeps the yield explanation and the rounding rule",
+  openCalculation.includes("0.01 m³ per bag") &&
+    openCalculation.includes("rounded up to the next whole bag") &&
+    !openCalculation.includes("Concrete: 93 bags")
+);
+check(
+  "an estimating default post size is not confirmed",
+  deckPostSizeStatus("").confirmed === false && deckPostSizeStatus("125x125").confirmed === true
+);
+
+const confirmedPlan = planDeckHoleExcavation({
+  facts: measuredBase,
+  workAreaId: "deck",
+  holeCount: 16,
+});
+const confirmedTodo = deckPostHoleFinishItems({
+  sizeConfirmed: true,
+  ground: "ordinary",
+  method: "hand",
+  spoil: "on_site",
+  concreteOn: true,
+  fill: "full",
+  fillDepthMm: null,
+  postSection: "125x125",
+  embedmentMm: 600,
+});
+const confirmedCalculation = confirmedPlan.geometry
+  ? deckConcreteCalculationLines({
+      holeCount: 16,
+      geometry: confirmedPlan.geometry,
+      concrete: confirmedPlan.concrete,
+    }).join(" ")
+  : "";
+check(
+  "the finished card says 78 bags confirmed",
+  deckConcreteResultLabel(confirmedPlan.concrete.authority, confirmedPlan.concrete.bags) ===
+    "Concrete: 78 bags · Confirmed" && confirmedTodo.length === 0
+);
+const concreteConfirmedSiteOpen = deckPostHoleFinishItems({
+  sizeConfirmed: true,
+  ground: "",
+  method: "",
+  spoil: "undecided",
+  concreteOn: true,
+  fill: "full",
+  fillDepthMm: null,
+  postSection: "125x125",
+  embedmentMm: 600,
+});
+check(
+  "confirmed concrete leaves ground, method, and spoil open",
+  deckConcreteResultLabel(confirmedPlan.concrete.authority, confirmedPlan.concrete.bags) ===
+    "Concrete: 78 bags · Confirmed" &&
+    concreteConfirmedSiteOpen.map((id) => DECK_POST_HOLE_FINISH[id]).join(" | ") ===
+      "Choose ground | Choose excavation method | Choose spoil destination"
+);
+check(
+  "the finished calculation shows displacement, net fill, and bank spoil",
+  confirmedPlan.geometry?.bankVolumeM3 === 0.924 &&
+    Math.round((confirmedPlan.concrete.displacementM3 ?? 0) * 1000) / 1000 === 0.15 &&
+    Math.round((confirmedPlan.concrete.netM3 ?? 0) * 1000) / 1000 === 0.774 &&
+    confirmedCalculation.includes("0.150") &&
+    confirmedCalculation.includes("0.774")
+);
+check(
+  "partial fill stays on the list until a depth is entered",
+  deckPostHoleFinishItems({
+    sizeConfirmed: true,
+    ground: "ordinary",
+    method: "hand",
+    spoil: "off_site",
+    concreteOn: true,
+    fill: "partial",
+    fillDepthMm: null,
+    postSection: "125x125",
+    embedmentMm: 600,
+  }).includes("fill") &&
+    !deckPostHoleFinishItems({
+      sizeConfirmed: true,
+      ground: "ordinary",
+      method: "hand",
+      spoil: "off_site",
+      concreteOn: true,
+      fill: "partial",
+      fillDepthMm: 300,
+      postSection: "125x125",
+      embedmentMm: 600,
+    }).includes("fill")
+);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
