@@ -9,6 +9,7 @@
 
 import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
+import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { CommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import {
   presentEstimateGst,
@@ -579,12 +580,13 @@ export function projectEstimateOverview(
     );
   }
   const statedCountConflict = input.statedCountConflictDetail?.trim() || null;
-  if (statedCountConflict) {
+  const conflictStatus = quantityConflictStageStatus(statedCountConflict);
+  if (statedCountConflict && conflictStatus) {
     required.push(
       action(
         "required",
         "deck-stated-count",
-        "Recalculate this draft before Pricing",
+        conflictStatus === "Needs details" ? "Complete Deck details" : "Update estimate",
         statedCountConflict,
         null,
         true,
@@ -675,7 +677,8 @@ export function projectEstimateOverview(
 
   let status: EstimateOverviewStatus = "current";
   if (!input.hasEstimate) status = "incomplete";
-  else if (input.isStale) status = "stale";
+  else if (conflictStatus === "Needs details") status = "incomplete";
+  else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
   else if (hasPricingRequired || input.review?.overview.recommendedSellIsPartial) {
     status = "pricing_required";
   }
@@ -688,11 +691,15 @@ export function projectEstimateOverview(
         : "Estimate ready";
   const statusDetail =
     status === "incomplete"
-      ? input.detailsOutstanding
-        ? "Required Details are still open."
-        : "Job information is still being entered."
+      ? conflictStatus === "Needs details"
+        ? "Deck details are still open."
+        : input.detailsOutstanding
+          ? "Required Details are still open."
+          : "Job information is still being entered."
       : status === "stale"
-        ? STALE_ESTIMATE_EXPLANATION
+        ? conflictStatus === "Needs updating"
+          ? "This estimate needs updating."
+          : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
           ? pricingRequired.length > 0
             ? estimateMissingPriceNotice(pricingRequired.length)
@@ -703,9 +710,11 @@ export function projectEstimateOverview(
     ? input.detailsOutstanding
       ? "complete_details"
       : "continue_information"
-    : input.isStale || statedCountConflict
-      ? "regenerate"
-      : "continue_pricing";
+    : conflictStatus === "Needs details"
+      ? "complete_details"
+      : input.isStale || conflictStatus === "Needs updating"
+        ? "regenerate"
+        : "continue_pricing";
 
   const pricingCreationBlocked =
     !input.hasEstimate || input.isStale || Boolean(statedCountConflict);
@@ -751,16 +760,21 @@ export function projectEstimateOverview(
       })),
     },
     required,
-    pricingAttention: pricingRequired,
+    pricingAttention: conflictStatus ? [] : pricingRequired,
     accuracy,
     rates,
     requiredCount: required.length,
-    pricingAttentionCount: pricingRequired.length,
+    pricingAttentionCount: conflictStatus ? 0 : pricingRequired.length,
     assumptionSummary: assumptionSummaryLine(accuracy),
     benchmarkSummary: benchmarkSummaryLine(rates.length),
     reconciliation: composition.reconciliation,
     primary,
-    primaryLabel: PRIMARY_LABELS[primary],
+    primaryLabel:
+      conflictStatus === "Needs details"
+        ? "Complete Deck details"
+        : conflictStatus === "Needs updating"
+          ? "Update estimate"
+          : PRIMARY_LABELS[primary],
     pricingCreationBlocked,
     pricingEntry,
   };

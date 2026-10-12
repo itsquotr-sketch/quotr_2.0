@@ -7,7 +7,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { newSubstructureIncluded } from "@/lib/estimate/deck-scope-2c";
 import {
   deckHoleStampsDiffer,
-  describeDeckHoleStamp,
   planDeckHoleExcavation,
 } from "@/lib/estimate/deck-hole-excavation";
 import { getNumberFact, round2 } from "@/lib/estimate/facts";
@@ -230,11 +229,11 @@ export function deckStatedCountConflict(input: {
           });
         }
       }
-      holeSummary = `Update this estimate before Pricing. Post holes changed. Was ${describeDeckHoleStamp(savedStamp)}. Now ${describeDeckHoleStamp(next)}. Nothing is changed until you update the estimate.`;
+      holeSummary = `Update this estimate before Pricing. Post holes changed. Nothing is changed until you update the estimate.`;
     } else if (next?.concreteAuthority === "provisional") {
-      holeSummary = `Confirm the concrete fill, post size, and embedded depth before Pricing. ${describeDeckHoleStamp(next)} The bag count is provisional. Nothing is changed until you update the estimate.`;
+      holeSummary = `Confirm the concrete fill, post size, and embedded depth before Pricing. The bag count is provisional. Nothing is changed until you update the estimate.`;
     } else if (next?.needsConfirmation) {
-      holeSummary = `Confirm or change these before using the estimate. ${describeDeckHoleStamp(next)}. An assumed hole is not measured and is not priced until you confirm it and update the estimate.`;
+      holeSummary = `Confirm or change these before using the estimate. An assumed hole is not measured. Nothing is changed until you update the estimate.`;
     }
   }
 

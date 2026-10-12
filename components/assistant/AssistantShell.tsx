@@ -163,6 +163,10 @@ import { composeClarifyView } from "@/lib/assistant/clarify/compose";
 import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
+  deckDetailGapCopy,
+  deckDetailGapsForAreas,
+} from "@/lib/estimate/deck-detail-completeness";
+import {
   composeClarifyInputFromEstimateContext,
   evaluateGenerateEstimatePermission,
 } from "@/lib/assistant/readiness/clarify-estimate";
@@ -2391,21 +2395,44 @@ export function AssistantShell({
     ]
   );
 
-  const estimateReadiness = useMemo(
+  const deckDetailGaps = useMemo(
     () =>
-      composeEstimateReadiness({
-        clarify: clarifyView,
-        jobPlan,
-        qualityLevel: qualityLevel ?? project.qualityLevel,
-        constraints: liveConstraints.map((row) => ({
-          key: row.key,
-          value: row.value,
-          source: row.source,
-        })),
-        pendingWrites: pendingReadinessWrites,
-      }),
-    [clarifyView, pendingReadinessWrites, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
+      deckDetailGapsForAreas(
+        jobPlanFacts,
+        displayWorkAreas.map((area) => ({ id: area.id, type: area.type }))
+      ),
+    [displayWorkAreas, jobPlanFacts]
   );
+  const estimateReadiness = useMemo(() => {
+    const base = composeEstimateReadiness({
+      clarify: clarifyView,
+      jobPlan,
+      qualityLevel: qualityLevel ?? project.qualityLevel,
+      constraints: liveConstraints.map((row) => ({
+        key: row.key,
+        value: row.value,
+        source: row.source,
+      })),
+      pendingWrites: pendingReadinessWrites,
+    });
+    if (deckDetailGaps.length === 0 || estimate) return base;
+    return {
+      ...base,
+      canInitiateGenerate: false,
+      enoughToEstimate: false,
+      blockerCopy: deckDetailGapCopy(deckDetailGaps),
+      checks: [...deckDetailGaps.map((gap) => gap.label), ...base.checks],
+    };
+  }, [
+    clarifyView,
+    deckDetailGaps,
+    estimate,
+    pendingReadinessWrites,
+    jobPlan,
+    liveConstraints,
+    project.qualityLevel,
+    qualityLevel,
+  ]);
 
   // Keep the generate snapshot current for the click handler. This assignment
   // predates this presentation change.
@@ -3124,10 +3151,16 @@ export function AssistantShell({
                     estimateId={generationProjection?.estimateId}
                     pricingDocumentId={pricingSummary?.id ?? null}
                     isRegenerating={updatingEstimate}
+                    onCompleteDetails={
+                      canRunEstimates && estimateOverview.primary === "complete_details"
+                        ? () => openEditJob("job_plan")
+                        : undefined
+                    }
                     onRegenerate={
-                      canRunEstimates && displayEstimateStale
-                      ? handleRegenerateEstimate
-                      : undefined
+                      canRunEstimates &&
+                      (displayEstimateStale || estimateOverview.primary === "regenerate")
+                        ? handleRegenerateEstimate
+                        : undefined
                     }
                     onReviewEstimate={() => {
                       setEstimateView("work_areas");
@@ -3573,6 +3606,31 @@ export function AssistantShell({
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={canRunEstimates ? handleGenerateEstimate : undefined}
+                deckAreas={
+                  estimate
+                    ? []
+                    : displayWorkAreas
+                        .filter((area) => area.type === "deck")
+                        .map((area) => ({
+                          workAreaId: area.id,
+                          name: area.name,
+                          facts: jobPlanFacts,
+                          onSpecFact: handleJobPlanSpecFact,
+                          onBooleanFact: (input: {
+                            workAreaId: string;
+                            key: string;
+                            label: string;
+                            value: boolean;
+                          }) =>
+                            handleFactSave({
+                              workAreaId: input.workAreaId,
+                              key: input.key,
+                              label: input.label,
+                              value: input.value,
+                              inputType: "boolean",
+                            }),
+                        }))
+                }
                 onNestedItemAction={(workAreaId, key, value, nestedItemId) =>
                   handleFactSave({
                     workAreaId,

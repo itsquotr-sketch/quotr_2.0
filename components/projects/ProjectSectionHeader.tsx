@@ -7,6 +7,7 @@ import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricin
 import {
   estimateStatusText,
   pricingLockReason,
+  quantityConflictStageStatus,
   stageStatusText,
   variationsLockReason,
 } from "@/lib/projects/project-section-nav";
@@ -36,6 +37,7 @@ export function ProjectSectionHeader({
   const [createPricingOpen, setCreatePricingOpen] = useState(updateDialogOpen);
   const model = deriveProjectWorkflow(workflowInput);
   const quantityConflict = workflowInput.quantityConflictDetail?.trim() || null;
+  const conflictStatus = quantityConflictStageStatus(quantityConflict);
   const estimate = stageById(model.stages, "estimate");
   const pricing = stageById(model.stages, "pricing");
   const quote = stageById(model.stages, "quote");
@@ -47,16 +49,20 @@ export function ProjectSectionHeader({
   const pricingCanCreate =
     !quantityConflict && !pricing.locked && pricing.href == null && pricing.status === "Ready";
   const pricingNeedsUpdate = Boolean(quantityConflict) && pricing.href == null;
-  const estimateLabel = estimateStatusText(
-    estimate,
-    workflowInput.estimateIsStale,
-    Boolean(quantityConflict)
-  );
-  const pricingLabel = pricingNeedsUpdate
+  const estimateLabel = conflictStatus
+    ? estimate.viewing
+      ? `${conflictStatus} · Current`
+      : conflictStatus
+    : estimateStatusText(estimate, workflowInput.estimateIsStale, false);
+  const pricingLabel = conflictStatus
     ? pricing.viewing
-      ? "Needs updating · Current"
-      : "Needs updating"
-    : stageStatusText(pricing);
+      ? `${conflictStatus} · Current`
+      : conflictStatus
+    : pricingNeedsUpdate
+      ? pricing.viewing
+        ? "Needs updating · Current"
+        : "Needs updating"
+      : stageStatusText(pricing);
   const topLevel = quoteColumnCurrent ? "quote" : requestsCurrent ? "information" : workflowInput.activeTab;
   const requestsHref = `/app/projects/${workflowInput.projectId}/requests`;
 
@@ -85,7 +91,7 @@ export function ProjectSectionHeader({
       disabled: pricingNeedsUpdate
         ? false
         : pricing.locked || (pricing.href == null && !pricingCanCreate),
-      hint: quantityConflict ? "Needs updating" : pricingLockReason(pricing) ?? "",
+      hint: conflictStatus ?? pricingLockReason(pricing) ?? "",
     },
     {
       id: "quote",
@@ -102,9 +108,9 @@ export function ProjectSectionHeader({
     topLevel === "information"
       ? projectContext
       : topLevel === "assistant"
-        ? quantityConflict ?? statusDetail(estimateLabel)
+        ? conflictStatus ?? statusDetail(estimateLabel)
         : topLevel === "pricing"
-          ? quantityConflict ?? statusDetail(pricingLabel)
+          ? conflictStatus ?? statusDetail(pricingLabel)
           : statusDetail(stageStatusText(quote));
 
   return (
@@ -131,7 +137,7 @@ export function ProjectSectionHeader({
             step="2"
             title="Estimate"
             status={estimateLabel}
-            reason={quantityConflict}
+            reason={null}
             href={estimate.viewing ? null : estimate.href}
             current={estimate.viewing}
             column="estimate"
@@ -140,7 +146,7 @@ export function ProjectSectionHeader({
             step="3"
             title="Pricing"
             status={pricingLabel}
-            reason={quantityConflict ?? pricingLockReason(pricing)}
+            reason={conflictStatus ? null : pricingLockReason(pricing)}
             href={pricing.viewing ? null : pricing.href}
             current={pricing.viewing}
             column="pricing"
@@ -253,17 +259,9 @@ export function ProjectSectionHeader({
           </div>
         ) : null}
       </div>
-      {quantityConflict ? (
+      {conflictStatus ? (
         <p className="mt-1.5 text-xs leading-4 text-foreground/75 lg:hidden" data-estimate-update-required="true">
-          {quantityConflict}{" "}
-          <button
-            type="button"
-            className="font-medium text-foreground underline"
-            data-estimate-update-action="true"
-            onClick={() => setCreatePricingOpen(true)}
-          >
-            Update estimate
-          </button>
+          {conflictStatus}
         </p>
       ) : null}
       <CreateFinalPricingDialog

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   filterCapturedDetailGroups,
   type CapturedDetailGroup,
@@ -87,6 +88,26 @@ export function CapturedDetails({ summary, groups }: CapturedDetailsProps) {
                 </button>
                 {open ? (
                   <div id={panelId} className="grid gap-3 divide-y divide-border/60 border-t border-border/60 bg-card px-3 py-3">
+                    {group.missingLabels.length > 0 ? (
+                      <div data-missing-details="">
+                        <h4 className="text-sm font-medium leading-5">
+                          {group.missingLabels.length} still open
+                        </h4>
+                        <ul className="mt-2 space-y-1 text-sm leading-5">
+                          {group.missingLabels.map((label) => (
+                            <li key={label}>{label}</li>
+                          ))}
+                        </ul>
+                        {group.detailsHref ? (
+                          <Link
+                            href={group.detailsHref}
+                            className="mt-2 inline-flex min-h-11 items-center text-sm font-medium underline"
+                          >
+                            Complete details
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {group.categories.map((category) => (
                       <div key={category.name}>
                         <h4 className="text-sm font-medium leading-5">{category.name}</h4>

@@ -25,6 +25,7 @@ import {
   isInheritedFinishLevelKey,
 } from "@/lib/scopes/finish-level";
 import { getDerivedFactNote, resolveFactEditMeta } from "@/lib/scopes/fact-edit-meta";
+import { deckDetailGaps } from "@/lib/estimate/deck-detail-completeness";
 import { isQuickEstimateAskQuestion } from "@/lib/scopes/estimate-priority";
 import { blocksLevel1Estimate } from "@/lib/scopes/level1-blocking";
 import { getScopeQuestions } from "@/lib/scopes/registry";
@@ -277,6 +278,15 @@ function buildMissingItems(params: {
     }
 
     missing.push(getMissingLabel(template));
+  }
+
+  if (params.workArea.type === "deck") {
+    const facts = [...params.lookup.values()].filter(
+      (fact) => fact.work_area_id === params.workArea.id
+    );
+    for (const gap of deckDetailGaps(facts, params.workArea.id)) {
+      missing.push(gap.label);
+    }
   }
 
   return [...new Set(missing)];

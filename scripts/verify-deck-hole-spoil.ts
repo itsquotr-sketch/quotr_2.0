@@ -10,6 +10,10 @@ import {
   rectangularBankVolumeM3,
 } from "../lib/estimate/deck-hole-excavation";
 import {
+  deckDetailGaps,
+  quantityConflictStageStatus,
+} from "../lib/estimate/deck-detail-completeness";
+import {
   DECK_POST_HOLE_FINISH,
   deckConcreteCalculationLines,
   deckConcreteResultLabel,
@@ -486,6 +490,7 @@ const unchanged = savedStamp
       facts: [
         fact("deck.pile_or_post_count", 16),
         fact("deck.substructure_included", true),
+        fact("deck.concrete_to_supports", true),
         ...confirmedHoles,
       ],
       lines: [
@@ -803,6 +808,44 @@ check(
     confirmedCalculation.includes("0.150") &&
     confirmedCalculation.includes("0.774")
 );
+const openGaps = deckDetailGaps(
+  [
+    fact("deck.substructure_included", true),
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.concrete_to_supports", true),
+  ],
+  "deck"
+).map((gap) => gap.label);
+check(
+  "unanswered post holes stay open in the details contract",
+  openGaps.join(" | ") ===
+    [
+      "Confirm hole dimensions",
+      "Choose ground",
+      "Choose excavation method",
+      "Choose spoil destination",
+      "Confirm concrete fill",
+      "Select post size",
+      "Enter embedded depth",
+    ].join(" | ")
+);
+check(
+  "a confirmed ordinary hole is complete",
+  deckDetailGaps(
+    [...measuredBase, fact("deck.spoil_destination", "on_site")],
+    "deck"
+  ).length === 0
+);
+check(
+  "a provisional concrete block is Needs details, and a changed hole is Needs updating",
+  quantityConflictStageStatus(
+    "Confirm the concrete fill, post size, and embedded depth before Pricing. The bag count is provisional."
+  ) === "Needs details" &&
+    quantityConflictStageStatus(
+      "Update this estimate before Pricing. Post holes changed."
+    ) === "Needs updating"
+);
+
 check(
   "partial fill stays on the list until a depth is entered",
   deckPostHoleFinishItems({

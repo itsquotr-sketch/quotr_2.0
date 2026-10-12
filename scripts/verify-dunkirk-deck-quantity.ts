@@ -360,9 +360,11 @@ check(
   estimateStage != null &&
     pricingStage != null &&
     estimateStatusText(estimateStage, false, true) === "Needs updating · Current" &&
+    estimateStage.detail === "Needs updating" &&
+    pricingStage.detail === "Needs updating" &&
     pricingStage.status !== "Ready" &&
     pricingStage.locked &&
-    (pricingLockReason(pricingStage) ?? "").startsWith("Recalculate this draft")
+    pricingLockReason(pricingStage) === "Needs updating"
 );
 const persistedRefusal = deckStatedCountConflictFromPersisted({
   facts: [

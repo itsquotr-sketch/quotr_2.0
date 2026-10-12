@@ -52,10 +52,17 @@ export function DeckPostHolesSection({
   workAreaId,
   facts,
   onSpecFact,
+  onBooleanFact,
 }: {
   workAreaId: string;
   facts: readonly EstimateFact[];
   onSpecFact?: HoleFactWrite;
+  onBooleanFact?: (input: {
+    workAreaId: string;
+    key: string;
+    label: string;
+    value: boolean;
+  }) => void;
 }) {
   const reasonRef = useRef<HTMLInputElement>(null);
   const statedPosts = jobPlanNumber(facts, workAreaId, "deck.pile_or_post_count");
@@ -89,6 +96,12 @@ export function DeckPostHolesSection({
       fact.key === "deck.concrete_to_supports" &&
       fact.work_area_id === workAreaId &&
       fact.value === true
+  );
+  const concreteKnownOff = facts.some(
+    (fact) =>
+      fact.key === "deck.concrete_to_supports" &&
+      fact.work_area_id === workAreaId &&
+      fact.value === false
   );
   const fill = jobPlanString(facts, workAreaId, "deck.concrete_fill") ?? "";
   const fillDepth = jobPlanNumber(facts, workAreaId, "deck.concrete_fill_depth_mm");
@@ -538,12 +551,38 @@ export function DeckPostHolesSection({
           )
         }
       />
+      {spoil === "off_site" ? (
+        <p className="text-xs leading-5 text-muted-foreground" data-spoil-off-site="">
+          Off-site removal uses the excavated bank volume. A missing haul or tip price stays Pricing Required.
+        </p>
+      ) : null}
 
-      {concreteOn ? (
-        <div className="space-y-3 border-t border-border/60 pt-3" data-post-hole-concrete="true">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Concrete in the holes
-          </p>
+      <div className="space-y-3 border-t border-border/60 pt-3" data-post-hole-concrete="true">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Concrete in the holes
+        </p>
+        {onBooleanFact ? (
+          <Choice
+            id={`deck-concrete-included-${workAreaId}`}
+            label="Concrete footings"
+            value={concreteOn ? "yes" : concreteKnownOff ? "no" : ""}
+            placeholder="Not confirmed"
+            options={[
+              ["yes", "Yes"],
+              ["no", "No"],
+            ]}
+            onChange={(value) =>
+              onBooleanFact({
+                workAreaId,
+                key: "deck.concrete_to_supports",
+                label: "Concrete post footings",
+                value: value === "yes",
+              })
+            }
+          />
+        ) : null}
+        {concreteOn ? (
+          <>
           <Choice
             id={`deck-concrete-fill-${workAreaId}`}
             label="Concrete fill"
@@ -652,8 +691,9 @@ export function DeckPostHolesSection({
               />
             </div>
           </details>
-        </div>
-      ) : null}
+          </>
+        ) : null}
+      </div>
 
       {outsideOrdinary ? (
         <div className="space-y-1.5" data-hole-productivity-needed="true">

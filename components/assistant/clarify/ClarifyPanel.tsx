@@ -11,6 +11,8 @@ import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyRead
 import { NestedItemsPanel } from "@/components/assistant/clarify/NestedItemsPanel";
 import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
+import { DeckPostHolesSection } from "@/components/assistant/job-plan/DeckPostHolesSection";
+import type { EstimateFact } from "@/lib/estimate/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
@@ -56,6 +58,24 @@ type ClarifyPanelProps = {
     value: string | number | boolean | string[]
   ) => void | Promise<unknown>;
   onEstimateNow?: () => void;
+  deckAreas?: readonly {
+    workAreaId: string;
+    name: string;
+    facts: readonly EstimateFact[];
+    onSpecFact?: (input: {
+      workAreaId: string;
+      key: string;
+      label: string;
+      value: string | number;
+      valueType: "number" | "select" | "text";
+    }) => void;
+    onBooleanFact?: (input: {
+      workAreaId: string;
+      key: string;
+      label: string;
+      value: boolean;
+    }) => void;
+  }[];
   onNestedItemAction?: (
     workAreaId: string,
     key: string,
@@ -161,6 +181,7 @@ export function ClarifyPanel({
   onAnswerValue,
   onEstimateNow,
   onNestedItemAction,
+  deckAreas = [],
 }: ClarifyPanelProps) {
   const [resolvedIds, setLocallyResolved] = useState<string[]>([]);
   const [heldMultiId, setHeldMultiId] = useState<string | null>(null);
@@ -479,6 +500,15 @@ export function ClarifyPanel({
         </p>
       ) : null}
 
+      {deckAreas.map((area) => (
+        <DeckPostHolesSection
+          key={area.workAreaId}
+          workAreaId={area.workAreaId}
+          facts={area.facts}
+          onSpecFact={area.onSpecFact}
+          onBooleanFact={area.onBooleanFact}
+        />
+      ))}
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2 lg:gap-6">
         {workAreaGroups.map((group) => (
           <section

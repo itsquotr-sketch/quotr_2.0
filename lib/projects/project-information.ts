@@ -47,6 +47,8 @@ export type CapturedDetailGroup = {
   factCount: number;
   conditionCount: number;
   needingDetails: boolean;
+  missingLabels: readonly string[];
+  detailsHref: string | null;
   categories: readonly CapturedDetailCategory[];
   conditions: readonly ProjectInformationField[];
 };
@@ -92,6 +94,7 @@ export type ProjectInformationInput = {
     name: string;
     status: "suggested" | "confirmed" | "excluded";
     missingCount: number;
+    missingLabels?: readonly string[];
   }[];
   captured: readonly ProjectInformationCaptured[];
   conditions: readonly ProjectInformationField[];
@@ -123,7 +126,15 @@ export function projectInformationModel(
     status: workAreaStatusLabel(area.status),
     completeness: workAreaCompleteness(area.status, area.missingCount),
   }));
-  const details = buildCapturedDetailGroups({ workAreas, captured, conditions });
+  const details = buildCapturedDetailGroups({
+    workAreas,
+    captured,
+    conditions,
+    detailsHref: input.estimateHref,
+    missingLabelsByName: new Map(
+      input.workAreas.map((area) => [area.name, area.missingLabels ?? []])
+    ),
+  });
 
   return {
     overview: overviewFields(input.project),
@@ -146,7 +157,7 @@ export function projectInformationFromLoaded(
   projectId: string
 ): ProjectInformationModel {
   const missingByArea = new Map(
-    assistant.scopeReview.workAreas.map((area) => [area.workAreaId, area.missingItems.length])
+    assistant.scopeReview.workAreas.map((area) => [area.workAreaId, area.missingItems])
   );
 
   return projectInformationModel({
@@ -154,7 +165,8 @@ export function projectInformationFromLoaded(
     workAreas: assistant.workAreas.map((area) => ({
       name: area.name,
       status: area.status,
-      missingCount: missingByArea.get(area.id) ?? area.missingInfo?.length ?? 0,
+      missingCount: missingByArea.get(area.id)?.length ?? area.missingInfo?.length ?? 0,
+      missingLabels: missingByArea.get(area.id) ?? area.missingInfo ?? [],
     })),
     captured: assistant.scopeReview.workAreas.flatMap((area) =>
       area.facts
@@ -280,6 +292,8 @@ function buildCapturedDetailGroups(input: {
   workAreas: readonly ProjectInformationWorkArea[];
   captured: readonly ProjectInformationCaptured[];
   conditions: readonly ProjectInformationField[];
+  detailsHref: string;
+  missingLabelsByName: ReadonlyMap<string, readonly string[]>;
 }): { summary: CapturedDetailSummary; groups: CapturedDetailGroup[] } {
   const named = new Set(input.workAreas.map((area) => area.name));
   const groups = input.workAreas.map((area, index) =>
@@ -290,6 +304,8 @@ function buildCapturedDetailGroups(input: {
       completeness: area.completeness,
       facts: input.captured.filter((fact) => fact.workArea === area.name),
       conditions: [],
+      missingLabels: input.missingLabelsByName.get(area.name) ?? [],
+      detailsHref: input.detailsHref,
     })
   );
   const generalFacts = input.captured.filter((fact) => !named.has(fact.workArea));
@@ -302,6 +318,8 @@ function buildCapturedDetailGroups(input: {
         completeness: null,
         facts: generalFacts,
         conditions: input.conditions,
+        missingLabels: [],
+        detailsHref: null,
       })
     );
   }
@@ -325,6 +343,8 @@ function toGroup(input: {
   completeness: string | null;
   facts: readonly ProjectInformationCaptured[];
   conditions: readonly ProjectInformationField[];
+  missingLabels: readonly string[];
+  detailsHref: string | null;
 }): CapturedDetailGroup {
   const categories = new Map<string, CapturedDetailFact[]>();
   for (const fact of input.facts) {
@@ -345,6 +365,8 @@ function toGroup(input: {
     factCount: input.facts.length,
     conditionCount: input.conditions.length,
     needingDetails: input.completeness === "Details still needed",
+    missingLabels: input.missingLabels,
+    detailsHref: input.detailsHref,
     categories: [...categories.entries()].map(([name, facts]) => ({ name, facts })),
     conditions: input.conditions,
   };

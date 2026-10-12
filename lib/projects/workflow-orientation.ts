@@ -11,6 +11,7 @@
  * This module does not create Pricing, Quotes, or Variations.
  */
 
+import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { PricingDocumentStatus, PricingSummary } from "@/lib/pricing/types";
 import type { QuoteStatus, QuoteSummary } from "@/lib/quotes/types";
 import type { VariationStatus } from "@/lib/variations/domain";
@@ -160,7 +161,7 @@ function estimateStage(
       id: "estimate",
       viewing,
       status: "Needs attention",
-      detail: input.quantityConflictDetail.trim(),
+      detail: quantityConflictStageStatus(input.quantityConflictDetail) ?? "Needs updating",
       locked: false,
       href,
     });
@@ -198,7 +199,7 @@ function pricingStage(
         viewing,
         status: conflict ? "Needs attention" : "Locked",
         detail: conflict
-          ? conflict
+          ? quantityConflictStageStatus(conflict) ?? "Needs updating"
           : input.estimateIsStale
             ? ESTIMATE_STALE_DETAIL
             : ESTIMATE_MISSING_DETAIL,

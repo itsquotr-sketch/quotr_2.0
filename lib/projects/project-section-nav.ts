@@ -3,8 +3,11 @@
  * Status and lock authority stay in deriveProjectWorkflow.
  */
 
+import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { WorkflowStageModel } from "@/lib/projects/workflow-orientation";
 import { VARIATION_UNAVAILABLE_BEFORE_ACCEPTANCE } from "@/lib/variations/presentation";
+
+export { quantityConflictStageStatus };
 
 export function estimateStatusText(
   stage: WorkflowStageModel,
@@ -31,7 +34,8 @@ export function stageStatusText(stage: WorkflowStageModel): string {
 
 export function pricingLockReason(stage: WorkflowStageModel): string | null {
   if (!stage.locked) return null;
-  if (stage.detail.startsWith("Recalculate this draft")) return stage.detail;
+  if (stage.detail === "Needs details" || stage.detail === "Needs updating") return stage.detail;
+  if (stage.detail.startsWith("Recalculate this draft")) return "Needs updating";
   return "Complete the Estimate first";
 }
 

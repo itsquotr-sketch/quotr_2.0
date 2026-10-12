@@ -9,6 +9,10 @@ import { isInitialCaptureQuestion } from "@/lib/assistant/clarify/question-contr
 import { composeJobPlan } from "@/lib/assistant/job-plan/compose";
 import type { ComposeJobPlanInput } from "@/lib/assistant/job-plan/types";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
+import {
+  deckDetailGapCopy,
+  deckDetailGapsForAreas,
+} from "@/lib/estimate/deck-detail-completeness";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 
 export type ClarifyEstimateReadinessDiagnostics = {
@@ -87,6 +91,18 @@ export function evaluateGenerateEstimatePermission(params: {
     pendingWrites: params.pendingWrites,
   });
   if (!clarify.ready) return clarify;
+  const deckGaps = deckDetailGapsForAreas(params.facts as never, params.workAreas);
+  if (deckGaps.length > 0) {
+    return {
+      ready: false,
+      builderCopy: deckDetailGapCopy(deckGaps),
+      diagnostics: {
+        ...clarify.diagnostics,
+        remainingRequiredCount:
+          clarify.diagnostics.remainingRequiredCount + deckGaps.length,
+      },
+    };
+  }
   const packageReadiness = evaluatePackageQuickEstimateReadiness({
     workAreas: params.workAreas,
     facts: params.facts as never,
