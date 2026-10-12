@@ -165,6 +165,20 @@ export function resolveDeckSkirtingInstallProductivity(
   });
 }
 
+/** Company rate stays the applied rate. The benchmark is only a comparison. */
+export function concreteCompanyComparison(rate: ProductivityRate): string {
+  if (
+    rate.sourceType !== "user_rate" &&
+    rate.sourceType !== "calibrated_productivity"
+  ) {
+    return "";
+  }
+  const approved = DECK_CONCRETE_PLACE_HOURS_PER_BAG;
+  if (!(approved > 0)) return "";
+  if (Math.abs(rate.hoursPerUnit - approved) / approved < 0.25) return "";
+  return ` This job uses the company rate of ${rate.hoursPerUnit} h/bag. The Quotr benchmark is 4 minutes per bag and is not the rate applied on this line.`;
+}
+
 export function resolveDeckConcretePlaceProductivity(
   rates: readonly OrganisationRate[] | undefined
 ): ProductivityRate {

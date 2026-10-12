@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { scrollHeadingWithinWorkspace } from "@/lib/ui/scroll-workspace";
 import type { EstimatePresentationView } from "@/lib/assistant/presentation/estimate-section";
 import { PrepareFinalPricingButton, OpenFinalPricingLink } from "@/components/pricing/PrepareFinalPricingButton";
 import { Button } from "@/components/ui/button";
@@ -260,6 +261,10 @@ export function WorkAreaBreakdown({
   const focusedHeading = useRef<string | null>(null);
   const firstAttention = model.cards.find((card) => card.attention.length > 0)?.id ?? null;
 
+  useEffect(() => {
+    if (!focusWorkAreaId) focusedHeading.current = null;
+  }, [focusWorkAreaId]);
+
   if (!openedAttention && !focusWorkAreaId && firstAttention) {
     setOpenedAttention(true);
     setOpenIds(new Set([firstAttention]));
@@ -277,9 +282,8 @@ export function WorkAreaBreakdown({
   function focusHeading(id: string, node: HTMLHeadingElement | null) {
     if (!node || focusWorkAreaId !== id || focusedHeading.current === id) return;
     focusedHeading.current = id;
-    node.focus();
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    node.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+    node.focus({ preventScroll: true });
+    scrollHeadingWithinWorkspace(node);
     onFocusApplied?.();
   }
 

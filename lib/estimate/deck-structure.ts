@@ -126,6 +126,10 @@ export type DeckStructureQuantities = {
   bearerPurchaseLm: number;
   supportsPerBearer: number;
   supportCount: number;
+  /** Spacing product before a stated count or confirmed layout is applied. */
+  layoutSupportCount: number;
+  statedSupportCount: number | null;
+  supportCountSource: "stated" | "spacing_layout" | "confirmed_layout";
   footingVolumeEachM3: number;
   concreteBaseM3: number;
   concretePurchaseM3: number;
@@ -158,6 +162,7 @@ export type DeckStructureFacts = {
   framingTreatment: string | null;
   supportType: string | null;
   supportsPerBearer: number | null;
+  statedSupportCount: number | null;
   supportSection: string | null;
   supportIdentityDefaulted: boolean;
   footingLengthMm: number | null;
@@ -441,6 +446,9 @@ export function readDeckStructureFacts(params: {
     getNumberFact(facts, params.workAreaId, "deck.supports_per_bearer") != null
       ? "deck.supports_per_bearer"
       : null,
+    getNumberFact(facts, params.workAreaId, "deck.pile_or_post_count") != null
+      ? "deck.pile_or_post_count"
+      : null,
     supportIdentityDefaulted ? null : "deck.support_section",
     getNumberFact(facts, params.workAreaId, "deck.footing_length_mm") != null
       ? "deck.footing_length_mm"
@@ -475,6 +483,11 @@ export function readDeckStructureFacts(params: {
       facts,
       params.workAreaId,
       "deck.supports_per_bearer"
+    ),
+    statedSupportCount: getNumberFact(
+      facts,
+      params.workAreaId,
+      "deck.pile_or_post_count"
     ),
     supportSection,
     supportIdentityDefaulted,
@@ -549,7 +562,21 @@ export function calculateDeckStructureQuantities(params: {
   const supportsPerBearer = layoutEstimated
     ? deckLayoutCountFromSpan(bearerRunLengthM, DEFAULT_SUPPORT_SPACING_M)
     : (facts.supportsPerBearer ?? 0);
-  const supportCount = Math.round(bearerRowCount * supportsPerBearer);
+  const layoutSupportCount = Math.round(bearerRowCount * supportsPerBearer);
+  const layoutFullySpecified =
+    facts.bearerRowCount != null && facts.supportsPerBearer != null;
+  const stated =
+    facts.statedSupportCount != null && facts.statedSupportCount > 0
+      ? Math.round(facts.statedSupportCount)
+      : null;
+  const supportCount = layoutFullySpecified
+    ? layoutSupportCount
+    : (stated ?? layoutSupportCount);
+  const supportCountSource = layoutFullySpecified
+    ? "confirmed_layout"
+    : stated != null
+      ? "stated"
+      : "spacing_layout";
 
   let postEmbedmentM: number | null = null;
   let postLengthEachM: number | null = null;
@@ -618,6 +645,9 @@ export function calculateDeckStructureQuantities(params: {
     bearerPurchaseLm,
     supportsPerBearer,
     supportCount,
+    layoutSupportCount,
+    statedSupportCount: stated,
+    supportCountSource,
     footingVolumeEachM3,
     concreteBaseM3,
     concretePurchaseM3,
@@ -742,7 +772,10 @@ function layoutAssumptions(quantities: DeckStructureQuantities): RequirementAssu
     },
     {
       key: "deck.supports.spacing_default",
-      text: `Support layout estimated at ${DEFAULT_SUPPORT_SPACING_M} m along each bearer (${quantities.supportsPerBearer} per run).`,
+      text:
+        quantities.supportCountSource === "stated"
+          ? `Spacing layout would be ${quantities.layoutSupportCount} supports. The stated pile/post count of ${quantities.supportCount} is used instead.`
+          : `Support layout estimated at ${DEFAULT_SUPPORT_SPACING_M} m along each bearer (${quantities.supportsPerBearer} per run).`,
       source: "calculator_default",
     },
     {
@@ -775,7 +808,19 @@ export function deckStructureAssumptionTexts(
       `Joist centres assumed ${quantities.joistCentresMm} mm.`
     );
   }
-  if (quantities.layoutEstimated) {
+  if (quantities.supportCountSource === "stated") {
+    texts.push(
+      `Pile/post count uses the stated ${quantities.supportCount}. The ${DEFAULT_SUPPORT_SPACING_M} m spacing layout (${quantities.layoutSupportCount}) was not used because bearer rows and supports per bearer were not both confirmed.`
+    );
+  } else if (
+    quantities.supportCountSource === "confirmed_layout" &&
+    quantities.statedSupportCount != null &&
+    quantities.statedSupportCount !== quantities.supportCount
+  ) {
+    texts.push(
+      `Pile/post count uses the confirmed layout (${quantities.bearerRowCount} × ${quantities.supportsPerBearer} = ${quantities.supportCount}). The stated count of ${quantities.statedSupportCount} was not used.`
+    );
+  } else if (quantities.layoutEstimated) {
     texts.push("Standard rectangular layout assumed.");
     texts.push("Support layout estimated.");
     texts.push(CONSERVATIVE_SUPPORT_LAYOUT_HINT);
@@ -1140,10 +1185,16 @@ function buildSupportRequirement(params: {
     assumptions: [
       {
         key: "deck.supports.count_model",
-        text: `Support count = bearer rows × supports per bearer (${params.quantities.bearerRowCount} × ${params.quantities.supportsPerBearer}).`,
-        source: params.quantities.layoutEstimated
-          ? "calculator_default"
-          : "user_confirmed",
+        text:
+          params.quantities.supportCountSource === "stated"
+            ? `Support count uses the stated pile/post count (${params.quantities.supportCount}).`
+            : params.quantities.supportCountSource === "confirmed_layout"
+              ? `Support count = confirmed bearer rows × supports per bearer (${params.quantities.bearerRowCount} × ${params.quantities.supportsPerBearer}).`
+              : `Support count = bearer rows × supports per bearer (${params.quantities.bearerRowCount} × ${params.quantities.supportsPerBearer}).`,
+        source:
+          params.quantities.supportCountSource === "spacing_layout"
+            ? "calculator_default"
+            : "user_confirmed",
       },
       ...(params.quantities.postLengthEachM != null
         ? [
