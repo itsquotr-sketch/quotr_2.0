@@ -323,7 +323,7 @@ const concreteHours = calculateDeck(
 const concreteHoursLine = lineByLabel(concreteHours.lineItems, "Concrete placement");
 check(
   "8 value changes only concrete hours",
-  concreteHoursLine?.labourHours === 9 &&
+  concreteHoursLine?.labourHours === 20.8 &&
     hoursByLabel(concreteHours.lineItems, "Decking installation") ===
       hoursByLabel(kwilaDeck.lineItems, "Decking installation") &&
     hoursByLabel(concreteHours.lineItems, "Pile/post installation") ===
@@ -511,20 +511,20 @@ const concreteNo = calculateDeck(
 check(
   "26 YES + bag rate + productivity prices detail",
   !isPricingRequired(lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
-    hoursByLabel(concretePriced.lineItems, DECK_CONCRETE_PLACE_LABEL) === 9 &&
-    lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45
+    hoursByLabel(concretePriced.lineItems, DECK_CONCRETE_PLACE_LABEL) === 20.8 &&
+    lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 104
 );
 check(
   "27 YES + missing company bag rate uses Quotr benchmark, not Pricing Required",
   !isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
-    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45 &&
+    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 104 &&
     lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.rateSourceType ===
       "benchmark"
 );
 check(
   "28 YES + missing company h/bag uses Quotr starter, not Pricing Required",
   !isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL)) &&
-    hoursByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL) === 3
+    hoursByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL) === 6.93
 );
 check(
   "29 no package caused by missing concrete rate",

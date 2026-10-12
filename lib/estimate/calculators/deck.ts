@@ -35,6 +35,7 @@ import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
   planDeckHoleExcavation,
+  planDeckPostConcrete,
   resolveDeckHoleCount,
 } from "@/lib/estimate/deck-hole-excavation";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
@@ -114,7 +115,6 @@ import {
   DECK_STEPS_TREADS_COMPONENT_KEY,
   DECKING_LINE_LABEL,
   DECKING_PACKAGE_LINE_LABEL,
-  concreteBagsPerHole,
   concreteToSupportsIncluded,
   deckStepsCommerciallyIncluded,
   deckSupportsActive,
@@ -122,7 +122,6 @@ import {
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
   pileReplacementApplicable,
-  purchasedConcreteBags,
 } from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_FIXINGS_RESIDUAL_ITEM_KEY,
@@ -236,6 +235,10 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.hole_job_hours_per_hole",
   "deck.spoil_leaves_site",
   "deck.spoil_destination",
+  "deck.concrete_fill",
+  "deck.concrete_fill_depth_mm",
+  "deck.post_embedment_mm",
+  "deck.concrete_bag_yield_m3",
 ] as const;
 
 function labourExpandedNotes(params: {
@@ -1448,21 +1451,28 @@ export function calculateDeck(
   });
   if (concreteIncluded) {
     const postCount = structural.quantities?.supportCount ?? 0;
+    const concrete = planDeckPostConcrete({
+      facts,
+      workAreaId: workArea.id,
+      holeCount: postCount,
+    });
     const holeCount = resolveDeckHoleCount({
       facts,
       workAreaId: workArea.id,
       postCount,
     }).holeCount;
-    const bagsEach = concreteBagsPerHole(facts, workArea.id);
-    const bags = purchasedConcreteBags(holeCount, bagsEach);
+    const bags = concrete.bags;
     const concreteIdentity = buildConcreteMaterialIdentity({
       originalDescription: "20 kg premix concrete",
     });
-    const bagsEachDisplay = (Math.round(bagsEach * 10) / 10).toFixed(1);
     const identitySummary = formatDeckIdentityLine([
       concreteIdentity.originalDescription,
-      bags > 0 ? `${bags} bags required` : null,
-      `${bagsEachDisplay} bags/hole avg`,
+      bags > 0 ? `${bags} bags` : null,
+      concrete.authority === "provisional" ? "Provisional" : null,
+      concrete.authority === "company" ? "Company quantity" : null,
+      concrete.authority === "measured" && concrete.netM3 != null
+        ? `${concrete.netM3.toFixed(3)} m³ net`
+        : null,
     ]);
     const companyConcrete = context.rates.find(
       (rate) =>
@@ -1471,12 +1481,23 @@ export function calculateDeck(
         rate.cost_rate != null
     );
     const bagQuantityBasis = quantityBasisFrom({
-      sourceFact: DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
-      sourceLabel: "Post holes and bags per hole",
+      sourceFact:
+        concrete.authority === "company"
+          ? DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY
+          : "deck.concrete_fill",
+      sourceLabel:
+        concrete.authority === "company"
+          ? "Company bags per hole"
+          : "Post-hole fill and 20 kg yield",
       quantity: bags,
       unit: "bag",
-      formula: `${holeCount} holes × ${bagsEachDisplay} bags/hole`,
-      confidence: "derived",
+      formula: concrete.formula,
+      confidence:
+        concrete.authority === "measured"
+          ? "derived"
+          : concrete.authority === "company"
+            ? "confirmed"
+            : "assumed",
     });
     if (bags > 0 && companyConcrete?.cost_rate != null) {
       const unitCost = Number(companyConcrete.cost_rate);
@@ -1500,7 +1521,7 @@ export function calculateDeck(
               rateSourceType: "user_rate",
               itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
               componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
-              notes: identitySummary,
+              notes: concrete.disclosure,
               sortOrder: sortOrder++,
               organisationSettings: context.organisationSettings,
             }),
@@ -1535,7 +1556,7 @@ export function calculateDeck(
                 rateSourceType: "benchmark",
                 itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
                 componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
-                notes: identitySummary,
+                notes: concrete.disclosure,
                 sortOrder: sortOrder++,
                 organisationSettings: context.organisationSettings,
               }),
@@ -1559,7 +1580,7 @@ export function calculateDeck(
             rateSourceType: "missing",
             itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
             componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
-            notes: identitySummary,
+            notes: concrete.disclosure,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
           }),
@@ -1584,7 +1605,7 @@ export function calculateDeck(
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
           notes: labourExpandedNotes({
-            physicalDriver: `Physical driver: ${bags} bags purchased. Mixing, placing, basic finishing. Excludes hole excavation (pile/post installation). ${holeCount} holes · ${bagsEachDisplay} bags/hole avg.`,
+            physicalDriver: `Physical driver: ${bags} bags purchased. Mixing, placing, and basic finishing. Excludes hole excavation. Hole excavation is a separate operation. ${holeCount} holes. ${concrete.disclosure}`,
             adjustmentDetail: labourAdjustmentDetail,
             productivity: `Productivity: ${placeProductivity.hoursPerUnit} h/bag · ${placeProductivity.sourceLabel}${concreteCompanyComparison(placeProductivity)}`,
           }),
@@ -1615,9 +1636,7 @@ export function calculateDeck(
       });
       missingInfo.push("Concrete placement hours/bag required");
     }
-    assumptions.push(
-      `Concrete to supports uses ${bagsEach} × 20kg bags per hole (${bags} bags purchased, rounded up).`
-    );
+    assumptions.push(concrete.disclosure);
   }
 
   const surfaceFactKeys = [

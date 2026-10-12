@@ -10,6 +10,7 @@ import {
   rectangularBankVolumeM3,
 } from "../lib/estimate/deck-hole-excavation";
 import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
+import { round2 } from "../lib/estimate/facts";
 import { resolveLabourRate } from "../lib/estimate/rates";
 import { getCatalogueEntry } from "../lib/rates/catalogue";
 import { editableProductivityCatalogueKeys } from "../lib/rates/productivity-registry";
@@ -160,7 +161,9 @@ check(
     spoil.includedInTotal === false &&
     (spoil.recommendedCost ?? 0) === 0 &&
     removal == null &&
-    bags?.quantity === 40
+    bags?.quantity === 93 &&
+    (bags?.notes ?? "").includes("Provisional concrete quantity") &&
+    !(bags?.notes ?? "").includes("2.5")
 );
 
 const restricted = calculateDeck(
@@ -437,7 +440,7 @@ check(
   overrideExcavation?.quantity === 12 &&
     overrideExcavation.labourHours === 6 &&
     overrideInstall?.quantity === 16 &&
-    overrideBags?.quantity === 30 &&
+    overrideBags?.quantity === 70 &&
     !override.lineItems.some((item) => item.componentKey === "deck.spoil.haulage") &&
     !override.lineItems.some((item) => item.componentKey === "deck.spoil.destination")
 );
@@ -482,7 +485,195 @@ const unchanged = savedStamp
       ],
     })
   : { summary: "missing" };
-check("a confirmed unchanged hole draft is not stale", unchanged == null);
+check(
+  "unconfirmed concrete stays provisional on an unchanged hole draft",
+  unchanged != null && (unchanged.summary ?? "").includes("provisional")
+);
+
+const measuredBase = [
+  ...base,
+  fact("deck.pile_or_post_count", 16),
+  ...confirmedHoles,
+  fact("deck.concrete_fill", "full"),
+  fact("deck.support_section", "125x125"),
+  fact("deck.post_embedment_mm", 600),
+];
+
+function concreteReport(label: string, result: ReturnType<typeof calculateDeck>) {
+  const material = result.lineItems.find((item) => item.componentKey === "deck.concrete.bags");
+  const placement = result.lineItems.find((item) => item.componentKey === "deck.concrete.place");
+  const spoilLine = result.lineItems.find((item) => item.label === "Post-hole spoil destination");
+  console.log(
+    [
+      label,
+      `bags=${material?.quantity}`,
+      `hours=${placement?.labourHours}`,
+      `cost=${material?.recommendedCost}`,
+      `sell=${material?.recommendedSell}`,
+      `spoil=${spoilLine?.quantity}`,
+      material?.notes ?? "",
+    ].join(" | ")
+  );
+  return { material, placement, spoilLine };
+}
+
+const measured = calculateDeck(ctx(measuredBase), wa());
+const measuredReport = concreteReport("16 × 350 × 600 full, 125×125 embedded 600", measured);
+const deeper = calculateDeck(
+  ctx(measuredBase.map((row) => (row.key === "deck.hole_depth_mm" ? fact("deck.hole_depth_mm", 800) : row))),
+  wa()
+);
+const deeperReport = concreteReport("depth 800, embedment still 600", deeper);
+const throughPost = calculateDeck(
+  ctx([
+    ...measuredBase.filter((row) => row.key !== "deck.hole_depth_mm" && row.key !== "deck.post_embedment_mm"),
+    fact("deck.hole_depth_mm", 800),
+    fact("deck.post_embedment_mm", 800),
+  ]),
+  wa()
+);
+concreteReport("depth 800, post through the concrete", throughPost);
+const rectangularDeck = calculateDeck(
+  ctx([
+    ...base,
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.hole_shape", "rectangular"),
+    fact("deck.hole_length_mm", 400),
+    fact("deck.hole_width_mm", 400),
+    fact("deck.hole_depth_mm", 600),
+    fact("deck.hole_ground", "ordinary"),
+    fact("deck.hole_method", "hand"),
+    fact("deck.concrete_fill", "full"),
+    fact("deck.support_section", "125x125"),
+    fact("deck.post_embedment_mm", 600),
+  ]),
+  wa()
+);
+const rectangularReport = concreteReport("16 × 400 × 400 × 600", rectangularDeck);
+const partial = calculateDeck(
+  ctx([
+    ...measuredBase.map((row) =>
+      row.key === "deck.concrete_fill" ? fact("deck.concrete_fill", "partial") : row
+    ),
+    fact("deck.concrete_fill_depth_mm", 300),
+  ]),
+  wa()
+);
+const partialReport = concreteReport("partial fill 300 mm", partial);
+const companyQty = calculateDeck(
+  ctx([...measuredBase, fact("deck.concrete_bags_per_hole", 3)]),
+  wa()
+);
+const companyReport = concreteReport("company 3 bags per hole", companyQty);
+
+function once(result: ReturnType<typeof calculateDeck>, key: string) {
+  return result.lineItems.filter((item) => item.componentKey === key).length === 1;
+}
+
+check(
+  "measured 350 × 600 is 78 bags from the net fill",
+  measuredReport.material?.quantity === 78 &&
+    measuredReport.placement?.labourHours === 5.2 &&
+    measuredReport.material.recommendedCost === 762.06 &&
+    measuredReport.material.recommendedSell === 952.38 &&
+    measuredReport.spoilLine?.quantity === 0.924 &&
+    (measuredReport.material.notes ?? "").includes("0.150 m³") &&
+    (measuredReport.material.notes ?? "").includes("0.01 m³") &&
+    (measuredReport.material.notes ?? "").includes("fully concreted") &&
+    once(measured, "deck.hole.excavate") &&
+    once(measured, "deck.posts.install") &&
+    once(measured, "deck.concrete.place")
+);
+check(
+  "a deeper hole changes bags, placement hours, and bank spoil",
+  deeperReport.material?.quantity === 109 &&
+    deeperReport.placement?.labourHours === round2(109 * (4 / 60)) &&
+    deeperReport.spoilLine?.quantity === 1.232 &&
+    deeperReport.material.quantity !== measuredReport.material?.quantity
+);
+check(
+  "rectangular holes use length × width × depth",
+  rectangularReport.material?.quantity === 139 &&
+    rectangularReport.spoilLine?.quantity === 1.536 &&
+    (rectangularReport.material.notes ?? "").includes("Rectangular")
+);
+check(
+  "partial fill prices only the concreted depth and leaves spoil on the bank volume",
+  partialReport.material?.quantity === 39 &&
+    partialReport.spoilLine?.quantity === 0.924 &&
+    (partialReport.material.notes ?? "").includes("remaining 300 mm")
+);
+check(
+  "a company bag count replaces the volume takeoff",
+  companyReport.material?.quantity === 48 &&
+    companyReport.placement?.quantity === 48 &&
+    (companyReport.material.notes ?? "").includes("Company-specified quantity") &&
+    !(companyReport.material.notes ?? "").includes("Provisional")
+);
+
+const measuredStamp = measured.lineItems.find((item) => item.componentKey === "deck.hole.excavate")?.holeDraft;
+const depthConflict = measuredStamp
+  ? deckStatedCountConflict({
+      facts: measuredBase.map((row) =>
+        row.key === "deck.hole_depth_mm" ? fact("deck.hole_depth_mm", 800) : row
+      ),
+      lines: [
+        { componentKey: "deck.posts.install", quantity: 16, unit: "ea" },
+        { componentKey: "deck.hole.excavate", quantity: 16, unit: "hole", holeDraft: measuredStamp },
+        { componentKey: "deck.concrete.bags", label: "Post-hole concrete", quantity: 78, unit: "bag" },
+        {
+          componentKey: "deck.concrete.place",
+          label: "Concrete placement",
+          quantity: 78,
+          unit: "bag",
+          labourHours: 5.2,
+        },
+      ],
+    })
+  : null;
+check(
+  "a depth change stales concrete bags and placement hours",
+  depthConflict?.changes.some((change) => change.label === "Post-hole concrete" && change.from === 78 && change.to === 109) ===
+    true &&
+    depthConflict?.changes.some((change) => change.label === "Concrete placement" && change.to === 7.27) === true &&
+    (depthConflict?.summary ?? "").includes("Update this estimate")
+);
+const yieldConflict = measuredStamp
+  ? deckStatedCountConflict({
+      facts: [...measuredBase, fact("deck.concrete_bag_yield_m3", 0.012)],
+      lines: [
+        { componentKey: "deck.posts.install", quantity: 16, unit: "ea" },
+        { componentKey: "deck.hole.excavate", quantity: 16, unit: "hole", holeDraft: measuredStamp },
+        { componentKey: "deck.concrete.bags", quantity: 78, unit: "bag" },
+      ],
+    })
+  : null;
+check(
+  "a yield change stales the concrete quantity",
+  yieldConflict != null && (yieldConflict.summary ?? "").includes("Update this estimate")
+);
+const postConflict = measuredStamp
+  ? deckStatedCountConflict({
+      facts: measuredBase.map((row) =>
+        row.key === "deck.support_section" ? fact("deck.support_section", "100x100") : row
+      ),
+      lines: [
+        { componentKey: "deck.posts.install", quantity: 16, unit: "ea" },
+        { componentKey: "deck.hole.excavate", quantity: 16, unit: "hole", holeDraft: measuredStamp },
+      ],
+    })
+  : null;
+check("a post size change stales the draft", postConflict != null);
+const settled = measuredStamp
+  ? deckStatedCountConflict({
+      facts: measuredBase,
+      lines: [
+        { componentKey: "deck.posts.install", quantity: 16, unit: "ea" },
+        { componentKey: "deck.hole.excavate", quantity: 16, unit: "hole", holeDraft: measuredStamp },
+      ],
+    })
+  : { summary: "missing" };
+check("a measured unchanged concrete draft is not stale", settled == null);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

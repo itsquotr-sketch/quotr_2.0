@@ -11,6 +11,7 @@ import {
   DECK_HOLE_CONFIRM_ACTION,
   deckHoleCountError,
   deckHoleMillimetreError,
+  planDeckPostConcrete,
 } from "@/lib/estimate/deck-hole-excavation";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -72,6 +73,18 @@ export function DeckPostHolesSection({
     destination ||
     (legacySpoil?.value === true ? "off_site" : legacySpoil?.value === false ? "on_site" : "");
   const jobHours = jobPlanNumber(facts, workAreaId, "deck.hole_job_hours_per_hole");
+  const concreteOn = facts.some(
+    (fact) =>
+      fact.key === "deck.concrete_to_supports" &&
+      fact.work_area_id === workAreaId &&
+      fact.value === true
+  );
+  const fill = jobPlanString(facts, workAreaId, "deck.concrete_fill") ?? "";
+  const fillDepth = jobPlanNumber(facts, workAreaId, "deck.concrete_fill_depth_mm");
+  const postSection = jobPlanString(facts, workAreaId, "deck.support_section") ?? "";
+  const embedment = jobPlanNumber(facts, workAreaId, "deck.post_embedment_mm");
+  const yieldOverride = jobPlanNumber(facts, workAreaId, "deck.concrete_bag_yield_m3");
+  const companyBags = jobPlanNumber(facts, workAreaId, "deck.concrete_bags_per_hole");
   const rectangular = shape === "rectangular";
   const sizeAssumed = !rectangular && diameter == null && depth == null;
   const [countError, setCountError] = useState<string | null>(null);
@@ -355,6 +368,131 @@ export function DeckPostHolesSection({
           )
         }
       />
+
+      <div className="space-y-3 border-t border-border/60 pt-3" data-post-hole-concrete="true">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Concrete in the holes
+          </p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Bags follow the concrete fill and the 20 kg bag yield of 0.01 m³ per bag.
+            {postSection
+              ? ` Post size ${postSection}.`
+              : " Set the post size before the displacement can be deducted."}
+          </p>
+        </div>
+        <Choice
+          id={`deck-concrete-fill-${workAreaId}`}
+          label="Concrete fill"
+          value={fill}
+          placeholder="Not confirmed"
+          options={[
+            ["full", "Full hole"],
+            ["partial", "Part of the hole"],
+          ]}
+          onChange={(value) =>
+            write(onSpecFact, workAreaId, "deck.concrete_fill", "Concrete fill", value, "select")
+          }
+        />
+        {fill === "partial" ? (
+          <MillimetreField
+            id={`deck-concrete-fill-depth-${workAreaId}`}
+            label="Concrete depth"
+            current={fillDepth}
+            onCommit={(raw) =>
+              saveMillimetres(
+                "deck.concrete_fill_depth_mm",
+                "Concrete fill depth",
+                raw,
+                fillDepth
+              )
+            }
+          />
+        ) : null}
+        <MillimetreField
+          id={`deck-post-embedment-${workAreaId}`}
+          label="Post embedded depth"
+          current={embedment}
+          onCommit={(raw) =>
+            saveMillimetres("deck.post_embedment_mm", "Post embedded depth", raw, embedment)
+          }
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-concrete-yield-${workAreaId}`}>
+              Bag yield m³
+            </Label>
+            <Input
+              className="h-11 md:h-9"
+              id={`deck-concrete-yield-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.001"
+              min={0.001}
+              defaultValue={yieldOverride ?? ""}
+              placeholder="0.01"
+              onBlur={(event) => {
+                const raw = event.target.value.trim();
+                if (!raw) return;
+                const next = Number(raw);
+                if (!Number.isFinite(next) || next <= 0) return;
+                write(
+                  onSpecFact,
+                  workAreaId,
+                  "deck.concrete_bag_yield_m3",
+                  "Concrete bag yield",
+                  next,
+                  "number"
+                );
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs" htmlFor={`deck-company-bags-${workAreaId}`}>
+              Company bags per hole
+            </Label>
+            <Input
+              className="h-11 md:h-9"
+              id={`deck-company-bags-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0.1}
+              defaultValue={companyBags ?? ""}
+              placeholder="Volume takeoff"
+              onBlur={(event) => {
+                const raw = event.target.value.trim();
+                if (!raw) return;
+                const next = Number(raw);
+                if (!Number.isFinite(next) || next <= 0) return;
+                write(
+                  onSpecFact,
+                  workAreaId,
+                  "deck.concrete_bags_per_hole",
+                  "Concrete bags per hole",
+                  next,
+                  "number"
+                );
+              }}
+            />
+          </div>
+        </div>
+        {concreteOn && (savedCount ?? postCount) != null ? (
+          <p className="text-xs leading-5 text-muted-foreground" data-concrete-takeoff="">
+            {
+              planDeckPostConcrete({
+                facts,
+                workAreaId,
+                holeCount: savedCount ?? postCount ?? 0,
+              }).disclosure
+            }
+          </p>
+        ) : (
+          <p className="text-xs leading-5 text-muted-foreground">
+            Turn on concrete footings to include this quantity. Spoil stays the excavated bank volume.
+          </p>
+        )}
+      </div>
 
       {outsideOrdinary ? (
         <div className="space-y-1.5" data-hole-productivity-needed="true">

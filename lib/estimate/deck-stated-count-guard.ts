@@ -4,11 +4,7 @@
  * with that count and describes the change. It does not write an estimate.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  concreteBagsPerHole,
-  newSubstructureIncluded,
-  purchasedConcreteBags,
-} from "@/lib/estimate/deck-scope-2c";
+import { newSubstructureIncluded } from "@/lib/estimate/deck-scope-2c";
 import {
   deckHoleStampsDiffer,
   describeDeckHoleStamp,
@@ -115,8 +111,12 @@ export function deckStatedCountConflict(input: {
       to: authoritative,
     });
   }
-  const bagsEach = concreteBagsPerHole(facts, workAreaId);
-  const nextBags = purchasedConcreteBags(authoritative, bagsEach);
+  const bagPlan = planDeckHoleExcavation({
+    facts,
+    workAreaId,
+    holeCount: authoritative,
+  });
+  const nextBags = bagPlan.concrete.included ? bagPlan.concrete.bags : 0;
   const bags = line(input.lines, BAG_KEY, "Post-hole concrete");
   const savedBags = finite(bags?.quantity);
   if (savedBags != null && !close(savedBags, nextBags)) {
@@ -199,8 +199,7 @@ export function deckStatedCountConflict(input: {
           to: next.bankM3 ?? 0,
         });
       }
-      const bagsEach = concreteBagsPerHole(facts, workAreaId);
-      const nextBags = purchasedConcreteBags(next.count, bagsEach);
+      const nextBags = next.concreteAuthority === "none" ? 0 : next.concreteBags ?? 0;
       const bags = line(input.lines, BAG_KEY, "Post-hole concrete");
       const savedBags = finite(bags?.quantity);
       if (
@@ -215,7 +214,25 @@ export function deckStatedCountConflict(input: {
           to: nextBags,
         });
       }
+      const place = line(input.lines, PLACE_KEY, "Concrete placement");
+      const savedHours = finite(place?.labourHours);
+      if (savedBags != null && savedBags > 0 && savedHours != null && nextBags > 0) {
+        const nextHours = round2((savedHours / savedBags) * nextBags);
+        if (
+          !close(savedHours, nextHours) &&
+          !changes.some((change) => change.label === "Concrete placement")
+        ) {
+          changes.push({
+            label: "Concrete placement",
+            unit: "h",
+            from: savedHours,
+            to: nextHours,
+          });
+        }
+      }
       holeSummary = `Update this estimate before Pricing. Post holes changed. Was ${describeDeckHoleStamp(savedStamp)}. Now ${describeDeckHoleStamp(next)}. Nothing is changed until you update the estimate.`;
+    } else if (next?.concreteAuthority === "provisional") {
+      holeSummary = `Confirm the concrete fill, post size, and embedded depth before Pricing. ${describeDeckHoleStamp(next)} The bag count is provisional. Nothing is changed until you update the estimate.`;
     } else if (next?.needsConfirmation) {
       holeSummary = `Confirm or change these before using the estimate. ${describeDeckHoleStamp(next)}. An assumed hole is not measured and is not priced until you confirm it and update the estimate.`;
     }

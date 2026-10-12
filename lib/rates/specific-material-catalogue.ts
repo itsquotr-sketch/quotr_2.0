@@ -1960,7 +1960,7 @@ export const DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck concrete",
     unit: "bag",
     description:
-      "20 kg general-purpose premixed concrete bag. Owner-approved Quotr benchmark $9.77 EX GST / bag. Estimating default — not a merchant quote and not a guaranteed purchase price. Company exact rate remains authoritative.",
+      "20 kg general-purpose premixed concrete bag. Mixed yield 0.01 m³ per bag (merchant bags vary about 9–11 L). Bags = ceil(net fill m³ / 0.01). Owner-approved Quotr benchmark $9.77 EX GST / bag. Estimating default — not a merchant quote and not a guaranteed purchase price. Company exact rate remains authoritative.",
     defaultCostRate: 9.77,
     calculatorSupport: "used_now",
   }),

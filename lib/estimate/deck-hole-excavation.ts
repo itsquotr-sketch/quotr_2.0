@@ -22,6 +22,7 @@
  * Bank volume is in-situ m³. Loose spoil is not calculated. The roughly 3×
  * swell note is not an approved factor.
  */
+import { deriveDeckPostConcrete, type DeckPostConcretePlan } from "@/lib/estimate/deck-post-concrete";
 import { getBooleanFact, getNumberFact, getStringFact } from "@/lib/estimate/facts";
 import type { DeckHoleDraftStamp } from "@/lib/estimate/line-item-metadata";
 import { resolveProductivity } from "@/lib/estimate/productivity";
@@ -134,6 +135,7 @@ export type DeckHoleExcavationPlan = {
   readonly assumptions: readonly string[];
   readonly missingInfo: readonly string[];
   readonly draftStamp: DeckHoleDraftStamp | null;
+  readonly concrete: DeckPostConcretePlan;
 };
 
 function round3(value: number): number {
@@ -352,7 +354,11 @@ export function describeDeckHoleStamp(stamp: DeckHoleDraftStamp): string {
           stamp.sizeConfirmed ? "" : " (assumed)"
         }`;
   const volume = stamp.bankM3 == null ? "bank volume not calculated" : `${stamp.bankM3} m³ bank`;
-  return `${stamp.count} ${stamp.shape} holes, ${size}, ${stamp.ground}, ${stamp.method}, spoil ${stamp.spoil}, ${volume}`;
+  const concrete =
+    stamp.concreteAuthority && stamp.concreteAuthority !== "none"
+      ? `, concrete ${stamp.concreteAuthority} ${stamp.concreteBags ?? 0} bags`
+      : "";
+  return `${stamp.count} ${stamp.shape} holes, ${size}, ${stamp.ground}, ${stamp.method}, spoil ${stamp.spoil}, ${volume}${concrete}`;
 }
 
 export function planDeckHoleExcavation(params: {
@@ -379,6 +385,12 @@ export function planDeckHoleExcavation(params: {
       assumptions: [],
       missingInfo: [],
       draftStamp: null,
+      concrete: deriveDeckPostConcrete({
+        facts: params.facts,
+        workAreaId: params.workAreaId,
+        holeCount: 0,
+        geometry: null,
+      }),
     };
   }
 
@@ -652,6 +664,12 @@ export function planDeckHoleExcavation(params: {
   }
 
   const needsConfirmation = !sizeConfirmed || groundAssumed || methodAssumed;
+  const concrete = deriveDeckPostConcrete({
+    facts,
+    workAreaId: params.workAreaId,
+    holeCount,
+    geometry,
+  });
   const draftStamp: DeckHoleDraftStamp = {
     count: holeCount,
     shape,
@@ -667,6 +685,7 @@ export function planDeckHoleExcavation(params: {
     methodConfirmed: !methodAssumed,
     bankM3: volume?.totalM3 ?? null,
     needsConfirmation,
+    ...concrete.stamp,
   };
 
   return {
@@ -680,7 +699,20 @@ export function planDeckHoleExcavation(params: {
     assumptions,
     missingInfo,
     draftStamp,
+    concrete,
   };
+}
+
+export function planDeckPostConcrete(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  holeCount: number;
+}): DeckPostConcretePlan {
+  return planDeckHoleExcavation({
+    facts: params.facts,
+    workAreaId: params.workAreaId,
+    holeCount: params.holeCount,
+  }).concrete;
 }
 
 export function deckHoleStampsDiffer(
@@ -700,7 +732,29 @@ export function deckHoleStampsDiffer(
     saved.sizeConfirmed !== next.sizeConfirmed ||
     saved.groundConfirmed !== next.groundConfirmed ||
     saved.methodConfirmed !== next.methodConfirmed ||
-    !closeVolume(saved.bankM3, next.bankM3)
+    !closeVolume(saved.bankM3, next.bankM3) ||
+    concreteStampChanged(saved, next)
+  );
+}
+
+function concreteStampChanged(
+  saved: DeckHoleDraftStamp,
+  next: DeckHoleDraftStamp
+): boolean {
+  const savedAuthority = saved.concreteAuthority ?? null;
+  const nextAuthority = next.concreteAuthority ?? null;
+  if (savedAuthority == null && (nextAuthority == null || nextAuthority === "none")) {
+    return false;
+  }
+  return (
+    savedAuthority !== nextAuthority ||
+    (saved.concreteFill ?? null) !== (next.concreteFill ?? null) ||
+    (saved.concreteFillDepthMm ?? null) !== (next.concreteFillDepthMm ?? null) ||
+    (saved.postSection ?? null) !== (next.postSection ?? null) ||
+    (saved.postEmbedmentMm ?? null) !== (next.postEmbedmentMm ?? null) ||
+    !closeVolume(saved.concreteYieldM3 ?? null, next.concreteYieldM3 ?? null) ||
+    (saved.concreteBags ?? null) !== (next.concreteBags ?? null) ||
+    (saved.concreteProductKey ?? null) !== (next.concreteProductKey ?? null)
   );
 }
 

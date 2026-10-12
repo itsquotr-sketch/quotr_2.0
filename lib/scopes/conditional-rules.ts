@@ -795,7 +795,11 @@ export function shouldHideConditionalQuestion(
     key === "deck.hole_count_reason" ||
     key === "deck.hole_job_hours_per_hole" ||
     key === "deck.spoil_leaves_site" ||
-    key === "deck.spoil_destination"
+    key === "deck.spoil_destination" ||
+    key === "deck.concrete_fill" ||
+    key === "deck.concrete_fill_depth_mm" ||
+    key === "deck.post_embedment_mm" ||
+    key === "deck.concrete_bag_yield_m3"
   ) {
     // The Post holes section owns these. Existing answers stay on the project.
     return true;

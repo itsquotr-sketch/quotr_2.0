@@ -118,6 +118,9 @@ const stated = calculateDeck(
       fact("deck.hole_depth_mm", 600),
       fact("deck.hole_ground", "ordinary"),
       fact("deck.hole_method", "hand"),
+      fact("deck.concrete_fill", "full"),
+      fact("deck.support_section", "125x125"),
+      fact("deck.post_embedment_mm", 600),
     ],
     [companyConcrete(0.7)]
   ),
@@ -154,11 +157,11 @@ check(
 );
 check("stated 16 install", install?.quantity === 16, String(install?.quantity));
 check("stated 16 holes", holes?.quantity === 16 && holes.unit === "hole");
-check("stated 40 bags", bags?.quantity === 40, String(bags?.quantity));
-check("stated place quantity 40", place?.quantity === 40, String(place?.quantity));
+check("stated measured bags follow the net fill", bags?.quantity === 78, String(bags?.quantity));
+check("stated place quantity matches the bags", place?.quantity === 78, String(place?.quantity));
 check(
-  "stated place hours 40 × 0.7 × 1.10",
-  place?.labourHours === 30.8,
+  "stated place hours follow the measured bags",
+  place?.labourHours === 60.06,
   String(place?.labourHours)
 );
 check(
@@ -170,7 +173,7 @@ check(
   "spacing without a stated count stays 15",
   line(spacing, "Pile/post installation")?.quantity === 15 &&
     spacing.lineItems.find((item) => item.unit === "bag" && item.category === "materials")
-      ?.quantity === 38
+      ?.quantity === 87
 );
 check(
   "confirmed layout overrides the stated count",
@@ -299,9 +302,9 @@ check(
   "saved 15-post draft conflicts with the stated 16",
   conflict?.changes.some((change) => change.label === "Pile/post installation" && change.to === 16) === true &&
     conflict?.changes.some((change) => change.label === "Hole excavation" && change.to === 16) === true &&
-    conflict?.changes.some((change) => change.label === "Post-hole concrete" && change.to === 40) === true &&
+    conflict?.changes.some((change) => change.label === "Post-hole concrete" && change.to === 93) === true &&
     conflict?.changes.some((change) => change.label === "Piles / posts" && change.to === 19.2) === true &&
-    conflict?.changes.some((change) => change.label === "Concrete placement" && change.to === 30.8) === true,
+    conflict?.changes.some((change) => change.label === "Concrete placement" && change.to === 71.61) === true,
   conflict?.summary
 );
 check(
@@ -435,9 +438,9 @@ const afterSell = clientSell(stated);
 const afterGst = Math.round(afterSell * 0.15 * 100) / 100;
 check(
   "updating the draft changes material, labour, sell, and GST",
-  afterMaterials > beforeMaterials &&
-    afterLabour > beforeLabour &&
-    afterSell > beforeSell &&
+  afterMaterials !== beforeMaterials &&
+    afterLabour !== beforeLabour &&
+    afterSell !== beforeSell &&
     afterGst > 0,
   `materials ${beforeMaterials.toFixed(2)} → ${afterMaterials.toFixed(2)}; labour ${beforeLabour.toFixed(2)} → ${afterLabour.toFixed(2)}; sell ${beforeSell.toFixed(2)} → ${afterSell.toFixed(2)}; GST ${afterGst.toFixed(2)}`
 );
@@ -453,6 +456,9 @@ const clearedConflict = deckStatedCountConflict({
     fact("deck.hole_depth_mm", 600),
     fact("deck.hole_ground", "ordinary"),
     fact("deck.hole_method", "hand"),
+    fact("deck.concrete_fill", "full"),
+    fact("deck.support_section", "125x125"),
+    fact("deck.post_embedment_mm", 600),
   ],
   lines: stated.lineItems,
 });

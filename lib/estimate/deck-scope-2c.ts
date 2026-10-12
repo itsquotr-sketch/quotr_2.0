@@ -26,6 +26,10 @@ export const DECK_CONCRETE_TO_SUPPORTS_FACT_KEY = "deck.concrete_to_supports";
 export const DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY =
   "deck.concrete_bags_per_hole";
 
+/**
+ * Retired as a takeoff. An explicit company bags-per-hole fact is a specified
+ * quantity. Hole volume and the 20 kg yield decide the bags when that fact is absent.
+ */
 export const DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT = 2.5;
 export const DECK_CONCRETE_BAG_KG = 20;
 export const DECK_CONCRETE_MATERIAL_ITEM_KEY = "deck.concrete.premix.20kg.bag";
@@ -158,17 +162,18 @@ export function concreteToSupportsIncluded(params: {
   );
 }
 
+/** Company-specified bags per hole. Absent means the volume takeoff is used. */
 export function concreteBagsPerHole(
   facts: readonly EstimateFact[],
   workAreaId: string
-): number {
+): number | null {
   const explicit = getNumberFact(
     factRows(facts),
     workAreaId,
     DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY
   );
   if (explicit != null && explicit > 0) return explicit;
-  return DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT;
+  return null;
 }
 
 export function purchasedConcreteBags(

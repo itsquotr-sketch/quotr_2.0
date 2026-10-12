@@ -398,12 +398,13 @@ check(
     deckCalc.includes("getCatalogueEntry")
 );
 check(
-  "bag quantity formula unchanged",
+  "bag quantity follows fill volume, and a company count still rounds up",
   purchasedConcreteBags(4, 2.5) === 10 &&
     deckQty.includes("Math.ceil(round2(supportCount * bagsPerHole)") &&
-    deckCalc.includes("purchasedConcreteBags") &&
-    deckCalc.includes("concreteBagsPerHole") &&
-    !deckCalc.includes("bagsEach * 20")
+    deckCalc.includes("planDeckPostConcrete") &&
+    read("lib/estimate/deck-post-concrete.ts").includes("bagCountFromNetConcrete") &&
+    !deckCalc.includes("bagsEach * 20") &&
+    !deckCalc.includes("DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT")
 );
 
 if (failed > 0) {

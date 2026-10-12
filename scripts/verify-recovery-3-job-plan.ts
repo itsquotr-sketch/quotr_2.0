@@ -109,7 +109,8 @@ check(
 );
 check(
   "3 compact spec uses Vitex, not Hardwood-class or quality",
-  realCard?.summary === "27m² · Vitex · 140mm · Low-level" &&
+  realCard?.summary ===
+    "27m² · Vitex · 140mm · Low-level · Assumed 350 mm × Assumed 600 mm deep" &&
     !realCard.summary.includes("Hardwood-class") &&
     !realCard.summary.includes("Standard") &&
     !realCard.summary.includes("0.14")

@@ -54,6 +54,14 @@ export type DeckHoleDraftStamp = {
   readonly methodConfirmed: boolean;
   readonly bankM3: number | null;
   readonly needsConfirmation: boolean;
+  readonly concreteAuthority?: "measured" | "provisional" | "company" | "none";
+  readonly concreteFill?: "full" | "partial" | "unconfirmed";
+  readonly concreteFillDepthMm?: number | null;
+  readonly postSection?: string | null;
+  readonly postEmbedmentMm?: number | null;
+  readonly concreteYieldM3?: number | null;
+  readonly concreteBags?: number;
+  readonly concreteProductKey?: string | null;
 };
 
 export type AllowanceMinimumMeta = {

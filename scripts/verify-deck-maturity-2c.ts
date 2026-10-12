@@ -431,18 +431,22 @@ check(
     !concreteNo.missingInfo.some((info) => /concrete/i.test(info))
 );
 check(
-  "29 default 2.5 bags/hole assumption",
-  concreteBagsPerHole(yesFacts, kwilaId) === DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT
+  "29 absent bags-per-hole is not a 2.5 takeoff",
+  concreteBagsPerHole(yesFacts, kwilaId) == null &&
+    DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT === 2.5
 );
 const bags = purchasedConcreteBags(18, 2.5);
-check("30 purchased bags round whole", bags === 45 && Number.isInteger(bags));
+check("30 company bag counts still round whole", bags === 45 && Number.isInteger(bags));
 const concreteMat = concreteYes.lineItems.find((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL);
 check(
-  "31 concrete exact material identity",
+  "31 concrete quantity is provisional until fill and post are confirmed",
   concreteMat?.itemKey === DECK_CONCRETE_MATERIAL_ITEM_KEY &&
     Boolean(concreteMat?.identitySummary?.includes("20 kg")) &&
+    Boolean(concreteMat?.identitySummary?.includes("Provisional")) &&
     concreteMat?.unit === "bag" &&
-    concreteMat?.quantity === 45
+    concreteMat?.quantity !== 45 &&
+    (concreteMat?.notes ?? "").includes("Provisional concrete quantity") &&
+    (concreteMat?.notes ?? "").includes("0.01 m³")
 );
 check(
   "32 missing company bag rate uses Quotr benchmark, not silent zero money",

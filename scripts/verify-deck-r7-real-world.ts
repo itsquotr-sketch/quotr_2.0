@@ -452,14 +452,15 @@ check(
     after.lineItems.filter((item) => /demolition|removal/i.test(item.componentKey ?? item.label)).length === 1
 );
 check(
-  "18 concrete 40 bags × 4 min × 1.15",
+  "18 concrete bags follow the full hole, not 2.5 per hole",
   concLab?.unit === "bag" &&
-    concLab?.quantity === 40 &&
-    Math.abs((concLab?.labourHours ?? 0) - 40 * (4 / 60) * 1.15) < 0.03 &&
+    concLab?.quantity === 93 &&
+    Math.abs((concLab?.labourHours ?? 0) - 93 * (4 / 60) * 1.15) < 0.03 &&
     Math.abs(
-      round2(40 * DECK_CONCRETE_PLACE_HOURS_PER_BAG * 1.15) -
+      round2(93 * DECK_CONCRETE_PLACE_HOURS_PER_BAG * 1.15) -
         (concLab?.labourHours ?? 0)
-    ) < 0.03
+    ) < 0.03 &&
+    (concMat?.notes ?? "").includes("Provisional concrete quantity")
 );
 check(
   "19 fascia labour follows perimeter not 128.8 lm",
@@ -469,8 +470,8 @@ check(
 );
 check("20 skirting absent unless explicit", skirtMat == null);
 check(
-  "21 concrete material 40 × 9.50 = 380, not access-adjusted",
-  concMat?.quantity === 40 && Math.abs((concMat?.recommendedCost ?? 0) - 380) < 0.05
+  "21 concrete material 93 × 9.50 = 883.50, not access-adjusted",
+  concMat?.quantity === 93 && Math.abs((concMat?.recommendedCost ?? 0) - 883.5) < 0.05
 );
 check(
   "22 fixings 21 × 25 = 525, not access-adjusted",
@@ -865,7 +866,7 @@ check(
 check(
   "52 R7 material locks hold with stairs present",
   Math.abs((deckingMat?.recommendedCost ?? 0) - 3052.5) < 0.05 &&
-    Math.abs((concMat?.recommendedCost ?? 0) - 380) < 0.05 &&
+    Math.abs((concMat?.recommendedCost ?? 0) - 883.5) < 0.05 &&
     Math.abs((fixings?.recommendedCost ?? 0) - 525) < 0.05
 );
 check(
