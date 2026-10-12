@@ -11,6 +11,8 @@ import {
 } from "../lib/estimate/deck-hole-excavation";
 import {
   deckDetailGaps,
+  deckPostHoleControlId,
+  firstDeckDetailTarget,
   quantityConflictStageStatus,
 } from "../lib/estimate/deck-detail-completeness";
 import {
@@ -835,6 +837,14 @@ check(
     [...measuredBase, fact("deck.spoil_destination", "on_site")],
     "deck"
   ).length === 0
+);
+check(
+  "the first open post-hole answer is the control Complete Deck details focuses",
+  firstDeckDetailTarget(
+    [fact("deck.substructure_included", true), fact("deck.pile_or_post_count", 16), fact("deck.concrete_to_supports", true)],
+    [{ id: "deck", type: "deck" }]
+  )?.gapId === "dimensions" &&
+    deckPostHoleControlId("deck", "dimensions") === "deck-hole-confirm-deck"
 );
 check(
   "a provisional concrete block is Needs details, and a changed hole is Needs updating",

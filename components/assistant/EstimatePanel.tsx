@@ -35,6 +35,7 @@ import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
+import { estimateStatusCopy } from "@/lib/assistant/readiness/details-status";
 import {
   ESTIMATE_RANGE_EXPLANATION,
   presentEstimateGst,
@@ -81,6 +82,9 @@ type EstimatePanelProps = {
   questionsSubmitted?: boolean;
   constraintsSubmitted?: boolean;
   canGenerateEstimate?: boolean;
+  /** Same decision as the Details stage. Does not add a second Create estimate button. */
+  detailsPhase?: "saving" | "ready" | "needs_details";
+  detailsBlocker?: string | null;
   pendingProposalCount?: number;
   /** Soft warning only — does not block generation (3.1B.6R3.1). */
   unresolvedScopeImpactCount?: number;
@@ -330,8 +334,9 @@ export function EstimatePanel({
   defaultGstRate = 15,
   panelScopeSummaries = [],
   scopeReview,
-  constraintsSubmitted = false,
   canGenerateEstimate = false,
+  detailsPhase = "needs_details",
+  detailsBlocker = null,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
   unresolvedScopeImpactLabels = [],
@@ -560,6 +565,7 @@ export function EstimatePanel({
       })
     : null;
 
+  const liveReadiness = estimate ? null : estimateStatusCopy(detailsPhase, detailsBlocker);
   const status = buildQuickEstimateStatusPresentation({
     hasEstimate: Boolean(estimate),
     isStale,
@@ -574,8 +580,8 @@ export function EstimatePanel({
     hasEstimate: Boolean(estimate),
     sellDisplay: estimate ? formatCurrency(estimate.recommendedSell) : null,
     confidencePercent: estimate?.confidence ?? null,
-    statusLabel: status.statusLabel,
-    canGenerateEstimate,
+    statusLabel: liveReadiness?.statusLabel ?? status.statusLabel,
+    canGenerateEstimate: canGenerateEstimate && detailsPhase === "ready",
   });
 
   const scopeLines = quickEstimatePresentation
@@ -853,12 +859,12 @@ export function EstimatePanel({
               stage="quick_estimate"
               title={
                 workAreasConfirmed
-                  ? undefined
+                  ? liveReadiness?.emptyTitle
                   : "Review the work Quotr found"
               }
               nextActionLabel={
                 workAreasConfirmed
-                  ? undefined
+                  ? liveReadiness?.emptyNext ?? null
                   : "Confirm the Work Areas to continue."
               }
             />
@@ -1210,7 +1216,7 @@ export function EstimatePanel({
             )}
             role="status"
           >
-            {status.statusLabel}
+            {liveReadiness?.statusLabel ?? status.statusLabel}
           </p>
           </div>
           ) : null}
@@ -1595,13 +1601,11 @@ export function EstimatePanel({
         <CardDescription>
           {estimate
             ? "Draft estimate based on your inputs"
-            : canGenerateEstimate
+            : canGenerateEstimate || detailsPhase === "ready"
               ? "Ready to generate your draft estimate"
               : !workAreasConfirmed
                 ? "Review the work Quotr found"
-                : constraintsSubmitted
-                  ? "A few things left to clarify"
-                  : "Work confirmed. Estimate when the important details are in, or safely assumed."}
+                : liveReadiness?.description ?? "Finish the open details before estimating."}
         </CardDescription>
       </CardHeader>
 

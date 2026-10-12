@@ -221,7 +221,7 @@ export function JobPlanWorkAreaCardView({
     if (!editOpen) return;
 
     // Focus the requested material/spec control for supported editors.
-    if (specFocusKey) {
+    if (specFocusKey && specFocusKey !== "deck.post_holes") {
       const id =
         specFocusKey === "deck.board_material"
           ? `deck-material-${card.workAreaId}`

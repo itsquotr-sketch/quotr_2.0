@@ -35,9 +35,18 @@ export function DeckQuickSpecEditor({
   workAreaId,
   facts,
   onSpecFact,
+  postHoleFocusId = null,
+  onBooleanFact,
 }: {
   workAreaId: string;
   facts: readonly EstimateFact[];
+  postHoleFocusId?: string | null;
+  onBooleanFact?: (input: {
+    workAreaId: string;
+    key: string;
+    label: string;
+    value: boolean;
+  }) => void;
   onSpecFact?: QuickSpecFactWrite;
   constraints?: readonly { key: string; value: unknown }[];
   onConstraint?: (input: {
@@ -143,6 +152,8 @@ export function DeckQuickSpecEditor({
           workAreaId={workAreaId}
           facts={facts}
           onSpecFact={onSpecFact}
+          onBooleanFact={onBooleanFact}
+          focusGapId={postHoleFocusId}
         />
       ) : null}
 

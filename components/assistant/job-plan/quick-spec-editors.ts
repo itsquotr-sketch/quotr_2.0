@@ -23,6 +23,14 @@ export type JobPlanQuickSpecEditorProps = {
   /** Canonical Project Conditions — never a second retaining-wall namespace. */
   constraints?: readonly { key: string; value: unknown }[];
   onConstraint?: JobPlanConstraintWrite;
+  /** First unanswered Post holes control. Deck editor only. */
+  postHoleFocusId?: string | null;
+  onBooleanFact?: (input: {
+    workAreaId: string;
+    key: string;
+    label: string;
+    value: boolean;
+  }) => void;
 };
 
 const QUICK_SPEC_EDITORS: Record<

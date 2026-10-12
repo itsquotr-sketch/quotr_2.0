@@ -93,8 +93,12 @@ const panelUi = read("components/assistant/clarify/ClarifyPanel.tsx");
 const actions = read("lib/assistant/actions.ts");
 check(
   "Details rail uses estimateReadiness.enoughToEstimate",
-  shell.includes('estimateReadiness.enoughToEstimate') &&
-    shell.includes('? "Ready"')
+  shell.includes("estimateReadiness.enoughToEstimate") &&
+    shell.includes("detailsReadinessPhase") &&
+    shell.includes("detailsStageStatusLabel") &&
+    read("lib/assistant/readiness/details-status.ts").includes('if (input.pendingWrites > 0) return "saving"') &&
+    read("lib/assistant/readiness/details-status.ts").includes('if (input.enoughToEstimate) return "ready"') &&
+    read("lib/assistant/readiness/details-status.ts").includes('return "Ready"')
 );
 check(
   "rail does not use visibleCount as Ready",

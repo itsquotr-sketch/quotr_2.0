@@ -14,6 +14,12 @@ export type EstimateEditTarget =
       readonly scopeItemId: string;
     }
   | {
+      readonly kind: "POST_HOLES";
+      readonly section: "job_plan";
+      readonly workAreaId: string;
+      readonly gapId: string;
+    }
+  | {
       readonly kind: "SECTION";
       readonly section: EditJobSection;
     }
@@ -26,6 +32,7 @@ export type JobPlanEditFocus = {
   readonly workAreaId?: string;
   readonly specFocusKey?: string;
   readonly scopeFocusItemId?: string;
+  readonly postHoleFocusId?: string;
 };
 
 export function jobPlanEditFocusFromTarget(
@@ -44,6 +51,14 @@ export function jobPlanEditFocusFromTarget(
     return {
       workAreaId: target.workAreaId,
       scopeFocusItemId: target.scopeItemId,
+    };
+  }
+
+  if (target.kind === "POST_HOLES") {
+    return {
+      workAreaId: target.workAreaId,
+      specFocusKey: "deck.post_holes",
+      postHoleFocusId: target.gapId,
     };
   }
 

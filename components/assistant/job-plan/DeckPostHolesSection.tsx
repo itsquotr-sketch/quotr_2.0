@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
   deckPostSizeStatus,
   type DeckPostHoleFinishId,
 } from "@/lib/estimate/deck-post-hole-result";
+import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 type HoleFactWrite = (input: {
@@ -53,6 +54,7 @@ export function DeckPostHolesSection({
   facts,
   onSpecFact,
   onBooleanFact,
+  focusGapId = null,
 }: {
   workAreaId: string;
   facts: readonly EstimateFact[];
@@ -63,6 +65,7 @@ export function DeckPostHolesSection({
     label: string;
     value: boolean;
   }) => void;
+  focusGapId?: string | null;
 }) {
   const reasonRef = useRef<HTMLInputElement>(null);
   const statedPosts = jobPlanNumber(facts, workAreaId, "deck.pile_or_post_count");
@@ -160,6 +163,32 @@ export function DeckPostHolesSection({
           ]
         : [];
 
+  useEffect(() => {
+    if (!focusGapId) return;
+    let cancelled = false;
+    const focusControl = () => {
+      if (cancelled) return;
+      const primary = document.getElementById(deckPostHoleControlId(workAreaId, focusGapId));
+      const fallback =
+        focusGapId === "dimensions"
+          ? document.getElementById(`deck-hole-diameter-${workAreaId}`) ??
+            document.getElementById(`deck-hole-length-${workAreaId}`)
+          : null;
+      const target = primary ?? fallback;
+      if (!(target instanceof HTMLElement)) return;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: "nearest", inline: "nearest" });
+    };
+    const frame = window.requestAnimationFrame(() => {
+      focusControl();
+      window.requestAnimationFrame(focusControl);
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [focusGapId, workAreaId]);
+
   function focusFinish(id: DeckPostHoleFinishId) {
     const target =
       id === "dimensions"
@@ -245,7 +274,11 @@ export function DeckPostHolesSection({
     (depth != null && (depth < 400 || depth > 900));
 
   return (
-    <section className="space-y-3 rounded-lg border border-border/60 p-3" data-post-holes="true">
+    <section
+      className="space-y-3 scroll-mb-40 rounded-lg border border-border/60 p-3 md:scroll-mb-24"
+      data-post-holes="true"
+      data-post-holes-focus={focusGapId ?? undefined}
+    >
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Post holes

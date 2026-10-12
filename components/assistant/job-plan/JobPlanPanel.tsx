@@ -58,6 +58,13 @@ type JobPlanPanelProps = {
   focusWorkAreaId?: string | null;
   specFocusKey?: string | null;
   scopeFocusItemId?: string | null;
+  postHoleFocusId?: string | null;
+  onBooleanFact?: (input: {
+    workAreaId: string;
+    key: string;
+    label: string;
+    value: boolean;
+  }) => void;
   onToggleScope?: (
     item: JobPlanScopeItem,
     presentation: "INCLUDED" | "NOT_INCLUDED"
@@ -94,6 +101,8 @@ export function JobPlanPanel({
   focusWorkAreaId = null,
   specFocusKey = null,
   scopeFocusItemId = null,
+  postHoleFocusId = null,
+  onBooleanFact,
   onToggleScope,
   onSpecFact,
   constraints,
@@ -206,6 +215,10 @@ export function JobPlanPanel({
                   onSpecFact={onSpecFact}
                   constraints={constraints}
                   onConstraint={onConstraint}
+                  postHoleFocusId={
+                    card.workAreaId === focusWorkAreaId ? postHoleFocusId : null
+                  }
+                  onBooleanFact={onBooleanFact}
                 />
               ) : null;
             })()}

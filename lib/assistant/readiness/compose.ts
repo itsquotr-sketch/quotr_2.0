@@ -137,22 +137,18 @@ export function composeEstimateReadiness(
     canInitiateGenerate,
     heading: specialistPricingRequired
       ? CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE
-      : enough
-      ? "That's enough to build your estimate."
-      : pendingWrites > 0 && canInitiateGenerate
-        ? "That's enough to build your estimate."
-        : pendingWrites > 0
-        ? "Saving the last answer"
-        : "Need a bit more",
+      : pendingWrites > 0
+        ? "Saving"
+        : enough
+          ? "That's enough to build your estimate."
+          : "Need a bit more",
     explanation: specialistPricingRequired
       ? "The fire/acoustic system is recorded, but it still needs specification and pricing. This is not an ordinary complete Ceiling."
-      : enough
-      ? "All required details resolved. You can still change the job afterward."
-      : pendingWrites > 0 && canInitiateGenerate
-        ? "Create the estimate when you are ready. Quotr will finish saving first."
       : pendingWrites > 0
-        ? "Saving the last answer, then the estimate can be built."
-        : blockerCopy ?? "Answer the remaining required estimating questions.",
+        ? "Saving"
+        : enough
+          ? "All required details resolved. You can still change the job afterward."
+          : blockerCopy ?? "Answer the remaining required estimating questions.",
     known,
     assumptions,
     checks,
@@ -165,10 +161,7 @@ export function composeEstimateReadiness(
         : "Good enough for an initial estimate",
     canEstimateNow: clarify.canEstimateNow && pendingWrites === 0,
     blocksEstimate: clarify.blocksEstimate,
-    blockerCopy:
-      pendingWrites > 0
-        ? "Saving the last answer, then the estimate can be built."
-        : blockerCopy,
+    blockerCopy: pendingWrites > 0 ? "Saving" : blockerCopy,
     enoughToEstimate: enough,
     specialistPricingRequired,
   };

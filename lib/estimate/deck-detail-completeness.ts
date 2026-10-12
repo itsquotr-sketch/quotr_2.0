@@ -104,6 +104,46 @@ export function deckDetailGapsForAreas(
     .flatMap((area) => deckDetailGaps(facts, area.id));
 }
 
+export function firstDeckDetailTarget(
+  facts: readonly EstimateFact[],
+  workAreas: readonly { id: string; type: string }[]
+): { readonly workAreaId: string; readonly gapId: string } | null {
+  for (const area of workAreas) {
+    if (area.type !== "deck") continue;
+    const gap = deckDetailGaps(facts, area.id)[0];
+    if (gap) return { workAreaId: area.id, gapId: gap.id };
+  }
+  return null;
+}
+
+/** DOM id of the control that answers one post-hole gap. */
+export function deckPostHoleControlId(workAreaId: string, gapId: string): string {
+  switch (gapId) {
+    case "posts":
+      return `deck-hole-count-${workAreaId}`;
+    case "hole_reason":
+      return `deck-hole-reason-${workAreaId}`;
+    case "concrete":
+      return `deck-concrete-included-${workAreaId}`;
+    case "dimensions":
+      return `deck-hole-confirm-${workAreaId}`;
+    case "ground":
+      return `deck-hole-ground-${workAreaId}`;
+    case "method":
+      return `deck-hole-method-${workAreaId}`;
+    case "spoil":
+      return `deck-spoil-${workAreaId}`;
+    case "fill":
+      return `deck-concrete-fill-${workAreaId}`;
+    case "post":
+      return `deck-concrete-post-${workAreaId}`;
+    case "embedment":
+      return `deck-post-embedment-${workAreaId}`;
+    default:
+      return `deck-hole-count-${workAreaId}`;
+  }
+}
+
 export function deckDetailGapCopy(gaps: readonly DeckDetailGap[]): string {
   const labels = gaps.map((gap) => gap.label);
   if (labels.length === 0) return "Complete the Deck details.";

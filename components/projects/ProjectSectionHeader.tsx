@@ -224,13 +224,21 @@ export function ProjectSectionHeader({
             }}
           >
             <option value="requests">Requests</option>
-            {sections.map((section) => (
+            {sections.map((section) => {
+              const hint =
+                section.hint === "Needs details" ||
+                section.hint === "Needs updating" ||
+                section.hint === "Complete the Estimate first"
+                  ? section.hint
+                  : "";
+              return (
               <option key={section.id} value={section.id} disabled={section.disabled}>
-                {section.disabled && section.hint
-                  ? `${section.step}. ${section.label} — ${section.hint}`
+                {section.disabled && hint
+                  ? `${section.step}. ${section.label} — ${hint}`
                   : `${section.step}. ${section.label}`}
               </option>
-            ))}
+              );
+            })}
           </select>
           <span className="sr-only" data-project-section-context>
             {activeDetail}
@@ -268,7 +276,13 @@ export function ProjectSectionHeader({
         projectId={workflowInput.projectId}
         open={createPricingOpen}
         onOpenChange={setCreatePricingOpen}
-        blockedDetail={quantityConflict}
+        blockedDetail={
+          conflictStatus === "Needs details"
+            ? "Complete Deck details before Pricing."
+            : conflictStatus === "Needs updating"
+              ? "Update the estimate before Pricing."
+              : null
+        }
         onUpdateEstimate={onUpdateEstimate}
       />
     </nav>
@@ -344,6 +358,7 @@ function Destination({
 }) {
   const locked = href == null && !current && !onCreate;
   const detail = compact ? [statusDetail(status), reason].filter(Boolean).join(" · ") : status;
+  const accessibleName = [title, statusDetail(detail)].filter(Boolean).join(", ");
   const body = compact ? (
     <>
       <span className="text-xs font-semibold leading-4">{title}</span>
@@ -386,6 +401,7 @@ function Destination({
         className={cn(className, compact ? undefined : "w-full")}
         data-project-column={column}
         data-project-stage={step}
+        aria-label={accessibleName}
         onClick={onCreate}
       >
         {body}
@@ -402,6 +418,7 @@ function Destination({
         data-project-stage={step}
         data-variations-nav={column === "variations" ? "true" : undefined}
         data-rfq-nav={column === "requests" ? "true" : undefined}
+        aria-label={accessibleName}
       >
         {body}
       </Link>
@@ -416,6 +433,7 @@ function Destination({
       data-variations-nav={column === "variations" ? "true" : undefined}
       data-rfq-nav={column === "requests" ? "true" : undefined}
       data-project-column-locked={href == null && !current ? "true" : undefined}
+      aria-label={accessibleName}
     >
       {body}
     </p>

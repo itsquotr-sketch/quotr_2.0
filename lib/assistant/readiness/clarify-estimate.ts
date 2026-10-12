@@ -60,7 +60,7 @@ export function evaluateClarifyEstimateReadiness(
       : first
         ? unresolvedEstimateCopy(first)
         : pendingWrites > 0
-          ? "Saving the last answer, then the estimate can be built."
+          ? "Saving"
           : "Finish answering the remaining required details.",
     diagnostics: {
       remainingRequiredCount: clarify.remainingRequiredCount,

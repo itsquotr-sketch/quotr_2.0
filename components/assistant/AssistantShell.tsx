@@ -165,7 +165,14 @@ import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
   deckDetailGapCopy,
   deckDetailGapsForAreas,
+  firstDeckDetailTarget,
+  quantityConflictStageStatus,
 } from "@/lib/estimate/deck-detail-completeness";
+import {
+  detailsReadinessPhase,
+  detailsStageStatusLabel,
+  detailsStageSubtitle,
+} from "@/lib/assistant/readiness/details-status";
 import {
   composeClarifyInputFromEstimateContext,
   evaluateGenerateEstimatePermission,
@@ -2507,6 +2514,26 @@ export function AssistantShell({
     : constraintsSubmitted &&
       !estimateReady &&
       (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
+  const detailsPhase = detailsReadinessPhase({
+    pendingWrites: pendingReadinessWrites,
+    enoughToEstimate: estimateReadiness.enoughToEstimate,
+  });
+  const openDeckDetails = useCallback(() => {
+    const target = firstDeckDetailTarget(
+      jobPlanFacts,
+      displayWorkAreas.map((area) => ({ id: area.id, type: area.type }))
+    );
+    if (!target) {
+      openEditJob("job_plan");
+      return;
+    }
+    openEditJob("job_plan", {
+      kind: "POST_HOLES",
+      section: "job_plan",
+      workAreaId: target.workAreaId,
+      gapId: target.gapId,
+    });
+  }, [displayWorkAreas, jobPlanFacts, openEditJob]);
 
   // Derived stale: canonical server isStale OR local latency bridge.
   // Do not treat a fresh server render as clearing the bridge — that is the
@@ -3153,7 +3180,7 @@ export function AssistantShell({
                     isRegenerating={updatingEstimate}
                     onCompleteDetails={
                       canRunEstimates && estimateOverview.primary === "complete_details"
-                        ? () => openEditJob("job_plan")
+                        ? openDeckDetails
                         : undefined
                     }
                     onRegenerate={
@@ -3306,6 +3333,16 @@ export function AssistantShell({
                   focusWorkAreaId={jobPlanEditFocus?.workAreaId ?? null}
                   specFocusKey={jobPlanEditFocus?.specFocusKey ?? null}
                   scopeFocusItemId={jobPlanEditFocus?.scopeFocusItemId ?? null}
+                  postHoleFocusId={jobPlanEditFocus?.postHoleFocusId ?? null}
+                  onBooleanFact={(input) =>
+                    handleFactSave({
+                      workAreaId: input.workAreaId,
+                      key: input.key,
+                      label: input.label,
+                      value: input.value,
+                      inputType: "boolean",
+                    })
+                  }
                   onToggleScope={handleJobPlanToggleScope}
                   onSpecFact={handleJobPlanSpecFact}
                   constraints={liveConstraints}
@@ -3562,22 +3599,12 @@ export function AssistantShell({
           {CLARIFY_IS_PRIMARY && workAreasConfirmed ? (
             <CollapsibleStageCard
               title="Details"
-              subtitle={
-                estimateReadiness.enoughToEstimate ||
-                estimateReadiness.canInitiateGenerate
-                  ? "That's enough to build your estimate."
-                  : "I need a few details to tighten the estimate."
-              }
-              statusLabel={
-                estimateReadiness.enoughToEstimate ||
-                estimateReadiness.canInitiateGenerate
-                  ? "Ready"
-                  : pendingReadinessWrites > 0
-                    ? "Saving"
-                    : clarifyView.remainingRequiredCount > 0
-                      ? `${clarifyView.remainingRequiredCount} to clarify`
-                      : "Need details"
-              }
+              subtitle={detailsStageSubtitle(detailsPhase)}
+              statusLabel={detailsStageStatusLabel(
+                detailsPhase,
+                clarifyView.remainingRequiredCount +
+                  (estimate ? 0 : deckDetailGaps.length)
+              )}
               statusVariant="current"
               preferredExpanded={stagePrefersExpanded(
                 "clarify",
@@ -4047,6 +4074,8 @@ export function AssistantShell({
             canGenerateEstimate={
               CLARIFY_IS_PRIMARY && !estimateReady ? false : canGenerateEstimate
             }
+            detailsPhase={detailsPhase}
+            detailsBlocker={estimateReadiness.blockerCopy}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}
             constraintCount={liveConstraints.length}
@@ -4066,7 +4095,9 @@ export function AssistantShell({
             workAreasConfirmed={workAreasConfirmed}
             pricingProgressionPrimary={builderReviewCompleted}
             hidePricingProgression={builderReviewOpen}
-            pricingBlockedDetail={deckCountConflict?.summary ?? null}
+            pricingBlockedDetail={
+              quantityConflictStageStatus(deckCountConflict?.summary) ?? null
+            }
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);

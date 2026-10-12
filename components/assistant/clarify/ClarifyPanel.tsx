@@ -688,7 +688,7 @@ export function ClarifyPanel({
                 ? ASSISTANT_ACTION_LABELS.finishingAnswers
                 : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
-          ) : view.canEstimateNow && onEstimateNow ? (
+          ) : view.canEstimateNow && onEstimateNow && !savesPending ? (
             <Button
               type="button"
               variant="outline"

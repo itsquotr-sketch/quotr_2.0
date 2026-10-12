@@ -54,7 +54,8 @@ export function CreateFinalPricingDialog({
   };
 
   const handleCreate = () => {
-    if (blocked || isPending || createLockRef.current) return;
+    if (blocked) return;
+    if (isPending || createLockRef.current) return;
     createLockRef.current = true;
     setError(null);
     setDenial(null);
