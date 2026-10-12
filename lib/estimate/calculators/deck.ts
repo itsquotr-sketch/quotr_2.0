@@ -31,6 +31,7 @@ import {
   benchmarkRateFields,
   rateFieldsFromResolved,
 } from "@/lib/estimate/line-item-helpers";
+import { planDeckHoleExcavation } from "@/lib/estimate/deck-hole-excavation";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, deriveSellFromCost } from "@/lib/estimate/rates";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
@@ -218,6 +219,10 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.footing_length_mm",
   "deck.footing_width_mm",
   "deck.footing_depth_mm",
+  "deck.hole_diameter_mm",
+  "deck.hole_depth_mm",
+  "deck.hole_ground",
+  "deck.spoil_leaves_site",
 ] as const;
 
 function labourExpandedNotes(params: {
@@ -632,7 +637,7 @@ export function calculateDeck(
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
           notes: labourExpandedNotes({
-            physicalDriver: `Physical driver: ${supportCount} supports. Post placement uses the approved person-hours for this key. Hole excavation labour is separate and Pricing Required — bank hole volume is not calculated because deck hole diameter is not a measured fact. Loose spoil swell is held for owner review and is not multiplied by 3. Excludes concrete placement.`,
+            physicalDriver: `Physical driver: ${supportCount} supports. Post placement uses the approved person-hours for this key. Hole excavation labour is separate and is not included here. Excludes concrete placement.`,
             adjustmentDetail: labourAdjustmentDetail,
             productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
           }),
@@ -642,27 +647,147 @@ export function calculateDeck(
           ...labourRateFields,
         })
       );
-      lineItems.push({
-        ...createRateLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Hole excavation",
-          category: "labour",
-          quantity: supportCount,
-          unit: "hole",
-          costRate: 0,
-          sellRate: 0,
-          rateSource: getRateSourceLabel("missing"),
-          rateSourceType: "missing",
-          itemKey: "deck.hole.excavate.hours_per_hole",
-          componentKey: "deck.hole.excavate",
-          notes:
-            "Pricing required. No approved person-hours for hole excavation. The zero is not a rate. Not subtracted from post placement. Bank m³ is not calculated without a measured hole diameter. Loose spoil swell is held for owner review.",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-        }),
-        includedInTotal: false,
+      const holePlan = planDeckHoleExcavation({
+        facts,
+        workAreaId: workArea.id,
+        holeCount: supportCount,
+        rates: context.rates,
       });
+      assumptions.push(...holePlan.assumptions);
+      missingInfo.push(...holePlan.missingInfo);
+      if (holePlan.geometry?.diameterAssumed) {
+        recordDefaultedNumber(assumptionMetadata, {
+          key: "deck.hole_diameter_mm",
+          label: "Hole diameter",
+          workAreaId: workArea.id,
+          assumedValue: holePlan.geometry.diameterMm,
+          unit: " mm",
+          reason: "Circular hole diameter was not measured",
+          severity: "warning",
+        });
+      }
+      if (holePlan.geometry?.depthAssumed) {
+        recordDefaultedNumber(assumptionMetadata, {
+          key: "deck.hole_depth_mm",
+          label: "Hole depth",
+          workAreaId: workArea.id,
+          assumedValue: holePlan.geometry.depthMm,
+          unit: " mm",
+          reason: "Hole depth was not measured",
+          severity: "warning",
+        });
+      }
+      let excavationHours = shapeLabourHours({
+        quantity: 0,
+        productivityHoursPerUnit: 0,
+      });
+      if (holePlan.productivity?.applies && holePlan.holeCount > 0) {
+        excavationHours = shapeLabourHours({
+          quantity: holePlan.holeCount,
+          productivityHoursPerUnit: holePlan.productivity.hoursPerHole,
+          adjustmentFactor: labourAdjustment,
+        });
+        const geometryNote = holePlan.geometry
+          ? `${holePlan.geometry.formula} = ${holePlan.geometry.bankVolumeM3} m³ bank.`
+          : "";
+        lineItems.push(
+          createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Hole excavation",
+            quantity: holePlan.holeCount,
+            unit: "hole",
+            productivityHoursPerUnit: holePlan.productivity.hoursPerHole,
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            adjustmentFactor: labourAdjustment,
+            adjustmentLabel: labourAdjustmentSummary,
+            notes: labourExpandedNotes({
+              physicalDriver: `Physical driver: ${holePlan.holeCount} holes. ${geometryNote} ${holePlan.productivity.reason}`,
+              adjustmentDetail: labourAdjustmentDetail,
+              productivity: `Productivity: ${holePlan.productivity.hoursPerHole} h/hole · ${holePlan.productivity.sourceLabel}`,
+            }),
+            sortOrder: sortOrder++,
+            componentKey: "deck.hole.excavate",
+            organisationSettings: context.organisationSettings,
+            ...labourRateFields,
+            productivitySourceType: holePlan.productivity.sourceType,
+          })
+        );
+      } else if (holePlan.holeCount > 0) {
+        lineItems.push({
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Hole excavation",
+            category: "labour",
+            quantity: holePlan.holeCount,
+            unit: "hole",
+            costRate: 0,
+            sellRate: 0,
+            rateSource: getRateSourceLabel("missing"),
+            rateSourceType: "missing",
+            itemKey: "deck.hole.excavate.hours_per_hole",
+            componentKey: "deck.hole.excavate",
+            notes: holePlan.productivity?.reason ?? "Hole excavation productivity required.",
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          }),
+          includedInTotal: false,
+        });
+      }
+      for (const spoil of holePlan.spoilLines) {
+        if (spoil.kind === "priced" && spoil.unitCost != null) {
+          const unitSell =
+            spoil.unitSell ??
+            quotrFallbackSellFromCost(spoil.unitCost, context.organisationSettings);
+          lineItems.push(
+            createRateLineItem({
+              workAreaId: workArea.id,
+              workAreaName: workArea.name,
+              label: spoil.label,
+              category: "materials",
+              quantity: spoil.quantityM3,
+              unit: "m³",
+              costRate: spoil.unitCost,
+              sellRate: unitSell,
+              rateSource: getRateSourceLabel("user_rate"),
+              rateSourceType: "user_rate",
+              itemKey: spoil.itemKey,
+              componentKey: spoil.componentKey,
+              notes: spoil.notes,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+            })
+          );
+        } else {
+          lineItems.push({
+            ...createRateLineItem({
+              workAreaId: workArea.id,
+              workAreaName: workArea.name,
+              label: spoil.label,
+              category: "materials",
+              quantity: spoil.quantityM3,
+              unit: "m³",
+              costRate: 0,
+              sellRate: 0,
+              rateSource: getRateSourceLabel("missing"),
+              rateSourceType: "missing",
+              itemKey: spoil.itemKey,
+              componentKey: spoil.componentKey,
+              notes: spoil.notes,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+            }),
+            includedInTotal: false,
+          });
+        }
+      }
+      postHours = {
+        ...postHours,
+        baseHours: round2(postHours.baseHours + excavationHours.baseHours),
+        adjustedHours: round2(postHours.adjustedHours + excavationHours.adjustedHours),
+      };
     }
     let elevatedHours = shapeLabourHours({
       quantity: 0,
@@ -892,7 +1017,7 @@ export function calculateDeck(
         adjustmentLabel: labourAdjustmentSummary,
         qualityFactor: NO_FINISH_QUALITY_FACTOR,
         notes: labourExpandedNotes({
-          physicalDriver: "Physical driver: deck area.",
+          physicalDriver: "Physical driver: deck area. This is deck demolition, not post-hole soil.",
           adjustmentDetail: labourAdjustmentDetail,
           productivity: `Productivity: ${demoProductivity.hoursPerUnit} h/m² · ${demoProductivity.sourceLabel}`,
         }),
@@ -1463,7 +1588,7 @@ export function calculateDeck(
           rateSource: getRateSourceLabel("missing"),
           rateSourceType: "missing",
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
-          notes: "Concrete placement productivity required (hours/bag). Hole excavation is a separate Pricing Required line. Legacy hours/hole is leftover and is not consumed.",
+          notes: "Concrete placement productivity required (hours/bag). Hole excavation is a separate operation. Legacy hours/hole is leftover and is not consumed.",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         }),

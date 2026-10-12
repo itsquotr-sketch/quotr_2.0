@@ -41,7 +41,7 @@ export const DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY =
 /**
  * Owner row 61: 1 person for 4 minutes per bag. The old 0.16 h/bag starter
  * (0.4 h/hole ÷ 2.5 bags) is not the approved rate.
- * Hole excavation is a separate unpriced line, not these placement hours.
+ * Hole excavation is a separate operation with its own hours.
  */
 export const DECK_CONCRETE_PLACE_HOURS_PER_BAG = 4 / 60;
 export const DECK_CONCRETE_LEGACY_HOURS_PER_HOLE = 0.4;

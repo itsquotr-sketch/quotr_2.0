@@ -128,8 +128,9 @@ export const APPROVED_PRODUCTIVITY: Record<string, ApprovedProductivity> = {
 
 /**
  * Workbook says Review required and supplies no person-hours.
- * Deck hole excavation stays unresolved on its own line
- * (deck.hole.excavate.hours_per_hole). It is not a second concrete rate.
+ * Deck hole excavation is a separate provisional operation
+ * (deck.hole.excavate.hours_per_hole), not a second concrete rate.
+ * It is not listed here. A company or calibrated hours-per-hole wins.
  */
 export const UNRESOLVED_PRODUCTIVITY_KEYS = [
   "retaining_wall.excavation.hours_per_m3",

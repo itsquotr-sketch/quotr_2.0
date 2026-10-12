@@ -141,6 +141,7 @@ const SPLIT_LABOUR_LABELS = [
   "Decking installation",
   "Substructure framing",
   "Pile/post installation",
+  "Hole excavation",
 ] as const;
 
 function includedItems(items: EstimateLineItemInput[]) {
@@ -195,8 +196,8 @@ function round2(value: number) {
 }
 
 /** DEFAULT-RATE ENGINE FIXTURE — empty company rates, not Owner $78 labour. */
-const DEFAULT_RATE_REAL_JOB_COST = 7181.54;
-const DEFAULT_RATE_REAL_JOB_SELL = 8976.16;
+const DEFAULT_RATE_REAL_JOB_COST = 7721.54;
+const DEFAULT_RATE_REAL_JOB_SELL = 9651.16;
 
 console.log("=== RECOVERY-1 commercial authority ===\n");
 
@@ -303,11 +304,13 @@ check(
   ) < 0.05
 );
 check(
-  "10 DEFAULT-RATE split labour hours are 51.75 not the 1.2 lump",
-  labourHoursTotal(empty.lineItems) === 51.75 &&
-    labourCostTotal(empty.lineItems) === 3105 &&
-    emptyLabourLines.length === 3 &&
-    !empty.lineItems.some((item) => item.label === "Deck labour")
+  "10 DEFAULT-RATE split labour hours are 60.75 not the 1.2 lump",
+  labourHoursTotal(empty.lineItems) === 60.75 &&
+    labourCostTotal(empty.lineItems) === 3645 &&
+    emptyLabourLines.length === 4 &&
+    emptyLabourLines.some((item) => item.componentKey === "deck.hole.excavate") &&
+    !empty.lineItems.some((item) => item.label === "Deck labour"),
+  `hours=${labourHoursTotal(empty.lineItems)} cost=${labourCostTotal(empty.lineItems)} lines=${emptyLabourLines.length}`
 );
 check(
   "11 $13,000 is never a rate",
@@ -354,7 +357,7 @@ const previewTotals = aggregateEstimateLineTotals(previewAfterGm);
 const expectedPreviewSell = deriveSellFromCost(previewTotals.recommendedCost, PREVIEW_GM);
 check(
   "14 Preview-shaped DEFAULT-RATE cost is 2B engine not package-era $8,127",
-  Math.abs(previewTotals.recommendedCost - 7376.71) < 0.02,
+  Math.abs(previewTotals.recommendedCost - 7916.71) < 0.02,
   `cost=${previewTotals.recommendedCost}`
 );
 check(
@@ -458,7 +461,7 @@ check(
 );
 check(
   "26 split labour is the active labour money; lump absent",
-  emptyLabourLines.length === 3 &&
+  emptyLabourLines.length === 4 &&
     empty.lineItems.filter((item) => item.label === "Deck labour").length === 0
 );
 check(
@@ -504,7 +507,7 @@ const companyLabour = calculateEstimate(
 );
 check(
   "29 company labour cost-only derives sell and outranks default pair",
-  labourLines(companyLabour.lineItems).length === 3 &&
+  labourLines(companyLabour.lineItems).length === 4 &&
     labourLines(companyLabour.lineItems).every(
       (item) =>
         item.costRate === 50 && item.sellDerivedFromMargin === true
@@ -600,7 +603,8 @@ check(
         0
       ) - previewLabourSell
     ) < 0.05 &&
-    Math.abs(previewLabourCost - 3105) < 0.02
+    Math.abs(previewLabourCost - 3645) < 0.02,
+  `labourCost=${previewLabourCost} pricingSell=${pLabourSells.reduce((sum, row) => sum + (row.ok ? row.fields.totalSell : 0), 0)} lineSell=${previewLabourSell}`
 );
 check(
   "53 target-GM surface Pricing sell is 2964.55",
@@ -640,7 +644,7 @@ check(
 check(
   "58 margin edit leaves rateSource unchanged",
   previewFixings.rateSourceType === "benchmark" &&
-    previewLabourLines.every((item) => item.rateSourceType === "default")
+    previewLabourLines.every((item) => item.rateSourceType === "benchmark")
 );
 
 const noGmPricingJoists = pricingFromLine(emptyJoists!, "no-gm-joists");

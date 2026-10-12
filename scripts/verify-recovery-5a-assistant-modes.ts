@@ -323,11 +323,11 @@ check(
 const baseline = calculateEstimate(realJobContext(realFacts));
 check(
   "29 unchanged inputs = same cost",
-  baseline.recommendedCost === 7181.54
+  baseline.recommendedCost === 7721.54
 );
 check(
   "30 unchanged inputs = same sell",
-  baseline.recommendedSell === 8976.16
+  baseline.recommendedSell === 9651.16
 );
 const classify = classifyResolvedSell({
   costRate: 22.5,

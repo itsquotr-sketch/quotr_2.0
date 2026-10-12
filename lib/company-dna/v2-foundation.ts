@@ -106,7 +106,7 @@ const V1_BOUNDARIES: Record<
     workIncluded:
       "Set-out, position, cut/set, plumb, ordinary workface handling",
     workExcluded:
-      "Hole excavation person-hours (separate Pricing Required line), concrete mix/place, framing, decking, spoil export off site",
+      "Hole excavation person-hours (separate operation), concrete mix/place, framing, decking, spoil export off site",
     normalAssumptions: `${NORMAL_ACCESS} · ground-level · normal soil · not pouring concrete`,
   },
   "deck.demolition.v1": {

@@ -177,6 +177,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.2,
     "ea"
   ),
+  "deck.hole.excavate.hours_per_hole": productivityEntry(
+    "deck.hole.excavate.hours_per_hole",
+    "Deck hole excavation",
+    0.5,
+    "hole"
+  ),
   "deck.fascia.install.hours_per_lm": productivityEntry(
     "deck.fascia.install.hours_per_lm",
     "Fascia install",

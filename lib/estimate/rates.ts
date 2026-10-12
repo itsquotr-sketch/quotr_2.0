@@ -398,11 +398,12 @@ export function resolveLabourRate(params: {
   }
 
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
-  const sourceType: RateSourceType = benchmarkAllowed ? "default" : "missing";
+  const sourceType: RateSourceType = benchmarkAllowed ? "benchmark" : "missing";
   const costRate = benchmarkAllowed ? DEFAULT_LABOUR_COST_RATE : 0;
-  // Quotr default labour is COST only. Sell derives from applicable GM
-  // (EST-COMMERCIAL-01A). Company rows with sell_rate stay paired above.
-  // A disallowed benchmark is Pricing Required, not a silent $60.
+  // Approved Quotr fallback is $60 cost per person-hour when no company
+  // labour row applies. Sell derives from applicable GM. Company rows,
+  // including paired sells, stay above. A disallowed benchmark is Pricing
+  // Required, not a silent $60. Rates labels this "Quotr benchmark".
   const classified = classifyResolvedSell({
     costRate,
     sellRate: null,

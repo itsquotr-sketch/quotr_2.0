@@ -287,8 +287,8 @@ const benchmarkLabour = labourRequirement(benchmarkDeck);
 const benchmarkLine = deckLabourLine(benchmarkDeck);
 check(
   "RATE 13 benchmark/legacy rate provenance parity",
-  benchmarkLabour?.rateProvenance === "hardcoded_legacy" &&
-    benchmarkLine?.rateSourceType === "default" &&
+  benchmarkLabour?.rateProvenance === "benchmark" &&
+    benchmarkLine?.rateSourceType === "benchmark" &&
     mapLabourRateSourceToRequirement("default") === "hardcoded_legacy" &&
     mapLabourRateSourceToRequirement("missing") === "hardcoded_legacy" &&
     benchmarkLabour.hourlyCost === 60

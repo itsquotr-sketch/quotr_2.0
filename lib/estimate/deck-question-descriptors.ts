@@ -77,6 +77,10 @@ const SECTIONS: Record<string, DeckQuestionSection> = {
   "deck.footing_length_mm": "structure",
   "deck.footing_width_mm": "structure",
   "deck.footing_depth_mm": "structure",
+  "deck.hole_diameter_mm": "structure",
+  "deck.hole_depth_mm": "structure",
+  "deck.hole_ground": "structure",
+  "deck.spoil_leaves_site": "structure",
   "deck.pile_or_post_count": "structure",
   "deck.concrete_to_supports": "structure",
   "deck.concrete_bags_per_hole": "structure",
@@ -141,6 +145,11 @@ export function deckFactIsRelevant(
       return shouldAskBalustrade(gateInput(ctx), ctx.workAreaId);
     case "deck.concrete_to_supports":
     case "deck.concrete_bags_per_hole":
+      return showConcrete(ctx);
+    case "deck.hole_diameter_mm":
+    case "deck.hole_depth_mm":
+    case "deck.hole_ground":
+    case "deck.spoil_leaves_site":
       return showConcrete(ctx);
     case "deck.pile_or_post_replacement_required":
       return pileReplacementApplicable({

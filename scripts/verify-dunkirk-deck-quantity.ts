@@ -166,17 +166,37 @@ check(
   line(confirmed, "Pile/post installation")?.quantity === 4 &&
     confirmed.assumptions.some((text) => text.includes("stated count of 16"))
 );
-check("holes stay out of the known total", holes?.includedInTotal === false);
-check("holes have no assessed cost", holes?.recommendedCost === 0 && holes?.recommendedSell === 0);
-
-const holeNotes = holes ? buildLineItemNotes(holes) : null;
+check(
+  "excavation, post installation, and concrete placement are three lines",
+  install?.componentKey === "deck.posts.install" &&
+    holes?.componentKey === "deck.hole.excavate" &&
+    place?.componentKey === "deck.concrete.place"
+);
+check(
+  "stated 16 holes are 8.8 person-hours at the $60 fallback",
+  holes?.includedInTotal !== false &&
+    holes?.labourHours === 8.8 &&
+    holes?.costRate === 60 &&
+    holes?.recommendedCost === 528 &&
+    holes?.recommendedSell === 660,
+  `hours=${holes?.labourHours} cost=${holes?.recommendedCost} sell=${holes?.recommendedSell} rate=${holes?.costRate}`
+);
+const spoil = line(stated, "Post-hole spoil destination");
+check(
+  "unknown spoil stays Pricing Required and out of the total",
+  spoil?.includedInTotal === false &&
+    spoil?.rateSourceType === "missing" &&
+    spoil?.quantity === 0.92 &&
+    (spoil?.recommendedCost ?? 0) === 0
+);
+const holeNotes = spoil ? buildLineItemNotes(spoil) : null;
 const priced = calculateAuthoritativeFieldsFromEstimateLine({
-  category: "labour",
+  category: "materials",
   recommended_cost: 0,
   recommended_sell: 0,
   notes: holeNotes,
 });
-check("pricing cost is unknown", priced.ok && priced.fields.costKnown === false);
+check("spoil pricing cost is unknown", priced.ok && priced.fields.costKnown === false);
 check(
   "quote stays blocked without a client sell",
   priced.ok &&

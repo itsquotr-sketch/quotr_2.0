@@ -313,7 +313,7 @@ const withBenchmarks = resolveLabourRate({
 });
 check(
   "allowed labour fallback is the carpenter catalogue $60",
-  withBenchmarks.costRate === 60 && withBenchmarks.sourceType === "default"
+  withBenchmarks.costRate === 60 && withBenchmarks.sourceType === "benchmark"
 );
 
 const pileKey = buildMaterialRateItemKey(HOUSE_PILE_125_RW_IDENTITY, "lm");

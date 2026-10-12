@@ -1427,6 +1427,42 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
 
 export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
+    item_key: "deck.spoil.removal.all_in.m3",
+    label: "Deck post-hole spoil removal",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Waste / disposal",
+    unit: "m3",
+    description:
+      "Optional company all-in rate per bank m³ of deck post-hole spoil. Covers loading, haulage, and tip once. Do not also price haulage or tip. No Quotr dollar starter. Not retaining-wall spoil and not loose m³.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "deck.spoil.haulage.m3",
+    label: "Deck post-hole spoil loading and haulage",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Waste / disposal",
+    unit: "m3",
+    description:
+      "Loading onto a truck and haulage per bank m³. Not the hand-dig hours and not the tip fee. Unused when the all-in removal rate is set. No Quotr dollar starter.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "deck.spoil.tip.m3",
+    label: "Deck post-hole spoil tip fee",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Waste / disposal",
+    unit: "m3",
+    description:
+      "Tip fee only per bank m³. Not added on top of the all-in removal rate. No Quotr dollar starter.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
     item_key: "retaining_wall.spoil.removal.all_in.m3",
     label: "Hardfill / excavated spoil removal",
     rate_type: "material",
@@ -1435,7 +1471,7 @@ export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Waste / disposal",
     unit: "m3",
     description:
-      "All-in cartage and disposal cost per measured excavation m³. Company exact $/m³, otherwise Pricing Required — no invented Quotr starter. Not a tip-only fee.",
+      "All-in cartage and disposal cost per measured excavation m³. Company exact $/m³, otherwise Pricing Required — no invented Quotr starter. Not a tip-only fee. Retaining-wall spoil only. Not used for deck post holes.",
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -1827,8 +1863,22 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "ea",
     description:
-      "Hours per support, not dollars. Includes set-out, positioning, cutting/setting, and installation. Hole excavation is a separate Pricing Required line (deck.hole.excavate.hours_per_hole) and is not included in these hours. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
+      "Hours per support, not dollars. Includes set-out, positioning, cutting/setting, and installation. Hole excavation is a separate operation (deck.hole.excavate.hours_per_hole) and is not included in these hours. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 1,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "deck.hole.excavate.hours_per_hole",
+    label: "Hole excavation (hours/hole)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "deck",
+    workAreaLabel: "Deck productivity",
+    unit: "hole",
+    description:
+      "Provisional 0.50 person-hours per hole for an ordinary hand-dug circular deck post hole: soil a post-hole spade or hand auger can dig, 250–450 mm diameter, 400–900 mm deep. Includes marking the hole and placing spoil at the immediate workface. Excludes post setting, concrete placement, rock, groundwater, machine hire, truck loading, haulage, and tip fees. Not the 1 hour pile/post installation and not the concrete hours per bag. A company or calibrated hours-per-hole wins, including outside that scope. Outside the scope with no company hours, the estimate stays Pricing Required.",
+    defaultCostRate: 0.5,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1881,7 +1931,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "bag",
     description:
-      "Owner-approved rate: 0.06666666666666667 labour-h/bag (1 person for 4 minutes). The old 0.16 labour-h/bag figure is a historical calibration comparison and is not used for a new estimate. Driver is whole purchased bags. Hole excavation is a separate Pricing Required line, not this placement rate. A company hours/bag calibration on this key wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
+      "Owner-approved rate: 0.06666666666666667 labour-h/bag (1 person for 4 minutes). The old 0.16 labour-h/bag figure is a historical calibration comparison and is not used for a new estimate. Driver is whole purchased bags. Hole excavation is a separate operation, not this placement rate. A company hours/bag calibration on this key wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
     defaultCostRate: 0.06666666666666667,
     calculatorSupport: "used_now",
     recommended: true,

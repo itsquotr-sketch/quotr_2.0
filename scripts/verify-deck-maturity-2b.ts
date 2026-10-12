@@ -968,7 +968,7 @@ check(
     ratesSrc.includes("QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR = 60") &&
     emptyLabourResolved.itemKey === "labour.carpenter.hour" &&
     emptyLabourResolved.costRate === 60 &&
-    emptyLabourResolved.sourceType === "default" &&
+    emptyLabourResolved.sourceType === "benchmark" &&
     emptyLabourResolved.sellAuthority === "derived_from_gross_margin" &&
     emptyLabourResolved.sellRate === 75
 );
@@ -1001,12 +1001,13 @@ const materials78 = materialCostTotal(kwila78.lineItems);
 
 check(
   "89 $60→$78 changes dollars, not hours",
-  Math.abs(kwilaHours - 51.75) < 0.001 &&
+  Math.abs(kwilaHours - 60.75) < 0.001 &&
     hours78 === kwilaHours &&
     hoursByLabel(kwila78.lineItems, "Decking installation") === 15.75 &&
     hoursByLabel(kwila78.lineItems, "Substructure framing") === 18 &&
     hoursByLabel(kwila78.lineItems, "Pile/post installation") === 18 &&
-    Math.abs(labour78 - 4036.5) < 0.005 &&
+    hoursByLabel(kwila78.lineItems, "Hole excavation") === 9 &&
+    Math.abs(labour78 - 4738.5) < 0.005 &&
     Math.abs(labour78 - labour60) > 1 &&
     company78Resolved.costRate === 78 &&
     company78Resolved.sourceType === "user_rate" &&
@@ -1048,9 +1049,9 @@ check(
 );
 check(
   "92 effective GM reconciles mathematically",
-  Math.abs(kwilaDirect - 7181.54) < 0.02 &&
-    Math.abs(kwilaSell - 8976.16) < 0.02 &&
-    Math.abs(kwilaGp - (8976.16 - 7181.54)) < 0.02 &&
+  Math.abs(kwilaDirect - 7721.54) < 0.02 &&
+    Math.abs(kwilaSell - 9651.16) < 0.02 &&
+    Math.abs(kwilaGp - (9651.16 - 7721.54)) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05
 );
 check(
@@ -1197,8 +1198,8 @@ check(
   "102 company $60 vs $78 modularity (cost-only rates)",
   company60vs78HoursEqual &&
     company60vs78MaterialsEqual &&
-    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - 3105) < 0.02 &&
-    Math.abs(labour78 - 4036.5) < 0.02 &&
+    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - 3645) < 0.02 &&
+    Math.abs(labour78 - 4738.5) < 0.02 &&
     included(kwilaCompany60.lineItems).every(
       (item) =>
         item.category !== "labour" ||
@@ -1215,9 +1216,9 @@ const realLabourSource = resolveLabourRate({
 check(
   "103 REAL-JOB uses same labour-rate + sell-authority contract",
   realLabourSource.costRate === 60 &&
-    realLabourSource.sourceType === "default" &&
+    realLabourSource.sourceType === "benchmark" &&
     !hasPackage(realDeck.lineItems) &&
-    labourHoursTotal(realDeck.lineItems) === 51.75 &&
+    labourHoursTotal(realDeck.lineItems) === 60.75 &&
     included(realDeck.lineItems).every(
       (item) =>
         item.includedInTotal === false ||
@@ -1253,7 +1254,7 @@ const pairedLabourOk = included(kwilaCompanyPair.lineItems)
   );
 check(
   "105 Quotr fallbacks derive 20% GM; company paired sell is not flattened",
-  Math.abs(kwilaSell - 8976.16) < 0.02 &&
+  Math.abs(kwilaSell - 9651.16) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
     pairedLabourOk &&
     kwilaEstimate.estimateSellAuthority === "line_resolved_sells"
@@ -1291,7 +1292,7 @@ const residualSensitivity = [15, 20, 25].map((rate) => ({
 check(
   "107 empty-rates Kwila is DEFAULT_RATE_ENGINE_FIXTURE not Owner labour",
   emptyLabourResolved.costRate === 60 &&
-    emptyLabourResolved.sourceType === "default" &&
+    emptyLabourResolved.sourceType === "benchmark" &&
     !read("tests/fixtures/deck-calibration/OWNER-KWILA-01.json").includes(
       "Owner labour rate"
     ) &&
@@ -1306,7 +1307,7 @@ check(
     read("tests/fixtures/deck-calibration/OWNER-KWILA-01.json").includes(
       ownerRateClass
     ) &&
-    Math.abs(labour78 - 4036.5) < 0.005
+    Math.abs(labour78 - 4738.5) < 0.005
 );
 check(
   "109 $78 cannot mutate global default labour fallback",
@@ -1318,8 +1319,8 @@ check(
 );
 check(
   "110 Owner $78 effective GM reconciles",
-  Math.abs(owner78Cost - 8113.04) < 0.02 &&
-    Math.abs(owner78Sell - 10140.54) < 0.02 &&
+  Math.abs(owner78Cost - 8815.04) < 0.02 &&
+    Math.abs(owner78Sell - 11018.04) < 0.02 &&
     Math.abs(owner78Gm - 20) < 0.05
 );
 check(
@@ -1394,17 +1395,17 @@ check(
 );
 check(
   "120 Recovery DEFAULT-RATE goldens reconciled",
-  read("scripts/verify-recovery-1-commercial-authority.ts").includes("7181.54") &&
+  read("scripts/verify-recovery-1-commercial-authority.ts").includes("7721.54") &&
     read("scripts/verify-recovery-1-commercial-authority.ts").includes(
       "DEFAULT-RATE ENGINE"
     ) &&
-    read("scripts/verify-recovery-5b-builder-review.ts").includes("7181.54") &&
-    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("8976.16")
+    read("scripts/verify-recovery-5b-builder-review.ts").includes("7721.54") &&
+    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("9651.16")
 );
 check(
   "121 REAL-JOB DEFAULT-RATE golden matches engine",
-  Math.abs(realDirect - 7181.54) < 0.02 &&
-    Math.abs(realSell - 8976.16) < 0.02 &&
+  Math.abs(realDirect - 7721.54) < 0.02 &&
+    Math.abs(realSell - 9651.16) < 0.02 &&
     realLabourSource.costRate === 60
 );
 check(

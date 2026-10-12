@@ -191,7 +191,7 @@ const collidingRatesEstimate = calculateEstimate(
 );
 check(
   "7 fixture empty-rates sell is DEFAULT-RATE ENGINE $10,775.44",
-  emptyRatesEstimate.recommendedSell === 8976.16,
+  emptyRatesEstimate.recommendedSell === 9651.16,
   `sell=${emptyRatesEstimate.recommendedSell}`
 );
 
@@ -372,7 +372,7 @@ check(
 );
 check(
   "30 fixture calibration sell unchanged",
-  runDeckCalibration(realJob).commercialSafety.estimateSell === 8976.16
+  runDeckCalibration(realJob).commercialSafety.estimateSell === 9651.16
 );
 
 check(

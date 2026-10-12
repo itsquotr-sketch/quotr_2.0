@@ -253,7 +253,7 @@ check(
   "posts scenario names exact quantity",
   deckV2ScenarioCopy(posts).includes(String(posts.authorityQuantity)) &&
     deckV2ScenarioCopy(posts).includes("mixing and placing concrete") &&
-    deckV2ScenarioCopy(posts).includes("separate unpriced line")
+    deckV2ScenarioCopy(posts).includes("separate operation")
 );
 check(
   "framing scenario uses 80 lm not fake m² authority",

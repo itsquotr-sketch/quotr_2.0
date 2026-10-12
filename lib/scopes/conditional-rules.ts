@@ -783,6 +783,17 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
+  if (
+    key === "deck.hole_diameter_mm" ||
+    key === "deck.hole_depth_mm" ||
+    key === "deck.hole_ground" ||
+    key === "deck.spoil_leaves_site"
+  ) {
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    if (substructure === false) return true;
+    return false;
+  }
+
   // FOUNDATION-R2 — parent/child gating and derived-geometry suppression.
   if (key === "deck.area_m2") {
     const length = numFact(lookup, workAreaId, "deck.length_m");

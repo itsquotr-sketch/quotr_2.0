@@ -8,6 +8,10 @@ import {
   presentationFromBoolean,
 } from "@/lib/assistant/job-plan/facts";
 import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
+import {
+  DECK_HOLE_ASSUMED_DEPTH_MM,
+  DECK_HOLE_ASSUMED_DIAMETER_MM,
+} from "@/lib/estimate/deck-hole-excavation";
 import type {
   JobPlanAdapterContext,
   JobPlanScopeItem,
@@ -215,6 +219,25 @@ function compactSummary(
     });
   }
 
+  const substructureOn =
+    effectiveJobPlanBoolean(facts, workAreaId, "deck.substructure_included", briefText) !==
+    false;
+  if (substructureOn) {
+    const diameter = jobPlanNumber(facts, workAreaId, "deck.hole_diameter_mm");
+    const depth = jobPlanNumber(facts, workAreaId, "deck.hole_depth_mm");
+    const diameterText =
+      diameter != null ? `${diameter} mm` : `Assumed ${DECK_HOLE_ASSUMED_DIAMETER_MM} mm`;
+    const depthText =
+      depth != null ? `${depth} mm` : `Assumed ${DECK_HOLE_ASSUMED_DEPTH_MM} mm`;
+    chips.push({
+      key: "hole",
+      label: "Holes",
+      value: `${diameterText} × ${depthText}`,
+      advanced: false,
+      assumed: false,
+    });
+  }
+
   const quick = chips
     .filter((c) => !c.advanced && !c.assumed)
     .map((c) => c.value);
@@ -298,6 +321,15 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       briefText: context.briefText,
       surfaceReason: "Optional pile/post concrete — not forced for every Deck",
     });
+    const spoil = booleanItem({
+      id: "spoil_leaves_site",
+      workAreaId: id,
+      label: "Spoil leaves site",
+      factKey: "deck.spoil_leaves_site",
+      facts,
+      briefText: context.briefText,
+      surfaceReason: "Post-hole soil destination. On site has no disposal money.",
+    });
 
     const balustradeValue = effectiveJobPlanBoolean(
       facts,
@@ -326,7 +358,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       fascia,
       skirting,
       steps,
-      ...(showConcrete ? [concrete] : []),
+      ...(showConcrete ? [concrete, spoil] : []),
       ...(showBalustrade ? [balustrade] : []),
     ];
 

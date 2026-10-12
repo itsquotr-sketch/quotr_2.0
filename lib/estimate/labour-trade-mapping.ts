@@ -1,10 +1,11 @@
 /**
  * Carpenter vs labourer labour-rate authority (ONBOARDING-01).
  *
- * resolveLabourRate is unchanged:
+ * resolveLabourRate order is unchanged:
  *   no trade / carpenter → labour.carpenter.hour, then labour.general.hour
  *   labourer             → labour.labourer.hour, then labour.general.hour, then carpenter
  *   apprentice           → labour.apprentice.hour, then labour.general.hour, then carpenter
+ * When none of those company rows has a cost, the Quotr fallback is $60/h.
  *
  * Onboarding stores both carpenter and labourer company costs. It does not
  * backfill existing organisations and does not rewrite Quote, accepted

@@ -624,24 +624,30 @@ assert(
       .reduce((sum, row) => sum + (row.recommendedCost ?? 0), 0)
 );
 
-const hole = deck.lineItems.find((row) => row.itemKey === "deck.hole.excavate.hours_per_hole");
-const holeStatus = unpricedLabourStatus(hole?.quantity ?? null, hole?.unit ?? null);
+const hole = deck.lineItems.find((row) => row.componentKey === "deck.hole.excavate");
+const spoil = deck.lineItems.find((row) => row.componentKey === "deck.spoil.destination");
+const spoilStatus = unpricedLabourStatus(spoil?.quantity ?? null, spoil?.unit ?? null);
 assert(
-  "deck hole excavation stays unresolved and out of the total",
-  hole?.rateSourceType === "missing" &&
-    hole.includedInTotal === false &&
-    (hole.recommendedCost ?? 0) === 0 &&
-    (hole.quantity ?? 0) > 0 &&
-    (hole.labourHours == null || hole.labourHours === 0) &&
-    holeStatus.includes(String(hole.quantity)) &&
-    holeStatus.includes("Pricing Required") &&
-    !holeStatus.startsWith("0 ") &&
-    lineVisibleInEstimateReview(hole) &&
+  "deck hole excavation is priced inside ordinary scope",
+  hole?.rateSourceType !== "missing" &&
+    hole?.includedInTotal !== false &&
+    (hole?.labourHours ?? 0) > 0 &&
+    (hole?.recommendedCost ?? 0) > 0 &&
+    (hole?.quantity ?? 0) > 0
+);
+assert(
+  "unknown deck spoil destination stays Pricing Required",
+  spoil?.rateSourceType === "missing" &&
+    spoil.includedInTotal === false &&
+    (spoil.recommendedCost ?? 0) === 0 &&
+    (spoil.quantity ?? 0) > 0 &&
+    lineVisibleInEstimateReview(spoil) &&
     unknownCostWithoutClientSell({
       cost_known: false,
-      total_sell: hole.recommendedSell,
+      total_sell: spoil.recommendedSell,
       visible_on_quote: true,
-    })
+    }) &&
+    spoilStatus.includes("Pricing Required")
 );
 const selectedLining = ceilings.lineItems.find((row) =>
   /plasterboard ceiling lining/i.test(row.label)

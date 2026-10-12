@@ -6,6 +6,7 @@
  * identities, or rate-precedence rules.
  */
 
+import { catalogueKeyBlockedFromNewSelection } from "@/lib/rates/catalogue-retirement";
 import { FULL_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import { claddingDisplayedCompanyValue } from "@/lib/estimate/cladding-authority";
 import {
@@ -146,6 +147,7 @@ export function isMaterialsPageCatalogueEntry(entry: RateCatalogueEntry): boolea
   if (entry.item_key.startsWith("plant.")) return false;
   if (entry.workAreaLabel?.toLowerCase().includes("plant")) return false;
   if (WASTE_KEYS.has(entry.item_key)) return false;
+  if (catalogueKeyBlockedFromNewSelection(entry.item_key)) return false;
   return true;
 }
 

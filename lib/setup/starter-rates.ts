@@ -67,10 +67,9 @@ export const CORE_LABOUR_STARTER_RATES: StarterRateRowDefinition[] = [
     fields: ["cost_rate", "sell_rate"],
     section: "labour",
     description:
-      "Optional. Current calculators use carpenter/builder labour; this is for your records and future use.",
-    benchmarkCost: 40,
-    benchmarkSell: 65,
-    authorityHint: "explicit",
+      "Optional company labourer cost. Empty means the Quotr fallback of $60 per person-hour. A saved company cost still wins. Charge-out uses company gross margin.",
+    benchmarkCost: 60,
+    authorityHint: "benchmark",
   },
 ];
 

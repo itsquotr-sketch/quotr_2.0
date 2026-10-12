@@ -358,7 +358,7 @@ export function dnaV2ScenarioCopy(task: {
   const lm = (value: number) => formatDnaScenarioMeasure(value, "lm");
   switch (task.calibrationTaskKey) {
     case "deck.posts.v1":
-      return `Install ${qty} deck posts — set-out, positioning, cutting, setting and plumbing. Do not include hole-excavation hours or mixing and placing concrete. Hole excavation stays a separate unpriced line until an owner hours decision exists.`;
+      return `Install ${qty} deck posts — set-out, positioning, cutting, setting and plumbing. Do not include hole-excavation hours or mixing and placing concrete. Hole excavation is a separate operation with its own hours.`;
     case "deck.framing.v1":
       return `Install ${lm(qty)} of deck framing — roughly the framing for a straightforward 20 m² deck.`;
     case "deck.decking.v1":
