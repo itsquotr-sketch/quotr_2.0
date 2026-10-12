@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
+import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import {
   parseQuoteInput,
@@ -705,6 +706,22 @@ export async function createQuoteFromPricing(input: {
   if (existing) {
     revalidateQuoteProjectPath(projectId, existing.id, pricingDocumentId);
     redirect(`/app/projects/${projectId}/quotes/${existing.id}`);
+  }
+
+  const { data: pricingSource } = await supabase
+    .from("pricing_documents")
+    .select("estimate_id")
+    .eq("id", pricingDocumentId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (pricingSource?.estimate_id) {
+    const statedCountBlock = await deckStatedCountPricingBlock(
+      supabase,
+      projectId,
+      pricingSource.estimate_id,
+      orgId
+    );
+    if (statedCountBlock) return { error: statedCountBlock };
   }
 
   const snapshot = await buildQuoteSnapshotFromReviewedPricing({

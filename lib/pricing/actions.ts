@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
 import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
@@ -564,6 +565,16 @@ export async function createPricingFromEstimate(input: {
     return {
       error: toUserError(lineItemsError, "pricing-create-line-items", PRICING_SAVE_FAILED),
     };
+  }
+
+  const statedCountBlock = await deckStatedCountPricingBlock(
+    supabase,
+    projectId,
+    estimate.id as string,
+    orgId
+  );
+  if (statedCountBlock) {
+    return { error: statedCountBlock };
   }
 
   const { data: workAreas } = await supabase
@@ -2028,6 +2039,16 @@ export async function markPricingReviewed(
     return {
       error: toUserError(reviewItemsError, "pricing-mark-reviewed", PRICING_SAVE_FAILED),
     };
+  }
+  const sourceEstimateId = (document.estimate_id as string | null) ?? null;
+  if (sourceEstimateId) {
+    const statedCountBlock = await deckStatedCountPricingBlock(
+      supabase,
+      document.project_id as string,
+      sourceEstimateId,
+      orgId
+    );
+    if (statedCountBlock) return { error: statedCountBlock };
   }
   const manualBlock = unresolvedManualPricingQuoteBlock(reviewItems ?? []);
   if (manualBlock) return { error: manualBlock };

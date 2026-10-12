@@ -10,6 +10,12 @@ import { DECK_CONCRETE_PRODUCTIVITY_KEY } from "../lib/estimate/deck-scope-2c";
 import { calculateAuthoritativeFieldsFromEstimateLine } from "../lib/pricing/estimate-to-pricing-adapter";
 import { unknownCostWithoutClientSell } from "../lib/work-areas/manual-pricing-route";
 import { nextWorkspaceScrollTop } from "../lib/ui/scroll-workspace";
+import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
+import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
+import {
+  formatProfitabilityDisplay,
+  PROFITABILITY_UNAVAILABLE_LABEL,
+} from "../lib/financial-presentation/format";
 import type {
   EstimateContext,
   EstimateFact,
@@ -210,6 +216,98 @@ check(
     viewportHeight: 800,
     bottomOverlay: 72,
   }) === 812
+);
+check(
+  "observed desktop settle leaves the heading 8px inside the workspace",
+  nextWorkspaceScrollTop({
+    containerScrollTop: 120,
+    containerTop: 288,
+    containerHeight: 700,
+    targetTop: 296,
+    viewportHeight: 900,
+    bottomOverlay: 0,
+  }) === null
+);
+check(
+  "short phone viewport keeps the heading above the bottom navigation",
+  nextWorkspaceScrollTop({
+    containerScrollTop: 0,
+    containerTop: 140,
+    containerHeight: 520,
+    targetTop: 640,
+    viewportHeight: 700,
+    bottomOverlay: 72,
+  }) === 492
+);
+
+const staleLines = [
+  { componentKey: "deck.posts.install", label: "Pile/post installation", quantity: 15, unit: "ea" },
+  { componentKey: "deck.hole.excavate", label: "Hole excavation", quantity: 15, unit: "hole" },
+  { componentKey: "deck.concrete.bags", label: "Post-hole concrete", quantity: 38, unit: "bag" },
+  { componentKey: "deck.supports", label: "Piles / posts", quantity: 18, unit: "lm" },
+  { componentKey: "deck.concrete.place", label: "Concrete placement", quantity: 38, unit: "bag", labourHours: 29.26 },
+];
+const conflict = deckStatedCountConflict({
+  facts: [
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.substructure_included", true),
+    fact("deck.concrete_to_supports", true),
+  ],
+  lines: staleLines,
+});
+check(
+  "saved 15-post draft conflicts with the stated 16",
+  conflict?.changes.some((change) => change.label === "Pile/post installation" && change.to === 16) === true &&
+    conflict?.changes.some((change) => change.label === "Hole excavation" && change.to === 16) === true &&
+    conflict?.changes.some((change) => change.label === "Post-hole concrete" && change.to === 40) === true &&
+    conflict?.changes.some((change) => change.label === "Piles / posts" && change.to === 19.2) === true &&
+    conflict?.changes.some((change) => change.label === "Concrete placement" && change.to === 30.8) === true,
+  conflict?.summary
+);
+check(
+  "a matching draft does not ask to recalculate",
+  deckStatedCountConflict({
+    facts: [fact("deck.pile_or_post_count", 16)],
+    lines: [{ componentKey: "deck.posts.install", quantity: 16, unit: "ea" }],
+  }) == null
+);
+const overview = projectEstimateOverview({
+  hasEstimate: true,
+  isStale: false,
+  detailsOutstanding: false,
+  estimate: {
+    recommendedSell: 1000,
+    recommendedCost: 800,
+    grossProfit: 200,
+    marginPercent: 20,
+  },
+  gstRate: 15,
+  breakdown: null,
+  review: null,
+  readinessBlockers: [],
+  rateSourceSummary: null,
+  pricingDocumentExists: true,
+  specialistPricingNotice: null,
+  workAreaNames: ["Deck"],
+  statedCountConflictDetail: conflict?.summary ?? null,
+});
+check(
+  "the conflict blocks Pricing and Quote continuation",
+  overview.primary === "regenerate" &&
+    overview.pricingCreationBlocked &&
+    overview.pricingEntry === "blocked" &&
+    overview.required.some((item) => item.id === "deck-stated-count")
+);
+const pricedHole = formatProfitabilityDisplay({
+  costKnown: priced.ok ? priced.fields.costKnown : true,
+  grossProfit: 120,
+  marginPercent: 100,
+});
+check(
+  "an explicit excavation sell keeps profit unknown",
+  priced.ok &&
+    priced.fields.costKnown === false &&
+    pricedHole.profitLabel === PROFITABILITY_UNAVAILABLE_LABEL
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

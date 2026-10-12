@@ -224,6 +224,7 @@ import {
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-overview";
+import { deckStatedCountConflict } from "@/lib/estimate/deck-stated-count-guard";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { deriveQuickEstimateConfidencePresentation } from "@/lib/assistant/presentation/quick-estimate-confidence";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
@@ -2773,6 +2774,12 @@ export function AssistantShell({
             ? estimateReadiness.heading
             : null,
         workAreaNames: workAreaLists.included,
+        statedCountConflictDetail: estimate
+          ? deckStatedCountConflict({
+              facts: jobPlanFacts,
+              lines: estimate.lineItems,
+            })?.summary ?? null
+          : null,
       });
 
   const estimateReviewActionable =

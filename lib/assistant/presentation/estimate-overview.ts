@@ -189,6 +189,8 @@ export type ProjectEstimateOverviewInput = {
   readonly pricingDocumentExists: boolean;
   readonly specialistPricingNotice: string | null;
   readonly workAreaNames: readonly string[];
+  /** Saved quantities disagree with the current deck count. Does not rewrite the draft. */
+  readonly statedCountConflictDetail?: string | null;
 };
 
 const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
@@ -567,6 +569,20 @@ export function projectEstimateOverview(
       )
     );
   }
+  const statedCountConflict = input.statedCountConflictDetail?.trim() || null;
+  if (statedCountConflict) {
+    required.push(
+      action(
+        "required",
+        "deck-stated-count",
+        "Recalculate this draft before Pricing",
+        statedCountConflict,
+        null,
+        true,
+        "blocker"
+      )
+    );
+  }
 
   const accuracy: EstimateOverviewAction[] = [];
   const rates: EstimateOverviewAction[] = [];
@@ -678,11 +694,12 @@ export function projectEstimateOverview(
     ? input.detailsOutstanding
       ? "complete_details"
       : "continue_information"
-    : input.isStale
+    : input.isStale || statedCountConflict
       ? "regenerate"
       : "continue_pricing";
 
-  const pricingCreationBlocked = !input.hasEstimate || input.isStale;
+  const pricingCreationBlocked =
+    !input.hasEstimate || input.isStale || Boolean(statedCountConflict);
   const pricingEntry = pricingCreationBlocked
     ? "blocked"
     : input.pricingDocumentExists
