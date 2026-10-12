@@ -31,7 +31,12 @@ import {
   benchmarkRateFields,
   rateFieldsFromResolved,
 } from "@/lib/estimate/line-item-helpers";
-import { planDeckHoleExcavation } from "@/lib/estimate/deck-hole-excavation";
+import {
+  DECK_HOLE_ASSUMED_DEPTH_MM,
+  DECK_HOLE_ASSUMED_DIAMETER_MM,
+  planDeckHoleExcavation,
+  resolveDeckHoleCount,
+} from "@/lib/estimate/deck-hole-excavation";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, deriveSellFromCost } from "@/lib/estimate/rates";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
@@ -221,8 +226,16 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.footing_depth_mm",
   "deck.hole_diameter_mm",
   "deck.hole_depth_mm",
+  "deck.hole_length_mm",
+  "deck.hole_width_mm",
+  "deck.hole_shape",
   "deck.hole_ground",
+  "deck.hole_method",
+  "deck.hole_count",
+  "deck.hole_count_reason",
+  "deck.hole_job_hours_per_hole",
   "deck.spoil_leaves_site",
+  "deck.spoil_destination",
 ] as const;
 
 function labourExpandedNotes(params: {
@@ -660,7 +673,7 @@ export function calculateDeck(
           key: "deck.hole_diameter_mm",
           label: "Hole diameter",
           workAreaId: workArea.id,
-          assumedValue: holePlan.geometry.diameterMm,
+          assumedValue: holePlan.geometry.diameterMm ?? DECK_HOLE_ASSUMED_DIAMETER_MM,
           unit: " mm",
           reason: "Circular hole diameter was not measured",
           severity: "warning",
@@ -671,7 +684,7 @@ export function calculateDeck(
           key: "deck.hole_depth_mm",
           label: "Hole depth",
           workAreaId: workArea.id,
-          assumedValue: holePlan.geometry.depthMm,
+          assumedValue: holePlan.geometry.depthMm ?? DECK_HOLE_ASSUMED_DEPTH_MM,
           unit: " mm",
           reason: "Hole depth was not measured",
           severity: "warning",
@@ -690,8 +703,8 @@ export function calculateDeck(
         const geometryNote = holePlan.geometry
           ? `${holePlan.geometry.formula} = ${holePlan.geometry.bankVolumeM3} m³ bank.`
           : "";
-        lineItems.push(
-          createLabourLineItem({
+        lineItems.push({
+          ...createLabourLineItem({
             workAreaId: workArea.id,
             workAreaName: workArea.name,
             label: "Hole excavation",
@@ -712,8 +725,9 @@ export function calculateDeck(
             organisationSettings: context.organisationSettings,
             ...labourRateFields,
             productivitySourceType: holePlan.productivity.sourceType,
-          })
-        );
+          }),
+          holeDraft: holePlan.draftStamp ?? undefined,
+        });
       } else if (holePlan.holeCount > 0) {
         lineItems.push({
           ...createRateLineItem({
@@ -734,6 +748,7 @@ export function calculateDeck(
             organisationSettings: context.organisationSettings,
           }),
           includedInTotal: false,
+          holeDraft: holePlan.draftStamp ?? undefined,
         });
       }
       for (const spoil of holePlan.spoilLines) {
@@ -1432,7 +1447,12 @@ export function calculateDeck(
     supportsActive,
   });
   if (concreteIncluded) {
-    const holeCount = structural.quantities?.supportCount ?? 0;
+    const postCount = structural.quantities?.supportCount ?? 0;
+    const holeCount = resolveDeckHoleCount({
+      facts,
+      workAreaId: workArea.id,
+      postCount,
+    }).holeCount;
     const bagsEach = concreteBagsPerHole(facts, workArea.id);
     const bags = purchasedConcreteBags(holeCount, bagsEach);
     const concreteIdentity = buildConcreteMaterialIdentity({

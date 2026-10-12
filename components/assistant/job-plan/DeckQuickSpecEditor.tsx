@@ -7,6 +7,7 @@ import {
   jobPlanNumber,
   jobPlanString,
 } from "@/lib/assistant/job-plan/facts";
+import { DeckPostHolesSection } from "@/components/assistant/job-plan/DeckPostHolesSection";
 import { deckStepsIncluded } from "@/lib/estimate/deck-steps-physical";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type { ReactNode } from "react";
@@ -16,7 +17,7 @@ export type QuickSpecFactWrite = (input: {
   key: string;
   label: string;
   value: string | number;
-  valueType: "number" | "select";
+  valueType: "number" | "select" | "text";
 }) => void;
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
@@ -136,6 +137,14 @@ export function DeckQuickSpecEditor({
           />
         </div>
       </Group>
+
+      {substructure ? (
+        <DeckPostHolesSection
+          workAreaId={workAreaId}
+          facts={facts}
+          onSpecFact={onSpecFact}
+        />
+      ) : null}
 
       {substructure ? (
         <details className="rounded-lg border border-border/60 p-3" data-deck-substructure-assumptions>

@@ -38,6 +38,24 @@ export type LabourMinimumMeta = {
   smallJobFactor?: number;
 };
 
+/** Saved post-hole inputs. A later edit is compared with this stamp. */
+export type DeckHoleDraftStamp = {
+  readonly count: number;
+  readonly shape: "circular" | "rectangular";
+  readonly diameterMm: number | null;
+  readonly lengthMm: number | null;
+  readonly widthMm: number | null;
+  readonly depthMm: number | null;
+  readonly ground: string;
+  readonly method: string;
+  readonly spoil: "on_site" | "off_site" | "unknown";
+  readonly sizeConfirmed: boolean;
+  readonly groundConfirmed: boolean;
+  readonly methodConfirmed: boolean;
+  readonly bankM3: number | null;
+  readonly needsConfirmation: boolean;
+};
+
 export type AllowanceMinimumMeta = {
   minimumApplied: boolean;
   reason: string;
@@ -77,6 +95,7 @@ export type LineItemMetadata = {
   allowanceMinimum?: AllowanceMinimumMeta;
   /** Concise Builder Review primary copy. Distinct from diagnostic notes. */
   identitySummary?: string;
+  holeDraft?: DeckHoleDraftStamp;
   nestedItemId?: string;
   componentId?: string;
   contributingNestedItemIds?: string[];

@@ -67,7 +67,7 @@ type JobPlanPanelProps = {
     key: string;
     label: string;
     value: string | number;
-    valueType: "number" | "select";
+    valueType: "number" | "select" | "text";
   }) => void;
   constraints?: readonly { key: string; value: unknown }[];
   onConstraint?: JobPlanConstraintWrite;

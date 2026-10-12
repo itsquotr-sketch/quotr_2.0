@@ -443,6 +443,11 @@ const deckFacts = [
   fact("deck.vertical_face_boards_required", "d1", false),
   fact("deck.existing_deck_removal", "d1", false),
   fact("deck.concrete_to_supports", "d1", false),
+  fact("deck.hole_shape", "d1", "circular"),
+  fact("deck.hole_diameter_mm", "d1", 350),
+  fact("deck.hole_depth_mm", "d1", 600),
+  fact("deck.hole_ground", "d1", "ordinary"),
+  fact("deck.hole_method", "d1", "hand"),
 ];
 const deck = calculateDeck(ctx([deckArea], deckFacts), deckArea);
 report("Deck 5 × 4.2 m kwila 140 mm", deck);

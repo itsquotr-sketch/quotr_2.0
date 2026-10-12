@@ -228,7 +228,7 @@ function compactSummary(
     const diameterText =
       diameter != null ? `${diameter} mm` : `Assumed ${DECK_HOLE_ASSUMED_DIAMETER_MM} mm`;
     const depthText =
-      depth != null ? `${depth} mm` : `Assumed ${DECK_HOLE_ASSUMED_DEPTH_MM} mm`;
+      depth != null ? `${depth} mm deep` : `Assumed ${DECK_HOLE_ASSUMED_DEPTH_MM} mm deep`;
     chips.push({
       key: "hole",
       label: "Holes",
@@ -321,16 +321,6 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       briefText: context.briefText,
       surfaceReason: "Optional pile/post concrete — not forced for every Deck",
     });
-    const spoil = booleanItem({
-      id: "spoil_leaves_site",
-      workAreaId: id,
-      label: "Spoil leaves site",
-      factKey: "deck.spoil_leaves_site",
-      facts,
-      briefText: context.briefText,
-      surfaceReason: "Post-hole soil destination. On site has no disposal money.",
-    });
-
     const balustradeValue = effectiveJobPlanBoolean(
       facts,
       id,
@@ -358,7 +348,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       fascia,
       skirting,
       steps,
-      ...(showConcrete ? [concrete, spoil] : []),
+      ...(showConcrete ? [concrete] : []),
       ...(showBalustrade ? [balustrade] : []),
     ];
 

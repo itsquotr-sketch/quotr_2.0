@@ -786,12 +786,19 @@ export function shouldHideConditionalQuestion(
   if (
     key === "deck.hole_diameter_mm" ||
     key === "deck.hole_depth_mm" ||
+    key === "deck.hole_length_mm" ||
+    key === "deck.hole_width_mm" ||
+    key === "deck.hole_shape" ||
     key === "deck.hole_ground" ||
-    key === "deck.spoil_leaves_site"
+    key === "deck.hole_method" ||
+    key === "deck.hole_count" ||
+    key === "deck.hole_count_reason" ||
+    key === "deck.hole_job_hours_per_hole" ||
+    key === "deck.spoil_leaves_site" ||
+    key === "deck.spoil_destination"
   ) {
-    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
-    if (substructure === false) return true;
-    return false;
+    // The Post holes section owns these. Existing answers stay on the project.
+    return true;
   }
 
   // FOUNDATION-R2 — parent/child gating and derived-geometry suppression.

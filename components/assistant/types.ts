@@ -119,6 +119,7 @@ export type EstimateLineItem = {
   sellDerivedFromMargin?: boolean;
   notes?: string;
   identitySummary?: string;
+  holeDraft?: import("@/lib/estimate/line-item-metadata").DeckHoleDraftStamp;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
   pricingOwner?: PricingOwner;

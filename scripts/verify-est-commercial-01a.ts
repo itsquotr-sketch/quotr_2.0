@@ -471,11 +471,11 @@ const realJobEstimate = calculateEstimate({
 
 check(
   "N REAL-JOB-01 cost is $7,181.54 after approved board rates (was $8,620.53)",
-  near(realJobEstimate.recommendedCost, 7721.54)
+  near(realJobEstimate.recommendedCost, 7181.54)
 );
 check(
   "N REAL-JOB-01 sell is ~20% GM ($8,976.16), not the old paired sell",
-  near(realJobEstimate.recommendedSell, 9651.16) &&
+  near(realJobEstimate.recommendedSell, 8976.16) &&
     near(realJobEstimate.marginPercent, 20, 0.05) &&
     !near(realJobEstimate.recommendedSell, 12878.01)
 );

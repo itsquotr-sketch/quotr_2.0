@@ -7,7 +7,9 @@ import {
   DECK_HOLE_PROVISIONAL_HOURS,
   circularBankVolumeM3,
   planDeckHoleExcavation,
+  rectangularBankVolumeM3,
 } from "../lib/estimate/deck-hole-excavation";
+import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
 import { resolveLabourRate } from "../lib/estimate/rates";
 import { getCatalogueEntry } from "../lib/rates/catalogue";
 import { editableProductivityCatalogueKeys } from "../lib/rates/productivity-registry";
@@ -76,6 +78,14 @@ function ctx(
   } as unknown as EstimateContext;
 }
 
+const confirmedHoles = [
+  fact("deck.hole_shape", "circular"),
+  fact("deck.hole_diameter_mm", 350),
+  fact("deck.hole_depth_mm", 600),
+  fact("deck.hole_ground", "ordinary"),
+  fact("deck.hole_method", "hand"),
+];
+
 const base = [
   fact("deck.length_m", 6),
   fact("deck.width_m", 3.5),
@@ -87,7 +97,11 @@ const base = [
   fact("deck.concrete_to_supports", true),
 ];
 
-const sixteen = calculateDeck(ctx([...base, fact("deck.pile_or_post_count", 16)]), wa());
+const sixteen = calculateDeck(
+  ctx([...base, fact("deck.pile_or_post_count", 16), ...confirmedHoles]),
+  wa()
+);
+const assumed = calculateDeck(ctx([...base, fact("deck.pile_or_post_count", 16)]), wa());
 const hole = sixteen.lineItems.find((item) => item.label === "Hole excavation");
 const install = sixteen.lineItems.find((item) => item.label === "Pile/post installation");
 const place = sixteen.lineItems.find((item) => item.label === "Concrete placement");
@@ -122,13 +136,23 @@ check(
     hole.includedInTotal !== false
 );
 check(
-  "assumed 350 × 600 is labelled and bank volume is 0.92 m³",
-  sixteen.assumptions.some((text) => text.includes("Assumed circular hole 350 mm diameter × 600 mm deep")) &&
-    sixteen.assumptions.some((text) => text.includes("not measured")) &&
-    spoil?.quantity === 0.92 &&
+  "confirmed 350 × 600 bank volume is about 0.924 m³",
+  sixteen.assumptions.some((text) => text.includes("Confirmed circular hole 350 mm diameter × 600 mm deep")) &&
+    spoil?.quantity === 0.924 &&
     (spoil?.notes ?? "").includes("m³ bank") &&
     !(spoil?.notes ?? "").includes("3×") &&
-    !sixteen.assumptions.some((text) => /×\s*3/.test(text) && /swell/i.test(text) && /applied/.test(text) === false)
+    sixteen.assumptions.some((text) => text.includes("3× swell note is not applied"))
+);
+const assumedHole = assumed.lineItems.find((item) => item.label === "Hole excavation");
+const assumedSpoil = assumed.lineItems.find((item) => item.label === "Post-hole spoil destination");
+check(
+  "an assumed hole is labelled and does not take the 0.50 h starter",
+  assumed.assumptions.some((text) => text.includes("Assumed circular hole 350 mm diameter × 600 mm deep")) &&
+    assumed.assumptions.some((text) => text.includes("not measured")) &&
+    assumedHole?.includedInTotal === false &&
+    assumedHole?.productivityRate == null &&
+    assumedSpoil?.quantity === 0.924 &&
+    assumedHole?.holeDraft?.needsConfirmation === true
 );
 check(
   "unknown spoil is Pricing Required and demolition is absent",
@@ -140,7 +164,7 @@ check(
 );
 
 const restricted = calculateDeck(
-  ctx([...base, fact("deck.pile_or_post_count", 16)], [], "restricted"),
+  ctx([...base, fact("deck.pile_or_post_count", 16), ...confirmedHoles], [], "restricted"),
   wa()
 );
 const restrictedHole = restricted.lineItems.find((item) => item.label === "Hole excavation");
@@ -152,7 +176,7 @@ check(
 
 const companyLabour = calculateDeck(
   ctx(
-    [...base, fact("deck.pile_or_post_count", 16)],
+    [...base, fact("deck.pile_or_post_count", 16), ...confirmedHoles],
     [rate({ item_key: "labour.carpenter.hour", cost_rate: 80, rate_type: "labour", unit: "hour" })]
   ),
   wa()
@@ -211,10 +235,10 @@ check("zero holes add no money", none.spoilLines.length === 0 && none.productivi
 const one = planDeckHoleExcavation({ facts: [], workAreaId: "deck", holeCount: 1 });
 const oneVolume = circularBankVolumeM3(350, 600, 1);
 check(
-  "one assumed hole is 0.5 h and its own bank volume",
-  one.productivity?.hoursPerHole === 0.5 &&
+  "one assumed hole does not take the starter and keeps its bank volume",
+  one.productivity?.applies === false &&
     one.geometry?.bankVolumeM3 === oneVolume.totalM3 &&
-    oneVolume.totalM3 === 0.06
+    oneVolume.totalM3 === 0.058
 );
 
 const sized = circularBankVolumeM3(300, 800, 16);
@@ -225,7 +249,7 @@ const other = planDeckHoleExcavation({
 });
 check(
   "300 × 800 mm changes the bank volume",
-  other.geometry?.bankVolumeM3 === sized.totalM3 && sized.totalM3 !== 0.92
+  other.geometry?.bankVolumeM3 === sized.totalM3 && sized.totalM3 !== 0.924
 );
 
 const footings = planDeckHoleExcavation({
@@ -261,7 +285,7 @@ check(
   "off-site spoil splits haulage and tip when neither is priced",
   offSite.spoilLines.length === 2 &&
     offSite.spoilLines.every((line) => line.kind === "pricing_required") &&
-    offSite.spoilLines.every((line) => line.quantityM3 === 0.92)
+    offSite.spoilLines.every((line) => line.quantityM3 === 0.924)
 );
 
 const allIn = planDeckHoleExcavation({
@@ -339,6 +363,126 @@ check(
     getCatalogueEntry("labour.general.hour")?.defaultSellRate == null &&
     getCatalogueEntry("labour.apprentice.hour")?.defaultCostRate === 40
 );
+
+const machine = planDeckHoleExcavation({
+  facts: [...confirmedHoles.filter((row) => row.key !== "deck.hole_method"), fact("deck.hole_method", "machine")],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check(
+  "a machine dig does not take the 0.50 h starter",
+  machine.productivity?.applies === false && machine.productivity.sourceType === "missing"
+);
+const rock = planDeckHoleExcavation({
+  facts: [...confirmedHoles.filter((row) => row.key !== "deck.hole_ground"), fact("deck.hole_ground", "rock")],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check("rock does not take the 0.50 h starter", rock.productivity?.applies === false);
+const water = planDeckHoleExcavation({
+  facts: [
+    ...confirmedHoles.filter((row) => row.key !== "deck.hole_ground"),
+    fact("deck.hole_ground", "groundwater"),
+  ],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check("groundwater does not take the 0.50 h starter", water.productivity?.applies === false);
+const jobHours = planDeckHoleExcavation({
+  facts: [...rock.assumptions.length ? confirmedHoles.filter((row) => row.key !== "deck.hole_ground") : [], fact("deck.hole_ground", "rock"), fact("deck.hole_shape", "circular"), fact("deck.hole_diameter_mm", 350), fact("deck.hole_depth_mm", 600), fact("deck.hole_method", "hand"), fact("deck.hole_job_hours_per_hole", 1.25)],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check(
+  "an explicit job hours figure is used outside ordinary ground",
+  jobHours.productivity?.applies === true && jobHours.productivity.hoursPerHole === 1.25
+);
+const rect = rectangularBankVolumeM3(400, 400, 600, 16);
+const rectangular = planDeckHoleExcavation({
+  facts: [
+    fact("deck.hole_shape", "rectangular"),
+    fact("deck.hole_length_mm", 400),
+    fact("deck.hole_width_mm", 400),
+    fact("deck.hole_depth_mm", 600),
+    fact("deck.hole_ground", "ordinary"),
+    fact("deck.hole_method", "hand"),
+    fact("deck.spoil_destination", "on_site"),
+  ],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check(
+  "rectangular bank volume is length × width × depth and has no removal charge",
+  rectangular.geometry?.bankVolumeM3 === rect.totalM3 &&
+    rect.totalM3 === 1.536 &&
+    rectangular.spoilLines.length === 0 &&
+    rectangular.productivity?.applies === false
+);
+const override = calculateDeck(
+  ctx([
+    ...base,
+    fact("deck.pile_or_post_count", 16),
+    ...confirmedHoles,
+    fact("deck.hole_count", 12),
+    fact("deck.hole_count_reason", "Two posts share a pad"),
+    fact("deck.spoil_destination", "on_site"),
+  ]),
+  wa()
+);
+const overrideExcavation = override.lineItems.find((item) => item.label === "Hole excavation");
+const overrideInstall = override.lineItems.find((item) => item.label === "Pile/post installation");
+const overrideBags = override.lineItems.find((item) => item.unit === "bag" && item.category === "materials");
+check(
+  "a reasoned hole count is the only count used for holes, spoil, and concrete",
+  overrideExcavation?.quantity === 12 &&
+    overrideExcavation.labourHours === 6 &&
+    overrideInstall?.quantity === 16 &&
+    overrideBags?.quantity === 30 &&
+    !override.lineItems.some((item) => item.componentKey === "deck.spoil.haulage") &&
+    !override.lineItems.some((item) => item.componentKey === "deck.spoil.destination")
+);
+const savedStamp = sixteen.lineItems.find((item) => item.componentKey === "deck.hole.excavate")?.holeDraft;
+const stale = savedStamp
+  ? deckStatedCountConflict({
+      facts: [
+        fact("deck.pile_or_post_count", 16),
+        fact("deck.substructure_included", true),
+        ...confirmedHoles.filter((row) => row.key !== "deck.hole_depth_mm"),
+        fact("deck.hole_depth_mm", 800),
+      ],
+      lines: [
+        { componentKey: "deck.posts.install", label: "Pile/post installation", quantity: 16, unit: "ea" },
+        {
+          componentKey: "deck.hole.excavate",
+          label: "Hole excavation",
+          quantity: 16,
+          unit: "hole",
+          holeDraft: savedStamp,
+        },
+      ],
+    })
+  : null;
+check(
+  "a changed depth makes the saved draft stale",
+  stale != null &&
+    (stale?.summary ?? "").includes("Update this estimate") &&
+    (stale?.changes.some((change) => change.label === "Post-hole spoil") ?? false),
+  stale?.summary
+);
+const unchanged = savedStamp
+  ? deckStatedCountConflict({
+      facts: [
+        fact("deck.pile_or_post_count", 16),
+        fact("deck.substructure_included", true),
+        ...confirmedHoles,
+      ],
+      lines: [
+        { componentKey: "deck.posts.install", quantity: 16, unit: "ea" },
+        { componentKey: "deck.hole.excavate", quantity: 16, unit: "hole", holeDraft: savedStamp },
+      ],
+    })
+  : { summary: "missing" };
+check("a confirmed unchanged hole draft is not stale", unchanged == null);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

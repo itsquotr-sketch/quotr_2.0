@@ -9,8 +9,14 @@ import {
   newSubstructureIncluded,
   purchasedConcreteBags,
 } from "@/lib/estimate/deck-scope-2c";
+import {
+  deckHoleStampsDiffer,
+  describeDeckHoleStamp,
+  planDeckHoleExcavation,
+} from "@/lib/estimate/deck-hole-excavation";
 import { getNumberFact, round2 } from "@/lib/estimate/facts";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import type { DeckHoleDraftStamp } from "@/lib/estimate/line-item-metadata";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type DeckSavedLine = {
@@ -19,6 +25,7 @@ export type DeckSavedLine = {
   readonly quantity?: number | null;
   readonly unit?: string | null;
   readonly labourHours?: number | null;
+  readonly holeDraft?: DeckHoleDraftStamp | null;
 };
 
 export type DeckQuantityChange = {
@@ -89,16 +96,15 @@ export function deckStatedCountConflict(input: {
 
   const install = line(input.lines, INSTALL_KEY, "Pile/post installation");
   const savedCount = finite(install?.quantity);
-  if (savedCount == null || close(savedCount, authoritative)) return null;
-
-  const changes: DeckQuantityChange[] = [
-    {
-      label: "Pile/post installation",
-      unit: "ea",
-      from: savedCount,
-      to: authoritative,
-    },
-  ];
+  const changes: DeckQuantityChange[] = [];
+  let countSummary: string | null = null;
+  if (savedCount != null && !close(savedCount, authoritative)) {
+  changes.push({
+    label: "Pile/post installation",
+    unit: "ea",
+    from: savedCount,
+    to: authoritative,
+  });
   const holes = line(input.lines, HOLE_KEY, "Hole excavation");
   const savedHoles = finite(holes?.quantity);
   if (savedHoles != null && !close(savedHoles, authoritative)) {
@@ -158,12 +164,70 @@ export function deckStatedCountConflict(input: {
   const reason = layoutConfirmed
     ? "The confirmed bearer layout replaces the stated pile count."
     : "The stated pile count replaces the spacing layout saved on this draft.";
+  countSummary = `Recalculate this draft before Pricing. ${reason} ${detail}. Nothing is changed until you update the estimate.`;
+  }
+
+  const holes = line(input.lines, HOLE_KEY, "Hole excavation");
+  const savedStamp = holes?.holeDraft ?? null;
+  let holeSummary: string | null = null;
+  if (savedStamp) {
+    const plan = planDeckHoleExcavation({
+      facts,
+      workAreaId,
+      holeCount: authoritative,
+    });
+    const next = plan.draftStamp;
+    if (plan.count.reasonMissing && plan.count.typedCount != null) {
+      holeSummary = `Hole count ${plan.count.typedCount} needs a short reason before it can differ from the post count ${plan.count.postCount}. Add the reason, then update the estimate. Nothing is changed until you update the estimate.`;
+    } else if (next && deckHoleStampsDiffer(savedStamp, next)) {
+      if (
+        savedStamp.count !== next.count &&
+        !changes.some((change) => change.label === "Hole excavation")
+      ) {
+        changes.push({
+          label: "Hole excavation",
+          unit: "hole",
+          from: savedStamp.count,
+          to: next.count,
+        });
+      }
+      if ((savedStamp.bankM3 ?? 0) !== (next.bankM3 ?? 0)) {
+        changes.push({
+          label: "Post-hole spoil",
+          unit: "m³",
+          from: savedStamp.bankM3 ?? 0,
+          to: next.bankM3 ?? 0,
+        });
+      }
+      const bagsEach = concreteBagsPerHole(facts, workAreaId);
+      const nextBags = purchasedConcreteBags(next.count, bagsEach);
+      const bags = line(input.lines, BAG_KEY, "Post-hole concrete");
+      const savedBags = finite(bags?.quantity);
+      if (
+        savedBags != null &&
+        !close(savedBags, nextBags) &&
+        !changes.some((change) => change.label === "Post-hole concrete")
+      ) {
+        changes.push({
+          label: "Post-hole concrete",
+          unit: "bag",
+          from: savedBags,
+          to: nextBags,
+        });
+      }
+      holeSummary = `Update this estimate before Pricing. Post holes changed. Was ${describeDeckHoleStamp(savedStamp)}. Now ${describeDeckHoleStamp(next)}. Nothing is changed until you update the estimate.`;
+    } else if (next?.needsConfirmation) {
+      holeSummary = `Confirm or change these before using the estimate. ${describeDeckHoleStamp(next)}. An assumed hole is not measured and is not priced until you confirm it and update the estimate.`;
+    }
+  }
+
+  if (!countSummary && !holeSummary) return null;
   return {
     statedCount: Math.round(stated),
     authoritativeCount: authoritative,
-    savedCount,
+    savedCount: savedCount ?? authoritative,
     changes,
-    summary: `Recalculate this draft before Pricing. ${reason} ${detail}. Nothing is changed until you update the estimate.`,
+    summary: [countSummary, holeSummary].filter(Boolean).join(" "),
   };
 }
 
@@ -185,6 +249,7 @@ export function deckStatedCountConflictFromPersisted(input: {
         quantity: parsed.metadata.quantity,
         unit: parsed.metadata.unit,
         labourHours: parsed.metadata.labourHours,
+        holeDraft: parsed.metadata.holeDraft,
       };
     }),
   });

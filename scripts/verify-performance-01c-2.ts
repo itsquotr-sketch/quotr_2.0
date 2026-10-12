@@ -449,7 +449,7 @@ const realEstimate = calculateEstimate({
 } as unknown as EstimateContext);
 check(
   "REAL-JOB-01 recommendedSell unchanged",
-  realEstimate.recommendedSell === 9651.16,
+  realEstimate.recommendedSell === 8976.16,
   `got ${realEstimate.recommendedSell}`
 );
 

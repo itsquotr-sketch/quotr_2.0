@@ -80,7 +80,15 @@ const SECTIONS: Record<string, DeckQuestionSection> = {
   "deck.hole_diameter_mm": "structure",
   "deck.hole_depth_mm": "structure",
   "deck.hole_ground": "structure",
+  "deck.hole_length_mm": "structure",
+  "deck.hole_width_mm": "structure",
+  "deck.hole_shape": "structure",
+  "deck.hole_method": "structure",
+  "deck.hole_count": "structure",
+  "deck.hole_count_reason": "structure",
+  "deck.hole_job_hours_per_hole": "structure",
   "deck.spoil_leaves_site": "structure",
+  "deck.spoil_destination": "structure",
   "deck.pile_or_post_count": "structure",
   "deck.concrete_to_supports": "structure",
   "deck.concrete_bags_per_hole": "structure",
@@ -148,8 +156,16 @@ export function deckFactIsRelevant(
       return showConcrete(ctx);
     case "deck.hole_diameter_mm":
     case "deck.hole_depth_mm":
+    case "deck.hole_length_mm":
+    case "deck.hole_width_mm":
+    case "deck.hole_shape":
     case "deck.hole_ground":
+    case "deck.hole_method":
+    case "deck.hole_count":
+    case "deck.hole_count_reason":
+    case "deck.hole_job_hours_per_hole":
     case "deck.spoil_leaves_site":
+    case "deck.spoil_destination":
       return showConcrete(ctx);
     case "deck.pile_or_post_replacement_required":
       return pileReplacementApplicable({

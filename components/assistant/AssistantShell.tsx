@@ -2164,7 +2164,7 @@ export function AssistantShell({
       key: string;
       label: string;
       value: string | number;
-      valueType: "number" | "select";
+      valueType: "number" | "select" | "text";
     }) => {
       const requestSeq = ++factMutationSeqRef.current;
       tagOverlayFactSeq(

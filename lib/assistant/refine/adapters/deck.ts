@@ -16,11 +16,6 @@ import {
   classifyDeckStepDimensionForRefine,
   DECK_STEP_DIMENSION_FACT_KEYS,
 } from "@/lib/estimate/deck-steps-physical";
-import {
-  DECK_HOLE_DEPTH_FACT,
-  DECK_HOLE_DIAMETER_FACT,
-  DECK_HOLE_GROUND_FACT,
-} from "@/lib/estimate/deck-hole-excavation";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import type {
   ComposeRefineInput,
@@ -214,62 +209,6 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         write: null,
         consumedByCalculator: true,
       });
-    }
-
-    if (getBooleanFact([...facts], workAreaId, "deck.substructure_included") === true) {
-      const holeQuestions: Array<{
-        factKey: string;
-        label: string;
-        question: string;
-        inputType: "number" | "select";
-        unit?: string;
-        options?: readonly string[];
-      }> = [
-        {
-          factKey: DECK_HOLE_DIAMETER_FACT,
-          label: "Hole diameter",
-          question: "Dug hole diameter (mm)?",
-          inputType: "number",
-          unit: "mm",
-        },
-        {
-          factKey: DECK_HOLE_DEPTH_FACT,
-          label: "Hole depth",
-          question: "Dug hole depth (mm)?",
-          inputType: "number",
-          unit: "mm",
-        },
-        {
-          factKey: DECK_HOLE_GROUND_FACT,
-          label: "Hole ground",
-          question: "What ground are the post holes in?",
-          inputType: "select",
-          options: ["ordinary", "unsupported"],
-        },
-      ];
-      for (const row of holeQuestions) {
-        if (known(facts, workAreaId, row.factKey, briefText)) continue;
-        out.push({
-          id: `refine:${workAreaId}:${row.factKey}`,
-          group: "structure",
-          tier: "high_value",
-          workAreaId,
-          workAreaName,
-          workAreaType: "deck",
-          factKey: row.factKey,
-          constraintKey: null,
-          questionKey: row.factKey,
-          label: row.label,
-          question: row.question,
-          inputType: row.inputType,
-          unit: row.unit,
-          options: row.options,
-          writeTarget: "FACT",
-          write: null,
-          consumedByCalculator: true,
-          assumed: true,
-        });
-      }
     }
 
     return out;

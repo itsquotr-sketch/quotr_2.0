@@ -109,7 +109,18 @@ const base = [
 ];
 
 const stated = calculateDeck(
-  ctx([...base, fact("deck.pile_or_post_count", 16)], [companyConcrete(0.7)]),
+  ctx(
+    [
+      ...base,
+      fact("deck.pile_or_post_count", 16),
+      fact("deck.hole_shape", "circular"),
+      fact("deck.hole_diameter_mm", 350),
+      fact("deck.hole_depth_mm", 600),
+      fact("deck.hole_ground", "ordinary"),
+      fact("deck.hole_method", "hand"),
+    ],
+    [companyConcrete(0.7)]
+  ),
   wa()
 );
 const spacing = calculateDeck(ctx(base, [companyConcrete(0.7)]), wa());
@@ -186,7 +197,7 @@ check(
   "unknown spoil stays Pricing Required and out of the total",
   spoil?.includedInTotal === false &&
     spoil?.rateSourceType === "missing" &&
-    spoil?.quantity === 0.92 &&
+    spoil?.quantity === 0.924 &&
     (spoil?.recommendedCost ?? 0) === 0
 );
 const holeNotes = spoil ? buildLineItemNotes(spoil) : null;
@@ -434,7 +445,15 @@ console.log(
   `disposable update materials $${beforeMaterials.toFixed(2)} → $${afterMaterials.toFixed(2)}; labour $${beforeLabour.toFixed(2)} → $${afterLabour.toFixed(2)}; sell $${beforeSell.toFixed(2)} → $${afterSell.toFixed(2)}; GST $${afterGst.toFixed(2)}`
 );
 const clearedConflict = deckStatedCountConflict({
-  facts: [...base, fact("deck.pile_or_post_count", 16)],
+  facts: [
+    ...base,
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.hole_shape", "circular"),
+    fact("deck.hole_diameter_mm", 350),
+    fact("deck.hole_depth_mm", 600),
+    fact("deck.hole_ground", "ordinary"),
+    fact("deck.hole_method", "hand"),
+  ],
   lines: stated.lineItems,
 });
 const clearedOverview = projectEstimateOverview({

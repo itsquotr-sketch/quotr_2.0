@@ -125,6 +125,7 @@ export type EstimateLineItemInput = {
   notes?: string;
   /** Short builder-facing material identity; preferred over long notes in Builder Review. */
   identitySummary?: string;
+  holeDraft?: import("@/lib/estimate/line-item-metadata").DeckHoleDraftStamp;
   materialBuildUp?: MaterialBuildUpEntry;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
