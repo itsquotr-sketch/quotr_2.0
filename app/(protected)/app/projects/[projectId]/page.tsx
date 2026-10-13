@@ -41,7 +41,7 @@ export const runtime = "nodejs";
 
 type ProjectPageProps = {
   params: Promise<{ projectId: string }>;
-  searchParams: Promise<{ estimate?: string; updateEstimate?: string }>;
+  searchParams: Promise<{ estimate?: string; updateEstimate?: string; reviewProductivity?: string }>;
 };
 
 export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
@@ -164,6 +164,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
         canUploadFiles={canUploadFiles}
         canRunEstimates={canRunEstimates}
         initialEstimateSection={parseEstimateSection(query.estimate)}
+        initialReviewProductivity={query.reviewProductivity === "1"}
       />
       {hasEstimate || tabContext.hasEstimate ? (
         <div className="mt-3" data-post-estimate-guidance="true">

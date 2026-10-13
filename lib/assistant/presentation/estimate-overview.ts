@@ -45,6 +45,7 @@ export type EstimateOverviewPrimary =
   | "continue_information"
   | "complete_details"
   | "regenerate"
+  | "review_productivity"
   | "continue_pricing";
 
 export type EstimateOverviewActionGroup =
@@ -200,6 +201,7 @@ const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
   continue_information: "Continue entering information",
   complete_details: "Complete required Details",
   regenerate: "Regenerate estimate",
+  review_productivity: "Review Deck productivity",
   continue_pricing: "Continue to Pricing",
 };
 
@@ -722,9 +724,11 @@ export function projectEstimateOverview(
       : "continue_information"
     : conflictStatus === "Needs details"
       ? "complete_details"
-      : input.isStale || conflictStatus === "Needs updating"
-        ? "regenerate"
-        : "continue_pricing";
+      : productivityReview && !statedCountConflict
+        ? "review_productivity"
+        : input.isStale || conflictStatus === "Needs updating"
+          ? "regenerate"
+          : "continue_pricing";
 
   const pricingCreationBlocked =
     !input.hasEstimate || input.isStale || Boolean(statedCountConflict) || Boolean(productivityReview);

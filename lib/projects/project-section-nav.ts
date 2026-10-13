@@ -34,7 +34,13 @@ export function stageStatusText(stage: WorkflowStageModel): string {
 
 export function pricingLockReason(stage: WorkflowStageModel): string | null {
   if (!stage.locked) return null;
-  if (stage.detail === "Needs details" || stage.detail === "Needs updating") return stage.detail;
+  if (
+    stage.detail === "Needs details" ||
+    stage.detail === "Needs updating" ||
+    stage.detail === "Review productivity"
+  ) {
+    return stage.detail;
+  }
   if (stage.detail.startsWith("Recalculate this draft")) return "Needs updating";
   return "Complete the Estimate first";
 }

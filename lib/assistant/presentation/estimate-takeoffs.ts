@@ -13,7 +13,6 @@ import type {
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
 import {
   formatLabourHours,
-  formatProductivity,
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
 import {
@@ -23,6 +22,11 @@ import {
   LABOURER_LABOUR_RATE_KEY,
 } from "@/lib/estimate/labour-trade-mapping";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
+import {
+  deckProductivityPhrase,
+  parseScopeReview,
+  scopeReviewDisplay,
+} from "@/lib/estimate/deck-productivity-scope";
 
 export const TAKEOFF_PRICING_EXPLANATION =
   "This price is completed in Pricing.";
@@ -64,6 +68,9 @@ export type TakeoffRow = {
   readonly hours: string | null;
   readonly hourlyCost: string | null;
   readonly productivity: string | null;
+  readonly reviewNote: string | null;
+  readonly pricedHours: number | null;
+  readonly heldHours: number | null;
   readonly source: string | null;
   readonly pricingRequired: boolean;
   readonly shared: boolean;
@@ -94,6 +101,7 @@ export type LabourTakeoffModel = {
   readonly lineCount: number;
   readonly knownHours: string | null;
   readonly knownHoursLabel: "Known labour hours" | "Previous labour hours";
+  readonly heldHours: string | null;
   readonly knownCost: string | null;
   readonly knownCostLabel: "Known labour cost" | "Previous labour cost";
   readonly pricingRequiredCount: number;
@@ -236,20 +244,29 @@ function labourRateIdentity(itemKey: string | null | undefined): {
 }
 
 function storedProductivityBasis(line: BuilderReviewPricedLine): string | null {
-  const summary = line.sourceLine.identitySummary?.trim() ?? "";
-  if (summary && /\bh\//.test(summary)) return summary;
+  const component = line.componentKey ?? line.sourceLine.componentKey ?? "";
   const rate = line.sourceLine.productivityRate;
   const unit = line.sourceLine.productivityUnit ?? line.unit;
-  if (rate != null && rate > 0 && unit) {
-    return `${formatProductivity(rate)} h/${unit}`;
+  if (
+    rate != null &&
+    rate > 0 &&
+    (component === "deck.posts.install" ||
+      component === "deck.hole.excavate" ||
+      component === "deck.concrete.place")
+  ) {
+    return deckProductivityPhrase(rate, component, unit);
   }
+  const summary = line.sourceLine.identitySummary?.trim() ?? "";
+  if (summary && /\bh\//.test(summary)) return summary;
   return null;
 }
 
 function presentRow(placed: PlacedLine): TakeoffRow {
   const { line, group } = placed;
   const required = pricingRequired(line, group);
-  const cost = group?.costHidden ? null : knownAmount(line, required);
+  const reviewNote = scopeReviewDisplay(line.sourceLine.notes);
+  const held = Boolean(parseScopeReview(line.sourceLine.notes));
+  const cost = group?.costHidden || held ? null : knownAmount(line, required);
   const hours =
     line.labourHours != null && line.labourHours > 0 ? line.labourHours : null;
   const unitCost =
@@ -257,6 +274,10 @@ function presentRow(placed: PlacedLine): TakeoffRow {
       ? formatCurrency(line.costRate)
       : null;
   const labour = isLabourLine(line);
+  const hourly =
+    labour && line.costRate != null && line.costRate > 0
+      ? `${formatCurrency(line.costRate)}/h`
+      : null;
   const identity = labour
     ? null
     : splitStoredIdentity(line.label, line.sourceLine.identitySummary ?? line.specification);
@@ -281,14 +302,22 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     unit: line.unit,
     unitCost: labour ? null : unitCost,
     total: money(cost),
-    hours: hours == null ? null : `${formatLabourHours(hours)} hrs`,
-    hourlyCost: labour ? unitCost : null,
+    hours:
+      hours == null
+        ? null
+        : held
+          ? `${formatLabourHours(hours)} h awaiting review`
+          : `${formatLabourHours(hours)} hrs`,
+    hourlyCost: labour ? hourly : null,
     productivity: line.productivityLabel,
     source: sourceLabel(line, required),
     pricingRequired: required,
+    reviewNote,
     shared: placed.shared,
     knownCost: cost,
-    knownHours: hours,
+    pricedHours: held ? null : hours,
+    heldHours: held ? hours : null,
+    knownHours: held ? null : hours,
   };
 }
 
@@ -400,7 +429,7 @@ function groupRows(rows: readonly TakeoffRow[]): TakeoffGroup[] {
   return groups;
 }
 
-function sumKnown(rows: readonly TakeoffRow[], key: "knownCost" | "knownHours"): number | null {
+function sumKnown(rows: readonly TakeoffRow[], key: "knownCost" | "pricedHours" | "heldHours"): number | null {
   let total = 0;
   let any = false;
   for (const row of rows) {
@@ -436,12 +465,14 @@ export function projectLabourTakeoff(view: BuilderReviewView): LabourTakeoffMode
     .map(presentRow);
   const stale = view.overview.isStale;
   const knownCost = sumKnown(rows, "knownCost");
-  const knownHours = sumKnown(rows, "knownHours");
+  const knownHours = sumKnown(rows, "pricedHours");
+  const heldHours = sumKnown(rows, "heldHours");
   return {
     title: "Labour takeoff",
     lineCount: rows.length,
     knownHours: knownHours == null ? null : `${formatLabourHours(knownHours)} hrs`,
     knownHoursLabel: stale ? "Previous labour hours" : "Known labour hours",
+    heldHours: heldHours == null ? null : `${formatLabourHours(heldHours)} h awaiting review`,
     knownCost: money(knownCost),
     knownCostLabel: stale ? "Previous labour cost" : "Known labour cost",
     pricingRequiredCount: rows.filter((row) => row.pricingRequired).length,

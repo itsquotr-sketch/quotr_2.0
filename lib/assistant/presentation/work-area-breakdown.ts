@@ -16,7 +16,7 @@ import {
   formatLabourHours,
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
-import { scopeReviewDisplay, parseScopeReview } from "@/lib/estimate/deck-productivity-scope";
+import { scopeReviewDisplay, parseScopeReview, deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 
 export const WORK_AREA_PRICING_EXPLANATION =
@@ -62,6 +62,9 @@ export type WorkAreaBreakdownLine = {
   readonly quantity: string | null;
   readonly unit: string | null;
   readonly rate: string | null;
+  readonly hourlyCost: string | null;
+  readonly productivity: string | null;
+  readonly projectedHours: string | null;
   readonly total: string | null;
   readonly source: string | null;
   readonly pricingRequired: boolean;
@@ -170,19 +173,40 @@ function presentLine(
 ): WorkAreaBreakdownLine {
   const pricingRequired = lineIsPricingRequired(line, group);
   const hideCost = pricingRequired || Boolean(group?.costHidden) || line.recommendedCost <= 0;
-  const rate =
-    !pricingRequired && line.costRate != null && line.costRate > 0
+  const review = parseScopeReview(line.sourceLine.notes);
+  const labour = line.sourceLine.category === "labour";
+  const hourlyCost =
+    labour && line.costRate != null && line.costRate > 0
+      ? `${formatCurrency(line.costRate)}/h`
+      : null;
+  const productivity =
+    labour && line.sourceLine.productivityRate != null && line.sourceLine.productivityRate > 0
+      ? deckProductivityPhrase(
+          line.sourceLine.productivityRate,
+          line.componentKey ?? line.sourceLine.componentKey,
+          line.sourceLine.productivityUnit ?? line.unit
+        )
+      : null;
+  const projectedHours =
+    review && line.labourHours != null && line.labourHours > 0
+      ? `${line.labourHours} h awaiting review`
+      : null;
+  const rate = labour
+    ? null
+    : !pricingRequired && line.costRate != null && line.costRate > 0
       ? line.unit
         ? `${formatCurrency(line.costRate)} / ${line.unit}`
         : formatCurrency(line.costRate)
       : null;
-  const review = parseScopeReview(line.sourceLine.notes);
   return {
     id: line.id,
     description: line.label,
     quantity: line.quantity == null ? null : formatQuantity(line.quantity),
     unit: line.unit,
     rate,
+    hourlyCost,
+    productivity,
+    projectedHours,
     total: hideCost ? null : formatCurrency(line.recommendedCost),
     source: sourceLabel(line, pricingRequired),
     pricingRequired,
@@ -240,9 +264,18 @@ function groupsFrom(
 }
 
 function labourHoursLabel(lines: readonly LineRef[]): string | null {
-  const hours = lines.reduce((sum, row) => sum + (row.line.labourHours ?? 0), 0);
-  if (!Number.isFinite(hours) || hours <= 0) return null;
-  return `${formatLabourHours(hours)} hrs`;
+  let priced = 0;
+  let held = 0;
+  for (const row of lines) {
+    const hours = row.line.labourHours ?? 0;
+    if (!(hours > 0)) continue;
+    if (parseScopeReview(row.line.sourceLine.notes)) held += hours;
+    else priced += hours;
+  }
+  const parts: string[] = [];
+  if (priced > 0) parts.push(`${formatLabourHours(priced)} hrs`);
+  if (held > 0) parts.push(`${formatLabourHours(held)} h awaiting review`);
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function compositionLabel(lines: readonly LineRef[]): string | null {
@@ -351,7 +384,8 @@ function presentCard(
     .map((row) => ({
       id: row.line.id,
       description: row.line.label,
-      detail: WORK_AREA_PRICING_EXPLANATION,
+      detail:
+        scopeReviewDisplay(row.line.sourceLine.notes) ?? WORK_AREA_PRICING_EXPLANATION,
     }));
 
   return {

@@ -312,7 +312,7 @@ check(
   "8 stored labour hours and costs are not recalculated",
   installRow?.hours === "6.00 hrs" &&
     installRow.total === "$400" &&
-    installRow.hourlyCost === "$50" &&
+    installRow.hourlyCost === "$50/h" &&
     installRow.hourlyCost !== "$67" &&
     installRow.total !== "$500"
 );

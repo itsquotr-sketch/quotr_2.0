@@ -235,7 +235,19 @@ import {
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-overview";
-import { productivityScopeReviewBlock } from "@/lib/estimate/deck-productivity-scope";
+import {
+  DECK_CONCRETE_CALIBRATION_REASON,
+  DECK_CONCRETE_CALIBRATION_TASK,
+  DECK_CONCRETE_PLACE_CONFIRM_FACT,
+  DECK_POSTS_CALIBRATION_REASON,
+  DECK_POSTS_CALIBRATION_TASK,
+  DECK_POSTS_INSTALL_CONFIRM_FACT,
+  deckProductivityPhrase,
+  parseScopeReview,
+  productivityScopeReviewBlock,
+} from "@/lib/estimate/deck-productivity-scope";
+import { formatLabourHours, formatQuantity } from "@/lib/estimate/builder-presentation-format";
+import { DeckProductivityReviewDialog } from "@/components/assistant/DeckProductivityReviewDialog";
 import { deckStatedCountConflict } from "@/lib/estimate/deck-stated-count-guard";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { deriveQuickEstimateConfidencePresentation } from "@/lib/assistant/presentation/quick-estimate-confidence";
@@ -271,6 +283,7 @@ type AssistantShellProps = {
   canUploadFiles?: boolean;
   canRunEstimates?: boolean;
   initialEstimateSection?: EstimatePresentationView;
+  initialReviewProductivity?: boolean;
 };
 
 type PendingAction =
@@ -319,6 +332,7 @@ export function AssistantShell({
   canUploadFiles = false,
   canRunEstimates = true,
   initialEstimateSection = "overview",
+  initialReviewProductivity = false,
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
@@ -486,6 +500,9 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
+  const [productivityReviewOpen, setProductivityReviewOpen] = useState(
+    initialReviewProductivity
+  );
   const [estimateView, setEstimateViewState] = useState<EstimatePresentationView>(
     initialEstimateSection
   );
@@ -2847,11 +2864,15 @@ export function AssistantShell({
     [estimate, jobPlanFacts]
   );
   const deckCountSummary = deckCountConflict?.summary ?? null;
+  const productivityReviewDetail = productivityScopeReviewBlock(
+    (estimate?.lineItems ?? []).map((item) => item.notes)
+  );
+  const stageReviewDetail = deckCountSummary ?? productivityReviewDetail;
   if (
     estimateNavProjection &&
-    estimateNavProjection.quantityConflictDetail !== deckCountSummary
+    estimateNavProjection.quantityConflictDetail !== stageReviewDetail
   ) {
-    estimateNavProjection.setQuantityConflictDetail(deckCountSummary);
+    estimateNavProjection.setQuantityConflictDetail(stageReviewDetail);
   }
   useEffect(() => {
     if (!canRunEstimates) {
@@ -2863,6 +2884,65 @@ export function AssistantShell({
     });
     return () => estimateNavProjection?.setEstimateUpdate(null);
   }, [canRunEstimates, estimateNavProjection, handleRegenerateEstimate]);
+
+  const productivityDecisions = useMemo(() => {
+    return (estimate?.lineItems ?? []).flatMap((item) => {
+      const parsed = parseScopeReview(item.notes);
+      if (!parsed || !item.workAreaId) return [];
+      const posts = parsed.factKey === DECK_POSTS_INSTALL_CONFIRM_FACT;
+      const concrete = parsed.factKey === DECK_CONCRETE_PLACE_CONFIRM_FACT;
+      if (!posts && !concrete) return [];
+      const hours = item.productivityRate ?? 0;
+      const quantity = item.quantity ?? 0;
+      return [
+        {
+          id: item.id,
+          workAreaId: item.workAreaId,
+          title: item.label,
+          storedHours: deckProductivityPhrase(
+            hours,
+            item.componentKey,
+            item.productivityUnit ?? item.unit
+          ),
+          task: posts ? DECK_POSTS_CALIBRATION_TASK : DECK_CONCRETE_CALIBRATION_TASK,
+          quantityLabel: posts
+            ? `${formatQuantity(quantity)} posts`
+            : `${formatQuantity(quantity)} bags`,
+          projectedHours: `${formatLabourHours(item.labourHours ?? 0)} h`,
+          reason: posts ? DECK_POSTS_CALIBRATION_REASON : DECK_CONCRETE_CALIBRATION_REASON,
+          factKey: parsed.factKey,
+          value: parsed.value,
+          jobFactKey: parsed.jobFactKey,
+        },
+      ];
+    });
+  }, [estimate]);
+
+  const confirmProductivityDecision = useCallback(
+    async (
+      decision: { workAreaId: string; jobFactKey: string },
+      key: string,
+      value: string
+    ) => {
+      try {
+        const result = await handleJobPlanSpecFact({
+          workAreaId: decision.workAreaId,
+          key,
+          label: key === decision.jobFactKey ? "Revised productivity" : "Productivity scope",
+          value,
+          valueType: "text",
+        });
+        if (result.error) return { error: result.error };
+        handleRegenerateEstimate();
+        return {};
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : "The productivity choice was not saved.",
+        };
+      }
+    },
+    [handleJobPlanSpecFact, handleRegenerateEstimate]
+  );
 
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
@@ -2895,9 +2975,7 @@ export function AssistantShell({
             : null,
         workAreaNames: workAreaLists.included,
         statedCountConflictDetail: deckCountConflict?.summary ?? null,
-        productivityReviewDetail: productivityScopeReviewBlock(
-          (estimate?.lineItems ?? []).map((item) => item.notes)
-        ),
+        productivityReviewDetail,
       });
 
   const estimateReviewActionable =
@@ -3244,6 +3322,11 @@ export function AssistantShell({
                       canRunEstimates &&
                       (displayEstimateStale || estimateOverview.primary === "regenerate")
                         ? handleRegenerateEstimate
+                        : undefined
+                    }
+                    onReviewProductivity={
+                      canRunEstimates && estimateOverview.primary === "review_productivity"
+                        ? () => setProductivityReviewOpen(true)
                         : undefined
                     }
                     onReviewEstimate={() => {
@@ -4173,6 +4256,13 @@ export function AssistantShell({
         ) : null}
       </div>
 
+      <DeckProductivityReviewDialog
+        open={productivityReviewOpen}
+        decisions={productivityDecisions}
+        pending={updatingEstimate}
+        onOpenChange={setProductivityReviewOpen}
+        onDecide={confirmProductivityDecision}
+      />
       <EstimateBreakdownModal
         estimate={estimate}
         open={breakdownOpen}

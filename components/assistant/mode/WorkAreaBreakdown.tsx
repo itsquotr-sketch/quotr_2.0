@@ -188,7 +188,17 @@ function LineRows({
             <Field label="Description" value={line.description} emphasize />
             <Field label="Quantity" value={line.quantity ?? "—"} />
             <Field label="Unit" value={line.unit ?? "—"} />
-            <Field label="Rate" value={line.rate ?? "—"} />
+            {line.hourlyCost ? (
+              <Field label="Hourly cost" value={line.hourlyCost} />
+            ) : (
+              <Field label="Rate" value={line.rate ?? "—"} />
+            )}
+            {line.productivity ? (
+              <Field label="Productivity" value={line.productivity} />
+            ) : null}
+            {line.projectedHours ? (
+              <Field label="Projected hours" value={line.projectedHours} />
+            ) : null}
             <Field label="Total" value={line.total ?? "—"} />
             {line.source ? (
               <div className="min-w-0 lg:text-left">

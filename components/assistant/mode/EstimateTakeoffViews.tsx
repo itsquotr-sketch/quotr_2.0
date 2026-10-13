@@ -265,7 +265,9 @@ function CompactTakeoffRow({
         .filter(Boolean)
         .join(" · ")
     : null;
-  const labourSummary = row.pricingRequired
+  const labourSummary = row.reviewNote
+    ? [row.hours, row.productivityBasis, row.hourlyCost].filter(Boolean).join(" · ")
+    : row.pricingRequired
     ? unpricedLabourStatus(
         row.quantity == null ? null : Number(row.quantity),
         row.unit
@@ -331,15 +333,19 @@ function CompactTakeoffRow({
               <Detail label="Labour role" value={row.workerType ?? "Not specified"} />
               <Detail label="Activity" value={row.activity ?? row.description} />
               <Detail label="Hours" value={row.hours ?? "—"} />
-              <Detail label="Productivity basis" value={row.productivityBasis ?? "—"} />
+              <Detail label="Productivity" value={row.productivityBasis ?? "—"} />
               <Detail label="Productivity source" value={row.productivitySource ?? "—"} />
-              <Detail label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
+              <Detail label="Hourly cost" value={row.hourlyCost ?? "—"} />
               <Detail label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
               <Detail label="Labour cost" value={money} />
               {row.pricedUsing ? <Detail label="Pricing basis" value={row.pricedUsing} /> : null}
             </>
           )}
-          {row.pricingRequired ? (
+          {row.reviewNote ? (
+            <p className="text-sm leading-5 text-foreground/80 min-[420px]:col-span-2">
+              {row.reviewNote}
+            </p>
+          ) : row.pricingRequired ? (
             <p className="text-sm leading-5 text-foreground/80 min-[420px]:col-span-2">
               {TAKEOFF_PRICING_EXPLANATION}
             </p>
@@ -396,7 +402,7 @@ function TakeoffRows({
         ) : (
           <>
             <span className="text-right">Hours</span>
-            <span>Productivity basis</span>
+            <span>Productivity</span>
             <span>Productivity source</span>
             <span className="text-right">Hourly cost</span>
             <span>Hourly-rate source</span>
@@ -449,23 +455,20 @@ function TakeoffRows({
                   <>
                     <Cell
                       label="Hours"
-                      value={
-                        row.pricingRequired
-                          ? unpricedLabourStatus(
-                              row.quantity == null ? null : Number(row.quantity),
-                              row.unit
-                            )
-                          : (row.hours ?? "—")
-                      }
+                      value={row.hours ?? "—"}
                     />
-                    <Cell label="Productivity basis" value={row.productivityBasis ?? "—"} />
+                    <Cell label="Productivity" value={row.productivityBasis ?? "—"} />
                     <Cell label="Productivity source" value={row.productivitySource ?? "—"} />
-                    <Cell label="Hourly cost" value={moneyCell(row, row.hourlyCost) ?? "—"} />
+                    <Cell label="Hourly cost" value={row.hourlyCost ?? "—"} />
                     <Cell label="Hourly-rate source" value={row.hourlyRateSource ?? "—"} />
                     <Cell label="Labour cost" value={moneyCell(row, row.total) ?? "—"} />
                   </>
                 )}
-                {row.pricingRequired ? (
+                {row.reviewNote ? (
+                  <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-8")}>
+                    {row.reviewNote}
+                  </p>
+                ) : row.pricingRequired ? (
                   <p className={cn("text-sm text-foreground/75", materials ? "lg:col-span-7" : "lg:col-span-8")}>
                     {TAKEOFF_PRICING_EXPLANATION}
                   </p>
@@ -665,6 +668,7 @@ export function LabourTakeoff({
   const model = projectLabourTakeoff(view);
   const facts: { label: string; value: string }[] = [];
   if (model.knownHours) facts.push({ label: model.knownHoursLabel, value: model.knownHours });
+  if (model.heldHours) facts.push({ label: "Hours awaiting review", value: model.heldHours });
   if (model.knownCost) facts.push({ label: model.knownCostLabel, value: model.knownCost });
   return (
     <TakeoffBoard

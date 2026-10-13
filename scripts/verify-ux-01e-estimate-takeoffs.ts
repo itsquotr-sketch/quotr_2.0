@@ -356,7 +356,7 @@ check(
   "6 labour hours and costs are not recalculated",
   labourRow?.hours === "6.00 hrs" &&
     labourRow.total === "$400" &&
-    labourRow.hourlyCost === "$50" &&
+    labourRow.hourlyCost === "$50/h" &&
     labourRow.productivity === "Quotr benchmark" &&
     labourModel.knownHours === "6.00 hrs" &&
     labourModel.knownCost === "$400" &&

@@ -17,6 +17,7 @@ import {
   type WorkflowStageModel,
 } from "@/lib/projects/workflow-orientation";
 import { cn } from "@/lib/utils";
+import { isDeckProductivityScopeDetail } from "@/lib/estimate/deck-productivity-scope";
 
 type ProjectSectionHeaderProps = ProjectWorkflowInput & {
   projectContext: string;
@@ -38,6 +39,10 @@ export function ProjectSectionHeader({
   const model = deriveProjectWorkflow(workflowInput);
   const quantityConflict = workflowInput.quantityConflictDetail?.trim() || null;
   const conflictStatus = quantityConflictStageStatus(quantityConflict);
+  const productivityReview = isDeckProductivityScopeDetail(quantityConflict);
+  const openProductivityReview = () => {
+    router.push(`/app/projects/${workflowInput.projectId}?reviewProductivity=1`);
+  };
   const estimate = stageById(model.stages, "estimate");
   const pricing = stageById(model.stages, "pricing");
   const quote = stageById(model.stages, "quote");
@@ -151,9 +156,11 @@ export function ProjectSectionHeader({
             current={pricing.viewing}
             column="pricing"
             onCreate={
-              pricingNeedsUpdate || pricingCanCreate
-                ? () => setCreatePricingOpen(true)
-                : undefined
+              productivityReview
+                ? openProductivityReview
+                : pricingNeedsUpdate || pricingCanCreate
+                  ? () => setCreatePricingOpen(true)
+                  : undefined
             }
           />
           <Stage
@@ -215,6 +222,10 @@ export function ProjectSectionHeader({
               const next = sections.find((section) => section.id === value);
               if (!next || next.disabled) return;
               if (!requestsCurrent && next.id === workflowInput.activeTab) return;
+              if (next.id === "pricing" && productivityReview) {
+                openProductivityReview();
+                return;
+              }
               if (next.id === "pricing" && (pricingCanCreate || pricingNeedsUpdate)) {
                 setCreatePricingOpen(true);
                 return;
@@ -228,6 +239,7 @@ export function ProjectSectionHeader({
               const hint =
                 section.hint === "Needs details" ||
                 section.hint === "Needs updating" ||
+                section.hint === "Review productivity" ||
                 section.hint === "Complete the Estimate first"
                   ? section.hint
                   : "";

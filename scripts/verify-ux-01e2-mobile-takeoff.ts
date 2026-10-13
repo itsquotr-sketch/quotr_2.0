@@ -94,7 +94,7 @@ check(
   takeoff.includes('label="Work Area"') &&
     takeoff.includes('label="Specification"') &&
     takeoff.includes('label="Unit cost"') &&
-    takeoff.includes('label="Productivity basis"') &&
+    takeoff.includes('label="Productivity"') &&
     takeoff.includes('label="Productivity source"') &&
     takeoff.includes('label="Hourly cost"') &&
     takeoff.includes('label="Hourly-rate source"') &&

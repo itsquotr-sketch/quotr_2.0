@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { createPricingFromEstimate } from "@/lib/pricing/actions";
+import { isDeckProductivityScopeDetail } from "@/lib/estimate/deck-productivity-scope";
 
 type CreateFinalPricingDialogProps = {
   projectId: string;
@@ -43,6 +44,12 @@ export function CreateFinalPricingDialog({
   } | null>(null);
 
   const blocked = Boolean(blockedDetail?.trim());
+  const productivityReview = isDeckProductivityScopeDetail(blockedDetail);
+
+  const openReview = () => {
+    onOpenChange(false);
+    router.push(`/app/projects/${projectId}?reviewProductivity=1`);
+  };
 
   const handleUpdate = () => {
     onOpenChange(false);
@@ -88,12 +95,18 @@ export function CreateFinalPricingDialog({
       <DialogContent showCloseButton className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {blocked ? "This estimate needs updating" : "Continue to Pricing?"}
+            {productivityReview
+              ? "Review Deck productivity"
+              : blocked
+                ? "This estimate needs updating"
+                : "Continue to Pricing?"}
           </DialogTitle>
           <DialogDescription>
-            {blocked
-              ? blockedDetail
-              : "Pricing is where you decide what to charge. Quotr’s estimate stays as the working recommendation. You can still adjust Work Area prices before creating a quote."}
+            {productivityReview
+              ? "Confirm each stored calibration for this job. The organisation rate stays unchanged."
+              : blocked
+                ? blockedDetail
+                : "Pricing is where you decide what to charge. Quotr’s estimate stays as the working recommendation. You can still adjust Work Area prices before creating a quote."}
           </DialogDescription>
         </DialogHeader>
         {error ? (
@@ -117,7 +130,11 @@ export function CreateFinalPricingDialog({
           >
             Cancel
           </Button>
-          {blocked ? (
+          {productivityReview ? (
+            <Button type="button" size="touch" onClick={openReview}>
+              Review Deck productivity
+            </Button>
+          ) : blocked ? (
             <Button
               type="button"
               size="touch"

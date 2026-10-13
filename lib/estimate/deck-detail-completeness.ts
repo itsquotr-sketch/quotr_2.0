@@ -159,9 +159,10 @@ export function deckDetailPanelPrompt(count: number): string {
 /** Stage cards use only this. The longer explanation stays in the workspace. */
 export function quantityConflictStageStatus(
   detail: string | null | undefined
-): "Needs details" | "Needs updating" | null {
+): "Needs details" | "Needs updating" | "Review productivity" | null {
   const text = detail?.trim() ?? "";
   if (!text) return null;
+  if (/stored deck productivity/i.test(text)) return "Review productivity";
   if (
     /provisional|before using the estimate|Confirm the concrete|Confirm or change/i.test(
       text

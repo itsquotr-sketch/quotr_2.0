@@ -7,6 +7,7 @@ import { EstimateCategoryHeader } from "@/components/ui/estimate-category-header
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { formatLabourHours } from "@/lib/estimate/builder-presentation-format";
+import { deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
 import type {
   BuilderReviewImprovement,
   BuilderReviewView,
@@ -601,11 +602,26 @@ export function BuilderReviewSurface({
                                       {child.quantity != null ? (
                                         <span className="mt-0.5 block text-muted-foreground">
                                           {formatQty(child.quantity, child.unit)}
-                                          {child.costRate != null
-                                            ? ` · ${formatCurrency(child.costRate)}${
-                                                child.unit ? `/${child.unit}` : ""
-                                              } · ${child.rateLabel}`
-                                            : ""}
+                                          {child.sourceLine.category === "labour" &&
+                                          child.costRate != null ? (
+                                            <>
+                                              {` · ${formatCurrency(child.costRate)}/h`}
+                                              {child.sourceLine.productivityRate != null
+                                                ? ` · ${deckProductivityPhrase(
+                                                    child.sourceLine.productivityRate,
+                                                    child.componentKey ?? child.sourceLine.componentKey,
+                                                    child.sourceLine.productivityUnit ?? child.unit
+                                                  )}`
+                                                : ""}
+                                              {` · ${child.rateLabel}`}
+                                            </>
+                                          ) : child.costRate != null ? (
+                                            ` · ${formatCurrency(child.costRate)}${
+                                              child.unit ? `/${child.unit}` : ""
+                                            } · ${child.rateLabel}`
+                                          ) : (
+                                            ""
+                                          )}
                                         </span>
                                       ) : null}
                                       {child.rateContext ? (

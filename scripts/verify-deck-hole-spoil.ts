@@ -30,6 +30,7 @@ import {
 import { deckStatedCountConflict, quoteCreationDecision } from "../lib/estimate/deck-stated-count-guard";
 import {
   DECK_PRODUCTIVITY_SCOPE_REVIEW,
+  deckProductivityPhrase,
   productivityScopeReviewBlock,
 } from "../lib/estimate/deck-productivity-scope";
 import { round2 } from "../lib/estimate/facts";
@@ -925,6 +926,15 @@ check(
     [{ id: "deck", type: "deck" }]
   )?.gapId === "dimensions" &&
     deckPostHoleControlId("deck", "dimensions") === "deck-hole-confirm-deck"
+);
+check(
+  "a productivity review is a short stage status and is not Ready",
+  quantityConflictStageStatus(
+    "Review the stored deck productivity before Pricing or a new Quote. The saved calibration is unchanged."
+  ) === "Review productivity" &&
+    deckProductivityPhrase(2, "deck.posts.install", "ea") === "2 h/post" &&
+    deckProductivityPhrase(0.7, "deck.concrete.place", "bag") === "0.7 h/bag" &&
+    deckProductivityPhrase(0.5, "deck.hole.excavate", "hole") === "0.5 h/hole"
 );
 check(
   "a provisional concrete block is Needs details, and a changed hole is Needs updating",

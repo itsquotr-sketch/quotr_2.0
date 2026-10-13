@@ -110,11 +110,51 @@ export function parseScopeReview(notes: string | null | undefined): {
   return { factKey, value, jobFactKey };
 }
 
+export const DECK_PRODUCTIVITY_REVIEW_DETAIL =
+  "Review the stored deck productivity before Pricing or a new Quote. The saved calibration is unchanged.";
+
+export const DECK_POSTS_CALIBRATION_TASK =
+  "Think about setting piles or posts for a typical 20 m² ground-level timber deck with normal access. Scenario: 20 m² timber deck · 9 supports · ground-level · normal access.";
+
+export const DECK_POSTS_CALIBRATION_REASON =
+  "The saved task does not record that excavation was excluded. Hole excavation is a separate operation, so confirm this rate is installation-only or enter a revised productivity.";
+
+export const DECK_CONCRETE_CALIBRATION_TASK =
+  "How would your crew normally mix and pour 20 bags of post-hole concrete (posts already set)? Scenario: 20 × 20 kg bags · posts already set · mix and place at the workface · normal access.";
+
+export const DECK_CONCRETE_CALIBRATION_REASON =
+  "It was saved against that fixed bag scenario, not this estimate's purchased bags. Confirm it applies to these bags or enter a revised productivity.";
+
+export function isDeckProductivityScopeDetail(
+  detail: string | null | undefined
+): boolean {
+  const text = detail?.trim() ?? "";
+  return text.includes("stored deck productivity") || text.includes(DECK_PRODUCTIVITY_SCOPE_REVIEW);
+}
+
+export function deckProductivityPhrase(
+  hoursPerUnit: number,
+  componentKey: string | null | undefined,
+  unit: string | null | undefined
+): string {
+  const rounded = Math.round(hoursPerUnit * 1000) / 1000;
+  const hours = Number.isInteger(rounded) ? String(rounded) : String(rounded);
+  const label =
+    componentKey === "deck.posts.install"
+      ? "post"
+      : componentKey === "deck.hole.excavate"
+        ? "hole"
+        : componentKey === "deck.concrete.place"
+          ? "bag"
+          : unit?.trim() || "unit";
+  return `${hours} h/${label}`;
+}
+
 export function productivityScopeReviewBlock(
   notes: readonly (string | null | undefined)[]
 ): string | null {
   if (!notes.some((row) => parseScopeReview(row))) return null;
-  return "Review the stored deck productivity before Pricing or a new Quote. The saved calibration is unchanged.";
+  return DECK_PRODUCTIVITY_REVIEW_DETAIL;
 }
 
 /** Read-only. A read failure does not invent a block and does not write the estimate. */

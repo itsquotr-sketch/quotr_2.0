@@ -31,6 +31,7 @@ type EstimateOverviewProps = {
   isRegenerating?: boolean;
   onCompleteDetails?: () => void;
   onRegenerate?: () => void;
+  onReviewProductivity?: () => void;
   onReviewEstimate?: () => void;
   onEditJob?: () => void;
   onViewBreakdown?: () => void;
@@ -130,6 +131,7 @@ export function EstimateOverview({
   isRegenerating = false,
   onCompleteDetails,
   onRegenerate,
+  onReviewProductivity,
   onReviewEstimate,
   onEditJob,
   onViewBreakdown,
@@ -150,12 +152,14 @@ export function EstimateOverview({
   const showActionCentre =
     readyForPricing ||
     showRequiredList ||
+    model.primary === "review_productivity" ||
     model.pricingAttention.length > 0 ||
     model.accuracy.length > 0 ||
     model.rates.length > 0;
   const showPrimaryAction =
     (model.primary === "complete_details" && Boolean(onCompleteDetails)) ||
     (model.primary === "regenerate" && Boolean(onRegenerate)) ||
+    (model.primary === "review_productivity" && Boolean(onReviewProductivity)) ||
     (model.primary === "continue_pricing" && Boolean(projectId));
   if (
     !showCommercial &&
@@ -312,7 +316,15 @@ export function EstimateOverview({
       {showActionCentre ? (
       <section className="order-2 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-actions>
         <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
-        {readyForPricing && model.pricingAttention.length === 0 ? (
+        {model.primary === "review_productivity" ? (
+          <div className="mt-3" data-estimate-overview-productivity-review="true">
+            <h3 className="text-sm font-semibold text-foreground">Review Deck productivity</h3>
+            <p className="mt-1 text-sm text-foreground/75">
+              Stored calibrations are held out of this estimate until you confirm each one for this job.
+            </p>
+          </div>
+        ) : null}
+        {readyForPricing && model.pricingAttention.length === 0 && model.primary !== "review_productivity" ? (
           <div className="mt-3" data-estimate-overview-ready="true">
             <h3 className="text-sm font-semibold text-foreground">Estimate ready</h3>
             <p className="mt-1 text-sm text-foreground/75">
@@ -377,6 +389,17 @@ export function EstimateOverview({
             disabled={isRegenerating}
           >
             {isRegenerating ? ASSISTANT_ACTION_LABELS.updatingEstimate : model.primaryLabel}
+          </Button>
+        ) : null}
+        {model.primary === "review_productivity" && onReviewProductivity ? (
+          <Button
+            type="button"
+            className={pricingPrimaryClassName}
+            data-estimate-overview-primary="review_productivity"
+            onClick={onReviewProductivity}
+            disabled={isRegenerating}
+          >
+            {isRegenerating ? "Updating estimate" : model.primaryLabel}
           </Button>
         ) : null}
         {model.primary === "continue_pricing" &&
