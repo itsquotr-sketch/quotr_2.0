@@ -105,6 +105,7 @@ type DbEstimate = {
 
 type DbLineItem = {
   id: string;
+  work_area_id?: string | null;
   work_area_name: string;
   label: string;
   category: string;
@@ -359,6 +360,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
 
   return {
     id: row.id,
+    workAreaId: row.work_area_id ?? undefined,
     workAreaName: row.work_area_name,
     label: row.label,
     category: row.category as EstimateLineItem["category"],

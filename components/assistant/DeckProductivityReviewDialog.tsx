@@ -18,6 +18,7 @@ export type DeckProductivityDecision = {
   readonly task: string;
   readonly quantityLabel: string;
   readonly projectedHours: string;
+  readonly calculation: string;
   readonly reason: string;
   readonly factKey: string;
   readonly value: string;
@@ -28,7 +29,9 @@ type DeckProductivityReviewDialogProps = {
   open: boolean;
   decisions: readonly DeckProductivityDecision[];
   pending?: boolean;
+  loadError?: string | null;
   onOpenChange: (open: boolean) => void;
+  onRetry?: () => void;
   onDecide: (
     decision: DeckProductivityDecision,
     key: string,
@@ -40,22 +43,25 @@ export function DeckProductivityReviewDialog({
   open,
   decisions,
   pending = false,
+  loadError = null,
   onOpenChange,
+  onRetry,
   onDecide,
 }: DeckProductivityReviewDialogProps) {
   const titleId = useId();
   const errorRef = useRef<HTMLParagraphElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const shownError = error ?? loadError;
 
   useEffect(() => {
-    if (!error) return;
+    if (!shownError) return;
     errorRef.current?.focus();
-  }, [error]);
+  }, [shownError]);
 
   useEffect(() => {
-    if (open && decisions.length === 0) onOpenChange(false);
-  }, [decisions.length, onOpenChange, open]);
+    if (open && decisions.length === 0 && !loadError) onOpenChange(false);
+  }, [decisions.length, loadError, onOpenChange, open]);
 
   async function choose(decision: DeckProductivityDecision, key: string, value: string) {
     setError(null);
@@ -76,7 +82,7 @@ export function DeckProductivityReviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="max-h-[85vh] overflow-x-hidden overflow-y-auto sm:max-w-lg"
+        className="max-h-[calc(100dvh-7.5rem)] overflow-x-hidden overflow-y-auto overscroll-contain max-sm:top-4 max-sm:translate-y-0 sm:max-w-lg"
       >
         <DialogHeader>
           <DialogTitle id={titleId}>Review Deck productivity</DialogTitle>
@@ -84,15 +90,22 @@ export function DeckProductivityReviewDialog({
             These stored calibrations stay on the organisation. A choice here applies to this job only.
           </DialogDescription>
         </DialogHeader>
-        {error ? (
-          <p
-            ref={errorRef}
-            tabIndex={-1}
-            className="text-sm text-destructive outline-none"
-            role="alert"
-          >
-            {error}
-          </p>
+        {shownError ? (
+          <div className="space-y-2">
+            <p
+              ref={errorRef}
+              tabIndex={-1}
+              className="text-sm text-destructive outline-none"
+              role="alert"
+            >
+              {shownError}
+            </p>
+            {loadError && onRetry ? (
+              <Button type="button" className="h-11 min-h-11" onClick={onRetry}>
+                Retry
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         <div className="space-y-4">
           {decisions.map((decision) => (
@@ -102,6 +115,9 @@ export function DeckProductivityReviewDialog({
               data-productivity-review={decision.factKey}
             >
               <h3 className="text-sm font-semibold break-words">{decision.title}</h3>
+              <p className="text-sm font-medium break-words" data-productivity-calculation={decision.factKey}>
+                {decision.calculation}
+              </p>
               <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                 <Fact label="Stored hours" value={decision.storedHours} />
                 <Fact label="This estimate" value={decision.quantityLabel} />
@@ -123,6 +139,7 @@ export function DeckProductivityReviewDialog({
                 </Button>
                 <RevisedHours
                   disabled={pending || savingId != null}
+                  onInvalid={setError}
                   onSave={(hours) => choose(decision, decision.jobFactKey, hours)}
                 />
               </div>
@@ -146,9 +163,11 @@ function Fact({ label, value }: { label: string; value: string }) {
 function RevisedHours({
   disabled,
   onSave,
+  onInvalid,
 }: {
   disabled: boolean;
   onSave: (hours: string) => void;
+  onInvalid: (message: string) => void;
 }) {
   const [value, setValue] = useState("");
   return (
@@ -157,7 +176,10 @@ function RevisedHours({
       onSubmit={(event) => {
         event.preventDefault();
         const hours = Number(value);
-        if (!Number.isFinite(hours) || hours <= 0) return;
+        if (!Number.isFinite(hours) || hours <= 0) {
+          onInvalid("Enter hours greater than zero.");
+          return;
+        }
         onSave(String(hours));
       }}
     >

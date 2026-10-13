@@ -205,6 +205,12 @@ const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
   continue_pricing: "Continue to Pricing",
 };
 
+function formatOverviewHours(hours: number): string {
+  const cents = Math.round(hours * 100);
+  const tenths = Math.round(cents / 10);
+  return `${(tenths / 10).toFixed(1)} hrs`;
+}
+
 function knownAmount(value: number | null | undefined): number | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   return value;
@@ -444,7 +450,13 @@ function compositionRows(input: {
     push(category.id, category.label, formatCurrency(category.cost));
   }
   const hours = knownAmount(input.breakdown?.labourHours);
-  push("labour-hours", "Labour hours", hours == null ? null : `${hours.toFixed(1)} hrs`);
+  push("labour-hours", "Labour hours", hours == null ? null : formatOverviewHours(hours));
+  const heldHours = knownAmount(input.breakdown?.heldLabourHours);
+  push(
+    "labour-hours-review",
+    "Hours awaiting review",
+    heldHours == null ? null : formatOverviewHours(heldHours)
+  );
 
   if (input.costKnown) {
     const profitability = formatProfitabilityDisplay({

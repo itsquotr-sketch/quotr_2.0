@@ -20,7 +20,7 @@ export const ASSISTANT_ESTIMATE_COLUMNS =
   "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions, assumption_metadata, latest_requirement_snapshot_id, requirement_generation_id";
 
 export const ASSISTANT_LINE_ITEM_COLUMNS =
-  "id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order, component_key";
+  "id, work_area_id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order, component_key";
 
 export const ASSISTANT_WORK_AREA_COLUMNS =
   "id, type, name, status, ai_confidence, summary, quote_description, sort_order, created_at";
@@ -167,6 +167,7 @@ export function persistPayloadToEstimateRows(input: {
     },
     lineItems: payload.lineItems.map((item, index) => ({
       id: `${estimateId}-line-${index}`,
+      work_area_id: item.workAreaId ?? null,
       work_area_name: item.workAreaName,
       label: item.label,
       category: item.category,

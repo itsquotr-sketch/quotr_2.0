@@ -6,6 +6,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { projectCommercialOverviewBreakdown } from "../lib/assistant/presentation/commercial-overview-projection";
+import { mapLineItem } from "../lib/assistant/mappers";
+import { DECK_PRODUCTIVITY_SCOPE_REVIEW } from "../lib/estimate/deck-productivity-scope";
 import {
   ESTIMATE_OVERVIEW_BOUNDARY_COPY,
   ESTIMATE_OVERVIEW_ROUNDED_NOTE,
@@ -342,6 +344,64 @@ check("R1 action labels keep existing destinations", componentSource.includes("V
 check("R1 only Continue to Pricing uses the orange primary", componentSource.includes("pricingPrimaryClassName") && componentSource.includes("var(--brand-orange)") && componentSource.includes('data-estimate-overview-primary="continue_pricing"'));
 check("R1 Estimate Basis starts from the desktop breakpoint and keeps its sections", shellSource.includes("estimateBasisStartsExpanded") && shellSource.includes("const jobDetailsOpen = estimateBasisOverride ?? estimateBasisDesktop") && shellSource.includes("Project brief") && shellSource.includes("Finish level") && shellSource.includes("Project conditions") && !shellSource.includes(".slice(0, 8)") && !shellSource.includes(".slice(0, 4)"));
 check("R1 no new query or fetch contract", !/supabase|\.from\(|fetch\(/.test(overviewSource + componentSource) && pageSource.includes('measureServerLoad("project"') && pageSource.includes("getAssistantStateWithContext"));
+
+const heldOverview = projectEstimateOverview(
+  input({
+    breakdown: {
+      materialsCost: 400,
+      labourCost: 300,
+      labourHours: 64.55,
+      heldLabourHours: 86.6,
+      allowancesCost: null,
+      subcontractCost: null,
+      plantCost: null,
+      otherCost: null,
+    },
+  })
+);
+check(
+  "held deck hours stay out of known labour hours",
+  heldOverview.composition.some((row) => row.id === "labour-hours" && row.value === "64.6 hrs") &&
+    heldOverview.composition.some((row) => row.id === "labour-hours-review" && row.label === "Hours awaiting review" && row.value === "86.6 hrs") &&
+    !heldOverview.composition.some((row) => row.value === "151.2 hrs")
+);
+
+const reviewedLine = mapLineItem({
+  id: "line-posts",
+  work_area_id: "96c7f8a8-6698-49bc-8cb3-734779c005f6",
+  work_area_name: "Deck",
+  label: "Pile/post installation",
+  category: "labour",
+  cost_low: 0,
+  cost_high: 0,
+  sell_low: 0,
+  sell_high: 0,
+  recommended_cost: 0,
+  recommended_sell: 0,
+  gross_profit: 0,
+  margin_percent: 0,
+  markup_percent: null,
+  rate_source: "Pricing required",
+  notes: `Stored calibrated rate 2 h/post\n${DECK_PRODUCTIVITY_SCOPE_REVIEW} fact=deck.posts_install_scope_confirmation value=confirmed:2 job=deck.posts_install_hours_per_ea\n__quotr_meta__:{"quantity":16,"labourHours":32,"productivityRate":2,"productivityUnit":"ea"}`,
+  sort_order: 1,
+  component_key: "deck.posts.install",
+});
+check(
+  "a reviewed line keeps its work area and the scope marker",
+  reviewedLine.workAreaId === "96c7f8a8-6698-49bc-8cb3-734779c005f6" &&
+    reviewedLine.notes?.includes(DECK_PRODUCTIVITY_SCOPE_REVIEW) === true &&
+    reviewedLine.labourHours === 32 &&
+    reviewedLine.quantity === 16
+);
+const dialogSource = read("components/assistant/DeckProductivityReviewDialog.tsx");
+const columnSource = read("lib/assistant/estimate-generation-result.ts");
+check(
+  "the productivity dialog loads work areas and can retry",
+    columnSource.includes("work_area_id") &&
+    dialogSource.includes("Retry") &&
+    dialogSource.includes("data-productivity-calculation") &&
+    shellSource.includes("await handleRegenerateEstimate()")
+);
 
 if (failed > 0) {
   console.error(`\n${failed} check(s) failed`);

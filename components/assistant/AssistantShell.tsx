@@ -318,6 +318,11 @@ function sameSavedFactValue(canonical: unknown, overlay: unknown): boolean {
   return String(canonical) === String(overlay);
 }
 
+function formatReviewHours(hours: number): string {
+  const rounded = Math.round(hours * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
+
 export function AssistantShell({
   initialState,
   initialNotes = [],
@@ -885,7 +890,7 @@ export function AssistantShell({
   const runAction = useCallback(
     async (action: PendingAction, fn: () => Promise<AssistantActionState>) => {
       if (actionLockRef.current) {
-        return;
+        return { error: "The estimate is already updating." };
       }
 
       actionLockRef.current = true;
@@ -934,7 +939,7 @@ export function AssistantShell({
           if (action === "regenerate") {
             setIsRegenerating(false);
           }
-          return;
+          return { error: result.error };
         }
 
         const isEstimateMutation =
@@ -988,12 +993,13 @@ export function AssistantShell({
         if (action === "regenerate") {
           setIsRegenerating(false);
         }
+        return {};
       } catch {
-        setActionError(
+        const message =
           action === "brief"
             ? UNKNOWN_ANALYSIS_ERROR
-            : "Something went wrong. Please try again."
-        );
+            : "Something went wrong. Please try again.";
+        setActionError(message);
         setPendingAction(null);
         if (action === "estimate") {
           const wait = remainingGenerateMinDisplayMs(
@@ -1008,6 +1014,7 @@ export function AssistantShell({
         if (action === "regenerate") {
           setIsRegenerating(false);
         }
+        return { error: message };
       } finally {
         actionLockRef.current = false;
       }
@@ -1429,13 +1436,13 @@ export function AssistantShell({
     actionError,
   ]);
 
-  const handleRegenerateEstimate = useCallback(() => {
+  const handleRegenerateEstimate = useCallback(async () => {
     if (
       isRegenerating ||
       pendingAction != null ||
       actionLockRef.current
     ) {
-      return;
+      return { error: "The estimate is already updating." };
     }
     if (
       preferProjectConditionsAsk &&
@@ -1458,11 +1465,11 @@ export function AssistantShell({
           projectConditionsSnapshot.unresolvedRequiredKeys ?? [],
       });
       if (!(CLARIFY_IS_PRIMARY && packageReadiness.ready)) {
-        setActionError(
+        const message =
           packageReadiness.builderCopy ??
-            "Complete the remaining project information before generating the estimate."
-        );
-        return;
+          "Complete the remaining project information before generating the estimate.";
+        setActionError(message);
+        return { error: message };
       }
     }
     setRegenerateStartedAt(Date.now());
@@ -1470,7 +1477,7 @@ export function AssistantShell({
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
     generationRequestSeqRef.current += 1;
-    void runAction("regenerate", async () => {
+    return runAction("regenerate", async () => {
       try {
         return await regenerateStaticEstimate(project.id);
       } finally {
@@ -2888,27 +2895,38 @@ export function AssistantShell({
   const productivityDecisions = useMemo(() => {
     return (estimate?.lineItems ?? []).flatMap((item) => {
       const parsed = parseScopeReview(item.notes);
-      if (!parsed || !item.workAreaId) return [];
+      if (!parsed) return [];
       const posts = parsed.factKey === DECK_POSTS_INSTALL_CONFIRM_FACT;
       const concrete = parsed.factKey === DECK_CONCRETE_PLACE_CONFIRM_FACT;
       if (!posts && !concrete) return [];
+      const workAreaId =
+        item.workAreaId ??
+        displayWorkAreas.find((area) => area.name === item.workAreaName)?.id;
+      if (!workAreaId) return [];
       const hours = item.productivityRate ?? 0;
       const quantity = item.quantity ?? 0;
+      const projected =
+        item.labourHours != null && item.labourHours > 0
+          ? item.labourHours
+          : hours * quantity;
+      const storedHours = deckProductivityPhrase(
+        hours,
+        item.componentKey,
+        item.productivityUnit ?? item.unit
+      );
+      const projectedLabel = formatReviewHours(projected);
       return [
         {
           id: item.id,
-          workAreaId: item.workAreaId,
+          workAreaId,
           title: item.label,
-          storedHours: deckProductivityPhrase(
-            hours,
-            item.componentKey,
-            item.productivityUnit ?? item.unit
-          ),
+          storedHours,
           task: posts ? DECK_POSTS_CALIBRATION_TASK : DECK_CONCRETE_CALIBRATION_TASK,
           quantityLabel: posts
             ? `${formatQuantity(quantity)} posts`
             : `${formatQuantity(quantity)} bags`,
-          projectedHours: `${formatLabourHours(item.labourHours ?? 0)} h`,
+          projectedHours: `${formatLabourHours(projected)} h`,
+          calculation: `${storedHours} × ${formatQuantity(quantity)} = ${projectedLabel} h`,
           reason: posts ? DECK_POSTS_CALIBRATION_REASON : DECK_CONCRETE_CALIBRATION_REASON,
           factKey: parsed.factKey,
           value: parsed.value,
@@ -2916,7 +2934,7 @@ export function AssistantShell({
         },
       ];
     });
-  }, [estimate]);
+  }, [displayWorkAreas, estimate]);
 
   const confirmProductivityDecision = useCallback(
     async (
@@ -2933,7 +2951,8 @@ export function AssistantShell({
           valueType: "text",
         });
         if (result.error) return { error: result.error };
-        handleRegenerateEstimate();
+        const regenerated = await handleRegenerateEstimate();
+        if (regenerated?.error) return { error: regenerated.error };
         return {};
       } catch (error) {
         return {
@@ -4260,6 +4279,14 @@ export function AssistantShell({
         open={productivityReviewOpen}
         decisions={productivityDecisions}
         pending={updatingEstimate}
+        loadError={
+          productivityReviewOpen &&
+          productivityDecisions.length === 0 &&
+          productivityReviewDetail
+            ? "The productivity review could not be loaded."
+            : null
+        }
+        onRetry={() => router.refresh()}
         onOpenChange={setProductivityReviewOpen}
         onDecide={confirmProductivityDecision}
       />
