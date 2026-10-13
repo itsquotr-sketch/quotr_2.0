@@ -439,8 +439,11 @@ check(
     after.lineItems.filter((item) => item.componentKey === "deck.decking.install").length === 1
 );
 check(
-  "15 pile 16 × 1 h × 1.15 = 18.4",
-  Math.abs((pileLab?.labourHours ?? 0) - 16 * 1 * 1.15) < 0.03
+  "15 pile installation stays Pricing Required beside separate excavation",
+  pileLab?.includedInTotal === false &&
+    (pileLab?.labourHours ?? 0) === 0 &&
+    (pileLab?.recommendedCost ?? 0) === 0 &&
+    (pileLab?.notes ?? "").includes("no approved installation-only hour")
 );
 check(
   "16 elevated 21 × 0.25 × 1.15 = 6.04 not 6.94",

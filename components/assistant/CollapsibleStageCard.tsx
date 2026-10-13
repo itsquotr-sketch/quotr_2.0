@@ -135,8 +135,8 @@ export function CollapsibleStageCard({
         "rounded-xl border bg-card text-card-foreground shadow-none motion-safe:transition-[border-color,background-color,opacity] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
         cardVariantStyles[statusVariant],
         isActive
-          ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
-          : "border-border/60",
+          ? "border-[var(--brand-orange)] bg-card"
+          : "border-border",
         !isActive && !isExpanded && "opacity-[0.88]",
         isActive && isExpanded && "pb-0.5",
         className
@@ -190,7 +190,7 @@ export function CollapsibleStageCard({
               ) : null}
             </div>
             {isExpanded && subtitle ? (
-              <p className="hidden text-xs text-muted-foreground md:block">
+              <p className="hidden text-xs text-foreground/80 md:block">
                 {subtitle}
               </p>
             ) : null}

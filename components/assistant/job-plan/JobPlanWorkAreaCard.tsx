@@ -234,7 +234,7 @@ export function JobPlanWorkAreaCardView({
                 : specFocusKey === "deck.bearer_section"
                   ? `deck-bearer-${card.workAreaId}`
                   : specFocusKey === "deck.support_section"
-                    ? `deck-post-${card.workAreaId}`
+                    ? `deck-concrete-post-${card.workAreaId}`
                     : specFocusKey === "deck.fascia_material"
                       ? `deck-fascia-${card.workAreaId}`
                       : specFocusKey === "retaining_wall.face_board_section"
@@ -247,6 +247,10 @@ export function JobPlanWorkAreaCardView({
                               ? `rw-excavation-volume-${card.workAreaId}`
                       : null;
 
+      if (id?.startsWith("deck-concrete-post-")) {
+        const details = document.getElementById(`deck-hole-details-${card.workAreaId}`);
+        if (details instanceof HTMLDetailsElement) details.open = true;
+      }
       const el = id ? document.getElementById(id) : null;
       if (el instanceof HTMLElement) {
         el.focus({ preventScroll: true });

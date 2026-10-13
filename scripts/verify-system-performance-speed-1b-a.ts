@@ -421,7 +421,7 @@ parityBlock("14. multi-WA", multi);
 
 check(
   "15. Direct/Sell economic goldens",
-  Math.abs(deck.response.estimate.recommendedSell - 8976.16) < 0.02 &&
+  Math.abs(deck.response.estimate.recommendedSell - 7626.16) < 0.02 &&
     Math.abs(multi.response.estimate.recommendedSell - 17098.63) < 0.02
 );
 check(

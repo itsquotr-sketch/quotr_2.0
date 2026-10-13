@@ -293,6 +293,17 @@ function initAnswersFromQuestions(
   );
 }
 
+function sameSavedFactValue(canonical: unknown, overlay: unknown): boolean {
+  if (canonical === overlay) return true;
+  if (canonical == null || overlay == null) return false;
+  if (typeof canonical === "number" || typeof overlay === "number") {
+    const left = Number(canonical);
+    const right = Number(overlay);
+    return Number.isFinite(left) && left === right;
+  }
+  return String(canonical) === String(overlay);
+}
+
 export function AssistantShell({
   initialState,
   initialNotes = [],
@@ -688,7 +699,12 @@ export function AssistantShell({
         prev.filter((row) => {
           const key = overlayFactSemanticKey(row);
           const seq = overlaySeqByFactRef.current.get(key);
-          return seq != null && seq > requestSeq;
+          if (seq == null || seq > requestSeq) return true;
+          const canonical = mutation.interviewFacts.find(
+            (fact) => fact.key === row.key && fact.workAreaId === row.work_area_id
+          );
+          if (!canonical || !sameSavedFactValue(canonical.value, row.value)) return true;
+          return false;
         })
       );
       if (mutation.hasEstimate && mutation.estimateStale) {
@@ -2178,6 +2194,8 @@ export function AssistantShell({
       valueType: "number" | "select" | "text";
     }) => {
       const requestSeq = ++factMutationSeqRef.current;
+      setPendingReadinessWrites((count) => count + 1);
+      setClarifyWritePending(true);
       tagOverlayFactSeq(
         {
           key: input.key,
@@ -2195,22 +2213,28 @@ export function AssistantShell({
           source: "user",
         })
       );
-      const result = await runSerializedFactMutation(() =>
-        updateProjectFact({
-          projectId: project.id,
-          workAreaId: input.workAreaId,
-          key: input.key,
-          label: input.label,
-          value: input.value,
-          valueType: input.valueType,
-        })
-      );
-      if (result.error) {
-        setActionError(result.error);
-        return;
-      }
-      if (!settleCanonicalMutation(result, requestSeq)) {
-        onRejectedCanonicalMutation(requestSeq);
+      try {
+        const result = await runSerializedFactMutation(() =>
+          updateProjectFact({
+            projectId: project.id,
+            workAreaId: input.workAreaId,
+            key: input.key,
+            label: input.label,
+            value: input.value,
+            valueType: input.valueType,
+          })
+        );
+        if (result.error) {
+          setActionError(result.error);
+          return;
+        }
+        setActionError(null);
+        if (!settleCanonicalMutation(result, requestSeq)) {
+          onRejectedCanonicalMutation(requestSeq);
+        }
+      } finally {
+        setClarifyWritePending(false);
+        setPendingReadinessWrites((count) => Math.max(0, count - 1));
       }
     },
     [
@@ -3620,7 +3644,8 @@ export function AssistantShell({
                 isSaving={
                   pendingAction === "clarify" ||
                   pendingAction === "estimate" ||
-                  clarifyWritePending
+                  clarifyWritePending ||
+                  pendingReadinessWrites > 0
                 }
                 isGenerating={
                   pendingAction === "estimate" || isGenerating

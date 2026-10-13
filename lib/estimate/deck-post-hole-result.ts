@@ -79,7 +79,11 @@ export function deckPostHoleFinishItems(input: {
   if (!input.sizeConfirmed) items.push("dimensions");
   if (!input.ground) items.push("ground");
   if (!input.method) items.push("method");
-  if (input.spoil !== "on_site" && input.spoil !== "off_site") items.push("spoil");
+  const spoilAnswered =
+    input.spoil === "on_site" ||
+    input.spoil === "off_site" ||
+    input.spoil === "not_sure";
+  if (!spoilAnswered) items.push("spoil");
   if (!input.concreteOn) return items;
   const fillReady =
     input.fill === "full" ||

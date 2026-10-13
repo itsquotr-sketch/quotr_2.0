@@ -88,14 +88,14 @@ export function OptionSelect({
             aria-pressed={selected}
             data-option-selected={selected ? "true" : "false"}
             className={cn(
-              "w-full min-w-0 rounded-xl border px-4 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "w-full min-w-0 rounded-xl border px-4 text-left text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               "min-h-11 py-2.5",
               selected
-                ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
-                : "border-border bg-background hover:bg-muted/40",
+                ? "border-foreground bg-foreground font-medium text-background ring-2 ring-foreground"
+                : "border-border bg-background hover:border-foreground/40 hover:bg-muted",
               pending &&
                 selected &&
-                "border-dashed border-primary/70 bg-primary/5",
+                "border-dashed border-foreground bg-background text-foreground",
               disabled && "pointer-events-none opacity-70"
             )}
             onClick={() => {
@@ -121,7 +121,7 @@ export function OptionSelect({
           >
             <span className="block leading-snug">{copy.title}</span>
             {copy.detail ? (
-              <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+              <span className="mt-0.5 block text-xs font-normal text-foreground/80">
                 {copy.detail}
               </span>
             ) : null}

@@ -635,34 +635,63 @@ export function calculateDeck(
           ...labourRateFields,
         })
       );
-      postHours = shapeLabourHours({
-        quantity: supportCount,
-        productivityHoursPerUnit: postsInstallProductivity.hoursPerUnit,
-        adjustmentFactor: labourAdjustment,
-      });
-      lineItems.push(
-        createLabourLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post installation",
+      const postsFromCompany =
+        postsInstallProductivity.sourceType === "user_rate" ||
+        postsInstallProductivity.sourceType === "calibrated_productivity";
+      if (postsFromCompany && supportCount > 0) {
+        postHours = shapeLabourHours({
           quantity: supportCount,
-          unit: "ea",
           productivityHoursPerUnit: postsInstallProductivity.hoursPerUnit,
-          labourCostRate: labourRate.costRate,
-          labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
-          adjustmentLabel: labourAdjustmentSummary,
-          notes: labourExpandedNotes({
-            physicalDriver: `Physical driver: ${supportCount} supports. Post placement uses the approved person-hours for this key. Hole excavation labour is separate and is not included here. Excludes concrete placement.`,
-            adjustmentDetail: labourAdjustmentDetail,
-            productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+        });
+        lineItems.push(
+          createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Pile/post installation",
+            quantity: supportCount,
+            unit: "ea",
+            productivityHoursPerUnit: postsInstallProductivity.hoursPerUnit,
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            adjustmentFactor: labourAdjustment,
+            adjustmentLabel: labourAdjustmentSummary,
+            notes: labourExpandedNotes({
+              physicalDriver: `Physical driver: ${supportCount} supports. Installation only, from ${postsInstallProductivity.sourceLabel}. Hole excavation labour is separate, and concrete placement is a separate line.`,
+              adjustmentDetail: labourAdjustmentDetail,
+              productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+            }),
+            sortOrder: sortOrder++,
+            componentKey: "deck.posts.install",
+            organisationSettings: context.organisationSettings,
+            ...labourRateFields,
+            productivitySourceType: postsInstallProductivity.sourceType,
+          })
+        );
+      } else if (supportCount > 0) {
+        missingInfo.push("Pile/post installation hours");
+        lineItems.push({
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Pile/post installation",
+            category: "labour",
+            quantity: supportCount,
+            unit: "ea",
+            costRate: 0,
+            sellRate: 0,
+            rateSource: getRateSourceLabel("missing"),
+            rateSourceType: "missing",
+            itemKey: "deck.posts.install.hours_per_ea",
+            componentKey: "deck.posts.install",
+            notes:
+              "The imported 1 person-hour per post includes excavation in the source task. Hole excavation labour is separate, and there is no approved installation-only hour. A company or calibrated hours-per-post still prices this line. Otherwise it stays Pricing Required. Concrete placement is separate.",
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
           }),
-          sortOrder: sortOrder++,
-          componentKey: "deck.posts.install",
-          organisationSettings: context.organisationSettings,
-          ...labourRateFields,
-        })
-      );
+          includedInTotal: false,
+        });
+      }
       const holePlan = planDeckHoleExcavation({
         facts,
         workAreaId: workArea.id,

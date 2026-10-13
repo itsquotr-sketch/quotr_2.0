@@ -354,7 +354,7 @@ async function main(): Promise<void> {
   } as unknown as EstimateContext);
   check(
     "REAL-JOB-01 recommendedSell unchanged",
-    realEstimate.recommendedSell === 8976.16,
+    realEstimate.recommendedSell === 7626.16,
     `got ${realEstimate.recommendedSell}`
   );
 

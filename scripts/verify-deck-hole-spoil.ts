@@ -139,9 +139,12 @@ check(
   "provisional hours are 0.5, not post or bag time",
   hole?.productivityRate === DECK_HOLE_PROVISIONAL_HOURS &&
     hole.productivityRate !== 1 &&
-    install?.productivityRate === 1 &&
+    install?.includedInTotal === false &&
+    install?.rateSourceType === "missing" &&
+    (install?.recommendedCost ?? 0) === 0 &&
+    (install?.notes ?? "").includes("no approved installation-only hour") &&
     place?.productivityRate === 0.06666666666666667,
-  `hole=${hole?.productivityRate} install=${install?.productivityRate} place=${place?.productivityRate}`
+  `hole=${hole?.productivityRate} install=${install?.rateSourceType} place=${place?.productivityRate}`
 );
 check(
   "16 ordinary holes cost 8 h × $60",
@@ -203,6 +206,33 @@ const companyHole = companyLabour.lineItems.find((item) => item.label === "Hole 
 check(
   "company $80/h replaces the $60 fallback",
   companyHole?.costRate === 80 && companyHole.labourHours === 8 && companyHole.recommendedCost === 640
+);
+const companyPostInstall = calculateDeck(
+  ctx(
+    [...base, fact("deck.pile_or_post_count", 16), ...confirmedHoles],
+    [
+      rate({
+        item_key: "deck.posts.install.hours_per_ea",
+        cost_rate: 0.4,
+        rate_type: "productivity",
+        unit: "ea",
+      }),
+    ]
+  ),
+  wa()
+);
+const companyPost = companyPostInstall.lineItems.find((item) => item.label === "Pile/post installation");
+check(
+  "a company installation rate prices posts without using the overlapping Quotr hour",
+  companyPost?.includedInTotal !== false &&
+    companyPost.productivityRate === 0.4 &&
+    companyPost.labourHours === 6.4 &&
+    companyPost.costRate === 60 &&
+    companyPost.recommendedCost === 384 &&
+    companyPost.recommendedSell === 480 &&
+    (companyPost.notes ?? "").includes("Your company rate") &&
+    !(companyPost.notes ?? "").includes("1 person-hour"),
+  `rate=${companyPost?.productivityRate} hours=${companyPost?.labourHours} cost=${companyPost?.recommendedCost} sell=${companyPost?.recommendedSell} included=${companyPost?.includedInTotal} notes=${companyPost?.notes}`
 );
 
 const companyHours = calculateDeck(
@@ -535,6 +565,27 @@ function concreteReport(label: string, result: ReturnType<typeof calculateDeck>)
 
 const measured = calculateDeck(ctx(measuredBase), wa());
 const measuredReport = concreteReport("16 × 350 × 600 full, 125×125 embedded 600", measured);
+const measuredInstall = measured.lineItems.find((item) => item.label === "Pile/post installation");
+const measuredHole = measured.lineItems.find((item) => item.label === "Hole excavation");
+const measuredSpoil = measured.lineItems.find((item) => item.label === "Post-hole spoil destination");
+check(
+  "16-post rows keep excavation, placement, and bags, and leave installation Pricing Required",
+  measuredHole?.labourHours === 8 &&
+    measuredHole.recommendedCost === 480 &&
+    measuredHole.recommendedSell === 600 &&
+    measuredInstall?.includedInTotal === false &&
+    (measuredInstall?.recommendedCost ?? 0) === 0 &&
+    (measuredInstall?.recommendedSell ?? 0) === 0 &&
+    measuredReport.placement?.labourHours === 5.2 &&
+    measuredReport.placement.recommendedCost === 312 &&
+    measuredReport.placement.recommendedSell === 390 &&
+    measuredReport.material?.quantity === 78 &&
+    measuredReport.material.recommendedCost === 762.06 &&
+    measuredReport.material.recommendedSell === 952.38 &&
+    measuredSpoil?.includedInTotal === false &&
+    measured.lineItems.filter((item) => item.label === "Hole excavation").length === 1 &&
+    measured.lineItems.filter((item) => /mix/i.test(item.label)).length === 0
+);
 const deeper = calculateDeck(
   ctx(measuredBase.map((row) => (row.key === "deck.hole_depth_mm" ? fact("deck.hole_depth_mm", 800) : row))),
   wa()

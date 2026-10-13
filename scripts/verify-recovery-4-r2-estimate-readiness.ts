@@ -388,7 +388,7 @@ check(
 
 check(
   "29 Estimate now still generates from canonical facts",
-  calculateEstimate(realJobContext(realFacts)).recommendedSell === 8976.16
+  calculateEstimate(realJobContext(realFacts)).recommendedSell === 7626.16
 );
 check(
   "30 no old error on Clarify Estimate now path",
@@ -397,8 +397,8 @@ check(
     shell.includes("completeClarifyPlanning")
 );
 const baseline = calculateEstimate(realJobContext(realFacts));
-check("31 same canonical inputs = same cost", baseline.recommendedCost === 7181.54);
-check("32 same canonical inputs = same sell", baseline.recommendedSell === 8976.16);
+check("31 same canonical inputs = same cost", baseline.recommendedCost === 6101.54);
+check("32 same canonical inputs = same sell", baseline.recommendedSell === 7626.16);
 
 const exemplarAssumedFacts = [
   ...exemplarFacts,
@@ -463,8 +463,8 @@ const classify = classifyResolvedSell({
 });
 check(
   "41 RECOVERY-1 parity",
-  baseline.recommendedCost === 7181.54 &&
-    baseline.recommendedSell === 8976.16 &&
+  baseline.recommendedCost === 6101.54 &&
+    baseline.recommendedSell === 7626.16 &&
     classify.sellAuthority === "derived_from_gross_margin" &&
     classify.sellRate === deriveSellFromCost(22.5, 23.5) &&
     existsSync("scripts/verify-recovery-1-commercial-authority.ts")

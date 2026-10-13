@@ -451,10 +451,10 @@ check(
   "22 pile labour per EA is promoted once",
   kwilaDeck.lineItems.filter((item) => /pile\/post installation/i.test(item.label))
     .length === 1 &&
-    Math.abs(
-      (kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
-        ?.labourHours ?? 0) - 18
-    ) < 0.02
+    kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+      ?.includedInTotal === false &&
+    (kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+      ?.notes ?? "").includes("no approved installation-only hour")
 );
 
 check("23 included steps derive riser count", estimateDeckRiseCount(0.7) === 4);
@@ -928,8 +928,8 @@ check(
     ?.labourHours ?? 0) > 0 &&
     (kwilaDeck.lineItems.find((item) => item.label === "Substructure framing")
       ?.labourHours ?? 0) > 0 &&
-    (kwilaDeck.lineItems.find((item) => item.label === "Pile/post installation")
-      ?.labourHours ?? 0) > 0
+    kwilaDeck.lineItems.find((item) => item.label === "Pile/post installation")
+      ?.includedInTotal === false
 );
 check(
   "84 no compliance claims",
@@ -1001,13 +1001,14 @@ const materials78 = materialCostTotal(kwila78.lineItems);
 
 check(
   "89 $60→$78 changes dollars, not hours",
-  Math.abs(kwilaHours - 51.75) < 0.001 &&
+  Math.abs(kwilaHours - 33.75) < 0.001 &&
     hours78 === kwilaHours &&
     hoursByLabel(kwila78.lineItems, "Decking installation") === 15.75 &&
     hoursByLabel(kwila78.lineItems, "Substructure framing") === 18 &&
-    hoursByLabel(kwila78.lineItems, "Pile/post installation") === 18 &&
+    kwila78.lineItems.find((item) => item.label === "Pile/post installation")?.includedInTotal === false &&
+    hoursByLabel(kwila78.lineItems, "Pile/post installation") === 0 &&
     kwila78.lineItems.find((item) => item.label === "Hole excavation")?.includedInTotal === false &&
-    Math.abs(labour78 - 4036.5) < 0.005 &&
+    Math.abs(labour78 - 2632.5) < 0.005 &&
     Math.abs(labour78 - labour60) > 1 &&
     company78Resolved.costRate === 78 &&
     company78Resolved.sourceType === "user_rate" &&
@@ -1049,9 +1050,9 @@ check(
 );
 check(
   "92 effective GM reconciles mathematically",
-  Math.abs(kwilaDirect - 7181.54) < 0.02 &&
-    Math.abs(kwilaSell - 8976.16) < 0.02 &&
-    Math.abs(kwilaGp - (8976.16 - 7181.54)) < 0.02 &&
+  Math.abs(kwilaDirect - 6101.54) < 0.02 &&
+    Math.abs(kwilaSell - 7626.16) < 0.02 &&
+    Math.abs(kwilaGp - (7626.16 - 6101.54)) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05
 );
 check(
@@ -1198,8 +1199,8 @@ check(
   "102 company $60 vs $78 modularity (cost-only rates)",
   company60vs78HoursEqual &&
     company60vs78MaterialsEqual &&
-    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - 3105) < 0.02 &&
-    Math.abs(labour78 - 4036.5) < 0.02 &&
+    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - 2025) < 0.02 &&
+    Math.abs(labour78 - 2632.5) < 0.02 &&
     included(kwilaCompany60.lineItems).every(
       (item) =>
         item.category !== "labour" ||
@@ -1218,7 +1219,7 @@ check(
   realLabourSource.costRate === 60 &&
     realLabourSource.sourceType === "benchmark" &&
     !hasPackage(realDeck.lineItems) &&
-    labourHoursTotal(realDeck.lineItems) === 51.75 &&
+    labourHoursTotal(realDeck.lineItems) === 33.75 &&
     included(realDeck.lineItems).every(
       (item) =>
         item.includedInTotal === false ||
@@ -1254,7 +1255,7 @@ const pairedLabourOk = included(kwilaCompanyPair.lineItems)
   );
 check(
   "105 Quotr fallbacks derive 20% GM; company paired sell is not flattened",
-  Math.abs(kwilaSell - 8976.16) < 0.02 &&
+  Math.abs(kwilaSell - 7626.16) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
     pairedLabourOk &&
     kwilaEstimate.estimateSellAuthority === "line_resolved_sells"
@@ -1307,7 +1308,7 @@ check(
     read("tests/fixtures/deck-calibration/OWNER-KWILA-01.json").includes(
       ownerRateClass
     ) &&
-    Math.abs(labour78 - 4036.5) < 0.005
+    Math.abs(labour78 - 2632.5) < 0.005
 );
 check(
   "109 $78 cannot mutate global default labour fallback",
@@ -1319,8 +1320,8 @@ check(
 );
 check(
   "110 Owner $78 effective GM reconciles",
-  Math.abs(owner78Cost - 8113.04) < 0.02 &&
-    Math.abs(owner78Sell - 10140.54) < 0.02 &&
+  Math.abs(owner78Cost - 6709.04) < 0.02 &&
+    Math.abs(owner78Sell - 8385.54) < 0.02 &&
     Math.abs(owner78Gm - 20) < 0.05
 );
 check(
@@ -1395,17 +1396,17 @@ check(
 );
 check(
   "120 Recovery DEFAULT-RATE goldens reconciled",
-  read("scripts/verify-recovery-1-commercial-authority.ts").includes("7181.54") &&
+  read("scripts/verify-recovery-1-commercial-authority.ts").includes("6101.54") &&
     read("scripts/verify-recovery-1-commercial-authority.ts").includes(
       "DEFAULT-RATE ENGINE"
     ) &&
-    read("scripts/verify-recovery-5b-builder-review.ts").includes("7181.54") &&
-    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("8976.16")
+    read("scripts/verify-recovery-5b-builder-review.ts").includes("6101.54") &&
+    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("7626.16")
 );
 check(
   "121 REAL-JOB DEFAULT-RATE golden matches engine",
-  Math.abs(realDirect - 7181.54) < 0.02 &&
-    Math.abs(realSell - 8976.16) < 0.02 &&
+  Math.abs(realDirect - 6101.54) < 0.02 &&
+    Math.abs(realSell - 7626.16) < 0.02 &&
     realLabourSource.costRate === 60
 );
 check(

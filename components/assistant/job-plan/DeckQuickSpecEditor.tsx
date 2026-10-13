@@ -72,7 +72,6 @@ export function DeckQuickSpecEditor({
   });
   const joist = jobPlanString(facts, workAreaId, "deck.joist_section") ?? "";
   const bearer = jobPlanString(facts, workAreaId, "deck.bearer_section") ?? "";
-  const support = jobPlanString(facts, workAreaId, "deck.support_section") ?? "";
   const fasciaMaterial =
     jobPlanString(facts, workAreaId, "deck.fascia_material") ?? "";
   const stepWidth = jobPlanNumber(facts, workAreaId, "deck.step_width_m");
@@ -208,29 +207,8 @@ export function DeckQuickSpecEditor({
               <option value="190x45">190×45 H3.2</option>
             </select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor={`deck-post-${workAreaId}`}>Piles / posts</Label>
-            <select
-              id={`deck-post-${workAreaId}`}
-              className="h-11 min-h-11 w-full rounded-xl border border-border/80 bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 md:h-9 md:text-sm"
-              value={support}
-              onChange={(event) =>
-                onSpecFact?.({
-                  workAreaId,
-                  key: "deck.support_section",
-                  label: "Pile/post section",
-                  value: event.target.value,
-                  valueType: "select",
-                })
-              }
-            >
-              <option value="">125×125 H5 house pile (estimating default)</option>
-              <option value="100x100">100×100 H5 timber post</option>
-              <option value="125x125">125×125 H5 house pile</option>
-            </select>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            These are estimating material assumptions, not a structural selection.
+          <p className="text-sm text-foreground">
+            Post size is chosen in Post holes. Joist and bearer sizes here are estimating assumptions, not a structural selection.
           </p>
           </div>
         </details>

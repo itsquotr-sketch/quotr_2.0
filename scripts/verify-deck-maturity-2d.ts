@@ -255,7 +255,10 @@ const dialogSrc = read("components/rates/RateEditDialog.tsx");
 const ratesPage = read("components/rates/RatesPageContent.tsx");
 const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 const materialsSection = read("components/rates/SpecificMaterialRatesSection.tsx");
-const specEditor = read("components/assistant/job-plan/DeckQuickSpecEditor.tsx");
+const specEditor = [
+  read("components/assistant/job-plan/DeckQuickSpecEditor.tsx"),
+  read("components/assistant/job-plan/DeckPostHolesSection.tsx"),
+].join("\n");
 const brSurface = read("components/assistant/builder-review/BuilderReviewSurface.tsx");
 const coverageSrc = read("docs/architecture/QUOTR_WORK_AREA_ESTIMATING_COVERAGE.md");
 const modelSrc = read("docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md");

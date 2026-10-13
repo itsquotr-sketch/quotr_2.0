@@ -1863,7 +1863,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "ea",
     description:
-      "Hours per support, not dollars. Includes set-out, positioning, cutting/setting, and installation. Hole excavation is a separate operation (deck.hole.excavate.hours_per_hole) and is not included in these hours. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
+      "Hours per support, not dollars. The imported 1 person-hour figure includes excavation in the source task, so that figure is not included in these hours as an installation-only time. With no company or calibrated installation time, pile/post installation is a separate Pricing Required line. A company or calibrated hours-per-post still prices this line. Concrete placement is separate. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 1,
     calculatorSupport: "used_now",
     recommended: true,
