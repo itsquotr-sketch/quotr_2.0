@@ -16,6 +16,7 @@ import {
   formatLabourHours,
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
+import { scopeReviewDisplay, parseScopeReview } from "@/lib/estimate/deck-productivity-scope";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 
 export const WORK_AREA_PRICING_EXPLANATION =
@@ -64,6 +65,10 @@ export type WorkAreaBreakdownLine = {
   readonly total: string | null;
   readonly source: string | null;
   readonly pricingRequired: boolean;
+  readonly reviewNote: string | null;
+  readonly reviewFactKey: string | null;
+  readonly reviewValue: string | null;
+  readonly reviewJobFactKey: string | null;
 };
 
 export type WorkAreaBreakdownGroup = {
@@ -171,6 +176,7 @@ function presentLine(
         ? `${formatCurrency(line.costRate)} / ${line.unit}`
         : formatCurrency(line.costRate)
       : null;
+  const review = parseScopeReview(line.sourceLine.notes);
   return {
     id: line.id,
     description: line.label,
@@ -180,6 +186,10 @@ function presentLine(
     total: hideCost ? null : formatCurrency(line.recommendedCost),
     source: sourceLabel(line, pricingRequired),
     pricingRequired,
+    reviewNote: scopeReviewDisplay(line.sourceLine.notes),
+    reviewFactKey: review?.factKey ?? null,
+    reviewValue: review?.value ?? null,
+    reviewJobFactKey: review?.jobFactKey ?? null,
   };
 }
 

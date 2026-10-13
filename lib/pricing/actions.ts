@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
+import { deckProductivityScopePricingBlock } from "@/lib/estimate/deck-productivity-scope";
 import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
@@ -576,6 +577,14 @@ export async function createPricingFromEstimate(input: {
   );
   if (statedCountBlock) {
     return { error: statedCountBlock };
+  }
+  const productivityScopeBlock = await deckProductivityScopePricingBlock(
+    supabase,
+    estimate.id as string,
+    orgId
+  );
+  if (productivityScopeBlock) {
+    return { error: productivityScopeBlock };
   }
 
   const { data: workAreas } = await supabase
@@ -2050,6 +2059,12 @@ export async function markPricingReviewed(
       orgId
     );
     if (statedCountBlock) return { error: statedCountBlock };
+    const productivityScopeBlock = await deckProductivityScopePricingBlock(
+      supabase,
+      sourceEstimateId,
+      orgId
+    );
+    if (productivityScopeBlock) return { error: productivityScopeBlock };
   }
   const manualBlock = unresolvedManualPricingQuoteBlock(reviewItems ?? []);
   if (manualBlock) return { error: manualBlock };

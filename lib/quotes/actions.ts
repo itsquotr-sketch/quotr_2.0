@@ -7,6 +7,7 @@ import {
   deckStatedCountPricingBlock,
   quoteCreationDecision,
 } from "@/lib/estimate/deck-stated-count-guard";
+import { deckProductivityScopePricingBlock } from "@/lib/estimate/deck-productivity-scope";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import {
   parseQuoteInput,
@@ -729,9 +730,16 @@ export async function createQuoteFromPricing(input: {
         orgId
       )
     : null;
+  const productivityScopeBlock = pricingSource?.estimate_id
+    ? await deckProductivityScopePricingBlock(
+        supabase,
+        pricingSource.estimate_id,
+        orgId
+      )
+    : null;
   const newQuoteDecision = quoteCreationDecision({
     existingQuoteId: null,
-    statedCountConflict: statedCountBlock,
+    statedCountConflict: statedCountBlock ?? productivityScopeBlock,
   });
   if (newQuoteDecision.action === "refuse") {
     return { error: newQuoteDecision.error };

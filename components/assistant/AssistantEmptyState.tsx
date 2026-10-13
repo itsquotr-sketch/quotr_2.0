@@ -10,6 +10,8 @@ type AssistantEmptyStateProps = {
   /** Override catalogue title when a more specific empty reason is known. */
   title?: string;
   nextActionLabel?: string | null;
+  /** Button text. When omitted, a labelled next action uses Continue. */
+  actionLabel?: string | null;
   onNextAction?: () => void;
   className?: string;
 };
@@ -18,6 +20,7 @@ export function AssistantEmptyState({
   stage,
   title,
   nextActionLabel,
+  actionLabel,
   onNextAction,
   className,
 }: AssistantEmptyStateProps) {
@@ -25,6 +28,7 @@ export function AssistantEmptyState({
   const heading = title ?? catalogue.title;
   const action =
     nextActionLabel === undefined ? catalogue.nextAction : nextActionLabel;
+  const buttonLabel = actionLabel ?? (action ? "Continue" : null);
 
   return (
     <div
@@ -38,7 +42,7 @@ export function AssistantEmptyState({
       {action ? (
         <p className="mt-1.5 text-xs text-muted-foreground/90">{action}</p>
       ) : null}
-      {onNextAction && action ? (
+      {onNextAction && buttonLabel ? (
         <Button
           type="button"
           variant="outline"
@@ -46,7 +50,7 @@ export function AssistantEmptyState({
           className="mt-3 h-8"
           onClick={onNextAction}
         >
-          Continue
+          {buttonLabel}
         </Button>
       ) : null}
     </div>

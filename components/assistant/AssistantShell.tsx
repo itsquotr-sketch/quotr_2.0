@@ -235,6 +235,7 @@ import {
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-overview";
+import { productivityScopeReviewBlock } from "@/lib/estimate/deck-productivity-scope";
 import { deckStatedCountConflict } from "@/lib/estimate/deck-stated-count-guard";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { deriveQuickEstimateConfidencePresentation } from "@/lib/assistant/presentation/quick-estimate-confidence";
@@ -2894,6 +2895,9 @@ export function AssistantShell({
             : null,
         workAreaNames: workAreaLists.included,
         statedCountConflictDetail: deckCountConflict?.summary ?? null,
+        productivityReviewDetail: productivityScopeReviewBlock(
+          (estimate?.lineItems ?? []).map((item) => item.notes)
+        ),
       });
 
   const estimateReviewActionable =
@@ -3168,6 +3172,22 @@ export function AssistantShell({
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
+                      onConfirmProductivity={
+                        canRunEstimates
+                          ? (workAreaId, key, value) =>
+                              handleJobPlanSpecFact({
+                                workAreaId,
+                                key,
+                                label:
+                                  key === "deck.posts_install_hours_per_ea" ||
+                                  key === "deck.concrete_place_hours_per_bag"
+                                    ? "Revised productivity"
+                                    : "Productivity scope",
+                                value,
+                                valueType: "text",
+                              })
+                          : undefined
+                      }
                     />
                   ) : estimateView === "materials" && builderReviewView ? (
                     <MaterialsTakeoff
@@ -4114,6 +4134,8 @@ export function AssistantShell({
             }
             detailsPhase={detailsPhase}
             detailsBlocker={estimateReadiness.blockerCopy}
+            postHoleAnswerCount={estimate ? 0 : deckDetailGaps.length}
+            onFinishPostHoles={openDeckDetails}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}
             constraintCount={liveConstraints.length}

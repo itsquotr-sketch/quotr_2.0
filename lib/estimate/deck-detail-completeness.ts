@@ -150,6 +150,12 @@ export function deckDetailGapCopy(gaps: readonly DeckDetailGap[]): string {
   return `Complete Deck details: ${labels.join(", ")}.`;
 }
 
+/** Right-hand Estimate panel. The Post holes card already lists each answer. */
+export function deckDetailPanelPrompt(count: number): string {
+  if (count === 1) return "Finish 1 Post holes answer";
+  return `Finish ${count} Post holes answers`;
+}
+
 /** Stage cards use only this. The longer explanation stays in the workspace. */
 export function quantityConflictStageStatus(
   detail: string | null | undefined

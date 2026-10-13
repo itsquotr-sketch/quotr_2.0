@@ -192,6 +192,8 @@ export type ProjectEstimateOverviewInput = {
   readonly workAreaNames: readonly string[];
   /** Saved quantities disagree with the current deck count. Does not rewrite the draft. */
   readonly statedCountConflictDetail?: string | null;
+  /** Saved deck productivity still needs an explicit scope confirmation. */
+  readonly productivityReviewDetail?: string | null;
 };
 
 const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
@@ -580,6 +582,7 @@ export function projectEstimateOverview(
     );
   }
   const statedCountConflict = input.statedCountConflictDetail?.trim() || null;
+  const productivityReview = input.productivityReviewDetail?.trim() || null;
   const conflictStatus = quantityConflictStageStatus(statedCountConflict);
   if (statedCountConflict && conflictStatus) {
     required.push(
@@ -654,6 +657,9 @@ export function projectEstimateOverview(
       missingNames.add(area.workAreaName);
     }
   }
+  if (productivityReview) {
+    for (const name of names) missingNames.add(name);
+  }
 
   const hasPricingRequired = pricingRequired.length > 0;
   const estimate = input.estimate;
@@ -679,7 +685,11 @@ export function projectEstimateOverview(
   if (!input.hasEstimate) status = "incomplete";
   else if (conflictStatus === "Needs details") status = "incomplete";
   else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
-  else if (hasPricingRequired || input.review?.overview.recommendedSellIsPartial) {
+  else if (
+    hasPricingRequired ||
+    input.review?.overview.recommendedSellIsPartial ||
+    productivityReview
+  ) {
     status = "pricing_required";
   }
 
@@ -702,8 +712,8 @@ export function projectEstimateOverview(
           : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
           ? pricingRequired.length > 0
-            ? estimateMissingPriceNotice(pricingRequired.length)
-            : "Some items still need prices. Complete these in Pricing."
+            ? productivityReview ?? estimateMissingPriceNotice(pricingRequired.length)
+            : productivityReview ?? "Some items still need prices. Complete these in Pricing."
           : "Estimate ready";
 
   const primary: EstimateOverviewPrimary = !input.hasEstimate
@@ -717,7 +727,7 @@ export function projectEstimateOverview(
         : "continue_pricing";
 
   const pricingCreationBlocked =
-    !input.hasEstimate || input.isStale || Boolean(statedCountConflict);
+    !input.hasEstimate || input.isStale || Boolean(statedCountConflict) || Boolean(productivityReview);
   const pricingEntry = pricingCreationBlocked
     ? "blocked"
     : input.pricingDocumentExists

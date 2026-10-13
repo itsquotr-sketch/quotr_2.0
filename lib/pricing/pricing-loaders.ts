@@ -18,6 +18,7 @@ import type {
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
+import { deckProductivityScopePricingBlock } from "@/lib/estimate/deck-productivity-scope";
 import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
 import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
 
@@ -91,12 +92,17 @@ export async function getProjectWorkspaceTabContextWithContext(
   ]);
 
   const quantityConflictDetail = estimateResult.data?.id
-    ? await deckStatedCountPricingBlock(
+    ? (await deckStatedCountPricingBlock(
         auth.supabase,
         projectId,
         estimateResult.data.id,
         auth.orgId
-      )
+      )) ??
+      (await deckProductivityScopePricingBlock(
+        auth.supabase,
+        estimateResult.data.id,
+        auth.orgId
+      ))
     : null;
 
   return {

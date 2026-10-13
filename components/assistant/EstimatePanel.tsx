@@ -36,6 +36,7 @@ import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { estimateStatusCopy } from "@/lib/assistant/readiness/details-status";
+import { deckDetailPanelPrompt } from "@/lib/estimate/deck-detail-completeness";
 import {
   ESTIMATE_RANGE_EXPLANATION,
   presentEstimateGst,
@@ -85,6 +86,9 @@ type EstimatePanelProps = {
   /** Same decision as the Details stage. Does not add a second Create estimate button. */
   detailsPhase?: "saving" | "ready" | "needs_details";
   detailsBlocker?: string | null;
+  /** Unanswered Post holes controls. The panel names the count and focuses the first one. */
+  postHoleAnswerCount?: number;
+  onFinishPostHoles?: () => void;
   pendingProposalCount?: number;
   /** Soft warning only — does not block generation (3.1B.6R3.1). */
   unresolvedScopeImpactCount?: number;
@@ -337,6 +341,8 @@ export function EstimatePanel({
   canGenerateEstimate = false,
   detailsPhase = "needs_details",
   detailsBlocker = null,
+  postHoleAnswerCount = 0,
+  onFinishPostHoles,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
   unresolvedScopeImpactLabels = [],
@@ -566,6 +572,10 @@ export function EstimatePanel({
     : null;
 
   const liveReadiness = estimate ? null : estimateStatusCopy(detailsPhase, detailsBlocker);
+  const postHolePrompt =
+    !estimate && detailsPhase === "needs_details" && postHoleAnswerCount > 0
+      ? deckDetailPanelPrompt(postHoleAnswerCount)
+      : null;
   const status = buildQuickEstimateStatusPresentation({
     hasEstimate: Boolean(estimate),
     isStale,
@@ -859,14 +869,18 @@ export function EstimatePanel({
               stage="quick_estimate"
               title={
                 workAreasConfirmed
-                  ? liveReadiness?.emptyTitle
+                  ? postHolePrompt ?? liveReadiness?.emptyTitle
                   : "Review the work Quotr found"
               }
               nextActionLabel={
                 workAreasConfirmed
-                  ? liveReadiness?.emptyNext ?? null
+                  ? postHolePrompt
+                    ? null
+                    : liveReadiness?.emptyNext ?? null
                   : "Confirm the Work Areas to continue."
               }
+              actionLabel={postHolePrompt}
+              onNextAction={postHolePrompt ? onFinishPostHoles : undefined}
             />
           )}
 
@@ -1605,7 +1619,9 @@ export function EstimatePanel({
               ? "Ready to generate your draft estimate"
               : !workAreasConfirmed
                 ? "Review the work Quotr found"
-                : liveReadiness?.description ?? "Finish the open details before estimating."}
+                : liveReadiness
+                  ? postHolePrompt ?? liveReadiness.description
+                  : "Finish the open details before estimating."}
         </CardDescription>
       </CardHeader>
 

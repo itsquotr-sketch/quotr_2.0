@@ -43,6 +43,7 @@ type WorkAreaBreakdownProps = {
   pricing?: PricingRoute | null;
   focusWorkAreaId?: string | null;
   onFocusApplied?: () => void;
+  onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
 };
 
 export function EstimateViewControl({
@@ -156,7 +157,15 @@ function Field({
   );
 }
 
-function LineRows({ lines }: { lines: readonly WorkAreaBreakdownLine[] }) {
+function LineRows({
+  lines,
+  workAreaId,
+  onConfirmProductivity,
+}: {
+  lines: readonly WorkAreaBreakdownLine[];
+  workAreaId: string;
+  onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
+}) {
   if (lines.length === 0) return null;
   return (
     <div className="mt-2">
@@ -194,7 +203,29 @@ function LineRows({ lines }: { lines: readonly WorkAreaBreakdownLine[] }) {
                 </p>
               </div>
             ) : null}
-            {line.pricingRequired ? (
+            {line.reviewNote ? (
+              <div className="space-y-2 lg:col-span-6">
+                <p className="text-sm text-foreground/80">{line.reviewNote}</p>
+                {onConfirmProductivity && line.reviewFactKey && line.reviewValue && line.reviewJobFactKey ? (
+                  <div className="flex flex-wrap items-end gap-2">
+                    <Button
+                      type="button"
+                      className="h-11"
+                      onClick={() =>
+                        onConfirmProductivity(workAreaId, line.reviewFactKey!, line.reviewValue!)
+                      }
+                    >
+                      Use this rate
+                    </Button>
+                    <RevisedHoursField
+                      onSave={(hours) =>
+                        onConfirmProductivity(workAreaId, line.reviewJobFactKey!, hours)
+                      }
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : line.pricingRequired ? (
               <p className="text-sm text-foreground/75 lg:col-span-6">
                 This price is completed in Pricing.
               </p>
@@ -206,12 +237,52 @@ function LineRows({ lines }: { lines: readonly WorkAreaBreakdownLine[] }) {
   );
 }
 
-function GroupBlock({ group }: { group: WorkAreaBreakdownGroup }) {
+function RevisedHoursField({ onSave }: { onSave: (hours: string) => void }) {
+  const [value, setValue] = useState("");
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const hours = Number(value);
+        if (!Number.isFinite(hours) || hours <= 0) return;
+        onSave(String(hours));
+      }}
+    >
+      <label className="text-sm">
+        Revised hours
+        <input
+          className="mt-1 block h-11 w-28 rounded-md border border-border bg-background px-2"
+          inputMode="decimal"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </label>
+      <Button type="submit" variant="outline" className="h-11">
+        Use these hours
+      </Button>
+    </form>
+  );
+}
+
+function GroupBlock({
+  group,
+  workAreaId,
+  onConfirmProductivity,
+}: {
+  group: WorkAreaBreakdownGroup;
+  workAreaId: string;
+  onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
+}) {
   if (group.lines.length === 0) return null;
   return (
     <section className="mt-4" data-work-area-cost-group={group.title}>
       <h4 className="text-sm font-semibold">{group.title}</h4>
-      <LineRows lines={group.lines} />
+      <LineRows
+        lines={group.lines}
+        workAreaId={workAreaId}
+        onConfirmProductivity={onConfirmProductivity}
+      />
     </section>
   );
 }
@@ -253,6 +324,7 @@ export function WorkAreaBreakdown({
   pricing = null,
   focusWorkAreaId = null,
   onFocusApplied,
+  onConfirmProductivity,
 }: WorkAreaBreakdownProps) {
   const model: WorkAreaBreakdownModel = projectWorkAreaBreakdown(view, scope);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -478,7 +550,7 @@ export function WorkAreaBreakdown({
                         <p className="mt-1 text-sm break-words text-foreground/75">{portion.summary}</p>
                       ) : null}
                       {portion.groups.map((group) => (
-                        <GroupBlock key={group.id} group={group} />
+                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
                       ))}
                       <CollapsedList
                         title={
@@ -496,7 +568,7 @@ export function WorkAreaBreakdown({
                     <section data-work-area-shared>
                       <h4 className="text-sm font-semibold">Shared across portions</h4>
                       {card.sharedGroups.map((group) => (
-                        <GroupBlock key={group.id} group={group} />
+                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
                       ))}
                     </section>
                   ) : null}
@@ -505,7 +577,7 @@ export function WorkAreaBreakdown({
                     <section data-work-area-cost>
                       <h4 className="text-sm font-semibold">Cost build-up</h4>
                       {card.costGroups.map((group) => (
-                        <GroupBlock key={group.id} group={group} />
+                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
                       ))}
                     </section>
                   ) : null}

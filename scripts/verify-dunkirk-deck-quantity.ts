@@ -165,9 +165,39 @@ check(
   String(place?.labourHours)
 );
 check(
-  "company rate is named and benchmark is not applied",
-  (place?.notes ?? "").includes("company rate of 0.7 h/bag") &&
-    (place?.notes ?? "").includes("not the rate applied")
+  "an unconfirmed calibrated 0.7 h/bag stays visible and out of the total",
+  place?.includedInTotal === false &&
+    (place?.recommendedCost ?? 0) === 0 &&
+    (place?.notes ?? "").includes("0.7 h/bag") &&
+    (place?.notes ?? "").includes("Your calibrated productivity") &&
+    !(place?.notes ?? "").includes("not the rate applied")
+);
+const confirmedConcrete = calculateDeck(
+  ctx(
+    [
+      ...base,
+      fact("deck.pile_or_post_count", 16),
+      fact("deck.hole_shape", "circular"),
+      fact("deck.hole_diameter_mm", 350),
+      fact("deck.hole_depth_mm", 600),
+      fact("deck.hole_ground", "ordinary"),
+      fact("deck.hole_method", "hand"),
+      fact("deck.concrete_fill", "full"),
+      fact("deck.support_section", "125x125"),
+      fact("deck.post_embedment_mm", 600),
+      fact("deck.concrete_place_scope_confirmation", "confirmed:0.7"),
+    ],
+    [companyConcrete(0.7)]
+  ),
+  wa()
+);
+const confirmedPlace = line(confirmedConcrete, "Concrete placement");
+check(
+  "a confirmed calibrated 0.7 h/bag is named and the benchmark is not applied",
+  confirmedPlace?.includedInTotal !== false &&
+    confirmedPlace?.labourHours === 60.06 &&
+    (confirmedPlace?.notes ?? "").includes("company rate of 0.7 h/bag") &&
+    (confirmedPlace?.notes ?? "").includes("not the rate applied")
 );
 check(
   "spacing without a stated count stays 15",

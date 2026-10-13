@@ -39,6 +39,14 @@ import {
   resolveDeckHoleCount,
 } from "@/lib/estimate/deck-hole-excavation";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
+import {
+  DECK_CONCRETE_PLACE_CONFIRM_FACT,
+  DECK_CONCRETE_PLACE_JOB_HOURS_FACT,
+  DECK_POSTS_INSTALL_CONFIRM_FACT,
+  DECK_POSTS_INSTALL_JOB_HOURS_FACT,
+  decideLegacyProductivityScope,
+  scopeReviewNotes,
+} from "@/lib/estimate/deck-productivity-scope";
 import { resolveLabourRate, resolveRate, deriveSellFromCost } from "@/lib/estimate/rates";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { calculateDeckingBoardLm } from "@/lib/estimate/material-buildups";
@@ -635,13 +643,17 @@ export function calculateDeck(
           ...labourRateFields,
         })
       );
-      const postsFromCompany =
-        postsInstallProductivity.sourceType === "user_rate" ||
-        postsInstallProductivity.sourceType === "calibrated_productivity";
-      if (postsFromCompany && supportCount > 0) {
+      const postsScope = decideLegacyProductivityScope({
+        resolved: postsInstallProductivity,
+        confirmation: getStringFact(facts, workArea.id, DECK_POSTS_INSTALL_CONFIRM_FACT),
+        jobHours: getNumberFact(facts, workArea.id, DECK_POSTS_INSTALL_JOB_HOURS_FACT),
+        factKey: DECK_POSTS_INSTALL_CONFIRM_FACT,
+        jobFactKey: DECK_POSTS_INSTALL_JOB_HOURS_FACT,
+      });
+      if (postsScope.action === "apply" && supportCount > 0) {
         postHours = shapeLabourHours({
           quantity: supportCount,
-          productivityHoursPerUnit: postsInstallProductivity.hoursPerUnit,
+          productivityHoursPerUnit: postsScope.hoursPerUnit,
           adjustmentFactor: labourAdjustment,
         });
         lineItems.push(
@@ -651,23 +663,57 @@ export function calculateDeck(
             label: "Pile/post installation",
             quantity: supportCount,
             unit: "ea",
-            productivityHoursPerUnit: postsInstallProductivity.hoursPerUnit,
+            productivityHoursPerUnit: postsScope.hoursPerUnit,
             labourCostRate: labourRate.costRate,
             labourSellRate: labourRate.sellRate,
             adjustmentFactor: labourAdjustment,
             adjustmentLabel: labourAdjustmentSummary,
             notes: labourExpandedNotes({
-              physicalDriver: `Physical driver: ${supportCount} supports. Installation only, from ${postsInstallProductivity.sourceLabel}. Hole excavation labour is separate, and concrete placement is a separate line.`,
+              physicalDriver: `Physical driver: ${supportCount} supports. Installation only, from ${postsScope.sourceLabel}. Hole excavation labour is separate, and concrete placement is a separate line.`,
               adjustmentDetail: labourAdjustmentDetail,
-              productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+              productivity: `Productivity: ${postsScope.hoursPerUnit} h/ea · ${postsScope.sourceLabel}`,
             }),
             sortOrder: sortOrder++,
             componentKey: "deck.posts.install",
             organisationSettings: context.organisationSettings,
             ...labourRateFields,
-            productivitySourceType: postsInstallProductivity.sourceType,
+            productivitySourceType: postsScope.sourceType,
           })
         );
+      } else if (postsScope.action === "review" && supportCount > 0) {
+        const reviewedHours = shapeLabourHours({
+          quantity: supportCount,
+          productivityHoursPerUnit: postsScope.hoursPerUnit,
+          adjustmentFactor: labourAdjustment,
+        });
+        missingInfo.push("Pile/post installation scope");
+        lineItems.push({
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Pile/post installation",
+            category: "labour",
+            quantity: supportCount,
+            unit: "ea",
+            costRate: 0,
+            sellRate: 0,
+            rateSource: getRateSourceLabel("missing"),
+            rateSourceType: "missing",
+            itemKey: "deck.posts.install.hours_per_ea",
+            componentKey: "deck.posts.install",
+            notes: scopeReviewNotes({
+              summary: `Stored calibrated rate ${postsScope.hoursPerUnit} h/post · Your calibrated productivity. The saved task does not record that excavation was excluded, so this rate is not priced beside the separate hole excavation. ${supportCount} posts × ${postsScope.hoursPerUnit} h/post = ${reviewedHours.adjustedHours} h if you confirm it is installation only. Hole excavation stays its own line.`,
+              factKey: postsScope.factKey,
+              token: postsScope.token,
+              jobFactKey: postsScope.jobFactKey,
+            }),
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          }),
+          includedInTotal: false,
+          labourHours: reviewedHours.adjustedHours,
+          productivityRate: postsScope.hoursPerUnit,
+        });
       } else if (supportCount > 0) {
         missingInfo.push("Pile/post installation hours");
         lineItems.push({
@@ -1620,8 +1666,59 @@ export function calculateDeck(
       }
     }
 
-    const placeProductivity = resolveDeckConcretePlaceProductivity(context.rates);
-    if (bags > 0 && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
+    const placeResolved = resolveDeckConcretePlaceProductivity(context.rates);
+    const placeScope = decideLegacyProductivityScope({
+      resolved: placeResolved,
+      confirmation: getStringFact(facts, workArea.id, DECK_CONCRETE_PLACE_CONFIRM_FACT),
+      jobHours: getNumberFact(facts, workArea.id, DECK_CONCRETE_PLACE_JOB_HOURS_FACT),
+      factKey: DECK_CONCRETE_PLACE_CONFIRM_FACT,
+      jobFactKey: DECK_CONCRETE_PLACE_JOB_HOURS_FACT,
+    });
+    const placeProductivity =
+      placeScope.action === "apply"
+        ? {
+            ...placeResolved,
+            hoursPerUnit: placeScope.hoursPerUnit,
+            sourceLabel: placeScope.sourceLabel,
+            sourceType: placeScope.sourceType,
+          }
+        : placeScope.action === "benchmark"
+          ? placeResolved
+          : null;
+    if (placeScope.action === "review" && bags > 0) {
+      const reviewedHours = shapeLabourHours({
+        quantity: bags,
+        productivityHoursPerUnit: placeScope.hoursPerUnit,
+        adjustmentFactor: labourAdjustment,
+      });
+      missingInfo.push("Concrete placement scope");
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: DECK_CONCRETE_PLACE_LABEL,
+          category: "labour",
+          quantity: bags,
+          unit: "bag",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
+          notes: scopeReviewNotes({
+            summary: `Stored calibrated rate ${placeScope.hoursPerUnit} h/bag · Your calibrated productivity. It was saved against a fixed bag scenario, not this estimate's purchased bags, so it is not priced yet. ${bags} bags × ${placeScope.hoursPerUnit} h/bag = ${reviewedHours.adjustedHours} h if you confirm it applies to these purchased bags. Hole excavation is separate.`,
+            factKey: placeScope.factKey,
+            token: placeScope.token,
+            jobFactKey: placeScope.jobFactKey,
+          }),
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        }),
+        includedInTotal: false,
+        labourHours: reviewedHours.adjustedHours,
+        productivityRate: placeScope.hoursPerUnit,
+      });
+    } else if (bags > 0 && placeProductivity && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
       lineItems.push(
         createLabourLineItem({
           workAreaId: workArea.id,

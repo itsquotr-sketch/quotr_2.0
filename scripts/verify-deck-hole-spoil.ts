@@ -13,6 +13,7 @@ import {
 } from "../lib/estimate/deck-hole-excavation";
 import {
   deckDetailGaps,
+  deckDetailPanelPrompt,
   deckPostHoleControlId,
   firstDeckDetailTarget,
   quantityConflictStageStatus,
@@ -26,7 +27,11 @@ import {
   deckPostHoleFinishItems,
   deckPostSizeStatus,
 } from "../lib/estimate/deck-post-hole-result";
-import { deckStatedCountConflict } from "../lib/estimate/deck-stated-count-guard";
+import { deckStatedCountConflict, quoteCreationDecision } from "../lib/estimate/deck-stated-count-guard";
+import {
+  DECK_PRODUCTIVITY_SCOPE_REVIEW,
+  productivityScopeReviewBlock,
+} from "../lib/estimate/deck-productivity-scope";
 import { round2 } from "../lib/estimate/facts";
 import { resolveLabourRate } from "../lib/estimate/rates";
 import { getCatalogueEntry } from "../lib/rates/catalogue";
@@ -971,6 +976,228 @@ check(
     postHolesUi.includes("data-setup-keep") &&
     !postHolesUi.includes("onClick={useTypicalSetup}") &&
     postHolesUi.includes("Company quantity, bag yield, ground, excavation method, and spoil stay as saved.")
+);
+
+const carpenter65 = rate({
+  item_key: "labour.carpenter.hour",
+  cost_rate: 65,
+  rate_type: "labour",
+  unit: "hour",
+});
+const legacyPosts = rate({
+  item_key: "deck.posts.install.hours_per_ea",
+  cost_rate: 2,
+  rate_type: "productivity",
+  unit: "ea",
+  source: "calibrated_productivity",
+});
+const legacyConcrete = rate({
+  item_key: "deck.post_hole_concrete.place.hours_per_bag",
+  cost_rate: 0.7,
+  rate_type: "productivity",
+  unit: "bag",
+  source: "calibrated_productivity",
+});
+
+function line(result: ReturnType<typeof calculateDeck>, label: string) {
+  return result.lineItems.find((item) => item.label === label);
+}
+
+const openMeasured = calculateDeck(ctx(measuredBase, [carpenter65]), wa());
+const openInstall = line(openMeasured, "Pile/post installation");
+const openPlace = line(openMeasured, "Concrete placement");
+const openHole = line(openMeasured, "Hole excavation");
+check(
+  "no override keeps excavation, leaves installation unpriced, and uses 4 minutes per bag",
+  openHole?.labourHours === 8 &&
+    openHole.costRate === 65 &&
+    openHole.recommendedCost === 520 &&
+    openHole.recommendedSell === 650 &&
+    openInstall?.includedInTotal === false &&
+    openInstall.rateSourceType === "missing" &&
+    (openInstall.recommendedCost ?? 0) === 0 &&
+    openPlace?.labourHours === 5.2 &&
+    openPlace.costRate === 65 &&
+    openPlace.recommendedCost === 338 &&
+    openPlace.recommendedSell === 422.5 &&
+    openPlace.rateSourceType === "user_rate" &&
+    openPlace.productivitySourceType === "benchmark",
+  `hole=${openHole?.recommendedCost}/${openHole?.recommendedSell} install=${openInstall?.rateSourceType} place=${openPlace?.labourHours}/${openPlace?.recommendedCost}/${openPlace?.recommendedSell}/${openPlace?.rateSourceType}`
+);
+
+const postsOnly = calculateDeck(ctx(measuredBase, [carpenter65, legacyPosts]), wa());
+const postsOnlyInstall = line(postsOnly, "Pile/post installation");
+const postsOnlyPlace = line(postsOnly, "Concrete placement");
+check(
+  "an unconfirmed pile calibration is shown at 32 h and kept out of the total",
+  postsOnlyInstall?.labourHours === 32 &&
+    postsOnlyInstall.includedInTotal === false &&
+    postsOnlyInstall.rateSourceType === "missing" &&
+    (postsOnlyInstall.recommendedCost ?? 0) === 0 &&
+    (postsOnlyInstall.notes ?? "").includes("2 h/post") &&
+    (postsOnlyInstall.notes ?? "").includes("Your calibrated productivity") &&
+    (postsOnlyInstall.notes ?? "").includes(DECK_PRODUCTIVITY_SCOPE_REVIEW) &&
+    postsOnlyPlace?.labourHours === 5.2 &&
+    postsOnlyPlace.includedInTotal !== false &&
+    line(postsOnly, "Hole excavation")?.labourHours === 8
+);
+
+const concreteOnly = calculateDeck(ctx(measuredBase, [carpenter65, legacyConcrete]), wa());
+const concreteOnlyPlace = line(concreteOnly, "Concrete placement");
+check(
+  "an unconfirmed concrete calibration is shown at 54.6 h and is not replaced by 4 minutes",
+  concreteOnlyPlace?.labourHours === 54.6 &&
+    concreteOnlyPlace.quantity === 78 &&
+    concreteOnlyPlace.includedInTotal === false &&
+    concreteOnlyPlace.rateSourceType === "missing" &&
+    (concreteOnlyPlace.recommendedCost ?? 0) === 0 &&
+    (concreteOnlyPlace.notes ?? "").includes("0.7 h/bag") &&
+    (concreteOnlyPlace.notes ?? "").includes("Your calibrated productivity") &&
+    !(concreteOnlyPlace.notes ?? "").includes("4 minute") &&
+    line(concreteOnly, "Pile/post installation")?.rateSourceType === "missing" &&
+    line(concreteOnly, "Pile/post installation")?.labourHours == null
+);
+
+const bothLegacy = calculateDeck(
+  ctx(measuredBase, [carpenter65, legacyPosts, legacyConcrete]),
+  wa()
+);
+const bothInstall = line(bothLegacy, "Pile/post installation");
+const bothPlace = line(bothLegacy, "Concrete placement");
+const bothBags = bothLegacy.lineItems.find((item) => item.componentKey === "deck.concrete.bags");
+check(
+  "both legacy calibrations stay visible and unpriced beside separate excavation",
+  bothInstall?.labourHours === 32 &&
+    (bothInstall.recommendedCost ?? 0) === 0 &&
+    bothPlace?.labourHours === 54.6 &&
+    (bothPlace.recommendedCost ?? 0) === 0 &&
+    bothBags?.quantity === 78 &&
+    line(bothLegacy, "Hole excavation")?.recommendedCost === 520 &&
+    productivityScopeReviewBlock([bothInstall?.notes, bothPlace?.notes]) != null
+);
+
+const confirmedBoth = calculateDeck(
+  ctx(
+    [
+      ...measuredBase,
+      fact("deck.posts_install_scope_confirmation", "confirmed:2"),
+      fact("deck.concrete_place_scope_confirmation", "confirmed:0.7"),
+    ],
+    [carpenter65, legacyPosts, legacyConcrete]
+  ),
+  wa()
+);
+const confirmedInstall = line(confirmedBoth, "Pile/post installation");
+const confirmedPlace = line(confirmedBoth, "Concrete placement");
+check(
+  "explicit confirmation prices the stored installation-only and per-bag rates",
+  confirmedInstall?.includedInTotal !== false &&
+    confirmedInstall.labourHours === 32 &&
+    confirmedInstall.recommendedCost === 2080 &&
+    confirmedInstall.recommendedSell === 2600 &&
+    (confirmedInstall.notes ?? "").includes("Your calibrated productivity") &&
+    !(confirmedInstall.notes ?? "").includes(DECK_PRODUCTIVITY_SCOPE_REVIEW) &&
+    confirmedPlace?.labourHours === 54.6 &&
+    confirmedPlace.recommendedCost === 3549 &&
+    confirmedPlace.recommendedSell === 4436.25 &&
+    confirmedPlace.rateSourceType === "user_rate" &&
+    confirmedPlace.productivitySourceType === "calibrated_productivity",
+  `install=${confirmedInstall?.labourHours}/${confirmedInstall?.recommendedCost}/${confirmedInstall?.recommendedSell}/${confirmedInstall?.includedInTotal} place=${confirmedPlace?.labourHours}/${confirmedPlace?.recommendedCost}/${confirmedPlace?.recommendedSell}/${confirmedPlace?.rateSourceType} notes=${confirmedPlace?.notes}`
+);
+
+const revisedJob = calculateDeck(
+  ctx(
+    [...measuredBase, fact("deck.posts_install_hours_per_ea", 0.5)],
+    [carpenter65, legacyPosts]
+  ),
+  wa()
+);
+const revisedInstall = line(revisedJob, "Pile/post installation");
+check(
+  "a revised this-job installation rate wins over the stored calibration",
+  revisedInstall?.labourHours === 8 &&
+    revisedInstall.includedInTotal !== false &&
+    revisedInstall.recommendedCost === 520 &&
+    revisedInstall.recommendedSell === 650 &&
+    (revisedInstall.notes ?? "").includes("This job") &&
+    !(revisedInstall.notes ?? "").includes(DECK_PRODUCTIVITY_SCOPE_REVIEW)
+);
+
+const partialLegacy = calculateDeck(
+  ctx(
+    [
+      ...measuredBase.map((row) =>
+        row.key === "deck.concrete_fill" ? fact("deck.concrete_fill", "partial") : row
+      ),
+      fact("deck.concrete_fill_depth_mm", 400),
+    ],
+    [carpenter65, legacyPosts, legacyConcrete]
+  ),
+  wa()
+);
+const partialBags = partialLegacy.lineItems.find((item) => item.componentKey === "deck.concrete.bags");
+const partialPlace = line(partialLegacy, "Concrete placement");
+const partialSpoil = line(partialLegacy, "Post-hole spoil destination");
+check(
+  "400 mm partial fill stays 52 bags, and the unconfirmed 0.7 h/bag is 36.4 h",
+  partialBags?.quantity === 52 &&
+    partialSpoil?.quantity === 0.924 &&
+    partialPlace?.quantity === 52 &&
+    partialPlace.labourHours === 36.4 &&
+    partialPlace.includedInTotal === false &&
+    (partialPlace.recommendedCost ?? 0) === 0
+);
+
+const staleToken = calculateDeck(
+  ctx(
+    [...measuredBase, fact("deck.posts_install_scope_confirmation", "confirmed:1")],
+    [legacyPosts]
+  ),
+  wa()
+);
+check(
+  "a confirmation for a different hour does not apply the stored calibration",
+  line(staleToken, "Pile/post installation")?.includedInTotal === false &&
+    (line(staleToken, "Pile/post installation")?.notes ?? "").includes(DECK_PRODUCTIVITY_SCOPE_REVIEW)
+);
+
+const reviewBlock = productivityScopeReviewBlock([bothInstall?.notes]);
+const issued = quoteCreationDecision({
+  existingQuoteId: "issued-quote",
+  statedCountConflict: reviewBlock,
+});
+const blockedQuote = quoteCreationDecision({
+  existingQuoteId: null,
+  statedCountConflict: reviewBlock,
+});
+const clearQuote = quoteCreationDecision({
+  existingQuoteId: null,
+  statedCountConflict: productivityScopeReviewBlock(["Hole excavation labour is separate."]),
+});
+check(
+  "a new quote is refused while a legacy calibration is unconfirmed, and an issued quote stays open",
+  issued.action === "open_existing" &&
+    blockedQuote.action === "refuse" &&
+    clearQuote.action === "continue"
+);
+
+const estimatePanel = readFileSync(
+  join(process.cwd(), "components/assistant/EstimatePanel.tsx"),
+  "utf8"
+);
+const breakdownUi = readFileSync(
+  join(process.cwd(), "components/assistant/mode/WorkAreaBreakdown.tsx"),
+  "utf8"
+);
+check(
+  "the first estimate panel names the Post holes count once and the takeoff can confirm a stored rate",
+  deckDetailPanelPrompt(7) === "Finish 7 Post holes answers" &&
+    deckDetailPanelPrompt(1) === "Finish 1 Post holes answer" &&
+    estimatePanel.includes("postHolePrompt") &&
+    estimatePanel.includes("onFinishPostHoles") &&
+    breakdownUi.includes("Use this rate") &&
+    breakdownUi.includes("Use these hours") &&
+    !breakdownUi.includes("Finish 7 Post holes answers: ")
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);
