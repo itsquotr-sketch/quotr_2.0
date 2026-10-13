@@ -70,6 +70,81 @@ function prettySection(section: string): string {
   return section.replace(/\s*[x×]\s*/i, " × ");
 }
 
+function millimetreLabel(value: number | null): string {
+  return value == null ? "Not set" : `${value} mm`;
+}
+
+function typicalSetupChanges(input: {
+  shape: string;
+  diameter: number | null;
+  depth: number | null;
+  length: number | null;
+  width: number | null;
+  postSection: string;
+  fill: string;
+  fillDepth: number | null;
+  embedment: number | null;
+  embedmentLink: string;
+  concreteKnownOff: boolean;
+}): { label: string; before: string; after: string }[] {
+  const changes: { label: string; before: string; after: string }[] = [];
+  const shapeBefore =
+    input.shape === "rectangular" ? "Rectangular" : input.shape === "circular" ? "Circular" : "Not set";
+  if (shapeBefore !== "Circular") {
+    changes.push({ label: "Hole shape", before: shapeBefore, after: "Circular" });
+  }
+  if (input.shape === "rectangular" || input.length != null) {
+    changes.push({ label: "Hole length", before: millimetreLabel(input.length), after: "Not used" });
+  }
+  if (input.shape === "rectangular" || input.width != null) {
+    changes.push({ label: "Hole width", before: millimetreLabel(input.width), after: "Not used" });
+  }
+  if (input.diameter !== DECK_HOLE_ASSUMED_DIAMETER_MM) {
+    changes.push({
+      label: "Hole diameter",
+      before: millimetreLabel(input.diameter),
+      after: `${DECK_HOLE_ASSUMED_DIAMETER_MM} mm`,
+    });
+  }
+  if (input.depth !== DECK_HOLE_ASSUMED_DEPTH_MM) {
+    changes.push({
+      label: "Hole depth",
+      before: millimetreLabel(input.depth),
+      after: `${DECK_HOLE_ASSUMED_DEPTH_MM} mm`,
+    });
+  }
+  if (input.postSection !== TYPICAL_POST) {
+    changes.push({
+      label: "Post size",
+      before: input.postSection ? `${prettySection(input.postSection)} mm` : "Not set",
+      after: "125 × 125 mm",
+    });
+  }
+  const fillBefore =
+    input.fill === "partial"
+      ? `Partial${input.fillDepth != null ? `, ${input.fillDepth} mm concrete depth` : ""}`
+      : input.fill === "full"
+        ? "Full"
+        : "Not set";
+  if (fillBefore !== "Full") {
+    changes.push({ label: "Concrete fill", before: fillBefore, after: "Full" });
+  }
+  if (input.embedment !== DECK_HOLE_ASSUMED_DEPTH_MM || input.embedmentLink === "no") {
+    changes.push({
+      label: "Embedded depth",
+      before:
+        input.embedment == null
+          ? "Not set"
+          : `${input.embedment} mm${input.embedmentLink === "no" ? ", entered manually" : ""}`,
+      after: `${DECK_HOLE_ASSUMED_DEPTH_MM} mm, linked to hole depth`,
+    });
+  }
+  if (input.concreteKnownOff) {
+    changes.push({ label: "Concrete footings", before: "No", after: "Yes" });
+  }
+  return changes;
+}
+
 export function DeckPostHolesSection({
   workAreaId,
   facts,
@@ -145,7 +220,7 @@ export function DeckPostHolesSection({
     !postSection &&
     !fill &&
     embedment == null;
-  const assumedPackage = usingProposal || signature === TYPICAL_SIGNATURE;
+  const assumedPackage = usingProposal;
   const displayCount = savedCount ?? postCount;
   const holeCountForPlan = savedCount ?? postCount ?? 0;
   const shownDiameter = diameter ?? DECK_HOLE_ASSUMED_DIAMETER_MM;
@@ -202,6 +277,7 @@ export function DeckPostHolesSection({
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
+  const [keptSetup, setKeptSetup] = useState(false);
   const detailsOpen =
     userDetailsOpen ||
     focusGapId === "post" ||
@@ -293,7 +369,7 @@ export function DeckPostHolesSection({
     }
   }
 
-  function useTypicalSetup() {
+  function applyTypicalSetup(turnConcreteOn: boolean) {
     write(onSpecFact, workAreaId, "deck.hole_shape", "Hole shape", "circular", "select");
     write(
       onSpecFact,
@@ -330,7 +406,7 @@ export function DeckPostHolesSection({
       TYPICAL_SIGNATURE,
       "text"
     );
-    if (!concreteOn) {
+    if (turnConcreteOn && !concreteOn) {
       onBooleanFact?.({
         workAreaId,
         key: "deck.concrete_to_supports",
@@ -352,12 +428,34 @@ export function DeckPostHolesSection({
     (diameter != null && (diameter < 250 || diameter > 450)) ||
     (depth != null && (depth < 400 || depth > 900));
   const countLabel = displayCount != null ? String(displayCount) : "Post";
+  const fillClause =
+    shownFill === "partial"
+      ? `partial concrete fill${fillDepth != null ? `, ${fillDepth} mm concrete depth` : ""}`
+      : "full concrete fill";
   const sizeLine = rectangular
-    ? `${length ?? "—"} mm × ${width ?? "—"} mm × ${depth ?? "—"} mm · ${prettySection(shownPost)} mm posts · ${shownFill === "partial" ? "partial" : "full"} concrete fill`
-    : `${shownDiameter} mm diameter × ${shownDepth} mm deep · ${prettySection(shownPost)} mm posts · ${shownEmbedment ?? shownDepth} mm embedment · ${shownFill === "partial" ? "partial" : "full"} concrete fill`;
+    ? `${length ?? "—"} mm × ${width ?? "—"} mm × ${depth ?? "—"} mm · ${prettySection(shownPost)} mm posts · ${fillClause}`
+    : `${shownDiameter} mm diameter × ${shownDepth} mm deep · ${prettySection(shownPost)} mm posts · ${shownEmbedment ?? shownDepth} mm embedment · ${fillClause}`;
   const bank = geometry?.bankVolumeM3;
   const net = concretePlan?.netM3;
   const bags = concretePlan?.bags;
+  const setupChanges = usingProposal ? [] : typicalSetupChanges({
+    shape,
+    diameter,
+    depth,
+    length,
+    width,
+    postSection,
+    fill,
+    fillDepth,
+    embedment,
+    embedmentLink,
+    concreteKnownOff,
+  });
+  const typicalStored = !usingProposal && setupChanges.length === 0;
+  const groundCanAdopt = ground === "" || ground === "ordinary";
+  const methodCanAdopt = method === "" || method === "hand";
+  const showOrdinaryHand =
+    groundCanAdopt && methodCanAdopt && !(ground === "ordinary" && method === "hand");
 
   return (
     <section
@@ -389,35 +487,79 @@ export function DeckPostHolesSection({
             : `Bank spoil ${bank.toFixed(3)} m³`}
           {concreteOn || usingProposal
             ? net != null
-              ? ` · Net concrete ${net.toFixed(3)} m³ · ${bags ?? 0} bags (20 kg bags)`
+              ? ` · Net concrete ${net.toFixed(3)} m³ · ${bags ?? 0} × 20 kg bags`
               : " · Concrete quantity still needs a complete hole."
             : " · Concrete footings are off."}
         </p>
         <details className="text-sm text-foreground/80">
           <summary className="min-h-11 cursor-pointer py-2">Bank spoil and concrete fill</summary>
           <p className="pb-1 leading-5">
-            Bank spoil is the soil dug out. Concrete fill is what goes back around the post. They are different quantities.
+            Bank spoil is the soil dug out. Concrete fill is what goes back around the post.
           </p>
         </details>
-        {signature !== TYPICAL_SIGNATURE ? (
+        {usingProposal ? (
           <Button
             type="button"
             className="min-h-11 w-full scroll-mb-40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:scroll-mb-24"
             id={`deck-hole-confirm-${workAreaId}`}
             data-hole-confirm=""
-            onClick={useTypicalSetup}
+            onClick={() => applyTypicalSetup(!concreteOn)}
           >
             Use this setup
           </Button>
+        ) : typicalStored ? (
+          <p className="text-sm text-foreground" data-setup-applied="">
+            This setup is saved: 350 mm diameter × 600 mm deep, 125 × 125 mm posts, full fill, 600 mm embedment.
+          </p>
+        ) : keptSetup ? (
+          <p className="text-sm text-foreground" data-setup-kept="">
+            Saved answers kept.
+          </p>
         ) : (
-          <p className="text-sm text-foreground">This setup is saved: 350 mm × 600 mm, 125 × 125 mm posts, full fill, 600 mm embedment.</p>
+          <div className="space-y-2" data-setup-replace-offer="">
+            <p className="text-sm font-medium text-foreground">
+              The typical setup would change saved answers.
+            </p>
+            <ul className="space-y-1 text-sm text-foreground">
+              {setupChanges.map((row) => (
+                <li key={row.label}>
+                  {row.label}: {row.before} → {row.after}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-foreground/80">
+              Company quantity, bag yield, ground, excavation method, and spoil stay as saved.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                className="min-h-11 flex-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                data-setup-replace=""
+                onClick={() => {
+                  applyTypicalSetup(concreteKnownOff || !concreteOn);
+                  setKeptSetup(false);
+                }}
+              >
+                Replace
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 border-foreground/30 bg-background text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                data-setup-keep=""
+                onClick={() => setKeptSetup(true)}
+              >
+                Keep
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 
       <NumberField
         id={`deck-hole-count-${workAreaId}`}
-        label="Hole count"
-        unit="holes (count)"
+        label="Number of post holes"
+        helper="Count"
         value={displayCount ?? ""}
         min={1}
         error={countError}
@@ -425,30 +567,9 @@ export function DeckPostHolesSection({
         onCommit={saveCount}
       />
       {postCount != null && savedCount != null && savedCount !== postCount ? (
-        <NumberField
-          id={`deck-hole-reason-${workAreaId}`}
-          label="Reason for a different hole count"
-          unit="text"
-          text
-          inputRef={reasonRef}
-          value={savedReason}
-          error={reasonError}
-          errorAttr="data-hole-reason-error"
-          onCommit={(raw) => {
-            const next = raw.trim();
-            if (!next) {
-              setReasonError("Add a short reason when the hole count differs from the post count.");
-              return;
-            }
-            setReasonError(null);
-            if (next === savedReason) return;
-            write(onSpecFact, workAreaId, "deck.hole_count_reason", "Hole count reason", next, "text");
-          }}
-        />
-      ) : (
         <div className="space-y-1.5">
           <Label className="text-sm text-foreground" htmlFor={`deck-hole-reason-${workAreaId}`}>
-            Reason for a different hole count
+            Reason the hole count differs from the posts
           </Label>
           <Input
             ref={reasonRef}
@@ -456,32 +577,48 @@ export function DeckPostHolesSection({
             id={`deck-hole-reason-${workAreaId}`}
             type="text"
             defaultValue={savedReason}
+            aria-invalid={reasonError ? true : undefined}
             onBlur={(event) => {
               const next = event.target.value.trim();
-              if (!next || next === savedReason) return;
+              if (!next) {
+                setReasonError("Add a short reason when the hole count differs from the post count.");
+                return;
+              }
               setReasonError(null);
+              if (next === savedReason) return;
               write(onSpecFact, workAreaId, "deck.hole_count_reason", "Hole count reason", next, "text");
             }}
           />
+          {reasonError ? (
+            <p className="text-sm text-destructive" role="alert" data-hole-reason-error="">
+              {reasonError}
+            </p>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      <div className="space-y-2 rounded-lg border border-border p-3">
-        <p className="text-sm text-foreground">
-          Suggested ground and method: ordinary soil, dug by hand. Spoil is a separate choice. Nothing here is used until you adopt it.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full border-foreground/30 bg-background text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          onClick={() => {
-            write(onSpecFact, workAreaId, "deck.hole_ground", "Hole ground", "ordinary", "select");
-            write(onSpecFact, workAreaId, "deck.hole_method", "Excavation method", "hand", "select");
-          }}
-        >
-          Use ordinary soil and hand digging
-        </Button>
-      </div>
+      {showOrdinaryHand ? (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          <p className="text-sm text-foreground">
+            Suggested ground and method: ordinary soil, dug by hand. Spoil stays a separate choice.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 w-full border-foreground/30 bg-background text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => {
+              if (!ground) {
+                write(onSpecFact, workAreaId, "deck.hole_ground", "Hole ground", "ordinary", "select");
+              }
+              if (!method) {
+                write(onSpecFact, workAreaId, "deck.hole_method", "Excavation method", "hand", "select");
+              }
+            }}
+          >
+            Use ordinary soil and hand digging
+          </Button>
+        </div>
+      ) : null}
 
       <Choice
         id={`deck-hole-ground-${workAreaId}`}
@@ -580,7 +717,7 @@ export function DeckPostHolesSection({
       ) : null}
       {outsideOrdinary && jobHours == null ? (
         <p className="text-sm text-foreground">
-          This hole is outside the ordinary hand-dug starter. Enter person-hours per hole below, or add a company rate. Otherwise excavation stays Pricing Required.
+          Outside the ordinary hand-dug starter. Enter person-hours per hole, or excavation stays Pricing Required.
         </p>
       ) : null}
 
@@ -659,7 +796,7 @@ export function DeckPostHolesSection({
           ) : null}
           <Choice
             id={`deck-concrete-post-${workAreaId}`}
-            label="Post size"
+            label="Post size (mm)"
             value={postSection}
             placeholder="Choose post size"
             options={[
@@ -672,7 +809,7 @@ export function DeckPostHolesSection({
             }}
           />
           <p className="text-sm text-foreground/80">
-            This post size is used for the pile material and for the concrete displaced by the post.
+            Used for the pile and for the concrete displaced by the post.
           </p>
           <NumberField
             id={`deck-post-embedment-${workAreaId}`}
@@ -700,7 +837,7 @@ export function DeckPostHolesSection({
             }}
           />
           <p className="text-sm text-foreground/80">
-            Proposed embedment matches the full hole depth until you enter a different embedded depth. That match is an estimating assumption, not a measured post and not a structural rule.
+            Matches the hole depth while linked. A depth you type stays as entered.
           </p>
           {concreteOn || usingProposal ? (
             <Choice
@@ -827,6 +964,7 @@ function NumberField({
   id,
   label,
   unit,
+  helper,
   value,
   min,
   max,
@@ -839,7 +977,8 @@ function NumberField({
 }: {
   id: string;
   label: string;
-  unit: string;
+  unit?: string;
+  helper?: string;
   value: string | number;
   min?: number;
   max?: number;
@@ -851,11 +990,19 @@ function NumberField({
   onCommit: (raw: string) => void;
 }) {
   const unitId = `${id}-unit`;
+  const helperId = `${id}-helper`;
+  const describedBy = [unit ? unitId : null, helper ? helperId : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0 space-y-1.5">
       <Label className="text-sm text-foreground" htmlFor={id}>
-        {label} <span id={unitId}>({unit})</span>
+        {label}
+        {unit ? <span id={unitId}> ({unit})</span> : null}
       </Label>
+      {helper ? (
+        <p id={helperId} className="text-sm text-foreground/80">
+          {helper}
+        </p>
+      ) : null}
       <Input
         ref={inputRef}
         className={fieldClass}
@@ -866,7 +1013,7 @@ function NumberField({
         max={max}
         step={step}
         defaultValue={value}
-        aria-describedby={unitId}
+        aria-describedby={describedBy}
         aria-invalid={error ? true : undefined}
         onBlur={(event) => onCommit(event.target.value)}
       />

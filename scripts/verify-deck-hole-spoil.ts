@@ -2,6 +2,8 @@
  * Deck hole excavation hours, bank spoil, and the $60 labour fallback.
  * Run: npx tsx scripts/verify-deck-hole-spoil.ts
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
 import {
   DECK_HOLE_PROVISIONAL_HOURS,
@@ -576,6 +578,10 @@ check(
     measuredInstall?.includedInTotal === false &&
     (measuredInstall?.recommendedCost ?? 0) === 0 &&
     (measuredInstall?.recommendedSell ?? 0) === 0 &&
+    (measuredInstall?.rateSource ?? "").toLowerCase().includes("pricing required") &&
+    (measuredInstall?.notes ?? "").includes("no approved installation-only hour") &&
+    (measuredHole?.notes ?? "").includes("h/hole") &&
+    (measuredReport.placement?.notes ?? "").includes("h/bag") &&
     measuredReport.placement?.labourHours === 5.2 &&
     measuredReport.placement.recommendedCost === 312 &&
     measuredReport.placement.recommendedSell === 390 &&
@@ -669,6 +675,24 @@ check(
   partialReport.material?.quantity === 39 &&
     partialReport.spoilLine?.quantity === 0.924 &&
     (partialReport.material.notes ?? "").includes("remaining 300 mm")
+);
+const partial400 = calculateDeck(
+  ctx([
+    ...measuredBase.map((row) =>
+      row.key === "deck.concrete_fill" ? fact("deck.concrete_fill", "partial") : row
+    ),
+    fact("deck.concrete_fill_depth_mm", 400),
+  ]),
+  wa()
+);
+const partial400Report = concreteReport("partial fill 400 mm", partial400);
+check(
+  "16 × 350 mm holes with 400 mm partial fill stay at 52 bags and 0.924 m³ bank spoil",
+  partial400Report.material?.quantity === 52 &&
+    partial400Report.spoilLine?.quantity === 0.924 &&
+    (partial400Report.material.notes ?? "").includes("bottom 400 mm") &&
+    (partial400Report.material.notes ?? "").includes("remaining 200 mm") &&
+    (partial400Report.material.notes ?? "").includes("0.516")
 );
 check(
   "a company bag count replaces the volume takeoff",
@@ -931,6 +955,22 @@ check(
       postSection: "125x125",
       embedmentMm: 600,
     }).includes("fill")
+);
+
+const postHolesUi = readFileSync(
+  join(process.cwd(), "components/assistant/job-plan/DeckPostHolesSection.tsx"),
+  "utf8"
+);
+check(
+  "post-hole labels name the count once and a saved setup cannot be replaced silently",
+  postHolesUi.includes("Number of post holes") &&
+    postHolesUi.includes('helper="Count"') &&
+    !postHolesUi.includes("holes (count)") &&
+    !postHolesUi.includes('unit="text"') &&
+    postHolesUi.includes("data-setup-replace") &&
+    postHolesUi.includes("data-setup-keep") &&
+    !postHolesUi.includes("onClick={useTypicalSetup}") &&
+    postHolesUi.includes("Company quantity, bag yield, ground, excavation method, and spoil stay as saved.")
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

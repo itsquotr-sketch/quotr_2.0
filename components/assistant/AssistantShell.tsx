@@ -1327,18 +1327,21 @@ export function AssistantShell({
 
         setGenerateStage("readiness");
         const snap = generateAuthorityRef.current;
-        const facts = lastMutation
+        const mutationFacts = lastMutation
           ? jobPlanFactsFromReviewAndInterview(
               lastMutation.scopeReview,
               lastMutation.interviewFacts
             )
-          : snap?.facts ?? [];
-        const constraints = lastMutation
-          ? lastMutation.submittedConstraints.map((row) => ({
-              key: row.key,
-              value: row.value,
-            }))
-          : snap?.constraints ?? [];
+          : [];
+        const facts = snap?.facts ?? mutationFacts;
+        const constraints = snap
+          ? snap.constraints
+          : lastMutation
+            ? lastMutation.submittedConstraints.map((row) => ({
+                key: row.key,
+                value: row.value,
+              }))
+            : [];
         const workAreas = snap?.workAreas ?? [];
         const compose = composeClarifyInputFromEstimateContext({
           stage: (lastMutation?.stage ??
@@ -1483,7 +1486,7 @@ export function AssistantShell({
   );
 
   const handleFactSave = useCallback(
-    async (input: {
+    (input: {
       workAreaId: string;
       key: string;
       label: string;
@@ -1495,11 +1498,14 @@ export function AssistantShell({
       nestedItemId?: string | null;
       componentId?: string | null;
     }) => {
+      const work = (async () => {
       const factKey = `${input.workAreaId}:${input.key}`;
       recordPreviewPerf("question_save_ack", 0);
       const endSavePerf = startPreviewPerf("question_save_complete");
       setSavingFactKey(factKey);
       setFactError(null);
+      setPendingReadinessWrites((count) => count + 1);
+      setClarifyWritePending(true);
       const requestSeq = ++factMutationSeqRef.current;
       const overlayRow: EstimateFact = {
         key: input.key,
@@ -1514,6 +1520,7 @@ export function AssistantShell({
       tagOverlayFactSeq(overlayRow, requestSeq);
       setJobPlanFactOverlay((prev) => appendJobPlanFactOverlay(prev, overlayRow));
 
+      try {
       const result = await runSerializedFactMutation(() =>
         updateProjectFact({
           projectId: project.id,
@@ -1532,27 +1539,26 @@ export function AssistantShell({
 
       if (result.error) {
         setFactError(result.error);
-        setSavingFactKey(null);
-        endSavePerf();
-        const factIdentity = overlayFactSemanticKey({
-          work_area_id: input.workAreaId,
-          key: input.key,
-          wallTypeId: input.wallTypeId,
-          openingId: input.openingId,
-        });
-        if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
-          setJobPlanFactOverlay((prev) =>
-            prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
-          );
-        }
-        return;
+        setActionError(result.error);
+        setGenerateNotice(null);
+        return result;
       }
 
-      setSavingFactKey(null);
-      endSavePerf();
+      setActionError(null);
+      setGenerateNotice(null);
       if (!settleCanonicalMutation(result, requestSeq)) {
         onRejectedCanonicalMutation(requestSeq);
       }
+      return result;
+      } finally {
+        setSavingFactKey(null);
+        endSavePerf();
+        setClarifyWritePending(false);
+        setPendingReadinessWrites((count) => Math.max(0, count - 1));
+      }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work);
+      return work.then(() => undefined);
     },
     [
       onRejectedCanonicalMutation,
@@ -2186,13 +2192,14 @@ export function AssistantShell({
   );
 
   const handleJobPlanSpecFact = useCallback(
-    async (input: {
+    (input: {
       workAreaId: string;
       key: string;
       label: string;
       value: string | number;
       valueType: "number" | "select" | "text";
     }) => {
+      const work = (async () => {
       const requestSeq = ++factMutationSeqRef.current;
       setPendingReadinessWrites((count) => count + 1);
       setClarifyWritePending(true);
@@ -2226,16 +2233,22 @@ export function AssistantShell({
         );
         if (result.error) {
           setActionError(result.error);
-          return;
+          setGenerateNotice(null);
+          return result;
         }
         setActionError(null);
+        setGenerateNotice(null);
         if (!settleCanonicalMutation(result, requestSeq)) {
           onRejectedCanonicalMutation(requestSeq);
         }
+        return result;
       } finally {
         setClarifyWritePending(false);
         setPendingReadinessWrites((count) => Math.max(0, count - 1));
       }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work);
+      return work;
     },
     [
       onRejectedCanonicalMutation,

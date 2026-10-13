@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -158,10 +158,16 @@ function ClarifyQuestion({
   );
 }
 
-function PersistError({ error }: { error?: string | null }) {
+function PersistError({
+  error,
+  errorRef,
+}: {
+  error?: string | null;
+  errorRef?: RefObject<HTMLParagraphElement | null>;
+}) {
   if (!error) return null;
   return (
-    <p className="text-sm text-destructive" role="alert">
+    <p ref={errorRef} className="text-sm text-destructive" role="alert" tabIndex={-1}>
       {error}
     </p>
   );
@@ -192,6 +198,8 @@ export function ClarifyPanel({
     Record<string, string | number | boolean | string[]>
   >({});
   const continueLockRef = useRef(false);
+  const persistErrorRef = useRef<HTMLParagraphElement>(null);
+  const detailsSavingRef = useRef(false);
   const pendingLockRef = useRef<Set<string>>(new Set());
   const generateIntentRef = useRef(false);
   const queueFailedRef = useRef(false);
@@ -281,7 +289,8 @@ export function ClarifyPanel({
     }
     if (
       pendingLockRef.current.size > 0 ||
-      continueLockRef.current
+      continueLockRef.current ||
+      detailsSavingRef.current
     ) {
       return;
     }
@@ -410,8 +419,11 @@ export function ClarifyPanel({
     Boolean(onEstimateNow) && (localAnswersComplete || authoritativeGenerate);
 
   const requestCreateEstimate = () => {
+    const clarifySavesPending = pendingIds.length > 0 || continuePending;
+    detailsSavingRef.current = Boolean(isSaving);
+    if (Boolean(isSaving) && !clarifySavesPending) return;
     const action = clarifyGenerateIntentAction({
-      savesPending: pendingIds.length > 0 || continuePending,
+      savesPending: clarifySavesPending,
       alreadyQueued: generateIntentRef.current || finishingAnswers,
       alreadyGenerating: Boolean(isGenerating),
       persistError: Boolean(persistError),
@@ -433,6 +445,29 @@ export function ClarifyPanel({
   }, []);
 
   useEffect(() => {
+    if (!persistError) return;
+    persistErrorRef.current?.focus();
+  }, [persistError]);
+
+  useEffect(() => {
+    detailsSavingRef.current = Boolean(isSaving);
+    if (isSaving || pendingIds.length > 0 || continuePending) return;
+    if (!generateIntentRef.current) return;
+    const failedAny = queueFailedRef.current || Boolean(persistError);
+    queueFailedRef.current = false;
+    const action = clarifyQueuedGenerateAction({
+      intentQueued: true,
+      savesPending: false,
+      persistError: failedAny,
+      localAnswersComplete: !failedAny,
+    });
+    if (action === "wait") return;
+    generateIntentRef.current = false;
+    setFinishingAnswers(false);
+    if (action === "generate") onEstimateNow?.();
+  }, [continuePending, isSaving, onEstimateNow, pendingIds.length, persistError]);
+
+  useEffect(() => {
     if (!returnFocusId || isGenerating) return;
     const node = document.querySelector(
       `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
@@ -445,7 +480,7 @@ export function ClarifyPanel({
   if (showReady && !finishingAnswers && !savesPending) {
     return (
       <div className="space-y-3">
-        <PersistError error={persistError} />
+        <PersistError error={persistError} errorRef={persistErrorRef} />
         {generateNotice && !persistError ? (
           <p className="text-sm font-medium" role="alert">
             {generateNotice}
@@ -491,9 +526,7 @@ export function ClarifyPanel({
       <p className="text-sm text-muted-foreground" data-clarify-progress>
         {countCopy}
       </p>
-      {showCreateEstimate || visibleGroups.length === 0 ? (
-        <PersistError error={persistError} />
-      ) : null}
+      <PersistError error={persistError} errorRef={persistErrorRef} />
       {generateNotice && !persistError ? (
         <p className="text-sm font-medium" role="status">
           {generateNotice}
@@ -680,13 +713,17 @@ export function ClarifyPanel({
               className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
               data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
-              disabled={finishingAnswers || isGenerating}
-              aria-disabled={finishingAnswers || isGenerating ? true : undefined}
+              disabled={finishingAnswers || isGenerating || savesPending}
+              aria-disabled={
+                finishingAnswers || isGenerating || savesPending ? true : undefined
+              }
               onClick={requestCreateEstimate}
             >
-              {finishingAnswers
-                ? ASSISTANT_ACTION_LABELS.finishingAnswers
-                : ASSISTANT_ACTION_LABELS.estimateNow}
+              {Boolean(isSaving) && !finishingAnswers
+                ? "Saving"
+                : finishingAnswers
+                  ? ASSISTANT_ACTION_LABELS.finishingAnswers
+                  : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
           ) : view.canEstimateNow && onEstimateNow && !savesPending ? (
             <Button
