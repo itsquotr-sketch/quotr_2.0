@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
@@ -584,16 +585,19 @@ export function ClarifyReadinessCard({
           type="button"
           className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-clarify-primary-cta
-          disabled={isGenerating || isSaving || readiness.blocksEstimate}
-          aria-disabled={
-            isGenerating || isSaving || readiness.blocksEstimate ? true : undefined
-          }
+          disabled={isGenerating || readiness.blocksEstimate}
+          aria-busy={isGenerating || isSaving ? true : undefined}
           onClick={onEstimateNow}
         >
+          {isGenerating || isSaving ? (
+            <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+          ) : null}
           {isGenerating
-            ? ASSISTANT_LOADING_COPY.estimateGenerate
+            ? generateStage === "saving" || generateStage === "readiness"
+              ? ASSISTANT_LOADING_COPY.questionSave
+              : ASSISTANT_LOADING_COPY.creatingEstimate
             : isSaving
-              ? ASSISTANT_ACTION_LABELS.finishingAnswers
+              ? ASSISTANT_LOADING_COPY.questionSave
               : ASSISTANT_ACTION_LABELS.generateEstimate}
         </Button>
       </ActionFooter>

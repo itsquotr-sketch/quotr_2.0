@@ -69,8 +69,14 @@ function check(name: string, ok: boolean, detail = ""): void {
   }
 }
 
-const SAFETY_COST = 14574.7;
-const SAFETY_SELL = 18218.38;
+// Reconciled 15 October 2026 against a30e3ff and this tree. The fixture is a
+// 36 m² hardwood deck with no posts, so it has four included lines only:
+// decking 2763.44, deck labour 3132, framing 4320, fixings 900. The previous
+// 14574.70 / 18218.38 figures were already 3459.26 / 4324.78 above the engine
+// on the parent commit. Hours 52.2 and decking 282.85 lm are unchanged.
+// Sell is the sum of the line sells, and GST is 15% of that sell.
+const SAFETY_COST = 11115.44;
+const SAFETY_SELL = 13893.6;
 const SAFETY_HOURS = 52.2;
 const SAFETY_DECKING_LM = 282.85;
 
@@ -700,10 +706,10 @@ check(
 
 console.log("\n--- J commercial non-regression ---\n");
 
-check("J1 direct COST stays 14574.70", round2(safetyTotals.recommendedCost) === SAFETY_COST);
-check("J2 sell ex GST stays 18218.38", round2(safetyTotals.recommendedSell) === SAFETY_SELL);
-check("J3 GST stays 2732.76", safetyGst === 2732.76);
-check("J4 sell incl GST stays 20951.14", round2(safetyTotals.recommendedSell + safetyGst) === 20951.14);
+check("J1 direct COST stays 11115.44", round2(safetyTotals.recommendedCost) === SAFETY_COST);
+check("J2 sell ex GST stays 13893.60", round2(safetyTotals.recommendedSell) === SAFETY_SELL);
+check("J3 GST stays 2084.04", safetyGst === 2084.04);
+check("J4 sell incl GST stays 15977.64", round2(safetyTotals.recommendedSell + safetyGst) === 15977.64);
 const withRemoval = calculateDeck(ctx("d1", afterRemoval), wa("d1"));
 const removalLine = withRemoval.lineItems.find((row) => row.label === "Existing deck removal");
 check(

@@ -439,11 +439,14 @@ check(
     after.lineItems.filter((item) => item.componentKey === "deck.decking.install").length === 1
 );
 check(
-  "15 pile installation stays Pricing Required beside separate excavation",
-  pileLab?.includedInTotal === false &&
-    (pileLab?.labourHours ?? 0) === 0 &&
-    (pileLab?.recommendedCost ?? 0) === 0 &&
-    (pileLab?.notes ?? "").includes("no approved installation-only hour")
+  "15 pile installation is the provisional 0.5 h/post beside separate excavation",
+  pileLab?.includedInTotal !== false &&
+    pileLab.itemKey === "deck.posts.set.hours_per_post" &&
+    pileLab.productivityRate === 0.5 &&
+    Math.abs((pileLab.labourHours ?? 0) - round2((pileLab.quantity ?? 0) * 0.5 * accessFactor)) < 0.02 &&
+    (pileLab.notes ?? "").includes("Quotr provisional benchmark") &&
+    (pileLab.notes ?? "").includes("Excludes excavation") &&
+    line(after.lineItems, "Hole excavation")?.componentKey === "deck.hole.excavate"
 );
 check(
   "16 elevated 21 × 0.25 × 1.15 = 6.04 not 6.94",

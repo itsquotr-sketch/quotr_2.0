@@ -165,11 +165,13 @@ import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
   deckDetailGapCopy,
   deckDetailGapsForAreas,
+  deckPostHoleControlId,
   firstDeckDetailTarget,
   quantityConflictStageStatus,
+  settledPostHoleAnswerCount,
 } from "@/lib/estimate/deck-detail-completeness";
+import { spoilAccessAllowsAllowance } from "@/lib/estimate/deck-hole-excavation";
 import {
-  detailsReadinessPhase,
   detailsStageStatusLabel,
   detailsStageSubtitle,
 } from "@/lib/assistant/readiness/details-status";
@@ -238,7 +240,10 @@ import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-o
 import {
   DECK_CONCRETE_CALIBRATION_REASON,
   DECK_CONCRETE_CALIBRATION_TASK,
+  DECK_CONCRETE_PLACE_BENCHMARK_HOURS,
   DECK_CONCRETE_PLACE_CONFIRM_FACT,
+  DECK_POST_SET_HOURS,
+  DECK_POST_SET_SCOPE,
   DECK_POSTS_CALIBRATION_REASON,
   DECK_POSTS_CALIBRATION_TASK,
   DECK_POSTS_INSTALL_CONFIRM_FACT,
@@ -316,11 +321,6 @@ function sameSavedFactValue(canonical: unknown, overlay: unknown): boolean {
     return Number.isFinite(left) && left === right;
   }
   return String(canonical) === String(overlay);
-}
-
-function formatReviewHours(hours: number): string {
-  const rounded = Math.round(hours * 100) / 100;
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
 export function AssistantShell({
@@ -1395,8 +1395,15 @@ export function AssistantShell({
             permission.builderCopy ??
               "One more detail is needed before the estimate can be built."
           );
+          const deckTarget = firstDeckDetailTarget(
+            facts as never,
+            workAreas.map((area) => ({ id: area.id, type: area.type }))
+          );
           setGenerateReturnFocusId(
-            permission.diagnostics.unresolved[0]?.id ?? null
+            permission.diagnostics.unresolved[0]?.id ??
+              (deckTarget
+                ? deckPostHoleControlId(deckTarget.workAreaId, deckTarget.gapId)
+                : null)
           );
           await abortGenerating();
           return;
@@ -2547,7 +2554,12 @@ export function AssistantShell({
       })),
       pendingWrites: pendingReadinessWrites,
     });
-    if (deckDetailGaps.length === 0 || estimate) return base;
+    const postHoleCount = settledPostHoleAnswerCount({
+      workConfirmed: isStageAtOrBeyond(stage, "quality"),
+      workSavePending: pendingAction === "work_areas",
+      gaps: estimate ? [] : deckDetailGaps,
+    });
+    if (postHoleCount === 0 || estimate) return base;
     return {
       ...base,
       canInitiateGenerate: false,
@@ -2559,7 +2571,9 @@ export function AssistantShell({
     clarifyView,
     deckDetailGaps,
     estimate,
+    pendingAction,
     pendingReadinessWrites,
+    stage,
     jobPlan,
     liveConstraints,
     project.qualityLevel,
@@ -2639,10 +2653,29 @@ export function AssistantShell({
     : constraintsSubmitted &&
       !estimateReady &&
       (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
-  const detailsPhase = detailsReadinessPhase({
-    pendingWrites: pendingReadinessWrites,
-    enoughToEstimate: estimateReadiness.enoughToEstimate,
+  const postHoleCount = settledPostHoleAnswerCount({
+    workConfirmed: workAreasConfirmed,
+    workSavePending: pendingAction === "work_areas",
+    gaps: estimate ? [] : deckDetailGaps,
   });
+  const detailOpenCount = clarifyView.remainingRequiredCount + postHoleCount;
+  const postHolesSettled =
+    workAreasConfirmed && pendingAction !== "work_areas";
+  const deckStillOpening =
+    !estimate && deckDetailGaps.length > 0 && !postHolesSettled;
+  const settledDetailPhase = deckStillOpening
+    ? "needs_details"
+    : workAreasConfirmed && detailOpenCount === 0
+      ? "ready"
+      : "needs_details";
+  const savingDetails =
+    pendingReadinessWrites > 0 || pendingAction === "work_areas";
+  const holdCreateEstimate =
+    postHolesSettled &&
+    !estimateReady &&
+    postHoleCount === 0 &&
+    clarifyView.remainingRequiredCount === 0 &&
+    (estimateReadiness.canInitiateGenerate || savingDetails);
   const [detailsPostHoleFocus, setDetailsPostHoleFocus] = useState<{
     gapId: string;
     nonce: number;
@@ -2982,25 +3015,36 @@ export function AssistantShell({
         item.componentKey,
         item.productivityUnit ?? item.unit
       );
-      const projectedLabel = formatReviewHours(beforeAccess);
+      const alternativeHours = posts
+        ? DECK_POST_SET_HOURS
+        : DECK_CONCRETE_PLACE_BENCHMARK_HOURS;
+      const alternativeBefore = Math.round(alternativeHours * quantity * 100) / 100;
+      const alternativePhrase = posts ? "0.5 h/post" : "4 min/bag";
+      const quantityLabel = posts
+        ? `${formatQuantity(quantity)} posts`
+        : `${formatQuantity(quantity)} bags`;
       return [
         {
           id: item.id,
           workAreaId,
           title: item.label,
+          source: "Company calibration",
           storedHours,
+          alternativePhrase,
+          alternativeScope: posts
+            ? DECK_POST_SET_SCOPE
+            : "Approved Quotr placement is 4 person-minutes per 20 kg bag.",
           task: posts ? DECK_POSTS_CALIBRATION_TASK : DECK_CONCRETE_CALIBRATION_TASK,
-          quantityLabel: posts
-            ? `${formatQuantity(quantity)} posts`
-            : `${formatQuantity(quantity)} bags`,
+          quantityLabel,
           projectedHours: `${formatLabourHours(beforeAccess)} h before access`,
-          calculation: `${storedHours} × ${formatQuantity(quantity)} = ${projectedLabel} h before access`,
+          alternativeHours: `${formatLabourHours(alternativeBefore)} h before access`,
+          calculation: `Stored ${storedHours} versus Quotr ${alternativePhrase}. ${quantityLabel} → ${formatLabourHours(beforeAccess)} h versus ${formatLabourHours(alternativeBefore)} h before access.`,
           reason: posts ? DECK_POSTS_CALIBRATION_REASON : DECK_CONCRETE_CALIBRATION_REASON,
           factKey: parsed.factKey,
           value: parsed.value,
           jobFactKey: parsed.jobFactKey,
-          benchmarkLabel: concrete ? "Use the 4-minute Quotr benchmark for this job" : null,
-          benchmarkValue: concrete ? "quotr-benchmark" : null,
+          benchmarkLabel: "Use Quotr rate",
+          benchmarkValue: "quotr-benchmark",
         },
       ];
     });
@@ -3847,11 +3891,10 @@ export function AssistantShell({
           {CLARIFY_IS_PRIMARY && workAreasConfirmed ? (
             <CollapsibleStageCard
               title="Details"
-              subtitle={detailsStageSubtitle(detailsPhase)}
+              subtitle={detailsStageSubtitle(settledDetailPhase)}
               statusLabel={detailsStageStatusLabel(
-                detailsPhase,
-                clarifyView.remainingRequiredCount +
-                  (estimate ? 0 : deckDetailGaps.length)
+                settledDetailPhase,
+                detailOpenCount
               )}
               statusVariant="current"
               preferredExpanded={stagePrefersExpanded(
@@ -3879,6 +3922,7 @@ export function AssistantShell({
                 persistError={actionError}
                 generateNotice={generateNotice}
                 returnFocusId={generateReturnFocusId}
+                holdCreateEstimate={holdCreateEstimate}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={canRunEstimates ? handleGenerateEstimate : undefined}
@@ -3895,6 +3939,9 @@ export function AssistantShell({
                           onSpecFacts: handleJobPlanSpecFacts,
                           focusGapId: detailsPostHoleFocus?.gapId ?? null,
                           focusNonce: detailsPostHoleFocus?.nonce ?? 0,
+                          accessSuitable: spoilAccessAllowsAllowance(liveConstraints),
+                          postHolesSettled:
+                            workAreasConfirmed && pendingAction !== "work_areas",
                           onBooleanFact: (input: {
                             workAreaId: string;
                             key: string;
@@ -4326,9 +4373,11 @@ export function AssistantShell({
             canGenerateEstimate={
               CLARIFY_IS_PRIMARY && !estimateReady ? false : canGenerateEstimate
             }
-            detailsPhase={detailsPhase}
+            detailsPhase={settledDetailPhase}
             detailsBlocker={estimateReadiness.blockerCopy}
-            postHoleAnswerCount={estimate ? 0 : deckDetailGaps.length}
+            postHoleAnswerCount={postHoleCount}
+            holdCreateEstimate={holdCreateEstimate}
+            detailsSaving={savingDetails && holdCreateEstimate}
             onFinishPostHoles={openDeckDetails}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}

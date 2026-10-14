@@ -14,7 +14,11 @@ export type DeckProductivityDecision = {
   readonly id: string;
   readonly workAreaId: string;
   readonly title: string;
+  readonly source?: string;
   readonly storedHours: string;
+  readonly alternativePhrase?: string;
+  readonly alternativeScope?: string;
+  readonly alternativeHours?: string;
   readonly task: string;
   readonly quantityLabel: string;
   readonly projectedHours: string;
@@ -53,7 +57,7 @@ export function DeckProductivityReviewDialog({
   const titleId = useId();
   const errorRef = useRef<HTMLParagraphElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const shownError = error ?? loadError;
 
   useEffect(() => {
@@ -67,7 +71,7 @@ export function DeckProductivityReviewDialog({
 
   async function choose(decision: DeckProductivityDecision, key: string, value: string) {
     setError(null);
-    setSavingId(decision.id);
+    setSavingKey(`${decision.id}:${key}:${value}`);
     try {
       const result = await onDecide(decision, key, value);
       if (result?.error) {
@@ -76,7 +80,7 @@ export function DeckProductivityReviewDialog({
       }
       setError(null);
     } finally {
-      setSavingId(null);
+      setSavingKey(null);
     }
   }
 
@@ -117,46 +121,52 @@ export function DeckProductivityReviewDialog({
               data-productivity-review={decision.factKey}
             >
               <h3 className="text-sm font-semibold break-words">{decision.title}</h3>
+              <p className="text-sm text-foreground/80">{decision.source ?? "Company calibration"}</p>
               <p className="text-sm font-medium break-words" data-productivity-calculation={decision.factKey}>
                 {decision.calculation}
               </p>
-              <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <Fact label="Stored hours" value={decision.storedHours} />
-                <Fact label="This estimate" value={decision.quantityLabel} />
-                <Fact label="Projected hours" value={decision.projectedHours} />
-              </dl>
-              <p className="text-sm text-foreground/80 break-words">
-                <span className="font-medium">Original task. </span>
-                {decision.task}
+              <p className="text-sm break-words">
+                {decision.quantityLabel} · stored {decision.projectedHours}
+                {decision.alternativeHours ? ` · Quotr ${decision.alternativeHours}` : ""}
               </p>
               <p className="text-sm text-foreground/80 break-words">{decision.reason}</p>
+              <details className="text-sm">
+                <summary className="cursor-pointer font-medium">Why review this rate?</summary>
+                <p className="mt-2 break-words text-foreground/80">{decision.task}</p>
+                {decision.alternativeScope ? (
+                  <p className="mt-2 break-words text-foreground/80">{decision.alternativeScope}</p>
+                ) : null}
+              </details>
               <div className="flex flex-col gap-2">
                 <Button
                   type="button"
                   className="h-11 min-h-11"
-                  disabled={pending || savingId != null}
+                  disabled={pending || savingKey != null}
                   onClick={() => choose(decision, decision.factKey, decision.value)}
                 >
-                  {savingId === decision.id
+                  {savingKey === `${decision.id}:${decision.factKey}:${decision.value}`
                     ? "Saving…"
-                    : decision.factKey.includes("concrete")
-                      ? "Use this company rate for these bags"
-                      : "Use this company rate for post setting on this job"}
+                    : "Use company calibration"}
                 </Button>
                 {decision.benchmarkLabel && decision.benchmarkValue ? (
                   <Button
                     type="button"
                     variant="outline"
                     className="h-11 min-h-11"
-                    disabled={pending || savingId != null}
-                    onClick={() => choose(decision, decision.factKey, decision.benchmarkValue!)}
+                    disabled={pending || savingKey != null}
+                    onClick={() =>
+                      choose(decision, decision.factKey, decision.benchmarkValue!)
+                    }
                   >
-                    {savingId === decision.id ? "Saving…" : decision.benchmarkLabel}
+                    {savingKey ===
+                    `${decision.id}:${decision.factKey}:${decision.benchmarkValue}`
+                      ? "Saving…"
+                      : decision.benchmarkLabel}
                   </Button>
                 ) : null}
                 <RevisedHours
-                  disabled={pending || savingId != null}
-                  saving={savingId === decision.id}
+                  disabled={pending || savingKey != null}
+                  saving={savingKey?.startsWith(`${decision.id}:${decision.jobFactKey}:`) === true}
                   onInvalid={setError}
                   onSave={(hours) => choose(decision, decision.jobFactKey, hours)}
                 />
@@ -166,15 +176,6 @@ export function DeckProductivityReviewDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-foreground/70">{label}</dt>
-      <dd className="font-medium break-words">{value}</dd>
-    </div>
   );
 }
 
@@ -204,7 +205,7 @@ function RevisedHours({
       }}
     >
       <label className="text-sm">
-        Revised hours
+        This job (h)
         <input
           className="mt-1 block h-11 w-28 rounded-md border border-border bg-background px-2"
           inputMode="decimal"
@@ -214,7 +215,7 @@ function RevisedHours({
         />
       </label>
       <Button type="submit" variant="outline" className="h-11 min-h-11" disabled={disabled}>
-        {saving ? "Saving…" : "Enter this job's hours"}
+        {saving ? "Saving…" : "Enter this job's rate"}
       </Button>
     </form>
   );

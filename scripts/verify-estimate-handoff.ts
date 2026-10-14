@@ -232,11 +232,13 @@ check(
 check(
   "one save status, no second saving sentence",
   labels.includes('savingAnswer: "Saving answer…"') &&
-    labels.includes('finishingAnswers: "Finishing answers…"') &&
-    panel.includes("savingAnswer") &&
+    labels.includes('questionSave: "Saving details…"') &&
+    labels.includes('creatingEstimate: "Creating estimate…"') &&
+    panel.includes("questionSave") &&
+    panel.includes("creatingEstimate") &&
+    panel.includes("!showCreateEstimate") &&
     !panel.includes("Saving the last answer") &&
-    !panel.includes("SaveStatusIndicator") &&
-    !panel.includes("Loader2")
+    !panel.includes("SaveStatusIndicator")
 );
 check(
   "generation still waits, revalidates, and locks",

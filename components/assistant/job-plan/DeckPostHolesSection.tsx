@@ -10,12 +10,13 @@ import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
-  DECK_SPOIL_ALLOWANCE_NOTICE,
   DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST,
   DECK_SPOIL_HAULAGE_SCOPE,
+  DECK_SPOIL_HAULAGE_SHORT,
   DECK_SPOIL_SMALL_BANK_MAX_M3,
   DECK_SPOIL_TIP_ALLOWANCE_EX_GST,
   DECK_SPOIL_TIP_SCOPE,
+  DECK_SPOIL_TIP_SHORT,
   deckHoleCountError,
   deckHoleMillimetreError,
   planDeckHoleExcavation,
@@ -33,7 +34,9 @@ type FactWrite = {
   valueType: "number" | "select" | "text";
 };
 
-type HoleFactWrite = (input: FactWrite & { workAreaId: string }) => void;
+type HoleFactWrite = (
+  input: FactWrite & { workAreaId: string }
+) => Promise<{ error?: string } | void> | void;
 
 const TYPICAL_POST = "125x125";
 const TYPICAL_SIGNATURE = "assumed:circular|350|600|125x125|full|600";
@@ -53,7 +56,7 @@ export function DeckPostHolesSection({
   facts,
   onSpecFact,
   onSpecFacts,
-  onBooleanFact,
+  accessSuitable = true,
   focusGapId = null,
   focusNonce = 0,
 }: {
@@ -70,6 +73,7 @@ export function DeckPostHolesSection({
     label: string;
     value: boolean;
   }) => void;
+  accessSuitable?: boolean;
   focusGapId?: string | null;
   focusNonce?: number;
 }) {
@@ -108,13 +112,6 @@ export function DeckPostHolesSection({
       fact.work_area_id === workAreaId &&
       fact.value === true
   );
-  const concreteKnownOff = facts.some(
-    (fact) =>
-      fact.key === "deck.concrete_to_supports" &&
-      fact.work_area_id === workAreaId &&
-      fact.value === false
-  );
-  const concreteKnown = concreteOn || concreteKnownOff;
   const fill = jobPlanString(facts, workAreaId, "deck.concrete_fill") ?? "";
   const fillDepth = jobPlanNumber(facts, workAreaId, "deck.concrete_fill_depth_mm");
   const postSection = jobPlanString(facts, workAreaId, "deck.support_section") ?? "";
@@ -127,7 +124,6 @@ export function DeckPostHolesSection({
   const haulageCost = jobPlanNumber(facts, workAreaId, "deck.spoil_haulage_job_cost");
   const tipCost = jobPlanNumber(facts, workAreaId, "deck.spoil_tip_job_cost");
   const loadFit = jobPlanString(facts, workAreaId, "deck.spoil_load_fit") ?? "";
-  const postHours = jobPlanNumber(facts, workAreaId, "deck.posts_install_hours_per_ea");
   const rectangular = shape === "rectangular";
   const usingProposal =
     !shape &&
@@ -158,8 +154,6 @@ export function DeckPostHolesSection({
     focusGapId === "embedment" ||
     focusGapId === "fill";
   const [keptSetup, setKeptSetup] = useState(false);
-  const [editingConcrete, setEditingConcrete] = useState(false);
-
   useEffect(() => {
     if (!focusGapId) return;
     let cancelled = false;
@@ -186,7 +180,7 @@ export function DeckPostHolesSection({
   }, [setupError]);
 
   function write(fact: FactWrite) {
-    onSpecFact?.({ workAreaId, ...fact });
+    return onSpecFact?.({ workAreaId, ...fact });
   }
 
   function saveCount(raw: string) {
@@ -309,7 +303,13 @@ export function DeckPostHolesSection({
     (depth != null && (depth < 400 || depth > 900));
   const showHours = Boolean(ground && method && outsideOrdinary);
   const bank = holePlan?.geometry?.bankVolumeM3 ?? null;
-  const smallLoad = bank != null && bank > 0 && bank <= DECK_SPOIL_SMALL_BANK_MAX_M3 && loadFit !== "other" && loadFit !== "unknown";
+  const smallLoad =
+    bank != null &&
+    bank > 0 &&
+    bank <= DECK_SPOIL_SMALL_BANK_MAX_M3 &&
+    loadFit !== "other" &&
+    loadFit !== "unknown" &&
+    accessSuitable;
   const showEditor = editing || !typicalStored;
 
   return (
@@ -327,7 +327,6 @@ export function DeckPostHolesSection({
       <NumberField
         id={`deck-hole-count-${workAreaId}`}
         label="Number of post holes"
-        helper="Count"
         value={displayCount ?? ""}
         min={1}
         error={countError}
@@ -335,9 +334,7 @@ export function DeckPostHolesSection({
         onCommit={saveCount}
       />
       {postCount != null ? (
-        <p className="text-sm text-foreground">
-          Confirmed posts: {postCount}. Excavation, concrete, and spoil use the hole count. Post setting uses the post count.
-        </p>
+        <p className="text-sm text-foreground">Suggested from {postCount} confirmed posts.</p>
       ) : null}
       {postCount != null && savedCount != null && savedCount !== postCount ? (
         <div className="space-y-1.5">
@@ -373,11 +370,8 @@ export function DeckPostHolesSection({
       <div className="space-y-2" data-typical-setup="">
         {usingProposal ? (
           <>
-            <p className="text-sm text-foreground">
-              Typical setup: circular {DECK_HOLE_ASSUMED_DIAMETER_MM} mm × {DECK_HOLE_ASSUMED_DEPTH_MM} mm, 125 × 125 mm post, concrete fills the hole, embedment equals the hole depth.
-            </p>
             <p className="text-sm text-foreground" data-hole-assumed="">
-              Assumed for estimating. This is not a measured size.
+              {typicalSummary(displayCount)}
             </p>
             <Button
               type="button"
@@ -393,7 +387,7 @@ export function DeckPostHolesSection({
         ) : typicalStored && !showEditor ? (
           <div className="space-y-2">
             <p className="text-sm text-foreground" data-setup-applied="">
-              Saved: 350 mm diameter × 600 mm deep, 125 × 125 mm posts, full fill, 600 mm embedment.
+              {typicalSummary(displayCount)}
             </p>
             <Button
               type="button"
@@ -418,9 +412,6 @@ export function DeckPostHolesSection({
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-foreground">
-              Company quantity, bag yield, ground, excavation method, and spoil stay as saved.
-            </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 type="button"
@@ -523,27 +514,6 @@ export function DeckPostHolesSection({
               write({ key: "deck.support_section", label: "Pile/post section", value, valueType: "select" })
             }
           />
-          <NumberField
-            id={`deck-post-embedment-${workAreaId}`}
-            label="Post embedded depth"
-            unit="mm"
-            value={embedment ?? ""}
-            min={1}
-            max={3000}
-            onCommit={(raw) => {
-              const next = saveMillimetres("deck.post_embedment_mm", "Post embedded depth", raw, embedment);
-              if (next == null) return;
-              write({
-                key: "deck.post_embedment_linked",
-                label: "Post embedment link",
-                value: "no",
-                valueType: "select",
-              });
-            }}
-          />
-          <p className="text-sm text-foreground">
-            Embedment follows a changed depth only while it is still linked to the adopted setup.
-          </p>
         </div>
       ) : null}
 
@@ -584,7 +554,7 @@ export function DeckPostHolesSection({
           <NumberField
             id={`deck-hole-hours-${workAreaId}`}
             label="Expected person-hours per hole for this ground"
-            unit="h/hole"
+            unit="person-hours/hole"
             value={jobHours ?? ""}
             step="0.1"
             min={0.1}
@@ -627,9 +597,6 @@ export function DeckPostHolesSection({
           >
             {hoursStatus === "unknown" ? "Hours unknown — price required" : "Not sure — request a price"}
           </Button>
-          <p className="text-sm text-foreground">
-            The approved 30-minute ordinary-soil rate is not used for this ground.
-          </p>
         </div>
       ) : null}
 
@@ -643,24 +610,39 @@ export function DeckPostHolesSection({
           ["off_site", "Leave site"],
           ["not_sure", "Not sure"],
         ]}
-        onChange={(value) =>
-          write({ key: "deck.spoil_destination", label: "Spoil destination", value, valueType: "select" })
-        }
+        onChange={(value) => {
+          void write({ key: "deck.spoil_destination", label: "Spoil destination", value, valueType: "select" });
+          if (value !== "off_site") {
+            void write({
+              key: "deck.spoil_haulage_choice",
+              label: "Spoil haulage choice",
+              value: "invalid",
+              valueType: "select",
+            });
+            void write({
+              key: "deck.spoil_tip_choice",
+              label: "Spoil tip choice",
+              value: "invalid",
+              valueType: "select",
+            });
+          }
+        }}
       />
+      {spoil === "on_site" ? (
+        <p className="text-sm text-foreground">Spoil stays on site. No loading or tip charge.</p>
+      ) : null}
       {spoil === "off_site" && bank != null ? (
         <div className="space-y-3">
-          <p className="text-sm text-foreground">Bank volume {bank.toFixed(3)} m³. Loose volume is not calculated.</p>
+          <p className="text-sm text-foreground">Bank excavation {bank.toFixed(3)} bank m³.</p>
           {!smallLoad ? (
-            <p className="text-sm text-foreground">
-              This is more than one small clean load, or the trip is unknown. Enter a job price or request a price. The $150 allowance is not scaled.
-            </p>
+            <p className="text-sm text-foreground">This load needs a job price.</p>
           ) : null}
           <Allowance
             id={`deck-spoil-haulage-${workAreaId}`}
             title="Loading and local haulage"
             amount={DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST}
-            unit="job"
-            scope={DECK_SPOIL_HAULAGE_SCOPE}
+            scope={DECK_SPOIL_HAULAGE_SHORT}
+            detail={DECK_SPOIL_HAULAGE_SCOPE}
             choice={haulageChoice}
             jobCost={haulageCost}
             offerAllowance={smallLoad}
@@ -685,8 +667,8 @@ export function DeckPostHolesSection({
             id={`deck-spoil-tip-${workAreaId}`}
             title="Tip fee"
             amount={DECK_SPOIL_TIP_ALLOWANCE_EX_GST}
-            unit="load"
-            scope={DECK_SPOIL_TIP_SCOPE}
+            scope={DECK_SPOIL_TIP_SHORT}
+            detail={DECK_SPOIL_TIP_SCOPE}
             choice={tipChoice}
             jobCost={tipCost}
             offerAllowance={smallLoad}
@@ -697,55 +679,8 @@ export function DeckPostHolesSection({
               write({ key: "deck.spoil_tip_job_cost", label: "Spoil tip price", value, valueType: "number" })
             }
           />
-          {smallLoad ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11 border-foreground/30 bg-background text-foreground"
-              onClick={() =>
-                write({ key: "deck.spoil_load_fit", label: "Spoil load fit", value: "other", valueType: "select" })
-              }
-            >
-              This spoil does not fit that scope
-            </Button>
-          ) : null}
         </div>
       ) : null}
-
-      {concreteKnown && !editingConcrete ? (
-        <div className="space-y-2">
-          <p className="text-sm text-foreground">
-            {concreteOn ? "Concrete included from Deck scope." : "Concrete is not included in the Deck scope."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 border-foreground/30 bg-background text-foreground"
-            onClick={() => setEditingConcrete(true)}
-          >
-            Change Deck scope
-          </Button>
-        </div>
-      ) : (
-        <Choice
-          id={`deck-concrete-included-${workAreaId}`}
-          label="Concrete footings"
-          value={concreteOn ? "yes" : concreteKnownOff ? "no" : ""}
-          placeholder="Choose whether concrete is included"
-          options={[
-            ["yes", "Concrete included"],
-            ["no", "No concrete"],
-          ]}
-          onChange={(value) =>
-            onBooleanFact?.({
-              workAreaId,
-              key: "deck.concrete_to_supports",
-              label: "Concrete post footings",
-              value: value === "yes",
-            })
-          }
-        />
-      )}
 
       {concreteOn ? (
         <div className="space-y-3">
@@ -775,41 +710,26 @@ export function DeckPostHolesSection({
               }
             />
           ) : null}
-          {holePlan?.concrete ? (
-            <p className="text-sm text-foreground" data-excavation-volume="">
-              {holePlan.concrete.fill === "unconfirmed"
-                ? "Fill is not confirmed yet."
-                : `Fill ${holePlan.concrete.fill}.`}
-              {holePlan.concrete.displacementM3 != null
-                ? ` Post displacement ${holePlan.concrete.displacementM3.toFixed(3)} m³.`
-                : " Post displacement is waiting for the post size and embedment."}
-              {holePlan.concrete.bags > 0 ? ` ${holePlan.concrete.bags} × 20 kg bags.` : ""}
-            </p>
-          ) : null}
+          <NumberField
+            id={`deck-post-embedment-${workAreaId}`}
+            label="Post embedded depth"
+            unit="mm"
+            value={embedment ?? ""}
+            min={1}
+            max={3000}
+            onCommit={(raw) => {
+              const next = saveMillimetres("deck.post_embedment_mm", "Post embedded depth", raw, embedment);
+              if (next == null) return;
+              write({
+                key: "deck.post_embedment_linked",
+                label: "Post embedment link",
+                value: "no",
+                valueType: "select",
+              });
+            }}
+          />
         </div>
       ) : null}
-
-      <NumberField
-        id={`deck-post-hours-${workAreaId}`}
-        label="Hours to set each post, without digging the hole"
-        unit="h/post"
-        value={postHours ?? ""}
-        step="0.1"
-        min={0.1}
-        onCommit={(raw) => {
-          const next = Number(raw);
-          if (!raw.trim() || !Number.isFinite(next) || next <= 0) return;
-          write({
-            key: "deck.posts_install_hours_per_ea",
-            label: "Post setting hours",
-            value: next,
-            valueType: "number",
-          });
-        }}
-      />
-      <p className="text-sm text-foreground">
-        There is no approved Quotr time for setting posts without excavation. Leave this blank to review a stored company rate on the estimate, or enter this job’s hours.
-      </p>
 
       {holePlan?.geometry && holePlan.concrete ? (
         <details data-concrete-calculation="">
@@ -869,6 +789,11 @@ export function DeckPostHolesSection({
       ) : null}
     </section>
   );
+}
+
+function typicalSummary(count: number | null): string {
+  const holes = count != null ? `${count} circular holes` : "Circular holes";
+  return `${holes} · ${DECK_HOLE_ASSUMED_DIAMETER_MM} × ${DECK_HOLE_ASSUMED_DEPTH_MM} mm · 125 × 125 mm posts · full concrete fill.`;
 }
 
 function typicalSetupChanges(input: {
@@ -932,8 +857,8 @@ function Allowance({
   id,
   title,
   amount,
-  unit,
   scope,
+  detail,
   choice,
   jobCost,
   offerAllowance,
@@ -943,47 +868,114 @@ function Allowance({
   id: string;
   title: string;
   amount: number;
-  unit: string;
   scope: string;
+  detail: string;
   choice: string;
   jobCost: number | null;
   offerAllowance: boolean;
-  onChoice: (value: string) => void;
-  onCost: (value: number) => void;
+  onChoice: (value: string) => Promise<{ error?: string } | void> | void;
+  onCost: (value: number) => Promise<{ error?: string } | void> | void;
 }) {
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState(jobCost != null ? String(jobCost) : "");
+  const completed =
+    choice === "allowance" ||
+    choice === "rfq" ||
+    (choice === "job" && jobCost != null && jobCost > 0);
+  const summary =
+    choice === "allowance"
+      ? `${title} · Quotr provisional allowance · $${amount} cost ex GST`
+      : choice === "job" && jobCost != null
+        ? `${title} · This job · $${jobCost} cost ex GST`
+        : choice === "rfq"
+          ? `${title} · Price requested`
+          : title;
+
+  useEffect(() => {
+    if (!error) return;
+    errorRef.current?.focus();
+  }, [error]);
+
+  async function choose(value: string) {
+    setError(null);
+    const result = await onChoice(value);
+    if (result && "error" in result && result.error) {
+      setError(result.error);
+      setOpen(true);
+      return;
+    }
+    if (value !== "job") setOpen(false);
+  }
+
+  if (completed && !open && !error) {
+    return (
+      <div id={id} className="flex min-w-0 flex-wrap items-center justify-between gap-2" tabIndex={-1}>
+        <p className="text-sm text-foreground">{summary}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 border-foreground/30 bg-background text-foreground"
+          onClick={() => setOpen(true)}
+        >
+          Change
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div id={id} className="space-y-2 rounded-lg border border-border p-3" tabIndex={-1}>
       <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="text-sm text-foreground">{DECK_SPOIL_ALLOWANCE_NOTICE}</p>
-      <p className="text-sm text-foreground">
-        ${amount} ex GST per {unit}. {scope}
-      </p>
+      <p className="text-sm text-foreground">{scope}</p>
+      <details>
+        <summary className="min-h-11 cursor-pointer text-sm text-foreground">About this allowance</summary>
+        <p className="text-sm text-foreground">{detail}</p>
+      </details>
       <div className="flex flex-col gap-2">
         {offerAllowance ? (
-          <Button type="button" className="min-h-11" onClick={() => onChoice("allowance")}>
-            {choice === "allowance" ? "Using this allowance" : "Use this allowance"}
+          <Button type="button" className="min-h-11" onClick={() => void choose("allowance")}>
+            Provisional Quotr allowance ${amount} cost ex GST
           </Button>
         ) : null}
-        <Button type="button" variant="outline" className="min-h-11 border-foreground/30" onClick={() => onChoice("job")}>
-          Enter a job price
+        <Button type="button" variant="outline" className="min-h-11 border-foreground/30" onClick={() => void choose("job")}>
+          Enter this job’s cost
         </Button>
-        <Button type="button" variant="outline" className="min-h-11 border-foreground/30" onClick={() => onChoice("rfq")}>
-          {choice === "rfq" ? "Price requested" : "Request a price"}
+        <Button type="button" variant="outline" className="min-h-11 border-foreground/30" onClick={() => void choose("rfq")}>
+          Request a price
         </Button>
       </div>
       {choice === "job" ? (
         <NumberField
           id={`${id}-cost`}
-          label="This job's price"
+          label="This job's cost"
           unit="$ ex GST"
-          value={jobCost ?? ""}
+          value={draft}
           min={1}
           onCommit={(raw) => {
+            setDraft(raw);
             const next = Number(raw);
-            if (!raw.trim() || !Number.isFinite(next) || next <= 0) return;
-            onCost(next);
+            if (!raw.trim() || !Number.isFinite(next) || next <= 0) {
+              setError("Enter this job’s cost.");
+              return;
+            }
+            void Promise.resolve(onCost(next)).then((result) => {
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                setOpen(true);
+                return;
+              }
+              setError(null);
+              setOpen(false);
+            });
           }}
         />
+      ) : null}
+      {error ? (
+        <p ref={errorRef} tabIndex={-1} className="text-sm text-destructive outline-none" role="alert">
+          {error}
+        </p>
       ) : null}
     </div>
   );

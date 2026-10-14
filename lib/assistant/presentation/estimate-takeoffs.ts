@@ -261,6 +261,27 @@ function storedProductivityBasis(line: BuilderReviewPricedLine): string | null {
   return null;
 }
 
+function explicitProductivitySource(notes: string | null | undefined): string | null {
+  const match = /Productivity source:\s*([^\n]+)/.exec(notes ?? "");
+  return match?.[1]?.trim() || null;
+}
+
+function spoilTakeoffCopy(line: BuilderReviewPricedLine): {
+  specification: string | null;
+  source: string | null;
+} | null {
+  const component = line.componentKey ?? line.sourceLine.componentKey ?? "";
+  if (component !== "deck.spoil.haulage" && component !== "deck.spoil.tip") return null;
+  const notes = line.sourceLine.notes?.trim() ?? "";
+  const specification =
+    component === "deck.spoil.haulage" && notes.includes("allowance confirmed")
+      ? "One local trip · clean spoil · allowance confirmed for this job"
+      : component === "deck.spoil.tip" && notes.includes("allowance confirmed")
+        ? "One clean-spoil load · allowance confirmed for this job"
+        : notes || null;
+  return { specification, source: null };
+}
+
 function presentRow(placed: PlacedLine): TakeoffRow {
   const { line, group } = placed;
   const required = pricingRequired(line, group);
@@ -278,23 +299,32 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     labour && line.costRate != null && line.costRate > 0
       ? `${formatCurrency(line.costRate)}/h`
       : null;
+  const spoilCopy = labour ? null : spoilTakeoffCopy(line);
   const identity = labour
     ? null
-    : splitStoredIdentity(line.label, line.sourceLine.identitySummary ?? line.specification);
+    : splitStoredIdentity(
+        line.label,
+        spoilCopy ? null : line.sourceLine.identitySummary ?? line.specification
+      );
   const worker = labour ? labourRateIdentity(line.itemKey ?? line.sourceLine.itemKey) : null;
+  const productivitySource = labour
+    ? explicitProductivitySource(line.sourceLine.notes) ?? line.productivityLabel
+    : null;
   return {
     id: line.id,
     description: line.label,
     product: identity?.product ?? null,
     materialUse: labour ? null : identity?.materialUse ?? line.label,
-    specification: identity?.specification ?? null,
+    specification: spoilCopy?.specification ?? identity?.specification ?? null,
     genericCaption: identity?.genericCaption ?? null,
     workerType: worker?.workerType ?? null,
     pricedUsing: worker?.pricedUsing ?? null,
     activity: labour ? line.label : null,
     productivityBasis: labour ? storedProductivityBasis(line) : null,
-    productivitySource: labour ? line.productivityLabel : null,
-    hourlyRateSource: labour ? sourceLabel(line, required) : null,
+    productivitySource,
+    hourlyRateSource: labour
+      ? line.labourRateLabel ?? sourceLabel(line, required)
+      : null,
     workArea: placed.workArea,
     workAreaId: placed.workAreaId,
     portion: placed.portion,
@@ -310,7 +340,7 @@ function presentRow(placed: PlacedLine): TakeoffRow {
           : `${formatLabourHours(hours)} hrs`,
     hourlyCost: labour ? hourly : null,
     productivity: line.productivityLabel,
-    source: sourceLabel(line, required),
+    source: required ? sourceLabel(line, required) : line.rateLabel || sourceLabel(line, required),
     pricingRequired: required,
     reviewNote,
     shared: placed.shared,

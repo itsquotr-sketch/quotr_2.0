@@ -147,12 +147,17 @@ check(
   "provisional hours are 0.5, not post or bag time",
   hole?.productivityRate === DECK_HOLE_PROVISIONAL_HOURS &&
     hole.productivityRate !== 1 &&
-    install?.includedInTotal === false &&
-    install?.rateSourceType === "missing" &&
-    (install?.recommendedCost ?? 0) === 0 &&
-    (install?.notes ?? "").includes("no approved installation-only hour") &&
+    install?.includedInTotal !== false &&
+    install.itemKey === "deck.posts.set.hours_per_post" &&
+    install.productivityRate === 0.5 &&
+    install.labourHours === 8 &&
+    install.recommendedCost === 480 &&
+    install.recommendedSell === 600 &&
+    (install.notes ?? "").includes("Quotr provisional benchmark") &&
+    (install.notes ?? "").includes("Excludes excavation") &&
+    !(install.notes ?? "").includes("1 person-hour") &&
     place?.productivityRate === 0.06666666666666667,
-  `hole=${hole?.productivityRate} install=${install?.rateSourceType} place=${place?.productivityRate}`
+  `hole=${hole?.productivityRate} install=${install?.productivityRate}/${install?.itemKey} place=${place?.productivityRate}`
 );
 check(
   "16 ordinary holes cost 8 h × $60",
@@ -238,8 +243,10 @@ check(
     companyPost.costRate === 60 &&
     companyPost.recommendedCost === 384 &&
     companyPost.recommendedSell === 480 &&
-    (companyPost.notes ?? "").includes("Your company rate") &&
-    !(companyPost.notes ?? "").includes("1 person-hour"),
+    (companyPost.notes ?? "").includes("Company rate") &&
+    (companyPost.notes ?? "").includes("Productivity source: Company rate") &&
+    !(companyPost.notes ?? "").includes("1 person-hour") &&
+    !(companyPost.notes ?? "").includes("Quotr provisional benchmark"),
   `rate=${companyPost?.productivityRate} hours=${companyPost?.labourHours} cost=${companyPost?.recommendedCost} sell=${companyPost?.recommendedSell} included=${companyPost?.includedInTotal} notes=${companyPost?.notes}`
 );
 
@@ -580,15 +587,20 @@ const measuredInstall = measured.lineItems.find((item) => item.label === "Pile/p
 const measuredHole = measured.lineItems.find((item) => item.label === "Hole excavation");
 const measuredSpoil = measured.lineItems.find((item) => item.label === "Post-hole spoil destination");
 check(
-  "16-post rows keep excavation, placement, and bags, and leave installation Pricing Required",
+  "16-post rows keep excavation, placement, and bags, and price installation once at 0.5 h/post",
   measuredHole?.labourHours === 8 &&
     measuredHole.recommendedCost === 480 &&
     measuredHole.recommendedSell === 600 &&
-    measuredInstall?.includedInTotal === false &&
-    (measuredInstall?.recommendedCost ?? 0) === 0 &&
-    (measuredInstall?.recommendedSell ?? 0) === 0 &&
-    (measuredInstall?.rateSource ?? "").toLowerCase().includes("pricing required") &&
-    (measuredInstall?.notes ?? "").includes("no approved installation-only hour") &&
+    measuredInstall?.includedInTotal !== false &&
+    measuredInstall.productivityRate === 0.5 &&
+    measuredInstall.labourHours === 8 &&
+    measuredInstall.recommendedCost === 480 &&
+    measuredInstall.recommendedSell === 600 &&
+    measuredInstall.itemKey === "deck.posts.set.hours_per_post" &&
+    (measuredInstall.notes ?? "").includes("Excludes excavation") &&
+    (measured.assumptions ?? []).some((row) =>
+      row.includes("not included in substructure framing")
+    ) &&
     (measuredHole?.notes ?? "").includes("h/hole") &&
     (measuredReport.placement?.notes ?? "").includes("h/bag") &&
     measuredReport.placement?.labourHours === 5.2 &&
@@ -982,13 +994,15 @@ const postHolesUi = readFileSync(
 check(
   "post-hole labels name the count once and a saved setup cannot be replaced silently",
   postHolesUi.includes("Number of post holes") &&
-    postHolesUi.includes('helper="Count"') &&
-    !postHolesUi.includes("holes (count)") &&
-    !postHolesUi.includes('unit="text"') &&
+    postHolesUi.includes("Suggested from") &&
+    postHolesUi.includes("Use typical setup") &&
+    postHolesUi.includes("Edit dimensions") &&
+    !postHolesUi.includes("Hours to set each post") &&
+    !postHolesUi.includes("Change Deck scope") &&
+    !postHolesUi.includes("This spoil does not fit") &&
     postHolesUi.includes("data-setup-replace") &&
     postHolesUi.includes("data-setup-keep") &&
-    !postHolesUi.includes("onClick={useTypicalSetup}") &&
-    postHolesUi.includes("Company quantity, bag yield, ground, excavation method, and spoil stay as saved.")
+    !postHolesUi.includes("onClick={useTypicalSetup}")
 );
 
 const carpenter65 = rate({
@@ -1021,14 +1035,17 @@ const openInstall = line(openMeasured, "Pile/post installation");
 const openPlace = line(openMeasured, "Concrete placement");
 const openHole = line(openMeasured, "Hole excavation");
 check(
-  "no override keeps excavation, leaves installation unpriced, and uses 4 minutes per bag",
+  "no override keeps excavation, prices installation at 0.5 h/post, and uses 4 minutes per bag",
   openHole?.labourHours === 8 &&
     openHole.costRate === 65 &&
     openHole.recommendedCost === 520 &&
     openHole.recommendedSell === 650 &&
-    openInstall?.includedInTotal === false &&
-    openInstall.rateSourceType === "missing" &&
-    (openInstall.recommendedCost ?? 0) === 0 &&
+    openInstall?.includedInTotal !== false &&
+    openInstall.productivityRate === 0.5 &&
+    openInstall.labourHours === 8 &&
+    openInstall.costRate === 65 &&
+    openInstall.recommendedCost === 520 &&
+    openInstall.recommendedSell === 650 &&
     openPlace?.labourHours === 5.2 &&
     openPlace.costRate === 65 &&
     openPlace.recommendedCost === 338 &&
@@ -1067,8 +1084,9 @@ check(
     (concreteOnlyPlace.notes ?? "").includes("0.7 h/bag") &&
     (concreteOnlyPlace.notes ?? "").includes("Your calibrated productivity") &&
     !(concreteOnlyPlace.notes ?? "").includes("4 minute") &&
-    line(concreteOnly, "Pile/post installation")?.rateSourceType === "missing" &&
-    line(concreteOnly, "Pile/post installation")?.labourHours == null
+    line(concreteOnly, "Pile/post installation")?.productivityRate === 0.5 &&
+    line(concreteOnly, "Pile/post installation")?.labourHours === 8 &&
+    line(concreteOnly, "Pile/post installation")?.recommendedCost === 520
 );
 
 const bothLegacy = calculateDeck(
@@ -1108,7 +1126,7 @@ check(
     confirmedInstall.labourHours === 32 &&
     confirmedInstall.recommendedCost === 2080 &&
     confirmedInstall.recommendedSell === 2600 &&
-    (confirmedInstall.notes ?? "").includes("Your calibrated productivity") &&
+    (confirmedInstall.notes ?? "").includes("Company calibration · confirmed for this job") &&
     !(confirmedInstall.notes ?? "").includes(DECK_PRODUCTIVITY_SCOPE_REVIEW) &&
     confirmedPlace?.labourHours === 54.6 &&
     confirmedPlace.recommendedCost === 3549 &&
@@ -1227,7 +1245,12 @@ check(
   "a small off-site load uses the $150 allowances once, not per bank m³",
   adoptedSpoil.spoilLines.length === 2 &&
     adoptedSpoil.spoilLines.every((line) => line.kind === "priced" && line.unitCost === 150 && line.chargeQuantity === 1) &&
-    adoptedSpoil.spoilLines.every((line) => line.notes.includes("Provisional local allowance"))
+    adoptedSpoil.spoilLines.every(
+      (line) =>
+        line.notes.includes("allowance confirmed for this job") &&
+        line.rateSourceLabel === "Quotr provisional allowance · confirmed for this job" &&
+        !line.notes.includes("Waimakariri")
+    )
 );
 const adoptedEstimate = calculateDeck(
   ctx([

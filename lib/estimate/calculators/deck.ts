@@ -43,9 +43,13 @@ import {
   DECK_CONCRETE_PLACE_BENCHMARK_HOURS,
   DECK_CONCRETE_PLACE_CONFIRM_FACT,
   DECK_CONCRETE_PLACE_JOB_HOURS_FACT,
+  DECK_POST_SET_DECISION,
+  DECK_POST_SET_SCOPE,
   DECK_POSTS_INSTALL_CONFIRM_FACT,
   DECK_POSTS_INSTALL_JOB_HOURS_FACT,
   decideLegacyProductivityScope,
+  productivitySourceNote,
+  resolveDeckPostInstallation,
   scopeReviewNotes,
 } from "@/lib/estimate/deck-productivity-scope";
 import { resolveLabourRate, resolveRate, deriveSellFromCost } from "@/lib/estimate/rates";
@@ -547,12 +551,17 @@ export function calculateDeck(
   );
   const substructureInstallProductivity =
     resolveDeckSubstructureInstallProductivity(context.rates);
-  const postsInstallProductivity = resolveProductivity({
-    productivityKey: "deck.posts.install.hours_per_ea",
-    unit: "ea",
-    fallbackHoursPerUnit: 0.2,
+  const postsScope = resolveDeckPostInstallation({
     rates: context.rates,
+    confirmation: getStringFact(facts, workArea.id, DECK_POSTS_INSTALL_CONFIRM_FACT),
+    jobHours: getNumberFact(facts, workArea.id, DECK_POSTS_INSTALL_JOB_HOURS_FACT),
   });
+  const postsInstallProductivity = {
+    hoursPerUnit:
+      postsScope.action === "apply" || postsScope.action === "review"
+        ? postsScope.hoursPerUnit
+        : 0,
+  };
   const supportCount = structural.quantities?.supportCount ?? 0;
   const requiredDeckingLm = deckingBoardResult?.baseLm ?? 0;
   const requiredFramingLm = structural.quantities
@@ -654,40 +663,41 @@ export function calculateDeck(
           ...labourRateFields,
         })
       );
-      const postsScope = decideLegacyProductivityScope({
-        resolved: postsInstallProductivity,
-        confirmation: getStringFact(facts, workArea.id, DECK_POSTS_INSTALL_CONFIRM_FACT),
-        jobHours: getNumberFact(facts, workArea.id, DECK_POSTS_INSTALL_JOB_HOURS_FACT),
-        factKey: DECK_POSTS_INSTALL_CONFIRM_FACT,
-        jobFactKey: DECK_POSTS_INSTALL_JOB_HOURS_FACT,
-      });
       if (postsScope.action === "apply" && supportCount > 0) {
         postHours = shapeLabourHours({
           quantity: supportCount,
           productivityHoursPerUnit: postsScope.hoursPerUnit,
           adjustmentFactor: labourAdjustment,
         });
+        const postScopeNote =
+          postsScope.sourceLabel === "Quotr provisional benchmark"
+            ? `${DECK_POST_SET_SCOPE} ${DECK_POST_SET_DECISION}`
+            : "Installation only. Hole excavation and concrete placement are separate lines, and this time is not inside substructure framing.";
+        assumptions.push(
+          "Post setting is installation only and is not included in substructure framing."
+        );
         lineItems.push(
           createLabourLineItem({
             workAreaId: workArea.id,
             workAreaName: workArea.name,
             label: "Pile/post installation",
             quantity: supportCount,
-            unit: "ea",
+            unit: "post",
             productivityHoursPerUnit: postsScope.hoursPerUnit,
             labourCostRate: labourRate.costRate,
             labourSellRate: labourRate.sellRate,
             adjustmentFactor: labourAdjustment,
             adjustmentLabel: labourAdjustmentSummary,
             notes: labourExpandedNotes({
-              physicalDriver: `Physical driver: ${supportCount} supports. Installation only, from ${postsScope.sourceLabel}. Hole excavation labour is separate, and concrete placement is a separate line.`,
+              physicalDriver: `Physical driver: ${supportCount} posts. ${postScopeNote}`,
               adjustmentDetail: labourAdjustmentDetail,
-              productivity: `Productivity: ${postsScope.hoursPerUnit} h/ea · ${postsScope.sourceLabel}`,
+              productivity: `Productivity: ${postsScope.hoursPerUnit} h/post · ${postsScope.sourceLabel}. ${productivitySourceNote(postsScope.sourceType, postsScope.sourceLabel)}`,
             }),
             sortOrder: sortOrder++,
             componentKey: "deck.posts.install",
             organisationSettings: context.organisationSettings,
             ...labourRateFields,
+            itemKey: postsScope.itemKey,
             productivitySourceType: postsScope.sourceType,
           })
         );
@@ -755,6 +765,7 @@ export function calculateDeck(
         workAreaId: workArea.id,
         holeCount: supportCount,
         rates: context.rates,
+        constraints: context.constraints,
       });
       assumptions.push(...holePlan.assumptions);
       missingInfo.push(...holePlan.missingInfo);
@@ -808,7 +819,7 @@ export function calculateDeck(
             notes: labourExpandedNotes({
               physicalDriver: `Physical driver: ${holePlan.holeCount} holes. ${geometryNote} ${holePlan.productivity.reason}`,
               adjustmentDetail: labourAdjustmentDetail,
-              productivity: `Productivity: ${holePlan.productivity.hoursPerHole} h/hole · ${holePlan.productivity.sourceLabel}`,
+              productivity: `Productivity: ${holePlan.productivity.hoursPerHole} h/hole · ${holePlan.productivity.sourceLabel}. ${productivitySourceNote(holePlan.productivity.sourceType, holePlan.productivity.sourceLabel)}`,
             }),
             sortOrder: sortOrder++,
             componentKey: "deck.hole.excavate",
@@ -856,7 +867,7 @@ export function calculateDeck(
               unit: spoil.chargeUnit,
               costRate: spoil.unitCost,
               sellRate: unitSell,
-              rateSource: getRateSourceLabel(spoil.rateSourceType),
+              rateSource: spoil.rateSourceLabel ?? getRateSourceLabel(spoil.rateSourceType),
               rateSourceType: spoil.rateSourceType,
               itemKey: spoil.itemKey,
               componentKey: spoil.componentKey,
@@ -1748,7 +1759,7 @@ export function calculateDeck(
           notes: labourExpandedNotes({
             physicalDriver: `Physical driver: ${bags} bags purchased. Mixing, placing, and basic finishing. Excludes hole excavation. Hole excavation is a separate operation. ${holeCount} holes. ${concrete.disclosure}`,
             adjustmentDetail: labourAdjustmentDetail,
-            productivity: `Productivity: ${placeProductivity.hoursPerUnit} h/bag · ${placeProductivity.sourceLabel}${concreteCompanyComparison(placeProductivity)}`,
+            productivity: `Productivity: ${placeProductivity.hoursPerUnit} h/bag · ${placeProductivity.sourceLabel ?? ""}. ${productivitySourceNote(placeProductivity.sourceType ?? "benchmark", placeProductivity.sourceLabel ?? "")}${concreteCompanyComparison(placeProductivity)}`,
           }),
           sortOrder: sortOrder++,
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,

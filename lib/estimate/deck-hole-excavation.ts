@@ -70,6 +70,16 @@ export const DECK_SPOIL_TIP_ALLOWANCE_EX_GST = 150;
 export const DECK_SPOIL_SMALL_BANK_MAX_M3 = 1;
 export const DECK_SPOIL_ALLOWANCE_NOTICE =
   "Provisional local allowance—confirm or replace";
+export const DECK_SPOIL_HAULAGE_SUMMARY =
+  "One local trip · clean spoil · allowance confirmed for this job";
+export const DECK_SPOIL_TIP_SUMMARY =
+  "One clean-spoil load · allowance confirmed for this job";
+export const DECK_SPOIL_ALLOWANCE_SOURCE =
+  "Quotr provisional allowance · confirmed for this job";
+export const DECK_SPOIL_HAULAGE_SHORT =
+  "One local trip for clean spoil from a small accessible job, including loading.";
+export const DECK_SPOIL_TIP_SHORT =
+  "One clean-spoil load at a receiving facility.";
 export const DECK_SPOIL_HAULAGE_SCOPE =
   "Small accessible job, clean natural spoil, up to 1 bank m³ and one local trip. Includes loading at the workface and that trip. No second loading labour charge.";
 export const DECK_SPOIL_TIP_SCOPE =
@@ -136,6 +146,7 @@ export type DeckSpoilMoneyLine = {
   readonly unitCost: number | null;
   readonly unitSell: number | null;
   readonly rateSourceType: "user_rate" | "benchmark" | "missing";
+  readonly rateSourceLabel?: string;
   readonly notes: string;
 };
 
@@ -440,7 +451,8 @@ function deckSpoilCharge(params: {
         unitCost: jobCost,
         unitSell: null,
         rateSourceType: "user_rate",
-        notes: `${params.quantityNote} This job's price. Bank volume is not the charge quantity, and the $150 small-load allowance is not scaled.`,
+        rateSourceLabel: "This job",
+        notes: "This job's price. Bank volume is not the charge quantity.",
       };
     }
     return {
@@ -451,7 +463,7 @@ function deckSpoilCharge(params: {
       unitCost: null,
       unitSell: null,
       rateSourceType: "missing",
-      notes: `${params.quantityNote} This load is outside the small clean local allowance, so $${params.allowance} is not scaled. Enter a job price or request a price.`,
+      notes: "Outside the small clean local allowance. Enter a job price or request a price. The $150 allowance is not scaled.",
     };
   }
   if (choice === "allowance") {
@@ -463,7 +475,11 @@ function deckSpoilCharge(params: {
       unitCost: params.allowance,
       unitSell: null,
       rateSourceType: "benchmark",
-      notes: `${DECK_SPOIL_ALLOWANCE_NOTICE}. ${params.scope} ${DECK_SPOIL_ALLOWANCE_CONTEXT} ${params.quantityNote}`,
+      rateSourceLabel: DECK_SPOIL_ALLOWANCE_SOURCE,
+      notes:
+        params.componentKey === "deck.spoil.haulage"
+          ? DECK_SPOIL_HAULAGE_SUMMARY
+          : DECK_SPOIL_TIP_SUMMARY,
     };
   }
   if (choice === "job" && jobCost != null) {
@@ -475,7 +491,8 @@ function deckSpoilCharge(params: {
       unitCost: jobCost,
       unitSell: null,
       rateSourceType: "user_rate",
-      notes: `${params.quantityNote} This job's price replaces the $${params.allowance} provisional allowance.`,
+      rateSourceLabel: "This job",
+      notes: "This job's price replaces the provisional allowance.",
     };
   }
   if (choice === "rfq") {
@@ -487,7 +504,7 @@ function deckSpoilCharge(params: {
       unitCost: null,
       unitSell: null,
       rateSourceType: "missing",
-      notes: `${params.quantityNote} A price was requested. The $${params.allowance} allowance is not charged.`,
+      notes: "A price was requested. The provisional allowance is not charged.",
     };
   }
   return {
@@ -498,8 +515,23 @@ function deckSpoilCharge(params: {
     unitCost: null,
     unitSell: null,
     rateSourceType: "missing",
-    notes: `${DECK_SPOIL_ALLOWANCE_NOTICE}. ${params.scope} ${params.quantityNote} Choose the allowance, a job price, or a request for price. Nothing is charged until you choose.`,
+    notes: "Choose an allowance, a job price, or a request for price. Nothing is charged until you choose.",
   };
+}
+
+export function spoilAccessAllowsAllowance(
+  constraints?: readonly { key: string; value: unknown }[] | null
+): boolean {
+  if (!constraints) return true;
+  const read = (key: string) =>
+    String(constraints.find((row) => row.key === key)?.value ?? "")
+      .trim()
+      .toLowerCase();
+  const access = read("site_access");
+  const bin = read("waste_bin_access");
+  if (access === "difficult" || access === "very poor" || access === "not sure") return false;
+  if (bin === "poor" || bin === "not sure") return false;
+  return true;
 }
 
 export function planDeckHoleExcavation(params: {
@@ -507,6 +539,7 @@ export function planDeckHoleExcavation(params: {
   workAreaId: string;
   holeCount: number;
   rates?: readonly OrganisationRate[];
+  constraints?: readonly { key: string; value: unknown }[];
 }): DeckHoleExcavationPlan {
   const count = resolveDeckHoleCount({
     facts: params.facts,
@@ -785,7 +818,8 @@ export function planDeckHoleExcavation(params: {
       quantityM3 > 0 &&
       quantityM3 <= DECK_SPOIL_SMALL_BANK_MAX_M3 &&
       fit !== "other" &&
-      fit !== "unknown";
+      fit !== "unknown" &&
+      spoilAccessAllowsAllowance(params.constraints);
     const allIn = companySpoilRate(params.rates, DECK_SPOIL_ALL_IN_KEY);
     if (allIn) {
       spoilLines.push({
@@ -840,6 +874,11 @@ export function planDeckHoleExcavation(params: {
         if (line.kind === "pricing_required" && line.componentKey !== DECK_SPOIL_DECISION_COMPONENT) {
           missingInfo.push(line.label);
         }
+      }
+      if (spoilLines.some((line) => line.rateSourceLabel === DECK_SPOIL_ALLOWANCE_SOURCE)) {
+        assumptions.push(
+          `${DECK_SPOIL_HAULAGE_SCOPE} ${DECK_SPOIL_TIP_SCOPE} ${DECK_SPOIL_ALLOWANCE_CONTEXT} Bank volume stays separate from loose volume, and no swell factor is applied.`
+        );
       }
     }
   }

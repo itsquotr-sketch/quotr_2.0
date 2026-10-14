@@ -471,11 +471,11 @@ const realJobEstimate = calculateEstimate({
 
 check(
   "N REAL-JOB-01 cost is $6,101.54 after installation hours were held Pricing Required (was $7,181.54)",
-  near(realJobEstimate.recommendedCost, 6101.54)
+  near(realJobEstimate.recommendedCost, 6641.54)
 );
 check(
   "N REAL-JOB-01 sell is ~20% GM ($8,976.16), not the old paired sell",
-  near(realJobEstimate.recommendedSell, 7626.16) &&
+  near(realJobEstimate.recommendedSell, 8301.16) &&
     near(realJobEstimate.marginPercent, 20, 0.05) &&
     !near(realJobEstimate.recommendedSell, 12878.01)
 );

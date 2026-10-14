@@ -88,6 +88,9 @@ type EstimatePanelProps = {
   detailsBlocker?: string | null;
   /** Unanswered Post holes controls. The panel names the count and focuses the first one. */
   postHoleAnswerCount?: number;
+  /** Visible answers are complete. Keep Create estimate in place while a save finishes. */
+  holdCreateEstimate?: boolean;
+  detailsSaving?: boolean;
   onFinishPostHoles?: () => void;
   pendingProposalCount?: number;
   /** Soft warning only — does not block generation (3.1B.6R3.1). */
@@ -342,6 +345,8 @@ export function EstimatePanel({
   detailsPhase = "needs_details",
   detailsBlocker = null,
   postHoleAnswerCount = 0,
+  holdCreateEstimate = false,
+  detailsSaving = false,
   onFinishPostHoles,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
@@ -573,9 +578,15 @@ export function EstimatePanel({
 
   const liveReadiness = estimate ? null : estimateStatusCopy(detailsPhase, detailsBlocker);
   const postHolePrompt =
-    !estimate && detailsPhase === "needs_details" && postHoleAnswerCount > 0
+    !estimate && !holdCreateEstimate && postHoleAnswerCount > 0
       ? deckDetailPanelPrompt(postHoleAnswerCount)
       : null;
+  const showCreateEstimate = Boolean(canGenerateEstimate || holdCreateEstimate);
+  const createEstimateLabel = isGenerating
+    ? ASSISTANT_LOADING_COPY.creatingEstimate
+    : detailsSaving
+      ? ASSISTANT_LOADING_COPY.questionSave
+      : ASSISTANT_ACTION_LABELS.estimateNow;
   const status = buildQuickEstimateStatusPresentation({
     hasEstimate: Boolean(estimate),
     isStale,
@@ -814,7 +825,7 @@ export function EstimatePanel({
         </div>
       ) : null}
 
-      {isGenerating ? (
+      {isGenerating && estimate ? (
         <div
           className="flex items-center gap-2 py-8 text-sm text-muted-foreground"
           role="status"
@@ -825,7 +836,7 @@ export function EstimatePanel({
         </div>
       ) : !estimate ? (
         <div className="space-y-4">
-          {canGenerateEstimate ? (
+          {showCreateEstimate ? (
             <>
               <AssistantUnderstandingSummaryCard summaries={understandingSummaries} />
               <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">
@@ -852,15 +863,12 @@ export function EstimatePanel({
                 className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
                 onClick={onGenerate}
                 disabled={isGenerating}
+                aria-busy={isGenerating || detailsSaving ? true : undefined}
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-1.5 size-4 animate-spin" />
-                    Generating estimate…
-                  </>
-                ) : (
-                  ASSISTANT_ACTION_LABELS.estimateNow
-                )}
+                {isGenerating || detailsSaving ? (
+                  <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+                ) : null}
+                {createEstimateLabel}
               </Button>
               ) : null}
             </>

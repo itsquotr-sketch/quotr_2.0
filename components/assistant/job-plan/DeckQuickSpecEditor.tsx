@@ -7,7 +7,6 @@ import {
   jobPlanNumber,
   jobPlanString,
 } from "@/lib/assistant/job-plan/facts";
-import { DeckPostHolesSection } from "@/components/assistant/job-plan/DeckPostHolesSection";
 import { deckStepsIncluded } from "@/lib/estimate/deck-steps-physical";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type { ReactNode } from "react";
@@ -35,9 +34,6 @@ export function DeckQuickSpecEditor({
   workAreaId,
   facts,
   onSpecFact,
-  onSpecFacts,
-  postHoleFocusId = null,
-  onBooleanFact,
 }: {
   workAreaId: string;
   facts: readonly EstimateFact[];
@@ -155,17 +151,6 @@ export function DeckQuickSpecEditor({
           />
         </div>
       </Group>
-
-      {substructure ? (
-        <DeckPostHolesSection
-          workAreaId={workAreaId}
-          facts={facts}
-          onSpecFact={onSpecFact}
-          onSpecFacts={onSpecFacts}
-          onBooleanFact={onBooleanFact}
-          focusGapId={postHoleFocusId}
-        />
-      ) : null}
 
       {substructure ? (
         <details className="rounded-lg border border-border/60 p-3" data-deck-substructure-assumptions>

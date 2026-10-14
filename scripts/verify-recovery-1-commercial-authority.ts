@@ -198,8 +198,8 @@ function round2(value: number) {
 /** DEFAULT-RATE ENGINE FIXTURE — empty company rates, not Owner $78 labour. */
 // Previous golden 7181.54 / 8976.16 included 18 h of pile installation at the imported 1 h/post.
 // That hour overlaps hole excavation, so installation is Pricing Required until an owner sets an installation-only time.
-const DEFAULT_RATE_REAL_JOB_COST = 6101.54;
-const DEFAULT_RATE_REAL_JOB_SELL = 7626.16;
+const DEFAULT_RATE_REAL_JOB_COST = 6641.54;
+const DEFAULT_RATE_REAL_JOB_SELL = 8301.16;
 
 console.log("=== RECOVERY-1 commercial authority ===\n");
 
@@ -306,13 +306,16 @@ check(
   ) < 0.05
 );
 check(
-  "10 DEFAULT-RATE split labour hours are 33.75 not the 1.2 lump",
-  labourHoursTotal(empty.lineItems) === 33.75 &&
-    labourCostTotal(empty.lineItems) === 2025 &&
-    emptyLabourLines.length === 2 &&
+  "10 DEFAULT-RATE split labour hours are 42.75 not the 1.2 lump",
+  labourHoursTotal(empty.lineItems) === 42.75 &&
+    labourCostTotal(empty.lineItems) === 2565 &&
+    emptyLabourLines.length === 3 &&
     empty.lineItems.some(
       (item) =>
-        item.label === "Pile/post installation" && item.includedInTotal === false
+        item.label === "Pile/post installation" &&
+        item.includedInTotal !== false &&
+        item.labourHours === 9 &&
+        item.recommendedCost === 540
     ) &&
     empty.lineItems.some(
       (item) =>
@@ -366,7 +369,7 @@ const previewTotals = aggregateEstimateLineTotals(previewAfterGm);
 const expectedPreviewSell = deriveSellFromCost(previewTotals.recommendedCost, PREVIEW_GM);
 check(
   "14 Preview-shaped DEFAULT-RATE cost is 2B engine not package-era $8,127",
-  Math.abs(previewTotals.recommendedCost - 6296.71) < 0.02,
+  Math.abs(previewTotals.recommendedCost - 6836.71) < 0.02,
   `cost=${previewTotals.recommendedCost}`
 );
 check(
@@ -470,10 +473,12 @@ check(
 );
 check(
   "26 split labour is the active labour money; lump absent",
-  emptyLabourLines.length === 2 &&
+  emptyLabourLines.length === 3 &&
     empty.lineItems.some(
       (item) =>
-        item.label === "Pile/post installation" && item.includedInTotal === false
+        item.label === "Pile/post installation" &&
+        item.includedInTotal !== false &&
+        item.labourHours === 9
     ) &&
     empty.lineItems.filter((item) => item.label === "Deck labour").length === 0
 );
@@ -520,7 +525,7 @@ const companyLabour = calculateEstimate(
 );
 check(
   "29 company labour cost-only derives sell and outranks default pair",
-  labourLines(companyLabour.lineItems).length === 2 &&
+  labourLines(companyLabour.lineItems).length === 3 &&
     labourLines(companyLabour.lineItems).every(
       (item) =>
         item.costRate === 50 && item.sellDerivedFromMargin === true
@@ -616,7 +621,7 @@ check(
         0
       ) - previewLabourSell
     ) < 0.05 &&
-    Math.abs(previewLabourCost - 2025) < 0.02,
+    Math.abs(previewLabourCost - 2565) < 0.02,
   `labourCost=${previewLabourCost} pricingSell=${pLabourSells.reduce((sum, row) => sum + (row.ok ? row.fields.totalSell : 0), 0)} lineSell=${previewLabourSell}`
 );
 check(

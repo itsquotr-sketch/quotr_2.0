@@ -75,9 +75,6 @@ export function deckDetailGaps(
   const ground = getStringFact(rows, workAreaId, "deck.hole_ground") ?? "";
   const method = getStringFact(rows, workAreaId, "deck.hole_method") ?? "";
   const spoil = spoilChoice(rows, workAreaId);
-  if (concrete == null && postsInScope) {
-    gaps.push({ id: "concrete", label: "Confirm concrete footings" });
-  }
   const finish = deckPostHoleFinishItems({
     sizeConfirmed: plan.draftStamp?.sizeConfirmed ?? false,
     ground,
@@ -189,6 +186,19 @@ export function deckDetailGapCopy(gaps: readonly DeckDetailGap[]): string {
   const labels = gaps.map((gap) => gap.label);
   if (labels.length === 0) return "Complete the Deck details.";
   return `Complete Deck details: ${labels.join(", ")}.`;
+}
+
+/**
+ * Post-hole answers belong to Details after Work confirmation has settled.
+ * A Work save still in flight is not a Details gap.
+ */
+export function settledPostHoleAnswerCount(input: {
+  readonly workConfirmed: boolean;
+  readonly workSavePending: boolean;
+  readonly gaps: readonly DeckDetailGap[];
+}): number {
+  if (!input.workConfirmed || input.workSavePending) return 0;
+  return input.gaps.length;
 }
 
 /** Right-hand Estimate panel. The Post holes card already lists each answer. */

@@ -13,7 +13,8 @@ import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnsw
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { DeckPostHolesSection } from "@/components/assistant/job-plan/DeckPostHolesSection";
 import type { EstimateFact } from "@/lib/estimate/types";
-import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
+import { Loader2 } from "lucide-react";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
   mobileActionFlowClass,
@@ -49,6 +50,8 @@ type ClarifyPanelProps = {
   persistError?: string | null;
   generateNotice?: string | null;
   returnFocusId?: string | null;
+  /** Keep Create estimate visible while the final answer save is still in flight. */
+  holdCreateEstimate?: boolean;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
     presentation: "INCLUDED" | "NOT_INCLUDED"
@@ -80,6 +83,8 @@ type ClarifyPanelProps = {
     }) => Promise<{ error?: string } | void> | void;
     focusGapId?: string | null;
     focusNonce?: number;
+    accessSuitable?: boolean;
+    postHolesSettled?: boolean;
     onBooleanFact?: (input: {
       workAreaId: string;
       key: string;
@@ -194,6 +199,7 @@ export function ClarifyPanel({
   persistError,
   generateNotice,
   returnFocusId,
+  holdCreateEstimate = false,
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
@@ -427,12 +433,13 @@ export function ClarifyPanel({
     enoughToEstimate: readiness.enoughToEstimate === true,
   });
   const showCreateEstimate =
-    Boolean(onEstimateNow) && (localAnswersComplete || authoritativeGenerate);
+    Boolean(onEstimateNow) &&
+    (localAnswersComplete || authoritativeGenerate || holdCreateEstimate);
 
   const requestCreateEstimate = () => {
-    const clarifySavesPending = pendingIds.length > 0 || continuePending;
+    const clarifySavesPending =
+      pendingIds.length > 0 || continuePending || Boolean(isSaving);
     detailsSavingRef.current = Boolean(isSaving);
-    if (Boolean(isSaving) && !clarifySavesPending) return;
     const action = clarifyGenerateIntentAction({
       savesPending: clarifySavesPending,
       alreadyQueued: generateIntentRef.current || finishingAnswers,
@@ -480,9 +487,10 @@ export function ClarifyPanel({
 
   useEffect(() => {
     if (!returnFocusId || isGenerating) return;
-    const node = document.querySelector(
-      `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
-    );
+    const node =
+      document.querySelector(
+        `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
+      ) ?? document.getElementById(returnFocusId);
     if (node instanceof HTMLElement) {
       node.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -503,7 +511,7 @@ export function ClarifyPanel({
           isGenerating={isGenerating}
           generateStage={generateStage}
           generateStartedAt={generateStartedAt}
-          onEstimateNow={onEstimateNow}
+          onEstimateNow={requestCreateEstimate}
         />
       </div>
     );
@@ -559,7 +567,11 @@ export function ClarifyPanel({
           >
             <h2 className={PREMIUM.sectionTitle}>{group.workAreaName}</h2>
             {deckAreas
-              .filter((area) => area.workAreaId === group.workAreaId)
+              .filter(
+                (area) =>
+                  area.workAreaId === group.workAreaId &&
+                  area.postHolesSettled !== false
+              )
               .map((area) => (
                 <div key={`holes:${area.workAreaId}`} className="mt-3">
                   <DeckPostHolesSection
@@ -570,6 +582,7 @@ export function ClarifyPanel({
                     onBooleanFact={area.onBooleanFact}
                     focusGapId={area.focusGapId}
                     focusNonce={area.focusNonce}
+                    accessSuitable={area.accessSuitable}
                   />
                 </div>
               ))}
@@ -730,16 +743,19 @@ export function ClarifyPanel({
               className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
               data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
-              disabled={finishingAnswers || isGenerating || savesPending}
-              aria-disabled={
-                finishingAnswers || isGenerating || savesPending ? true : undefined
-              }
+              disabled={finishingAnswers || isGenerating}
+              aria-busy={finishingAnswers || isGenerating || savesPending ? true : undefined}
               onClick={requestCreateEstimate}
             >
-              {Boolean(isSaving) && !finishingAnswers
-                ? "Saving"
-                : finishingAnswers
-                  ? ASSISTANT_ACTION_LABELS.finishingAnswers
+              {finishingAnswers || isGenerating || savesPending ? (
+                <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
+              ) : null}
+              {isGenerating
+                ? generateStage === "saving" || generateStage === "readiness"
+                  ? ASSISTANT_LOADING_COPY.questionSave
+                  : ASSISTANT_LOADING_COPY.creatingEstimate
+                : finishingAnswers || savesPending
+                  ? ASSISTANT_LOADING_COPY.questionSave
                   : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
           ) : view.canEstimateNow && onEstimateNow && !savesPending ? (
@@ -754,7 +770,7 @@ export function ClarifyPanel({
               {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}
             </Button>
           ) : null}
-          {savesPending && !finishingAnswers && !isGenerating && !continuePending ? (
+          {savesPending && !showCreateEstimate && !finishingAnswers && !isGenerating && !continuePending ? (
             <p
               className="text-sm text-muted-foreground sm:ml-auto"
               role="status"

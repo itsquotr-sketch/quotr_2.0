@@ -252,6 +252,10 @@ export function mapLineCategory(
 }
 
 export function mapRateLabel(raw: string): string {
+  if (/provisional allowance/i.test(raw)) {
+    return "Quotr provisional allowance · confirmed for this job";
+  }
+  if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
   if (/derived quotr/i.test(raw)) return "Derived Quotr benchmark";

@@ -1865,8 +1865,22 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "ea",
     description:
-      "Hours per support, not dollars. The imported 1 person-hour figure includes excavation in the source task, so that figure is not included in these hours as an installation-only time. With no company or calibrated installation time, pile/post installation is a separate Pricing Required line. A company or calibrated hours-per-post still prices this line. Concrete placement is separate. Abnormal access/carry is a Project Condition, applied once.",
+      "Imported historical task: 1 person-hour per support, and that source task includes excavation, so that figure is not included in these hours as an installation-only time. This row is not an installation-only benchmark and is not relabelled as one. Installation-only time is deck.posts.set.hours_per_post. A company hours entry on this historical key still prices this job. Concrete placement and hole excavation stay separate.",
     defaultCostRate: 1,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "deck.posts.set.hours_per_post",
+    label: "Deck post setting (person-hours/post)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "deck",
+    workAreaLabel: "Deck productivity",
+    unit: "post",
+    description:
+      "Proposed Quotr assumption, 15 October 2026: 0.5 person-hours per post for a standard 125 × 125 mm post in an already prepared ordinary hole. Scope is place, align/plumb, and temporarily brace. Excludes excavation, concrete mixing and placement, bearer and joist construction, unusual post restraint, and specialist ground or structural work. Not a merchant, workbook, or external approval. Company or calibrated productivity of this same scope wins. The imported 1 h/post task is a different operation and is not reused here.",
+    defaultCostRate: 0.5,
     calculatorSupport: "used_now",
     recommended: true,
   }),

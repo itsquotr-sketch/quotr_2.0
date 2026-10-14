@@ -199,8 +199,8 @@ check("12 cost reconciliation", review.costReconciles);
 check(
   "13 sell authority unchanged as projection",
   review.costReconciles &&
-    Math.abs(baseline.recommendedCost - 6101.54) < 0.02 &&
-    Math.abs(baseline.recommendedSell - 7626.16) < 0.02
+    Math.abs(baseline.recommendedCost - 6641.54) < 0.02 &&
+    Math.abs(baseline.recommendedSell - 8301.16) < 0.02
 );
 
 // MATERIALS
@@ -485,7 +485,7 @@ check(
 // COMMERCIAL
 check(
   "50 review projection does not change engine money",
-  Math.abs(baseline.recommendedCost - 6101.54) < 0.02 &&
+  Math.abs(baseline.recommendedCost - 6641.54) < 0.02 &&
     review.projectedCost === baseline.recommendedCost &&
     classifyResolvedSell({
       costRate: 60,

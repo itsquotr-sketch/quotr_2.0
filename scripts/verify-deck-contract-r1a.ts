@@ -62,8 +62,8 @@ function check(name: string, ok: boolean, detail = ""): void {
   }
 }
 
-const SAFETY_COST = 14574.7;
-const SAFETY_SELL = 18218.38;
+const SAFETY_COST = 11115.44;
+const SAFETY_SELL = 13893.6;
 const SAFETY_HOURS = 52.2;
 const SAFETY_DECKING_LM = 282.85;
 const ID = "d1";
@@ -429,8 +429,8 @@ check(
     totalLabourHours(safety.lineItems) === SAFETY_HOURS &&
     round2(safetyTotals.recommendedCost) === SAFETY_COST &&
     round2(safetyTotals.recommendedSell) === SAFETY_SELL &&
-    safetyGst === 2732.76 &&
-    round2(safetyTotals.recommendedSell + safetyGst) === 20951.14
+    safetyGst === 2084.04 &&
+    round2(safetyTotals.recommendedSell + safetyGst) === 15977.64
 );
 check(
   "E2 golden removal stays absent",

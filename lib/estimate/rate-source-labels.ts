@@ -32,6 +32,8 @@ export function classifyRateSource(raw: string): RateSourceType {
   const source = raw.trim().toLowerCase();
 
   if (!source) return "default";
+  if (source === "this job") return "user_rate";
+  if (source.includes("provisional allowance")) return "benchmark";
 
   if (
     source.includes("your calibrated productivity") ||
@@ -87,6 +89,10 @@ export function classifyRateSource(raw: string): RateSourceType {
 }
 
 export function normalizeRateSourceLabel(raw: string): string {
+  if (/provisional allowance/i.test(raw)) {
+    return "Quotr provisional allowance · confirmed for this job";
+  }
+  if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
   return getRateSourceLabel(classifyRateSource(raw));

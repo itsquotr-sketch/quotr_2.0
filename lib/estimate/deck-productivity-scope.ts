@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { OrganisationRate } from "@/components/setup/types";
+import { resolveProductivity } from "@/lib/estimate/productivity";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
 /** Stored on the line notes. Pricing and Quote read it and do not rewrite the rate. */
@@ -11,6 +13,24 @@ export const DECK_CONCRETE_PLACE_JOB_HOURS_FACT = "deck.concrete_place_hours_per
 /** This job chooses the approved 4-minute bag rate and leaves the company row unchanged. */
 export const DECK_QUOTR_BENCHMARK_CHOICE = "quotr-benchmark";
 export const DECK_CONCRETE_PLACE_BENCHMARK_HOURS = 4 / 60;
+
+/**
+ * Installation-only provisional benchmark. Distinct from
+ * deck.posts.install.hours_per_ea, whose imported 1 h/post includes excavation.
+ */
+export const DECK_POST_SET_PRODUCTIVITY_KEY = "deck.posts.set.hours_per_post";
+export const DECK_POST_SET_HOURS = 0.5;
+export const DECK_POST_SET_SOURCE = "Quotr provisional benchmark";
+export const DECK_POST_SET_UNIT = "post";
+export const DECK_POST_SET_SCOPE =
+  "Place, align/plumb, and temporarily brace a standard 125 × 125 mm post in an already prepared ordinary hole. Excludes excavation, concrete mixing and placement, bearer and joist construction, unusual post restraint, and specialist ground or structural work.";
+export const DECK_POST_SET_DECISION =
+  "Proposed Quotr assumption, 15 October 2026. No merchant, workbook, or external source approved this 0.5 person-hour figure.";
+export const DECK_CONFIRMED_CALIBRATION_SOURCE =
+  "Company calibration · confirmed for this job";
+export const DECK_COMPANY_PRODUCTIVITY_SOURCE = "Company rate";
+export const DECK_THIS_JOB_SOURCE = "This job";
+export const DECK_APPROVED_BENCHMARK_SOURCE = "Quotr benchmark";
 
 export function confirmedProductivityToken(hours: number): string {
   const rounded = Math.round(hours * 10000) / 10000;
@@ -45,6 +65,7 @@ export function decideLegacyProductivityScope(input: {
   readonly factKey: string;
   readonly jobFactKey: string;
   readonly quotrBenchmarkHours?: number | null;
+  readonly benchmarkSourceLabel?: string;
 }): LegacyProductivityDecision {
   if (
     input.confirmation === DECK_QUOTR_BENCHMARK_CHOICE &&
@@ -54,7 +75,7 @@ export function decideLegacyProductivityScope(input: {
     return {
       action: "apply",
       hoursPerUnit: input.quotrBenchmarkHours,
-      sourceLabel: "Quotr benchmark",
+      sourceLabel: input.benchmarkSourceLabel ?? DECK_APPROVED_BENCHMARK_SOURCE,
       sourceType: "benchmark",
     };
   }
@@ -83,7 +104,7 @@ export function decideLegacyProductivityScope(input: {
       return {
         action: "apply",
         hoursPerUnit: input.resolved.hoursPerUnit,
-        sourceLabel: input.resolved.sourceLabel,
+        sourceLabel: DECK_CONFIRMED_CALIBRATION_SOURCE,
         sourceType: "calibrated_productivity",
       };
     }
@@ -96,6 +117,128 @@ export function decideLegacyProductivityScope(input: {
     };
   }
   return { action: "benchmark" };
+}
+
+export type DeckPostInstallationDecision = LegacyProductivityDecision & {
+  readonly itemKey: string;
+};
+
+function companyInstallation(
+  rate: ProductivityRate,
+  itemKey: string
+): DeckPostInstallationDecision | null {
+  if (!(rate.hoursPerUnit > 0)) return null;
+  if (rate.sourceType === "user_rate") {
+    return {
+      action: "apply",
+      hoursPerUnit: rate.hoursPerUnit,
+      sourceLabel: DECK_COMPANY_PRODUCTIVITY_SOURCE,
+      sourceType: "user_rate",
+      itemKey,
+    };
+  }
+  if (rate.sourceType === "calibrated_productivity") {
+    return {
+      action: "apply",
+      hoursPerUnit: rate.hoursPerUnit,
+      sourceLabel: DECK_CONFIRMED_CALIBRATION_SOURCE,
+      sourceType: "calibrated_productivity",
+      itemKey,
+    };
+  }
+  return null;
+}
+
+/**
+ * Installation-only post setting. The imported 1 h/post task is not reused.
+ * A matching-scope company or calibrated rate wins. An ambiguous calibration
+ * on the historical key stays on the organisation and waits for this job.
+ */
+export function resolveDeckPostInstallation(input: {
+  readonly rates?: readonly OrganisationRate[];
+  readonly confirmation: string | null;
+  readonly jobHours: number | null;
+}): DeckPostInstallationDecision {
+  const scoped = resolveProductivity({
+    productivityKey: DECK_POST_SET_PRODUCTIVITY_KEY,
+    unit: DECK_POST_SET_UNIT,
+    fallbackHoursPerUnit: DECK_POST_SET_HOURS,
+    rates: input.rates,
+  });
+  const legacy = resolveProductivity({
+    productivityKey: "deck.posts.install.hours_per_ea",
+    unit: "ea",
+    fallbackHoursPerUnit: 1,
+    rates: input.rates,
+  });
+  const legacyDecision = decideLegacyProductivityScope({
+    resolved: legacy,
+    confirmation: input.confirmation,
+    jobHours: input.jobHours,
+    factKey: DECK_POSTS_INSTALL_CONFIRM_FACT,
+    jobFactKey: DECK_POSTS_INSTALL_JOB_HOURS_FACT,
+    quotrBenchmarkHours: DECK_POST_SET_HOURS,
+    benchmarkSourceLabel: DECK_POST_SET_SOURCE,
+  });
+  if (legacyDecision.action === "apply" && legacyDecision.sourceLabel === DECK_THIS_JOB_SOURCE) {
+    return { ...legacyDecision, itemKey: DECK_POST_SET_PRODUCTIVITY_KEY };
+  }
+  if (
+    legacyDecision.action === "apply" &&
+    legacyDecision.sourceLabel === DECK_POST_SET_SOURCE
+  ) {
+    return { ...legacyDecision, itemKey: DECK_POST_SET_PRODUCTIVITY_KEY };
+  }
+  const matching = companyInstallation(scoped, DECK_POST_SET_PRODUCTIVITY_KEY);
+  if (matching && scoped.sourceType !== "benchmark") return matching;
+  if (legacy.sourceType === "user_rate" && legacy.hoursPerUnit > 0) {
+    return {
+      action: "apply",
+      hoursPerUnit: legacy.hoursPerUnit,
+      sourceLabel: DECK_COMPANY_PRODUCTIVITY_SOURCE,
+      sourceType: "user_rate",
+      itemKey: "deck.posts.install.hours_per_ea",
+    };
+  }
+  if (legacyDecision.action === "review") {
+    return { ...legacyDecision, itemKey: "deck.posts.install.hours_per_ea" };
+  }
+  if (
+    legacyDecision.action === "apply" &&
+    legacyDecision.sourceType === "calibrated_productivity"
+  ) {
+    return { ...legacyDecision, itemKey: "deck.posts.install.hours_per_ea" };
+  }
+  return {
+    action: "apply",
+    hoursPerUnit: DECK_POST_SET_HOURS,
+    sourceLabel: DECK_POST_SET_SOURCE,
+    sourceType: "benchmark",
+    itemKey: DECK_POST_SET_PRODUCTIVITY_KEY,
+  };
+}
+
+export function labourProductivitySourceLabel(
+  sourceType: string,
+  sourceLabel: string
+): string {
+  if (
+    sourceLabel === DECK_THIS_JOB_SOURCE ||
+    sourceLabel === DECK_POST_SET_SOURCE ||
+    sourceLabel === DECK_APPROVED_BENCHMARK_SOURCE ||
+    sourceLabel === DECK_CONFIRMED_CALIBRATION_SOURCE ||
+    sourceLabel === DECK_COMPANY_PRODUCTIVITY_SOURCE
+  ) {
+    return sourceLabel;
+  }
+  if (sourceType === "calibrated_productivity") return DECK_CONFIRMED_CALIBRATION_SOURCE;
+  if (sourceType === "user_rate") return DECK_COMPANY_PRODUCTIVITY_SOURCE;
+  if (sourceLabel.toLowerCase().includes("provisional")) return DECK_POST_SET_SOURCE;
+  return DECK_APPROVED_BENCHMARK_SOURCE;
+}
+
+export function productivitySourceNote(sourceType: string, sourceLabel: string): string {
+  return `Productivity source: ${labourProductivitySourceLabel(sourceType, sourceLabel)}`;
 }
 
 export function scopeReviewNotes(input: {
