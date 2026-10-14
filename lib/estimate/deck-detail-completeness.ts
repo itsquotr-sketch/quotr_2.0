@@ -92,6 +92,41 @@ export function deckDetailGaps(
   for (const id of finish) {
     gaps.push({ id, label: DECK_POST_HOLE_FINISH[id] });
   }
+  const outsideOrdinary =
+    ground === "rock" ||
+    ground === "groundwater" ||
+    ground === "other" ||
+    ground === "not_sure" ||
+    method === "machine" ||
+    method === "other" ||
+    method === "not_sure" ||
+    getStringFact(rows, workAreaId, "deck.hole_shape") === "rectangular";
+  const jobHours = getNumberFact(rows, workAreaId, "deck.hole_job_hours_per_hole");
+  const hoursStatus = getStringFact(rows, workAreaId, "deck.hole_hours_status") ?? "";
+  if (
+    ground &&
+    method &&
+    outsideOrdinary &&
+    jobHours == null &&
+    hoursStatus !== "unknown"
+  ) {
+    gaps.push({
+      id: "excavate",
+      label: "Enter excavation hours for this ground",
+    });
+  }
+  if (spoil === "off_site") {
+    const haulage = getStringFact(rows, workAreaId, "deck.spoil_haulage_choice") ?? "";
+    const tip = getStringFact(rows, workAreaId, "deck.spoil_tip_choice") ?? "";
+    const haulageCost = getNumberFact(rows, workAreaId, "deck.spoil_haulage_job_cost");
+    const tipCost = getNumberFact(rows, workAreaId, "deck.spoil_tip_job_cost");
+    if (!haulage || (haulage === "job" && (haulageCost == null || haulageCost <= 0))) {
+      gaps.push({ id: "haulage", label: "Choose spoil loading and haulage" });
+    }
+    if (!tip || (tip === "job" && (tipCost == null || tipCost <= 0))) {
+      gaps.push({ id: "tip", label: "Choose the spoil tip fee" });
+    }
+  }
   return gaps;
 }
 
@@ -139,6 +174,12 @@ export function deckPostHoleControlId(workAreaId: string, gapId: string): string
       return `deck-concrete-post-${workAreaId}`;
     case "embedment":
       return `deck-post-embedment-${workAreaId}`;
+    case "excavate":
+      return `deck-hole-hours-${workAreaId}`;
+    case "haulage":
+      return `deck-spoil-haulage-${workAreaId}`;
+    case "tip":
+      return `deck-spoil-tip-${workAreaId}`;
     default:
       return `deck-hole-count-${workAreaId}`;
   }

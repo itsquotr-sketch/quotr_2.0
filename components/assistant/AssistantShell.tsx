@@ -104,7 +104,7 @@ import {
   resolveAnswerSaveStatus,
 } from "@/lib/assistant/answer-persistence";
 import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
-import { updateProjectFact } from "@/lib/assistant/fact-actions";
+import { updateProjectFact, updateProjectFacts } from "@/lib/assistant/fact-actions";
 import { beginQualitySpecEdit } from "@/lib/assistant/quality-edit";
 import { updateEstimateMargin } from "@/lib/assistant/margin-actions";
 import { saveJobDescription } from "@/lib/projects/actions";
@@ -2284,6 +2284,69 @@ export function AssistantShell({
     ]
   );
 
+  const handleJobPlanSpecFacts = useCallback(
+    (input: {
+      workAreaId: string;
+      facts: readonly {
+        key: string;
+        label: string;
+        value: string | number;
+        valueType: "number" | "select" | "text";
+      }[];
+    }) => {
+      const work = (async () => {
+        const requestSeq = ++factMutationSeqRef.current;
+        setPendingReadinessWrites((count) => count + 1);
+        setClarifyWritePending(true);
+        const rows = input.facts.map((fact) => ({
+          key: fact.key,
+          work_area_id: input.workAreaId,
+          value: fact.value,
+          source: "user" as const,
+        }));
+        for (const row of rows) tagOverlayFactSeq(row, requestSeq);
+        setJobPlanFactOverlay((prev) => rows.reduce((next, row) => overlayFact(next, row), prev));
+        try {
+          const result = await runSerializedFactMutation(() =>
+            updateProjectFacts({
+              projectId: project.id,
+              workAreaId: input.workAreaId,
+              facts: input.facts.map((fact) => ({
+                key: fact.key,
+                label: fact.label,
+                value: fact.value,
+                valueType: fact.valueType,
+              })),
+            })
+          );
+          if (result.error) {
+            setActionError(result.error);
+            setGenerateNotice(null);
+            return result;
+          }
+          setActionError(null);
+          setGenerateNotice(null);
+          if (!settleCanonicalMutation(result, requestSeq)) {
+            onRejectedCanonicalMutation(requestSeq);
+          }
+          return result;
+        } finally {
+          setClarifyWritePending(false);
+          setPendingReadinessWrites((count) => Math.max(0, count - 1));
+        }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work);
+      return work;
+    },
+    [
+      onRejectedCanonicalMutation,
+      project.id,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
+  );
+
   const handleSaveWorkAreaQuestions = useCallback(
     async (input: {
       workAreaId: string;
@@ -2580,6 +2643,10 @@ export function AssistantShell({
     pendingWrites: pendingReadinessWrites,
     enoughToEstimate: estimateReadiness.enoughToEstimate,
   });
+  const [detailsPostHoleFocus, setDetailsPostHoleFocus] = useState<{
+    gapId: string;
+    nonce: number;
+  } | null>(null);
   const openDeckDetails = useCallback(() => {
     const target = firstDeckDetailTarget(
       jobPlanFacts,
@@ -2587,6 +2654,10 @@ export function AssistantShell({
     );
     if (!target) {
       openEditJob("job_plan");
+      return;
+    }
+    if (CLARIFY_IS_PRIMARY) {
+      setDetailsPostHoleFocus({ gapId: target.gapId, nonce: Date.now() });
       return;
     }
     openEditJob("job_plan", {
@@ -2905,16 +2976,13 @@ export function AssistantShell({
       if (!workAreaId) return [];
       const hours = item.productivityRate ?? 0;
       const quantity = item.quantity ?? 0;
-      const projected =
-        item.labourHours != null && item.labourHours > 0
-          ? item.labourHours
-          : hours * quantity;
+      const beforeAccess = Math.round(hours * quantity * 100) / 100;
       const storedHours = deckProductivityPhrase(
         hours,
         item.componentKey,
         item.productivityUnit ?? item.unit
       );
-      const projectedLabel = formatReviewHours(projected);
+      const projectedLabel = formatReviewHours(beforeAccess);
       return [
         {
           id: item.id,
@@ -2925,24 +2993,45 @@ export function AssistantShell({
           quantityLabel: posts
             ? `${formatQuantity(quantity)} posts`
             : `${formatQuantity(quantity)} bags`,
-          projectedHours: `${formatLabourHours(projected)} h`,
-          calculation: `${storedHours} × ${formatQuantity(quantity)} = ${projectedLabel} h`,
+          projectedHours: `${formatLabourHours(beforeAccess)} h before access`,
+          calculation: `${storedHours} × ${formatQuantity(quantity)} = ${projectedLabel} h before access`,
           reason: posts ? DECK_POSTS_CALIBRATION_REASON : DECK_CONCRETE_CALIBRATION_REASON,
           factKey: parsed.factKey,
           value: parsed.value,
           jobFactKey: parsed.jobFactKey,
+          benchmarkLabel: concrete ? "Use the 4-minute Quotr benchmark for this job" : null,
+          benchmarkValue: concrete ? "quotr-benchmark" : null,
         },
       ];
     });
   }, [displayWorkAreas, estimate]);
 
+  const openedProductivityKey = useRef("");
+  useEffect(() => {
+    const key = productivityDecisions.map((row) => `${row.id}:${row.value}`).join("|");
+    if (!productivityReviewDetail || !key) return;
+    if (openedProductivityKey.current === key) return;
+    openedProductivityKey.current = key;
+    setProductivityReviewOpen(true);
+  }, [productivityDecisions, productivityReviewDetail]);
+
   const confirmProductivityDecision = useCallback(
     async (
-      decision: { workAreaId: string; jobFactKey: string },
+      decision: { workAreaId: string; jobFactKey: string; factKey: string },
       key: string,
       value: string
     ) => {
       try {
+        if (key === decision.jobFactKey) {
+          const marked = await handleJobPlanSpecFact({
+            workAreaId: decision.workAreaId,
+            key: decision.factKey,
+            label: "Productivity scope",
+            value: "job",
+            valueType: "text",
+          });
+          if (marked.error) return { error: marked.error };
+        }
         const result = await handleJobPlanSpecFact({
           workAreaId: decision.workAreaId,
           key,
@@ -3803,6 +3892,9 @@ export function AssistantShell({
                           name: area.name,
                           facts: jobPlanFacts,
                           onSpecFact: handleJobPlanSpecFact,
+                          onSpecFacts: handleJobPlanSpecFacts,
+                          focusGapId: detailsPostHoleFocus?.gapId ?? null,
+                          focusNonce: detailsPostHoleFocus?.nonce ?? 0,
                           onBooleanFact: (input: {
                             workAreaId: string;
                             key: string;

@@ -341,7 +341,10 @@ check(
   "off-site spoil splits haulage and tip when neither is priced",
   offSite.spoilLines.length === 2 &&
     offSite.spoilLines.every((line) => line.kind === "pricing_required") &&
-    offSite.spoilLines.every((line) => line.quantityM3 === 0.924)
+    offSite.spoilLines.every((line) => line.quantityM3 === 0.924) &&
+    offSite.spoilLines.every((line) => line.chargeQuantity === 1) &&
+    offSite.spoilLines[0]?.chargeUnit === "job" &&
+    offSite.spoilLines[1]?.chargeUnit === "load"
 );
 
 const allIn = planDeckHoleExcavation({
@@ -1208,6 +1211,89 @@ check(
     breakdownUi.includes("Use this rate") &&
     breakdownUi.includes("Use these hours") &&
     !breakdownUi.includes("Finish 7 Post holes answers: ")
+);
+
+const adoptedSpoil = planDeckHoleExcavation({
+  facts: [
+    ...confirmedHoles,
+    fact("deck.spoil_destination", "off_site"),
+    fact("deck.spoil_haulage_choice", "allowance"),
+    fact("deck.spoil_tip_choice", "allowance"),
+  ],
+  workAreaId: "deck",
+  holeCount: 16,
+});
+check(
+  "a small off-site load uses the $150 allowances once, not per bank m³",
+  adoptedSpoil.spoilLines.length === 2 &&
+    adoptedSpoil.spoilLines.every((line) => line.kind === "priced" && line.unitCost === 150 && line.chargeQuantity === 1) &&
+    adoptedSpoil.spoilLines.every((line) => line.notes.includes("Provisional local allowance"))
+);
+const adoptedEstimate = calculateDeck(
+  ctx([
+    ...base,
+    fact("deck.pile_or_post_count", 16),
+    ...confirmedHoles,
+    fact("deck.spoil_destination", "off_site"),
+    fact("deck.spoil_haulage_choice", "allowance"),
+    fact("deck.spoil_tip_choice", "allowance"),
+    fact("deck.concrete_fill", "full"),
+    fact("deck.support_section", "125x125"),
+    fact("deck.post_embedment_mm", 600),
+  ]),
+  wa()
+);
+const haulLine = adoptedEstimate.lineItems.find((item) => item.componentKey === "deck.spoil.haulage");
+const tipLine = adoptedEstimate.lineItems.find((item) => item.componentKey === "deck.spoil.tip");
+check(
+  "adopted allowances sell from margin and are not a second excavation charge",
+  haulLine?.quantity === 1 &&
+    haulLine.unit === "job" &&
+    haulLine.costRate === 150 &&
+    haulLine.recommendedSell === 187.5 &&
+    tipLine?.quantity === 1 &&
+    tipLine.unit === "load" &&
+    tipLine.recommendedCost === 150 &&
+    adoptedEstimate.lineItems.filter((item) => item.componentKey === "deck.hole.excavate").length === 1
+);
+const rockHoursGap = deckDetailGaps(
+  [
+    fact("deck.substructure_included", true),
+    fact("deck.pile_or_post_count", 16),
+    fact("deck.concrete_to_supports", true),
+    fact("deck.hole_shape", "circular"),
+    fact("deck.hole_diameter_mm", 350),
+    fact("deck.hole_depth_mm", 600),
+    fact("deck.support_section", "125x125"),
+    fact("deck.concrete_fill", "full"),
+    fact("deck.post_embedment_mm", 600),
+    fact("deck.hole_ground", "rock"),
+    fact("deck.hole_method", "hand"),
+    fact("deck.spoil_destination", "on_site"),
+  ],
+  "deck"
+);
+check(
+  "rock hours stay an open Details question and do not use 0.5 h/hole",
+  rockHoursGap.some((gap) => gap.id === "excavate") &&
+    planDeckHoleExcavation({
+      facts: [fact("deck.hole_ground", "rock"), fact("deck.hole_method", "hand"), ...confirmedHoles.filter((row) => row.key !== "deck.hole_ground")],
+      workAreaId: "deck",
+      holeCount: 16,
+    }).productivity?.hoursPerHole === 0
+);
+const benchmarkConcrete = calculateDeck(
+  ctx(
+    [...measuredBase, fact("deck.concrete_place_scope_confirmation", "quotr-benchmark")],
+    [carpenter65, legacyConcrete]
+  ),
+  wa()
+);
+check(
+  "choosing the 4-minute benchmark prices concrete and leaves the 0.7 row unused",
+  line(benchmarkConcrete, "Concrete placement")?.labourHours === 5.2 &&
+    line(benchmarkConcrete, "Concrete placement")?.includedInTotal !== false &&
+    line(benchmarkConcrete, "Concrete placement")?.productivitySourceType === "benchmark"
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

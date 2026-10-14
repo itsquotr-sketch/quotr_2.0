@@ -23,6 +23,8 @@ export type DeckProductivityDecision = {
   readonly factKey: string;
   readonly value: string;
   readonly jobFactKey: string;
+  readonly benchmarkLabel?: string | null;
+  readonly benchmarkValue?: string | null;
 };
 
 type DeckProductivityReviewDialogProps = {
@@ -60,8 +62,8 @@ export function DeckProductivityReviewDialog({
   }, [shownError]);
 
   useEffect(() => {
-    if (open && decisions.length === 0 && !loadError) onOpenChange(false);
-  }, [decisions.length, loadError, onOpenChange, open]);
+    if (open && decisions.length === 0 && !loadError && !pending) onOpenChange(false);
+  }, [decisions.length, loadError, onOpenChange, open, pending]);
 
   async function choose(decision: DeckProductivityDecision, key: string, value: string) {
     setError(null);
@@ -128,17 +130,33 @@ export function DeckProductivityReviewDialog({
                 {decision.task}
               </p>
               <p className="text-sm text-foreground/80 break-words">{decision.reason}</p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="flex flex-col gap-2">
                 <Button
                   type="button"
                   className="h-11 min-h-11"
                   disabled={pending || savingId != null}
                   onClick={() => choose(decision, decision.factKey, decision.value)}
                 >
-                  Use this rate
+                  {savingId === decision.id
+                    ? "Saving…"
+                    : decision.factKey.includes("concrete")
+                      ? "Use this company rate for these bags"
+                      : "Use this company rate for post setting on this job"}
                 </Button>
+                {decision.benchmarkLabel && decision.benchmarkValue ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 min-h-11"
+                    disabled={pending || savingId != null}
+                    onClick={() => choose(decision, decision.factKey, decision.benchmarkValue!)}
+                  >
+                    {savingId === decision.id ? "Saving…" : decision.benchmarkLabel}
+                  </Button>
+                ) : null}
                 <RevisedHours
                   disabled={pending || savingId != null}
+                  saving={savingId === decision.id}
                   onInvalid={setError}
                   onSave={(hours) => choose(decision, decision.jobFactKey, hours)}
                 />
@@ -162,10 +180,12 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function RevisedHours({
   disabled,
+  saving,
   onSave,
   onInvalid,
 }: {
   disabled: boolean;
+  saving: boolean;
   onSave: (hours: string) => void;
   onInvalid: (message: string) => void;
 }) {
@@ -194,7 +214,7 @@ function RevisedHours({
         />
       </label>
       <Button type="submit" variant="outline" className="h-11 min-h-11" disabled={disabled}>
-        Use these hours
+        {saving ? "Saving…" : "Enter this job's hours"}
       </Button>
     </form>
   );

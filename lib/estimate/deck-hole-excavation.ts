@@ -10,11 +10,13 @@
  * - Excludes: post or pile setting, concrete placement, rock, groundwater,
  *   dewatering, truck loading, haulage, tip fees, and deck demolition waste.
  *
- * The provisional figure is 0.50 person-hours per hole (one person, 30 minutes).
- * It is not the 1.00 h pile/post installation and not the 0.0667 h/bag concrete
- * placement. A company or calibrated hours-per-hole on this key wins, including
- * outside this scope. An explicit hours-per-hole on the job is next. Outside
- * the confirmed scope with neither, the line is Pricing Required.
+ * The approved figure is 0.50 person-hours per hole (one person, 30 minutes),
+ * owner decision 14 October 2026, and only inside the ordinary scope below.
+ * It is not the imported 1.00 h pile/post task and not the 0.0667 h/bag concrete
+ * placement. An explicit this-job hours figure wins. A company or calibrated
+ * hours-per-hole wins for a job inside this scope, and also when the builder
+ * has not marked the hours unknown. Outside the scope, 0.50 is not applied.
+ * Unknown ground stays Pricing Required with the reason on the line.
  *
  * Absent dimensions are shown as an assumed 350 mm × 600 mm circular hole.
  * They are not measured and do not receive the 0.50 h starter.
@@ -54,8 +56,26 @@ export const DECK_SPOIL_DECISION_COMPONENT = "deck.spoil.destination" as const;
 
 export const DECK_HOLE_ASSUMED_DIAMETER_MM = 350;
 export const DECK_HOLE_ASSUMED_DEPTH_MM = 600;
-/** One person for 30 minutes. Provisional, confirmed ordinary scope only. */
+/** One person for 30 minutes. Approved 14 October 2026, ordinary scope only. */
 export const DECK_HOLE_PROVISIONAL_HOURS = 0.5;
+export const DECK_HOLE_HOURS_STATUS_FACT = "deck.hole_hours_status" as const;
+export const DECK_SPOIL_HAULAGE_CHOICE_FACT = "deck.spoil_haulage_choice" as const;
+export const DECK_SPOIL_HAULAGE_COST_FACT = "deck.spoil_haulage_job_cost" as const;
+export const DECK_SPOIL_TIP_CHOICE_FACT = "deck.spoil_tip_choice" as const;
+export const DECK_SPOIL_TIP_COST_FACT = "deck.spoil_tip_job_cost" as const;
+export const DECK_SPOIL_FIT_FACT = "deck.spoil_load_fit" as const;
+/** Flat ex-GST planning allowance. Not a $/bank-m³ rate and not a live tariff. */
+export const DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST = 150;
+export const DECK_SPOIL_TIP_ALLOWANCE_EX_GST = 150;
+export const DECK_SPOIL_SMALL_BANK_MAX_M3 = 1;
+export const DECK_SPOIL_ALLOWANCE_NOTICE =
+  "Provisional local allowance—confirm or replace";
+export const DECK_SPOIL_HAULAGE_SCOPE =
+  "Small accessible job, clean natural spoil, up to 1 bank m³ and one local trip. Includes loading at the workface and that trip. No second loading labour charge.";
+export const DECK_SPOIL_TIP_SCOPE =
+  "Provisional receiving-facility allowance for one load of clean natural spoil. Not a uniform council tariff and not scaled from bank volume.";
+export const DECK_SPOIL_ALLOWANCE_CONTEXT =
+  "Context on 14 October 2026, not a live supplier tariff: an Auckland operator lists a six-wheeler at $115/hour ex GST and clean dry spoil at $22/tonne ex GST; Tauranga lists clean soil at $111/tonne with a $111 minimum; Waimakariri lists commercial cleanfill at $95/m³.";
 
 export const DECK_HOLE_ORDINARY_DIAMETER_MIN_MM = 250;
 export const DECK_HOLE_ORDINARY_DIAMETER_MAX_MM = 450;
@@ -109,9 +129,13 @@ export type DeckSpoilMoneyLine = {
   readonly itemKey: string;
   readonly componentKey: string;
   readonly label: string;
+  /** Bank volume, kept separate from the charged quantity. */
   readonly quantityM3: number;
+  readonly chargeQuantity: number;
+  readonly chargeUnit: "m³" | "job" | "load";
   readonly unitCost: number | null;
   readonly unitSell: number | null;
+  readonly rateSourceType: "user_rate" | "benchmark" | "missing";
   readonly notes: string;
 };
 
@@ -361,6 +385,123 @@ export function describeDeckHoleStamp(stamp: DeckHoleDraftStamp): string {
   return `${stamp.count} ${stamp.shape} holes, ${size}, ${stamp.ground}, ${stamp.method}, spoil ${stamp.spoil}, ${volume}${concrete}`;
 }
 
+function spoilChoice(value: string | null): "allowance" | "job" | "rfq" | null {
+  if (value === "allowance" || value === "job" || value === "rfq") return value;
+  return null;
+}
+
+function deckSpoilCharge(params: {
+  facts: EstimateFact[];
+  workAreaId: string;
+  rates: readonly OrganisationRate[] | undefined;
+  itemKey: string;
+  componentKey: string;
+  label: string;
+  choiceFact: string;
+  costFact: string;
+  allowance: number;
+  unit: "job" | "load";
+  scope: string;
+  bankM3: number;
+  quantityNote: string;
+  smallEligible: boolean;
+}): DeckSpoilMoneyLine {
+  const company = companySpoilRate(params.rates, params.itemKey);
+  if (company) {
+    return {
+      kind: "priced",
+      itemKey: params.itemKey,
+      componentKey: params.componentKey,
+      label: params.label,
+      quantityM3: params.bankM3,
+      chargeQuantity: params.bankM3,
+      chargeUnit: "m³",
+      unitCost: company.cost,
+      unitSell: company.sell,
+      rateSourceType: "user_rate",
+      notes: `${params.quantityNote} Company rate per bank m³. This is not the Quotr per-trip allowance and is not a facility minimum.`,
+    };
+  }
+  const choice = spoilChoice(getStringFact(params.facts, params.workAreaId, params.choiceFact));
+  const jobCost = positive(getNumberFact(params.facts, params.workAreaId, params.costFact));
+  const base = {
+    itemKey: params.itemKey,
+    componentKey: params.componentKey,
+    label: params.label,
+    quantityM3: params.bankM3,
+  };
+  if (!params.smallEligible) {
+    if (choice === "job" && jobCost != null) {
+      return {
+        ...base,
+        kind: "priced",
+        chargeQuantity: 1,
+        chargeUnit: params.unit,
+        unitCost: jobCost,
+        unitSell: null,
+        rateSourceType: "user_rate",
+        notes: `${params.quantityNote} This job's price. Bank volume is not the charge quantity, and the $150 small-load allowance is not scaled.`,
+      };
+    }
+    return {
+      ...base,
+      kind: "pricing_required",
+      chargeQuantity: 1,
+      chargeUnit: params.unit,
+      unitCost: null,
+      unitSell: null,
+      rateSourceType: "missing",
+      notes: `${params.quantityNote} This load is outside the small clean local allowance, so $${params.allowance} is not scaled. Enter a job price or request a price.`,
+    };
+  }
+  if (choice === "allowance") {
+    return {
+      ...base,
+      kind: "priced",
+      chargeQuantity: 1,
+      chargeUnit: params.unit,
+      unitCost: params.allowance,
+      unitSell: null,
+      rateSourceType: "benchmark",
+      notes: `${DECK_SPOIL_ALLOWANCE_NOTICE}. ${params.scope} ${DECK_SPOIL_ALLOWANCE_CONTEXT} ${params.quantityNote}`,
+    };
+  }
+  if (choice === "job" && jobCost != null) {
+    return {
+      ...base,
+      kind: "priced",
+      chargeQuantity: 1,
+      chargeUnit: params.unit,
+      unitCost: jobCost,
+      unitSell: null,
+      rateSourceType: "user_rate",
+      notes: `${params.quantityNote} This job's price replaces the $${params.allowance} provisional allowance.`,
+    };
+  }
+  if (choice === "rfq") {
+    return {
+      ...base,
+      kind: "pricing_required",
+      chargeQuantity: 1,
+      chargeUnit: params.unit,
+      unitCost: null,
+      unitSell: null,
+      rateSourceType: "missing",
+      notes: `${params.quantityNote} A price was requested. The $${params.allowance} allowance is not charged.`,
+    };
+  }
+  return {
+    ...base,
+    kind: "pricing_required",
+    chargeQuantity: 1,
+    chargeUnit: params.unit,
+    unitCost: null,
+    unitSell: null,
+    rateSourceType: "missing",
+    notes: `${DECK_SPOIL_ALLOWANCE_NOTICE}. ${params.scope} ${params.quantityNote} Choose the allowance, a job price, or a request for price. Nothing is charged until you choose.`,
+  };
+}
+
 export function planDeckHoleExcavation(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -490,61 +631,74 @@ export function planDeckHoleExcavation(params: {
   const jobHours = positive(
     getNumberFact(facts, params.workAreaId, DECK_HOLE_JOB_HOURS_FACT)
   );
+  const hoursUnknown =
+    getStringFact(facts, params.workAreaId, DECK_HOLE_HOURS_STATUS_FACT) === "unknown";
   const unsupportedReason = (() => {
+    if (hoursUnknown) {
+      return "Excavation hours for this ground were marked unknown, so hole excavation is Pricing Required. The approved 0.5 h/hole ordinary-soil rate is not used.";
+    }
     if (shape === "rectangular") {
-      return "A rectangular hole is outside the ordinary circular hand-dug starter. Enter hours per hole for this job, or a company rate.";
+      return "A rectangular hole is outside the approved ordinary hand-dug rate. Enter person-hours per hole for this ground, or mark the hours unknown.";
     }
     if (ground === "rock") {
-      return "Rock or hard ground is outside the ordinary hand-dug starter. Enter hours per hole for this job, or a company rate.";
+      return "Rock or hard ground is outside the approved 0.5 h/hole ordinary-soil rate. Enter the expected person-hours per hole, or mark the hours unknown.";
     }
     if (ground === "groundwater") {
-      return "Groundwater is outside the ordinary hand-dug starter. Enter hours per hole for this job, or a company rate.";
+      return "Groundwater is outside the approved ordinary hand-dug rate. Enter person-hours per hole, or mark the hours unknown.";
     }
     if (method === "machine") {
-      return "A machine dig is outside the ordinary hand-dug starter. Enter hours per hole for this job, or a company rate.";
+      return "Machine digging is outside the approved hand-dug rate. Enter person-hours per hole, or mark the hours unknown.";
     }
     if (method === "other" || ground === "other") {
-      return "This ground or method is outside the ordinary hand-dug starter. Enter hours per hole for this job, or a company rate.";
+      return "This ground or method is outside the approved ordinary hand-dug rate. Enter person-hours per hole, or mark the hours unknown.";
     }
     if (!sizeConfirmed || diameterAssumed || depthAssumed || shapeAssumed) {
-      return `${DECK_HOLE_CONFIRM_ACTION}. Assumed size is not measured, so the 0.50 h/hole starter is not applied.`;
+      return `${DECK_HOLE_CONFIRM_ACTION}. Assumed size is not measured, so the 0.50 h/hole rate is not applied.`;
     }
     if (groundAssumed || methodAssumed) {
-      return `${DECK_HOLE_CONFIRM_ACTION}. Ground and hand excavation must be confirmed before the 0.50 h/hole starter is used.`;
+      return `${DECK_HOLE_CONFIRM_ACTION}. Ground and hand excavation must be confirmed before the 0.50 h/hole rate is used.`;
     }
-    return "This hole size is outside the ordinary 250–450 mm by 400–900 mm hand-dug scope. Enter hours per hole for this job, or a company rate.";
+    return "This hole size is outside the ordinary 250–450 mm by 400–900 mm hand-dug scope. Enter person-hours per hole, or mark the hours unknown.";
   })();
-  const productivity: DeckHoleProductivity = companyHours
+  const productivity: DeckHoleProductivity = jobHours != null
     ? {
-        applies: resolved.hoursPerUnit > 0,
-        hoursPerHole: resolved.hoursPerUnit,
-        sourceLabel: resolved.sourceLabel,
-        sourceType: resolved.sourceType as "user_rate" | "calibrated_productivity",
-        reason: "Company or calibrated hours per hole replace the provisional Quotr figure.",
+        applies: true,
+        hoursPerHole: jobHours,
+        sourceLabel: "This job",
+        sourceType: "user_rate",
+        reason: `This job: ${jobHours} h/hole. The approved 0.5 h/hole ordinary-soil rate is not used.`,
       }
-    : jobHours != null
+    : hoursUnknown
       ? {
-          applies: true,
-          hoursPerHole: jobHours,
-          sourceLabel: "This job",
-          sourceType: "user_rate",
-          reason: `Job hours per hole: ${jobHours}. This replaces the provisional Quotr figure.`,
+          applies: false,
+          hoursPerHole: 0,
+          sourceLabel: "Pricing required",
+          sourceType: "missing",
+          reason: unsupportedReason,
         }
-      : confirmedOrdinary
+      : companyHours
         ? {
-            applies: true,
-            hoursPerHole: DECK_HOLE_PROVISIONAL_HOURS,
+            applies: resolved.hoursPerUnit > 0,
+            hoursPerHole: resolved.hoursPerUnit,
             sourceLabel: resolved.sourceLabel,
-            sourceType: "benchmark",
-            reason: `Provisional Quotr productivity, confirmed ordinary scope only: ${DECK_HOLE_PROVISIONAL_HOURS} h/hole. ${DECK_HOLE_ORDINARY_SCOPE}`,
+            sourceType: resolved.sourceType as "user_rate" | "calibrated_productivity",
+            reason: "Company or calibrated hours per hole replace the approved Quotr figure.",
           }
-        : {
-            applies: false,
-            hoursPerHole: 0,
-            sourceLabel: "Pricing required",
-            sourceType: "missing",
-            reason: unsupportedReason,
-          };
+        : confirmedOrdinary
+          ? {
+              applies: true,
+              hoursPerHole: DECK_HOLE_PROVISIONAL_HOURS,
+              sourceLabel: resolved.sourceLabel,
+              sourceType: "benchmark",
+              reason: `Approved Quotr benchmark, 14 October 2026, ordinary scope only: ${DECK_HOLE_PROVISIONAL_HOURS} h/hole. Access is applied once. ${DECK_HOLE_ORDINARY_SCOPE}`,
+            }
+          : {
+              applies: false,
+              hoursPerHole: 0,
+              sourceLabel: "Pricing required",
+              sourceType: "missing",
+              reason: unsupportedReason,
+            };
 
   const spoilDestination = parseSpoil(facts, params.workAreaId);
   const assumptions: string[] = [];
@@ -618,11 +772,20 @@ export function planDeckHoleExcavation(params: {
       componentKey: DECK_SPOIL_DECISION_COMPONENT,
       label: "Post-hole spoil destination",
       quantityM3,
+      chargeQuantity: quantityM3,
+      chargeUnit: "m³",
       unitCost: null,
       unitSell: null,
+      rateSourceType: "missing",
       notes: `${quantityNote} Choose retain on site (no disposal charge) or remove off site (haulage and tip).`,
     });
   } else if (volume && spoilDestination === "off_site") {
+    const fit = getStringFact(facts, params.workAreaId, DECK_SPOIL_FIT_FACT) ?? "";
+    const smallEligible =
+      quantityM3 > 0 &&
+      quantityM3 <= DECK_SPOIL_SMALL_BANK_MAX_M3 &&
+      fit !== "other" &&
+      fit !== "unknown";
     const allIn = companySpoilRate(params.rates, DECK_SPOIL_ALL_IN_KEY);
     if (allIn) {
       spoilLines.push({
@@ -631,35 +794,53 @@ export function planDeckHoleExcavation(params: {
         componentKey: DECK_SPOIL_ALL_IN_COMPONENT,
         label: "Post-hole spoil removal",
         quantityM3,
+        chargeQuantity: quantityM3,
+        chargeUnit: "m³",
         unitCost: allIn.cost,
         unitSell: allIn.sell,
-        notes: `${quantityNote} Company all-in rate covers loading, haulage, and tip once. No separate tip line.`,
+        rateSourceType: "user_rate",
+        notes: `${quantityNote} Company all-in rate per bank m³ covers loading, haulage, and tip once. It is not the Quotr per-trip allowance. No separate tip line.`,
       });
     } else {
-      const haulage = companySpoilRate(params.rates, DECK_SPOIL_HAULAGE_KEY);
-      const tip = companySpoilRate(params.rates, DECK_SPOIL_TIP_KEY);
-      spoilLines.push({
-        kind: haulage ? "priced" : "pricing_required",
-        itemKey: DECK_SPOIL_HAULAGE_KEY,
-        componentKey: DECK_SPOIL_HAULAGE_COMPONENT,
-        label: "Post-hole spoil loading and haulage",
-        quantityM3,
-        unitCost: haulage?.cost ?? null,
-        unitSell: haulage?.sell ?? null,
-        notes: `${quantityNote} Loading onto a truck and haulage. Not the hand-dig hours, and not a tip fee.`,
-      });
-      spoilLines.push({
-        kind: tip ? "priced" : "pricing_required",
-        itemKey: DECK_SPOIL_TIP_KEY,
-        componentKey: DECK_SPOIL_TIP_COMPONENT,
-        label: "Post-hole spoil tip fee",
-        quantityM3,
-        unitCost: tip?.cost ?? null,
-        unitSell: tip?.sell ?? null,
-        notes: `${quantityNote} Tip fee only. Not added on top of an all-in removal rate.`,
-      });
-      if (!haulage) missingInfo.push("Spoil loading and haulage rate");
-      if (!tip) missingInfo.push("Spoil tip fee");
+      spoilLines.push(
+        deckSpoilCharge({
+          facts,
+          workAreaId: params.workAreaId,
+          rates: params.rates,
+          itemKey: DECK_SPOIL_HAULAGE_KEY,
+          componentKey: DECK_SPOIL_HAULAGE_COMPONENT,
+          label: "Post-hole spoil loading and local haulage",
+          choiceFact: DECK_SPOIL_HAULAGE_CHOICE_FACT,
+          costFact: DECK_SPOIL_HAULAGE_COST_FACT,
+          allowance: DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST,
+          unit: "job",
+          scope: DECK_SPOIL_HAULAGE_SCOPE,
+          bankM3: quantityM3,
+          quantityNote,
+          smallEligible,
+        }),
+        deckSpoilCharge({
+          facts,
+          workAreaId: params.workAreaId,
+          rates: params.rates,
+          itemKey: DECK_SPOIL_TIP_KEY,
+          componentKey: DECK_SPOIL_TIP_COMPONENT,
+          label: "Post-hole spoil tip fee",
+          choiceFact: DECK_SPOIL_TIP_CHOICE_FACT,
+          costFact: DECK_SPOIL_TIP_COST_FACT,
+          allowance: DECK_SPOIL_TIP_ALLOWANCE_EX_GST,
+          unit: "load",
+          scope: DECK_SPOIL_TIP_SCOPE,
+          bankM3: quantityM3,
+          quantityNote,
+          smallEligible,
+        })
+      );
+      for (const line of spoilLines) {
+        if (line.kind === "pricing_required" && line.componentKey !== DECK_SPOIL_DECISION_COMPONENT) {
+          missingInfo.push(line.label);
+        }
+      }
     }
   }
 

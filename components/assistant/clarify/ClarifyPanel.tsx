@@ -69,6 +69,17 @@ type ClarifyPanelProps = {
       value: string | number;
       valueType: "number" | "select" | "text";
     }) => void;
+    onSpecFacts?: (input: {
+      workAreaId: string;
+      facts: readonly {
+        key: string;
+        label: string;
+        value: string | number;
+        valueType: "number" | "select" | "text";
+      }[];
+    }) => Promise<{ error?: string } | void> | void;
+    focusGapId?: string | null;
+    focusNonce?: number;
     onBooleanFact?: (input: {
       workAreaId: string;
       key: string;
@@ -533,15 +544,6 @@ export function ClarifyPanel({
         </p>
       ) : null}
 
-      {deckAreas.map((area) => (
-        <DeckPostHolesSection
-          key={area.workAreaId}
-          workAreaId={area.workAreaId}
-          facts={area.facts}
-          onSpecFact={area.onSpecFact}
-          onBooleanFact={area.onBooleanFact}
-        />
-      ))}
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2 lg:gap-6">
         {workAreaGroups.map((group) => (
           <section
@@ -556,6 +558,21 @@ export function ClarifyPanel({
             data-details-work-area-type={group.workAreaType ?? undefined}
           >
             <h2 className={PREMIUM.sectionTitle}>{group.workAreaName}</h2>
+            {deckAreas
+              .filter((area) => area.workAreaId === group.workAreaId)
+              .map((area) => (
+                <div key={`holes:${area.workAreaId}`} className="mt-3">
+                  <DeckPostHolesSection
+                    workAreaId={area.workAreaId}
+                    facts={area.facts}
+                    onSpecFact={area.onSpecFact}
+                    onSpecFacts={area.onSpecFacts}
+                    onBooleanFact={area.onBooleanFact}
+                    focusGapId={area.focusGapId}
+                    focusNonce={area.focusNonce}
+                  />
+                </div>
+              ))}
             {nestedPanels
               .filter((panel) => panel.workAreaId === group.workAreaId)
               .map((panel) => (

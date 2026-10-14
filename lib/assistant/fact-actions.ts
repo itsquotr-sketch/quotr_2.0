@@ -155,3 +155,105 @@ export async function updateProjectFact(
   revalidateProjectPath(projectId);
   return mutation;
 }
+
+const updateFactsSchema = z.object({
+  projectId: z.string().uuid(),
+  workAreaId: z.string().uuid(),
+  facts: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        label: z.string().min(1),
+        value: z.union([z.string(), z.number(), z.boolean()]),
+        valueType: z.enum(["number", "select", "text", "boolean"]).optional(),
+      })
+    )
+    .min(1)
+    .max(16),
+});
+
+/** One request for a group of Deck answers, then one stale mark. */
+export async function updateProjectFacts(
+  input: z.infer<typeof updateFactsSchema>
+): Promise<AssistantActionState> {
+  const parsed = updateFactsSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid fact update." };
+
+  const context = await getAuthOrgContext();
+  if (!context) return { error: "Not authenticated." };
+
+  const { supabase, orgId, user } = context;
+  const { projectId, workAreaId, facts } = parsed.data;
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (denied) return denied;
+
+  const ownedProject = await assertOrgOwnsActiveProjectWithStage(context, projectId);
+  if ("error" in ownedProject) return { error: ownedProject.error };
+  const workAreaLookup = await supabase
+    .from("work_areas")
+    .select("id")
+    .eq("id", workAreaId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!workAreaLookup.data) return { error: "Work area not found." };
+
+  for (const fact of facts) {
+    const commit = await commitUserFactEdit(supabase, {
+      orgId,
+      projectId,
+      workAreaId,
+      key: fact.key,
+      label: fact.label,
+      value: fact.value,
+      valueType: fact.valueType,
+    });
+    if (!commit.ok) return { error: commit.error };
+  }
+
+  const [workAreasResult, projectFactsResult] = await Promise.all([
+    supabase
+      .from("work_areas")
+      .select(ASSISTANT_WORK_AREA_COLUMNS)
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source, conflict_warning")
+      .eq("project_id", projectId),
+  ]);
+  const derivedPersist = await persistDerivedFactsForProject(
+    supabase,
+    orgId,
+    projectId,
+    workAreasResult.data ?? [],
+    projectFactsResult.data ?? []
+  );
+  if (derivedPersist.error) return { error: derivedPersist.error };
+
+  const ensureResult = await ensureMissingDetailsQuestionBlock(supabase, orgId, projectId, {
+    stage: ownedProject.stage as AssistantStage,
+    qualityLevel: ownedProject.quality_level,
+    skipDerivedPersist: true,
+  });
+  if (ensureResult.error) return { error: ensureResult.error };
+
+  await markEstimateStaleWithContext(context, projectId);
+  const mutation = await completeAssistantMutation(
+    context,
+    projectId,
+    scalarFactWorkAreaReuse({
+      key: facts[0]?.key ?? "deck.hole_shape",
+      workAreas: workAreasResult.data,
+      error: workAreasResult.error,
+    })
+  );
+  revalidateProjectPath(projectId);
+  return mutation;
+}

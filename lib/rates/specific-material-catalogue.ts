@@ -1445,9 +1445,10 @@ export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = 
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Waste / disposal",
-    unit: "m3",
+    unit: "job",
+    defaultCostRate: 150,
     description:
-      "Loading onto a truck and haulage per bank m³. Not the hand-dig hours and not the tip fee. Unused when the all-in removal rate is set. No Quotr dollar starter.",
+      "Owner 14 October 2026 planning allowance: $150 ex GST per job for one local trip on a small accessible job with clean natural spoil, up to 1 bank m³. Includes loading at the workface. Not a $/bank-m³ rate, not scaled, and not a live supplier tariff. Context only: Hambly Haulage six-wheeler $115/hour ex GST and clean dry spoil $22/tonne ex GST; Tauranga clean soil $111/tonne with a $111 minimum; Waimakariri commercial cleanfill $95/m³. Charged only when the builder uses it. A company or job rate wins. Unused when spoil stays on site or an all-in rate is set.",
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1457,9 +1458,10 @@ export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = 
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Waste / disposal",
-    unit: "m3",
+    unit: "load",
+    defaultCostRate: 150,
     description:
-      "Tip fee only per bank m³. Not added on top of the all-in removal rate. No Quotr dollar starter.",
+      "Owner 14 October 2026 planning allowance: $150 ex GST per load for one receiving-facility load of clean natural spoil on a small accessible job, up to 1 bank m³. Not a uniform council tariff and not scaled from bank volume. Same published context as the haulage allowance, not a live tariff. Charged only when the builder uses it. A company or job rate wins.",
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1877,7 +1879,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "hole",
     description:
-      "Provisional 0.50 person-hours per hole for an ordinary hand-dug circular deck post hole: soil a post-hole spade or hand auger can dig, 250–450 mm diameter, 400–900 mm deep. Includes marking the hole and placing spoil at the immediate workface. Excludes post setting, concrete placement, rock, groundwater, machine hire, truck loading, haulage, and tip fees. Not the 1 hour pile/post installation and not the concrete hours per bag. A company or calibrated hours-per-hole wins, including outside that scope. Outside the scope with no company hours, the estimate stays Pricing Required.",
+      "Approved 14 October 2026: 0.50 person-hours per hole (one person, 30 minutes) for a hand-dug ordinary-soil circular hole, 250–450 mm diameter and 400–900 mm deep. Includes marking and placing soil at the workface. Excludes post setting, concrete, off-site loading, haulage, tip fees, rock, groundwater, machine hire, and specialist ground treatment. Access is applied once. A this-job or company rate of that scope wins. Rock, groundwater, and machine digging do not use 0.50 h/hole.",
     defaultCostRate: 0.5,
     calculatorSupport: "used_now",
     recommended: true,

@@ -40,6 +40,7 @@ import {
 } from "@/lib/estimate/deck-hole-excavation";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
 import {
+  DECK_CONCRETE_PLACE_BENCHMARK_HOURS,
   DECK_CONCRETE_PLACE_CONFIRM_FACT,
   DECK_CONCRETE_PLACE_JOB_HOURS_FACT,
   DECK_POSTS_INSTALL_CONFIRM_FACT,
@@ -241,8 +242,18 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.hole_count",
   "deck.hole_count_reason",
   "deck.hole_job_hours_per_hole",
+  "deck.hole_hours_status",
   "deck.spoil_leaves_site",
   "deck.spoil_destination",
+  "deck.spoil_haulage_choice",
+  "deck.spoil_haulage_job_cost",
+  "deck.spoil_tip_choice",
+  "deck.spoil_tip_job_cost",
+  "deck.spoil_load_fit",
+  "deck.posts_install_hours_per_ea",
+  "deck.posts_install_scope_confirmation",
+  "deck.concrete_place_hours_per_bag",
+  "deck.concrete_place_scope_confirmation",
   "deck.concrete_fill",
   "deck.concrete_fill_depth_mm",
   "deck.post_embedment_mm",
@@ -681,11 +692,12 @@ export function calculateDeck(
           })
         );
       } else if (postsScope.action === "review" && supportCount > 0) {
-        const reviewedHours = shapeLabourHours({
+        const beforeAccess = round2(supportCount * postsScope.hoursPerUnit);
+        const heldHours = shapeLabourHours({
           quantity: supportCount,
           productivityHoursPerUnit: postsScope.hoursPerUnit,
           adjustmentFactor: labourAdjustment,
-        });
+        }).adjustedHours;
         missingInfo.push("Pile/post installation scope");
         lineItems.push({
           ...createRateLineItem({
@@ -702,7 +714,7 @@ export function calculateDeck(
             itemKey: "deck.posts.install.hours_per_ea",
             componentKey: "deck.posts.install",
             notes: scopeReviewNotes({
-              summary: `Stored calibrated rate ${postsScope.hoursPerUnit} h/post · Your calibrated productivity. The saved task does not record that excavation was excluded, so this rate is not priced beside the separate hole excavation. ${supportCount} posts × ${postsScope.hoursPerUnit} h/post = ${reviewedHours.adjustedHours} h if you confirm it is installation only. Hole excavation stays its own line.`,
+              summary: `Stored calibrated rate ${postsScope.hoursPerUnit} h/post · Your calibrated productivity. The saved task does not record that excavation was excluded, so this rate is not priced beside the separate hole excavation. ${supportCount} posts × ${postsScope.hoursPerUnit} h/post = ${beforeAccess} h before access if you confirm it is installation only. Hole excavation stays its own line.`,
               factKey: postsScope.factKey,
               token: postsScope.token,
               jobFactKey: postsScope.jobFactKey,
@@ -711,7 +723,7 @@ export function calculateDeck(
             organisationSettings: context.organisationSettings,
           }),
           includedInTotal: false,
-          labourHours: reviewedHours.adjustedHours,
+          labourHours: heldHours,
           productivityRate: postsScope.hoursPerUnit,
         });
       } else if (supportCount > 0) {
@@ -840,12 +852,12 @@ export function calculateDeck(
               workAreaName: workArea.name,
               label: spoil.label,
               category: "materials",
-              quantity: spoil.quantityM3,
-              unit: "m³",
+              quantity: spoil.chargeQuantity,
+              unit: spoil.chargeUnit,
               costRate: spoil.unitCost,
               sellRate: unitSell,
-              rateSource: getRateSourceLabel("user_rate"),
-              rateSourceType: "user_rate",
+              rateSource: getRateSourceLabel(spoil.rateSourceType),
+              rateSourceType: spoil.rateSourceType,
               itemKey: spoil.itemKey,
               componentKey: spoil.componentKey,
               notes: spoil.notes,
@@ -860,8 +872,8 @@ export function calculateDeck(
               workAreaName: workArea.name,
               label: spoil.label,
               category: "materials",
-              quantity: spoil.quantityM3,
-              unit: "m³",
+              quantity: spoil.chargeQuantity,
+              unit: spoil.chargeUnit,
               costRate: 0,
               sellRate: 0,
               rateSource: getRateSourceLabel("missing"),
@@ -1673,6 +1685,7 @@ export function calculateDeck(
       jobHours: getNumberFact(facts, workArea.id, DECK_CONCRETE_PLACE_JOB_HOURS_FACT),
       factKey: DECK_CONCRETE_PLACE_CONFIRM_FACT,
       jobFactKey: DECK_CONCRETE_PLACE_JOB_HOURS_FACT,
+      quotrBenchmarkHours: DECK_CONCRETE_PLACE_BENCHMARK_HOURS,
     });
     const placeProductivity =
       placeScope.action === "apply"
@@ -1686,11 +1699,12 @@ export function calculateDeck(
           ? placeResolved
           : null;
     if (placeScope.action === "review" && bags > 0) {
-      const reviewedHours = shapeLabourHours({
+      const beforeAccess = round2(bags * placeScope.hoursPerUnit);
+      const heldHours = shapeLabourHours({
         quantity: bags,
         productivityHoursPerUnit: placeScope.hoursPerUnit,
         adjustmentFactor: labourAdjustment,
-      });
+      }).adjustedHours;
       missingInfo.push("Concrete placement scope");
       lineItems.push({
         ...createRateLineItem({
@@ -1706,7 +1720,7 @@ export function calculateDeck(
           rateSourceType: "missing",
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
           notes: scopeReviewNotes({
-            summary: `Stored calibrated rate ${placeScope.hoursPerUnit} h/bag · Your calibrated productivity. It was saved against a fixed bag scenario, not this estimate's purchased bags, so it is not priced yet. ${bags} bags × ${placeScope.hoursPerUnit} h/bag = ${reviewedHours.adjustedHours} h if you confirm it applies to these purchased bags. Hole excavation is separate.`,
+            summary: `Stored calibrated rate ${placeScope.hoursPerUnit} h/bag · Your calibrated productivity. It was saved against a fixed bag scenario, not this estimate's purchased bags, so it is not priced yet. ${bags} bags × ${placeScope.hoursPerUnit} h/bag = ${beforeAccess} h before access if you confirm it applies to these purchased bags. Hole excavation is separate.`,
             factKey: placeScope.factKey,
             token: placeScope.token,
             jobFactKey: placeScope.jobFactKey,
@@ -1715,7 +1729,7 @@ export function calculateDeck(
           organisationSettings: context.organisationSettings,
         }),
         includedInTotal: false,
-        labourHours: reviewedHours.adjustedHours,
+        labourHours: heldHours,
         productivityRate: placeScope.hoursPerUnit,
       });
     } else if (bags > 0 && placeProductivity && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
@@ -1740,6 +1754,7 @@ export function calculateDeck(
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
           organisationSettings: context.organisationSettings,
           ...rateFieldsFromResolved(labourRate),
+          productivitySourceType: placeProductivity.sourceType,
         })
       );
     } else if (bags > 0) {

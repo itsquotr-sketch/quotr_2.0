@@ -138,8 +138,8 @@ function demo(
 console.log("=== Benchmark review pass ===\n");
 
 check(
-  "approved productivity authority has 104 numeric keys",
-  Object.keys(APPROVED_PRODUCTIVITY).length === 104
+  "approved productivity authority has 105 numeric keys",
+  Object.keys(APPROVED_PRODUCTIVITY).length === 105
 );
 check(
   "retaining-wall excavation m³ stays unresolved",

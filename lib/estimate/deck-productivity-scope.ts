@@ -8,6 +8,9 @@ export const DECK_POSTS_INSTALL_CONFIRM_FACT = "deck.posts_install_scope_confirm
 export const DECK_CONCRETE_PLACE_CONFIRM_FACT = "deck.concrete_place_scope_confirmation";
 export const DECK_POSTS_INSTALL_JOB_HOURS_FACT = "deck.posts_install_hours_per_ea";
 export const DECK_CONCRETE_PLACE_JOB_HOURS_FACT = "deck.concrete_place_hours_per_bag";
+/** This job chooses the approved 4-minute bag rate and leaves the company row unchanged. */
+export const DECK_QUOTR_BENCHMARK_CHOICE = "quotr-benchmark";
+export const DECK_CONCRETE_PLACE_BENCHMARK_HOURS = 4 / 60;
 
 export function confirmedProductivityToken(hours: number): string {
   const rounded = Math.round(hours * 10000) / 10000;
@@ -20,7 +23,7 @@ export type LegacyProductivityDecision =
       readonly action: "apply";
       readonly hoursPerUnit: number;
       readonly sourceLabel: string;
-      readonly sourceType: "user_rate" | "calibrated_productivity";
+      readonly sourceType: "user_rate" | "calibrated_productivity" | "benchmark";
     }
   | {
       readonly action: "review";
@@ -41,8 +44,21 @@ export function decideLegacyProductivityScope(input: {
   readonly jobHours: number | null;
   readonly factKey: string;
   readonly jobFactKey: string;
+  readonly quotrBenchmarkHours?: number | null;
 }): LegacyProductivityDecision {
-  if (input.jobHours != null && input.jobHours > 0) {
+  if (
+    input.confirmation === DECK_QUOTR_BENCHMARK_CHOICE &&
+    input.quotrBenchmarkHours != null &&
+    input.quotrBenchmarkHours > 0
+  ) {
+    return {
+      action: "apply",
+      hoursPerUnit: input.quotrBenchmarkHours,
+      sourceLabel: "Quotr benchmark",
+      sourceType: "benchmark",
+    };
+  }
+  if (input.jobHours != null && input.jobHours > 0 && input.confirmation !== DECK_QUOTR_BENCHMARK_CHOICE) {
     return {
       action: "apply",
       hoursPerUnit: input.jobHours,

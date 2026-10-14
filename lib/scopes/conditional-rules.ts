@@ -794,8 +794,18 @@ export function shouldHideConditionalQuestion(
     key === "deck.hole_count" ||
     key === "deck.hole_count_reason" ||
     key === "deck.hole_job_hours_per_hole" ||
+    key === "deck.hole_hours_status" ||
     key === "deck.spoil_leaves_site" ||
     key === "deck.spoil_destination" ||
+    key === "deck.spoil_haulage_choice" ||
+    key === "deck.spoil_haulage_job_cost" ||
+    key === "deck.spoil_tip_choice" ||
+    key === "deck.spoil_tip_job_cost" ||
+    key === "deck.spoil_load_fit" ||
+    key === "deck.posts_install_hours_per_ea" ||
+    key === "deck.posts_install_scope_confirmation" ||
+    key === "deck.concrete_place_hours_per_bag" ||
+    key === "deck.concrete_place_scope_confirmation" ||
     key === "deck.concrete_fill" ||
     key === "deck.concrete_fill_depth_mm" ||
     key === "deck.post_embedment_mm" ||
