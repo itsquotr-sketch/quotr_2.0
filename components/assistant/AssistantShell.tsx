@@ -178,7 +178,10 @@ import {
 } from "@/lib/assistant/readiness/details-status";
 import { settleDetailsJourney } from "@/lib/assistant/readiness/details-journey";
 import { compactDeckReadySummary } from "@/lib/estimate/deck-ready-summary";
-import { applyDeckProductivityDecisions } from "@/lib/assistant/deck-productivity-actions";
+import {
+  restoreDeckProductivityDecisions,
+  saveDeckProductivityDecisions,
+} from "@/lib/assistant/deck-productivity-actions";
 import type { DeckProductivitySelection } from "@/components/assistant/DeckProductivityReviewDialog";
 import {
   composeClarifyInputFromEstimateContext,
@@ -552,6 +555,19 @@ export function AssistantShell({
   const [productivityReviewOpen, setProductivityReviewOpen] = useState(
     initialReviewProductivity
   );
+  const productivityApplyLockRef = useRef(false);
+  const [productivityProgress, setProductivityProgress] = useState<
+    "saving" | "updating" | null
+  >(null);
+  const savingSpecCountsRef = useRef(new Map<string, number>());
+  const [savingSpecKeys, setSavingSpecKeys] = useState<string[]>([]);
+  const trackSavingSpecKey = useCallback((key: string, delta: number) => {
+    const counts = savingSpecCountsRef.current;
+    const next = (counts.get(key) ?? 0) + delta;
+    if (next <= 0) counts.delete(key);
+    else counts.set(key, next);
+    setSavingSpecKeys([...counts.keys()]);
+  }, []);
   const [estimateView, setEstimateViewState] = useState<EstimatePresentationView>(
     initialEstimateSection
   );
@@ -2371,6 +2387,7 @@ export function AssistantShell({
       const work = (async () => {
       setPendingReadinessWrites((count) => count + 1);
       setClarifyWritePending(true);
+      trackSavingSpecKey(input.key, 1);
       tagOverlayFactSeq(
         {
           key: input.key,
@@ -2439,6 +2456,7 @@ export function AssistantShell({
       } finally {
         setClarifyWritePending(false);
         setPendingReadinessWrites((count) => Math.max(0, count - 1));
+        trackSavingSpecKey(input.key, -1);
       }
       })();
       pendingWriteTrackerRef.current.trackAction(work, {
@@ -2453,6 +2471,7 @@ export function AssistantShell({
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
+      trackSavingSpecKey,
     ]
   );
 
@@ -2474,6 +2493,7 @@ export function AssistantShell({
       const work = (async () => {
         setPendingReadinessWrites((count) => count + 1);
         setClarifyWritePending(true);
+        for (const fact of input.facts) trackSavingSpecKey(fact.key, 1);
         const rows = input.facts.map((fact) => ({
           key: fact.key,
           work_area_id: input.workAreaId,
@@ -2547,6 +2567,7 @@ export function AssistantShell({
         } finally {
           setClarifyWritePending(false);
           setPendingReadinessWrites((count) => Math.max(0, count - 1));
+          for (const fact of input.facts) trackSavingSpecKey(fact.key, -1);
         }
       })();
       pendingWriteTrackerRef.current.trackAction(work, {
@@ -2561,6 +2582,7 @@ export function AssistantShell({
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
+      trackSavingSpecKey,
     ]
   );
 
@@ -3308,36 +3330,70 @@ export function AssistantShell({
 
   const applyProductivityDecisions = useCallback(
     async (selections: readonly DeckProductivitySelection[]) => {
+      if (productivityApplyLockRef.current) {
+        return { error: "This update is already running." };
+      }
       const workAreaId = selections[0]?.decision.workAreaId;
       if (!workAreaId) {
         return { error: "The productivity review could not be loaded." };
       }
+      productivityApplyLockRef.current = true;
+      setProductivityProgress("saving");
       setIsRegenerating(true);
+      const decisions = selections.map((selection) => ({
+        factKey: selection.decision.factKey,
+        jobFactKey: selection.decision.jobFactKey,
+        expectedToken: selection.decision.value,
+        itemKey: selection.decision.itemKey,
+        choice: selection.choice,
+        jobHours: selection.jobHours,
+      }));
+      let saved:
+        | { priors: Parameters<typeof restoreDeckProductivityDecisions>[0]["priors"]; wasStale: boolean }
+        | null = null;
       try {
-        const result = await runAction("regenerate", () =>
-          settleSaveRequest(
-            applyDeckProductivityDecisions({
-              projectId: project.id,
-              workAreaId,
-              estimateId: generationProjection?.estimateId,
-              decisions: selections.map((selection) => ({
-                factKey: selection.decision.factKey,
-                jobFactKey: selection.decision.jobFactKey,
-                expectedToken: selection.decision.value,
-                itemKey: selection.decision.itemKey,
-                choice: selection.choice,
-                jobHours: selection.jobHours,
-              })),
-            }),
-            PRODUCTIVITY_APPLY_TIMEOUT_MS
-          )
+        const result = await settleSaveRequest(
+          saveDeckProductivityDecisions({
+            projectId: project.id,
+            workAreaId,
+            estimateId: generationProjection?.estimateId,
+            decisions,
+          }),
+          PRODUCTIVITY_APPLY_TIMEOUT_MS
         );
-        return result ?? {};
+        if (!result || "error" in result) {
+          return {
+            error: result && "error" in result ? result.error : "The productivity choice was not saved.",
+          };
+        }
+        saved = { priors: result.priors, wasStale: result.wasStale };
+        setProductivityProgress("updating");
+        setLocalEstimateStale(true);
+        const regenerated = await settleSaveRequest(
+          regenerateStaticEstimate(project.id),
+          PRODUCTIVITY_APPLY_TIMEOUT_MS
+        );
+        if (regenerated.error && !regenerated.estimateGeneration) {
+          await restoreDeckProductivityDecisions({
+            projectId: project.id,
+            workAreaId,
+            priors: result.priors,
+            wasStale: result.wasStale,
+          });
+          setLocalEstimateStale(result.wasStale);
+          return { error: regenerated.error };
+        }
+        return (
+          (await runAction("regenerate", async () => regenerated)) ?? {}
+        );
       } catch (error) {
+        if (saved) setLocalEstimateStale(true);
         return {
           error: error instanceof Error ? error.message : "The productivity choice was not saved.",
         };
       } finally {
+        productivityApplyLockRef.current = false;
+        setProductivityProgress(null);
         setIsRegenerating(false);
       }
     },
@@ -3454,7 +3510,7 @@ export function AssistantShell({
 
   return (
     <div data-project-id={project.id} className="w-full min-w-0">
-      {isRegenerating ? (
+      {isRegenerating && productivityProgress == null ? (
         <GenerateEstimateStatus stage="building" startedAt={regenerateStartedAt} />
       ) : null}
       <AssistantProgress
@@ -3632,6 +3688,18 @@ export function AssistantShell({
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className="min-w-0 space-y-3 overflow-x-hidden">
+                  {productivityProgress && estimateView !== "overview" ? (
+                    <p
+                      className="text-sm font-medium text-foreground"
+                      role="status"
+                      aria-live="polite"
+                      data-productivity-progress={productivityProgress}
+                    >
+                      {productivityProgress === "saving"
+                        ? "Saving your productivity choices…"
+                        : "Updating your estimate…"}
+                    </p>
+                  ) : null}
                   <EstimateViewControl
                     view={estimateView}
                     onChange={setEstimateView}
@@ -3713,6 +3781,7 @@ export function AssistantShell({
                     estimateId={generationProjection?.estimateId}
                     pricingDocumentId={pricingSummary?.id ?? null}
                     isRegenerating={updatingEstimate}
+                    productivityProgress={productivityProgress}
                     onCompleteDetails={
                       canRunEstimates && estimateOverview.primary === "complete_details"
                         ? openDeckDetails
@@ -4175,6 +4244,12 @@ export function AssistantShell({
                 returnFocusId={generateReturnFocusId}
                 holdCreateEstimate={holdCreateEstimate}
                 settledRemaining={detailsJourney.requiredRemaining}
+                postHolesComplete={
+                  !estimate &&
+                  postHoleCount === 0 &&
+                  clarifyView.remainingRequiredCount === 0
+                }
+                savingFactKeys={savingSpecKeys}
                 allowCreateEstimate={detailsJourney.showCreateEstimate}
                 readySummary={detailsJourney.phase === "ready" ? deckReadySummary : null}
                 onAnswerBoolean={handleClarifyBoolean}

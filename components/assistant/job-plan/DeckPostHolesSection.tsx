@@ -59,6 +59,8 @@ export function DeckPostHolesSection({
   accessSuitable = true,
   focusGapId = null,
   focusNonce = 0,
+  savingKeys = [],
+  forceOpen = false,
 }: {
   workAreaId: string;
   facts: readonly EstimateFact[];
@@ -76,6 +78,8 @@ export function DeckPostHolesSection({
   accessSuitable?: boolean;
   focusGapId?: string | null;
   focusNonce?: number;
+  savingKeys?: readonly string[];
+  forceOpen?: boolean;
 }) {
   const reasonRef = useRef<HTMLInputElement>(null);
   const setupErrorRef = useRef<HTMLParagraphElement>(null);
@@ -203,6 +207,18 @@ export function DeckPostHolesSection({
     write({ key: "deck.hole_count", label: "Hole count", value: next, valueType: "number" });
   }
 
+  function saveReason(raw: string) {
+    const next = raw.trim();
+    if (!next) {
+      setReasonError("Add a short reason when the hole count differs from the post count.");
+      reasonRef.current?.focus();
+      return;
+    }
+    setReasonError(null);
+    if (next === savedReason) return;
+    write({ key: "deck.hole_count_reason", label: "Hole count reason", value: next, valueType: "text" });
+  }
+
   function saveMillimetres(key: string, label: string, raw: string, current: number | null) {
     const trimmed = raw.trim();
     if (!trimmed) return;
@@ -311,6 +327,39 @@ export function DeckPostHolesSection({
     loadFit !== "unknown" &&
     accessSuitable;
   const showEditor = editing || !typicalStored;
+  const answerSaving = savingKeys.length > 0 || savingSetup;
+  const showSummary =
+    unanswered === 0 && !manualEditing && !focusGapId && !forceOpen && !setupError;
+
+  if (showSummary) {
+    return (
+      <section
+        className="min-w-0 space-y-2 overflow-x-hidden text-foreground"
+        data-post-holes="true"
+        data-post-holes-summary={answerSaving ? "finishing" : "recorded"}
+        aria-label="Post holes, no unanswered questions"
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
+          {answerSaving ? "Finishing details" : "Post holes"}
+        </p>
+        <p className="break-words text-sm text-foreground">{recordedPostHoleSummary({
+          count: displayCount,
+          ground,
+          method,
+          spoil,
+        })}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 border-foreground/30 bg-background text-foreground"
+          data-post-holes-edit=""
+          onClick={() => setEditing(true)}
+        >
+          Edit
+        </Button>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -323,7 +372,20 @@ export function DeckPostHolesSection({
           : `Post holes, ${unanswered} unanswered`
       }
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Post holes</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Post holes</p>
+        {unanswered === 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 border-foreground/30 bg-background text-foreground"
+            data-post-holes-close=""
+            onClick={() => setEditing(false)}
+          >
+            Close
+          </Button>
+        ) : null}
+      </div>
       <NumberField
         id={`deck-hole-count-${workAreaId}`}
         label="Number of post holes"
@@ -331,6 +393,7 @@ export function DeckPostHolesSection({
         min={1}
         error={countError}
         errorAttr="data-hole-count-error"
+        saving={savingKeys.includes("deck.hole_count")}
         onCommit={saveCount}
       />
       {postCount != null ? (
@@ -341,24 +404,27 @@ export function DeckPostHolesSection({
           <Label className="text-sm text-foreground" htmlFor={`deck-hole-reason-${workAreaId}`}>
             Reason the hole count differs
           </Label>
-          <Input
-            ref={reasonRef}
-            className={fieldClass}
-            id={`deck-hole-reason-${workAreaId}`}
-            type="text"
-            defaultValue={savedReason}
-            aria-invalid={reasonError ? true : undefined}
-            onBlur={(event) => {
-              const next = event.target.value.trim();
-              if (!next) {
-                setReasonError("Add a short reason when the hole count differs from the post count.");
-                return;
-              }
-              setReasonError(null);
-              if (next === savedReason) return;
-              write({ key: "deck.hole_count_reason", label: "Hole count reason", value: next, valueType: "text" });
-            }}
-          />
+          <div className="flex min-w-0 flex-col gap-2">
+            <Input
+              ref={reasonRef}
+              className={fieldClass}
+              id={`deck-hole-reason-${workAreaId}`}
+              type="text"
+              defaultValue={savedReason}
+              aria-invalid={reasonError ? true : undefined}
+              onBlur={(event) => saveReason(event.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 border-foreground/30 bg-background text-foreground"
+              aria-busy={savingKeys.includes("deck.hole_count_reason") || undefined}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => saveReason(reasonRef.current?.value ?? "")}
+            >
+              {savingKeys.includes("deck.hole_count_reason") ? "Saving…" : "Save"}
+            </Button>
+          </div>
           {reasonError ? (
             <p className="text-sm text-destructive" role="alert" data-hole-reason-error="">
               {reasonError}
@@ -454,6 +520,7 @@ export function DeckPostHolesSection({
               ["rectangular", "Rectangular"],
             ]}
             onChange={(value) => write({ key: "deck.hole_shape", label: "Hole shape", value, valueType: "select" })}
+            saving={savingKeys.includes("deck.hole_shape")}
           />
           {rectangular ? (
             <>
@@ -465,6 +532,7 @@ export function DeckPostHolesSection({
                 min={50}
                 max={3000}
                 onCommit={(raw) => saveMillimetres("deck.hole_length_mm", "Hole length", raw, length)}
+                saving={savingKeys.includes("deck.hole_length_mm")}
               />
               <NumberField
                 id={`deck-hole-width-${workAreaId}`}
@@ -474,6 +542,7 @@ export function DeckPostHolesSection({
                 min={50}
                 max={3000}
                 onCommit={(raw) => saveMillimetres("deck.hole_width_mm", "Hole width", raw, width)}
+                saving={savingKeys.includes("deck.hole_width_mm")}
               />
             </>
           ) : (
@@ -485,6 +554,7 @@ export function DeckPostHolesSection({
               min={50}
               max={3000}
               onCommit={(raw) => saveMillimetres("deck.hole_diameter_mm", "Hole diameter", raw, diameter)}
+              saving={savingKeys.includes("deck.hole_diameter_mm")}
             />
           )}
           <NumberField
@@ -495,6 +565,7 @@ export function DeckPostHolesSection({
             min={50}
             max={3000}
             onCommit={saveDepth}
+            saving={savingKeys.includes("deck.hole_depth_mm") || savingKeys.includes("deck.post_embedment_mm")}
           />
           {sizeError ? (
             <p className="text-sm text-destructive" data-hole-size-error="" role="alert">
@@ -513,6 +584,7 @@ export function DeckPostHolesSection({
             onChange={(value) =>
               write({ key: "deck.support_section", label: "Pile/post section", value, valueType: "select" })
             }
+            saving={savingKeys.includes("deck.support_section")}
           />
         </div>
       ) : null}
@@ -535,6 +607,7 @@ export function DeckPostHolesSection({
             valueType: "select",
           });
         }}
+        saving={savingKeys.includes("deck.hole_ground")}
       />
       <Choice
         id={`deck-hole-method-${workAreaId}`}
@@ -548,6 +621,7 @@ export function DeckPostHolesSection({
         onChange={(value) =>
           write({ key: "deck.hole_method", label: "Excavation method", value, valueType: "select" })
         }
+        saving={savingKeys.includes("deck.hole_method")}
       />
       {showHours ? (
         <div className="space-y-2">
@@ -581,6 +655,7 @@ export function DeckPostHolesSection({
                 });
               }
             }}
+            saving={savingKeys.includes("deck.hole_job_hours_per_hole")}
           />
           <Button
             type="button"
@@ -611,22 +686,36 @@ export function DeckPostHolesSection({
           ["not_sure", "Not sure"],
         ]}
         onChange={(value) => {
-          void write({ key: "deck.spoil_destination", label: "Spoil destination", value, valueType: "select" });
+          const related: FactWrite[] = [
+            { key: "deck.spoil_destination", label: "Spoil destination", value, valueType: "select" },
+          ];
           if (value !== "off_site") {
-            void write({
-              key: "deck.spoil_haulage_choice",
-              label: "Spoil haulage choice",
-              value: "invalid",
-              valueType: "select",
-            });
-            void write({
-              key: "deck.spoil_tip_choice",
-              label: "Spoil tip choice",
-              value: "invalid",
-              valueType: "select",
-            });
+            related.push(
+              {
+                key: "deck.spoil_haulage_choice",
+                label: "Spoil haulage choice",
+                value: "invalid",
+                valueType: "select",
+              },
+              {
+                key: "deck.spoil_tip_choice",
+                label: "Spoil tip choice",
+                value: "invalid",
+                valueType: "select",
+              }
+            );
           }
+          if (related.length > 1 && onSpecFacts) {
+            void onSpecFacts({ workAreaId, facts: related });
+            return;
+          }
+          void write(related[0]);
         }}
+        saving={
+          savingKeys.includes("deck.spoil_destination") ||
+          savingKeys.includes("deck.spoil_haulage_choice") ||
+          savingKeys.includes("deck.spoil_tip_choice")
+        }
       />
       {spoil === "on_site" ? (
         <p className="text-sm text-foreground">Spoil stays on site. No loading or tip charge.</p>
@@ -696,6 +785,7 @@ export function DeckPostHolesSection({
             onChange={(value) =>
               write({ key: "deck.concrete_fill", label: "Concrete fill", value, valueType: "select" })
             }
+            saving={savingKeys.includes("deck.concrete_fill")}
           />
           {fill === "partial" ? (
             <NumberField
@@ -708,6 +798,7 @@ export function DeckPostHolesSection({
               onCommit={(raw) =>
                 saveMillimetres("deck.concrete_fill_depth_mm", "Concrete fill depth", raw, fillDepth)
               }
+              saving={savingKeys.includes("deck.concrete_fill_depth_mm")}
             />
           ) : null}
           <NumberField
@@ -727,6 +818,7 @@ export function DeckPostHolesSection({
                 valueType: "select",
               });
             }}
+            saving={savingKeys.includes("deck.post_embedment_mm")}
           />
         </div>
       ) : null}
@@ -789,6 +881,40 @@ export function DeckPostHolesSection({
       ) : null}
     </section>
   );
+}
+
+function recordedPostHoleSummary(input: {
+  count: number | null;
+  ground: string;
+  method: string;
+  spoil: string;
+}): string {
+  const groundLabel =
+    input.ground === "ordinary"
+      ? "ordinary soil"
+      : input.ground === "rock"
+        ? "rock or hard ground"
+        : input.ground
+          ? "groundwater or other"
+          : null;
+  const methodLabel =
+    input.method === "hand" ? "hand digging" : input.method === "machine" ? "machine" : null;
+  const spoilLabel =
+    input.spoil === "on_site"
+      ? "spoil remains on site"
+      : input.spoil === "off_site"
+        ? "spoil leaves site"
+        : input.spoil === "not_sure"
+          ? "spoil not sure"
+          : null;
+  return [
+    input.count != null ? `${input.count} post holes` : null,
+    groundLabel,
+    methodLabel,
+    spoilLabel,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function typicalSummary(count: number | null): string {
@@ -992,6 +1118,7 @@ function NumberField({
   step,
   error,
   errorAttr,
+  saving = false,
   onCommit,
 }: {
   id: string;
@@ -1004,9 +1131,11 @@ function NumberField({
   step?: string;
   error?: string | null;
   errorAttr?: string;
+  saving?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   onCommit: (raw: string) => void;
 }) {
+  const fieldRef = useRef<HTMLInputElement>(null);
   return (
     <div className="min-w-0 space-y-1.5">
       <Label className="text-sm text-foreground" htmlFor={id}>
@@ -1015,6 +1144,7 @@ function NumberField({
       </Label>
       {helper ? <p className="text-sm text-foreground">{helper}</p> : null}
       <Input
+        ref={fieldRef}
         className={fieldClass}
         id={id}
         type="number"
@@ -1024,8 +1154,19 @@ function NumberField({
         step={step}
         defaultValue={value}
         aria-invalid={error ? true : undefined}
+        aria-busy={saving || undefined}
         onBlur={(event) => onCommit(event.target.value)}
       />
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11 w-full border-foreground/30 bg-background text-foreground sm:w-auto"
+        aria-busy={saving || undefined}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => onCommit(fieldRef.current?.value ?? "")}
+      >
+        {saving ? "Saving…" : "Save"}
+      </Button>
       {error ? (
         <p className="text-sm text-destructive" role="alert" {...(errorAttr ? { [errorAttr]: "" } : {})}>
           {error}
@@ -1041,6 +1182,7 @@ function Choice({
   value,
   placeholder,
   options,
+  saving = false,
   onChange,
 }: {
   id: string;
@@ -1048,14 +1190,23 @@ function Choice({
   value: string;
   placeholder: string;
   options: readonly (readonly [string, string])[];
+  saving?: boolean;
   onChange: (value: string) => void;
 }) {
+  const selected = options.find(([optionValue]) => optionValue === value)?.[1] ?? "";
   return (
     <div className="min-w-0 space-y-1.5">
       <Label className="text-sm text-foreground" htmlFor={id}>
         {label}
       </Label>
-      <select id={id} className={fieldClass} value={value} onChange={(event) => onChange(event.target.value)}>
+      <select
+        id={id}
+        className={fieldClass}
+        value={value}
+        aria-busy={saving || undefined}
+        data-choice-selected={selected || undefined}
+        onChange={(event) => onChange(event.target.value)}
+      >
         <option value="">{placeholder}</option>
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
@@ -1063,6 +1214,11 @@ function Choice({
           </option>
         ))}
       </select>
+      {saving ? (
+        <p className="text-sm text-foreground" role="status" data-choice-saving={id}>
+          Saving…
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -400,10 +400,13 @@ check(
     columnSource.includes("work_area_id") &&
     dialogSource.includes("Retry") &&
     dialogSource.includes("data-productivity-calculation") &&
-    shellSource.includes("applyDeckProductivityDecisions") &&
+    shellSource.includes("saveDeckProductivityDecisions") &&
+    shellSource.includes("restoreDeckProductivityDecisions") &&
     dialogSource.includes("onApply") &&
+    dialogSource.includes("onOpenChange(false)") &&
     dialogSource.includes("Apply both decisions and update estimate") &&
-    read("lib/assistant/deck-productivity-actions.ts").includes("regenerateStaticEstimate")
+    read("lib/assistant/deck-productivity-actions.ts").includes("regenerateStaticEstimate") &&
+    !read("lib/assistant/deck-productivity-actions.ts").includes('.from("rates").update')
 );
 
 if (failed > 0) {

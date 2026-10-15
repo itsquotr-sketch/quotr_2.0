@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import {
   clarifyGenerateIntentAction,
   clarifyQueuedGenerateAction,
+  createEstimateActionLabel,
   localAnswersCompleteForGenerate,
 } from "../lib/assistant/clarify/interaction";
 import {
@@ -226,16 +227,36 @@ check(
   panel.includes("localAnswersCompleteForGenerate") &&
     panel.includes("clarifyGenerateIntentAction") &&
     panel.includes("clarifyQueuedGenerateAction") &&
+    panel.includes("createEstimateActionLabel") &&
     panel.includes("data-clarify-primary-cta") &&
     panel.includes("finishingAnswers")
+);
+check(
+  "Create estimate stays available while the last save is pending",
+  createEstimateActionLabel({
+    pressed: false,
+    generating: false,
+    stage: null,
+  }) === "Create estimate" &&
+    createEstimateActionLabel({
+      pressed: true,
+      generating: false,
+      stage: null,
+    }) === "Finishing your details…" &&
+    createEstimateActionLabel({
+      pressed: true,
+      generating: true,
+      stage: "building",
+    }) === "Creating your estimate…" &&
+    !panel.includes("finishingAnswers || savesPending")
 );
 check(
   "one save status, no second saving sentence",
   labels.includes('savingAnswer: "Saving answer…"') &&
     labels.includes('questionSave: "Saving details…"') &&
-    labels.includes('creatingEstimate: "Creating estimate…"') &&
-    panel.includes("questionSave") &&
-    panel.includes("creatingEstimate") &&
+    labels.includes('finishingDetails: "Finishing your details…"') &&
+    labels.includes('creatingYourEstimate: "Creating your estimate…"') &&
+    panel.includes("savingAnswer") &&
     panel.includes("!showCreateEstimate") &&
     !panel.includes("Saving the last answer") &&
     !panel.includes("SaveStatusIndicator")

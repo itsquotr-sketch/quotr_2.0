@@ -12,7 +12,7 @@ import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnsw
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { DeckPostHolesSection } from "@/components/assistant/job-plan/DeckPostHolesSection";
 import type { EstimateFact } from "@/lib/estimate/types";
-import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { Loader2 } from "lucide-react";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
@@ -30,6 +30,7 @@ import {
   clarifyGenerateIntentAction,
   clarifyPersistResultFailed,
   clarifyQueuedGenerateAction,
+  createEstimateActionLabel,
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
   localAnswersCompleteForGenerate,
@@ -64,6 +65,10 @@ type ClarifyPanelProps = {
   onEstimateNow?: () => boolean | void;
   /** Required answers from the one settled readiness result, including post holes. */
   settledRemaining?: number;
+  /** The current post-hole form is complete, including while its last save is pending. */
+  postHolesComplete?: boolean;
+  /** Fact keys whose save is still in flight. */
+  savingFactKeys?: readonly string[];
   /** False while that result still has required answers, including post holes. */
   allowCreateEstimate?: boolean;
   readySummary?: string | null;
@@ -211,6 +216,8 @@ export function ClarifyPanel({
   onAnswerValue,
   onEstimateNow,
   settledRemaining,
+  postHolesComplete = false,
+  savingFactKeys = [],
   allowCreateEstimate = true,
   readySummary = null,
   onNestedItemAction,
@@ -512,14 +519,13 @@ export function ClarifyPanel({
       persistError: Boolean(persistError),
     });
     if (action === "ignore") return;
+    setFinishingAnswers(true);
     if (action === "queue") {
       generateIntentRef.current = true;
-      setFinishingAnswers(true);
       return;
     }
     if (onEstimateNow?.() === false) {
       generateIntentRef.current = true;
-      setFinishingAnswers(true);
     }
   };
 
@@ -550,7 +556,10 @@ export function ClarifyPanel({
       return;
     }
     if (isSaving || pendingIds.length > 0 || continuePending) return;
-    if (!generateIntentRef.current) return;
+    if (!generateIntentRef.current) {
+      if (finishingAnswers) setFinishingAnswers(false);
+      return;
+    }
     const failedAny = queueFailedRef.current;
     queueFailedRef.current = false;
     const action = clarifyQueuedGenerateAction({
@@ -579,6 +588,7 @@ export function ClarifyPanel({
     onEstimateNow,
     pendingIds.length,
     persistError,
+    finishingAnswers,
   ]);
 
   useEffect(() => {
@@ -593,7 +603,7 @@ export function ClarifyPanel({
     }
   }, [isGenerating, returnFocusId]);
 
-  if (showReady && !finishingAnswers && !savesPending) {
+  if (showReady && !finishingAnswers && !savesPending && !postHolesComplete) {
     return (
       <div className="space-y-3">
         <PersistError error={persistError} errorRef={persistErrorRef} />
@@ -631,6 +641,13 @@ export function ClarifyPanel({
       area.postHolesSettled !== false &&
       !workAreaGroups.some((group) => group.workAreaId === area.workAreaId)
   );
+  const createEstimateLabel = createEstimateActionLabel({
+    pressed: finishingAnswers,
+    generating: Boolean(isGenerating),
+    stage: isGenerating ? generateStage : null,
+  });
+  const createEstimateBusy = Boolean(isGenerating) || (finishingAnswers && !retryFailedDetails);
+  const postHoleForceOpen = Boolean(persistError) || Boolean(returnFocusId);
 
   return (
     <div
@@ -640,7 +657,7 @@ export function ClarifyPanel({
       data-clarify-count={view.visibleCount}
       aria-busy={isGenerating ? "true" : undefined}
     >
-      {isGenerating ? (
+      {isGenerating && !showCreateEstimate ? (
         <GenerateEstimateStatus
           stage={generateStage}
           startedAt={generateStartedAt}
@@ -687,6 +704,8 @@ export function ClarifyPanel({
                     focusGapId={area.focusGapId}
                     focusNonce={area.focusNonce}
                     accessSuitable={area.accessSuitable}
+                    savingKeys={savingFactKeys}
+                    forceOpen={postHoleForceOpen}
                   />
                 </div>
               ))}
@@ -848,6 +867,8 @@ export function ClarifyPanel({
               focusGapId={area.focusGapId}
               focusNonce={area.focusNonce}
               accessSuitable={area.accessSuitable}
+              savingKeys={savingFactKeys}
+              forceOpen={postHoleForceOpen}
             />
           </div>
         </section>
@@ -878,28 +899,17 @@ export function ClarifyPanel({
               className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
               data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
-              disabled={isGenerating || (finishingAnswers && !retryFailedDetails)}
-              aria-busy={
-                isGenerating ||
-                ((finishingAnswers || savesPending) && !retryFailedDetails)
-                  ? true
-                  : undefined
-              }
+              data-create-estimate-progress={createEstimateBusy ? createEstimateLabel : undefined}
+              disabled={createEstimateBusy}
+              aria-busy={createEstimateBusy || undefined}
               onClick={requestCreateEstimate}
             >
-              {isGenerating ||
-              ((finishingAnswers || savesPending) && !retryFailedDetails) ? (
+              {createEstimateBusy ? (
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
               ) : null}
-              {isGenerating
-                ? generateStage === "saving"
-                  ? ASSISTANT_LOADING_COPY.questionSave
-                  : ASSISTANT_LOADING_COPY.creatingEstimate
-                : retryFailedDetails
-                  ? ASSISTANT_ACTION_LABELS.estimateNow
-                  : finishingAnswers || savesPending
-                    ? ASSISTANT_LOADING_COPY.questionSave
-                    : ASSISTANT_ACTION_LABELS.estimateNow}
+              {retryFailedDetails && !isGenerating
+                ? ASSISTANT_ACTION_LABELS.estimateNow
+                : createEstimateLabel}
             </Button>
           ) : allowCreateEstimate && view.canEstimateNow && onEstimateNow && !savesPending ? (
             <Button

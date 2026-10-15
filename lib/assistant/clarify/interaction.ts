@@ -12,6 +12,10 @@ import {
   type ClarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import {
+  ASSISTANT_ACTION_LABELS,
+  ASSISTANT_LOADING_COPY,
+} from "@/lib/assistant/presentation/action-labels";
 import { isNotSureValue } from "@/lib/estimate/facts";
 
 export function shouldPersistOnOptionToggle(control: ClarifyControlType): boolean {
@@ -217,6 +221,25 @@ export function localAnswersCompleteForGenerate(params: {
     }),
   });
   return remaining === 0;
+}
+
+/**
+ * Create estimate stays the action until the builder presses it.
+ * A pending save does not replace it. After the press, finishing covers
+ * the outstanding saves and the readiness recheck, then creation.
+ */
+export function createEstimateActionLabel(input: {
+  readonly pressed: boolean;
+  readonly generating: boolean;
+  readonly stage: "saving" | "readiness" | "building" | null;
+}): string {
+  if (!input.pressed && !input.generating) {
+    return ASSISTANT_ACTION_LABELS.estimateNow;
+  }
+  if (input.generating && input.stage === "building") {
+    return ASSISTANT_LOADING_COPY.creatingYourEstimate;
+  }
+  return ASSISTANT_LOADING_COPY.finishingDetails;
 }
 
 /** First Create estimate press while a save may still be in flight. */

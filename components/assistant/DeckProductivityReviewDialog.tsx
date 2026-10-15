@@ -117,11 +117,16 @@ export function DeckProductivityReviewDialog({
     }
     setError(null);
     applyingRef.current = true;
+    onOpenChange(false);
     try {
       const result = await onApply(selections);
-      if (result?.error) setError(result.error);
+      if (result?.error) {
+        setError(result.error);
+        onOpenChange(true);
+      }
     } catch {
       setError("The productivity choice was not saved. Try again.");
+      onOpenChange(true);
     } finally {
       applyingRef.current = false;
     }
@@ -157,6 +162,15 @@ export function DeckProductivityReviewDialog({
             </p>
             {loadError && onRetry ? (
               <Button type="button" className="h-11 min-h-11" onClick={onRetry}>
+                Retry
+              </Button>
+            ) : shownError ? (
+              <Button
+                type="button"
+                className="h-11 min-h-11"
+                data-productivity-retry=""
+                onClick={() => void apply()}
+              >
                 Retry
               </Button>
             ) : null}

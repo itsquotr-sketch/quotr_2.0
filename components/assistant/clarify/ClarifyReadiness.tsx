@@ -12,7 +12,8 @@ import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineCandidate, RefineView } from "@/lib/assistant/refine/types";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-sync";
-import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
+import { createEstimateActionLabel } from "@/lib/assistant/clarify/interaction";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
   mobileActionDockClass,
@@ -604,19 +605,17 @@ export function ClarifyReadinessCard({
           className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           data-clarify-primary-cta
           disabled={isGenerating || readiness.blocksEstimate}
-          aria-busy={isGenerating || isSaving ? true : undefined}
+          aria-busy={isGenerating || undefined}
           onClick={onEstimateNow}
         >
-          {isGenerating || isSaving ? (
+          {isGenerating ? (
             <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
           ) : null}
-          {isGenerating
-            ? generateStage === "saving"
-              ? ASSISTANT_LOADING_COPY.questionSave
-              : ASSISTANT_LOADING_COPY.creatingEstimate
-            : isSaving
-              ? ASSISTANT_LOADING_COPY.questionSave
-              : ASSISTANT_ACTION_LABELS.generateEstimate}
+          {createEstimateActionLabel({
+            pressed: false,
+            generating: Boolean(isGenerating),
+            stage: isGenerating ? generateStage : null,
+          })}
         </Button>
       </div>
       ) : null}

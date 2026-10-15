@@ -38,6 +38,8 @@ type EstimateOverviewProps = {
   onViewWorkArea?: (workAreaId: string) => void;
   marginControl?: ReactNode;
   marginSaveIndicator?: ReactNode;
+  /** Hides completed money and replaces the primary action while one apply is running. */
+  productivityProgress?: "saving" | "updating" | null;
 };
 
 function Stat({
@@ -138,6 +140,7 @@ export function EstimateOverview({
   onViewWorkArea,
   marginControl,
   marginSaveIndicator,
+  productivityProgress = null,
 }: EstimateOverviewProps) {
   const sell = model.sell;
   const direct = model.composition.find((row) => row.id === "direct");
@@ -148,7 +151,7 @@ export function EstimateOverview({
   const readyForPricing =
     model.required.length === 0 && !model.pricingCreationBlocked;
   const showRequiredList = model.required.length > 0;
-  const showCommercial = sell.presentation !== "hidden";
+  const showCommercial = sell.presentation !== "hidden" && productivityProgress == null;
   const showActionCentre =
     readyForPricing ||
     showRequiredList ||
@@ -316,7 +319,7 @@ export function EstimateOverview({
       {showActionCentre ? (
       <section className="order-2 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-actions>
         <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
-        {model.primary === "review_productivity" ? (
+        {model.primary === "review_productivity" && productivityProgress == null ? (
           <div className="mt-3" data-estimate-overview-productivity-review="true">
             <h3 className="text-sm font-semibold text-foreground">Review Deck productivity</h3>
             <p className="mt-1 text-sm text-foreground/75">
@@ -362,14 +365,28 @@ export function EstimateOverview({
       <div
         className={cn(
           "order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
-          showPrimaryAction &&
+          (showPrimaryAction || productivityProgress) &&
             "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:pt-3 max-md:pb-[1.25rem]",
-          showPrimaryAction && mobileNavBottomClass,
-          showPrimaryAction && mobileActionDockClass
+          (showPrimaryAction || productivityProgress) && mobileNavBottomClass,
+          (showPrimaryAction || productivityProgress) && mobileActionDockClass
         )}
-        data-estimate-primary-actions={showPrimaryAction ? "pinned" : "flow"}
+        data-estimate-primary-actions={
+          productivityProgress ? "progress" : showPrimaryAction ? "pinned" : "flow"
+        }
       >
-        {model.primary === "complete_details" && onCompleteDetails ? (
+        {productivityProgress ? (
+          <p
+            className="text-sm font-medium text-foreground"
+            role="status"
+            aria-live="polite"
+            data-productivity-progress={productivityProgress}
+          >
+            {productivityProgress === "saving"
+              ? "Saving your productivity choices…"
+              : "Updating your estimate…"}
+          </p>
+        ) : null}
+        {productivityProgress == null && model.primary === "complete_details" && onCompleteDetails ? (
           <Button
             type="button"
             className={actionButtonClassName}
@@ -379,7 +396,7 @@ export function EstimateOverview({
             {model.primaryLabel}
           </Button>
         ) : null}
-        {model.primary === "regenerate" && onRegenerate ? (
+        {productivityProgress == null && model.primary === "regenerate" && onRegenerate ? (
           <Button
             type="button"
             className={actionButtonClassName}
@@ -391,7 +408,7 @@ export function EstimateOverview({
             {isRegenerating ? ASSISTANT_ACTION_LABELS.updatingEstimate : model.primaryLabel}
           </Button>
         ) : null}
-        {model.primary === "review_productivity" && onReviewProductivity ? (
+        {productivityProgress == null && model.primary === "review_productivity" && onReviewProductivity ? (
           <Button
             type="button"
             className={pricingPrimaryClassName}
@@ -402,7 +419,8 @@ export function EstimateOverview({
             {isRegenerating ? "Updating estimate" : model.primaryLabel}
           </Button>
         ) : null}
-        {model.primary === "continue_pricing" &&
+        {productivityProgress == null &&
+        model.primary === "continue_pricing" &&
         model.pricingEntry === "create" &&
         projectId ? (
           <div data-estimate-overview-primary="continue_pricing" data-pricing-entry="create">
@@ -414,7 +432,8 @@ export function EstimateOverview({
             />
           </div>
         ) : null}
-        {model.primary === "continue_pricing" &&
+        {productivityProgress == null &&
+        model.primary === "continue_pricing" &&
         model.pricingEntry === "open" &&
         projectId &&
         pricingDocumentId ? (

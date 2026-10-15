@@ -40,6 +40,14 @@ export type DeckProductivityApplyPlan =
 const CONFLICT =
   "This estimate or the company calibration changed. Review the lines again before applying a choice. The organisation rate was not changed.";
 
+export function productivityApplyProgressCopy(
+  phase: "saving" | "updating"
+): string {
+  return phase === "saving"
+    ? "Saving your productivity choices…"
+    : "Updating your estimate…";
+}
+
 function tokenHours(token: string): number | null {
   const match = /^confirmed:(\d+(?:\.\d+)?)$/.exec(token.trim());
   if (!match) return null;
