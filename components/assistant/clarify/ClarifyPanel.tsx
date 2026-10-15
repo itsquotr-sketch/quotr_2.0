@@ -559,8 +559,22 @@ export function ClarifyPanel({
 
   useEffect(() => {
     if (!persistError) return;
-    persistErrorRef.current?.focus();
-    persistErrorRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+    let cancelled = false;
+    const focusError = () => {
+      if (cancelled) return;
+      const node = persistErrorRef.current;
+      if (!(node instanceof HTMLElement)) return;
+      node.focus({ preventScroll: true });
+      node.scrollIntoView({ block: "center", inline: "nearest" });
+    };
+    const frame = window.requestAnimationFrame(() => {
+      focusError();
+      window.requestAnimationFrame(focusError);
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [persistError]);
 
   useEffect(() => {
