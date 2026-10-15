@@ -360,6 +360,8 @@ check(
     dialog.includes("data-productivity-apply") &&
     !dialog.includes("onDecide") &&
     action.includes("regenerateStaticEstimate") &&
+    action.includes('select("notes")') &&
+    !action.includes('select("notes, item_key")') &&
     !action.includes('.from("rates").update') &&
     !action.includes(".from('rates').update")
 );

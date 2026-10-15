@@ -85,7 +85,7 @@ export async function applyDeckProductivityDecisions(
 
   const { data: lines, error: lineError } = await supabase
     .from("estimate_line_items")
-    .select("notes, item_key")
+    .select("notes")
     .eq("estimate_id", estimate.id)
     .eq("org_id", orgId);
   if (lineError) {
@@ -109,9 +109,9 @@ export async function applyDeckProductivityDecisions(
     decisions: parsed.data.decisions.map((row) => {
       const notes = (lines ?? []).find(
         (line) =>
-          line.item_key === row.itemKey &&
           typeof line.notes === "string" &&
           line.notes.includes(DECK_PRODUCTIVITY_SCOPE_REVIEW) &&
+          line.notes.includes(`fact=${row.factKey}`) &&
           line.notes.includes(`value=${row.expectedToken}`)
       );
       const rate = (rates ?? []).find((item) => item.item_key === row.itemKey);
