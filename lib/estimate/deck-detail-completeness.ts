@@ -45,6 +45,10 @@ export function deckSpoilDestination(
   return "";
 }
 
+function spoilChargeAnswered(choice: string, cost: number | null): boolean {
+  return choice === "allowance" || choice === "rfq" || (choice === "job" && cost != null && cost > 0);
+}
+
 function spoilChoice(facts: readonly EstimateFact[], workAreaId: string): string {
   const destination = deckSpoilDestination(facts, workAreaId);
   if (destination) return destination;
@@ -131,10 +135,10 @@ export function deckDetailGaps(
     const tip = getStringFact(rows, workAreaId, "deck.spoil_tip_choice") ?? "";
     const haulageCost = getNumberFact(rows, workAreaId, "deck.spoil_haulage_job_cost");
     const tipCost = getNumberFact(rows, workAreaId, "deck.spoil_tip_job_cost");
-    if (!haulage || (haulage === "job" && (haulageCost == null || haulageCost <= 0))) {
+    if (!spoilChargeAnswered(haulage, haulageCost)) {
       gaps.push({ id: "haulage", label: "Choose spoil loading and haulage" });
     }
-    if (!tip || (tip === "job" && (tipCost == null || tipCost <= 0))) {
+    if (!spoilChargeAnswered(tip, tipCost)) {
       gaps.push({ id: "tip", label: "Choose the spoil tip fee" });
     }
   }

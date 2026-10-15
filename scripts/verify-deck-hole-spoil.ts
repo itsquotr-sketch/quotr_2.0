@@ -935,6 +935,20 @@ check(
   ).length === 0
 );
 check(
+  "Leave site stays open when an earlier on-site choice only cleared haulage and tip",
+  ["haulage", "tip"].every((id) =>
+    deckDetailGaps(
+      [
+        ...measuredBase,
+        fact("deck.spoil_destination", "off_site"),
+        fact("deck.spoil_haulage_choice", "invalid"),
+        fact("deck.spoil_tip_choice", "invalid"),
+      ],
+      "deck"
+    ).some((gap) => gap.id === id)
+  )
+);
+check(
   "Not sure is a saved spoil answer and stays on the list as answered",
   deckDetailGaps(
     [...measuredBase, fact("deck.spoil_destination", "not_sure")],
