@@ -199,7 +199,9 @@ import {
   createPendingWriteTracker,
   decideGenerateAfterSync,
   delayMs,
+  PRODUCTIVITY_APPLY_TIMEOUT_MS,
   remainingGenerateMinDisplayMs,
+  settleSaveRequest,
   settledFactsForGenerate,
   type GenerateEstimateStage,
 } from "@/lib/assistant/clarify/generate-sync";
@@ -318,6 +320,39 @@ function initAnswersFromQuestions(
   );
 }
 
+type SpecFactInput = {
+  workAreaId: string;
+  key: string;
+  label: string;
+  value: string | number;
+  valueType: "number" | "select" | "text";
+};
+
+type SpecFactsInput = {
+  workAreaId: string;
+  facts: readonly {
+    key: string;
+    label: string;
+    value: string | number;
+    valueType: "number" | "select" | "text";
+  }[];
+};
+
+type FailedSpecReplay =
+  | { kind: "fact"; seq: number; input: SpecFactInput }
+  | { kind: "facts"; seq: number; input: SpecFactsInput };
+
+function specFactIdentity(workAreaId: string, key: string): string {
+  return overlayFactSemanticKey({ key, work_area_id: workAreaId });
+}
+
+function saveErrorCopy(raw?: string | null): string {
+  if (!raw || /failed to fetch|network|abort|timed out|timeout/i.test(raw)) {
+    return presentAssistantError("save");
+  }
+  return presentAssistantError("save", raw);
+}
+
 function sameSavedFactValue(canonical: unknown, overlay: unknown): boolean {
   if (canonical === overlay) return true;
   if (canonical == null || overlay == null) return false;
@@ -363,6 +398,8 @@ export function AssistantShell({
 
   const pendingWriteTrackerRef = useRef(createPendingWriteTracker());
   const generateLockRef = useRef(createGenerateOnceLock());
+  const failedSpecSavesRef = useRef(new Map<string, FailedSpecReplay>());
+  const replayFailedSpecSavesRef = useRef<() => void>(() => {});
   const generateUiStartedAtRef = useRef(0);
   const generateAuthorityRef = useRef<{
     stage: string;
@@ -387,6 +424,7 @@ export function AssistantShell({
   // does not disable select/chip UI while saving).
   const [pendingReadinessWrites, setPendingReadinessWrites] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [failedSpecSaveCount, setFailedSpecSaveCount] = useState(0);
   const [actionDenial, setActionDenial] = useState<{
     reasonCode?: string;
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
@@ -1296,18 +1334,21 @@ export function AssistantShell({
   ]);
 
   const handleGenerateEstimate = useCallback((): boolean => {
+    if (isGenerating || generateLockRef.current.locked) {
+      return true;
+    }
     if (
-      isGenerating ||
-      pendingAction != null ||
+      pendingAction === "estimate" ||
+      pendingAction === "regenerate" ||
       actionLockRef.current
     ) {
-      return false;
+      return true;
     }
-    if (actionError) {
+    if (pendingAction != null) {
       return false;
     }
     if (!generateLockRef.current.tryAcquire()) {
-      return false;
+      return true;
     }
     generateUiStartedAtRef.current = previewPerfNow();
     setGenerateStage(
@@ -1330,7 +1371,14 @@ export function AssistantShell({
         setIsGenerating(false);
       };
       try {
+        if (failedSpecSavesRef.current.size > 0) {
+          setActionError(null);
+          setGenerateStage("saving");
+          replayFailedSpecSavesRef.current();
+        }
         let lastMutation: AssistantMutationResult | undefined;
+        let lastMutationSeq = -1;
+        let authoritativeSeq = -1;
         if (
           pendingReadinessWrites > 0 ||
           pendingWriteTrackerRef.current.size > 0
@@ -1341,11 +1389,13 @@ export function AssistantShell({
           const syncEnd = startPreviewPerf("estimate_generate_sync");
           const tracker = pendingWriteTrackerRef.current;
           let settled = await tracker.waitAll();
-          while (tracker.size > 0) {
+          while (pendingWriteTrackerRef.current.size > 0 && !settled.failed) {
             settled = await tracker.waitAll();
           }
           syncEnd();
           lastMutation = settled.lastMutation;
+          lastMutationSeq = settled.lastMutationSeq;
+          authoritativeSeq = settled.authoritativeSeq;
           const decision = decideGenerateAfterSync({
             writeFailed: Boolean(settled.failed),
             pendingWritesRemaining: settled.pendingRemaining,
@@ -1362,25 +1412,34 @@ export function AssistantShell({
 
         setGenerateStage("readiness");
         const snap = generateAuthorityRef.current;
-        const mutationFacts = lastMutation
+        const latestMutation =
+          lastMutation != null &&
+          lastMutationSeq >= authoritativeSeq &&
+          authoritativeSeq >= 0
+            ? lastMutation
+            : undefined;
+        const mutationFacts = latestMutation
           ? jobPlanFactsFromReviewAndInterview(
-              lastMutation.scopeReview,
-              lastMutation.interviewFacts
+              latestMutation.scopeReview,
+              latestMutation.interviewFacts
             )
           : [];
-        const facts = settledFactsForGenerate(snap?.facts ?? [], mutationFacts);
-        const constraints = lastMutation
-          ? lastMutation.submittedConstraints.map((row) => ({
+        const facts = settledFactsForGenerate(
+          generateAuthorityRef.current?.facts ?? snap?.facts ?? [],
+          mutationFacts
+        );
+        const constraints = latestMutation
+          ? latestMutation.submittedConstraints.map((row) => ({
               key: row.key,
               value: row.value,
             }))
-          : snap?.constraints ?? [];
+          : generateAuthorityRef.current?.constraints ?? snap?.constraints ?? [];
         const workAreas =
-          lastMutation && lastMutation.workAreas.length > 0
-            ? lastMutation.workAreas
-            : snap?.workAreas ?? [];
+          latestMutation && latestMutation.workAreas.length > 0
+            ? latestMutation.workAreas
+            : generateAuthorityRef.current?.workAreas ?? snap?.workAreas ?? [];
         const compose = composeClarifyInputFromEstimateContext({
-          stage: (lastMutation?.stage ??
+          stage: (latestMutation?.stage ??
             snap?.stage ??
             "work_area_questions") as ComposeClarifyInput["stage"],
           briefText: snap?.briefText ?? project.briefText,
@@ -1422,7 +1481,7 @@ export function AssistantShell({
 
         if (pendingWriteTrackerRef.current.size > 0) {
           let newer = await pendingWriteTrackerRef.current.waitAll();
-          while (pendingWriteTrackerRef.current.size > 0) {
+          while (pendingWriteTrackerRef.current.size > 0 && !newer.failed) {
             newer = await pendingWriteTrackerRef.current.waitAll();
           }
           if (newer.failed) {
@@ -1430,13 +1489,26 @@ export function AssistantShell({
             await abortGenerating();
             return;
           }
-          lastMutation = newer.lastMutation ?? lastMutation;
-          const newerFacts = lastMutation
+          if (newer.lastMutation && newer.lastMutationSeq >= lastMutationSeq) {
+            lastMutation = newer.lastMutation;
+            lastMutationSeq = newer.lastMutationSeq;
+          }
+          if (newer.authoritativeSeq > authoritativeSeq) {
+            authoritativeSeq = newer.authoritativeSeq;
+          }
+          const latestNewerMutation =
+            lastMutation != null &&
+            lastMutationSeq >= authoritativeSeq &&
+            authoritativeSeq >= 0
+              ? lastMutation
+              : undefined;
+          const liveFacts = generateAuthorityRef.current?.facts ?? snap?.facts ?? facts;
+          const newerFacts = latestNewerMutation
             ? jobPlanFactsFromReviewAndInterview(
-                lastMutation.scopeReview,
-                lastMutation.interviewFacts
+                latestNewerMutation.scopeReview,
+                latestNewerMutation.interviewFacts
               )
-            : facts;
+            : liveFacts;
           const newerPermission = evaluateGenerateEstimatePermission({
             compose: composeClarifyInputFromEstimateContext({
               stage: (lastMutation?.stage ?? snap?.stage ?? "work_area_questions") as ComposeClarifyInput["stage"],
@@ -1452,9 +1524,20 @@ export function AssistantShell({
             pendingWrites: 0,
           });
           if (!newerPermission.ready) {
+            const readyFacts = settledFactsForGenerate(facts, newerFacts);
+            const deckTarget = firstDeckDetailTarget(
+              readyFacts as never,
+              workAreas.map((area) => ({ id: area.id, type: area.type }))
+            );
             setGenerateNotice(
               newerPermission.builderCopy ??
                 "One more detail is needed before the estimate can be built."
+            );
+            setGenerateReturnFocusId(
+              newerPermission.diagnostics.unresolved[0]?.id ??
+                (deckTarget
+                  ? deckPostHoleControlId(deckTarget.workAreaId, deckTarget.gapId)
+                  : null)
             );
             await abortGenerating();
             return;
@@ -1493,7 +1576,6 @@ export function AssistantShell({
     runAction,
     constraintsSubmitted,
     qualityLevel,
-    actionError,
   ]);
 
   const handleRegenerateEstimate = useCallback(async () => {
@@ -2284,8 +2366,9 @@ export function AssistantShell({
       value: string | number;
       valueType: "number" | "select" | "text";
     }) => {
-      const work = (async () => {
       const requestSeq = ++factMutationSeqRef.current;
+      const identity = specFactIdentity(input.workAreaId, input.key);
+      const work = (async () => {
       setPendingReadinessWrites((count) => count + 1);
       setClarifyWritePending(true);
       tagOverlayFactSeq(
@@ -2305,34 +2388,63 @@ export function AssistantShell({
           source: "user",
         })
       );
+      const replay: FailedSpecReplay = { kind: "fact", seq: requestSeq, input };
       try {
         const result = await runSerializedFactMutation(() =>
-          updateProjectFact({
-            projectId: project.id,
-            workAreaId: input.workAreaId,
-            key: input.key,
-            label: input.label,
-            value: input.value,
-            valueType: input.valueType,
-          })
+          settleSaveRequest(
+            updateProjectFact({
+              projectId: project.id,
+              workAreaId: input.workAreaId,
+              key: input.key,
+              label: input.label,
+              value: input.value,
+              valueType: input.valueType,
+            })
+          )
         );
-        if (result.error) {
-          setActionError(result.error);
-          setGenerateNotice(null);
-          return result;
+        if (!result || result.error) {
+          const message = saveErrorCopy(result?.error);
+          const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+          if (requestSeq >= overlaySeq) {
+            failedSpecSavesRef.current.set(identity, replay);
+            setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+            setActionError(message);
+            setGenerateNotice(null);
+          }
+          return { error: message };
         }
-        setActionError(null);
+        const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+        if (requestSeq < overlaySeq) return result;
+        const failed = failedSpecSavesRef.current.get(identity);
+        if (failed && requestSeq >= failed.seq) {
+          failedSpecSavesRef.current.delete(identity);
+          setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+          if (failedSpecSavesRef.current.size === 0) setActionError(null);
+        }
         setGenerateNotice(null);
         if (!settleCanonicalMutation(result, requestSeq)) {
           onRejectedCanonicalMutation(requestSeq);
         }
         return result;
+      } catch (error) {
+        const message = saveErrorCopy(error instanceof Error ? error.message : null);
+        const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+        if (requestSeq >= overlaySeq) {
+          failedSpecSavesRef.current.set(identity, replay);
+          setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+          setActionError(message);
+          setGenerateNotice(null);
+        }
+        return { error: message };
       } finally {
         setClarifyWritePending(false);
         setPendingReadinessWrites((count) => Math.max(0, count - 1));
       }
       })();
-      pendingWriteTrackerRef.current.trackAction(work);
+      pendingWriteTrackerRef.current.trackAction(work, {
+        requestSeq,
+        keys: [identity],
+      });
       return work;
     },
     [
@@ -2354,8 +2466,12 @@ export function AssistantShell({
         valueType: "number" | "select" | "text";
       }[];
     }) => {
+      const requestSeq = ++factMutationSeqRef.current;
+      const identities = input.facts.map((fact) =>
+        specFactIdentity(input.workAreaId, fact.key)
+      );
+      const replay: FailedSpecReplay = { kind: "facts", seq: requestSeq, input };
       const work = (async () => {
-        const requestSeq = ++factMutationSeqRef.current;
         setPendingReadinessWrites((count) => count + 1);
         setClarifyWritePending(true);
         const rows = input.facts.map((fact) => ({
@@ -2368,34 +2484,75 @@ export function AssistantShell({
         setJobPlanFactOverlay((prev) => rows.reduce((next, row) => overlayFact(next, row), prev));
         try {
           const result = await runSerializedFactMutation(() =>
-            updateProjectFacts({
-              projectId: project.id,
-              workAreaId: input.workAreaId,
-              facts: input.facts.map((fact) => ({
-                key: fact.key,
-                label: fact.label,
-                value: fact.value,
-                valueType: fact.valueType,
-              })),
-            })
+            settleSaveRequest(
+              updateProjectFacts({
+                projectId: project.id,
+                workAreaId: input.workAreaId,
+                facts: input.facts.map((fact) => ({
+                  key: fact.key,
+                  label: fact.label,
+                  value: fact.value,
+                  valueType: fact.valueType,
+                })),
+              })
+            )
           );
-          if (result.error) {
-            setActionError(result.error);
-            setGenerateNotice(null);
-            return result;
+          if (!result || result.error) {
+            const message = saveErrorCopy(result?.error);
+            for (const identity of identities) {
+              const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+              if (requestSeq >= overlaySeq) {
+                failedSpecSavesRef.current.set(identity, replay);
+              }
+            }
+            if ([...failedSpecSavesRef.current.values()].includes(replay)) {
+              setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+              setActionError(message);
+              setGenerateNotice(null);
+            }
+            return { error: message };
           }
-          setActionError(null);
+          const stale = identities.some((identity) => {
+            const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+            return requestSeq < overlaySeq;
+          });
+          if (stale) return result;
+          for (const identity of identities) {
+            const failed = failedSpecSavesRef.current.get(identity);
+            if (failed && requestSeq >= failed.seq) {
+              failedSpecSavesRef.current.delete(identity);
+            }
+          }
+          setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+          if (failedSpecSavesRef.current.size === 0) setActionError(null);
           setGenerateNotice(null);
           if (!settleCanonicalMutation(result, requestSeq)) {
             onRejectedCanonicalMutation(requestSeq);
           }
           return result;
+        } catch (error) {
+          const message = saveErrorCopy(error instanceof Error ? error.message : null);
+          for (const identity of identities) {
+            const overlaySeq = overlaySeqByFactRef.current.get(identity) ?? requestSeq;
+            if (requestSeq >= overlaySeq) {
+              failedSpecSavesRef.current.set(identity, replay);
+            }
+          }
+          if ([...failedSpecSavesRef.current.values()].includes(replay)) {
+            setFailedSpecSaveCount(failedSpecSavesRef.current.size);
+            setActionError(message);
+            setGenerateNotice(null);
+          }
+          return { error: message };
         } finally {
           setClarifyWritePending(false);
           setPendingReadinessWrites((count) => Math.max(0, count - 1));
         }
       })();
-      pendingWriteTrackerRef.current.trackAction(work);
+      pendingWriteTrackerRef.current.trackAction(work, {
+        requestSeq,
+        keys: identities,
+      });
       return work;
     },
     [
@@ -2406,6 +2563,18 @@ export function AssistantShell({
       tagOverlayFactSeq,
     ]
   );
+
+  useEffect(() => {
+    replayFailedSpecSavesRef.current = () => {
+      const seen = new Set<FailedSpecReplay>();
+      for (const row of failedSpecSavesRef.current.values()) {
+        if (seen.has(row)) continue;
+        seen.add(row);
+        if (row.kind === "fact") handleJobPlanSpecFact(row.input);
+        else void handleJobPlanSpecFacts(row.input);
+      }
+    };
+  }, [handleJobPlanSpecFact, handleJobPlanSpecFacts]);
 
   const handleSaveWorkAreaQuestions = useCallback(
     async (input: {
@@ -3146,19 +3315,22 @@ export function AssistantShell({
       setIsRegenerating(true);
       try {
         const result = await runAction("regenerate", () =>
-          applyDeckProductivityDecisions({
-            projectId: project.id,
-            workAreaId,
-            estimateId: generationProjection?.estimateId,
-            decisions: selections.map((selection) => ({
-              factKey: selection.decision.factKey,
-              jobFactKey: selection.decision.jobFactKey,
-              expectedToken: selection.decision.value,
-              itemKey: selection.decision.itemKey,
-              choice: selection.choice,
-              jobHours: selection.jobHours,
-            })),
-          })
+          settleSaveRequest(
+            applyDeckProductivityDecisions({
+              projectId: project.id,
+              workAreaId,
+              estimateId: generationProjection?.estimateId,
+              decisions: selections.map((selection) => ({
+                factKey: selection.decision.factKey,
+                jobFactKey: selection.decision.jobFactKey,
+                expectedToken: selection.decision.value,
+                itemKey: selection.decision.itemKey,
+                choice: selection.choice,
+                jobHours: selection.jobHours,
+              })),
+            }),
+            PRODUCTIVITY_APPLY_TIMEOUT_MS
+          )
         );
         return result ?? {};
       } catch (error) {
@@ -3998,6 +4170,7 @@ export function AssistantShell({
                 generateStage={generateStage}
                 generateStartedAt={generateStartedAt}
                 persistError={actionError}
+                detailsSaveFailed={failedSpecSaveCount > 0}
                 generateNotice={generateNotice}
                 returnFocusId={generateReturnFocusId}
                 holdCreateEstimate={holdCreateEstimate}

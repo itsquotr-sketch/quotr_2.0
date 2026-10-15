@@ -47,6 +47,8 @@ type ClarifyPanelProps = {
   generateStage?: GenerateEstimateStage;
   generateStartedAt?: number;
   persistError?: string | null;
+  /** A Details fact save failed and still needs an explicit retry. */
+  detailsSaveFailed?: boolean;
   generateNotice?: string | null;
   returnFocusId?: string | null;
   /** Keep Create estimate visible while the final answer save is still in flight. */
@@ -201,6 +203,7 @@ export function ClarifyPanel({
   generateStage = "building",
   generateStartedAt = 0,
   persistError,
+  detailsSaveFailed = false,
   generateNotice,
   returnFocusId,
   holdCreateEstimate = false,
@@ -474,6 +477,9 @@ export function ClarifyPanel({
     allowCreateEstimate &&
     Boolean(onEstimateNow) &&
     (localAnswersComplete || authoritativeGenerate || holdCreateEstimate);
+  const retryFailedDetails = Boolean(
+    detailsSaveFailed && persistError && !isGenerating
+  );
 
   const requestCreateEstimate = () => {
     const failedAnswer = lastFailedAnswerRef.current;
@@ -484,6 +490,15 @@ export function ClarifyPanel({
         wrapBoolean(failedAnswer.candidate, failedAnswer.presentation);
       } else {
         wrapValue(failedAnswer.candidate, failedAnswer.value);
+      }
+      return;
+    }
+    if (persistError && detailsSaveFailed && !isGenerating) {
+      generateIntentRef.current = false;
+      setFinishingAnswers(false);
+      if (onEstimateNow?.() === false) {
+        generateIntentRef.current = true;
+        setFinishingAnswers(true);
       }
       return;
     }
@@ -522,26 +537,49 @@ export function ClarifyPanel({
 
   useEffect(() => {
     detailsSavingRef.current = Boolean(isSaving);
+    if (isGenerating) return;
+    if (persistError || detailsSaveFailed) {
+      if (isSaving || pendingIds.length > 0 || continuePending) return;
+      generateIntentRef.current = false;
+      setFinishingAnswers(false);
+      return;
+    }
+    if (generateNotice) {
+      generateIntentRef.current = false;
+      setFinishingAnswers(false);
+      return;
+    }
     if (isSaving || pendingIds.length > 0 || continuePending) return;
     if (!generateIntentRef.current) return;
-    const failedAny = queueFailedRef.current || Boolean(persistError);
+    const failedAny = queueFailedRef.current;
     queueFailedRef.current = false;
     const action = clarifyQueuedGenerateAction({
       intentQueued: true,
       savesPending: false,
       persistError: failedAny,
-      localAnswersComplete: !failedAny,
+      localAnswersComplete: localAnswersComplete && !failedAny,
     });
     if (action === "wait") return;
     if (action !== "generate") {
       generateIntentRef.current = false;
       setFinishingAnswers(false);
+      if (!failedAny && !localAnswersComplete) onEstimateNow?.();
       return;
     }
     if (onEstimateNow?.() === false) return;
     generateIntentRef.current = false;
     setFinishingAnswers(false);
-  }, [continuePending, isSaving, onEstimateNow, pendingIds.length, persistError]);
+  }, [
+    continuePending,
+    detailsSaveFailed,
+    generateNotice,
+    isGenerating,
+    isSaving,
+    localAnswersComplete,
+    onEstimateNow,
+    pendingIds.length,
+    persistError,
+  ]);
 
   useEffect(() => {
     if (!returnFocusId || isGenerating) return;
@@ -550,6 +588,7 @@ export function ClarifyPanel({
         `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
       ) ?? document.getElementById(returnFocusId);
     if (node instanceof HTMLElement) {
+      node.focus();
       node.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isGenerating, returnFocusId]);
@@ -611,11 +650,11 @@ export function ClarifyPanel({
         {countCopy}
       </p>
       <PersistError error={persistError} errorRef={persistErrorRef} />
-      {generateNotice && !persistError ? (
-        <p className="text-sm font-medium" role="status">
-          {generateNotice}
-        </p>
-      ) : null}
+        {generateNotice && !persistError ? (
+          <p className="text-sm font-medium" role="alert">
+            {generateNotice}
+          </p>
+        ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2 lg:gap-6">
         {workAreaGroups.map((group) => (
@@ -839,20 +878,28 @@ export function ClarifyPanel({
               className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
               data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
-              disabled={finishingAnswers || isGenerating}
-              aria-busy={finishingAnswers || isGenerating || savesPending ? true : undefined}
+              disabled={isGenerating || (finishingAnswers && !retryFailedDetails)}
+              aria-busy={
+                isGenerating ||
+                ((finishingAnswers || savesPending) && !retryFailedDetails)
+                  ? true
+                  : undefined
+              }
               onClick={requestCreateEstimate}
             >
-              {finishingAnswers || isGenerating || savesPending ? (
+              {isGenerating ||
+              ((finishingAnswers || savesPending) && !retryFailedDetails) ? (
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
               ) : null}
               {isGenerating
                 ? generateStage === "saving"
                   ? ASSISTANT_LOADING_COPY.questionSave
                   : ASSISTANT_LOADING_COPY.creatingEstimate
-                : finishingAnswers || savesPending
-                  ? ASSISTANT_LOADING_COPY.questionSave
-                  : ASSISTANT_ACTION_LABELS.estimateNow}
+                : retryFailedDetails
+                  ? ASSISTANT_ACTION_LABELS.estimateNow
+                  : finishingAnswers || savesPending
+                    ? ASSISTANT_LOADING_COPY.questionSave
+                    : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
           ) : allowCreateEstimate && view.canEstimateNow && onEstimateNow && !savesPending ? (
             <Button

@@ -6,7 +6,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildMinimalExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
-import { settledFactsForGenerate } from "../lib/assistant/clarify/generate-sync";
+import {
+  createPendingWriteTracker,
+  settleSaveRequest,
+  settledFactsForGenerate,
+} from "../lib/assistant/clarify/generate-sync";
+import type { AssistantMutationResult } from "../lib/assistant/types";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { settleDetailsJourney } from "../lib/assistant/readiness/details-journey";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
@@ -260,6 +265,67 @@ check(
   )[0]?.value === 3.5
 );
 
+async function checkSaveSettlement(): Promise<void> {
+  const started = Date.now();
+  const rejected = await settleSaveRequest(Promise.reject(new Error("Failed to fetch")), 5_000).then(
+    () => false,
+    () => true
+  );
+  check(
+    "a rejected save settles from the request, not a delay",
+    rejected && Date.now() - started < 1_000
+  );
+  const timedOut = await settleSaveRequest(new Promise(() => {}), 30).then(
+    () => false,
+    () => true
+  );
+  check("an unsettled save fails instead of staying pending", timedOut);
+
+  const rejectedTracker = createPendingWriteTracker();
+  rejectedTracker.trackAction(Promise.reject(new Error("abort")), {
+    requestSeq: 1,
+    keys: ["spoil"],
+  });
+  const failedSave = await rejectedTracker.waitAll();
+  check(
+    "a rejected details save blocks estimate creation",
+    failedSave.failed?.ok === false && failedSave.pendingRemaining === 0
+  );
+
+  const superseded = createPendingWriteTracker();
+  const mutation = { projectId: "job" } as AssistantMutationResult;
+  superseded.trackAction(Promise.resolve({ error: "Could not save." }), {
+    requestSeq: 1,
+    keys: ["spoil"],
+  });
+  superseded.trackAction(
+    Promise.resolve({ success: true, assistantMutation: mutation }),
+    { requestSeq: 2, keys: ["spoil"] }
+  );
+  const newer = await superseded.waitAll();
+  check(
+    "a later successful answer supersedes an older failed save",
+    newer.failed == null && newer.lastMutation === mutation && newer.authoritativeSeq === 2
+  );
+
+  const held = createPendingWriteTracker();
+  let releaseOlder: (value: { success: true }) => void = () => {};
+  const older = new Promise<{ success: true }>((resolve) => {
+    releaseOlder = resolve;
+  });
+  held.trackAction(older, { requestSeq: 1, keys: ["spoil"] });
+  held.trackAction(Promise.resolve({ error: "Could not save." }), {
+    requestSeq: 2,
+    keys: ["spoil"],
+  });
+  const blocked = await held.waitAll();
+  releaseOlder({ success: true });
+  check(
+    "an older save still in flight does not outrank a newer failure",
+    blocked.failed?.ok === false && blocked.pendingRemaining > 0
+  );
+}
+
 function wa(): EstimateWorkArea {
   return { id: "deck", type: "deck", name: "Deck", sort_order: 1 };
 }
@@ -336,9 +402,10 @@ const panel = read("components/assistant/clarify/ClarifyPanel.tsx");
 const dialog = read("components/assistant/DeckProductivityReviewDialog.tsx");
 const action = read("lib/assistant/deck-productivity-actions.ts");
 check(
-  "create waits for the latest save without a new timer",
+  "create waits for the latest save and stops when that save fails",
   shell.includes("settledFactsForGenerate") &&
-    shell.includes("while (pendingWriteTrackerRef.current.size > 0)")
+    shell.includes("while (pendingWriteTrackerRef.current.size > 0 && !settled.failed)") &&
+    shell.includes("settleSaveRequest")
 );
 check(
   "one readiness result feeds the details surfaces",
@@ -352,7 +419,12 @@ check(
 );
 check(
   "a failed save keeps the answer and can retry",
-  panel.includes("lastFailedAnswerRef") && panel.includes("rollbackFailedClarifyPersist")
+  panel.includes("lastFailedAnswerRef") &&
+    panel.includes("rollbackFailedClarifyPersist") &&
+    panel.includes("detailsSaveFailed") &&
+    shell.includes("settleSaveRequest") &&
+    shell.includes("failedSpecSavesRef") &&
+    dialog.includes("The productivity choice was not saved. Try again.")
 );
 check(
   "productivity choices stay in the dialog until one apply",
@@ -366,8 +438,10 @@ check(
     !action.includes(".from('rates').update")
 );
 
-if (failed > 0) {
-  console.error(`\n${failed} check(s) failed`);
-  process.exit(1);
-}
-console.log(`\nDeck journey closeout checks passed (${passed})`);
+void checkSaveSettlement().then(() => {
+  if (failed > 0) {
+    console.error(`\n${failed} check(s) failed`);
+    process.exit(1);
+  }
+  console.log(`\nDeck journey closeout checks passed (${passed})`);
+});

@@ -120,6 +120,8 @@ export function DeckProductivityReviewDialog({
     try {
       const result = await onApply(selections);
       if (result?.error) setError(result.error);
+    } catch {
+      setError("The productivity choice was not saved. Try again.");
     } finally {
       applyingRef.current = false;
     }
