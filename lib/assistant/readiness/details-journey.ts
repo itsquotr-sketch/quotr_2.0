@@ -30,13 +30,8 @@ export function settleDetailsJourney(input: {
   const optionalRemaining = Math.max(0, input.optionalRefineCount);
   const requiredRemaining = input.workConfirmed ? requiredClarify + postHoles : requiredClarify;
   const screenComplete = input.workConfirmed && requiredRemaining === 0;
-  const inFlightRemainder =
-    input.pendingWrites > 0 &&
-    postHoles === 0 &&
-    requiredClarify > 0 &&
-    requiredClarify <= input.pendingWrites;
   const phase = detailsReadinessPhase({
-    pendingWrites: screenComplete || inFlightRemainder ? input.pendingWrites : 0,
+    pendingWrites: screenComplete ? input.pendingWrites : 0,
     enoughToEstimate: screenComplete,
   });
   const statusLabel = input.workConfirmed

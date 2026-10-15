@@ -204,32 +204,6 @@ const ready = settleDetailsJourney({
 });
 check("a complete pending save is Saving", saving.phase === "saving" && saving.statusLabel === "Saving" && saving.showCreateEstimate);
 check("a settled complete screen is Ready", ready.phase === "ready" && ready.statusLabel === "Ready" && ready.showCreateEstimate);
-const finishing = settleDetailsJourney({
-  workConfirmed: true,
-  pendingWrites: 1,
-  requiredClarifyCount: 1,
-  postHoleCount: 0,
-  optionalRefineCount: 0,
-});
-check(
-  "the last in-flight answer keeps Create estimate and does not say Ready",
-  finishing.phase === "saving" &&
-    finishing.statusLabel === "Saving" &&
-    finishing.showCreateEstimate === true
-);
-const stillOpen = settleDetailsJourney({
-  workConfirmed: true,
-  pendingWrites: 1,
-  requiredClarifyCount: 2,
-  postHoleCount: 0,
-  optionalRefineCount: 0,
-});
-check(
-  "two open questions stay unready during one save",
-  stillOpen.phase === "needs_details" &&
-    stillOpen.statusLabel === "2 to clarify" &&
-    stillOpen.showCreateEstimate === false
-);
 
 const heldLine = {
   id: "line",
