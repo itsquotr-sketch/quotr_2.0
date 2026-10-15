@@ -14,6 +14,7 @@ import {
   clarifyQueuedGenerateAction,
   createEstimateActionLabel,
   localAnswersCompleteForGenerate,
+  nextCreateEstimateLatch,
 } from "../lib/assistant/clarify/interaction";
 import {
   createGenerateOnceLock,
@@ -232,6 +233,49 @@ check(
     panel.includes("finishingAnswers")
 );
 check(
+  "a held last save keeps Create estimate mounted",
+  nextCreateEstimateLatch({
+    latched: false,
+    locallyValid: true,
+    visibleUnanswered: false,
+    persistError: false,
+    savesPending: true,
+    finishing: false,
+    generating: false,
+  }) === true &&
+    nextCreateEstimateLatch({
+      latched: true,
+      locallyValid: false,
+      visibleUnanswered: false,
+      persistError: false,
+      savesPending: true,
+      finishing: false,
+      generating: false,
+    }) === true &&
+    nextCreateEstimateLatch({
+      latched: true,
+      locallyValid: false,
+      visibleUnanswered: true,
+      persistError: false,
+      savesPending: true,
+      finishing: true,
+      generating: false,
+    }) === false &&
+    nextCreateEstimateLatch({
+      latched: true,
+      locallyValid: false,
+      visibleUnanswered: true,
+      persistError: true,
+      savesPending: false,
+      finishing: false,
+      generating: false,
+    }) === true &&
+    panel.includes("nextCreateEstimateLatch") &&
+    panel.includes("data-create-estimate-latched") &&
+    panel.includes("max-md:fixed") &&
+    !panel.includes("mobileActionFlowClass")
+);
+check(
   "Create estimate stays available while the last save is pending",
   createEstimateActionLabel({
     pressed: false,
@@ -242,20 +286,20 @@ check(
       pressed: true,
       generating: false,
       stage: null,
-    }) === "Finishing your details…" &&
+    }) === "Finishing details…" &&
     createEstimateActionLabel({
       pressed: true,
       generating: true,
       stage: "building",
-    }) === "Creating your estimate…" &&
+    }) === "Creating estimate…" &&
     !panel.includes("finishingAnswers || savesPending")
 );
 check(
   "one save status, no second saving sentence",
   labels.includes('savingAnswer: "Saving answer…"') &&
     labels.includes('questionSave: "Saving details…"') &&
-    labels.includes('finishingDetails: "Finishing your details…"') &&
-    labels.includes('creatingYourEstimate: "Creating your estimate…"') &&
+    labels.includes('finishingDetails: "Finishing details…"') &&
+    labels.includes('creatingEstimate: "Creating estimate…"') &&
     panel.includes("savingAnswer") &&
     panel.includes("!showCreateEstimate") &&
     !panel.includes("Saving the last answer") &&

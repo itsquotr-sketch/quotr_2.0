@@ -41,7 +41,7 @@ type HoleFactWrite = (
 const TYPICAL_POST = "125x125";
 const TYPICAL_SIGNATURE = "assumed:circular|350|600|125x125|full|600";
 const fieldClass =
-  "h-11 min-h-11 w-full min-w-0 scroll-mb-40 rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:scroll-mb-24 md:text-sm";
+  "h-11 min-h-11 w-full min-w-0 scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:scroll-mb-24 md:text-sm";
 
 function prettySection(section: string): string {
   return section.replace(/\s*[x×]\s*/i, " × ");
@@ -144,7 +144,10 @@ export function DeckPostHolesSection({
     holeCountForPlan > 0
       ? planDeckHoleExcavation({ facts, workAreaId, holeCount: holeCountForPlan })
       : null;
-  const unanswered = deckDetailGaps(facts, workAreaId).length;
+  const gaps = deckDetailGaps(facts, workAreaId);
+  const unanswered = gaps.length;
+  const firstGapId = gaps[0]?.id ?? null;
+  const previousUnanswered = useRef(unanswered);
   const [countError, setCountError] = useState<string | null>(null);
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
@@ -166,7 +169,7 @@ export function DeckPostHolesSection({
       const target = document.getElementById(deckPostHoleControlId(workAreaId, focusGapId));
       if (!(target instanceof HTMLElement)) return;
       target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "nearest", inline: "nearest" });
+      target.scrollIntoView({ block: "center", inline: "nearest" });
     };
     const frame = window.requestAnimationFrame(() => {
       focusControl();
@@ -177,10 +180,20 @@ export function DeckPostHolesSection({
       window.cancelAnimationFrame(frame);
     };
   }, [focusGapId, focusNonce, workAreaId]);
+  useEffect(() => {
+    const opened = previousUnanswered.current === 0 && unanswered > 0 && firstGapId;
+    previousUnanswered.current = unanswered;
+    if (!opened || !firstGapId) return;
+    const target = document.getElementById(deckPostHoleControlId(workAreaId, firstGapId));
+    if (!(target instanceof HTMLElement)) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [firstGapId, unanswered, workAreaId]);
 
   useEffect(() => {
     if (!setupError) return;
     setupErrorRef.current?.focus();
+    setupErrorRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
   }, [setupError]);
 
   function write(fact: FactWrite) {
@@ -334,7 +347,7 @@ export function DeckPostHolesSection({
   if (showSummary) {
     return (
       <section
-        className="min-w-0 space-y-2 overflow-x-hidden text-foreground"
+        className="min-w-0 space-y-2 overflow-x-hidden scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-foreground"
         data-post-holes="true"
         data-post-holes-summary={answerSaving ? "finishing" : "recorded"}
         aria-label="Post holes, no unanswered questions"
@@ -351,7 +364,7 @@ export function DeckPostHolesSection({
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 border-foreground/30 bg-background text-foreground"
+          className="min-h-11 scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] border-foreground/30 bg-background text-foreground"
           data-post-holes-edit=""
           onClick={() => setEditing(true)}
         >
@@ -363,7 +376,7 @@ export function DeckPostHolesSection({
 
   return (
     <section
-      className="min-w-0 space-y-3 overflow-x-hidden scroll-mb-40 text-foreground md:scroll-mb-24"
+      className="min-w-0 space-y-3 overflow-x-hidden scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-foreground md:scroll-mb-24"
       data-post-holes="true"
       data-post-holes-focus={focusGapId ?? undefined}
       aria-label={
@@ -426,7 +439,7 @@ export function DeckPostHolesSection({
             </Button>
           </div>
           {reasonError ? (
-            <p className="text-sm text-destructive" role="alert" data-hole-reason-error="">
+            <p className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive" role="alert" data-hole-reason-error="">
               {reasonError}
             </p>
           ) : null}
@@ -441,7 +454,7 @@ export function DeckPostHolesSection({
             </p>
             <Button
               type="button"
-              className="min-h-11 w-full scroll-mb-40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:scroll-mb-24"
+              className="min-h-11 w-full scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:scroll-mb-24"
               id={`deck-hole-confirm-${workAreaId}`}
               data-hole-confirm=""
               disabled={savingSetup}
@@ -502,7 +515,7 @@ export function DeckPostHolesSection({
           </div>
         ) : null}
         {setupError ? (
-          <p ref={setupErrorRef} tabIndex={-1} className="text-sm text-destructive outline-none" role="alert">
+          <p ref={setupErrorRef} tabIndex={-1} className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive outline-none" role="alert">
             {setupError}
           </p>
         ) : null}
@@ -568,7 +581,7 @@ export function DeckPostHolesSection({
             saving={savingKeys.includes("deck.hole_depth_mm") || savingKeys.includes("deck.post_embedment_mm")}
           />
           {sizeError ? (
-            <p className="text-sm text-destructive" data-hole-size-error="" role="alert">
+            <p className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive" data-hole-size-error="" role="alert">
               {sizeError}
             </p>
           ) : null}
@@ -1022,6 +1035,7 @@ function Allowance({
   useEffect(() => {
     if (!error) return;
     errorRef.current?.focus();
+    errorRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
   }, [error]);
 
   async function choose(value: string) {
@@ -1099,7 +1113,7 @@ function Allowance({
         />
       ) : null}
       {error ? (
-        <p ref={errorRef} tabIndex={-1} className="text-sm text-destructive outline-none" role="alert">
+        <p ref={errorRef} tabIndex={-1} className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive outline-none" role="alert">
           {error}
         </p>
       ) : null}
@@ -1168,7 +1182,7 @@ function NumberField({
         {saving ? "Saving…" : "Save"}
       </Button>
       {error ? (
-        <p className="text-sm text-destructive" role="alert" {...(errorAttr ? { [errorAttr]: "" } : {})}>
+        <p className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive" role="alert" {...(errorAttr ? { [errorAttr]: "" } : {})}>
           {error}
         </p>
       ) : null}
