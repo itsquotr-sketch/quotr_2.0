@@ -120,6 +120,7 @@ import {
   DECK_CONCRETE_MATERIAL_ITEM_KEY,
   DECK_CONCRETE_MATERIAL_LABEL,
   DECK_CONCRETE_PLACE_COMPONENT_KEY,
+  DECK_CONCRETE_PRODUCTIVITY_KEY,
   DECK_CONCRETE_PLACE_LABEL,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
   DECK_STEPS_FRAMING_COMPONENT_KEY,
@@ -1729,6 +1730,7 @@ export function calculateDeck(
           sellRate: 0,
           rateSource: getRateSourceLabel("missing"),
           rateSourceType: "missing",
+          itemKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
           notes: scopeReviewNotes({
             summary: `Stored calibrated rate ${placeScope.hoursPerUnit} h/bag · Your calibrated productivity. It was saved against a fixed bag scenario, not this estimate's purchased bags, so it is not priced yet. ${bags} bags × ${placeScope.hoursPerUnit} h/bag = ${beforeAccess} h before access if you confirm it applies to these purchased bags. Hole excavation is separate.`,

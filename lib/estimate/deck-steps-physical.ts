@@ -138,7 +138,7 @@ function looksLikeUnstatedFullDeckEdgeWidth(params: {
 }): boolean {
   if (!(params.widthM >= 2)) return false;
   const row = getFact([...params.facts], params.workAreaId, "deck.step_width_m");
-  if (row?.source === "user") return false;
+  if (row?.source === "user" || row?.source === "ai_extracted") return false;
   const length = getNumberFact([...params.facts], params.workAreaId, "deck.length_m");
   const deckWidth = getNumberFact(
     [...params.facts],

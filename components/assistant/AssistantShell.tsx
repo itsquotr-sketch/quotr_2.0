@@ -172,9 +172,14 @@ import {
 } from "@/lib/estimate/deck-detail-completeness";
 import { spoilAccessAllowsAllowance } from "@/lib/estimate/deck-hole-excavation";
 import {
+  detailsReadinessPhase,
   detailsStageStatusLabel,
   detailsStageSubtitle,
 } from "@/lib/assistant/readiness/details-status";
+import { settleDetailsJourney } from "@/lib/assistant/readiness/details-journey";
+import { compactDeckReadySummary } from "@/lib/estimate/deck-ready-summary";
+import { applyDeckProductivityDecisions } from "@/lib/assistant/deck-productivity-actions";
+import type { DeckProductivitySelection } from "@/components/assistant/DeckProductivityReviewDialog";
 import {
   composeClarifyInputFromEstimateContext,
   evaluateGenerateEstimatePermission,
@@ -195,6 +200,7 @@ import {
   decideGenerateAfterSync,
   delayMs,
   remainingGenerateMinDisplayMs,
+  settledFactsForGenerate,
   type GenerateEstimateStage,
 } from "@/lib/assistant/clarify/generate-sync";
 import type { ClarifyCandidate, ComposeClarifyInput } from "@/lib/assistant/clarify/types";
@@ -1289,19 +1295,19 @@ export function AssistantShell({
     runAction,
   ]);
 
-  const handleGenerateEstimate = useCallback(() => {
+  const handleGenerateEstimate = useCallback((): boolean => {
     if (
       isGenerating ||
       pendingAction != null ||
       actionLockRef.current
     ) {
-      return;
+      return false;
     }
     if (actionError) {
-      return;
+      return false;
     }
     if (!generateLockRef.current.tryAcquire()) {
-      return;
+      return false;
     }
     generateUiStartedAtRef.current = previewPerfNow();
     setGenerateStage(
@@ -1333,7 +1339,11 @@ export function AssistantShell({
         }
         {
           const syncEnd = startPreviewPerf("estimate_generate_sync");
-          const settled = await pendingWriteTrackerRef.current.waitAll();
+          const tracker = pendingWriteTrackerRef.current;
+          let settled = await tracker.waitAll();
+          while (tracker.size > 0) {
+            settled = await tracker.waitAll();
+          }
           syncEnd();
           lastMutation = settled.lastMutation;
           const decision = decideGenerateAfterSync({
@@ -1358,16 +1368,17 @@ export function AssistantShell({
               lastMutation.interviewFacts
             )
           : [];
-        const facts = snap?.facts ?? mutationFacts;
-        const constraints = snap
-          ? snap.constraints
-          : lastMutation
-            ? lastMutation.submittedConstraints.map((row) => ({
-                key: row.key,
-                value: row.value,
-              }))
-            : [];
-        const workAreas = snap?.workAreas ?? [];
+        const facts = settledFactsForGenerate(snap?.facts ?? [], mutationFacts);
+        const constraints = lastMutation
+          ? lastMutation.submittedConstraints.map((row) => ({
+              key: row.key,
+              value: row.value,
+            }))
+          : snap?.constraints ?? [];
+        const workAreas =
+          lastMutation && lastMutation.workAreas.length > 0
+            ? lastMutation.workAreas
+            : snap?.workAreas ?? [];
         const compose = composeClarifyInputFromEstimateContext({
           stage: (lastMutation?.stage ??
             snap?.stage ??
@@ -1409,6 +1420,47 @@ export function AssistantShell({
           return;
         }
 
+        if (pendingWriteTrackerRef.current.size > 0) {
+          let newer = await pendingWriteTrackerRef.current.waitAll();
+          while (pendingWriteTrackerRef.current.size > 0) {
+            newer = await pendingWriteTrackerRef.current.waitAll();
+          }
+          if (newer.failed) {
+            setActionError(presentAssistantError("save", newer.failed.error));
+            await abortGenerating();
+            return;
+          }
+          lastMutation = newer.lastMutation ?? lastMutation;
+          const newerFacts = lastMutation
+            ? jobPlanFactsFromReviewAndInterview(
+                lastMutation.scopeReview,
+                lastMutation.interviewFacts
+              )
+            : facts;
+          const newerPermission = evaluateGenerateEstimatePermission({
+            compose: composeClarifyInputFromEstimateContext({
+              stage: (lastMutation?.stage ?? snap?.stage ?? "work_area_questions") as ComposeClarifyInput["stage"],
+              briefText: snap?.briefText ?? project.briefText,
+              qualityLevel: snap?.qualityLevel ?? qualityLevel,
+              workAreas,
+              facts: settledFactsForGenerate(facts, newerFacts),
+              constraints,
+            }),
+            workAreas,
+            facts: settledFactsForGenerate(facts, newerFacts),
+            unresolvedRequiredProjectConditionKeys: [],
+            pendingWrites: 0,
+          });
+          if (!newerPermission.ready) {
+            setGenerateNotice(
+              newerPermission.builderCopy ??
+                "One more detail is needed before the estimate can be built."
+            );
+            await abortGenerating();
+            return;
+          }
+        }
+
         setGenerateStage("building");
         generationRequestSeqRef.current += 1;
         const endPerf = startPreviewPerf("estimate_generate_complete");
@@ -1431,6 +1483,7 @@ export function AssistantShell({
         generateLockRef.current.release();
       }
     })();
+    return true;
   }, [
     isGenerating,
     pendingAction,
@@ -2658,18 +2711,31 @@ export function AssistantShell({
     workSavePending: pendingAction === "work_areas",
     gaps: estimate ? [] : deckDetailGaps,
   });
-  const detailOpenCount = clarifyView.remainingRequiredCount + postHoleCount;
   const postHolesSettled =
     workAreasConfirmed && pendingAction !== "work_areas";
   const deckStillOpening =
     !estimate && deckDetailGaps.length > 0 && !postHolesSettled;
-  const settledDetailPhase = deckStillOpening
-    ? "needs_details"
-    : workAreasConfirmed && detailOpenCount === 0
-      ? "ready"
-      : "needs_details";
   const savingDetails =
     pendingReadinessWrites > 0 || pendingAction === "work_areas";
+  const detailsJourney = settleDetailsJourney({
+    workConfirmed: workAreasConfirmed && !deckStillOpening,
+    pendingWrites: savingDetails ? 1 : 0,
+    requiredClarifyCount: clarifyView.remainingRequiredCount,
+    postHoleCount,
+    optionalRefineCount: refineView.highValue.length,
+  });
+  const detailsPhase = detailsReadinessPhase({
+    pendingWrites: detailsJourney.phase === "saving" ? 1 : 0,
+    enoughToEstimate: detailsJourney.phase === "ready",
+  });
+  const detailsStatusLabel = detailsStageStatusLabel(
+    detailsPhase,
+    detailsJourney.requiredRemaining
+  );
+  const deckReadySummary = compactDeckReadySummary({
+    facts: jobPlanFacts,
+    workAreaId: displayWorkAreas.find((area) => area.type === "deck")?.id ?? "",
+  });
   const holdCreateEstimate =
     postHolesSettled &&
     !estimateReady &&
@@ -2790,11 +2856,7 @@ export function AssistantShell({
   });
   const projectInformationLabel = CLARIFY_IS_PRIMARY
     ? workAreasConfirmed && !estimateReady
-      ? estimateReadiness.enoughToEstimate
-        ? "Work confirmed · Estimate ready"
-        : `Work confirmed · ${clarifyView.remainingRequiredCount} thing${
-            clarifyView.remainingRequiredCount === 1 ? "" : "s"
-          } to clarify`
+      ? `Work confirmed · ${detailsStatusLabel}`
       : null
     : preferProjectConditionsAsk
     ? projectConditionsSnapshot?.complete
@@ -2864,9 +2926,12 @@ export function AssistantShell({
       includedScopeItemCount || workAreaLists.included.length,
     needsDetailCount: needsDetailScopeCount,
     includedWorkAreaCount: workAreaLists.included.length,
-    qualityTitle: qualityLevel
-      ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
-      : null,
+    qualityTitle:
+      CLARIFY_IS_PRIMARY && workAreasConfirmed
+        ? detailsStatusLabel
+        : qualityLevel
+          ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
+          : null,
     briefSubmitted,
     projectConditionsRemaining: preferProjectConditionsAsk
       ? projectConditionsSnapshot?.remainingCount ?? null
@@ -3010,6 +3075,11 @@ export function AssistantShell({
       const hours = item.productivityRate ?? 0;
       const quantity = item.quantity ?? 0;
       const beforeAccess = Math.round(hours * quantity * 100) / 100;
+      const afterAccess =
+        item.labourHours != null && item.labourHours > 0
+          ? item.labourHours
+          : beforeAccess;
+      const accessFactor = beforeAccess > 0 ? afterAccess / beforeAccess : 1;
       const storedHours = deckProductivityPhrase(
         hours,
         item.componentKey,
@@ -3019,6 +3089,7 @@ export function AssistantShell({
         ? DECK_POST_SET_HOURS
         : DECK_CONCRETE_PLACE_BENCHMARK_HOURS;
       const alternativeBefore = Math.round(alternativeHours * quantity * 100) / 100;
+      const alternativeAfter = Math.round(alternativeBefore * accessFactor * 100) / 100;
       const alternativePhrase = posts ? "0.5 h/post" : "4 min/bag";
       const quantityLabel = posts
         ? `${formatQuantity(quantity)} posts`
@@ -3045,6 +3116,13 @@ export function AssistantShell({
           jobFactKey: parsed.jobFactKey,
           benchmarkLabel: "Use Quotr rate",
           benchmarkValue: "quotr-benchmark",
+          itemKey: item.itemKey ?? (posts
+            ? "deck.posts.install.hours_per_ea"
+            : "deck.post_hole_concrete.place.hours_per_bag"),
+          beforeAccessLabel: `${formatLabourHours(beforeAccess)} h`,
+          afterAccessLabel: `${formatLabourHours(afterAccess)} h`,
+          alternativeBeforeLabel: `${formatLabourHours(alternativeBefore)} h`,
+          alternativeAfterLabel: `${formatLabourHours(alternativeAfter)} h`,
         },
       ];
     });
@@ -3059,41 +3137,39 @@ export function AssistantShell({
     setProductivityReviewOpen(true);
   }, [productivityDecisions, productivityReviewDetail]);
 
-  const confirmProductivityDecision = useCallback(
-    async (
-      decision: { workAreaId: string; jobFactKey: string; factKey: string },
-      key: string,
-      value: string
-    ) => {
+  const applyProductivityDecisions = useCallback(
+    async (selections: readonly DeckProductivitySelection[]) => {
+      const workAreaId = selections[0]?.decision.workAreaId;
+      if (!workAreaId) {
+        return { error: "The productivity review could not be loaded." };
+      }
+      setIsRegenerating(true);
       try {
-        if (key === decision.jobFactKey) {
-          const marked = await handleJobPlanSpecFact({
-            workAreaId: decision.workAreaId,
-            key: decision.factKey,
-            label: "Productivity scope",
-            value: "job",
-            valueType: "text",
-          });
-          if (marked.error) return { error: marked.error };
-        }
-        const result = await handleJobPlanSpecFact({
-          workAreaId: decision.workAreaId,
-          key,
-          label: key === decision.jobFactKey ? "Revised productivity" : "Productivity scope",
-          value,
-          valueType: "text",
-        });
-        if (result.error) return { error: result.error };
-        const regenerated = await handleRegenerateEstimate();
-        if (regenerated?.error) return { error: regenerated.error };
-        return {};
+        const result = await runAction("regenerate", () =>
+          applyDeckProductivityDecisions({
+            projectId: project.id,
+            workAreaId,
+            estimateId: generationProjection?.estimateId,
+            decisions: selections.map((selection) => ({
+              factKey: selection.decision.factKey,
+              jobFactKey: selection.decision.jobFactKey,
+              expectedToken: selection.decision.value,
+              itemKey: selection.decision.itemKey,
+              choice: selection.choice,
+              jobHours: selection.jobHours,
+            })),
+          })
+        );
+        return result ?? {};
       } catch (error) {
         return {
           error: error instanceof Error ? error.message : "The productivity choice was not saved.",
         };
+      } finally {
+        setIsRegenerating(false);
       }
     },
-    [handleJobPlanSpecFact, handleRegenerateEstimate]
+    [generationProjection?.estimateId, project.id, runAction]
   );
 
   const estimateOverview = projectEstimateOverview({
@@ -3891,11 +3967,13 @@ export function AssistantShell({
           {CLARIFY_IS_PRIMARY && workAreasConfirmed ? (
             <CollapsibleStageCard
               title="Details"
-              subtitle={detailsStageSubtitle(settledDetailPhase)}
-              statusLabel={detailsStageStatusLabel(
-                settledDetailPhase,
-                detailOpenCount
-              )}
+              subtitle={
+                detailsJourney.phase === "needs_details"
+                  ? detailsJourney.remainingCopy ??
+                    detailsStageSubtitle(detailsJourney.phase)
+                  : detailsStatusLabel
+              }
+              statusLabel={detailsStatusLabel}
               statusVariant="current"
               preferredExpanded={stagePrefersExpanded(
                 "clarify",
@@ -3923,6 +4001,8 @@ export function AssistantShell({
                 generateNotice={generateNotice}
                 returnFocusId={generateReturnFocusId}
                 holdCreateEstimate={holdCreateEstimate}
+                settledRemaining={detailsJourney.requiredRemaining}
+                readySummary={detailsJourney.phase === "ready" ? deckReadySummary : null}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={canRunEstimates ? handleGenerateEstimate : undefined}
@@ -4373,9 +4453,11 @@ export function AssistantShell({
             canGenerateEstimate={
               CLARIFY_IS_PRIMARY && !estimateReady ? false : canGenerateEstimate
             }
-            detailsPhase={settledDetailPhase}
+            detailsPhase={detailsPhase}
             detailsBlocker={estimateReadiness.blockerCopy}
-            postHoleAnswerCount={postHoleCount}
+            postHoleAnswerCount={detailsJourney.requiredRemaining}
+            detailsActionLabel={detailsJourney.actionLabel}
+            detailsOwnsCreate={CLARIFY_IS_PRIMARY && !estimate}
             holdCreateEstimate={holdCreateEstimate}
             detailsSaving={savingDetails && holdCreateEstimate}
             onFinishPostHoles={openDeckDetails}
@@ -4419,7 +4501,7 @@ export function AssistantShell({
       <DeckProductivityReviewDialog
         open={productivityReviewOpen}
         decisions={productivityDecisions}
-        pending={updatingEstimate}
+        pending={updatingEstimate || pendingAction === "regenerate"}
         loadError={
           productivityReviewOpen &&
           productivityDecisions.length === 0 &&
@@ -4429,7 +4511,7 @@ export function AssistantShell({
         }
         onRetry={() => router.refresh()}
         onOpenChange={setProductivityReviewOpen}
-        onDecide={confirmProductivityDecision}
+        onApply={applyProductivityDecisions}
       />
       <EstimateBreakdownModal
         estimate={estimate}

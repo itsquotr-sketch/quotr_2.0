@@ -90,6 +90,11 @@ type EstimatePanelProps = {
   postHoleAnswerCount?: number;
   /** Visible answers are complete. Keep Create estimate in place while a save finishes. */
   holdCreateEstimate?: boolean;
+  /** Details already shows the only Create estimate control. */
+  detailsOwnsCreate?: boolean;
+  /** Same remaining-work phrase as the Details badge. */
+  detailsActionLabel?: string | null;
+  readySummary?: string | null;
   detailsSaving?: boolean;
   onFinishPostHoles?: () => void;
   pendingProposalCount?: number;
@@ -346,6 +351,9 @@ export function EstimatePanel({
   detailsBlocker = null,
   postHoleAnswerCount = 0,
   holdCreateEstimate = false,
+  detailsOwnsCreate = false,
+  detailsActionLabel = null,
+  readySummary = null,
   detailsSaving = false,
   onFinishPostHoles,
   pendingProposalCount = 0,
@@ -578,10 +586,11 @@ export function EstimatePanel({
 
   const liveReadiness = estimate ? null : estimateStatusCopy(detailsPhase, detailsBlocker);
   const postHolePrompt =
-    !estimate && !holdCreateEstimate && postHoleAnswerCount > 0
-      ? deckDetailPanelPrompt(postHoleAnswerCount)
+    !estimate && !holdCreateEstimate && (detailsActionLabel || postHoleAnswerCount > 0)
+      ? detailsActionLabel ?? deckDetailPanelPrompt(postHoleAnswerCount)
       : null;
-  const showCreateEstimate = Boolean(canGenerateEstimate || holdCreateEstimate);
+  const showCreateEstimate =
+    !detailsOwnsCreate && Boolean(canGenerateEstimate || holdCreateEstimate);
   const createEstimateLabel = isGenerating
     ? ASSISTANT_LOADING_COPY.creatingEstimate
     : detailsSaving
@@ -836,7 +845,11 @@ export function EstimatePanel({
         </div>
       ) : !estimate ? (
         <div className="space-y-4">
-          {showCreateEstimate ? (
+          {detailsOwnsCreate && (detailsPhase === "ready" || detailsPhase === "saving") ? (
+            <p className="text-sm text-foreground/90" data-estimate-ready-summary>
+              {detailsPhase === "saving" ? "Saving" : readySummary ?? "Ready to estimate"}
+            </p>
+          ) : showCreateEstimate ? (
             <>
               <AssistantUnderstandingSummaryCard summaries={understandingSummaries} />
               <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">

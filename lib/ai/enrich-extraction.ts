@@ -10,6 +10,10 @@ import {
   matchRetainingWallRakingHeightsM,
 } from "@/lib/project-conditions/brief-logistics";
 import {
+  explicitDeckBriefFacts,
+  explicitDeckStepWidthM,
+} from "@/lib/estimate/deck-brief-facts";
+import {
   briefHasIntegralDeckStepLanguage,
   filterIntegralDeckExternalStairsWorkAreas,
   isExternalStairsFactKey,
@@ -1232,6 +1236,23 @@ function inferDeck(
       label: "Deck level",
       value: "Ground-level",
     });
+  }
+
+  for (const fact of explicitDeckBriefFacts(brief)) {
+    upsertFact(extraction, {
+      workAreaType: "deck",
+      key: fact.key,
+      label: fact.label,
+      value: fact.value,
+      unit: fact.unit,
+      confidence: 0.95,
+    });
+  }
+  if (explicitDeckStepWidthM(brief) == null) {
+    extraction.facts = extraction.facts.filter(
+      (fact) =>
+        !(fact.work_area_type === "deck" && fact.key === "deck.step_width_m")
+    );
   }
 }
 

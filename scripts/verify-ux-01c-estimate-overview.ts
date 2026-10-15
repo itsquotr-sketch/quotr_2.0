@@ -400,7 +400,10 @@ check(
     columnSource.includes("work_area_id") &&
     dialogSource.includes("Retry") &&
     dialogSource.includes("data-productivity-calculation") &&
-    shellSource.includes("await handleRegenerateEstimate()")
+    shellSource.includes("applyDeckProductivityDecisions") &&
+    dialogSource.includes("onApply") &&
+    dialogSource.includes("Apply both decisions and update estimate") &&
+    read("lib/assistant/deck-productivity-actions.ts").includes("regenerateStaticEstimate")
 );
 
 if (failed > 0) {

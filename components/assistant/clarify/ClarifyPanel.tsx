@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/types";
@@ -17,8 +16,8 @@ import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant
 import { Loader2 } from "lucide-react";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
-  mobileActionFlowClass,
-  mobileNavBottomClass,
+  mobileActionDockClass,
+  mobileActionInnerClass,
 } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
@@ -60,7 +59,10 @@ type ClarifyPanelProps = {
     candidate: ClarifyCandidate,
     value: string | number | boolean | string[]
   ) => void | Promise<unknown>;
-  onEstimateNow?: () => void;
+  onEstimateNow?: () => boolean | void;
+  /** Required answers from the one settled readiness result, including post holes. */
+  settledRemaining?: number;
+  readySummary?: string | null;
   deckAreas?: readonly {
     workAreaId: string;
     name: string;
@@ -203,6 +205,8 @@ export function ClarifyPanel({
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
+  settledRemaining,
+  readySummary = null,
   onNestedItemAction,
   deckAreas = [],
 }: ClarifyPanelProps) {
@@ -219,6 +223,19 @@ export function ClarifyPanel({
   const detailsSavingRef = useRef(false);
   const pendingLockRef = useRef<Set<string>>(new Set());
   const generateIntentRef = useRef(false);
+  const lastFailedAnswerRef = useRef<
+    | {
+        mode: "boolean";
+        candidate: ClarifyCandidate;
+        presentation: "INCLUDED" | "NOT_INCLUDED";
+      }
+    | {
+        mode: "value";
+        candidate: ClarifyCandidate;
+        value: string | number | boolean | string[];
+      }
+    | null
+  >(null);
   const queueFailedRef = useRef(false);
   const mountedRef = useRef(true);
   const [finishingAnswers, setFinishingAnswers] = useState(false);
@@ -257,11 +274,6 @@ export function ClarifyPanel({
 
   const rollbackFailedClarifyPersist = (candidate: ClarifyCandidate) => {
     setLocallyResolved((ids) => ids.filter((id) => id !== candidate.id));
-    setLocalValues((prev) => {
-      const next = { ...prev };
-      delete next[candidate.id];
-      return next;
-    });
   };
 
   const visibleCandidateCount = visibleGroups.reduce(
@@ -320,9 +332,14 @@ export function ClarifyPanel({
       localAnswersComplete: !failedAny,
     });
     if (action === "wait") return;
+    if (action !== "generate" || !mountedRef.current) {
+      generateIntentRef.current = false;
+      setFinishingAnswers(false);
+      return;
+    }
+    if (onEstimateNow?.() === false) return;
     generateIntentRef.current = false;
     setFinishingAnswers(false);
-    if (action === "generate" && mountedRef.current) onEstimateNow?.();
   };
 
   const wrapBoolean: ClarifyPanelProps["onAnswerBoolean"] = (
@@ -356,13 +373,26 @@ export function ClarifyPanel({
       .then((result) => {
         failed = clarifyPersistResultFailed(result);
         if (failed) {
+          lastFailedAnswerRef.current = {
+            mode: "boolean",
+            candidate,
+            presentation,
+          };
           rollbackFailedClarifyPersist(candidate);
         } else if (hold) {
+          lastFailedAnswerRef.current = null;
           advance(candidate);
+        } else {
+          lastFailedAnswerRef.current = null;
         }
       })
       .catch(() => {
         failed = true;
+        lastFailedAnswerRef.current = {
+          mode: "boolean",
+          candidate,
+          presentation,
+        };
         rollbackFailedClarifyPersist(candidate);
       })
       .finally(() => {
@@ -394,13 +424,18 @@ export function ClarifyPanel({
       .then((result) => {
         failed = clarifyPersistResultFailed(result);
         if (failed) {
+          lastFailedAnswerRef.current = { mode: "value", candidate, value };
           rollbackFailedClarifyPersist(candidate);
         } else if (hold) {
+          lastFailedAnswerRef.current = null;
           advance(candidate);
+        } else {
+          lastFailedAnswerRef.current = null;
         }
       })
       .catch(() => {
         failed = true;
+        lastFailedAnswerRef.current = { mode: "value", candidate, value };
         rollbackFailedClarifyPersist(candidate);
       })
       .finally(() => {
@@ -437,6 +472,17 @@ export function ClarifyPanel({
     (localAnswersComplete || authoritativeGenerate || holdCreateEstimate);
 
   const requestCreateEstimate = () => {
+    const failedAnswer = lastFailedAnswerRef.current;
+    if (persistError && failedAnswer && !isGenerating) {
+      generateIntentRef.current = true;
+      setFinishingAnswers(true);
+      if (failedAnswer.mode === "boolean") {
+        wrapBoolean(failedAnswer.candidate, failedAnswer.presentation);
+      } else {
+        wrapValue(failedAnswer.candidate, failedAnswer.value);
+      }
+      return;
+    }
     const clarifySavesPending =
       pendingIds.length > 0 || continuePending || Boolean(isSaving);
     detailsSavingRef.current = Boolean(isSaving);
@@ -452,7 +498,10 @@ export function ClarifyPanel({
       setFinishingAnswers(true);
       return;
     }
-    onEstimateNow?.();
+    if (onEstimateNow?.() === false) {
+      generateIntentRef.current = true;
+      setFinishingAnswers(true);
+    }
   };
 
   useEffect(() => {
@@ -480,9 +529,14 @@ export function ClarifyPanel({
       localAnswersComplete: !failedAny,
     });
     if (action === "wait") return;
+    if (action !== "generate") {
+      generateIntentRef.current = false;
+      setFinishingAnswers(false);
+      return;
+    }
+    if (onEstimateNow?.() === false) return;
     generateIntentRef.current = false;
     setFinishingAnswers(false);
-    if (action === "generate") onEstimateNow?.();
   }, [continuePending, isSaving, onEstimateNow, pendingIds.length, persistError]);
 
   useEffect(() => {
@@ -512,17 +566,19 @@ export function ClarifyPanel({
           generateStage={generateStage}
           generateStartedAt={generateStartedAt}
           onEstimateNow={requestCreateEstimate}
+          readySummary={readySummary}
         />
       </div>
     );
   }
 
+  const countedRemaining = settledRemaining ?? remaining;
   const countCopy =
-    remaining <= 0
+    countedRemaining <= 0
       ? "Confirm anything still open, or estimate with assumptions."
-      : remaining === 1
+      : countedRemaining === 1
         ? "1 important detail remaining"
-        : `${remaining} important details remaining`;
+        : `${countedRemaining} important details remaining`;
 
   const workAreaGroups = visibleGroups.filter((group) => group.workAreaId);
   const nestedPanels = view.nestedItemPanels ?? [];
@@ -530,7 +586,7 @@ export function ClarifyPanel({
 
   return (
     <div
-      className="max-w-[880px] space-y-4 overflow-x-hidden pb-2 md:space-y-5"
+      className="max-w-[880px] space-y-4 overflow-x-hidden pb-2 max-md:pb-24 md:space-y-5"
       data-clarify-panel
       data-details-complete-capture="true"
       data-clarify-count={view.visibleCount}
@@ -732,8 +788,16 @@ export function ClarifyPanel({
         </p>
       ) : null}
 
-      <ActionFooter
-        className={cn("-mx-1 md:bottom-0", mobileNavBottomClass, mobileActionFlowClass)}
+      {showCreateEstimate ||
+      (view.canEstimateNow && onEstimateNow && !savesPending) ||
+      (savesPending && !showCreateEstimate && !finishingAnswers && !isGenerating && !continuePending) ? (
+      <div
+        className={cn(
+          "sticky z-30 border-t border-border bg-background px-3",
+          mobileActionDockClass,
+          mobileActionInnerClass,
+          "md:bottom-0"
+        )}
         data-clarify-cta-bar=""
       >
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
@@ -751,7 +815,7 @@ export function ClarifyPanel({
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
               ) : null}
               {isGenerating
-                ? generateStage === "saving" || generateStage === "readiness"
+                ? generateStage === "saving"
                   ? ASSISTANT_LOADING_COPY.questionSave
                   : ASSISTANT_LOADING_COPY.creatingEstimate
                 : finishingAnswers || savesPending
@@ -780,7 +844,8 @@ export function ClarifyPanel({
             </p>
           ) : null}
         </div>
-      </ActionFooter>
+      </div>
+      ) : null}
     </div>
   );
 }

@@ -29,6 +29,17 @@ export type DeckProductivityDecision = {
   readonly jobFactKey: string;
   readonly benchmarkLabel?: string | null;
   readonly benchmarkValue?: string | null;
+  readonly itemKey: string;
+  readonly beforeAccessLabel: string;
+  readonly afterAccessLabel: string;
+  readonly alternativeBeforeLabel: string;
+  readonly alternativeAfterLabel: string;
+};
+
+export type DeckProductivitySelection = {
+  readonly decision: DeckProductivityDecision;
+  readonly choice: "calibration" | "benchmark" | "job";
+  readonly jobHours?: number;
 };
 
 type DeckProductivityReviewDialogProps = {
@@ -38,11 +49,14 @@ type DeckProductivityReviewDialogProps = {
   loadError?: string | null;
   onOpenChange: (open: boolean) => void;
   onRetry?: () => void;
-  onDecide: (
-    decision: DeckProductivityDecision,
-    key: string,
-    value: string
+  onApply: (
+    selections: readonly DeckProductivitySelection[]
   ) => Promise<{ error?: string } | void>;
+};
+
+type LineChoice = {
+  readonly kind: "calibration" | "benchmark" | "job";
+  readonly hours: string;
 };
 
 export function DeckProductivityReviewDialog({
@@ -52,13 +66,18 @@ export function DeckProductivityReviewDialog({
   loadError = null,
   onOpenChange,
   onRetry,
-  onDecide,
+  onApply,
 }: DeckProductivityReviewDialogProps) {
   const titleId = useId();
   const errorRef = useRef<HTMLParagraphElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [choices, setChoices] = useState<Record<string, LineChoice>>({});
+  const applyingRef = useRef(false);
   const shownError = error ?? loadError;
+  const applyLabel =
+    decisions.length === 2
+      ? "Apply both decisions and update estimate"
+      : "Apply the decisions and update estimate";
 
   useEffect(() => {
     if (!shownError) return;
@@ -69,23 +88,51 @@ export function DeckProductivityReviewDialog({
     if (open && decisions.length === 0 && !loadError && !pending) onOpenChange(false);
   }, [decisions.length, loadError, onOpenChange, open, pending]);
 
-  async function choose(decision: DeckProductivityDecision, key: string, value: string) {
-    setError(null);
-    setSavingKey(`${decision.id}:${key}:${value}`);
-    try {
-      const result = await onDecide(decision, key, value);
-      if (result?.error) {
-        setError(result.error);
+  function select(id: string, kind: LineChoice["kind"]) {
+    setChoices((current) => ({
+      ...current,
+      [id]: { kind, hours: current[id]?.hours ?? "" },
+    }));
+  }
+
+  async function apply() {
+    if (pending || applyingRef.current) return;
+    const selections: DeckProductivitySelection[] = [];
+    for (const decision of decisions) {
+      const choice = choices[decision.id];
+      if (!choice) {
+        setError("Choose one option for every held line before updating the estimate.");
         return;
       }
-      setError(null);
+      if (choice.kind === "job") {
+        const hours = Number(choice.hours);
+        if (!Number.isFinite(hours) || hours <= 0) {
+          setError("Enter a productivity greater than zero for the revised rate.");
+          return;
+        }
+        selections.push({ decision, choice: "job", jobHours: hours });
+        continue;
+      }
+      selections.push({ decision, choice: choice.kind });
+    }
+    setError(null);
+    applyingRef.current = true;
+    try {
+      const result = await onApply(selections);
+      if (result?.error) setError(result.error);
     } finally {
-      setSavingKey(null);
+      applyingRef.current = false;
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (pending) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
         showCloseButton
         className="max-h-[calc(100dvh-7.5rem)] overflow-x-hidden overflow-y-auto overscroll-contain max-sm:top-4 max-sm:translate-y-0 sm:max-w-lg"
@@ -121,102 +168,76 @@ export function DeckProductivityReviewDialog({
               data-productivity-review={decision.factKey}
             >
               <h3 className="text-sm font-semibold break-words">{decision.title}</h3>
-              <p className="text-sm text-foreground/80">{decision.source ?? "Company calibration"}</p>
-              <p className="text-sm font-medium break-words" data-productivity-calculation={decision.factKey}>
-                {decision.calculation}
+              <p className="text-sm break-words">
+                Original task: {decision.task}
+              </p>
+              <p className="text-sm break-words" data-productivity-calculation={decision.factKey}>
+                {decision.quantityLabel}. Company calibration {decision.storedHours}: {decision.beforeAccessLabel} before access, {decision.afterAccessLabel} after access.
               </p>
               <p className="text-sm break-words">
-                {decision.quantityLabel} · stored {decision.projectedHours}
-                {decision.alternativeHours ? ` · Quotr ${decision.alternativeHours}` : ""}
+                Quotr {decision.alternativePhrase}: {decision.alternativeBeforeLabel} before access, {decision.alternativeAfterLabel} after access.
+              </p>
+              <p className="text-sm text-foreground/80">
+                Rate source: {decision.source ?? "Company calibration"}
               </p>
               <p className="text-sm text-foreground/80 break-words">{decision.reason}</p>
-              <details className="text-sm">
-                <summary className="cursor-pointer font-medium">Why review this rate?</summary>
-                <p className="mt-2 break-words text-foreground/80">{decision.task}</p>
-                {decision.alternativeScope ? (
-                  <p className="mt-2 break-words text-foreground/80">{decision.alternativeScope}</p>
-                ) : null}
-              </details>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" role="group" aria-label={decision.title}>
                 <Button
                   type="button"
+                  variant={choices[decision.id]?.kind === "calibration" ? "default" : "outline"}
                   className="h-11 min-h-11"
-                  disabled={pending || savingKey != null}
-                  onClick={() => choose(decision, decision.factKey, decision.value)}
+                  aria-pressed={choices[decision.id]?.kind === "calibration"}
+                  disabled={pending}
+                  onClick={() => select(decision.id, "calibration")}
                 >
-                  {savingKey === `${decision.id}:${decision.factKey}:${decision.value}`
-                    ? "Saving…"
-                    : "Use company calibration"}
+                  Use company calibration
                 </Button>
-                {decision.benchmarkLabel && decision.benchmarkValue ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 min-h-11"
-                    disabled={pending || savingKey != null}
-                    onClick={() =>
-                      choose(decision, decision.factKey, decision.benchmarkValue!)
+                <Button
+                  type="button"
+                  variant={choices[decision.id]?.kind === "benchmark" ? "default" : "outline"}
+                  className="h-11 min-h-11"
+                  aria-pressed={choices[decision.id]?.kind === "benchmark"}
+                  disabled={pending}
+                  onClick={() => select(decision.id, "benchmark")}
+                >
+                  {decision.benchmarkLabel ?? "Use Quotr rate"}
+                </Button>
+                <label className="text-sm">
+                  Revised rate for this job (h)
+                  <input
+                    className="mt-1 block h-11 w-full rounded-md border border-border bg-background px-2"
+                    inputMode="decimal"
+                    value={choices[decision.id]?.hours ?? ""}
+                    disabled={pending}
+                    aria-pressed={choices[decision.id]?.kind === "job"}
+                    onFocus={() => select(decision.id, "job")}
+                    onChange={(event) =>
+                      setChoices((current) => ({
+                        ...current,
+                        [decision.id]: { kind: "job", hours: event.target.value },
+                      }))
                     }
-                  >
-                    {savingKey ===
-                    `${decision.id}:${decision.factKey}:${decision.benchmarkValue}`
-                      ? "Saving…"
-                      : decision.benchmarkLabel}
-                  </Button>
-                ) : null}
-                <RevisedHours
-                  disabled={pending || savingKey != null}
-                  saving={savingKey?.startsWith(`${decision.id}:${decision.jobFactKey}:`) === true}
-                  onInvalid={setError}
-                  onSave={(hours) => choose(decision, decision.jobFactKey, hours)}
-                />
+                  />
+                </label>
               </div>
             </section>
           ))}
         </div>
+        <Button
+          type="button"
+          className="h-11 min-h-11 w-full"
+          data-productivity-apply
+          disabled={pending || decisions.length === 0}
+          aria-busy={pending || undefined}
+          onClick={() => void apply()}
+        >
+          {pending
+            ? decisions.length === 2
+              ? "Applying both decisions…"
+              : "Applying the decisions…"
+            : applyLabel}
+        </Button>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function RevisedHours({
-  disabled,
-  saving,
-  onSave,
-  onInvalid,
-}: {
-  disabled: boolean;
-  saving: boolean;
-  onSave: (hours: string) => void;
-  onInvalid: (message: string) => void;
-}) {
-  const [value, setValue] = useState("");
-  return (
-    <form
-      className="flex min-w-0 flex-wrap items-end gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const hours = Number(value);
-        if (!Number.isFinite(hours) || hours <= 0) {
-          onInvalid("Enter hours greater than zero.");
-          return;
-        }
-        onSave(String(hours));
-      }}
-    >
-      <label className="text-sm">
-        This job (h)
-        <input
-          className="mt-1 block h-11 w-28 rounded-md border border-border bg-background px-2"
-          inputMode="decimal"
-          value={value}
-          disabled={disabled}
-          onChange={(event) => setValue(event.target.value)}
-        />
-      </label>
-      <Button type="submit" variant="outline" className="h-11 min-h-11" disabled={disabled}>
-        {saving ? "Saving…" : "Enter this job's rate"}
-      </Button>
-    </form>
   );
 }

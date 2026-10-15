@@ -69,6 +69,14 @@ export function generateStatusSupporting(elapsedMs: number): string | null {
   return GENERATE_STATUS_COPY.extended;
 }
 
+/** Persisted facts win. A pre-save snapshot is only a fallback when nothing settled. */
+export function settledFactsForGenerate<T>(
+  snapshot: readonly T[],
+  settled: readonly T[]
+): readonly T[] {
+  return settled.length > 0 ? settled : snapshot;
+}
+
 export function decideGenerateAfterSync(params: {
   readonly writeFailed: boolean;
   readonly pendingWritesRemaining: number;

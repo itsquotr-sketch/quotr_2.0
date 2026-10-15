@@ -15,7 +15,9 @@ import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-syn
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import {
+  mobileActionDockClass,
   mobileActionFlowClass,
+  mobileActionInnerClass,
   mobileNavBottomClass,
 } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
@@ -484,17 +486,22 @@ export function ClarifyReadinessCard({
   generateStage = "building",
   generateStartedAt = 0,
   onEstimateNow,
+  readySummary = null,
 }: {
   readiness: EstimateReadinessView;
   isSaving?: boolean;
   isGenerating?: boolean;
   generateStage?: GenerateEstimateStage;
   generateStartedAt?: number;
-  onEstimateNow?: () => void;
+  onEstimateNow?: () => boolean | void;
+  readySummary?: string | null;
 }) {
   return (
     <div
-      className="max-w-[880px] space-y-4 overflow-x-hidden"
+      className={cn(
+        "max-w-[880px] space-y-4 overflow-x-hidden",
+        onEstimateNow && "max-md:pb-24"
+      )}
       data-clarify-panel
       data-clarify-readiness
       data-clarify-empty="true"
@@ -535,6 +542,11 @@ export function ClarifyReadinessCard({
             </p>
           </>
         )}
+        {readySummary ? (
+          <p className="mt-2 text-sm text-foreground/90" data-ready-summary>
+            {readySummary}
+          </p>
+        ) : (
         <p className="mt-1 text-sm text-muted-foreground">
           {readiness.blocksEstimate
             ? readiness.explanation
@@ -542,6 +554,7 @@ export function ClarifyReadinessCard({
               ? readiness.explanation
             : "All required details resolved. You can still change the job afterward."}
         </p>
+        )}
       {readiness.confidenceLabel ? (
         <p className="mt-1 text-xs text-muted-foreground" data-readiness-confidence>
           {readiness.confidenceLabel}
@@ -550,7 +563,7 @@ export function ClarifyReadinessCard({
     </div>
       )}
 
-      {readiness.known.length > 0 ? (
+      {!readySummary && readiness.known.length > 0 ? (
         <div data-readiness-known>
           <p className={PREMIUM.eyebrow}>
             Known
@@ -563,7 +576,7 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
-      {readiness.assumptions.length > 0 ? (
+      {!readySummary && readiness.assumptions.length > 0 ? (
         <div data-readiness-assumptions>
           <p className={PREMIUM.eyebrow}>
             We&apos;ve assumed
@@ -577,9 +590,14 @@ export function ClarifyReadinessCard({
       ) : null}
 
       {onEstimateNow ? (
-      <ActionFooter
-        className={cn("md:bottom-0", mobileNavBottomClass, mobileActionFlowClass)}
-        innerClassName="flex-col sm:flex-row"
+      <div
+        className={cn(
+          "sticky z-30 border-t border-border bg-background px-3",
+          mobileActionDockClass,
+          mobileActionInnerClass,
+          "md:bottom-0"
+        )}
+        data-clarify-cta-bar=""
       >
         <Button
           type="button"
@@ -593,14 +611,14 @@ export function ClarifyReadinessCard({
             <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
           ) : null}
           {isGenerating
-            ? generateStage === "saving" || generateStage === "readiness"
+            ? generateStage === "saving"
               ? ASSISTANT_LOADING_COPY.questionSave
               : ASSISTANT_LOADING_COPY.creatingEstimate
             : isSaving
               ? ASSISTANT_LOADING_COPY.questionSave
               : ASSISTANT_ACTION_LABELS.generateEstimate}
         </Button>
-      </ActionFooter>
+      </div>
       ) : null}
     </div>
   );
