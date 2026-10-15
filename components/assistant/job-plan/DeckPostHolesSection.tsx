@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { jobPlanNumber, jobPlanString } from "@/lib/assistant/job-plan/facts";
-import { deckDetailGaps } from "@/lib/estimate/deck-detail-completeness";
+import { deckDetailGaps, deckSpoilDestination } from "@/lib/estimate/deck-detail-completeness";
 import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
@@ -97,7 +97,7 @@ export function DeckPostHolesSection({
   const width = jobPlanNumber(facts, workAreaId, "deck.hole_width_mm");
   const ground = jobPlanString(facts, workAreaId, "deck.hole_ground") ?? "";
   const method = jobPlanString(facts, workAreaId, "deck.hole_method") ?? "";
-  const destination = jobPlanString(facts, workAreaId, "deck.spoil_destination") ?? "";
+  const destination = deckSpoilDestination(facts, workAreaId);
   const legacySpoil = facts.find(
     (fact) => fact.key === "deck.spoil_leaves_site" && fact.work_area_id === workAreaId
   );

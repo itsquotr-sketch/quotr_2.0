@@ -935,6 +935,13 @@ check(
   ).length === 0
 );
 check(
+  "Not sure is a saved spoil answer and stays on the list as answered",
+  deckDetailGaps(
+    [...measuredBase, fact("deck.spoil_destination", "not_sure")],
+    "deck"
+  ).length === 0
+);
+check(
   "the first open post-hole answer is the control Complete Deck details focuses",
   firstDeckDetailTarget(
     [fact("deck.substructure_included", true), fact("deck.pile_or_post_count", 16), fact("deck.concrete_to_supports", true)],

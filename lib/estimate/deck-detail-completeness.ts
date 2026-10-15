@@ -31,8 +31,22 @@ function postCount(facts: readonly EstimateFact[], workAreaId: string): number |
   return stated != null ? Math.round(stated) : null;
 }
 
+/** Spoil "Not sure" is a real answer. Generic fact reads treat that phrase as empty. */
+export function deckSpoilDestination(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): string {
+  const row = facts.find(
+    (fact) => fact.key === "deck.spoil_destination" && fact.work_area_id === workAreaId
+  );
+  if (typeof row?.value !== "string") return "";
+  const text = row.value.trim();
+  if (text === "on_site" || text === "off_site" || text === "not_sure") return text;
+  return "";
+}
+
 function spoilChoice(facts: readonly EstimateFact[], workAreaId: string): string {
-  const destination = getStringFact([...facts], workAreaId, "deck.spoil_destination") ?? "";
+  const destination = deckSpoilDestination(facts, workAreaId);
   if (destination) return destination;
   const legacy = facts.find(
     (fact) => fact.key === "deck.spoil_leaves_site" && fact.work_area_id === workAreaId
