@@ -481,9 +481,9 @@ export function ClarifyPanel({
     enoughToEstimate: readiness.enoughToEstimate === true,
   });
   const showCreateEstimate =
-    allowCreateEstimate &&
     Boolean(onEstimateNow) &&
-    (localAnswersComplete || authoritativeGenerate || holdCreateEstimate);
+    (localAnswersComplete ||
+      (allowCreateEstimate && (authoritativeGenerate || holdCreateEstimate)));
   const retryFailedDetails = Boolean(
     detailsSaveFailed && persistError && !isGenerating
   );
