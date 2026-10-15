@@ -587,6 +587,11 @@ export function ClarifyPanel({
   const workAreaGroups = visibleGroups.filter((group) => group.workAreaId);
   const nestedPanels = view.nestedItemPanels ?? [];
   const projectGroup = visibleGroups.find((group) => group.workAreaId == null);
+  const openPostHoles = deckAreas.filter(
+    (area) =>
+      area.postHolesSettled !== false &&
+      !workAreaGroups.some((group) => group.workAreaId === area.workAreaId)
+  );
 
   return (
     <div
@@ -786,7 +791,30 @@ export function ClarifyPanel({
         </section>
       ) : null}
 
-      {visibleGroups.length === 0 && !showCreateEstimate && !savesPending ? (
+      {openPostHoles.map((area) => (
+        <section
+          key={`holes-open:${area.workAreaId}`}
+          className={cn(PREMIUM.card, PREMIUM.cardPad, "min-w-0")}
+          data-details-group={area.workAreaId}
+          data-details-post-holes="open"
+        >
+          <h2 className={PREMIUM.sectionTitle}>{area.name}</h2>
+          <div className="mt-3">
+            <DeckPostHolesSection
+              workAreaId={area.workAreaId}
+              facts={area.facts}
+              onSpecFact={area.onSpecFact}
+              onSpecFacts={area.onSpecFacts}
+              onBooleanFact={area.onBooleanFact}
+              focusGapId={area.focusGapId}
+              focusNonce={area.focusNonce}
+              accessSuitable={area.accessSuitable}
+            />
+          </div>
+        </section>
+      ))}
+
+      {visibleGroups.length === 0 && openPostHoles.length === 0 && !showCreateEstimate && !savesPending ? (
         <p className="text-sm text-muted-foreground" data-clarify-waiting>
           A few more details are still needed before this estimate can be built.
         </p>

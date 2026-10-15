@@ -347,7 +347,8 @@ check(
     shell.includes("settledRemaining={detailsJourney.requiredRemaining}") &&
     shell.includes("allowCreateEstimate={detailsJourney.showCreateEstimate}") &&
     shell.includes("detailsOwnsCreate") &&
-    panel.includes("allowCreateEstimate &&")
+    panel.includes("allowCreateEstimate &&") &&
+    panel.includes('data-details-post-holes="open"')
 );
 check(
   "a failed save keeps the answer and can retry",
