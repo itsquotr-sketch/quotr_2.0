@@ -890,7 +890,9 @@ export function EstimatePanel({
               stage="quick_estimate"
               title={
                 workAreasConfirmed
-                  ? postHolePrompt ?? liveReadiness?.emptyTitle
+                  ? postHolePrompt
+                    ? liveReadiness?.emptyTitle ?? "Finish the open details before estimating."
+                    : liveReadiness?.emptyTitle
                   : "Review the work Quotr found"
               }
               nextActionLabel={

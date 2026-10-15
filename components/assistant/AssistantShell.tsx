@@ -4002,6 +4002,7 @@ export function AssistantShell({
                 returnFocusId={generateReturnFocusId}
                 holdCreateEstimate={holdCreateEstimate}
                 settledRemaining={detailsJourney.requiredRemaining}
+                allowCreateEstimate={detailsJourney.showCreateEstimate}
                 readySummary={detailsJourney.phase === "ready" ? deckReadySummary : null}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}

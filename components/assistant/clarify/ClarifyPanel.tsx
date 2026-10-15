@@ -62,6 +62,8 @@ type ClarifyPanelProps = {
   onEstimateNow?: () => boolean | void;
   /** Required answers from the one settled readiness result, including post holes. */
   settledRemaining?: number;
+  /** False while that result still has required answers, including post holes. */
+  allowCreateEstimate?: boolean;
   readySummary?: string | null;
   deckAreas?: readonly {
     workAreaId: string;
@@ -206,6 +208,7 @@ export function ClarifyPanel({
   onAnswerValue,
   onEstimateNow,
   settledRemaining,
+  allowCreateEstimate = true,
   readySummary = null,
   onNestedItemAction,
   deckAreas = [],
@@ -468,6 +471,7 @@ export function ClarifyPanel({
     enoughToEstimate: readiness.enoughToEstimate === true,
   });
   const showCreateEstimate =
+    allowCreateEstimate &&
     Boolean(onEstimateNow) &&
     (localAnswersComplete || authoritativeGenerate || holdCreateEstimate);
 
@@ -598,7 +602,7 @@ export function ClarifyPanel({
           startedAt={generateStartedAt}
         />
       ) : null}
-      <p className="text-sm text-muted-foreground" data-clarify-progress>
+      <p className={settledRemaining == null ? "text-sm text-muted-foreground" : "sr-only"} data-clarify-progress>
         {countCopy}
       </p>
       <PersistError error={persistError} errorRef={persistErrorRef} />
@@ -822,7 +826,7 @@ export function ClarifyPanel({
                   ? ASSISTANT_LOADING_COPY.questionSave
                   : ASSISTANT_ACTION_LABELS.estimateNow}
             </Button>
-          ) : view.canEstimateNow && onEstimateNow && !savesPending ? (
+          ) : allowCreateEstimate && view.canEstimateNow && onEstimateNow && !savesPending ? (
             <Button
               type="button"
               variant="outline"
