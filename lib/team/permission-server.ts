@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import { requireOrgEntitlement } from "@/lib/billing/entitlement-server";
 import type { EntitlementCapability } from "@/lib/billing/capabilities";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
@@ -43,18 +44,22 @@ async function loadMembershipRoleUncached(
   }
 
   const [membershipResult, profileResult] = await Promise.all([
-    context.supabase
-      .from("organisation_memberships")
-      .select("role, status")
-      .eq("org_id", orgId)
-      .eq("user_id", userId)
-      .in("status", ["active", "pending_billing"])
-      .maybeSingle(),
-    context.supabase
-      .from("profiles")
-      .select("org_id, role")
-      .eq("id", userId)
-      .maybeSingle(),
+    traceOp("db.membership", () =>
+      context.supabase
+        .from("organisation_memberships")
+        .select("role, status")
+        .eq("org_id", orgId)
+        .eq("user_id", userId)
+        .in("status", ["active", "pending_billing"])
+        .maybeSingle()
+    ),
+    traceOp("db.profileRole", () =>
+      context.supabase
+        .from("profiles")
+        .select("org_id, role")
+        .eq("id", userId)
+        .maybeSingle()
+    ),
   ]);
 
   if (

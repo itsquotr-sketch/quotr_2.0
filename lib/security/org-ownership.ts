@@ -1,3 +1,4 @@
+import { traceOp } from "@/lib/perf/confirm-trace";
 import type { AuthOrgUser } from "@/lib/security/auth-org-evaluation";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -77,13 +78,15 @@ export async function assertOrgOwnsActiveProject(
 ): Promise<ActiveProjectOwnershipResult> {
   noteUnderlyingActiveProjectOwnership();
 
-  const { data, error } = await ctx.supabase
-    .from("projects")
-    .select("id")
-    .eq("id", projectId)
-    .eq("org_id", ctx.orgId)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const { data, error } = await traceOp("db.projectOwnership", () =>
+    ctx.supabase
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("org_id", ctx.orgId)
+      .is("deleted_at", null)
+      .maybeSingle()
+  );
 
   if (error || !data) {
     return notFound("Project");

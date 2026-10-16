@@ -1,4 +1,5 @@
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 
@@ -11,11 +12,13 @@ export async function markEstimateStaleWithContext(
 
   const { supabase, orgId } = context;
 
-  await supabase
-    .from("estimates")
-    .update({ is_stale: true })
-    .eq("project_id", projectId)
-    .eq("org_id", orgId);
+  await traceOp("db.estimateStaleWrite", () =>
+    supabase
+      .from("estimates")
+      .update({ is_stale: true })
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+  );
 }
 
 export async function markEstimateStale(projectId: string): Promise<void> {

@@ -6,6 +6,7 @@ import type {
   OrgSubscription,
 } from "@/lib/billing/types";
 import { selectActiveBillingOverride } from "@/lib/billing/overrides";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import type { BillingStore } from "@/lib/billing/store";
 import { deriveInternalTrialAccessState } from "@/lib/billing/trial";
 
@@ -19,9 +20,11 @@ export async function loadOrgBillingState(
   now: Date = new Date()
 ): Promise<OrgBillingState> {
   const [customer, subscription, overrides] = await Promise.all([
-    store.getCustomerByOrg(orgId, billingEnvironment),
-    store.getSubscriptionByOrg(orgId, billingEnvironment),
-    store.listOverrides(orgId, billingEnvironment),
+    traceOp("db.billingCustomer", () => store.getCustomerByOrg(orgId, billingEnvironment)),
+    traceOp("db.billingSubscription", () =>
+      store.getSubscriptionByOrg(orgId, billingEnvironment)
+    ),
+    traceOp("db.billingOverrides", () => store.listOverrides(orgId, billingEnvironment)),
   ]);
 
   return assembleOrgBillingState({

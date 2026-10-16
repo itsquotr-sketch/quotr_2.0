@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { runConfirmTrace, traceOp, traceSync } from "@/lib/perf/confirm-trace";
 import { z } from "zod";
 import type { QualityLevel } from "@/components/assistant/types";
 import {
@@ -868,6 +869,13 @@ export async function confirmWorkAreas(
   projectId: string,
   selections: WorkAreaSelection[]
 ): Promise<AssistantActionState> {
+  return runConfirmTrace(projectId, () => confirmWorkAreasTraced(projectId, selections));
+}
+
+async function confirmWorkAreasTraced(
+  projectId: string,
+  selections: WorkAreaSelection[]
+): Promise<AssistantActionState> {
   const parsed = z.array(workAreaSelectionSchema).safeParse(selections);
   if (!parsed.success) {
     return { error: "Invalid work area selections." };
@@ -890,21 +898,25 @@ export async function confirmWorkAreas(
     };
   }
 
-  const [loaded, confirmDenied, estimateLookup] = await Promise.all([
-    loadProjectStage(projectId),
-    permissionDeniedError({
-      orgId: authResult.orgId,
-      userId: authResult.user.id,
-      permission: "projects.edit",
-      entitlement: "projects.create",
-    }),
-    authResult.supabase
-      .from("estimates")
-      .select("id")
-      .eq("project_id", projectId)
-      .eq("org_id", authResult.orgId)
-      .maybeSingle(),
-  ]);
+  const [loaded, confirmDenied, estimateLookup] = await traceOp("wave.checks", () =>
+    Promise.all([
+      loadProjectStage(projectId),
+      permissionDeniedError({
+        orgId: authResult.orgId,
+        userId: authResult.user.id,
+        permission: "projects.edit",
+        entitlement: "projects.create",
+      }),
+      traceOp("db.estimateLookup", () =>
+        authResult.supabase
+          .from("estimates")
+          .select("id")
+          .eq("project_id", projectId)
+          .eq("org_id", authResult.orgId)
+          .maybeSingle()
+      ),
+    ])
+  );
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -912,6 +924,12 @@ export async function confirmWorkAreas(
 
   const { auth, stage } = loaded;
   const { supabase } = auth;
+
+  traceSync("stage.check", () => {
+    if (isStageAtOrBeyond(stage, "quality") || !canRunStageAction(stage, "confirm_work_areas")) {
+      return;
+    }
+  });
 
   if (isStageAtOrBeyond(stage, "quality")) {
     return { success: true };
@@ -932,11 +950,9 @@ export async function confirmWorkAreas(
     ["excluded", excludedIds],
   ] as const) {
     if (ids.length === 0) continue;
-    const { error } = await supabase
-      .from("work_areas")
-      .update({ status })
-      .in("id", ids)
-      .eq("project_id", projectId);
+    const { error } = await traceOp("db.workAreaStatus", () =>
+      supabase.from("work_areas").update({ status }).in("id", ids).eq("project_id", projectId)
+    );
 
     if (error) {
       console.error("[confirmWorkAreas] work area update failed:", error.message);
@@ -944,10 +960,9 @@ export async function confirmWorkAreas(
     }
   }
 
-  const { error: stageError } = await supabase
-    .from("projects")
-    .update({ stage: "quality" })
-    .eq("id", projectId);
+  const { error: stageError } = await traceOp("db.projectStageWrite", () =>
+    supabase.from("projects").update({ stage: "quality" }).eq("id", projectId)
+  );
 
   if (stageError) {
     console.error("[confirmWorkAreas] stage update failed:", stageError.message);
@@ -964,7 +979,11 @@ export async function confirmWorkAreas(
   // page inside this action, which holds the confirmation button until that
   // render finishes. The client projects the committed stage immediately and
   // refreshes the router cache in the background.
-  return { success: true };
+  const result = { success: true as const };
+  traceSync("response.serialize", () => {
+    JSON.stringify(result);
+  });
+  return result;
 }
 
 async function createDynamicQuestionBlockIfNeeded(

@@ -7,6 +7,7 @@ import {
   type AuthOrgFailure,
   type AuthOrgUser,
 } from "@/lib/security/auth-org-evaluation";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import { createClient } from "@/lib/supabase/server";
 
 export type { AuthOrgFailure, AuthOrgUser } from "@/lib/security/auth-org-evaluation";
@@ -67,10 +68,10 @@ export function resetUnderlyingAuthResolutionCount(): void {
 async function resolveAuthOrgContextUncached(): Promise<AuthOrgResult> {
   noteUnderlyingAuthResolution();
 
-  const supabase = await createClient();
+  const supabase = await traceOp("auth.createClient", () => createClient());
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await traceOp("auth.getUser", () => supabase.auth.getUser());
 
   if (!user) {
     return {
@@ -80,11 +81,9 @@ async function resolveAuthOrgContextUncached(): Promise<AuthOrgResult> {
     };
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile } = await traceOp("auth.profile", () =>
+    supabase.from("profiles").select("org_id").eq("id", user.id).maybeSingle()
+  );
 
   if (!profile?.org_id) {
     return {
@@ -94,11 +93,9 @@ async function resolveAuthOrgContextUncached(): Promise<AuthOrgResult> {
     };
   }
 
-  const { data: organisation } = await supabase
-    .from("organisations")
-    .select("id")
-    .eq("id", profile.org_id)
-    .maybeSingle();
+  const { data: organisation } = await traceOp("auth.organisation", () =>
+    supabase.from("organisations").select("id").eq("id", profile.org_id).maybeSingle()
+  );
 
   const evaluated = evaluateAuthOrgInputs({
     user: { id: user.id, email: user.email },

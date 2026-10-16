@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { traceSync } from "@/lib/perf/confirm-trace";
 import { resolveBillingEnvironment } from "@/lib/billing/environment";
 import { loadOrgBillingState } from "@/lib/billing/state";
 import { createSupabaseBillingStore } from "@/lib/billing/supabase-store";
@@ -16,11 +17,11 @@ async function getOrgBillingStateUncached(
   orgId: string
 ): Promise<OrgBillingState> {
   const billingEnvironment = resolveBillingEnvironment();
-  return loadOrgBillingState(
-    orgId,
-    billingEnvironment,
-    createSupabaseBillingStore()
-  );
+  let store: ReturnType<typeof createSupabaseBillingStore> | undefined;
+  traceSync("billing.adminClient", () => {
+    store = createSupabaseBillingStore();
+  });
+  return loadOrgBillingState(orgId, billingEnvironment, store!);
 }
 
 export const getOrgBillingState: (

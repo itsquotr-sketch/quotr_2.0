@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import type { AssistantStage } from "@/components/assistant/types";
 import {
   requireAuthOrgContext,
@@ -30,12 +31,14 @@ async function loadProjectStageUncached(
   const { supabase, orgId } = auth;
   const [owned, projectResult] = await Promise.all([
     assertOrgOwnsActiveProjectForRead(auth, projectId),
-    supabase
-      .from("projects")
-      .select("id, stage")
-      .eq("id", projectId)
-      .eq("org_id", orgId)
-      .maybeSingle(),
+    traceOp("db.projectStage", () =>
+      supabase
+        .from("projects")
+        .select("id, stage")
+        .eq("id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle()
+    ),
   ]);
   if ("error" in owned) {
     return { error: "Project not found." as const };
