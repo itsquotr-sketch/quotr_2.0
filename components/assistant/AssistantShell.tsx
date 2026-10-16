@@ -209,6 +209,7 @@ import {
   type GenerateEstimateStage,
 } from "@/lib/assistant/clarify/generate-sync";
 import type { ClarifyCandidate, ComposeClarifyInput } from "@/lib/assistant/clarify/types";
+import { getConstraintTemplateSeeds } from "@/lib/assistant/constraint-templates";
 import {
   ASSISTANT_MODES_PRIMARY,
   deriveAssistantUiMode,
@@ -356,6 +357,36 @@ function saveErrorCopy(raw?: string | null): string {
   return presentAssistantError("save", raw);
 }
 
+function constraintKeyForQuestion(message: string): string | null {
+  const trimmed = message.trim();
+  if (!trimmed) return null;
+  return (
+    getConstraintTemplateSeeds().find((row) => row.question_text === trimmed)?.key ??
+    null
+  );
+}
+
+/** Persisted answers win per key. A partial save must not drop the other answers. */
+function overlayGenerateFacts(
+  snapshot: readonly EstimateFact[],
+  settled: readonly EstimateFact[]
+): EstimateFact[] {
+  return settled.reduce<EstimateFact[]>(
+    (next, row) => overlayFact(next, row),
+    [...snapshot]
+  );
+}
+
+function factsForGenerate(
+  snapshot: readonly EstimateFact[],
+  mutationFacts: readonly EstimateFact[]
+): EstimateFact[] {
+  return overlayGenerateFacts(
+    snapshot,
+    settledFactsForGenerate([] as EstimateFact[], mutationFacts)
+  );
+}
+
 function sameSavedFactValue(canonical: unknown, overlay: unknown): boolean {
   if (canonical === overlay) return true;
   if (canonical == null || overlay == null) return false;
@@ -401,6 +432,8 @@ export function AssistantShell({
 
   const pendingWriteTrackerRef = useRef(createPendingWriteTracker());
   const generateLockRef = useRef(createGenerateOnceLock());
+  const generateFailureStickyRef = useRef(false);
+  const sawEstimateRef = useRef(false);
   const failedSpecSavesRef = useRef(new Map<string, FailedSpecReplay>());
   const replayFailedSpecSavesRef = useRef<() => void>(() => {});
   const generateUiStartedAtRef = useRef(0);
@@ -501,9 +534,30 @@ export function AssistantShell({
     useState<GenerateEstimateStage>("building");
   const [generateStartedAt, setGenerateStartedAt] = useState(0);
   const [generateNotice, setGenerateNotice] = useState<string | null>(null);
+  const [revealConstraintKey, setRevealConstraintKey] = useState<string | null>(
+    null
+  );
   const [generateReturnFocusId, setGenerateReturnFocusId] = useState<
     string | null
   >(null);
+  const publishGenerateFailure = useCallback(
+    (message: string, focusId?: string | null) => {
+      const key =
+        (focusId?.startsWith("pc:") ? focusId.slice(3) : null) ??
+        constraintKeyForQuestion(message);
+      generateFailureStickyRef.current = true;
+      setGenerateNotice(message);
+      setRevealConstraintKey(key);
+      setGenerateReturnFocusId(focusId ?? (key ? `pc:${key}` : null));
+    },
+    []
+  );
+  const releaseGenerateFeedback = useCallback(() => {
+    if (generateFailureStickyRef.current || generateLockRef.current.locked) {
+      return;
+    }
+    setGenerateNotice(null);
+  }, []);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [regenerateStartedAt, setRegenerateStartedAt] = useState(0);
   const [isSavingMargin, setIsSavingMargin] = useState(false);
@@ -950,6 +1004,10 @@ export function AssistantShell({
   const runAction = useCallback(
     async (action: PendingAction, fn: () => Promise<AssistantActionState>) => {
       if (actionLockRef.current) {
+        if (action === "estimate") {
+          publishGenerateFailure("The estimate is already updating.");
+          setIsGenerating(false);
+        }
         return { error: "The estimate is already updating." };
       }
 
@@ -971,7 +1029,7 @@ export function AssistantShell({
 
         if (result.error) {
           if (action === "estimate") {
-            setGenerateNotice(
+            publishGenerateFailure(
               presentAssistantError("estimate_generate", result.error)
             );
           } else {
@@ -1006,6 +1064,7 @@ export function AssistantShell({
           action === "estimate" || action === "regenerate";
         const generation = result.estimateGeneration;
         let shouldRefresh = true;
+        let estimateApplied = false;
 
         if (isEstimateMutation && !result.recoveryRefresh && generation) {
           const incoming: AppliedEstimateGeneration = {
@@ -1030,6 +1089,7 @@ export function AssistantShell({
               setJobPlanEditFocus(null);
             }
             shouldRefresh = false;
+            estimateApplied = true;
           }
         } else if (
           !isEstimateMutation &&
@@ -1040,6 +1100,15 @@ export function AssistantShell({
           if (settleCanonicalMutation(result, incomingSeq)) {
             shouldRefresh = false;
           }
+        }
+
+        if (action === "estimate" && !estimateApplied) {
+          publishGenerateFailure(
+            result.recoveryRefresh || generation
+              ? "The estimate was saved but did not open. Try again."
+              : "The estimate was not created. Try again."
+          );
+          if (!result.recoveryRefresh && !generation) shouldRefresh = false;
         }
 
         if (shouldRefresh) {
@@ -1062,14 +1131,14 @@ export function AssistantShell({
         setActionError(message);
         setPendingAction(null);
         if (action === "estimate") {
+          publishGenerateFailure(
+            presentAssistantError("estimate_generate")
+          );
           const wait = remainingGenerateMinDisplayMs(
             previewPerfNow() - generateUiStartedAtRef.current
           );
           if (wait > 0) await delayMs(wait);
           setIsGenerating(false);
-          setGenerateNotice(
-            presentAssistantError("estimate_generate")
-          );
         }
         if (action === "regenerate") {
           setIsRegenerating(false);
@@ -1079,7 +1148,7 @@ export function AssistantShell({
         actionLockRef.current = false;
       }
     },
-    [estimateNavProjection, project.id, router, settleCanonicalMutation]
+    [estimateNavProjection, project.id, publishGenerateFailure, router, settleCanonicalMutation]
   );
 
   const persistJobDescription = useCallback((value: string) => {
@@ -1374,7 +1443,9 @@ export function AssistantShell({
     );
     setGenerateStartedAt(Date.now());
     setIsGenerating(true);
+    generateFailureStickyRef.current = false;
     setGenerateNotice(null);
+    setRevealConstraintKey(null);
     setGenerateReturnFocusId(null);
     recordPreviewPerf("estimate_generate_ack", 0);
 
@@ -1418,7 +1489,7 @@ export function AssistantShell({
             permissionReady: true,
           });
           if (decision.reason === "write_failed" || settled.failed) {
-            setActionError(
+            publishGenerateFailure(
               presentAssistantError("save", settled.failed?.error)
             );
             await abortGenerating();
@@ -1440,16 +1511,25 @@ export function AssistantShell({
               latestMutation.interviewFacts
             )
           : [];
-        const facts = settledFactsForGenerate(
-          generateAuthorityRef.current?.facts ?? snap?.facts ?? [],
-          mutationFacts
-        );
-        const constraints = latestMutation
+        const snapshotFacts =
+          generateAuthorityRef.current?.facts ?? snap?.facts ?? [];
+        const facts = factsForGenerate(snapshotFacts, mutationFacts);
+        const snapshotConstraints =
+          generateAuthorityRef.current?.constraints ?? snap?.constraints ?? [];
+        const mutationConstraints = latestMutation
           ? latestMutation.submittedConstraints.map((row) => ({
               key: row.key,
               value: row.value,
             }))
-          : generateAuthorityRef.current?.constraints ?? snap?.constraints ?? [];
+          : null;
+        const constraints = mutationConstraints
+          ? [
+              ...snapshotConstraints.filter(
+                (row) => !mutationConstraints.some((next) => next.key === row.key)
+              ),
+              ...mutationConstraints,
+            ]
+          : snapshotConstraints;
         const workAreas =
           latestMutation && latestMutation.workAreas.length > 0
             ? latestMutation.workAreas
@@ -1468,7 +1548,8 @@ export function AssistantShell({
           compose,
           workAreas,
           facts,
-          unresolvedRequiredProjectConditionKeys: [],
+          unresolvedRequiredProjectConditionKeys:
+            projectConditionsSnapshot?.unresolvedRequiredKeys ?? [],
           pendingWrites: 0,
         });
         const readyDecision = decideGenerateAfterSync({
@@ -1477,15 +1558,13 @@ export function AssistantShell({
           permissionReady: permission.ready,
         });
         if (!readyDecision.generate) {
-          setGenerateNotice(
-            permission.builderCopy ??
-              "One more detail is needed before the estimate can be built."
-          );
           const deckTarget = firstDeckDetailTarget(
             facts as never,
             workAreas.map((area) => ({ id: area.id, type: area.type }))
           );
-          setGenerateReturnFocusId(
+          publishGenerateFailure(
+            permission.builderCopy ??
+              "One more detail is needed before the estimate can be built.",
             permission.diagnostics.unresolved[0]?.id ??
               (deckTarget
                 ? deckPostHoleControlId(deckTarget.workAreaId, deckTarget.gapId)
@@ -1501,7 +1580,9 @@ export function AssistantShell({
             newer = await pendingWriteTrackerRef.current.waitAll();
           }
           if (newer.failed) {
-            setActionError(presentAssistantError("save", newer.failed.error));
+            publishGenerateFailure(
+              presentAssistantError("save", newer.failed.error)
+            );
             await abortGenerating();
             return;
           }
@@ -1519,37 +1600,36 @@ export function AssistantShell({
               ? lastMutation
               : undefined;
           const liveFacts = generateAuthorityRef.current?.facts ?? snap?.facts ?? facts;
-          const newerFacts = latestNewerMutation
+          const newerMutationFacts = latestNewerMutation
             ? jobPlanFactsFromReviewAndInterview(
                 latestNewerMutation.scopeReview,
                 latestNewerMutation.interviewFacts
               )
-            : liveFacts;
+            : [];
+          const readyFacts = factsForGenerate(liveFacts, newerMutationFacts);
           const newerPermission = evaluateGenerateEstimatePermission({
             compose: composeClarifyInputFromEstimateContext({
               stage: (lastMutation?.stage ?? snap?.stage ?? "work_area_questions") as ComposeClarifyInput["stage"],
               briefText: snap?.briefText ?? project.briefText,
               qualityLevel: snap?.qualityLevel ?? qualityLevel,
               workAreas,
-              facts: settledFactsForGenerate(facts, newerFacts),
+              facts: readyFacts,
               constraints,
             }),
             workAreas,
-            facts: settledFactsForGenerate(facts, newerFacts),
-            unresolvedRequiredProjectConditionKeys: [],
+            facts: readyFacts,
+            unresolvedRequiredProjectConditionKeys:
+              projectConditionsSnapshot?.unresolvedRequiredKeys ?? [],
             pendingWrites: 0,
           });
           if (!newerPermission.ready) {
-            const readyFacts = settledFactsForGenerate(facts, newerFacts);
             const deckTarget = firstDeckDetailTarget(
               readyFacts as never,
               workAreas.map((area) => ({ id: area.id, type: area.type }))
             );
-            setGenerateNotice(
+            publishGenerateFailure(
               newerPermission.builderCopy ??
-                "One more detail is needed before the estimate can be built."
-            );
-            setGenerateReturnFocusId(
+                "One more detail is needed before the estimate can be built.",
               newerPermission.diagnostics.unresolved[0]?.id ??
                 (deckTarget
                   ? deckPostHoleControlId(deckTarget.workAreaId, deckTarget.gapId)
@@ -1591,6 +1671,8 @@ export function AssistantShell({
     project.briefText,
     runAction,
     constraintsSubmitted,
+    projectConditionsSnapshot?.unresolvedRequiredKeys,
+    publishGenerateFailure,
     qualityLevel,
   ]);
 
@@ -1723,12 +1805,14 @@ export function AssistantShell({
       if (result.error) {
         setFactError(result.error);
         setActionError(result.error);
-        setGenerateNotice(null);
+        releaseGenerateFeedback();
         return result;
       }
 
-      setActionError(null);
-      setGenerateNotice(null);
+      if (!generateFailureStickyRef.current && !generateLockRef.current.locked) {
+        setActionError(null);
+      }
+      releaseGenerateFeedback();
       if (!settleCanonicalMutation(result, requestSeq)) {
         onRejectedCanonicalMutation(requestSeq);
       }
@@ -1748,6 +1832,7 @@ export function AssistantShell({
       project.id,
       runSerializedFactMutation,
       settleCanonicalMutation,
+      releaseGenerateFeedback,
       tagOverlayFactSeq,
     ]
   );
@@ -1761,40 +1846,49 @@ export function AssistantShell({
     }) => {
       setSavingConstraintKey(input.key);
       setConstraintError(null);
+      setPendingReadinessWrites((count) => count + 1);
       const requestSeq = ++factMutationSeqRef.current;
       overlaySeqByConstraintRef.current.set(input.key, requestSeq);
-
-      const result = await runSerializedFactMutation(() =>
-        updateProjectConstraint({
-          projectId: project.id,
-          key: input.key,
-          label: input.label,
-          value: input.value,
-          inputType: input.inputType,
-        })
-      );
-
-      if (result.error) {
-        setConstraintError(result.error);
-        setSavingConstraintKey(null);
-        return;
-      }
-
-      setLiveConstraints((prev) => {
-        const next = prev.filter((r) => r.key !== input.key);
-        next.push({
-          id: prev.find((r) => r.key === input.key)?.id ?? input.key,
-          key: input.key,
-          label: input.label,
-          value: input.value,
-          source: "user",
-        });
-        return next;
+      const work = (async () => {
+        try {
+          const result = await runSerializedFactMutation(() =>
+            updateProjectConstraint({
+              projectId: project.id,
+              key: input.key,
+              label: input.label,
+              value: input.value,
+              inputType: input.inputType,
+            })
+          );
+          if (result.error) {
+            setConstraintError(result.error);
+            return result;
+          }
+          setLiveConstraints((prev) => {
+            const next = prev.filter((row) => row.key !== input.key);
+            next.push({
+              id: prev.find((row) => row.key === input.key)?.id ?? input.key,
+              key: input.key,
+              label: input.label,
+              value: input.value,
+              source: "user",
+            });
+            return next;
+          });
+          if (!settleCanonicalMutation(result, requestSeq)) {
+            onRejectedCanonicalMutation(requestSeq);
+          }
+          return result;
+        } finally {
+          setSavingConstraintKey(null);
+          setPendingReadinessWrites((count) => Math.max(0, count - 1));
+        }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work, {
+        requestSeq,
+        keys: [`constraint:${input.key}`],
       });
-      setSavingConstraintKey(null);
-      if (!settleCanonicalMutation(result, requestSeq)) {
-        onRejectedCanonicalMutation(requestSeq);
-      }
+      await work;
     },
     [
       onRejectedCanonicalMutation,
@@ -2426,7 +2520,7 @@ export function AssistantShell({
             failedSpecSavesRef.current.set(identity, replay);
             setFailedSpecSaveCount(failedSpecSavesRef.current.size);
             setActionError(message);
-            setGenerateNotice(null);
+            releaseGenerateFeedback();
           }
           return { error: message };
         }
@@ -2436,9 +2530,15 @@ export function AssistantShell({
         if (failed && requestSeq >= failed.seq) {
           failedSpecSavesRef.current.delete(identity);
           setFailedSpecSaveCount(failedSpecSavesRef.current.size);
-          if (failedSpecSavesRef.current.size === 0) setActionError(null);
+          if (
+            failedSpecSavesRef.current.size === 0 &&
+            !generateFailureStickyRef.current &&
+            !generateLockRef.current.locked
+          ) {
+            setActionError(null);
+          }
         }
-        setGenerateNotice(null);
+        releaseGenerateFeedback();
         if (!settleCanonicalMutation(result, requestSeq)) {
           onRejectedCanonicalMutation(requestSeq);
         }
@@ -2450,7 +2550,7 @@ export function AssistantShell({
           failedSpecSavesRef.current.set(identity, replay);
           setFailedSpecSaveCount(failedSpecSavesRef.current.size);
           setActionError(message);
-          setGenerateNotice(null);
+          releaseGenerateFeedback();
         }
         return { error: message };
       } finally {
@@ -2469,6 +2569,7 @@ export function AssistantShell({
       onRejectedCanonicalMutation,
       project.id,
       runSerializedFactMutation,
+      releaseGenerateFeedback,
       settleCanonicalMutation,
       tagOverlayFactSeq,
       trackSavingSpecKey,
@@ -2528,7 +2629,7 @@ export function AssistantShell({
             if ([...failedSpecSavesRef.current.values()].includes(replay)) {
               setFailedSpecSaveCount(failedSpecSavesRef.current.size);
               setActionError(message);
-              setGenerateNotice(null);
+              releaseGenerateFeedback();
             }
             return { error: message };
           }
@@ -2544,8 +2645,14 @@ export function AssistantShell({
             }
           }
           setFailedSpecSaveCount(failedSpecSavesRef.current.size);
-          if (failedSpecSavesRef.current.size === 0) setActionError(null);
-          setGenerateNotice(null);
+          if (
+            failedSpecSavesRef.current.size === 0 &&
+            !generateFailureStickyRef.current &&
+            !generateLockRef.current.locked
+          ) {
+            setActionError(null);
+          }
+          releaseGenerateFeedback();
           if (!settleCanonicalMutation(result, requestSeq)) {
             onRejectedCanonicalMutation(requestSeq);
           }
@@ -2561,7 +2668,7 @@ export function AssistantShell({
           if ([...failedSpecSavesRef.current.values()].includes(replay)) {
             setFailedSpecSaveCount(failedSpecSavesRef.current.size);
             setActionError(message);
-            setGenerateNotice(null);
+            releaseGenerateFeedback();
           }
           return { error: message };
         } finally {
@@ -2580,6 +2687,7 @@ export function AssistantShell({
       onRejectedCanonicalMutation,
       project.id,
       runSerializedFactMutation,
+      releaseGenerateFeedback,
       settleCanonicalMutation,
       tagOverlayFactSeq,
       trackSavingSpecKey,
@@ -2715,6 +2823,22 @@ export function AssistantShell({
     };
   }, [estimateBase, marginOverlay]);
 
+  useEffect(() => {
+    const hasEstimateNow = Boolean(estimate);
+    if (
+      hasEstimateNow &&
+      !sawEstimateRef.current &&
+      generateFailureStickyRef.current
+    ) {
+      generateFailureStickyRef.current = false;
+      setGenerateNotice(null);
+      setRevealConstraintKey(null);
+      setGenerateReturnFocusId(null);
+      setIsGenerating(false);
+    }
+    sawEstimateRef.current = hasEstimateNow;
+  }, [estimate]);
+
   const jobPlanBaseFacts = useMemo(
     () => jobPlanFactsFromAssistantState(displayedAssistant),
     [displayedAssistant]
@@ -2758,11 +2882,13 @@ export function AssistantShell({
         qualityLevel: qualityLevel ?? project.qualityLevel,
         workAreas: displayWorkAreas,
         facts: jobPlanFacts,
-        constraints: liveConstraints.map((row) => ({
-          key: row.key,
-          value: row.value,
-          source: row.source,
-        })),
+        constraints: liveConstraints
+          .filter((row) => row.key !== revealConstraintKey)
+          .map((row) => ({
+            key: row.key,
+            value: row.value,
+            source: row.source,
+          })),
         jobPlan,
       }),
     [
@@ -2774,6 +2900,7 @@ export function AssistantShell({
       project.briefText,
       project.qualityLevel,
       qualityLevel,
+      revealConstraintKey,
       stage,
     ]
   );
@@ -2919,10 +3046,11 @@ export function AssistantShell({
     pendingWrites: detailsJourney.phase === "saving" ? 1 : 0,
     enoughToEstimate: detailsJourney.phase === "ready",
   });
-  const detailsStatusLabel = detailsStageStatusLabel(
-    detailsPhase,
-    detailsJourney.requiredRemaining
-  );
+  const generateBlockedReady =
+    Boolean(generateNotice) && detailsJourney.phase === "ready";
+  const detailsStatusLabel = generateBlockedReady
+    ? "Try again"
+    : detailsStageStatusLabel(detailsPhase, detailsJourney.requiredRemaining);
   const deckReadySummary = compactDeckReadySummary({
     facts: jobPlanFacts,
     workAreaId: displayWorkAreas.find((area) => area.type === "deck")?.id ?? "",
@@ -4209,10 +4337,12 @@ export function AssistantShell({
             <CollapsibleStageCard
               title="Details"
               subtitle={
-                detailsJourney.phase === "needs_details"
-                  ? detailsJourney.remainingCopy ??
-                    detailsStageSubtitle(detailsJourney.phase)
-                  : detailsStatusLabel
+                generateBlockedReady
+                  ? generateNotice ?? undefined
+                  : detailsJourney.phase === "needs_details"
+                    ? detailsJourney.remainingCopy ??
+                      detailsStageSubtitle(detailsJourney.phase)
+                    : detailsStatusLabel
               }
               statusLabel={detailsStatusLabel}
               statusVariant="current"
@@ -4707,6 +4837,7 @@ export function AssistantShell({
             postHoleAnswerCount={detailsJourney.requiredRemaining}
             detailsActionLabel={detailsJourney.actionLabel}
             detailsOwnsCreate={CLARIFY_IS_PRIMARY && !estimate}
+            readySummary={generateNotice}
             holdCreateEstimate={holdCreateEstimate}
             detailsSaving={savingDetails && holdCreateEstimate}
             onFinishPostHoles={openDeckDetails}

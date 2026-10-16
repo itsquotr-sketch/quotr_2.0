@@ -153,6 +153,7 @@ function ClarifyQuestion({
       )}
       data-clarify-question
       data-clarify-id={candidate.id}
+      tabIndex={focused ? -1 : undefined}
       data-clarify-return-focus={focused ? "true" : undefined}
       data-clarify-fact-key={candidate.factKey ?? undefined}
       data-clarify-constraint-key={candidate.constraintKey ?? undefined}
@@ -573,7 +574,8 @@ export function ClarifyPanel({
       intentQueued: true,
       savesPending: false,
       persistError: failedAny,
-      localAnswersComplete: localAnswersComplete && !failedAny,
+      localAnswersComplete:
+        (localAnswersComplete || visibleFormComplete) && !failedAny,
     });
     if (action === "wait") return;
     if (action !== "generate") {
@@ -595,6 +597,7 @@ export function ClarifyPanel({
     pendingIds.length,
     persistError,
     finishingAnswers,
+    visibleFormComplete,
   ]);
 
   useEffect(() => {
@@ -605,16 +608,21 @@ export function ClarifyPanel({
   }, [isGenerating]);
 
   useEffect(() => {
-    if (!returnFocusId || isGenerating) return;
+    if (isGenerating) return;
+    const question = returnFocusId
+      ? (document.querySelector(
+          `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
+        ) ?? document.getElementById(returnFocusId))
+      : null;
     const node =
-      document.querySelector(
-        `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
-      ) ?? document.getElementById(returnFocusId);
-    if (node instanceof HTMLElement) {
-      node.focus();
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [isGenerating, returnFocusId]);
+      question instanceof HTMLElement
+        ? question
+        : document.getElementById("generate-estimate-notice");
+    if (!(node instanceof HTMLElement)) return;
+    node.tabIndex = -1;
+    node.focus();
+    node.scrollIntoView({ block: "center" });
+  }, [generateNotice, isGenerating, returnFocusId]);
 
   if (isGenerating) {
     return (
@@ -635,8 +643,13 @@ export function ClarifyPanel({
     return (
       <div className="space-y-3">
         <PersistError error={persistError} errorRef={persistErrorRef} />
-        {generateNotice && !persistError ? (
-          <p className="text-sm font-medium" role="alert">
+        {generateNotice ? (
+          <p
+            id="generate-estimate-notice"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+            tabIndex={-1}
+          >
             {generateNotice}
           </p>
         ) : null}
@@ -689,8 +702,13 @@ export function ClarifyPanel({
         {countCopy}
       </p>
       <PersistError error={persistError} errorRef={persistErrorRef} />
-        {generateNotice && !persistError ? (
-          <p className="text-sm font-medium" role="alert">
+        {generateNotice ? (
+          <p
+            id="generate-estimate-notice"
+            className="text-sm font-medium text-destructive"
+            role="alert"
+            tabIndex={-1}
+          >
             {generateNotice}
           </p>
         ) : null}
