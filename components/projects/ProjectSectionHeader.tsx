@@ -446,7 +446,7 @@ function Destination({
     return (
       <Link
         href={href}
-        prefetch={false}
+        prefetch
         className={className}
         data-project-column={column}
         data-project-stage={step}

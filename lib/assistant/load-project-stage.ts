@@ -27,19 +27,21 @@ async function loadProjectStageUncached(
     };
   }
 
-  const owned = await assertOrgOwnsActiveProjectForRead(auth, projectId);
+  const { supabase, orgId } = auth;
+  const [owned, projectResult] = await Promise.all([
+    assertOrgOwnsActiveProjectForRead(auth, projectId),
+    supabase
+      .from("projects")
+      .select("id, stage")
+      .eq("id", projectId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+  ]);
   if ("error" in owned) {
     return { error: "Project not found." as const };
   }
 
-  const { supabase, orgId } = auth;
-
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select("id, stage")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const { data: project, error } = projectResult;
 
   if (error || !project) {
     return { error: "Project not found." as const };

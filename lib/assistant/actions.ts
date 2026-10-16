@@ -880,21 +880,38 @@ export async function confirmWorkAreas(
     return { error: "At least one work area must be confirmed." };
   }
 
-  const loaded = await loadProjectStage(projectId);
+  const authResult = await requireAuthOrgContext();
+  if (!authResult.ok) {
+    return {
+      error:
+        authResult.code === "organisation_required"
+          ? authResult.error
+          : "Not authenticated.",
+    };
+  }
+
+  const [loaded, confirmDenied, estimateLookup] = await Promise.all([
+    loadProjectStage(projectId),
+    permissionDeniedError({
+      orgId: authResult.orgId,
+      userId: authResult.user.id,
+      permission: "projects.edit",
+      entitlement: "projects.create",
+    }),
+    authResult.supabase
+      .from("estimates")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("org_id", authResult.orgId)
+      .maybeSingle(),
+  ]);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
+  if (confirmDenied) return confirmDenied;
 
   const { auth, stage } = loaded;
   const { supabase } = auth;
-
-  const confirmDenied = await permissionDeniedError({
-    orgId: auth.orgId,
-    userId: auth.user.id,
-    permission: "projects.edit",
-    entitlement: "projects.create",
-  });
-  if (confirmDenied) return confirmDenied;
 
   if (isStageAtOrBeyond(stage, "quality")) {
     return { success: true };
@@ -939,7 +956,9 @@ export async function confirmWorkAreas(
     };
   }
 
-  await markEstimateStaleWithContext(auth, projectId);
+  if (estimateLookup.error || estimateLookup.data?.id) {
+    await markEstimateStaleWithContext(auth, projectId);
+  }
 
   // The project route is dynamic. Revalidating here rebuilds the full project
   // page inside this action, which holds the confirmation button until that
