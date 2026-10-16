@@ -35,7 +35,6 @@ import {
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
   localAnswersCompleteForGenerate,
-  nextCreateEstimateLatch,
   shouldHoldClarifyQuestionUntilPersist,
   shouldIgnoreDuplicateClarifyActivation,
 } from "@/lib/assistant/clarify/interaction";
@@ -149,7 +148,7 @@ function ClarifyQuestion({
   return (
     <div
       className={cn(
-        "scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] space-y-2 py-3 first:pt-0 md:scroll-mb-24",
+        "space-y-2 py-3 first:pt-0",
         focused && "rounded-lg ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
       )}
       data-clarify-question
@@ -196,7 +195,7 @@ function PersistError({
 }) {
   if (!error) return null;
   return (
-    <p ref={errorRef} className="scroll-mb-[calc(9rem+env(safe-area-inset-bottom))] text-sm text-destructive" role="alert" tabIndex={-1}>
+    <p ref={errorRef} className="text-sm text-destructive" role="alert" tabIndex={-1}>
       {error}
     </p>
   );
@@ -254,7 +253,6 @@ export function ClarifyPanel({
   const queueFailedRef = useRef(false);
   const mountedRef = useRef(true);
   const [finishingAnswers, setFinishingAnswers] = useState(false);
-  const [createLatched, setCreateLatched] = useState(false);
 
   const locallyResolvedIds = useMemo(() => new Set(resolvedIds), [resolvedIds]);
   const remaining = effectiveRemainingRequiredCount({
@@ -483,28 +481,18 @@ export function ClarifyPanel({
     canInitiateGenerate: readiness.canInitiateGenerate === true,
     enoughToEstimate: readiness.enoughToEstimate === true,
   });
-  const postHoleGapCount = deckAreas.reduce(
+  const postHoleGaps = deckAreas.reduce(
     (count, area) => count + deckDetailGaps(area.facts, area.workAreaId).length,
     0
   );
-  const visibleUnanswered = visibleCandidateCount > 0 || postHoleGapCount > 0;
-  const locallyValid =
-    postHoleGapCount === 0 &&
-    !persistError &&
-    (localAnswersComplete || holdCreateEstimate || authoritativeGenerate);
-  const createLatch = nextCreateEstimateLatch({
-    latched: createLatched,
-    locallyValid,
-    visibleUnanswered,
-    persistError: Boolean(persistError),
-    savesPending,
-    finishing: finishingAnswers,
-    generating: Boolean(isGenerating),
-  });
-  if (createLatch !== createLatched) setCreateLatched(createLatch);
-  if (!createLatch && generateIntentRef.current) generateIntentRef.current = false;
-  if (!createLatch && finishingAnswers && !isGenerating) setFinishingAnswers(false);
-  const showCreateEstimate = Boolean(onEstimateNow) && createLatch;
+  const visibleFormComplete =
+    deckAreas.length > 0 && visibleCandidateCount === 0 && postHoleGaps === 0;
+  const showCreateEstimate =
+    Boolean(onEstimateNow) &&
+    (localAnswersComplete ||
+      visibleFormComplete ||
+      (allowCreateEstimate && (authoritativeGenerate || holdCreateEstimate)) ||
+      Boolean(persistError && detailsSaveFailed));
   const retryFailedDetails = Boolean(
     detailsSaveFailed && persistError && !isGenerating
   );
@@ -541,10 +529,8 @@ export function ClarifyPanel({
     });
     if (action === "ignore") return;
     setFinishingAnswers(true);
-    if (action === "queue") {
-      generateIntentRef.current = true;
-      return;
-    }
+    // The shell awaits the in-flight save, then generates. Starting it here
+    // keeps the click if this button unmounts before the save settles.
     if (onEstimateNow?.() === false) {
       generateIntentRef.current = true;
     }
@@ -559,22 +545,7 @@ export function ClarifyPanel({
 
   useEffect(() => {
     if (!persistError) return;
-    let cancelled = false;
-    const focusError = () => {
-      if (cancelled) return;
-      const node = persistErrorRef.current;
-      if (!(node instanceof HTMLElement)) return;
-      node.focus({ preventScroll: true });
-      node.scrollIntoView({ block: "center", inline: "nearest" });
-    };
-    const frame = window.requestAnimationFrame(() => {
-      focusError();
-      window.requestAnimationFrame(focusError);
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-    };
+    persistErrorRef.current?.focus();
   }, [persistError]);
 
   useEffect(() => {
@@ -627,6 +598,13 @@ export function ClarifyPanel({
   ]);
 
   useEffect(() => {
+    if (!isGenerating) return;
+    document
+      .querySelector("[data-clarify-panel]")
+      ?.scrollIntoView({ block: "nearest" });
+  }, [isGenerating]);
+
+  useEffect(() => {
     if (!returnFocusId || isGenerating) return;
     const node =
       document.querySelector(
@@ -637,6 +615,21 @@ export function ClarifyPanel({
       node.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isGenerating, returnFocusId]);
+
+  if (isGenerating) {
+    return (
+      <div
+        className="max-w-[880px] space-y-4"
+        data-clarify-panel
+        aria-busy="true"
+      >
+        <GenerateEstimateStatus
+          stage={generateStage}
+          startedAt={generateStartedAt}
+        />
+      </div>
+    );
+  }
 
   if (showReady && !finishingAnswers && !savesPending && !postHolesComplete) {
     return (
@@ -686,18 +679,12 @@ export function ClarifyPanel({
 
   return (
     <div
-      className="max-w-[880px] space-y-4 overflow-x-hidden pb-2 max-md:pb-[4.75rem] md:space-y-5"
+      className="max-w-[880px] space-y-4 overflow-x-hidden pb-2 max-md:pb-24 md:space-y-5"
       data-clarify-panel
       data-details-complete-capture="true"
       data-clarify-count={view.visibleCount}
       aria-busy={isGenerating ? "true" : undefined}
     >
-      {isGenerating && !showCreateEstimate ? (
-        <GenerateEstimateStatus
-          stage={generateStage}
-          startedAt={generateStartedAt}
-        />
-      ) : null}
       <p className={settledRemaining == null ? "text-sm text-muted-foreground" : "sr-only"} data-clarify-progress>
         {countCopy}
       </p>
@@ -920,11 +907,10 @@ export function ClarifyPanel({
       (savesPending && !showCreateEstimate && !finishingAnswers && !isGenerating && !continuePending) ? (
       <div
         className={cn(
-          "z-30 border-t border-border bg-background px-3",
-          "max-md:fixed max-md:inset-x-0",
+          "sticky z-30 border-t border-border bg-background px-3",
           mobileActionDockClass,
           mobileActionInnerClass,
-          "md:sticky md:bottom-0"
+          "md:bottom-0"
         )}
         data-clarify-cta-bar=""
       >
@@ -934,16 +920,10 @@ export function ClarifyPanel({
               type="button"
               className="min-h-11 w-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               data-clarify-primary-cta
-              data-create-estimate-latched={createLatch ? "true" : undefined}
               data-clarify-generate-queued={finishingAnswers ? "true" : undefined}
               data-create-estimate-progress={createEstimateBusy ? createEstimateLabel : undefined}
               disabled={createEstimateBusy}
               aria-busy={createEstimateBusy || undefined}
-              aria-label={
-                savesPending && !createEstimateBusy
-                  ? "Create estimate. Saving will finish first."
-                  : undefined
-              }
               onClick={requestCreateEstimate}
             >
               {createEstimateBusy ? (

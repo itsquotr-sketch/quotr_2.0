@@ -237,7 +237,7 @@ export function createEstimateActionLabel(input: {
     return ASSISTANT_ACTION_LABELS.estimateNow;
   }
   if (input.generating && input.stage === "building") {
-    return ASSISTANT_LOADING_COPY.creatingEstimate;
+    return ASSISTANT_LOADING_COPY.creatingYourEstimate;
   }
   return ASSISTANT_LOADING_COPY.finishingDetails;
 }
@@ -269,25 +269,4 @@ export function clarifyQueuedGenerateAction(params: {
   if (!params.intentQueued || params.savesPending) return "wait";
   if (params.persistError || !params.localAnswersComplete) return "cancel";
   return "generate";
-}
-
-/**
- * Once the current answers are locally valid, Create estimate stays mounted
- * through the pending save. A newly visible unanswered question releases it.
- * A failed save keeps it mounted so the same control can retry.
- */
-export function nextCreateEstimateLatch(input: {
-  readonly latched: boolean;
-  readonly locallyValid: boolean;
-  readonly visibleUnanswered: boolean;
-  readonly persistError: boolean;
-  readonly savesPending: boolean;
-  readonly finishing: boolean;
-  readonly generating: boolean;
-}): boolean {
-  if (input.generating) return true;
-  if (input.persistError && (input.latched || input.locallyValid || input.finishing)) return true;
-  if (input.visibleUnanswered) return false;
-  if (input.finishing || input.locallyValid) return true;
-  return input.latched && input.savesPending;
 }
