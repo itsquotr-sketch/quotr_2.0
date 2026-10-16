@@ -1128,7 +1128,7 @@ export function AssistantShell({
           action === "brief"
             ? UNKNOWN_ANALYSIS_ERROR
             : "Something went wrong. Please try again.";
-        setActionError(message);
+        if (action !== "estimate") setActionError(message);
         setPendingAction(null);
         if (action === "estimate") {
           publishGenerateFailure(
