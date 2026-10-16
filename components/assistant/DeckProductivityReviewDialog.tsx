@@ -9,11 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export type DeckProductivityDecision = {
   readonly id: string;
   readonly workAreaId: string;
   readonly title: string;
+  readonly rateUnit: string;
   readonly source?: string;
   readonly storedHours: string;
   readonly alternativePhrase?: string;
@@ -59,6 +61,13 @@ type LineChoice = {
   readonly hours: string;
 };
 
+function choiceReady(choice: LineChoice | undefined): boolean {
+  if (!choice) return false;
+  if (choice.kind !== "job") return true;
+  const hours = Number(choice.hours);
+  return Number.isFinite(hours) && hours > 0;
+}
+
 export function DeckProductivityReviewDialog({
   open,
   decisions,
@@ -74,15 +83,14 @@ export function DeckProductivityReviewDialog({
   const [choices, setChoices] = useState<Record<string, LineChoice>>({});
   const applyingRef = useRef(false);
   const shownError = error ?? loadError;
-  const applyLabel =
-    decisions.length === 2
-      ? "Apply both decisions and update estimate"
-      : "Apply the decisions and update estimate";
+  const selectionsReady =
+    decisions.length > 0 &&
+    decisions.every((decision) => choiceReady(choices[decision.id]));
 
   useEffect(() => {
-    if (!shownError) return;
+    if (!shownError || !open) return;
     errorRef.current?.focus();
-  }, [shownError]);
+  }, [open, shownError]);
 
   useEffect(() => {
     if (open && decisions.length === 0 && !loadError && !pending) onOpenChange(false);
@@ -96,30 +104,30 @@ export function DeckProductivityReviewDialog({
   }
 
   async function apply() {
-    if (pending || applyingRef.current) return;
+    if (pending || applyingRef.current || !selectionsReady) return;
     const selections: DeckProductivitySelection[] = [];
     for (const decision of decisions) {
       const choice = choices[decision.id];
-      if (!choice) {
+      if (!choice || !choiceReady(choice)) {
         setError("Choose one option for every held line before updating the estimate.");
         return;
       }
       if (choice.kind === "job") {
-        const hours = Number(choice.hours);
-        if (!Number.isFinite(hours) || hours <= 0) {
-          setError("Enter a productivity greater than zero for the revised rate.");
-          return;
-        }
-        selections.push({ decision, choice: "job", jobHours: hours });
+        selections.push({
+          decision,
+          choice: "job",
+          jobHours: Number(choice.hours),
+        });
         continue;
       }
       selections.push({ decision, choice: choice.kind });
     }
     setError(null);
     applyingRef.current = true;
+    const pendingApply = onApply(selections);
     onOpenChange(false);
     try {
-      const result = await onApply(selections);
+      const result = await pendingApply;
       if (result?.error) {
         setError(result.error);
         onOpenChange(true);
@@ -136,123 +144,163 @@ export function DeckProductivityReviewDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (pending) return;
+        if (pending || applyingRef.current) return;
         onOpenChange(next);
       }}
     >
       <DialogContent
         showCloseButton
-        className="max-h-[calc(100dvh-7.5rem)] overflow-x-hidden overflow-y-auto overscroll-contain max-sm:top-4 max-sm:translate-y-0 sm:max-w-lg"
+        className="flex max-h-[min(40rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 max-sm:top-3 max-sm:bottom-[calc(5.75rem+env(safe-area-inset-bottom))] max-sm:h-auto max-sm:max-h-none max-sm:translate-y-0 sm:max-w-lg"
       >
-        <DialogHeader>
-          <DialogTitle id={titleId}>Review Deck productivity</DialogTitle>
-          <DialogDescription>
-            These stored calibrations stay on the organisation. A choice here applies to this job only.
-          </DialogDescription>
-        </DialogHeader>
-        {shownError ? (
-          <div className="space-y-2">
-            <p
-              ref={errorRef}
-              tabIndex={-1}
-              className="text-sm text-destructive outline-none"
-              role="alert"
-            >
-              {shownError}
-            </p>
-            {loadError && onRetry ? (
-              <Button type="button" className="h-11 min-h-11" onClick={onRetry}>
-                Retry
-              </Button>
-            ) : shownError ? (
-              <Button
-                type="button"
-                className="h-11 min-h-11"
-                data-productivity-retry=""
-                onClick={() => void apply()}
-              >
-                Retry
-              </Button>
-            ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-4">
+          <DialogHeader>
+            <DialogTitle id={titleId}>Review Deck productivity</DialogTitle>
+            <DialogDescription>
+              These stored calibrations stay on the organisation. A choice here applies to this job only.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {decisions.map((decision) => {
+              const choice = choices[decision.id];
+              return (
+                <section
+                  key={decision.id}
+                  className="min-w-0 space-y-3 rounded-lg border border-border p-3"
+                  data-productivity-review={decision.factKey}
+                >
+                  <div>
+                    <h3 className="text-sm font-semibold break-words">{decision.title}</h3>
+                    <p className="mt-1 text-sm tabular-nums">{decision.quantityLabel}</p>
+                  </div>
+                  <div className="flex flex-col gap-2" role="group" aria-label={decision.title}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "h-auto min-h-11 w-full flex-col items-start gap-0.5 whitespace-normal px-3 py-2 text-left",
+                        choice?.kind === "calibration" &&
+                          "border-2 border-primary bg-primary/10 font-semibold"
+                      )}
+                      aria-pressed={choice?.kind === "calibration"}
+                      data-productivity-choice="calibration"
+                      disabled={pending}
+                      onClick={() => select(decision.id, "calibration")}
+                    >
+                      <span>Company calibration{choice?.kind === "calibration" ? " · Selected" : ""}</span>
+                      <span className="text-sm font-normal">{decision.storedHours}</span>
+                      <span className="text-sm font-normal">{decision.afterAccessLabel} on this job</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "h-auto min-h-11 w-full flex-col items-start gap-0.5 whitespace-normal px-3 py-2 text-left",
+                        choice?.kind === "benchmark" &&
+                          "border-2 border-primary bg-primary/10 font-semibold"
+                      )}
+                      aria-pressed={choice?.kind === "benchmark"}
+                      data-productivity-choice="benchmark"
+                      disabled={pending}
+                      onClick={() => select(decision.id, "benchmark")}
+                    >
+                      <span>Quotr alternative{choice?.kind === "benchmark" ? " · Selected" : ""}</span>
+                      <span className="text-sm font-normal">{decision.alternativePhrase}</span>
+                      <span className="text-sm font-normal">{decision.alternativeAfterLabel} on this job</span>
+                    </Button>
+                    <label
+                      className={cn(
+                        "block rounded-lg border px-3 py-2 text-sm",
+                        choice?.kind === "job"
+                          ? "border-2 border-primary bg-primary/10 font-semibold"
+                          : "border-border"
+                      )}
+                    >
+                      <span>
+                        Use a different rate for this job
+                        {choice?.kind === "job" ? " · Selected" : ""}
+                      </span>
+                      <span className="mt-1 flex items-center gap-2 font-normal">
+                        <input
+                          className="block h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2"
+                          inputMode="decimal"
+                          value={choice?.hours ?? ""}
+                          disabled={pending}
+                          aria-label={`Use a different rate for this job (${decision.rateUnit})`}
+                          onFocus={() => select(decision.id, "job")}
+                          onChange={(event) =>
+                            setChoices((current) => ({
+                              ...current,
+                              [decision.id]: { kind: "job", hours: event.target.value },
+                            }))
+                          }
+                        />
+                        <span>{decision.rateUnit}</span>
+                      </span>
+                    </label>
+                  </div>
+                  <p className="text-sm text-foreground/80 break-words">{decision.reason}</p>
+                  <details className="text-sm">
+                    <summary className="cursor-pointer font-medium">
+                      How was this rate recorded?
+                    </summary>
+                    <div
+                      className="mt-2 space-y-2 text-foreground/80"
+                      data-productivity-calculation={decision.factKey}
+                    >
+                      <p className="break-words">Original task: {decision.task}</p>
+                      <p className="break-words">
+                        Company calibration {decision.storedHours}: {decision.beforeAccessLabel} before access, {decision.afterAccessLabel} after access.
+                      </p>
+                      <p className="break-words">
+                        Quotr {decision.alternativePhrase}: {decision.alternativeBeforeLabel} before access, {decision.alternativeAfterLabel} after access.
+                      </p>
+                      <p>Rate source: {decision.source ?? "Company calibration"}</p>
+                    </div>
+                  </details>
+                </section>
+              );
+            })}
           </div>
-        ) : null}
-        <div className="space-y-4">
-          {decisions.map((decision) => (
-            <section
-              key={decision.id}
-              className="min-w-0 space-y-2 rounded-lg border border-border p-3"
-              data-productivity-review={decision.factKey}
-            >
-              <h3 className="text-sm font-semibold break-words">{decision.title}</h3>
-              <p className="text-sm break-words">
-                Original task: {decision.task}
-              </p>
-              <p className="text-sm break-words" data-productivity-calculation={decision.factKey}>
-                {decision.quantityLabel}. Company calibration {decision.storedHours}: {decision.beforeAccessLabel} before access, {decision.afterAccessLabel} after access.
-              </p>
-              <p className="text-sm break-words">
-                Quotr {decision.alternativePhrase}: {decision.alternativeBeforeLabel} before access, {decision.alternativeAfterLabel} after access.
-              </p>
-              <p className="text-sm text-foreground/80">
-                Rate source: {decision.source ?? "Company calibration"}
-              </p>
-              <p className="text-sm text-foreground/80 break-words">{decision.reason}</p>
-              <div className="flex flex-col gap-2" role="group" aria-label={decision.title}>
-                <Button
-                  type="button"
-                  variant={choices[decision.id]?.kind === "calibration" ? "default" : "outline"}
-                  className="h-11 min-h-11"
-                  aria-pressed={choices[decision.id]?.kind === "calibration"}
-                  disabled={pending}
-                  onClick={() => select(decision.id, "calibration")}
-                >
-                  Use company calibration
-                </Button>
-                <Button
-                  type="button"
-                  variant={choices[decision.id]?.kind === "benchmark" ? "default" : "outline"}
-                  className="h-11 min-h-11"
-                  aria-pressed={choices[decision.id]?.kind === "benchmark"}
-                  disabled={pending}
-                  onClick={() => select(decision.id, "benchmark")}
-                >
-                  {decision.benchmarkLabel ?? "Use Quotr rate"}
-                </Button>
-                <label className="text-sm">
-                  Revised rate for this job (h)
-                  <input
-                    className="mt-1 block h-11 w-full rounded-md border border-border bg-background px-2"
-                    inputMode="decimal"
-                    value={choices[decision.id]?.hours ?? ""}
-                    disabled={pending}
-                    aria-pressed={choices[decision.id]?.kind === "job"}
-                    onFocus={() => select(decision.id, "job")}
-                    onChange={(event) =>
-                      setChoices((current) => ({
-                        ...current,
-                        [decision.id]: { kind: "job", hours: event.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </section>
-          ))}
         </div>
-        <Button
-          type="button"
-          className="h-11 min-h-11 w-full"
-          data-productivity-apply
-          disabled={pending || decisions.length === 0}
-          aria-busy={pending || undefined}
-          onClick={() => void apply()}
-        >
-          {pending
-            ? decisions.length === 2
-              ? "Applying both decisions…"
-              : "Applying the decisions…"
-            : applyLabel}
-        </Button>
+        <div className="shrink-0 space-y-2 border-t border-border bg-popover px-6 py-3">
+          {shownError ? (
+            <div className="space-y-2">
+              <p
+                ref={errorRef}
+                tabIndex={-1}
+                className="text-sm text-destructive outline-none"
+                role="alert"
+              >
+                {shownError}
+              </p>
+              {loadError && onRetry ? (
+                <Button type="button" className="h-11 min-h-11 w-full" onClick={onRetry}>
+                  Retry
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="h-11 min-h-11 w-full"
+                  data-productivity-retry=""
+                  disabled={pending}
+                  onClick={() => void apply()}
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            className="h-11 min-h-11 w-full"
+            data-productivity-apply
+            disabled={pending || !selectionsReady}
+            aria-busy={pending || undefined}
+            onClick={() => void apply()}
+          >
+            Use selections
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

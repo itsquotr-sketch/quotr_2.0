@@ -7,6 +7,7 @@ import {
 } from "@/components/pricing/PrepareFinalPricingButton";
 import { Button } from "@/components/ui/button";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { productivityApplyProgressCopy } from "@/lib/estimate/deck-productivity-apply";
 import type {
   EstimateOverviewAction,
   EstimateOverviewModel,
@@ -381,9 +382,7 @@ export function EstimateOverview({
             aria-live="polite"
             data-productivity-progress={productivityProgress}
           >
-            {productivityProgress === "saving"
-              ? "Saving your productivity choices…"
-              : "Updating your estimate…"}
+            {productivityApplyProgressCopy(productivityProgress)}
           </p>
         ) : null}
         {productivityProgress == null && model.primary === "complete_details" && onCompleteDetails ? (

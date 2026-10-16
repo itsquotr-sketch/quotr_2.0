@@ -62,7 +62,7 @@ export const ASSISTANT_LOADING_COPY = Object.freeze({
   finishingDetails: "Finishing your details…",
   creatingEstimate: "Creating estimate…",
   creatingYourEstimate: "Creating your estimate…",
-  savingProductivity: "Saving your productivity choices…",
+  savingProductivity: "Saving your choices…",
   updatingYourEstimate: "Updating your estimate…",
   specificationSave: "Saving specification…",
   constraintSave: "Saving project conditions…",

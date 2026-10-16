@@ -79,6 +79,7 @@ import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewM
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
+import { QuotrLoader } from "@/components/brand/QuotrLoader";
 import { RefineEstimatePanel } from "@/components/assistant/clarify/ClarifyReadiness";
 import {
   ProjectCaptureCollapsedSummary,
@@ -182,6 +183,10 @@ import {
   restoreDeckProductivityDecisions,
   saveDeckProductivityDecisions,
 } from "@/lib/assistant/deck-productivity-actions";
+import {
+  productivityApplyProgressCopy,
+  productivityEstimateVisible,
+} from "@/lib/estimate/deck-productivity-apply";
 import type { DeckProductivitySelection } from "@/components/assistant/DeckProductivityReviewDialog";
 import {
   composeClarifyInputFromEstimateContext,
@@ -613,6 +618,9 @@ export function AssistantShell({
   const [productivityProgress, setProductivityProgress] = useState<
     "saving" | "updating" | null
   >(null);
+  const [productivityCoverId, setProductivityCoverId] = useState<string | null>(
+    null
+  );
   const savingSpecCountsRef = useRef(new Map<string, number>());
   const [savingSpecKeys, setSavingSpecKeys] = useState<string[]>([]);
   const trackSavingSpecKey = useCallback((key: string, delta: number) => {
@@ -3381,6 +3389,7 @@ export function AssistantShell({
   }, [canRunEstimates, estimateNavProjection, handleRegenerateEstimate]);
 
   const productivityDecisions = useMemo(() => {
+    const seen = new Set<string>();
     return (estimate?.lineItems ?? []).flatMap((item) => {
       const parsed = parseScopeReview(item.notes);
       if (!parsed) return [];
@@ -3391,6 +3400,9 @@ export function AssistantShell({
         item.workAreaId ??
         displayWorkAreas.find((area) => area.name === item.workAreaName)?.id;
       if (!workAreaId) return [];
+      const decisionKey = `${workAreaId}:${parsed.factKey}`;
+      if (seen.has(decisionKey)) return [];
+      seen.add(decisionKey);
       const hours = item.productivityRate ?? 0;
       const quantity = item.quantity ?? 0;
       const beforeAccess = Math.round(hours * quantity * 100) / 100;
@@ -3417,7 +3429,8 @@ export function AssistantShell({
         {
           id: item.id,
           workAreaId,
-          title: item.label,
+          title: posts ? "Pile and post setting" : "Concrete placement",
+          rateUnit: posts ? "h/post" : "h/bag",
           source: "Company calibration",
           storedHours,
           alternativePhrase,
@@ -3466,6 +3479,7 @@ export function AssistantShell({
         return { error: "The productivity review could not be loaded." };
       }
       productivityApplyLockRef.current = true;
+      setProductivityCoverId(null);
       setProductivityProgress("saving");
       setIsRegenerating(true);
       const decisions = selections.map((selection) => ({
@@ -3479,6 +3493,7 @@ export function AssistantShell({
       let saved:
         | { priors: Parameters<typeof restoreDeckProductivityDecisions>[0]["priors"]; wasStale: boolean }
         | null = null;
+      let holdCover = false;
       try {
         const result = await settleSaveRequest(
           saveDeckProductivityDecisions({
@@ -3511,22 +3526,54 @@ export function AssistantShell({
           setLocalEstimateStale(result.wasStale);
           return { error: regenerated.error };
         }
-        return (
-          (await runAction("regenerate", async () => regenerated)) ?? {}
-        );
+        const actionResult = await runAction("regenerate", async () => regenerated);
+        if (actionResult?.error) return { error: actionResult.error };
+        const generation = regenerated.estimateGeneration;
+        const appliedId = appliedGenerationRef.current?.generationId;
+        if (
+          !generation ||
+          generation.generationId !== appliedId ||
+          generation.stale ||
+          !productivityEstimateVisible(generation.estimate)
+        ) {
+          return { error: "The estimate was saved but did not open. Try again." };
+        }
+        holdCover = true;
+        setProductivityCoverId(generation.generationId);
+        return {};
       } catch (error) {
         if (saved) setLocalEstimateStale(true);
         return {
           error: error instanceof Error ? error.message : "The productivity choice was not saved.",
         };
       } finally {
-        productivityApplyLockRef.current = false;
-        setProductivityProgress(null);
-        setIsRegenerating(false);
+        if (!holdCover) {
+          productivityApplyLockRef.current = false;
+          setProductivityCoverId(null);
+          setProductivityProgress(null);
+          setIsRegenerating(false);
+        }
       }
     },
     [generationProjection?.estimateId, project.id, runAction]
   );
+
+  useEffect(() => {
+    if (!productivityCoverId) return;
+    if (generationProjection?.generationId !== productivityCoverId) return;
+    if (displayEstimateStale || !commercialBreakdown) return;
+    if (!productivityEstimateVisible(estimate)) return;
+    productivityApplyLockRef.current = false;
+    setProductivityCoverId(null);
+    setProductivityProgress(null);
+    setIsRegenerating(false);
+  }, [
+    commercialBreakdown,
+    displayEstimateStale,
+    estimate,
+    generationProjection,
+    productivityCoverId,
+  ]);
 
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
@@ -3638,7 +3685,13 @@ export function AssistantShell({
 
   return (
     <div data-project-id={project.id} className="w-full min-w-0">
-      {isRegenerating && productivityProgress == null ? (
+      {productivityProgress ? (
+        <QuotrLoader
+          status={productivityApplyProgressCopy(productivityProgress)}
+          generateStage={productivityProgress}
+          className="z-[60]"
+        />
+      ) : isRegenerating ? (
         <GenerateEstimateStatus stage="building" startedAt={regenerateStartedAt} />
       ) : null}
       <AssistantProgress
@@ -3823,9 +3876,7 @@ export function AssistantShell({
                       aria-live="polite"
                       data-productivity-progress={productivityProgress}
                     >
-                      {productivityProgress === "saving"
-                        ? "Saving your productivity choices…"
-                        : "Updating your estimate…"}
+                      {productivityApplyProgressCopy(productivityProgress)}
                     </p>
                   ) : null}
                   <EstimateViewControl
@@ -4881,7 +4932,11 @@ export function AssistantShell({
       <DeckProductivityReviewDialog
         open={productivityReviewOpen}
         decisions={productivityDecisions}
-        pending={updatingEstimate || pendingAction === "regenerate"}
+        pending={
+          productivityProgress != null ||
+          updatingEstimate ||
+          pendingAction === "regenerate"
+        }
         loadError={
           productivityReviewOpen &&
           productivityDecisions.length === 0 &&

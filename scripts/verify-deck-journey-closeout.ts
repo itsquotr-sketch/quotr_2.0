@@ -428,14 +428,20 @@ check(
 );
 check(
   "productivity choices stay in the dialog until one apply",
-  dialog.includes("Apply both decisions and update estimate") &&
+  dialog.includes("Use selections") &&
+    dialog.includes("How was this rate recorded?") &&
+    dialog.includes("Use a different rate for this job") &&
     dialog.includes("data-productivity-apply") &&
     !dialog.includes("onDecide") &&
     action.includes("regenerateStaticEstimate") &&
     action.includes('select("notes")') &&
     !action.includes('select("notes, item_key")') &&
     !action.includes('.from("rates").update') &&
-    !action.includes(".from('rates').update")
+    !action.includes(".from('rates').update") &&
+    shell.includes("QuotrLoader") &&
+    shell.includes("productivityApplyProgressCopy") &&
+    shell.includes("productivityCoverId") &&
+    read("lib/estimate/deck-productivity-apply.ts").includes("Saving your choices…")
 );
 
 void checkSaveSettlement().then(() => {

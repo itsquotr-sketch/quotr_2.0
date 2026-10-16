@@ -44,8 +44,21 @@ export function productivityApplyProgressCopy(
   phase: "saving" | "updating"
 ): string {
   return phase === "saving"
-    ? "Saving your productivity choices…"
+    ? "Saving your choices…"
     : "Updating your estimate…";
+}
+
+export function productivityEstimateVisible(
+  estimate: {
+    readonly lineItems: readonly unknown[];
+    readonly recommendedSell: number;
+  } | null | undefined
+): boolean {
+  return Boolean(
+    estimate &&
+      estimate.lineItems.length > 0 &&
+      Number.isFinite(estimate.recommendedSell)
+  );
 }
 
 function tokenHours(token: string): number | null {

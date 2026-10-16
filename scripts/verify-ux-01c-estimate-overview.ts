@@ -404,7 +404,7 @@ check(
     shellSource.includes("restoreDeckProductivityDecisions") &&
     dialogSource.includes("onApply") &&
     dialogSource.includes("onOpenChange(false)") &&
-    dialogSource.includes("Apply both decisions and update estimate") &&
+    dialogSource.includes("Use selections") &&
     read("lib/assistant/deck-productivity-actions.ts").includes("regenerateStaticEstimate") &&
     !read("lib/assistant/deck-productivity-actions.ts").includes('.from("rates").update')
 );
