@@ -40,6 +40,7 @@ type JobPlanPanelProps = {
   addWorkAreaError?: string | null;
   scopeSaveStatus?: SaveStatus;
   scopeSaveError?: string | null;
+  confirmError?: string | null;
   onContinue?: () => void;
   onContinueManual?: () => void;
   onAddManualWork?: (input: {
@@ -92,6 +93,7 @@ export function JobPlanPanel({
   addWorkAreaError,
   scopeSaveStatus = "idle",
   scopeSaveError,
+  confirmError = null,
   onContinue,
   onContinueManual,
   onAddManualWork,
@@ -180,18 +182,13 @@ export function JobPlanPanel({
 
   return (
     <div
-      className="space-y-3 overflow-x-hidden"
+      className="space-y-2 overflow-x-hidden"
       data-job-plan-panel
       data-job-plan-primary="true"
     >
-      <div className="space-y-1">
-        <p className="text-sm font-medium" data-job-plan-found-heading>
-          Here&apos;s the work I found.
-        </p>
-        <p className="text-xs leading-5 text-muted-foreground" data-work-area-term>
-          {WORK_AREA_INTRODUCTION}
-        </p>
-      </div>
+      <p className="text-sm leading-5 text-muted-foreground" data-work-area-term>
+        {WORK_AREA_INTRODUCTION}
+      </p>
       <div className="flex flex-col gap-3 max-md:pb-36">
         {cardsToRender.map((card) => (
           <JobPlanWorkAreaCardView
@@ -257,6 +254,8 @@ export function JobPlanPanel({
                 type="button"
                 className="min-h-11 flex-1 sm:flex-none"
                 data-job-plan-primary-cta
+                data-saving={isSaving ? "true" : "false"}
+                aria-busy={isSaving || undefined}
                 onClick={onContinue}
                 disabled={plan.cards.length === 0 || isSaving}
               >
@@ -278,6 +277,11 @@ export function JobPlanPanel({
               </Button>
             ) : null}
           </div>
+          {confirmError ? (
+            <p className="mt-2 text-sm text-destructive" role="alert" data-work-confirm-error>
+              {confirmError}
+            </p>
+          ) : null}
           <SaveStatusIndicator
             status={scopeSaveStatus}
             isSaving={scopeSaveStatus === "saving"}

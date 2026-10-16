@@ -14,6 +14,7 @@ import { loadJobRateBook } from "@/lib/subcontractors/rate-actions";
 import { loadJobPricingForRates } from "@/lib/subcontractors/rate-use-actions";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
+import { SectionPendingContent } from "@/components/projects/section-pending";
 import { memberCanEditPricing, memberCanEditProjects } from "@/lib/team/permissions";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -55,6 +56,7 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
         quantityConflictDetail={tabContext.quantityConflictDetail}
       />
       <WorkspaceContainer className="bg-muted/30" innerClassName="bg-muted/30 py-6">
+        <SectionPendingContent>
         <div className="grid gap-6">
           <RfqList projectId={projectId} rows={rows} canEdit={memberCanEditProjects(access.role)} />
           <details className="rounded-xl border border-border bg-card p-4" data-job-rate-disclosure>
@@ -72,6 +74,7 @@ export default async function ProjectRequestsPage({ params }: PageProps) {
             </div>
           </details>
         </div>
+        </SectionPendingContent>
       </WorkspaceContainer>
     </div>
   );

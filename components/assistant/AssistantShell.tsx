@@ -99,6 +99,7 @@ import {
   saveQuestionBlockAnswers,
   updateProjectQualityLevel,
 } from "@/lib/assistant/actions";
+import { projectWorkAreaConfirmation } from "@/lib/assistant/project-work-area-confirmation";
 import {
   createLatestWriteGuard,
   filterPersistableAnswers,
@@ -1071,7 +1072,7 @@ export function AssistantShell({
         const isEstimateMutation =
           action === "estimate" || action === "regenerate";
         const generation = result.estimateGeneration;
-        let shouldRefresh = true;
+        let shouldRefresh = action !== "work_areas";
         let estimateApplied = false;
 
         if (isEstimateMutation && !result.recoveryRefresh && generation) {
@@ -1121,6 +1122,10 @@ export function AssistantShell({
 
         if (shouldRefresh) {
           router.refresh();
+        } else if (action === "work_areas") {
+          startTransition(() => {
+            router.refresh();
+          });
         }
 
         setPendingAction(null);
@@ -1185,11 +1190,21 @@ export function AssistantShell({
             : ("confirmed" as const),
       }));
 
-      void runAction("work_areas", () =>
-        confirmWorkAreas(project.id, selections)
-      );
+      void runAction("work_areas", async () => {
+        const result = await confirmWorkAreas(project.id, selections);
+        if (!result.error && !result.recoveryRefresh) {
+          setAssistantMutationProjection(
+            projectWorkAreaConfirmation(displayedAssistant, selections)
+          );
+          if (displayedAssistant.estimate) {
+            setLocalEstimateStale(true);
+            estimateNavProjection?.markEstimateStale();
+          }
+        }
+        return result;
+      });
     },
-    [project.id, runAction]
+    [displayedAssistant, estimateNavProjection, project.id, runAction]
   );
 
   const handleQualityContinue = useCallback(() => {
@@ -4308,8 +4323,9 @@ export function AssistantShell({
           {/* 2. Job Plan — primary Work Area + user-facing scope confirmation */}
           {briefSubmitted ? (
             <CollapsibleStageCard
-              title="Work"
-              subtitle="Review the work Quotr found. Add anything missing; work Quotr cannot calculate can be priced in Pricing."
+              title="Here's the work I found"
+              foundHeading
+              subtitle={undefined}
               statusLabel={
                 workAreasIsCurrent
                   ? "Current"
@@ -4345,6 +4361,7 @@ export function AssistantShell({
                 addWorkAreaError={addWorkAreaError}
                 scopeSaveStatus={jobPlanScopeSaveStatus}
                 scopeSaveError={jobPlanScopeSaveError}
+                confirmError={workAreasIsCurrent ? actionError : null}
                 onContinue={
                   workAreasConfirmed
                     ? undefined

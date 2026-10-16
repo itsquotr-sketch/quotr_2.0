@@ -38,7 +38,7 @@ export function ProjectWorkspaceNav({
 }: ProjectWorkspaceNavProps) {
   return (
     <div className="shrink-0 border-b bg-background">
-      <div className={cn("mx-auto w-full px-4 py-2.5 sm:px-6 lg:px-8", LAYOUT_MAX_WIDTH.workspace)}>
+      <div className={cn("mx-auto w-full px-4 py-1.5 sm:px-6 lg:px-8 lg:py-2.5", LAYOUT_MAX_WIDTH.workspace)}>
         <ProjectSectionHeader
           projectId={projectId}
           activeTab={activeTab}

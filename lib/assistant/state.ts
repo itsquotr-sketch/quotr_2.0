@@ -36,38 +36,18 @@ export async function getAssistantStateWithContext(
 ): Promise<AssistantState> {
   // Soft-deleted projects are not found — children stay stored but hidden from
   // normal active assistant queries (Batch 2A.4 / S1-017).
-  const owned = await assertOrgOwnsActiveProjectForRead(auth, projectId);
-  if ("error" in owned) {
-    notFound();
-  }
-
+  // Ownership, the project row, and the child reads are independent under RLS.
+  // Starting them together removes two sequential database rounds from project open.
   const { supabase, orgId } = auth;
-
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, stage, brief_text, quality_level")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  if (projectError) {
-    console.error("[getAssistantState] project query failed:", projectError.message);
-    notFound();
-  }
-
-  if (!project) {
-    notFound();
-  }
-
-  const [
-    { data: workAreas },
-    { data: questionBlocks },
-    { data: questions },
-    { data: constraints },
-    { data: estimate },
-    { data: projectFacts },
-    organisationSettings,
-  ] = await Promise.all([
+  const [owned, projectResult, related] = await Promise.all([
+    assertOrgOwnsActiveProjectForRead(auth, projectId),
+    supabase
+      .from("projects")
+      .select("id, stage, brief_text, quality_level")
+      .eq("id", projectId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    Promise.all([
     supabase
       .from("work_areas")
       .select(ASSISTANT_WORK_AREA_COLUMNS)
@@ -108,7 +88,32 @@ export async function getAssistantStateWithContext(
       .eq("project_id", projectId)
       .eq("org_id", orgId),
     loadOrganisationSettingsRow(orgId),
+    ] as const),
   ]);
+
+  if ("error" in owned) {
+    notFound();
+  }
+
+  const { data: project, error: projectError } = projectResult;
+  if (projectError) {
+    console.error("[getAssistantState] project query failed:", projectError.message);
+    notFound();
+  }
+
+  if (!project) {
+    notFound();
+  }
+
+  const [
+    { data: workAreas },
+    { data: questionBlocks },
+    { data: questions },
+    { data: constraints },
+    { data: estimate },
+    { data: projectFacts },
+    organisationSettings,
+  ] = related;
 
   const { data: lineItems } = estimate?.id
     ? await supabase

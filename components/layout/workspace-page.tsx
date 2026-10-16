@@ -2,6 +2,7 @@ import {
   LAYOUT_MAX_WIDTH,
   WorkspaceContainer,
 } from "@/components/layout/page-containers";
+import { SectionPendingContent } from "@/components/projects/section-pending";
 import { cn } from "@/lib/utils";
 
 type WorkspacePageProps = {
@@ -26,9 +27,11 @@ export function WorkspacePage({
       <WorkspaceContainer
         innerClassName={cn("pt-4 pb-6 lg:pt-6", contentClassName)}
       >
+        <SectionPendingContent>
         <div data-workspace-content-gap="progression" className="min-w-0">
         {children}
         </div>
+        </SectionPendingContent>
       </WorkspaceContainer>
     </div>
   );

@@ -19,13 +19,14 @@ export function ProjectWorkspaceHeader({
   subtitle,
 }: ProjectWorkspaceHeaderProps) {
   return (
-    <div className="space-y-0.5 sm:space-y-2">
+    <div className="flex items-center gap-1 md:block md:space-y-2">
       <Link
         href="/app/dashboard"
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        aria-label="Back to Dashboard"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground md:h-auto md:min-h-11 md:w-auto md:justify-start md:gap-1.5"
       >
-        <ArrowLeft className="size-3.5" />
-        <span className="sm:inline">Dashboard</span>
+        <ArrowLeft className="size-4" />
+        <span className="hidden text-sm font-medium md:inline">Dashboard</span>
       </Link>
       <ProjectHeader project={project} subtitle={subtitle} />
     </div>

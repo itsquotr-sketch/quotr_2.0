@@ -42,6 +42,8 @@ type CollapsibleStageCardProps = {
   cardRef?: React.RefObject<HTMLDivElement | null>;
   /** Stronger elevation for the single active incomplete stage. */
   isActive?: boolean;
+  /** Marks this card as the Work confirmation heading. */
+  foundHeading?: boolean;
 };
 
 const cardVariantStyles: Record<StageStatusVariant, string> = {
@@ -94,6 +96,7 @@ export function CollapsibleStageCard({
   className,
   cardRef,
   isActive = false,
+  foundHeading = false,
 }: CollapsibleStageCardProps) {
   const preferred = preferredExpanded ?? defaultExpanded;
   const [expansion, setExpansion] = useState<{
@@ -177,6 +180,7 @@ export function CollapsibleStageCard({
                     ? "text-sm font-semibold text-foreground"
                     : "text-sm font-medium text-muted-foreground"
                 )}
+                data-job-plan-found-heading={foundHeading ? "true" : undefined}
               >
                 {title}
               </span>

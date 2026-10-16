@@ -904,11 +904,21 @@ export async function confirmWorkAreas(
     return { error: "This action is not available at the current stage." };
   }
 
-  for (const selection of parsed.data) {
+  const confirmedIds = parsed.data
+    .filter((selection) => selection.status === "confirmed")
+    .map((selection) => selection.work_area_id);
+  const excludedIds = parsed.data
+    .filter((selection) => selection.status === "excluded")
+    .map((selection) => selection.work_area_id);
+  for (const [status, ids] of [
+    ["confirmed", confirmedIds],
+    ["excluded", excludedIds],
+  ] as const) {
+    if (ids.length === 0) continue;
     const { error } = await supabase
       .from("work_areas")
-      .update({ status: selection.status })
-      .eq("id", selection.work_area_id)
+      .update({ status })
+      .in("id", ids)
       .eq("project_id", projectId);
 
     if (error) {
@@ -931,11 +941,10 @@ export async function confirmWorkAreas(
 
   await markEstimateStaleWithContext(auth, projectId);
 
-  // Stage 3.1B.7F-R5 — Acknowledge WA confirmation immediately.
-  // Automatic Scope Review is owned by ScopeDiscoveryReviewBlock auto-run
-  // after stage advances (preserves approved auto-analysis without blocking
-  // Confirm on provider latency). Server no longer awaits runScopeDiscovery.
-  revalidateProjectAssistantPath(projectId);
+  // The project route is dynamic. Revalidating here rebuilds the full project
+  // page inside this action, which holds the confirmation button until that
+  // render finishes. The client projects the committed stage immediately and
+  // refreshes the router cache in the background.
   return { success: true };
 }
 

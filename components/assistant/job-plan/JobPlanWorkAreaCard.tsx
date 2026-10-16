@@ -71,6 +71,11 @@ function ScopeRow({
       : tone === "excluded"
         ? "NOT_INCLUDED"
         : null;
+  useEffect(() => {
+    if (optimistic != null && committed === optimistic) {
+      setOptimistic(null);
+    }
+  }, [committed, optimistic]);
   const selectedPresentation = optimistic ?? committed;
   const includedSelected = selectedPresentation === "INCLUDED";
   const excludedSelected = selectedPresentation === "NOT_INCLUDED";

@@ -256,7 +256,10 @@ function main() {
 
   section("EMPTY / LEGACY COPY");
   assert("Job details replaces Project Capture heading", shell.includes('title="Job details"') && !shell.includes('title="Project Capture"'));
-  assert("Work replaces Job Plan heading", shell.includes('title="Work"'));
+  assert(
+    "Work confirmation card heading",
+    shell.includes('title="Here\'s the work I found"') && !shell.includes('title="Work"')
+  );
   assert("Details replaces Clarify heading", shell.includes('title="Details"'));
   const uiStates = read("lib/assistant/presentation/ui-states.ts");
   assert("empty states dropped Confirm Work Areas / Scope Details", !uiStates.includes("Confirm Work Areas to continue") && !uiStates.includes("Complete Scope Details"));

@@ -109,7 +109,7 @@ export function ProjectActionsMenu({
             </DropdownMenuTrigger>
           ) : (
             <DropdownMenuTrigger
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+              className="inline-flex h-11 min-h-11 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-sm font-medium outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 md:h-8 md:min-h-8 md:px-3"
               disabled={isPending}
             >
               <MoreHorizontal className="size-4" />

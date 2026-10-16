@@ -37,11 +37,11 @@ export function ProjectHeader({
   const isArchived = Boolean(project.archived_at);
 
   return (
-    <div className="min-w-0 flex-1 space-y-1 sm:space-y-1.5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1 sm:space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 text-lg font-semibold tracking-tight break-words sm:text-xl">
+    <div className="min-w-0 flex-1 md:space-y-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-1.5 md:flex-wrap md:items-start md:gap-3">
+        <div className="min-w-0 md:space-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h1 className="min-w-0 truncate text-base font-semibold tracking-tight md:whitespace-normal md:break-words md:text-xl">
               {project.title}
             </h1>
             <div className="hidden items-center gap-2 sm:flex">
@@ -62,7 +62,7 @@ export function ProjectHeader({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 md:gap-2">
           <ProjectActionsMenu project={project} variant="header" showEdit />
         </div>
       </div>

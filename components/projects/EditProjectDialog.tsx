@@ -169,7 +169,7 @@ export function EditProjectDialog({
         type="button"
         variant="outline"
         size="touch"
-        className={cn("min-h-11", triggerClassName)}
+        className={cn("min-h-11 px-2.5 md:px-3", triggerClassName)}
         onClick={() => handleOpenChange(true)}
       >
         {triggerLabel}

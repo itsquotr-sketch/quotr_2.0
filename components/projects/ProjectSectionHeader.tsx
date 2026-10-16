@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
+import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
+import { beginSectionNavigation } from "@/components/projects/section-pending";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
 import {
   estimateStatusText,
@@ -199,10 +200,10 @@ export function ProjectSectionHeader({
         </div>
       </div>
 
-      <div className="grid gap-1.5 lg:hidden">
+      <div className="grid gap-1 lg:hidden">
         <label className="grid gap-1">
-          <span className="text-xs leading-4 text-foreground/70">Project section</span>
-          <span className="text-sm font-semibold leading-5" data-project-stage-current>
+          <span className="sr-only">Project section</span>
+          <span className="sr-only" data-project-stage-current>
             {requestsCurrent ? "Requests" : `Step ${activeSection.step}. ${activeSection.label}`}
           </span>
           <select
@@ -216,7 +217,10 @@ export function ProjectSectionHeader({
             onChange={(event) => {
               const value = event.target.value;
               if (value === "requests") {
-                if (!requestsCurrent) router.push(requestsHref);
+                if (!requestsCurrent) {
+                  beginSectionNavigation("Requests");
+                  router.push(requestsHref);
+                }
                 return;
               }
               const next = sections.find((section) => section.id === value);
@@ -231,6 +235,7 @@ export function ProjectSectionHeader({
                 return;
               }
               if (!next.href) return;
+              beginSectionNavigation(next.label);
               router.push(next.href);
             }}
           >
@@ -252,9 +257,13 @@ export function ProjectSectionHeader({
               );
             })}
           </select>
-          <span className="sr-only" data-project-section-context>
-            {activeDetail}
-          </span>
+          {activeDetail ? (
+            <span className="text-xs leading-4 text-foreground/75" data-project-section-context>
+              {activeDetail}
+            </span>
+          ) : (
+            <span className="sr-only" data-project-section-context />
+          )}
         </label>
         {topLevel === "quote" ? (
           <div
@@ -298,6 +307,19 @@ export function ProjectSectionHeader({
         onUpdateEstimate={onUpdateEstimate}
       />
     </nav>
+  );
+}
+
+function SectionLinkStatus({ label }: { label: string }) {
+  const { pending } = useLinkStatus();
+  useEffect(() => {
+    if (pending) beginSectionNavigation(label);
+  }, [pending, label]);
+  if (!pending) return null;
+  return (
+    <span className="text-xs font-medium leading-4" data-section-link-pending="true">
+      Loading…
+    </span>
   );
 }
 
@@ -424,15 +446,17 @@ function Destination({
     return (
       <Link
         href={href}
-        prefetch
+        prefetch={false}
         className={className}
         data-project-column={column}
         data-project-stage={step}
         data-variations-nav={column === "variations" ? "true" : undefined}
         data-rfq-nav={column === "requests" ? "true" : undefined}
         aria-label={accessibleName}
+        onClick={() => beginSectionNavigation(title)}
       >
         {body}
+        <SectionLinkStatus label={title} />
       </Link>
     );
   }
