@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { cache } from "react";
 import {
   AUTH_ORG_MESSAGES,
@@ -131,9 +132,31 @@ async function resolveAuthOrgContextUncached(): Promise<AuthOrgResult> {
  * Do not persist identity in a process-global structure.
  * Do not use Next data-cache directives for session authority.
  */
-export const requireAuthOrgContext: () => Promise<AuthOrgResult> = cache(
+const reactCachedAuthOrgContext: () => Promise<AuthOrgResult> = cache(
   resolveAuthOrgContextUncached
 );
+
+/**
+ * Server actions in this Next.js version do not keep a React.cache()
+ * dispatcher, so each requireAuthOrgContext() call repeated getUser, the
+ * profile read, and the organisation read. This store exists only for the
+ * async subtree that enters it. It is not process-global and is not shared
+ * across requests.
+ */
+type AuthScope = { current: Promise<AuthOrgResult> | null };
+const authScope = new AsyncLocalStorage<AuthScope>();
+
+export function runInsideAuthScope<T>(run: () => Promise<T>): Promise<T> {
+  return authScope.run({ current: null }, run);
+}
+
+export function requireAuthOrgContext(): Promise<AuthOrgResult> {
+  const scope = authScope.getStore();
+  if (scope?.current) return scope.current;
+  const pending = reactCachedAuthOrgContext();
+  if (scope) scope.current = pending;
+  return pending;
+}
 
 /**
  * Compatibility wrapper around {@link requireAuthOrgContext}.

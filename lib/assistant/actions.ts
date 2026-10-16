@@ -110,7 +110,10 @@ import {
   type AppQuestionInputType,
 } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
-import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import {
+  requireAuthOrgContext,
+  runInsideAuthScope,
+} from "@/lib/security/auth-org-context";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 
 const BRIEF_MAX_LENGTH = 5000;
@@ -869,7 +872,9 @@ export async function confirmWorkAreas(
   projectId: string,
   selections: WorkAreaSelection[]
 ): Promise<AssistantActionState> {
-  return runConfirmTrace(projectId, () => confirmWorkAreasTraced(projectId, selections));
+  return runConfirmTrace(projectId, () =>
+    runInsideAuthScope(() => confirmWorkAreasTraced(projectId, selections))
+  );
 }
 
 async function confirmWorkAreasTraced(
