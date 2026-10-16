@@ -3539,6 +3539,7 @@ export function AssistantShell({
           return { error: "The estimate was saved but did not open. Try again." };
         }
         holdCover = true;
+        setProductivityReviewOpen(false);
         setProductivityCoverId(generation.generationId);
         return {};
       } catch (error) {

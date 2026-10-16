@@ -124,17 +124,15 @@ export function DeckProductivityReviewDialog({
     }
     setError(null);
     applyingRef.current = true;
-    const pendingApply = onApply(selections);
-    onOpenChange(false);
     try {
-      const result = await pendingApply;
+      const result = await onApply(selections);
       if (result?.error) {
         setError(result.error);
-        onOpenChange(true);
+        return;
       }
+      onOpenChange(false);
     } catch {
       setError("The productivity choice was not saved. Try again.");
-      onOpenChange(true);
     } finally {
       applyingRef.current = false;
     }
