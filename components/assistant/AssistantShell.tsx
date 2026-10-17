@@ -766,6 +766,9 @@ export function AssistantShell({
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // This read is a server action. Next runs those one at a time, so starting
+    // it while Work confirmation is still the open step holds the Continue POST.
+    if (!isStageAtOrBeyond(stage, "quality")) return;
     let cancelled = false;
     void listManualScopeItemsForProject(project.id).then((outcome) => {
       if (cancelled || !outcome.ok) return;
@@ -774,7 +777,7 @@ export function AssistantShell({
     return () => {
       cancelled = true;
     };
-  }, [project.id, initialState.scopeReview]);
+  }, [project.id, initialState.scopeReview, stage]);
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
   const workAreasConfirmed = isStageAtOrBeyond(stage, "quality");
