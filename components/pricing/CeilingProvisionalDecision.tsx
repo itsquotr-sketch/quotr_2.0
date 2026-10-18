@@ -112,7 +112,7 @@ export function CeilingProvisionalDecision({
       {decision.confirmable && canEdit ? (
         <Button
           type="button"
-          className="mt-3 h-11 min-h-11"
+          className="mt-3 h-11 min-h-11 scroll-mb-[11rem] md:scroll-mb-0"
           disabled={pending}
           aria-pressed={decision.confirmed}
           data-ceiling-provisional-confirm="true"

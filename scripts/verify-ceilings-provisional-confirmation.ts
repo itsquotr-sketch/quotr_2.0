@@ -531,6 +531,7 @@ check(
   "Pricing shows one decision for the package",
   panel.includes("CEILING_PROVISIONAL_SCOPE") &&
     panel.includes("data-ceiling-provisional-decision") &&
+    panel.includes("scroll-mb-[11rem]") &&
     panel.includes("CEILING_PROVISIONAL_CONFIRM_LABEL") &&
     panel.includes("CEILING_PROVISIONAL_REPLACE_HINT") &&
     CEILING_PROVISIONAL_SCOPE.heading === "Provisional ceiling package" &&
