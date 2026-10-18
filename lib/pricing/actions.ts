@@ -70,6 +70,7 @@ import {
   inferStoredPricingCostKnown,
   mergeClientNotesPreservingIdentity,
   PRICING_ITEM_UPDATE_SELECT,
+  PRICING_REVIEW_ITEM_SELECT,
   saveManualPriceForUnresolvedRequirement,
 } from "@/lib/pricing/manual-requirement-promotion";
 import {
@@ -2038,11 +2039,9 @@ export async function markPricingReviewed(
   const denied = await requirePricingEditPermission({ orgId, user });
   if (denied) return denied;
 
-  const { data: reviewItems, error: reviewItemsError } = await supabase
+  const { data: reviewRows, error: reviewItemsError } = await supabase
     .from("pricing_items")
-    .select(
-      "id, component_key, quantity, unit, client_label, internal_label, client_description, notes_internal, total_cost, total_sell, visible_on_quote, cost_known, productivity_rate, calculated_quantity"
-    )
+    .select(PRICING_REVIEW_ITEM_SELECT)
     .eq("pricing_document_id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
   if (reviewItemsError) {
@@ -2050,6 +2049,9 @@ export async function markPricingReviewed(
       error: toUserError(reviewItemsError, "pricing-mark-reviewed", PRICING_SAVE_FAILED),
     };
   }
+  const reviewItems = (reviewRows ?? []).map((row) =>
+    mapPricingItem(row as Record<string, unknown>)
+  );
   const sourceEstimateId = (document.estimate_id as string | null) ?? null;
   if (sourceEstimateId) {
     const statedCountBlock = await deckStatedCountPricingBlock(

@@ -51,6 +51,13 @@ export const PENDING_PRICING_ID_PREFIX = "pending-pricing:";
 export const PRICING_ITEM_UPDATE_SELECT =
   "id, pricing_document_id, project_id, total_cost, total_sell, client_label, notes_internal, manually_edited";
 
+/**
+ * Review loads persisted columns and derives cost_known through mapPricingItem.
+ * pricing_items has no cost_known column.
+ */
+export const PRICING_REVIEW_ITEM_SELECT =
+  "id, org_id, pricing_document_id, project_id, work_area_id, source_estimate_line_item_id, component_key, item_type, delivery_method, internal_label, client_label, internal_description, client_description, quantity, unit, unit_cost, unit_sell, total_cost, total_sell, gross_profit, margin_percent, markup_percent, visible_on_quote, optional, sort_order, notes_internal, notes_client, created_at, updated_at, manually_edited, orphaned, recalibration_note, calculation_mode, productivity_rate, productivity_unit, calculated_quantity";
+
 export const MANUAL_PRICE_NOT_ELIGIBLE =
   "This item is not eligible for a manual price.";
 export const MANUAL_PRICE_STALE =

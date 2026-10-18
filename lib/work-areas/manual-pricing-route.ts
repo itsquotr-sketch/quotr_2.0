@@ -4,6 +4,7 @@
  */
 
 import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-availability";
+import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { cleanClientLabel } from "@/lib/pricing/calculations";
 import {
   buildManualScopePricingNotes,
@@ -30,10 +31,13 @@ export const UNKNOWN_MATERIAL_COST_QUOTE_BLOCK =
  */
 export function unknownCostWithoutClientSell(item: {
   cost_known?: boolean | null;
+  total_cost?: number | null;
   total_sell?: number | null;
   visible_on_quote?: boolean | null;
+  recalibration_note?: string | null;
 }): boolean {
   if (item.visible_on_quote === false) return false;
+  if (isReplacedSubcontractPlaceholder(item)) return false;
   if (item.cost_known !== false) return false;
   const sell = Number(item.total_sell ?? 0);
   return !Number.isFinite(sell) || sell <= 0;
@@ -42,8 +46,10 @@ export function unknownCostWithoutClientSell(item: {
 export function unknownMaterialCostQuoteBlock(
   items: readonly {
     cost_known?: boolean | null;
+    total_cost?: number | null;
     total_sell?: number | null;
     visible_on_quote?: boolean | null;
+    recalibration_note?: string | null;
   }[]
 ): string | null {
   return items.some(unknownCostWithoutClientSell)
@@ -298,12 +304,15 @@ export function copyEnteredManualPrices(input: {
 export function unresolvedManualPricingQuoteBlock(
   items: readonly {
     notes_internal?: string | null;
+    total_cost?: number | null;
     total_sell?: number | null;
     visible_on_quote?: boolean | null;
+    recalibration_note?: string | null;
   }[]
 ): string | null {
   const blocked = items.some((item) => {
     if (item.visible_on_quote === false) return false;
+    if (isReplacedSubcontractPlaceholder(item)) return false;
     const sell = Number(item.total_sell ?? 0);
     return (
       isManualScopePricingRequiredNote(item.notes_internal) &&

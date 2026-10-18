@@ -38,6 +38,7 @@ import {
   MANUAL_PRICE_STALE,
   pendingPricingItemId,
   PRICING_ITEM_UPDATE_SELECT,
+  PRICING_REVIEW_ITEM_SELECT,
   projectEligibleUnresolvedPricingItems,
   saveManualPriceForUnresolvedRequirement,
   scopeKeyFromNotes,
@@ -101,6 +102,13 @@ check(
   "update lookup does not name cost_known",
   PRICING_ITEM_UPDATE_SELECT.split(",").every((part) => part.trim() !== "cost_known") &&
     promotion.includes("Never include cost_known")
+);
+check(
+  "review lookup derives cost_known and does not select it",
+  actions.includes("PRICING_REVIEW_ITEM_SELECT") &&
+    actions.includes("mapPricingItem(row as Record<string, unknown>)") &&
+    !actions.includes("visible_on_quote, cost_known") &&
+    PRICING_REVIEW_ITEM_SELECT.split(",").every((part) => part.trim() !== "cost_known")
 );
 check(
   "Add price action does not take a pricing item id",

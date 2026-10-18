@@ -224,6 +224,20 @@ const caseC = pricingLine({
 assert(unknownCostWithoutClientSell(caseA), "case A blocks");
 assert(!unknownCostWithoutClientSell(caseB), "case B has a client sell");
 assert(!unknownCostWithoutClientSell(caseC), "case C is not visible");
+const replaced = pricingLine({
+  id: "replaced",
+  cost_known: false,
+  total_cost: 0,
+  total_sell: 0,
+  visible_on_quote: true,
+  recalibration_note: "Replaced for draft pricing by supplier response",
+  client_label: "Replaced allowance",
+});
+assert(!unknownCostWithoutClientSell(replaced), "replaced line does not block");
+assert(
+  unknownMaterialCostQuoteBlock([ordinary, replaced]) == null,
+  "replaced line does not block review"
+);
 assert(
   unknownMaterialCostQuoteBlock([ordinary, caseA]) != null,
   "case A blocks review"
@@ -248,6 +262,15 @@ assert(quoteB[0]?.total === 120 && quoteB[1]?.total === 80, "case B keeps both s
 assert(
   quoteB.every((line) => line.pricing_item_id !== "excluded"),
   "case C stays off the quote"
+);
+const quoteReplaced = mapPricingItemsToQuoteItems(
+  [ordinary, replaced],
+  new Map(),
+  new Map()
+);
+assert(
+  quoteReplaced.length === 1 && quoteReplaced[0]?.pricing_item_id === "priced",
+  "replaced line stays off the quote"
 );
 
 const document = calculateAuthoritativeDocumentTotals(
