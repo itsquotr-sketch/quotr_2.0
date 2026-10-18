@@ -43,8 +43,11 @@ import {
   extractCeilingPortionsFromBrief,
   mergeCeilingPortionsPreferringExplicitAi,
   readAiCeilingPortionsFromExtraction,
+  clearUnnamedNestedCeilingLining,
   seedExtractedCeilingsFact,
+  singleUnspecifiedCeilingAreaM2,
 } from "@/lib/estimate/ceilings-brief";
+import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
   extractDoorPortionsFromBrief,
   mergeDoorPortionsPreferringDeterministic,
@@ -2151,21 +2154,24 @@ function inferCeilings(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (!briefHasExplicitCeilings(brief)) return;
   if (
     briefHasBathroomEmbeddedCeiling(brief) &&
     !briefHasIndependentCeilings(brief)
   ) {
     return;
   }
+  const explicit = briefHasExplicitCeilings(brief);
+  if (!explicit && !hasWorkAreaType(extraction, "ceilings")) return;
 
-  addWorkAreaIfMissing(
-    extraction,
-    "ceilings",
-    0.88,
-    "EXPLICIT: Ceiling construction mentioned in brief",
-    allowedTypes
-  );
+  if (explicit) {
+    addWorkAreaIfMissing(
+      extraction,
+      "ceilings",
+      0.88,
+      "EXPLICIT: Ceiling construction mentioned in brief",
+      allowedTypes
+    );
+  }
 
   const ceilingGroups = discoverWorkAreaInstances(brief).filter(
     (row) => row.type === "ceilings"
@@ -2175,7 +2181,10 @@ function inferCeilings(
       const snippet = snippetForDiscoveredInstance(brief, group, ceilingGroups);
       const parsed = extractCeilingPortionsFromBrief(snippet);
       const ai = readAiCeilingPortionsFromExtraction(extraction, group.name);
-      const portions = mergeCeilingPortionsPreferringExplicitAi(ai, parsed);
+      const portions = clearUnnamedNestedCeilingLining(
+        snippet,
+        mergeCeilingPortionsPreferringExplicitAi(ai, parsed)
+      );
       if (portions.length === 0) continue;
       seedExtractedCeilingsFact(extraction, {
         portions,
@@ -2187,7 +2196,29 @@ function inferCeilings(
 
   const parsed = extractCeilingPortionsFromBrief(brief);
   const ai = readAiCeilingPortionsFromExtraction(extraction);
-  const portions = mergeCeilingPortionsPreferringExplicitAi(ai, parsed);
+  const portions = clearUnnamedNestedCeilingLining(
+    brief,
+    mergeCeilingPortionsPreferringExplicitAi(ai, parsed)
+  );
+  const flatArea = singleUnspecifiedCeilingAreaM2(brief, portions);
+  if (flatArea != null) {
+    extraction.facts = extraction.facts.filter(
+      (fact) =>
+        !(
+          fact.key === CEILINGS_PORTIONS_FACT_KEY &&
+          fact.work_area_type === "ceilings"
+        )
+    );
+    addFact(extraction, {
+      workAreaType: "ceilings",
+      key: "ceilings.area_m2",
+      label: "Ceiling area",
+      value: flatArea,
+      unit: "m²",
+      confidence: 0.9,
+    });
+    return;
+  }
   if (portions.length > 0) {
     seedExtractedCeilingsFact(extraction, { portions });
   }

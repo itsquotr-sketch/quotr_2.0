@@ -701,6 +701,80 @@ export function extractCeilingPortionsFromBrief(briefText: string): CeilingPorti
   return portions;
 }
 
+function briefNamesDistinctCeilingPortions(brief: string): boolean {
+  const stripped = brief.replace(
+    /\b(?:not split into|no nested|without|no)\s+portions\b/gi,
+    ""
+  );
+  return /\bportions?\b/i.test(stripped);
+}
+
+/**
+ * One ceiling, one area, and no named lining stays on the flat provisional
+ * package. Nested portions and a named sheet stay on the detailed path.
+ */
+export function singleUnspecifiedCeilingAreaM2(
+  brief: string,
+  portions: readonly CeilingPortion[]
+): number | null {
+  if (portions.length !== 1) return null;
+  if (briefNamesDistinctCeilingPortions(brief)) return null;
+  if (parseDimensions(brief).length > 1) return null;
+  if (canonicalCeilingLiningFamilyFromText(brief)) return null;
+  if (canonicalCeilingPlasterboardProductFromText(brief)) return null;
+  if (canonicalCeilingPlasterboardThicknessFromText(brief) != null) return null;
+  if (/\bbulkheads?\b/i.test(brief)) return null;
+  const structure = canonicalCeilingStructureFamilyFromText(brief);
+  if (structure != null && structure !== "existing_framing") return null;
+  const portion = portions[0];
+  if (!portion) return null;
+  const area =
+    portion.geometry.area_m2 ??
+    (portion.geometry.length_m != null && portion.geometry.width_m != null
+      ? Number((portion.geometry.length_m * portion.geometry.width_m).toFixed(2))
+      : null);
+  if (area == null || !(area > 0)) return null;
+  return area;
+}
+
+function snippetForPortionLabel(brief: string, label: string | null): string | null {
+  const trimmed = label?.trim();
+  if (!trimmed) return null;
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = brief.match(
+    new RegExp(`\\b${escaped}\\b[\\s\\S]*?(?=\\bportion\\s+[a-z0-9]+\\b|$)`, "i")
+  );
+  return match?.[0] ?? null;
+}
+
+function snippetNamesCeilingLining(snippet: string): boolean {
+  return (
+    canonicalCeilingLiningFamilyFromText(snippet) != null ||
+    canonicalCeilingPlasterboardProductFromText(snippet) != null ||
+    canonicalCeilingPlasterboardThicknessFromText(snippet) != null
+  );
+}
+
+/**
+ * A nested portion keeps a lining only when its own words name one.
+ * Another portion's plasterboard must not become this portion's product.
+ */
+export function clearUnnamedNestedCeilingLining(
+  brief: string,
+  portions: readonly CeilingPortion[]
+): CeilingPortion[] {
+  if (portions.length < 2) return portions.map((row) => cloneCeilingPortion(row));
+  return portions.map((portion) => {
+    const snippet = snippetForPortionLabel(brief, portion.label);
+    if (!snippet || snippetNamesCeilingLining(snippet)) return cloneCeilingPortion(portion);
+    const next = cloneCeilingPortion(portion);
+    next.lining.family = null;
+    delete next.lining.plasterboard_product;
+    delete next.lining.thickness_mm;
+    return next;
+  });
+}
+
 function cloneCeilingPortion(portion: CeilingPortion): CeilingPortion {
   const parsed = parseCeilingPortion(JSON.parse(JSON.stringify(portion)));
   return parsed ?? portion;

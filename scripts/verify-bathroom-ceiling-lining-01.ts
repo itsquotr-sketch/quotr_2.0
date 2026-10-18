@@ -22,6 +22,9 @@ import {
   clauseIsBathroomSubstrateRebuild,
 } from "../lib/work-areas/ownership";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
+import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
+import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
+import type { AIExtractionOutput } from "../lib/ai/schema";
 import type {
   EstimateContext,
   EstimateFact,
@@ -339,6 +342,134 @@ check(
   "flat unspecified ceiling keeps the provisional package",
   flat.lineItems.some((item) => item.componentKey === CEILING_PROVISIONAL_MATERIALS_KEY) &&
     flat.lineItems.some((item) => item.componentKey === CEILING_PROVISIONAL_INSTALL_KEY)
+);
+
+function extractBrief(brief: string): AIExtractionOutput {
+  return enrichExtractionFromBrief({
+    briefText: brief,
+    extraction: {
+      workAreas: [],
+      facts: [],
+      assumptions: [],
+      possibleConstraints: [],
+      confidence: 0.5,
+      warnings: [],
+    },
+    allowedTypes: getAnalysisCapableWorkAreaTypes(),
+  }).extraction;
+}
+
+const flatBrief =
+  "Ceilings only. One ceiling of 12 square metres. No lining product is named and the ceiling is not split into portions. No demolition, no painting, no insulation, and no new framing.";
+const flatExtracted = enrichExtractionFromBrief({
+  briefText: flatBrief,
+  extraction: {
+    workAreas: [{ type: "ceilings", confidence: 0.9, rationale: "ai" }],
+    facts: [
+      {
+        work_area_type: "ceilings",
+        key: CEILINGS_PORTIONS_FACT_KEY,
+        label: "Ceiling portions",
+        value: [{ id: "ai-flat", geometry: { area_m2: 12 }, lining: {} }],
+        confidence: 0.8,
+      },
+    ],
+    assumptions: [],
+    possibleConstraints: [],
+    confidence: 0.5,
+    warnings: [],
+  },
+  allowedTypes: getAnalysisCapableWorkAreaTypes(),
+}).extraction;
+check(
+  "a single unspecified ceiling stays on the flat area",
+  flatExtracted.facts.some(
+    (fact) => fact.key === "ceilings.area_m2" && fact.value === 12
+  ) &&
+    !flatExtracted.facts.some((fact) => fact.key === CEILINGS_PORTIONS_FACT_KEY),
+  flatExtracted.facts
+    .filter((fact) => fact.work_area_type === "ceilings")
+    .map((fact) => `${fact.key}=${JSON.stringify(fact.value)}`)
+    .join(", ")
+);
+const specifiedBrief =
+  "Ceilings only. One new plasterboard ceiling, standard 10 mm, 3 m long by 2 m wide. No demolition and no new framing.";
+const specifiedExtracted = extractBrief(specifiedBrief);
+check(
+  "a specified 10 mm ceiling stays a nested portion",
+  specifiedExtracted.facts.some((fact) => fact.key === CEILINGS_PORTIONS_FACT_KEY)
+);
+const portionA = createEmptyCeilingPortion({
+  id: "ceiling-portion-a",
+  label: "Portion A",
+});
+portionA.geometry = {
+  mode: "length_width",
+  length_m: 3,
+  width_m: 2,
+  area_m2: 6,
+  perimeter_m: null,
+};
+portionA.lining.family = "plasterboard";
+portionA.lining.thickness_mm = 10;
+portionA.lining.plasterboard_product = "standard";
+const portionB = createEmptyCeilingPortion({
+  id: "ceiling-portion-b",
+  label: "Portion B",
+});
+portionB.geometry = {
+  mode: "length_width",
+  length_m: 4,
+  width_m: 3,
+  area_m2: 12,
+  perimeter_m: null,
+};
+portionB.lining.family = "plasterboard";
+portionB.lining.plasterboard_product = "standard";
+const nestedBrief =
+  "Ceilings only, two portions. Portion A is a specified nested plasterboard ceiling, 10 mm standard plasterboard, 3 m long by 2 m wide. Portion B is an unspecified flat ceiling, 4 m long by 3 m wide, no product, thickness, or sheet count.";
+const nestedExtracted = enrichExtractionFromBrief({
+  briefText: nestedBrief,
+  extraction: {
+    workAreas: [{ type: "ceilings", confidence: 0.9, rationale: "ai" }],
+    facts: [
+      {
+        work_area_type: "ceilings",
+        key: CEILINGS_PORTIONS_FACT_KEY,
+        label: "Ceiling portions",
+        value: [portionA, portionB],
+        confidence: 0.9,
+      },
+    ],
+    assumptions: [],
+    possibleConstraints: [],
+    confidence: 0.5,
+    warnings: [],
+  },
+  allowedTypes: getAnalysisCapableWorkAreaTypes(),
+}).extraction;
+const nestedPortions = nestedExtracted.facts.find(
+  (fact) => fact.key === CEILINGS_PORTIONS_FACT_KEY
+)?.value;
+const storedPortions = Array.isArray(nestedPortions)
+  ? (nestedPortions as CeilingPortion[])
+  : [];
+const storedA = storedPortions.find((row) => row.label === "Portion A");
+const storedB = storedPortions.find((row) => row.label === "Portion B");
+check(
+  "two ceiling portions stay nested",
+  storedPortions.length === 2 &&
+    !nestedExtracted.facts.some((fact) => fact.key === "ceilings.area_m2"),
+  `count ${storedPortions.length}`
+);
+check(
+  "an unnamed nested portion does not inherit another lining",
+  storedA?.lining.family === "plasterboard" &&
+    storedA.lining.thickness_mm === 10 &&
+    storedB?.lining.family == null &&
+    storedB?.lining.plasterboard_product == null &&
+    storedB?.geometry.area_m2 === 12,
+  `B family ${storedB?.lining.family ?? "null"}`
 );
 
 if (failed > 0) {
