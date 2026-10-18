@@ -11,6 +11,7 @@ import type { AssistantMutationResult } from "@/lib/assistant/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
 export type LoadAssistantMutationError = { error: string };
@@ -32,7 +33,9 @@ export async function loadAssistantMutationResult(
   projectId: string,
   reuse?: AssistantMutationResultReuse | null
 ): Promise<AssistantMutationResult | LoadAssistantMutationError> {
-  const owned = await assertOrgOwnsActiveProject(auth, projectId);
+  const owned = await traceOp("reload.ownership", () =>
+    assertOrgOwnsActiveProject(auth, projectId)
+  );
   if ("error" in owned) {
     return { error: "Project not found." };
   }
@@ -50,7 +53,7 @@ export async function loadAssistantMutationResult(
     { data: estimate },
     { data: projectFacts },
     organisationSettings,
-  ] = await Promise.all([
+  ] = await traceOp("reload.reads", () => Promise.all([
     supabase
       .from("projects")
       .select("id, stage, brief_text, quality_level")
@@ -97,7 +100,7 @@ export async function loadAssistantMutationResult(
       .eq("project_id", projectId)
       .eq("org_id", orgId),
     loadOrganisationSettingsRow(orgId),
-  ]);
+  ]));
 
   if (!project) {
     return { error: "Project not found." };

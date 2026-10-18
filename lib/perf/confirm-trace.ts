@@ -48,7 +48,8 @@ export function traceSync(name: string, run: () => void): void {
   }
 }
 
-export async function runConfirmTrace<T>(
+async function runNamedTrace<T>(
+  label: string,
   projectId: string,
   run: () => Promise<T>
 ): Promise<T> {
@@ -62,7 +63,21 @@ export async function runConfirmTrace<T>(
     const uptimeMs = Math.round(process.uptime() * 1000);
     const detail = trace.spans.map((span) => `${span.name}=${span.ms}`).join(" ");
     console.info(
-      `[perf-02] confirm project=${projectId} uptimeMs=${uptimeMs} total=${total} ops=${trace.spans.length} ${detail}`
+      `[perf-02] ${label} project=${projectId} uptimeMs=${uptimeMs} total=${total} ops=${trace.spans.length} ${detail}`
     );
   }
+}
+
+export async function runConfirmTrace<T>(
+  projectId: string,
+  run: () => Promise<T>
+): Promise<T> {
+  return runNamedTrace("confirm", projectId, run);
+}
+
+export async function runSaveTrace<T>(
+  projectId: string,
+  run: () => Promise<T>
+): Promise<T> {
+  return runNamedTrace("save", projectId, run);
 }

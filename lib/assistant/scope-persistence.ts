@@ -10,6 +10,7 @@
  */
 
 import type { createClient } from "@/lib/supabase/server";
+import { traceOp } from "@/lib/perf/confirm-trace";
 import {
   assertFactConstraintNamespace,
   findQuestionAnswersNeedingFactHeal,
@@ -1169,7 +1170,9 @@ export async function commitUserFactEdit(
     factQuery = factQuery.is("work_area_id", null);
   }
 
-  const { data: existingFact, error: selectError } = await factQuery.maybeSingle();
+  const { data: existingFact, error: selectError } = await traceOp("write.read", () =>
+    factQuery.maybeSingle()
+  );
   if (selectError) {
     return { ok: false, error: selectError.message };
   }
@@ -1309,7 +1312,7 @@ export async function commitUserFactEdit(
     return mirror;
   }
 
-  const factResult = await upsertScopedFact(supabase, {
+  const factResult = await traceOp("write.upsert", () => upsertScopedFact(supabase, {
     orgId: params.orgId,
     projectId: params.projectId,
     workAreaId: params.workAreaId,
@@ -1324,19 +1327,21 @@ export async function commitUserFactEdit(
     existingTarget: existingFact
       ? { id: existingFact.id, source: existingFact.source ?? null }
       : null,
-  });
+  }));
 
   if (!factResult.ok) {
     return factResult;
   }
 
-  const mirror = await mirrorFactOntoQuestions(supabase, {
-    projectId: params.projectId,
-    workAreaId: params.workAreaId,
-    key: params.key,
-    value: storedValue,
-    inputType: params.valueType,
-  });
+  const mirror = await traceOp("write.mirror", () =>
+    mirrorFactOntoQuestions(supabase, {
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      inputType: params.valueType,
+    })
+  );
 
   return mirror;
 }
