@@ -10,6 +10,7 @@ import {
   type AggregateLineInput,
   type CommercialCalculationRecord,
 } from "@/lib/commercial-engine";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { persistCommercialMetric } from "@/lib/pricing/commercial-engine-adapter";
 import type { DocumentTotals } from "@/lib/pricing/calculations";
 
@@ -47,6 +48,38 @@ export function inferPersistedLineCostKnown(line: {
   if (line.cost_known === true) return true;
   if (line.total_cost === 0 && line.total_sell > 0) return false;
   return true;
+}
+
+/**
+ * Read-time known-cost. A numeric 0 is unknown when the rate is missing.
+ * An explicit builder price, including a permitted $0 unit cost, stays known.
+ */
+export function derivePersistedPricingCostKnown(row: {
+  notes_internal?: string | null;
+  total_cost?: number | null;
+  total_sell?: number | null;
+  unit_cost?: number | null;
+  calculation_mode?: string | null;
+  manually_edited?: boolean | null;
+}): boolean {
+  const totalCost = Number(row.total_cost ?? 0);
+  const totalSell = Number(row.total_sell ?? 0);
+  const metadata = parseLineItemNotes(row.notes_internal).metadata;
+  if (metadata.pricingSource === "user_override") return true;
+  const unitCost = row.unit_cost == null ? null : Number(row.unit_cost);
+  const explicitMeasuredZero =
+    row.manually_edited === true &&
+    unitCost != null &&
+    Number.isFinite(unitCost) &&
+    metadata.rateSourceType !== "missing" &&
+    (row.calculation_mode === "quantity_rate" ||
+      row.calculation_mode === "productivity_labour");
+  if (explicitMeasuredZero) return true;
+  if (metadata.rateSourceType === "missing" && totalCost <= 0) return false;
+  return inferPersistedLineCostKnown({
+    total_cost: totalCost,
+    total_sell: totalSell,
+  });
 }
 
 export function mapItemsToAggregateLines(

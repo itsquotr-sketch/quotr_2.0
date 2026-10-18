@@ -72,6 +72,7 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   projectClientName: string | null;
   projectSiteAddress: string | null;
   reviewedErrorMessage?: string;
+  onStage?: (stage: string, durationMs: number) => void;
 }): Promise<{ error: string } | PricingQuoteSnapshot> {
   const {
     supabase,
@@ -82,15 +83,55 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     projectClientName,
     projectSiteAddress,
     reviewedErrorMessage = "Mark final pricing as reviewed before refreshing the quote.",
+    onStage,
   } = input;
 
-  const { data: documentRow, error: documentError } = await supabase
-    .from("pricing_documents")
-    .select("*")
-    .eq("id", pricingDocumentId)
-    .eq("project_id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const timeStage = async <T>(
+    stage: string,
+    run: () => PromiseLike<T>
+  ): Promise<T> => {
+    const started = Date.now();
+    try {
+      return await run();
+    } finally {
+      onStage?.(stage, Date.now() - started);
+    }
+  };
+
+  const [{ data: documentRow, error: documentError }, lineReads, orgDefaults] =
+    await Promise.all([
+      timeStage("pricingDocumentRead", () =>
+        supabase
+          .from("pricing_documents")
+          .select("*")
+          .eq("id", pricingDocumentId)
+          .eq("project_id", projectId)
+          .eq("org_id", orgId)
+          .maybeSingle()
+      ),
+      timeStage("pricingLineReads", () =>
+        Promise.all([
+          supabase
+            .from("pricing_items")
+            .select("*")
+            .eq("pricing_document_id", pricingDocumentId)
+            .eq("org_id", orgId)
+            .order("sort_order"),
+          supabase
+            .from("work_areas")
+            .select("id, name, type, quote_description")
+            .eq("project_id", projectId)
+            .eq("org_id", orgId)
+            .eq("status", "confirmed"),
+          supabase
+            .from("project_facts")
+            .select("work_area_id, key, label, value")
+            .eq("project_id", projectId)
+            .eq("org_id", orgId),
+        ])
+      ),
+      timeStage("orgDefaults", () => getOrgQuoteDefaultsForOrg(supabase, orgId)),
+    ]);
 
   if (documentError || !documentRow) {
     return { error: "Pricing document not found." };
@@ -105,26 +146,8 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   }
 
   const [{ data: pricingItems }, { data: workAreas }, { data: projectFacts }] =
-    await Promise.all([
-      supabase
-        .from("pricing_items")
-        .select("*")
-        .eq("pricing_document_id", pricingDocumentId)
-        .eq("org_id", orgId)
-        .order("sort_order"),
-      supabase
-        .from("work_areas")
-        .select("id, name, type, quote_description")
-        .eq("project_id", projectId)
-        .eq("org_id", orgId)
-        .eq("status", "confirmed"),
-      supabase
-        .from("project_facts")
-        .select("work_area_id, key, label, value")
-        .eq("project_id", projectId)
-        .eq("org_id", orgId),
-    ]);
-
+    lineReads;
+  const validationStarted = Date.now();
   const items = (pricingItems ?? []).map((row) => mapPricingItem(row));
   if (nestedCeilingsQuoteIsBlocked({ items })) {
     return { error: CEILINGS_QUOTE_PR_BLOCK_MESSAGE };
@@ -198,7 +221,7 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     pricingItemsByWorkAreaId
   );
 
-  const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  onStage?.("validation", Date.now() - validationStarted);
   const quoteGstRate =
     document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
   const quoteTerms = resolveClientQuoteTerms({
@@ -221,6 +244,7 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     workAreaNames,
     workAreaDescriptions
   );
+  const totalsStarted = Date.now();
   const totalsResult = calculateQuoteBaseTotalsFromItems(
     quoteItems,
     quoteGstRate,
@@ -229,6 +253,7 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (!totalsResult.ok) {
     return { error: totalsResult.error };
   }
+  onStage?.("totals", Date.now() - totalsStarted);
   const totals = totalsResult.totals;
 
   const inclusions = buildInclusionsFromPricing(items, workAreaNames);

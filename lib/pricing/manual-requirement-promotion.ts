@@ -30,7 +30,7 @@ import {
 } from "@/lib/pricing/action-guards";
 import {
   calculateAuthoritativeDocumentTotals,
-  inferPersistedLineCostKnown,
+  derivePersistedPricingCostKnown,
 } from "@/lib/pricing/authoritative-document-totals";
 import { calculateDocumentTotals, cleanClientLabel } from "@/lib/pricing/calculations";
 import {
@@ -90,18 +90,7 @@ export function inferStoredPricingCostKnown(row: {
   total_cost?: number | null;
   total_sell?: number | null;
 }): boolean {
-  const totalCost = Number(row.total_cost ?? 0);
-  const totalSell = Number(row.total_sell ?? 0);
-  if (
-    parseLineItemNotes(row.notes_internal).metadata.rateSourceType === "missing" &&
-    totalCost <= 0
-  ) {
-    return false;
-  }
-  return inferPersistedLineCostKnown({
-    total_cost: totalCost,
-    total_sell: totalSell,
-  });
+  return derivePersistedPricingCostKnown(row);
 }
 
 export function notesWithManualPricingProvenance(

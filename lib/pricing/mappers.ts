@@ -1,7 +1,7 @@
 import { parseCeilingProvisionalConfirmation } from "@/lib/estimate/ceilings-provisional-package";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { parseStringArray } from "@/lib/pricing/calculations";
-import { inferPersistedLineCostKnown } from "@/lib/pricing/authoritative-document-totals";
+import { derivePersistedPricingCostKnown } from "@/lib/pricing/authoritative-document-totals";
 import type {
   PricingDocument,
   PricingItem,
@@ -58,15 +58,14 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
 export function mapPricingItem(row: Record<string, unknown>): PricingItem {
   const totalCost = Number(row.total_cost ?? 0);
   const totalSell = Number(row.total_sell ?? 0);
-  const costKnownFromNotes =
-    parseLineItemNotes(row.notes_internal as string | null).metadata
-      .rateSourceType === "missing" && totalCost <= 0
-      ? false
-      : inferPersistedLineCostKnown({
-          total_cost: totalCost,
-          total_sell: totalSell,
-        });
-  const costKnown = costKnownFromNotes;
+  const costKnown = derivePersistedPricingCostKnown({
+    notes_internal: (row.notes_internal as string | null) ?? null,
+    total_cost: totalCost,
+    total_sell: totalSell,
+    unit_cost: row.unit_cost == null ? null : Number(row.unit_cost),
+    calculation_mode: (row.calculation_mode as string | null) ?? null,
+    manually_edited: Boolean(row.manually_edited ?? false),
+  });
   // Stored margin/profit may be the unknown-cost sentinel (0). cost_known tells
   // consumers not to treat that as a real 0% gross margin.
   const storedMargin = Number(row.margin_percent ?? 0);

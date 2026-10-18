@@ -27,6 +27,7 @@ import {
 import {
   isAuthOrgSuccess,
   requireAuthOrgContext,
+  runInsideAuthScope,
 } from "@/lib/security/auth-org-context";
 import {
   assertOrgOwnsPricingDocument,
@@ -663,49 +664,93 @@ export async function createQuoteFromPricing(input: {
     return { error: parsed.error };
   }
 
+  const timingStarted = Date.now();
+  let timingLast = timingStarted;
+  const timingStages: Record<string, number> = {};
+  const markQuoteStage = (stage: string) => {
+    const now = Date.now();
+    timingStages[stage] = now - timingLast;
+    timingLast = now;
+  };
+  const timeStage = async <T>(stage: string, run: () => PromiseLike<T>): Promise<T> => {
+    const started = Date.now();
+    try {
+      return await run();
+    } finally {
+      timingStages[stage] = Date.now() - started;
+    }
+  };
+  try {
+  return await runInsideAuthScope(async () => {
   const auth = await requireAuthOrgContext();
+  markQuoteStage("auth");
   if (!isAuthOrgSuccess(auth)) {
     return { error: auth.error };
   }
 
   const { supabase, user, orgId } = auth;
-  const denied = await permissionDeniedError({
-    orgId,
-    userId: user.id,
-    permission: "quotes.create",
-    entitlement: "quotes.create",
-  });
-  if (denied) return denied;
   const { projectId, pricingDocumentId } = parsed.data;
+  const prewriteStarted = Date.now();
+  const [
+    denied,
+    ownedProject,
+    ownedDocument,
+    projectResult,
+    existingQuote,
+    pricingSourceResult,
+  ] = await Promise.all([
+    timeStage("permission", () =>
+      permissionDeniedError({
+        orgId,
+        userId: user.id,
+        permission: "quotes.create",
+        entitlement: "quotes.create",
+      })
+    ),
+    timeStage("ownershipProject", () => assertOrgOwnsActiveProject(auth, projectId)),
+    timeStage("ownershipDocument", () =>
+      assertOrgOwnsPricingDocument(auth, pricingDocumentId, projectId)
+    ),
+    timeStage("projectRead", () =>
+      supabase
+        .from("projects")
+        .select("id, title, client_name, site_address, business_status, deleted_at")
+        .eq("id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle()
+    ),
+    timeStage("existingQuote", () =>
+      fetchQuoteSummaries(supabase, orgId, { pricingDocumentId })
+    ),
+    timeStage("estimateSource", () =>
+      supabase
+        .from("pricing_documents")
+        .select("estimate_id")
+        .eq("id", pricingDocumentId)
+        .eq("org_id", orgId)
+        .maybeSingle()
+    ),
+  ]);
+  timingStages.ownership = Math.max(
+    timingStages.ownershipProject ?? 0,
+    timingStages.ownershipDocument ?? 0
+  );
+  timingStages.prewriteWall = Date.now() - prewriteStarted;
+  timingLast = Date.now();
 
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
+  if (denied) return denied;
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
-
-  const ownedDocument = await assertOrgOwnsPricingDocument(
-    auth,
-    pricingDocumentId,
-    projectId
-  );
   if ("error" in ownedDocument) {
     return { error: ownedDocument.error };
   }
 
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, title, client_name, site_address, business_status, deleted_at")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
-
+  const { data: project, error: projectError } = projectResult;
   if (projectError || !project || project.deleted_at) {
     return { error: "Project not found." };
   }
 
-  const existingQuote = await fetchQuoteSummaries(supabase, orgId, {
-    pricingDocumentId,
-  });
   const existing = pickLatestQuoteSummary(existingQuote);
   const existingDecision = quoteCreationDecision({
     existingQuoteId: existing?.id ?? null,
@@ -716,27 +761,57 @@ export async function createQuoteFromPricing(input: {
     redirect(`/app/projects/${projectId}/quotes/${existingDecision.quoteId}`);
   }
 
-  const { data: pricingSource } = await supabase
-    .from("pricing_documents")
-    .select("estimate_id")
-    .eq("id", pricingDocumentId)
-    .eq("org_id", orgId)
-    .maybeSingle();
-  const statedCountBlock = pricingSource?.estimate_id
-    ? await deckStatedCountPricingBlock(
+  const pricingSource = pricingSourceResult.data;
+  const checksStarted = Date.now();
+  const [statedCountBlock, productivityScopeBlock, snapshot, scopeReview] =
+    await Promise.all([
+      pricingSource?.estimate_id
+        ? timeStage("statedCount", () =>
+            deckStatedCountPricingBlock(
+              supabase,
+              projectId,
+              pricingSource.estimate_id,
+              orgId
+            )
+          )
+        : Promise.resolve(null),
+      pricingSource?.estimate_id
+        ? timeStage("productivityScope", () =>
+            deckProductivityScopePricingBlock(
+              supabase,
+              pricingSource.estimate_id,
+              orgId
+            )
+          )
+        : Promise.resolve(null),
+      buildQuoteSnapshotFromReviewedPricing({
         supabase,
+        orgId,
         projectId,
-        pricingSource.estimate_id,
-        orgId
-      )
-    : null;
-  const productivityScopeBlock = pricingSource?.estimate_id
-    ? await deckProductivityScopePricingBlock(
-        supabase,
-        pricingSource.estimate_id,
-        orgId
-      )
-    : null;
+        pricingDocumentId,
+        projectTitle: project.title,
+        projectClientName: project.client_name,
+        projectSiteAddress: project.site_address,
+        reviewedErrorMessage:
+          "Mark final pricing as reviewed before creating a quote.",
+        onStage: (stage, durationMs) => {
+          timingStages[stage] = durationMs;
+        },
+      }),
+      timeStage("scopeReview", async () => {
+        const { loadScheduleScopeReview } = await import(
+          "@/lib/rfqs/schedule-scope-gaps"
+        );
+        return loadScheduleScopeReview(supabase, orgId, pricingDocumentId);
+      }),
+    ]);
+  timingStages.guardReads = Math.max(
+    timingStages.statedCount ?? 0,
+    timingStages.productivityScope ?? 0
+  );
+  timingStages.checksWall = Date.now() - checksStarted;
+  timingLast = Date.now();
+
   const newQuoteDecision = quoteCreationDecision({
     existingQuoteId: null,
     statedCountConflict: statedCountBlock ?? productivityScopeBlock,
@@ -744,26 +819,11 @@ export async function createQuoteFromPricing(input: {
   if (newQuoteDecision.action === "refuse") {
     return { error: newQuoteDecision.error };
   }
-
-  const snapshot = await buildQuoteSnapshotFromReviewedPricing({
-    supabase,
-    orgId,
-    projectId,
-    pricingDocumentId,
-    projectTitle: project.title,
-    projectClientName: project.client_name,
-    projectSiteAddress: project.site_address,
-    reviewedErrorMessage:
-      "Mark final pricing as reviewed before creating a quote.",
-  });
-
   if ("error" in snapshot) {
     return { error: snapshot.error };
   }
 
   const { quoteFields, quoteItems } = snapshot;
-  const { loadScheduleScopeReview } = await import("@/lib/rfqs/schedule-scope-gaps");
-  const scopeReview = await loadScheduleScopeReview(supabase, orgId, pricingDocumentId);
   if (scopeReview.blocking) return { error: scopeReview.blocking };
   quoteFields.exclusions = [
     ...quoteFields.exclusions,
@@ -800,6 +860,7 @@ export async function createQuoteFromPricing(input: {
     },
   });
 
+  markQuoteStage("transaction");
   if ("error" in created) {
     return { error: created.error };
   }
@@ -816,6 +877,7 @@ export async function createQuoteFromPricing(input: {
     issuer: null,
     options: NEW_QUOTE_DISPLAY_OPTIONS,
   });
+  markQuoteStage("displayOptions");
   if (displayPersistError) {
     return { error: displayPersistError };
   }
@@ -836,6 +898,7 @@ export async function createQuoteFromPricing(input: {
     );
   }
 
+  markQuoteStage("statusWrite");
   revalidateQuoteDashboard(projectId, quoteId, pricingDocumentId);
 
   await logPricingAuditEvent({
@@ -849,7 +912,13 @@ export async function createQuoteFromPricing(input: {
     newValues: { status: "draft", title: quoteFields.title },
   });
 
+  markQuoteStage("audit");
   redirect(`/app/projects/${projectId}/quotes/${quoteId}`);
+  });
+  } finally {
+    timingStages.totalMs = Date.now() - timingStarted;
+    console.info("[quote-create-timing]", JSON.stringify(timingStages));
+  }
 }
 
 export async function updateQuote(

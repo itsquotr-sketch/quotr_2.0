@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { Button } from "@/components/ui/button";
 import { createQuoteFromPricing } from "@/lib/quotes/actions";
@@ -26,6 +26,7 @@ export function CreateQuoteButton({
   quoteBlockedReason = null,
 }: CreateQuoteButtonProps) {
   const [isPending, startTransition] = useTransition();
+  const createLockRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [denial, setDenial] = useState<{
     reasonCode?: string;
@@ -48,11 +49,14 @@ export function CreateQuoteButton({
   }
 
   const handleCreate = () => {
+    if (isPending || createLockRef.current) return;
+    createLockRef.current = true;
     setError(null);
     setDenial(null);
     startTransition(async () => {
       const result = await createQuoteFromPricing({ projectId, pricingDocumentId });
-      if (result.error) {
+      if (result?.error) {
+        createLockRef.current = false;
         setError(result.error);
         if (result.reasonCode) {
           setDenial({

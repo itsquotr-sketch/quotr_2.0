@@ -8,7 +8,9 @@ import { readFileSync } from "node:fs";
 import { calculateAuthoritativeFieldsFromEstimateLine } from "../lib/pricing/estimate-to-pricing-adapter";
 import { calculateAuthoritativeDocumentTotals } from "../lib/pricing/authoritative-document-totals";
 import { isAuthoritativePricingItemCalculation } from "../lib/pricing/adoption-authority";
+import { serializeLineItemMetadata } from "../lib/estimate/line-item-metadata";
 import { mapPricingItem, mapPricingDocument } from "../lib/pricing/mappers";
+import { mapPricingItemsToQuoteItems } from "../lib/quotes/from-pricing";
 import { valuesFromEstimateLineItem } from "../lib/pricing/recalibration-helpers";
 import {
   parsePricingInput,
@@ -275,6 +277,78 @@ function main(): void {
       mappedUnknown.cost_known === false &&
         mappedUnknown.margin_percent === 0 &&
         mappedUnknown.total_sell === 5000
+    )
+  );
+
+  const zeroRow = {
+    ...mappedUnknown,
+    id: "zero",
+    client_label: "Included item",
+    internal_label: "Included item",
+    unit_cost: 0,
+    total_cost: 0,
+    total_sell: 450,
+    gross_profit: 450,
+    margin_percent: 100,
+    markup_percent: 0,
+    calculation_mode: "quantity_rate" as const,
+    visible_on_quote: true,
+  };
+  const placeholderZero = mapPricingItem({
+    ...zeroRow,
+    id: "placeholder",
+    client_label: "Scaffold access",
+    internal_label: "Scaffold access",
+    manually_edited: false,
+    notes_internal: serializeLineItemMetadata({ rateSourceType: "missing" }),
+  });
+  const explicitZero = mapPricingItem({
+    ...zeroRow,
+    id: "explicit",
+    manually_edited: true,
+    notes_internal: serializeLineItemMetadata({
+      rateSourceType: "user_rate",
+      pricingSource: "user_override",
+    }),
+  });
+  const numericZeroWithoutProvenance = mapPricingItem({
+    ...zeroRow,
+    id: "numeric",
+    manually_edited: false,
+    notes_internal: null,
+  });
+  const quoteLines = mapPricingItemsToQuoteItems(
+    [placeholderZero, explicitZero, numericZeroWithoutProvenance],
+    new Map()
+  );
+  checks.push(
+    assert(
+      "numeric missing-cost zero with a positive sell stays unknown",
+      placeholderZero.cost_known === false &&
+        placeholderZero.gross_profit === 0 &&
+        placeholderZero.margin_percent === 0
+    )
+  );
+  checks.push(
+    assert(
+      "explicit zero cost with priced provenance stays known",
+      explicitZero.cost_known === true &&
+        explicitZero.total_cost === 0 &&
+        explicitZero.gross_profit === 450 &&
+        explicitZero.margin_percent === 100
+    )
+  );
+  checks.push(
+    assert(
+      "a stored zero without priced provenance stays unknown",
+      numericZeroWithoutProvenance.cost_known === false
+    )
+  );
+  checks.push(
+    assert(
+      "unknown-cost positive sell appears once and the explicit zero stays priced",
+      quoteLines.filter((line) => line.label === "Scaffold access").length === 1 &&
+        quoteLines.some((line) => line.label === "Included item" && line.total === 450)
     )
   );
 
