@@ -55,14 +55,15 @@ console.log("\n=== Stage 3.1B.6R3 — Workflow Coherence Verification ===\n");
 
 // Analyse Job loading
 check(
-  "staged progress copy present",
-  ANALYSE_JOB_PROGRESS_STEPS[0].includes("brief") &&
-    ANALYSE_JOB_PROGRESS_STEPS[2].includes("work areas")
-);
-check(
-  "progress rotates without percentages",
-  !analyseJobProgressLabel(0).includes("%") &&
-    analyseJobProgressLabel(3000) !== analyseJobProgressLabel(0)
+  "analyse progress stays on finding the work during the long wait",
+  analyseJobProgressLabel(0).includes("Reading your job details") &&
+    analyseJobProgressLabel(10000) === "Finding the work involved" &&
+    analyseJobProgressLabel(10000) !== analyseJobProgressLabel(0) &&
+    !analyseJobProgressLabel(10000).includes("%") &&
+    analyseJobProgressLabel(25000).includes("Still working") &&
+    !ANALYSE_JOB_PROGRESS_STEPS.some((step) =>
+      /anthropic|claude|model|%/i.test(step)
+    )
 );
 const capture = read("components/assistant/ProjectCaptureBlock.tsx");
 check(
