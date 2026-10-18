@@ -622,7 +622,9 @@ export function summariseCeilingPortion(
           ? "Timber lined"
           : portion.lining.family === "tile_and_grid"
             ? "Tile & grid"
-            : null;
+            : portion.lining.family === "not_sure"
+              ? "Not specified"
+              : null;
   return {
     id: portion.id,
     displayName: portionDisplayName(portion, index),

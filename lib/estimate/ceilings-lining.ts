@@ -54,6 +54,13 @@ import {
   ceilingAllowsDisclosedPlasterboardSheetWidth,
 } from "@/lib/estimate/ceilings-disclosed-lining";
 
+export const CEILINGS_UNSPECIFIED_LINING_COMPONENT =
+  "ceilings.lining.unspecified.material" as const;
+export const CEILINGS_UNSPECIFIED_LINING_LABOUR =
+  "ceilings.lining.unspecified.install" as const;
+export const CEILINGS_UNSPECIFIED_LINING_PRODUCTIVITY =
+  "ceilings.lining.unspecified.install.hours_per_m2" as const;
+
 export const CEILINGS_PLASTERBOARD_COMPONENT =
   "ceilings.lining.plasterboard.material" as const;
 export const CEILINGS_PLYWOOD_COMPONENT =
@@ -97,7 +104,8 @@ export type CeilingLiningKind =
   | "plasterboard"
   | "plywood"
   | "timber_lined"
-  | "tile_and_grid";
+  | "tile_and_grid"
+  | "not_sure";
 
 export type CeilingSheetProductResolution =
   | {
@@ -943,6 +951,19 @@ export function calculateCeilingLining(
   }
   const family: CeilingLiningFamily | null = portion.lining.family;
   const geo = geometry ?? deriveCeilingGeometry(portion);
+  if (family === "not_sure") {
+    const area =
+      geo.area_m2 != null && geo.area_m2 > 0 ? geo.area_m2 : null;
+    return {
+      ...emptyTakeoff(
+        nestedItemId,
+        "not_applicable",
+        "Lining product is not specified for this ceiling portion.",
+        "not_sure"
+      ),
+      areaM2: area,
+    };
+  }
   if (family == null) {
     return emptyTakeoff(
       nestedItemId,

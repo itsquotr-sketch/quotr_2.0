@@ -1,4 +1,4 @@
-import { hasFactValue, isNotSureValue, getBooleanFact } from "@/lib/estimate/facts";
+import { getBooleanFact, hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import {
   BATHROOM_DEMOLITION_COMPONENT_OPTIONS,
   BATHROOM_FC_FLOORING_SHEET_SIZE_OPTIONS,
@@ -11,7 +11,9 @@ import {
   BATHROOM_TRADE_LEVEL_OPTIONS,
   BATHROOM_WALL_TILE_EXTENT_OPTIONS,
   BATHROOM_WATERPROOFING_EXTENT_OPTIONS,
+  BATHROOM_WALL_LINING_SYSTEM_OPTIONS,
   bathroomDemolitionImpliedByScope,
+  suggestedBathroomWallLiningSystem,
   bathroomFixtureOwnershipFactKey,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
@@ -85,7 +87,7 @@ function tradeLevelIncluded(
 
 export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
   workAreaType: "bathroom",
-  candidates({ workAreaId, workAreaName, facts, notConfirmed }) {
+  candidates({ workAreaId, workAreaName, facts, briefText, notConfirmed }) {
     const out: RefineCandidate[] = [];
     const jobScope = resolveBathroomJobScope({
       jobScope: facts.find(
@@ -451,6 +453,45 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         label: "Wall lining",
         question: "Are the bathroom walls being relined?",
         inputType: "boolean",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("linings", jobScope) &&
+      facts.some((fact) => {
+        if (
+          fact.key !== "bathroom.wall_lining_included" ||
+          fact.work_area_id !== workAreaId
+        ) {
+          return false;
+        }
+        return (
+          fact.value === true ||
+          fact.value === "Yes" ||
+          fact.value === "yes"
+        );
+      }) &&
+      !knownFact(facts, workAreaId, "bathroom.wall_lining_system")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.wall_lining_system`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.wall_lining_system",
+        constraintKey: null,
+        questionKey: "bathroom.wall_lining_system",
+        label: "Wall lining product",
+        question: "Is the bathroom wall lining GIB or fibre cement?",
+        inputType: "select",
+        options: [...BATHROOM_WALL_LINING_SYSTEM_OPTIONS],
+        currentValue: suggestedBathroomWallLiningSystem(briefText ?? ""),
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,

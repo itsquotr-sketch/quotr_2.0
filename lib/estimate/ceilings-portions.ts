@@ -69,6 +69,7 @@ export const CEILINGS_LINING_FAMILY_VALUES = [
   "plywood",
   "timber_lined",
   "tile_and_grid",
+  "not_sure",
 ] as const;
 export type CeilingLiningFamily = (typeof CEILINGS_LINING_FAMILY_VALUES)[number];
 

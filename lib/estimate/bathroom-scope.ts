@@ -536,6 +536,7 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.painting_included": "finishing",
   "bathroom.ventilation_included": "ventilation",
   "bathroom.wall_lining_included": "linings",
+  "bathroom.wall_lining_system": "linings",
   "bathroom.ceiling_lining_included": "ceiling_lining",
   "bathroom.floor_prep_included": "floor_prep",
   "bathroom.underfloor_heating_included": "underfloor_heating",
@@ -543,6 +544,40 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.finish_level": "finish_level",
   "bathroom.renovation_type": "legacy_renovation_type",
 };
+
+export const BATHROOM_WALL_LINING_SYSTEM_OPTIONS = [
+  "GIB Aqualine",
+  "Fibre cement",
+  "Not sure",
+] as const;
+
+/**
+ * Preselect only when the brief names one wall lining. Floor fibre-cement
+ * and a choice between products stay unselected.
+ */
+export function suggestedBathroomWallLiningSystem(brief: string): string | null {
+  const withoutFloorSubstrate = brief
+    .toLowerCase()
+    .replace(/\d+\s*mm\s+fibre[-\s]?cement\s+floor(?:ing)?/g, " ")
+    .replace(/fibre[-\s]?cement\s+floor(?:ing)?/g, " ")
+    .replace(
+      /rebuild the floor with\s+(?:\d+\s*mm\s+)?fibre[-\s]?cement/g,
+      " "
+    );
+  const gib =
+    /\bgib\s+aqualine\b/.test(withoutFloorSubstrate) ||
+    /\baqualine\b/.test(withoutFloorSubstrate) ||
+    (/\bgib\b/.test(withoutFloorSubstrate) &&
+      /\bwalls?\b/.test(withoutFloorSubstrate));
+  const fibreCement =
+    /\b(?:fibre[-\s]?cement|villaboard|hardieflex)\b/.test(
+      withoutFloorSubstrate
+    ) && /\bwalls?\b/.test(withoutFloorSubstrate);
+  if (gib && fibreCement) return null;
+  if (gib) return "GIB Aqualine";
+  if (fibreCement) return "Fibre cement";
+  return null;
+}
 
 export function bathroomQuestionGroupForFact(
   factKey: string

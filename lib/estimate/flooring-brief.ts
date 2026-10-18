@@ -41,6 +41,7 @@ import {
   briefHasIndependentFlooring,
   clauseHasFlooringOperation,
   clauseIsBathroomOwnedFloor,
+  clauseIsBathroomSubstrateRebuild,
   clauseIsKitchenOwnedFloor,
 } from "@/lib/work-areas/ownership";
 
@@ -773,6 +774,7 @@ export function extractFlooringPortionsFromBrief(briefText: string): FlooringPor
   const portions: FlooringPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
     if (clauseIsBathroomOwnedFloor(snippet)) continue;
+    if (clauseIsBathroomSubstrateRebuild(snippet, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(snippet)) continue;
     if (!snippetHasFlooringSignal(snippet) && snippets.length > 1) continue;
     const portion = createEmptyFlooringPortion({

@@ -678,7 +678,7 @@ export const bathroomScope: ScopeDefinition = {
       label: "Wall lining product",
       questionText: "Is the bathroom wall lining GIB or fibre cement?",
       inputType: "select",
-      options: ["GIB Aqualine", "Fibre cement", "Other", "Not sure"],
+      options: ["GIB Aqualine", "Fibre cement", "Not sure"],
       required: false,
       priority: 60,
       estimatePriorityClass: "P1",

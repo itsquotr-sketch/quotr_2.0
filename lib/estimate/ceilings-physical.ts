@@ -36,6 +36,7 @@ import {
   CEILING_GRID_M2_KEY,
   CEILINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_PLYWOOD_COMPONENT,
+  CEILINGS_UNSPECIFIED_LINING_COMPONENT,
   CEILINGS_TILE_GRID_GRID_COMPONENT,
   CEILINGS_TILE_GRID_TILE_COMPONENT,
   CEILINGS_TIMBER_LINING_COMPONENT,
@@ -598,6 +599,45 @@ function liningMaterialRequirement(params: {
   lining: CeilingLiningTakeoff;
 }): MaterialRequirement[] {
   const { lining, workArea, portion } = params;
+  if (portion.lining.family === "not_sure") {
+    const area = lining.areaM2;
+    if (area == null || area <= 0) return [];
+    const label = portion.label?.trim() || "Ceiling portion";
+    return [
+      buildMaterialRequirement({
+        workAreaId: workArea.id,
+        workAreaType: workArea.type || "ceilings",
+        variantKey: portion.id,
+        componentKey: CEILINGS_UNSPECIFIED_LINING_COMPONENT,
+        description: `${label} — ceiling lining`,
+        confidence: "low",
+        assumptions: [
+          {
+            key: "unspecified_lining",
+            text: "Lining product is not specified. Sheet size and sheet count are not calculated.",
+            source: "calculator_default",
+          },
+        ],
+        provenance: {
+          calculatorSource: "ceilings-physical",
+          factKeys: [...LINING_FACT_KEYS],
+          constraintKeys: [],
+        },
+        priced: false,
+        materialKey: null,
+        category: "LINING",
+        specification: `${area} m². Product, sheet size, and sheet count are not specified.`,
+        baseQuantity: area,
+        baseUnit: "m2",
+        wasteFactor: 0,
+        purchaseQuantity: area,
+        purchaseUnit: "m2",
+        rateSource: "missing",
+        unitCost: null,
+        totalCost: null,
+      }),
+    ];
+  }
   if (lining.status !== "ok") return [];
   const assumptions = liningAssumptions(lining);
   const shared = {

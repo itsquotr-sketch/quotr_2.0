@@ -46,6 +46,9 @@ import { CEILINGS_TIMBER_FRAMING_COMPONENT } from "@/lib/estimate/ceilings-frami
 import {
   CEILINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_PLYWOOD_COMPONENT,
+  CEILINGS_UNSPECIFIED_LINING_COMPONENT,
+  CEILINGS_UNSPECIFIED_LINING_LABOUR,
+  CEILINGS_UNSPECIFIED_LINING_PRODUCTIVITY,
   CEILING_PLYWOOD_SHEET_KEY,
   CEILINGS_TILE_GRID_GRID_COMPONENT,
   CEILINGS_TILE_GRID_TILE_COMPONENT,
@@ -207,6 +210,12 @@ const LABOUR_FOR_MATERIAL: Record<string, CeilingLabourOperationSpec> = {
     productivityKey: CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
     unit: "sheet",
     description: "Ceiling plasterboard install",
+  },
+  [CEILINGS_UNSPECIFIED_LINING_COMPONENT]: {
+    labourComponentKey: CEILINGS_UNSPECIFIED_LINING_LABOUR,
+    productivityKey: CEILINGS_UNSPECIFIED_LINING_PRODUCTIVITY,
+    unit: "m2",
+    description: "Ceiling lining install",
   },
   [CEILINGS_PLYWOOD_COMPONENT]: {
     labourComponentKey: CEILINGS_PLYWOOD_LABOUR,

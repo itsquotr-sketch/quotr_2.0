@@ -89,8 +89,10 @@ import {
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
   isMatureBathroomPath,
+  BATHROOM_WALL_LINING_SYSTEM_OPTIONS,
   parseBathroomFloorSubstrate,
   parseBathroomWallTileExtent,
+  suggestedBathroomWallLiningSystem,
   parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
 } from "@/lib/estimate/bathroom-scope";
@@ -1504,6 +1506,39 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             "19 mm fibre-cement flooring size"
           );
         }
+      }
+      if (
+        bathroomQuestionGroupVisible("linings", jobScope, finishFlags) &&
+        finishFlags.wallLiningIncluded === true &&
+        !factHas(input, "bathroom.wall_lining_system", wa.id)
+      ) {
+        const liningKey = "bathroom.wall_lining_system";
+        const liningTemplate = getQuestionTemplateByKey(liningKey);
+        out.push({
+          id: `fact:${wa.id}:${liningKey}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: liningKey,
+          constraintKey: null,
+          questionKey: liningKey,
+          label: liningTemplate?.label ?? "Wall lining product",
+          question:
+            liningTemplate?.questionText ??
+            "Is the bathroom wall lining GIB or fibre cement?",
+          askClass: "ASK_NOW",
+          inputType: "select",
+          options: [...BATHROOM_WALL_LINING_SYSTEM_OPTIONS],
+          currentValue: suggestedBathroomWallLiningSystem(input.briefText ?? ""),
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: false,
+          rankScore: CHECK_SCORES[liningKey] ?? 80,
+          rankReason: "Bathroom wall lining product",
+          assumptionStatement: null,
+        });
       }
       if (bathroomQuestionGroupVisible("framing", jobScope, finishFlags)) {
         pushBathroomClarifyFact(

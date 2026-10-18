@@ -461,6 +461,7 @@ const ENUM_ANSWER_LABELS: Record<string, string> = {
   thermal_acoustic: "Combination thermal + acoustic",
   existing_specified: "Existing specified product",
   other: "Other / custom",
+  not_sure: "Not sure — specify later",
 };
 
 /**

@@ -747,6 +747,47 @@ export function buildBathroomPhysicalEnvelope(params: {
     );
   }
 
+  if (selection.wallLining === "unknown" && wallArea != null && wallArea > 0) {
+    const area = round2(wallArea);
+    const note = `Pricing required. ${presentBathroomAreaM2(area)} of wall lining. The product is not specified, so no sheet size, sheet count, or installation rate is calculated.`;
+    lineItems.push(
+      unpricedMaterialLine({
+        workArea,
+        label: "Wall lining",
+        quantity: area,
+        unit: "m2",
+        itemKey: BATHROOM_WALL_LINING_COMPONENT,
+        componentKey: BATHROOM_WALL_LINING_COMPONENT,
+        identitySummary: presentBathroomAreaM2(area),
+        notes: note,
+        sortOrder: sortOrder++,
+        buildUp: null,
+      })
+    );
+    const labour: EstimateLineItemInput = {
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: "Wall lining installation",
+      category: "labour",
+      quantity: area,
+      unit: "m2",
+      componentKey: BATHROOM_WALL_LINING_LABOUR_COMPONENT,
+      identitySummary: presentBathroomAreaM2(area),
+      notes: note,
+      rateSource: getRateSourceLabel("missing"),
+      rateSourceType: "missing",
+      sortOrder: sortOrder++,
+      ...buildAmounts(0, 0, null),
+    };
+    lineItems.push(
+      withPricingOwnership(labour, {
+        pricingOwner: "in_house_labour",
+        scopeKey: BATHROOM_WALL_LINING_LABOUR_COMPONENT,
+        overlapGroup: "bathroom_wall_lining_install",
+      })
+    );
+  }
+
   if (
     (selection.wallLining === "aqualine" || selection.wallLining === "fibre_cement") &&
     wallArea != null

@@ -423,6 +423,37 @@ export function kitchenTokenIsFlooringLocation(clause: string): boolean {
   return true;
 }
 
+const DISTINCT_FLOOR_FINISH =
+  /\b(?:carpet|vinyl(?:\s+plank|\s+planks)?|lvt|luxury\s+vinyl|slat\s+vinyl|vinyl\s+slats|hardwood|timber\s+floor(?:ing|boards?)?|floor\s+tiles?|tiled?\s+floor|tile\s+flooring)\b/;
+
+/**
+ * Bathroom floor-substrate rebuild (fibre-cement / plywood / "rebuild the
+ * floor") inside an independent bathroom renovation. A separate sentence
+ * does not make it a Flooring trade. A named finish or another room stays
+ * Flooring.
+ */
+export function clauseIsBathroomSubstrateRebuild(
+  clause: string,
+  briefText: string
+): boolean {
+  if (!briefHasIndependentBathroom(briefText)) return false;
+  const raw = clause.toLowerCase();
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|entry)\b/.test(
+      raw
+    )
+  ) {
+    return false;
+  }
+  if (DISTINCT_FLOOR_FINISH.test(raw)) return false;
+  const substrate =
+    (/\bfibre[-\s]?cement\b/.test(raw) && /\bfloor/.test(raw)) ||
+    (/\b(?:plywood|particle\s*board|floor substrate)\b/.test(raw) &&
+      /\bfloor/.test(raw)) ||
+    /\brebuild the floor\b/.test(raw);
+  return substrate;
+}
+
 export function clauseIsBathroomOwnedFloor(clause: string): boolean {
   if (!/\b(?:ensuite|bathroom)\b/.test(clause) && !clauseHasIndependentBathroomSignal(clause)) {
     return false;
@@ -492,6 +523,7 @@ export function briefHasIndependentFlooring(briefText: string): boolean {
   for (const clause of clauses) {
     if (!clauseHasFlooringOperation(clause)) continue;
     if (clauseIsBathroomOwnedFloor(clause)) continue;
+    if (clauseIsBathroomSubstrateRebuild(clause, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(clause)) continue;
     if (clauseIsDemolitionMentionOfFlooring(clause)) continue;
     return true;
