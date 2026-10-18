@@ -1,13 +1,54 @@
 # Release-candidate inventory
 
-**Observed:** 9 October 2026, from this working tree and read-only Preview, Production, DNS, and Vercel checks.  
-**Application candidate:** `1cfa7d24a437f8955143d100083d6e93eaab115e` on `ui/core-workflow-overhaul`.  
-**This document is not the application candidate.** A documentation commit that adds only this file moves `HEAD`. The Preview workflow alias still points at `1cfa7d2`.  
-**Not frozen.** The candidate is not labelled frozen. Production was not migrated, deployed, or reconfigured. The hardening alias was not moved.
+**Updated:** 19 October 2026, after a signed-in workflow Preview acceptance pass. The 9 October observations below remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Application candidate:** `e85029eac87bb16d6343213975e13660578a344c` on `ui/core-workflow-overhaul`.  
+**This document is not the application candidate.** It lives on `docs/release-candidate-notes` and is not part of the Preview deployment.  
+**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved.
 
 **Go / no-go for the proper domain: NO-GO.**
 
-## 1. Candidate mapping
+## Current candidate — 19 October 2026
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `ui/core-workflow-overhaul` |
+| Application SHA | `e85029eac87bb16d6343213975e13660578a344c` |
+| Commit | 2026-10-18 19:49:19 +1300 — Speed up Create Quote by sharing the signed-in organisation and overlapping independent reads. |
+| Working tree | clean at that SHA. No further Pricing redirect or project-loading change. |
+| Workflow Preview deployment | `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts` |
+| Deployment URL | `https://quotr-2-0-1qhjayb7m-quotr1.vercel.app` |
+| Created | 2026-10-18 19:49:40 +1300, Ready, target preview |
+| `app.get-quotr.com` | that same deployment |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that same deployment |
+| Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, SHA `58d7681d6eb8d8e811ad6ec115f6a006bc179642`, created 2026-09-29 |
+| Preview schema | local and remote head **111**. Versions 037 and 055 are still absent on purpose. |
+| Production schema | remote head **045**. Pending 046–111 except absent 037 and 055. |
+| Production deployment | not redeployed. The 5 August 2026 Error deployment recorded below was not replaced. |
+
+Signed-in acceptance used disposable projects on `app.get-quotr.com`. No Quote was issued or emailed. Benchmark catalogue rates were not edited. One disposable company carpenter override was set through Rates, observed, and then removed. Phone checks used a 390×844 viewport. Primary actions sat above the mobile navigation (action bottom 752, navigation top 771) on Pricing review and on the draft Quote’s Send control. Navigation items overlap the bar because they are the bar.
+
+### Tested journeys
+
+| Path | Project | Result |
+| --- | --- | --- |
+| Bathroom | `c16b81e5-5ddb-4ba7-9383-29b54370fdad` | **Failed.** Complete strip-out is one labour line. The 1800×900 fibre-cement sheet is Pricing Required at $0 cost and $0 sell, and Mark as reviewed and Create quote stay disabled until a client price is entered. Specified GIB Aqualine was not asked and is not on the estimate. A separate Flooring area added a second unpriced sheet line, an unpriced custom finish-removal line, and extra installation labour. |
+| Ceiling | `4ffd5cab-8c03-4693-9081-b003b0fd9267` | **Failed before Pricing.** Portion A was set to standard 10 mm plasterboard. Portion B has no lining and the only choices are named linings. Create estimate stays blocked. The flat $75/m² package and its confirmation control were not reached. |
+| Retaining wall | `ab27a4c6-c964-4bc5-bea4-16343170165c` | **Passed.** Excavation required, no bank volume. The line is “Unmeasured bulk excavation — wall face 7.2 m², bank volume unknown”, unit m², Pricing Required. Quote creation stays blocked until that line is priced. |
+| Mixed deck and fence | `6db9a28d-24b7-4e67-b3fc-418d30b5f34b` | **Passed.** Company carpenter cost $73/hour won on the labour lines (`Your company rate`, unit cost 73, sell 97.33). Direct cost $2,417.59 and client sell ex GST $3,223.70 match the line totals. Draft quote `9ff3c4ad-cf48-44d4-a04e-de44b7a97728` shows each visible line once and does not show internal cost or margin. |
+
+### Create Pricing performance closeout
+
+The pass is closed at `e85029eac87bb16d6343213975e13660578a344c`. No change was kept. Do not make another Pricing redirect or project-loading optimisation without a new, reproducible blocking cause.
+
+The action response is a 303 whose body is the Pricing page. The browser does not make a second GET of that page. The usable summary is the commercial summary with a dollar amount. On the signed-off Preview, four journeys gave headers-to-usable about 2.39s, 2.53s, 2.50s, and 2.92s (median about 2.52s) and click-to-usable about 9.14s, 10.13s, 9.18s, and 9.15s (median about 9.17s). An instrumented page render was 2210ms: auth 719ms, then the slowest parallel loader (tabs 1491ms). A loader experiment on a throwaway deployment cut that render to about 1802ms, but four later journeys stayed at response-to-money 2426, 2359, 2871, and 2568 (median about 2.50s) and click-to-usable 9125, 9150, 9674, and 9139 (median about 9.14s). The experiment was reverted. Preview remains `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts`.
+
+### Owner decisions still open
+
+- Whether the bathroom details path must ask for GIB versus fibre cement before an estimate, and whether an analysed floor rebuild should become a second Flooring area that prices the same sheet and a second removal.
+- Whether an unspecified ceiling stored as a nested portion should stay on the flat provisional package instead of requiring a named lining.
+- Production remains NO-GO: schema 045, no Ready Production deployment of this SHA, and the environment gaps recorded in section 6. Do not deploy Production from this update.
+
+## 1. Candidate mapping (9 October snapshot)
 
 | Fact | Value |
 | --- | --- |
@@ -34,7 +75,9 @@ Vercel project `quotr-2-0` (`prj_fPvYMlTj74oC5vcFolpkCHJJ8s0i`), team `quotr1`. 
 
 ### Jointly tested pair
 
-The pair that is actually deployed together is:
+The pair recorded on 9 October is below. The pair tested on 19 October is in the current-candidate section: `e85029eac87bb16d6343213975e13660578a344c`, deployment `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts`, Preview schema **111**.
+
+The 9 October pair was:
 
 - code `1cfa7d24a437f8955143d100083d6e93eaab115e`
 - Preview deployment `dpl_9fjHt4pATsN6ec3se272NynYChxL`
@@ -54,11 +97,11 @@ These mixtures were **not** jointly tested as the candidate:
 
 | Place | History | Head |
 | --- | --- | --- |
-| Repository files | 001–036, 038–054, 056–107 | file head **107** |
+| Repository files on the 19 October application SHA | 001–036, 038–054, 056–111 | file head **111** |
 | Local applied database | **unavailable** | Docker daemon is not running (`npipe:////./pipe/dockerDesktopLinuxEngine` missing). `supabase status` could not inspect a local database. |
 | Local `.env.local` target | hosted Preview | project ref `shhpjsoldmqtkdbgrbtm` (not Production) |
-| Preview `shhpjsoldmqtkdbgrbtm` | same version list as the files, each local version present remotely | **107** |
-| Production `lxvnylhsbvudzzupxeqr` | 001–036, 038–045 present; 046–107 absent | **045** |
+| Preview `shhpjsoldmqtkdbgrbtm` | same version list as the application files, each local version present remotely, read 19 October 2026 | **111** |
+| Production `lxvnylhsbvudzzupxeqr` | 001–036, 038–045 present; 046–111 absent, read 19 October 2026 | **045** |
 
 There is no remote-only version on either hosted database. Preview matches the candidate files. Production matches those files through 045 and then stops.
 
@@ -73,7 +116,9 @@ Both numbers are absent on purpose. They are not missing files and they are not 
 
 Apply only after a separate owner rehearsal. Order is the numeric version, not lexicographic filename sort. Skip 055 because it does not exist.
 
-`046, 047, 048, 049, 050, 051, 052, 053, 054, 056, 057, 058, 059, 060, 061, 062, 063, 064, 065, 066, 067, 068, 069, 070, 071, 072, 073, 074, 075, 076, 077, 078, 079, 080, 081, 082, 083, 084, 085, 086, 087, 088, 089, 090, 091, 092, 093, 094, 095, 096, 097, 098, 099, 100, 101, 102, 103, 104, 105, 106, 107`
+`046, 047, 048, 049, 050, 051, 052, 053, 054, 056, 057, 058, 059, 060, 061, 062, 063, 064, 065, 066, 067, 068, 069, 070, 071, 072, 073, 074, 075, 076, 077, 078, 079, 080, 081, 082, 083, 084, 085, 086, 087, 088, 089, 090, 091, 092, 093, 094, 095, 096, 097, 098, 099, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111`
+
+108 updates calibration-catalogue benchmark productivity only. 109 replaces the fence post-hole concrete catalogue reference. 110 adds `pricing_documents.provisional_ceiling_confirmation`. 111 updates the deck concrete calibration-catalogue reference. None of these write organisation rates.
 
 No new `CREATE EXTENSION` appears in 046–107. `pgcrypto` is already in 001, which Production has. Branding bucket `organisation-branding` is already in 034, which Production has.
 
@@ -264,7 +309,7 @@ Build log for `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` on 2026-08-05:
 | # | Blocker | Owner | Evidence that closes it |
 | --- | --- | --- | --- |
 | 1 | No Ready Production deployment. The only one is Error on `383133d`, an old `main` SHA, not the candidate. `quotr-2-0.vercel.app` is 404. | Owner | A later Ready Production deployment of the approved SHA, after the rows below are closed. Do not deploy from this inventory. |
-| 2 | Production schema is 045. The candidate database is 107. Delta is 046–107 except absent 037 and 055. | Owner | Backup or PITR confirmation, then a rehearsed apply in the order in section 2. 048 live singleton inserted in the same window. 060–062 not left half-applied. Preview bootstrap function not called. |
+| 2 | Production schema is 045. The candidate database is 111. Delta is 046–111 except absent 037 and 055. | Owner | Backup or PITR confirmation, then a rehearsed apply in the order in section 2. 048 live singleton inserted in the same window. 060–062 not left half-applied. Preview bootstrap function not called. |
 | 3 | Production env has no site URL, Stripe, billing mode, Resend, or Google key. | Owner | Names present on Production only, live Stripe mode confirmed in the dashboard, site URL equal to the approved domain. Preview values must not be copied. |
 | 4 | `get-quotr.com` does not serve this app and does not link to `/signup`. `app.get-quotr.com` does not resolve even though Vercel lists a redirect. | Owner | Public DNS and a page load of the approved origin showing this app’s signup, plus a marketing link to that URL. |
 | 5 | Supabase Auth Site URL and redirect allow-list are unverified on both projects. | Owner | Dashboard read of both projects: Site URL and redirects for the approved origin, with the workflow callback kept only for Preview. |
@@ -286,7 +331,7 @@ Do not run this section now.
 4. Read-only `npm run db:production:status`. Expect head 045. If it is not 045, stop.
 5. Count owner-role profiles per organisation. More than one owner blocks 049.
 6. Apply 046 through 107 in the order in section 2, one window. Immediately after 048, insert the live billing singleton. Do not call `bootstrap_missing_preview_internal_trials()`. Apply 060, 061, and 062 without leaving the database on 060 or 061.
-7. Deploy Production only from `1cfa7d2` (or a later SHA that has been paired again with schema 107). Do not deploy `58d7681` onto schema 107. Do not deploy the candidate onto schema 045.
+7. Deploy Production only from `e85029eac87bb16d6343213975e13660578a344c` (or a later SHA that has been paired again with schema 111). Do not deploy `58d7681` onto schema 111. Do not deploy the candidate onto schema 045. Do not deploy Production as part of the 19 October acceptance update.
 8. Smoke the approved origin: signup, phone duplicate, Viewer denial, one quote link host, one variation link host.
 9. Rollback for the database is restore of the backup taken before 046. There is no down-migration. 049 memberships, 052 rate provenance, phone claims, storage objects, and issued quote or variation rows are not safely reversible. There is no previous Ready Production deployment to alias back to. `quotr-2-0.vercel.app` is already 404. Do not alias Production at the Error deployment and call that a rollback. Leave the hardening alias on `58d7681`.
 
@@ -294,12 +339,12 @@ Do not run this section now.
 
 | Gate | Result |
 | --- | --- |
-| Candidate SHA is the Ready workflow deployment | yes |
-| That SHA is paired with Preview schema 107 | yes |
+| Candidate SHA is the Ready workflow deployment | yes — `e85029eac87bb16d6343213975e13660578a344c` on `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts` |
+| That SHA is paired with Preview schema 111 | yes |
 | Working tree was clean and matched origin at inventory start | yes |
 | Candidate labelled frozen | **no** |
 | Production deployment Ready on that SHA | **no** |
-| Production schema 107 | **no** |
+| Production schema 111 | **no** — still 045 |
 | Production site URL, Stripe live, billing live, Resend, Google | **no** |
 | Auth redirects read and matching the approved origin | **no** |
 | Marketing signup link to the app | **no** |
