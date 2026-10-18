@@ -4,8 +4,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
-import { deckStatedCountPricingBlock } from "@/lib/estimate/deck-stated-count-guard";
-import { deckProductivityScopePricingBlock } from "@/lib/estimate/deck-productivity-scope";
+import {
+  deckStatedCountConflictFromPersisted,
+  deckStatedCountPricingBlock,
+} from "@/lib/estimate/deck-stated-count-guard";
+import {
+  deckProductivityScopePricingBlock,
+  productivityScopeReviewBlock,
+} from "@/lib/estimate/deck-productivity-scope";
+import type { EstimateFact } from "@/lib/estimate/types";
 import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
@@ -500,33 +507,32 @@ export async function createPricingFromEstimate(input: {
     }
   }
 
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, title, client_name, site_address, brief_text, business_status, deleted_at")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const estimateQuery = supabase
+    .from("estimates")
+    .select("*")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId);
+  const [projectResult, estimateResult] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, title, client_name, site_address, brief_text, business_status, deleted_at")
+      .eq("id", projectId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    (estimateId
+      ? estimateQuery.eq("id", estimateId)
+      : estimateQuery.order("created_at", { ascending: false }).limit(1)
+    ).maybeSingle(),
+  ]);
+  const project = projectResult.data;
+  const projectError = projectResult.error;
 
   if (projectError || !project || project.deleted_at) {
     return { error: "Project not found." };
   }
 
-  let estimateQuery = supabase
-    .from("estimates")
-    .select("*")
-    .eq("project_id", projectId)
-    .eq("org_id", orgId);
-
-  if (estimateId) {
-    estimateQuery = estimateQuery.eq("id", estimateId);
-  } else {
-    estimateQuery = estimateQuery
-      .order("created_at", { ascending: false })
-      .limit(1);
-  }
-
-  const { data: estimate, error: estimateError } =
-    await estimateQuery.maybeSingle();
+  const estimate = estimateResult.data;
+  const estimateError = estimateResult.error;
 
   if (estimateError || !estimate) {
     return {
@@ -557,12 +563,47 @@ export async function createPricingFromEstimate(input: {
     };
   }
 
-  const { data: lineItems, error: lineItemsError } = await supabase
-    .from("estimate_line_items")
-    .select("*")
-    .eq("estimate_id", estimate.id)
-    .eq("org_id", orgId)
-    .order("sort_order");
+  const [
+    lineItemsResult,
+    factsResult,
+    workAreasResult,
+    orgDefaults,
+    manualItemsResult,
+    manualPricingDocsResult,
+  ] = await Promise.all([
+    supabase
+      .from("estimate_line_items")
+      .select("*")
+      .eq("estimate_id", estimate.id)
+      .eq("org_id", orgId)
+      .order("sort_order"),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value")
+      .eq("project_id", projectId),
+    supabase
+      .from("work_areas")
+      .select("id, name, type, summary, quote_description")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .eq("status", "confirmed"),
+    getOrgQuoteDefaultsForOrg(supabase, orgId),
+    supabase
+      .from("work_area_scope_items")
+      .select("id, work_area_id, title, description")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .eq("origin", "user"),
+    supabase
+      .from("pricing_documents")
+      .select("id, status, estimate_id, created_at")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .is("estimate_id", null)
+      .order("created_at", { ascending: false }),
+  ]);
+  const lineItems = lineItemsResult.data;
+  const lineItemsError = lineItemsResult.error;
 
   if (lineItemsError) {
     return {
@@ -570,33 +611,25 @@ export async function createPricingFromEstimate(input: {
     };
   }
 
-  const statedCountBlock = await deckStatedCountPricingBlock(
-    supabase,
-    projectId,
-    estimate.id as string,
-    orgId
-  );
+  const statedCountBlock = factsResult.error
+    ? null
+    : deckStatedCountConflictFromPersisted({
+        facts: (factsResult.data ?? []) as EstimateFact[],
+        lines: lineItems ?? [],
+      })?.summary ?? null;
   if (statedCountBlock) {
     return { error: statedCountBlock };
   }
-  const productivityScopeBlock = await deckProductivityScopePricingBlock(
-    supabase,
-    estimate.id as string,
-    orgId
+  const productivityScopeBlock = productivityScopeReviewBlock(
+    (lineItems ?? []).map((row) => row.notes as string | null)
   );
   if (productivityScopeBlock) {
     return { error: productivityScopeBlock };
   }
 
-  const { data: workAreas } = await supabase
-    .from("work_areas")
-    .select("id, name, type, summary, quote_description")
-    .eq("project_id", projectId)
-    .eq("org_id", orgId)
-    .eq("status", "confirmed");
+  const workAreas = workAreasResult.data;
 
   const workAreaNames = (workAreas ?? []).map((workArea) => workArea.name);
-  const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
   const assumptions = resolveClientQuoteAssumptions({
     pricingClientAssumptions: [],
     orgDefaults,
@@ -688,12 +721,8 @@ export async function createPricingFromEstimate(input: {
   // calculated money. Presentation shows "Pricing required" until the builder
   // enters a rate/lump sum. Does not change Stage 2B commercial formulas.
   {
-    const { data: manualItems, error: manualError } = await supabase
-      .from("work_area_scope_items")
-      .select("id, work_area_id, title, description")
-      .eq("project_id", projectId)
-      .eq("org_id", orgId)
-      .eq("origin", "user");
+    const manualItems = manualItemsResult.data;
+    const manualError = manualItemsResult.error;
 
     // Soft-skip when migration 030 is not yet applied on this environment.
     if (!manualError && manualItems && manualItems.length > 0) {
@@ -816,14 +845,7 @@ export async function createPricingFromEstimate(input: {
   }
   const documentTotals = documentTotalsResult.totals;
 
-  const { data: manualPricingDocs } = await supabase
-    .from("pricing_documents")
-    .select("id, status, estimate_id, created_at")
-    .eq("project_id", projectId)
-    .eq("org_id", orgId)
-    .is("estimate_id", null)
-    .order("created_at", { ascending: false });
-  const manualHandoff = decideManualPricingHandoff(manualPricingDocs ?? []);
+  const manualHandoff = decideManualPricingHandoff(manualPricingDocsResult.data ?? []);
   let pricingHandoffQuery: "fold" | "after-quote" | null = null;
 
   if (manualHandoff.action === "new_after_quote") {
