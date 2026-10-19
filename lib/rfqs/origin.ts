@@ -8,8 +8,9 @@ import {
  * Public host for an RFQ view-and-respond link.
  *
  * Preview uses this deployment's stable branch alias (VERCEL_BRANCH_URL).
- * Quote and invite links still use the hardening alias. An RFQ link must
- * not, because /r/[token] exists on the branch that sent it.
+ * Quote, variation, and invite links use the configured Preview site origin.
+ * An RFQ link uses this deployment's branch alias, because /r/[token] exists
+ * on the branch that sent it.
  * A missing branch alias fails the send rather than substituting another host.
  * Localhost is never written into an operational email.
  */

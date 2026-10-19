@@ -7,8 +7,11 @@
 import { readFileSync, readdirSync } from "node:fs";
 import {
   PREVIEW_AUTH_SITE_ORIGIN_STABLE,
+  PREVIEW_WORKFLOW_SITE_ORIGIN,
+  resolveAuthEmailOrigin,
   resolveConfiguredSiteOrigin,
 } from "../lib/auth/site-url";
+import { resolveRfqPublicOrigin } from "../lib/rfqs/origin";
 import {
   buildInviteAcceptUrl,
   formatQuoteDeliveryFromHeader,
@@ -132,6 +135,48 @@ assert(
   "hosted Preview rejects localhost invite href",
   buildInviteAcceptUrl("http://localhost:3000", token, "preview") === null
 );
+
+process.env.NEXT_PUBLIC_SITE_URL = PREVIEW_WORKFLOW_SITE_ORIGIN;
+assert(
+  "Preview link origin is the workflow branch alias",
+  resolveConfiguredSiteOrigin() === PREVIEW_WORKFLOW_SITE_ORIGIN
+);
+const workflowInvite = buildInviteAcceptUrl(PREVIEW_WORKFLOW_SITE_ORIGIN, token, "preview");
+assert(
+  "invite link uses the workflow branch alias",
+  workflowInvite === `${PREVIEW_WORKFLOW_SITE_ORIGIN}/invite/${token}`
+);
+assert(
+  "quote and variation links use the workflow branch alias",
+  `${resolveConfiguredSiteOrigin()}/q/qt_example` ===
+    `${PREVIEW_WORKFLOW_SITE_ORIGIN}/q/qt_example` &&
+    `${resolveConfiguredSiteOrigin()}/v/vt_example` ===
+      `${PREVIEW_WORKFLOW_SITE_ORIGIN}/v/vt_example`
+);
+assert(
+  "RFQ link uses the workflow branch alias",
+  resolveRfqPublicOrigin({
+    VERCEL_ENV: "preview",
+    VERCEL_BRANCH_URL: "quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app",
+    NEXT_PUBLIC_SITE_URL: PREVIEW_WORKFLOW_SITE_ORIGIN,
+  }) === PREVIEW_WORKFLOW_SITE_ORIGIN
+);
+assert(
+  "signup on app.get-quotr.com keeps that Auth callback host",
+  resolveAuthEmailOrigin({
+    vercelEnv: "preview",
+    requestOrigin: "https://app.get-quotr.com",
+    branchHost: "quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app",
+    deploymentHost: "quotr-2-0-4etkibj0g-quotr1.vercel.app",
+    configuredSiteUrl: PREVIEW_WORKFLOW_SITE_ORIGIN,
+  }) === "https://app.get-quotr.com"
+);
+process.env.NEXT_PUBLIC_SITE_URL = "https://quotr-2-0-4etkibj0g-quotr1.vercel.app";
+assert(
+  "Preview ignores a unique deployment URL",
+  resolveConfiguredSiteOrigin() === PREVIEW_AUTH_SITE_ORIGIN_STABLE
+);
+process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
 assert(
   "raw token is hashed, not equal to hash",
   hashInviteToken(token) !== token && hashInviteToken(token).length === 64

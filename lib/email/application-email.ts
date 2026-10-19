@@ -10,7 +10,10 @@
  * Do not route Team invites through the Quote sender.
  */
 
-import { PREVIEW_AUTH_SITE_ORIGIN_STABLE } from "@/lib/auth/site-url";
+import {
+  PREVIEW_AUTH_SITE_ORIGIN_STABLE,
+  PREVIEW_WORKFLOW_SITE_ORIGIN,
+} from "@/lib/auth/site-url";
 import { isWellFormedInviteToken } from "@/lib/team/tokens";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -147,7 +150,12 @@ export function isLocalhostOrigin(origin: string): boolean {
 export function isEphemeralVercelOrigin(origin: string): boolean {
   try {
     const parsed = new URL(origin);
-    if (parsed.origin === PREVIEW_AUTH_SITE_ORIGIN_STABLE) return false;
+    if (
+      parsed.origin === PREVIEW_AUTH_SITE_ORIGIN_STABLE ||
+      parsed.origin === PREVIEW_WORKFLOW_SITE_ORIGIN
+    ) {
+      return false;
+    }
     return /\.vercel\.app$/i.test(parsed.host);
   } catch {
     return false;

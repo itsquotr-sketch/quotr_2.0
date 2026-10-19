@@ -30,6 +30,13 @@ export const PREVIEW_AUTH_SITE_ORIGIN_STABLE =
   "https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app";
 
 /**
+ * Stable git alias for `ui/core-workflow-overhaul`.
+ * This is not a commit-specific deployment URL and not app.get-quotr.com.
+ */
+export const PREVIEW_WORKFLOW_SITE_ORIGIN =
+  "https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app";
+
+/**
  * Production origin is not invented here. Set NEXT_PUBLIC_SITE_URL on the
  * Production Vercel environment once the live domain is approved.
  */
@@ -105,7 +112,12 @@ function isLocalhostOrigin(origin: string): boolean {
 function isEphemeralVercelOrigin(origin: string): boolean {
   try {
     const parsed = new URL(origin);
-    if (parsed.origin === PREVIEW_AUTH_SITE_ORIGIN_STABLE) return false;
+    if (
+      parsed.origin === PREVIEW_AUTH_SITE_ORIGIN_STABLE ||
+      parsed.origin === PREVIEW_WORKFLOW_SITE_ORIGIN
+    ) {
+      return false;
+    }
     return /\.vercel\.app$/i.test(parsed.host);
   } catch {
     return false;
@@ -159,9 +171,8 @@ export function resolveConfiguredSiteOrigin(
 
 /**
  * Preview auth emails must return to the host that set the PKCE cookie.
- * `NEXT_PUBLIC_SITE_URL` on shared Preview is the hardening alias, so it is
- * not an auth callback origin unless the browser is already on that host.
- * Invite and quote links still use {@link resolveConfiguredSiteOrigin}.
+ * `NEXT_PUBLIC_SITE_URL` is the link origin for invite, quote, and variation
+ * mail. Auth callbacks stay on the host that set the PKCE cookie.
  */
 export function resolveAuthEmailOrigin(input: {
   vercelEnv: string | undefined;
