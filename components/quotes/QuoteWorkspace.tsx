@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
 import { mobileQuoteContentPadClass } from "@/components/layout/mobile-nav-metrics";
 import { QuoteMobileActionBar } from "@/components/quotes/QuoteMobileActionBar";
 import { QuoteDisplayControl } from "@/components/quotes/QuoteDisplayControl";
+import { QuoteTemplate } from "@/components/quotes/QuoteTemplate";
 import { QuotePresentationControl } from "@/components/quotes/QuotePresentationControl";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
@@ -70,7 +71,6 @@ import { cn } from "@/lib/utils";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
-  template: ReactNode;
   projectClientName?: string | null;
   projectSiteAddress?: string | null;
 };
@@ -101,7 +101,6 @@ function sameDisplayOptions(
 
 export function QuoteWorkspace({
   initialData,
-  template,
   projectClientName = null,
   projectSiteAddress = null,
 }: QuoteWorkspaceProps) {
@@ -117,11 +116,11 @@ export function QuoteWorkspace({
   const [choicePending, setChoicePending] = useState<
     null | "presentation" | "display"
   >(null);
-  const [expectedChoice, setExpectedChoice] = useState<
-    | { kind: "presentation"; mode: QuotePresentationMode }
-    | { kind: "display"; options: QuoteDisplayOptions }
-    | null
-  >(null);
+  const [savedPresentation, setSavedPresentation] =
+    useState<QuotePresentationMode | null>(null);
+  const [savedDisplay, setSavedDisplay] = useState<QuoteDisplayOptions | null>(
+    null
+  );
   const choiceLockRef = useRef(false);
   const [isRevising, startRevise] = useTransition();
   const [isStatusPending, startStatus] = useTransition();
@@ -141,7 +140,7 @@ export function QuoteWorkspace({
   const quoteDraftRef = useRef<QuoteInput>({});
 
   const {
-    quote,
+    quote: serverQuote,
     items,
     projectTitle,
     projectClientEmail = null,
@@ -153,6 +152,20 @@ export function QuoteWorkspace({
     acceptance = null,
     companySettings,
   } = initialData;
+  if (
+    savedPresentation &&
+    parseQuotePresentationMode(serverQuote.presentation_mode) === savedPresentation
+  ) {
+    setSavedPresentation(null);
+  }
+  if (savedDisplay && sameDisplayOptions(serverQuote, savedDisplay)) {
+    setSavedDisplay(null);
+  }
+  const quote = {
+    ...serverQuote,
+    presentation_mode: savedPresentation ?? serverQuote.presentation_mode,
+    display_options: savedDisplay ?? serverQuote.display_options,
+  };
   const displayTimeZone = resolveDisplayTimezone(companySettings?.timezone);
   const quoteId = quote.id;
   const projectId = quote.project_id;
@@ -235,7 +248,6 @@ export function QuoteWorkspace({
   const releaseChoice = () => {
     choiceLockRef.current = false;
     setChoicePending(null);
-    setExpectedChoice(null);
   };
 
   const handlePresentationModeChange = (mode: QuotePresentationMode) => {
@@ -252,7 +264,8 @@ export function QuoteWorkspace({
           setSaveError(result.error);
           return;
         }
-        setExpectedChoice({ kind: "presentation", mode });
+        setSavedPresentation(mode);
+        releaseChoice();
         router.refresh();
       } catch {
         releaseChoice();
@@ -274,7 +287,8 @@ export function QuoteWorkspace({
           setSaveError(result.error);
           return;
         }
-        setExpectedChoice({ kind: "display", options });
+        setSavedDisplay(options);
+        releaseChoice();
         router.refresh();
       } catch {
         releaseChoice();
@@ -282,17 +296,6 @@ export function QuoteWorkspace({
       }
     });
   };
-
-  const choiceReady =
-    (expectedChoice?.kind === "presentation" &&
-      parseQuotePresentationMode(quote.presentation_mode) === expectedChoice.mode) ||
-    (expectedChoice?.kind === "display" &&
-      sameDisplayOptions(quote, expectedChoice.options));
-  if (choiceReady) {
-    choiceLockRef.current = false;
-    setChoicePending(null);
-    setExpectedChoice(null);
-  }
 
   const clientDisplaySummary = formatQuoteDisplayPreview(
     resolveQuoteDisplayOptions(quote)
@@ -910,7 +913,14 @@ export function QuoteWorkspace({
                 {reviewLabel}
               </Button>
             </div>
-            <div className="mx-auto w-full max-w-[760px] overflow-x-hidden">{template}</div>
+            <div className="mx-auto w-full max-w-[760px] overflow-x-hidden">
+              <QuoteTemplate
+                quote={quote}
+                quoteItems={items}
+                companySettings={companySettings}
+                acceptance={acceptance}
+              />
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,4 @@
 import { QuoteWorkspace } from "@/components/quotes/QuoteWorkspace";
-import { QuoteTemplate } from "@/components/quotes/QuoteTemplate";
 import { WorkspaceContainer } from "@/components/layout/page-containers";
 import {
   WorkspaceHeaderBar,
@@ -80,14 +79,6 @@ export default async function QuotePage({ params }: QuotePageProps) {
           initialData={data}
           projectClientName={project.client_name}
           projectSiteAddress={project.site_address}
-          template={
-        <QuoteTemplate
-          quote={data.quote}
-          quoteItems={data.items}
-          companySettings={data.companySettings}
-          acceptance={data.acceptance}
-        />
-          }
         />
       </WorkspaceContainer>
     </div>

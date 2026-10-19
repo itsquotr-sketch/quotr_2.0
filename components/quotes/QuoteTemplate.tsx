@@ -1,3 +1,5 @@
+"use client";
+
 import type { CSSProperties } from "react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { formatPricingDate, formatPricingMoney } from "@/lib/pricing/format";

@@ -49,7 +49,7 @@ check(
   workspace.includes("quoteDraftRef") &&
     workspace.includes('defaultValue={quote.title}') &&
     workspace.includes('!showReview && "hidden"') &&
-    workspace.split("<QuoteTemplate").length === 1
+    workspace.split("<QuoteTemplate").length === 2
 );
 
 check(
