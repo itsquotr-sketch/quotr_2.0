@@ -933,18 +933,32 @@ export async function updateQuote(
     return { error: parsed.error };
   }
 
-  const loaded = await loadOwnedQuote(parsed.data.quoteId);
-  if ("error" in loaded) {
-    return { error: loaded.error };
+  return runInsideAuthScope(async () => {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
   }
 
-  const { supabase, orgId, quote, user } = loaded;
-  const denied = await permissionDeniedError({
-    orgId,
-    userId: user.id,
-    permission: "quotes.create",
-  });
+  const { supabase, orgId, user } = auth;
+  const [denied, quoteResult] = await Promise.all([
+    permissionDeniedError({
+      orgId,
+      userId: user.id,
+      permission: "quotes.create",
+    }),
+    supabase
+      .from("quotes")
+      .select("*")
+      .eq("id", parsed.data.quoteId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+  ]);
   if (denied) return { error: denied.error };
+  if (quoteResult.error || !quoteResult.data) {
+    return { error: "Quote not found." };
+  }
+
+  const quote = mapQuote(quoteResult.data);
   const editableError = assertQuoteEditable(quote);
   if (editableError) {
     return { error: editableError };
@@ -1001,7 +1015,7 @@ export async function updateQuote(
     projectId: quote.project_id,
     quoteId: parsed.data.quoteId,
     eventType: "quote_updated",
-    userId: loaded.user.id,
+    userId: user.id,
     metadata: { fields: Object.keys(update) },
   });
 
@@ -1011,6 +1025,7 @@ export async function updateQuote(
     quote.pricing_document_id
   );
   return { success: true };
+  });
 }
 
 export async function updateQuoteItem(

@@ -85,6 +85,20 @@ function sameText(left: string | null | undefined, right: string | null | undefi
   return (left?.trim() ?? "") === (right?.trim() ?? "");
 }
 
+function sameDisplayOptions(
+  quote: { display_options?: QuoteDisplayOptions | null },
+  options: QuoteDisplayOptions
+) {
+  const saved = resolveQuoteDisplayOptions(quote);
+  const next = resolveQuoteDisplayOptions({ display_options: options });
+  return (
+    saved.show_quantity === next.show_quantity &&
+    saved.show_unit === next.show_unit &&
+    saved.show_unit_price === next.show_unit_price &&
+    saved.show_line_total === next.show_line_total
+  );
+}
+
 export function QuoteWorkspace({
   initialData,
   template,
@@ -99,6 +113,16 @@ export function QuoteWorkspace({
   );
   const [trackedEditable, setTrackedEditable] = useState(initiallyEditable);
   const [isSaving, startSave] = useTransition();
+  const [isChoicePending, startChoice] = useTransition();
+  const [choicePending, setChoicePending] = useState<
+    null | "presentation" | "display"
+  >(null);
+  const [expectedChoice, setExpectedChoice] = useState<
+    | { kind: "presentation"; mode: QuotePresentationMode }
+    | { kind: "display"; options: QuoteDisplayOptions }
+    | null
+  >(null);
+  const choiceLockRef = useRef(false);
   const [isRevising, startRevise] = useTransition();
   const [isStatusPending, startStatus] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -208,31 +232,57 @@ export function QuoteWorkspace({
     });
   };
 
+  const releaseChoice = () => {
+    choiceLockRef.current = false;
+    setChoicePending(null);
+    setExpectedChoice(null);
+  };
+
   const handlePresentationModeChange = (mode: QuotePresentationMode) => {
-    if (!isEditable) return;
+    if (!isEditable || choiceLockRef.current || choicePending) return;
+    if (parseQuotePresentationMode(quote.presentation_mode) === mode) return;
+    choiceLockRef.current = true;
     setSaveError(null);
-    startSave(async () => {
+    setChoicePending("presentation");
+    startChoice(async () => {
       const result = await updateQuote(quoteId, { presentation_mode: mode });
       if (result.error) {
+        releaseChoice();
         setSaveError(result.error);
         return;
       }
+      setExpectedChoice({ kind: "presentation", mode });
       router.refresh();
     });
   };
 
   const handleDisplayOptionsChange = (options: QuoteDisplayOptions) => {
-    if (!isEditable) return;
+    if (!isEditable || choiceLockRef.current || choicePending) return;
+    choiceLockRef.current = true;
     setSaveError(null);
-    startSave(async () => {
+    setChoicePending("display");
+    startChoice(async () => {
       const result = await updateQuote(quoteId, { display_options: options });
       if (result.error) {
+        releaseChoice();
         setSaveError(result.error);
         return;
       }
+      setExpectedChoice({ kind: "display", options });
       router.refresh();
     });
   };
+
+  const choiceReady =
+    (expectedChoice?.kind === "presentation" &&
+      parseQuotePresentationMode(quote.presentation_mode) === expectedChoice.mode) ||
+    (expectedChoice?.kind === "display" &&
+      sameDisplayOptions(quote, expectedChoice.options));
+  if (choiceReady) {
+    choiceLockRef.current = false;
+    setChoicePending(null);
+    setExpectedChoice(null);
+  }
 
   const clientDisplaySummary = formatQuoteDisplayPreview(
     resolveQuoteDisplayOptions(quote)
@@ -664,14 +714,25 @@ export function QuoteWorkspace({
               <div className="mt-3 grid gap-4">
                 {isEditable ? (
                   <>
+                    {choicePending ? (
+                      <p
+                        className="text-sm text-muted-foreground"
+                        role="status"
+                        data-quote-choice-pending={choicePending}
+                      >
+                        {choicePending === "presentation"
+                          ? "Saving client presentation…"
+                          : "Saving quote display…"}
+                      </p>
+                    ) : null}
                     <QuotePresentationControl
                       value={quote.presentation_mode}
-                      disabled={isSaving}
+                      disabled={isSaving || isChoicePending || choicePending != null}
                       onChange={handlePresentationModeChange}
                     />
                     <QuoteDisplayControl
                       quote={quote}
-                      disabled={isSaving}
+                      disabled={isSaving || isChoicePending || choicePending != null}
                       onChange={handleDisplayOptionsChange}
                     />
                   </>
