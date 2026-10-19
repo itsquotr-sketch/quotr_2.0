@@ -105,6 +105,7 @@ export function RfqComposer({
   const storageKey = `quotr-rfq-draft:${projectId}:${rfqId ?? "new"}`;
   const edited = useRef({ scope: Boolean(initial?.requestedScope), notes: Boolean(initial?.measurementNotes) });
   const draftGeneration = useRef(0);
+  const saveLock = useRef(false);
   const summaryRef = useRef<HTMLDivElement>(null);
   const area = workAreas.find((item) => item.id === workAreaId) ?? null;
   const scopeLabel = scopeKind === "work_area" ? area?.name || "Work area" : writtenLabel.trim() || "Written scope";
@@ -225,19 +226,28 @@ export function RfqComposer({
   }, [storageKey, requestedScope, measurementNotes, rows, pricingRequest, workAreaId, step]);
 
   async function onSave() {
+    if (pending || saveLock.current) return;
+    saveLock.current = true;
     setPending("save");
     setError(null);
     setFieldErrors([]);
-    const result = await saveRfqDraft(payload());
-    setPending(null);
-    if (!result.ok) {
-      setError(result.error);
+    try {
+      const result = await saveRfqDraft(payload());
+      if (!result.ok) {
+        saveLock.current = false;
+        setPending(null);
+        setError(result.error);
+        summaryRef.current?.focus();
+        return;
+      }
+      sessionStorage.removeItem(storageKey);
+      router.push(`/app/projects/${projectId}/requests/${result.id}`);
+    } catch {
+      saveLock.current = false;
+      setPending(null);
+      setError("Could not save this request. Try again.");
       summaryRef.current?.focus();
-      return;
     }
-    sessionStorage.removeItem(storageKey);
-    router.push(`/app/projects/${projectId}/requests/${result.id}`);
-    router.refresh();
   }
 
   function problemsForStep(index: number): FieldError[] {
@@ -663,7 +673,7 @@ export function RfqComposer({
           </Button>
         )}
         <Button type="button" variant="outline" className="h-11 min-h-11" disabled={pending != null} onClick={() => void onSave()}>
-          {pending === "save" ? "Saving" : "Save draft"}
+          {pending === "save" ? "Saving draft…" : "Save draft"}
         </Button>
         <Button type="button" variant="outline" className="h-11 min-h-11" render={<Link href={`/app/projects/${projectId}/requests`} />}>
           Cancel
