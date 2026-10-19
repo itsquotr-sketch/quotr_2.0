@@ -1,9 +1,9 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the Preview callback allow-list check and the isolated migration rehearsal. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
-**Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`.  
+**Updated:** 19 October 2026, after the Preview link-origin deployment and the Production recovery read. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, plus the link-origin commit `f42553a490c83089ff3d01eeabb1774725fffe60`.  
 **This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
-**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` was not reassigned.
+**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` remains on the performance-pass deployment. Section 13 is the current host and recovery record.
 
 **Go / no-go for the proper domain: NO-GO.**
 
@@ -15,12 +15,12 @@
 | Application SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` |
 | Commit | 2026-10-19 — Run the navigation feedback script in the first HTML. |
 | Documentation | separate branch `docs/release-candidate-notes`. Prior inventory commit `a0247cb42fdccc3e4c0356d575eccb991404b88d` recorded the morning acceptance. It is not the application SHA. |
-| Workflow Preview deployment | `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
-| Deployment URL | `https://quotr-2-0-4etkibj0g-quotr1.vercel.app` |
-| Deployment git SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, read from the deployment record |
+| Performance-pass Preview deployment | `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
+| Performance-pass deployment URL | `https://quotr-2-0-4etkibj0g-quotr1.vercel.app` |
+| Performance-pass git SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, read from the deployment record |
 | Created | 2026-10-19 14:40 +1300, Ready, target preview |
-| `app.get-quotr.com` | that same deployment. A request returns 307 to `/login`. |
-| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that same deployment, also 307 to `/login` |
+| `app.get-quotr.com` | still that performance-pass deployment. Signup HTML matches `quotr-2-0-4etkibj0g`. |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` now serves the link-origin deployment in section 13 |
 | Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, Ready, created 2026-09-29. SHA remains `58d7681d6eb8d8e811ad6ec115f6a006bc179642`. |
 | Preview schema | local files and remote `shhpjsoldmqtkdbgrbtm` head **111**, re-read 19 October 2026. Versions 037 and 055 are absent on purpose. |
 | Production schema | remote `lxvnylhsbvudzzupxeqr` head **045**, re-read 19 October 2026. Remote column empty for 046–111. 037 and 055 absent. |
@@ -440,7 +440,7 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 | Gate | Result |
 | --- | --- |
-| Candidate SHA is the Ready workflow deployment | yes — `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9`, also `app.get-quotr.com` |
+| Candidate SHA is the Ready workflow deployment | the workflow alias now serves `f42553a490c83089ff3d01eeabb1774725fffe60` on `dpl_2XZXfurwfKVqAEo3eAeowrmQwvDd`. `app.get-quotr.com` still serves `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
 | That SHA is paired with Preview schema 111 | yes, re-read 19 October |
 | Working tree was clean and matched origin at inventory start | yes |
 | Candidate labelled frozen | **no** |
@@ -449,13 +449,13 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 | Production site URL, Stripe live, billing live, Resend, Google | **no** |
 | Auth redirects read and matching the approved origin | **read** — both Site URLs are the hardening alias |
 | Marketing signup link to the app | **no** |
-| Quote links proven on the candidate host rather than the hardening alias | **no** |
+| Quote links proven on the workflow branch alias | **yes** — section 13. Invite, Quote, variation, and RFQ hosts are `quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` |
 | Owner review of rates and Work Area maturity | **no** |
 | **Decision** | **NO-GO** |
 
 ## 10. Smallest next action
 
-Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. The isolated rehearsal in section 12 is clean. Production still needs a real backup or PITR recovery point, and the live site, Stripe, billing, and email configuration, before that decision can change.
+Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. The isolated rehearsal in section 12 is clean and is not a Production restore point. The recovery option still required is an owner-approved Pro plan daily backup, or Pro plus Small compute plus a PITR tier, verified by the checks in section 13. Production Auth and the missing live site, Stripe, billing, and email names in section 11.4 remain to be set after that restore point exists.
 
 ## 11. Production preflight — 19 October 2026
 
@@ -588,7 +588,7 @@ After the same invalid-token verify:
 | Signup, recovery, and invite callbacks | 303 | `app.get-quotr.com` `/auth/callback` |
 | Hardening callback | 303 | `quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` `/auth/callback` |
 
-Production Auth was read again after the patch. Site URL and allow-list were unchanged: Site URL is still the hardening alias, and the allow-list is still `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`, `http://localhost:3000/auth/callback`, and the hardening `/auth/callback`. The Vercel domain assignment was not changed.
+Production Auth was read again after the patch. Site URL and allow-list were unchanged: Site URL is still the hardening alias, and the allow-list is still `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`, `http://localhost:3000/auth/callback`, and the hardening `/auth/callback`. The Vercel domain assignment was not changed. Section 13 records the later workflow-branch link origin. The invite, Quote, and variation hosts in this section were the hosts before that change.
 
 ### 12.2 Isolated migration rehearsal
 
@@ -627,4 +627,65 @@ Migrations then ran in numeric order on that local database only. 048 does not c
 
 66 steps, 0 failures, 13359 ms in total. 055 is absent and was skipped. Head on the isolated copy is 111: `pricing_documents.provisional_ceiling_confirmation` exists. Final checks: `preview_lifecycle_fixture_cleanup(uuid)` and `preview_fixture_org(uuid)` are absent, `enforce_quote_events_append_only` contains `quote_events are append-only` and does not mention `preview_fixture_org`, and there are 8 active owner memberships across 8 organisations.
 
-The local database and the export files were removed after those checks. This logical copy is not a Production restore point. Production remains **NO-GO** until a real Production backup or PITR point exists, the live configuration is prepared, and a later rehearsal is still clean. Migration 046 was not applied to Production.
+The local database and the export files were removed after those checks. This logical copy is not a Production restore point. It excluded session and refresh-token data. Production remains **NO-GO**. Migration 046 was not applied to Production. Section 13 states the recovery option that is still required.
+
+## 13. Preview link origin and Production recovery — 19 October 2026
+
+Production migration 046 was not applied. Live billing was not configured. Production was not deployed. No domain was moved onto Production. No customer email was sent and no commercial document was issued.
+
+### 13.1 Isolated rehearsal limits
+
+The rehearsal in section 12 ran on a disposable local database, project id `rehearsal-db`. It is not a Production restore point.
+
+- The schema dump and the data dump were two sequential read-only dumps, not one transaction.
+- The restored data was `public` rows, `auth.users`, `auth.identities`, and `storage.buckets`. Session, refresh-token, and other auth credential tables were removed before restore. The full data file was deleted.
+- The local database and the export directory were removed with `supabase stop --no-backup`. Nothing from that copy can be restored onto `lxvnylhsbvudzzupxeqr`.
+- Production schema head was still 045 after the rehearsal.
+
+### 13.2 Preview link origins
+
+The workflow branch alias is a `*.vercel.app` host. The previous origin check treated every such host, other than the hardening alias, as a temporary deployment URL and fell back to the hardening host. `f42553a490c83089ff3d01eeabb1774725fffe60` accepts `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` as a stable Preview origin. The hardening constant is unchanged.
+
+`NEXT_PUBLIC_SITE_URL` for Preview on git branch `ui/core-workflow-overhaul` is `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app`. The shared Preview value was left as it was. Production environment variables were not changed.
+
+Preview deployment `dpl_2XZXfurwfKVqAEo3eAeowrmQwvDd` is Ready, target preview, created 2026-10-19 16:17 +1300. Its git SHA is `f42553a490c83089ff3d01eeabb1774725fffe60` on `ui/core-workflow-overhaul`. Its unique URL is `https://quotr-2-0-4k6o7g1n2-quotr1.vercel.app`. The stable workflow alias resolves to that deployment. Signup HTML on the alias and on the unique URL is the same document, SHA-256 prefix `3b22be5880ed`.
+
+`scripts/verify-application-email-01.ts` passed with `NEXT_PUBLIC_SITE_URL` set to that alias and `VERCEL_BRANCH_URL` set to the same host. Generated hosts:
+
+| Link | Host and path |
+| --- | --- |
+| Invite | `quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` `/invite/{token}` |
+| Quote | same host `/q/{token}` |
+| Variation | same host `/v/{token}` and `/v/{token}/response` |
+| RFQ | same host `/r/{token}`, from `VERCEL_BRANCH_URL` |
+
+A signup started on `https://app.get-quotr.com` keeps that request host for the Auth callback: `https://app.get-quotr.com/auth/callback?next=/app/setup?mode=basics`. A Preview Auth verify request with an invalid token, type `signup`, and that `redirect_to` returned HTTP 303 to `app.get-quotr.com` `/auth/callback`. No account was created.
+
+`app.get-quotr.com` still resolves to `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` (`https://quotr-2-0-4etkibj0g-quotr1.vercel.app`, SHA `edaac4833564cfcf600381e1d1ad1f824b8e7a86`). Signup HTML on the domain and on that unique URL is the same document, SHA-256 prefix `b6f633f99577`. The hardening alias still resolves to `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`.
+
+### 13.3 Recovery option still required
+
+Read again on 19 October 2026 for `lxvnylhsbvudzzupxeqr`. Nothing was enabled and no restore was run.
+
+| Current setup | Value |
+| --- | --- |
+| Organization `quotr` (`rkstzmnnkcorevoazhny`) plan | `free` |
+| `pitr_enabled` | false |
+| Selected add-ons | empty |
+| `backups` | empty list |
+| `physical_backup_data` | empty, no earliest or latest timestamp |
+| `walg_enabled` | true, with no base-backup timestamp |
+
+Free projects do not receive platform daily backups. WAL-G without a base-backup timestamp is not a restore point. `supabase backups restore` has no timestamp to target.
+
+The option still required before Production migration is an owner-approved paid backup. The smallest platform option is the Pro plan at $25 per month. Pro includes 7 days of daily backups. The first backup is the next daily backup after the plan change, so the upgrade itself is not yet a restore point. Verify it with `GET /v1/projects/lxvnylhsbvudzzupxeqr/database/backups`: the `backups` list must contain a backup and a timestamp before 046. Do not call the restore endpoint.
+
+PITR is the finer option and is also unpaid until the owner approves it. It requires Pro, the Small compute add-on, and one retention tier. This project's add-on catalog prices Small at $0.0206 per hour, about $15 per month. PITR prices are $100 per month for 7 days (`pitr_7`, $0.137 per hour), $200 per month for 14 days (`pitr_14`, $0.274 per hour), and $400 per month for 28 days (`pitr_28`, $0.55 per hour). PITR is outside the spend cap. Enabling it stops the separate daily backups. It can restore only to a time after it is enabled. It is usable when `pitr_enabled` is true and `physical_backup_data` has both an earliest and a latest recovery timestamp. After that base backup, WAL files are archived about every two minutes, so the recovery point objective is two minutes. A restore takes the project offline for a duration that depends on database size and WAL volume. That restore was not run.
+
+### 13.4 Remaining Production environment and Auth work
+
+Production Auth was read again and left unchanged. Site URL is `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`. The allow-list is `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`, `http://localhost:3000/auth/callback`, and `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback`.
+
+Before a Production deployment, set the Production Auth Site URL and `/auth/callback` allow-list to the approved Production origin. The names in section 11.4 are still unset on Production: `NEXT_PUBLIC_SITE_URL`, `BILLING_ENVIRONMENT`, the Stripe secret, webhook, three prices, NZ GST rate, and portal configuration, and the Resend key, from addresses, and webhook secret. `BILLING_ENVIRONMENT` must be `live`. `QUOTE_DELIVERY_PROVIDER`, `BILLING_ENFORCEMENT_MODE`, `LOOPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` stay optional as recorded in that section.
+
+Production remains **NO-GO**.
