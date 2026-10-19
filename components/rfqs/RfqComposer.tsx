@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RFQ_WITHHELD } from "@/lib/rfqs/shared";
@@ -106,6 +106,9 @@ export function RfqComposer({
   const edited = useRef({ scope: Boolean(initial?.requestedScope), notes: Boolean(initial?.measurementNotes) });
   const draftGeneration = useRef(0);
   const saveLock = useRef(false);
+  useLayoutEffect(() => {
+    document.documentElement.removeAttribute("data-rfq-nav");
+  }, []);
   const summaryRef = useRef<HTMLDivElement>(null);
   const area = workAreas.find((item) => item.id === workAreaId) ?? null;
   const scopeLabel = scopeKind === "work_area" ? area?.name || "Work area" : writtenLabel.trim() || "Written scope";
@@ -242,7 +245,6 @@ export function RfqComposer({
       }
       sessionStorage.removeItem(storageKey);
       router.push(`/app/projects/${projectId}/requests/${result.id}`);
-      router.refresh();
     } catch {
       saveLock.current = false;
       setPending(null);

@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import type { ContactsSection } from "@/components/contacts/ContactsPageFrame";
+import { markContactsNav, useSettleContactsNav } from "@/components/contacts/contacts-nav-pending";
 import { cn } from "@/lib/utils";
 
 function ContactsSectionNav({
   section,
   archived,
-  onNavigate,
 }: {
   section: ContactsSection;
   archived: boolean;
-  onNavigate: (section: ContactsSection) => void;
 }) {
   const archivedQuery = archived ? "?archived=1" : "";
   const items = [
@@ -38,7 +36,7 @@ function ContactsSectionNav({
             href={item.href}
             aria-current={selected ? "page" : undefined}
             onClick={() => {
-              if (!selected) onNavigate(item.id);
+              if (!selected) markContactsNav(item.id === "subcontractors" ? "list" : "customers");
             }}
             className={cn(
               "inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)]",
@@ -64,33 +62,20 @@ export function ContactsSectionBody({
   archived: boolean;
   children: React.ReactNode;
 }) {
-  const [pending, setPending] = useState<ContactsSection | null>(null);
-  const loadingSubcontractors = pending === "subcontractors";
+  useSettleContactsNav();
 
   return (
     <>
       <div className="mb-4">
-        <ContactsSectionNav
-          section={section}
-          archived={archived}
-          onNavigate={setPending}
-        />
+        <ContactsSectionNav section={section} archived={archived} />
       </div>
-      {loadingSubcontractors ? (
-        <p
-          className="text-sm text-muted-foreground"
-          role="status"
-          data-subcontractors-pending="true"
-        >
-          Loading subcontractors…
-        </p>
-      ) : pending === "customers" ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          Loading customers…
-        </p>
-      ) : (
-        children
-      )}
+      <p className="contacts-nav-feedback contacts-nav-feedback-list text-sm text-muted-foreground" role="status" data-subcontractors-pending="true">
+        Loading subcontractors…
+      </p>
+      <p className="contacts-nav-feedback contacts-nav-feedback-customers text-sm text-muted-foreground" role="status">
+        Loading customers…
+      </p>
+      <div className="contacts-nav-hide-list contacts-nav-hide-customers">{children}</div>
     </>
   );
 }

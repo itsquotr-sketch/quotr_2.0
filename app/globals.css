@@ -417,3 +417,22 @@ gmp-place-autocomplete.quotr-address-search::part(prediction-item) {
     font-size: 0.875rem;
   }
 }
+
+.contacts-nav-feedback,
+.rfq-nav-feedback-new {
+  display: none;
+}
+
+html[data-contacts-nav="list"] .contacts-nav-feedback-list,
+html[data-contacts-nav="record"] .contacts-nav-feedback-record,
+html[data-contacts-nav="customers"] .contacts-nav-feedback-customers,
+html[data-rfq-nav="new"] .rfq-nav-feedback-new {
+  display: block;
+}
+
+html[data-contacts-nav="list"] .contacts-nav-hide-list,
+html[data-contacts-nav="record"] .contacts-nav-hide-record,
+html[data-contacts-nav="customers"] .contacts-nav-hide-customers,
+html[data-rfq-nav="new"] .rfq-nav-hide-new {
+  display: none !important;
+}

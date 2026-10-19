@@ -36,13 +36,25 @@ export function RfqList({
   const received = rows.reduce((sum, row) => sum + row.respondedCount, 0);
   return (
     <div className="grid gap-3 pb-28 md:pb-0" data-rfq-list>
+      <p className="rfq-nav-feedback-new text-sm text-muted-foreground" role="status" data-rfq-new-pending="true">
+        Loading request form…
+      </p>
+      <div className="rfq-nav-hide-new grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold">Requests</h1>
           <p className="text-sm text-foreground/70">Ask subcontractors to price work. Sending a request does not change the Quote or choose a supplier.</p>
         </div>
         {canEdit ? (
-          <Button className="h-11 min-h-11" render={<Link href={`/app/projects/${projectId}/requests/new`} />}>
+          <Button
+            className="h-11 min-h-11"
+            render={
+              <Link
+                href={`/app/projects/${projectId}/requests/new`}
+                onClick={() => document.documentElement.setAttribute("data-rfq-nav", "new")}
+              />
+            }
+          >
             New request
           </Button>
         ) : null}
@@ -78,6 +90,7 @@ export function RfqList({
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }
