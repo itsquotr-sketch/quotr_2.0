@@ -245,14 +245,19 @@ export function QuoteWorkspace({
     setSaveError(null);
     setChoicePending("presentation");
     startChoice(async () => {
-      const result = await updateQuote(quoteId, { presentation_mode: mode });
-      if (result.error) {
+      try {
+        const result = await updateQuote(quoteId, { presentation_mode: mode });
+        if (result.error) {
+          releaseChoice();
+          setSaveError(result.error);
+          return;
+        }
+        setExpectedChoice({ kind: "presentation", mode });
+        router.refresh();
+      } catch {
         releaseChoice();
-        setSaveError(result.error);
-        return;
+        setSaveError("Could not save this choice. Try again.");
       }
-      setExpectedChoice({ kind: "presentation", mode });
-      router.refresh();
     });
   };
 
@@ -262,14 +267,19 @@ export function QuoteWorkspace({
     setSaveError(null);
     setChoicePending("display");
     startChoice(async () => {
-      const result = await updateQuote(quoteId, { display_options: options });
-      if (result.error) {
+      try {
+        const result = await updateQuote(quoteId, { display_options: options });
+        if (result.error) {
+          releaseChoice();
+          setSaveError(result.error);
+          return;
+        }
+        setExpectedChoice({ kind: "display", options });
+        router.refresh();
+      } catch {
         releaseChoice();
-        setSaveError(result.error);
-        return;
+        setSaveError("Could not save this choice. Try again.");
       }
-      setExpectedChoice({ kind: "display", options });
-      router.refresh();
     });
   };
 
