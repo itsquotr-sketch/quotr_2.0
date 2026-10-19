@@ -1,13 +1,59 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after a signed-in workflow Preview acceptance pass. The 9 October observations below remain the earlier inventory. Where they disagree with this update, this update is the current record.  
-**Application candidate:** `e85029eac87bb16d6343213975e13660578a344c` on `ui/core-workflow-overhaul`.  
-**This document is not the application candidate.** It lives on `docs/release-candidate-notes` and is not part of the Preview deployment.  
-**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved.
+**Updated:** 19 October 2026, after the focused performance pass. The morning acceptance on this page remains the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`.  
+**This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
+**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` was not reassigned.
 
 **Go / no-go for the proper domain: NO-GO.**
 
-## Current candidate — 19 October 2026
+## Current candidate — 19 October 2026, after the performance pass
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `ui/core-workflow-overhaul`, clean, same SHA as `origin/ui/core-workflow-overhaul` |
+| Application SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` |
+| Commit | 2026-10-19 — Run the navigation feedback script in the first HTML. |
+| Documentation | separate branch `docs/release-candidate-notes`. Prior inventory commit `a0247cb42fdccc3e4c0356d575eccb991404b88d` recorded the morning acceptance. It is not the application SHA. |
+| Workflow Preview deployment | `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
+| Deployment URL | `https://quotr-2-0-4etkibj0g-quotr1.vercel.app` |
+| Deployment git SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, read from the deployment record |
+| Created | 2026-10-19 14:40 +1300, Ready, target preview |
+| `app.get-quotr.com` | that same deployment. A request returns 307 to `/login`. |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that same deployment, also 307 to `/login` |
+| Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, Ready, created 2026-09-29. SHA remains `58d7681d6eb8d8e811ad6ec115f6a006bc179642`. |
+| Preview schema | local files and remote `shhpjsoldmqtkdbgrbtm` head **111**, re-read 19 October 2026. Versions 037 and 055 are absent on purpose. |
+| Production schema | remote `lxvnylhsbvudzzupxeqr` head **045**, re-read 19 October 2026. Remote column empty for 046–111. 037 and 055 absent. |
+| Production deployment | still the only Production deployment: `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji`, **Error**, created 2026-08-05. Not replaced. |
+
+### Known waits
+
+These are remaining waits on the candidate. They are not speed fixes, and no further performance change was made while writing this inventory.
+
+| Wait | Observed |
+| --- | --- |
+| Create Pricing | about 9 seconds click-to-usable. The morning measurement on `e85029ea` was a median of about 9.17 seconds. The loader experiment was reverted. |
+| Create Quote | about 7 seconds. Not remeasured for this inventory. |
+| RFQ draft save | about 8.4 seconds click-to-usable on this SHA (8443 ms from Save draft until the saved request was visible). Feedback appeared in 21 ms. One disposable draft. No supplier invitation was sent. |
+
+The same performance pass also measured quote display and presentation, the Subcontractors list and one record, and opening a new price-request form. Those interactions now show a loading line on click. Their usable times remain about 3.4–5.2 seconds, 1.9–3.4 seconds, and 3.4–4.0 seconds. That feedback is not a claim that the reads got faster.
+
+### Acceptance preserved
+
+| Path | Result kept |
+| --- | --- |
+| Deck | Not reopened. The earlier Preview sign-off stands. |
+| Bathroom | Failed on `e85029ea`, as recorded in the morning section below. Closed later the same day by `2b5f74bf` (ask for the wall lining; do not copy a lining onto an unnamed ceiling portion) before this candidate. The commercial calculation was not reopened in the performance pass. |
+| Ceiling | Failed before Pricing on `e85029ea`, as recorded below. Closed by `5b300048` (one unspecified ceiling stays on the flat package) and `d7369b12` (the provisional confirmation stays above the mobile pricing bar). Not reopened in the performance pass. |
+| Retaining wall | **Passed** on project `ab27a4c6-c964-4bc5-bea4-16343170165c`. Not reopened. |
+| Mixed Pricing/Quote | **Passed** on project `6db9a28d-24b7-4e67-b3fc-418d30b5f34b`, draft quote `9ff3c4ad-cf48-44d4-a04e-de44b7a97728`. Not reopened. |
+| Focused performance pass | Complete at this application SHA. Scope was quote display, Subcontractors, and a new price-request draft. Production, hardening, schema, and company rates were not changed. |
+
+Signed-in acceptance used disposable projects. No Quote was issued or emailed. Saved acceptance projects `c16b81e5-5ddb-4ba7-9383-29b54370fdad` and `4ffd5cab-8c03-4693-9081-b003b0fd9267` were not modified by the performance pass.
+
+## Morning candidate — 19 October 2026
+
+The table below is the morning record on `e85029ea`. It is not the deployment serving the app now. The Bathroom and Ceiling failures are the observations that the later commits above closed.
 
 | Fact | Value |
 | --- | --- |
@@ -18,8 +64,8 @@
 | Workflow Preview deployment | `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts` |
 | Deployment URL | `https://quotr-2-0-1qhjayb7m-quotr1.vercel.app` |
 | Created | 2026-10-18 19:49:40 +1300, Ready, target preview |
-| `app.get-quotr.com` | that same deployment |
-| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that same deployment |
+| `app.get-quotr.com` | that same deployment at the time of the morning pass |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that same deployment at the time of the morning pass |
 | Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, SHA `58d7681d6eb8d8e811ad6ec115f6a006bc179642`, created 2026-09-29 |
 | Preview schema | local and remote head **111**. Versions 037 and 055 are still absent on purpose. |
 | Production schema | remote head **045**. Pending 046–111 except absent 037 and 055. |
@@ -38,7 +84,7 @@ Signed-in acceptance used disposable projects on `app.get-quotr.com`. No Quote w
 
 ### Create Pricing performance closeout
 
-The pass is closed at `e85029eac87bb16d6343213975e13660578a344c`. No change was kept. Do not make another Pricing redirect or project-loading optimisation without a new, reproducible blocking cause.
+The pass is closed at `e85029eac87bb16d6343213975e13660578a344c`. No change was kept. Do not make another Pricing redirect or project-loading optimisation without a new, reproducible blocking cause. Create Pricing remains about 9 seconds click-to-usable. That figure is a remaining wait, not a speed fix.
 
 The action response is a 303 whose body is the Pricing page. The browser does not make a second GET of that page. The usable summary is the commercial summary with a dollar amount. On the signed-off Preview, four journeys gave headers-to-usable about 2.39s, 2.53s, 2.50s, and 2.92s (median about 2.52s) and click-to-usable about 9.14s, 10.13s, 9.18s, and 9.15s (median about 9.17s). An instrumented page render was 2210ms: auth 719ms, then the slowest parallel loader (tabs 1491ms). A loader experiment on a throwaway deployment cut that render to about 1802ms, but four later journeys stayed at response-to-money 2426, 2359, 2871, and 2568 (median about 2.50s) and click-to-usable 9125, 9150, 9674, and 9139 (median about 9.14s). The experiment was reverted. Preview remains `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts`.
 
@@ -46,7 +92,7 @@ The action response is a 303 whose body is the Pricing page. The browser does no
 
 - Whether the bathroom details path must ask for GIB versus fibre cement before an estimate, and whether an analysed floor rebuild should become a second Flooring area that prices the same sheet and a second removal.
 - Whether an unspecified ceiling stored as a nested portion should stay on the flat provisional package instead of requiring a named lining.
-- Production remains NO-GO: schema 045, no Ready Production deployment of this SHA, and the environment gaps recorded in section 6. Do not deploy Production from this update.
+- Production remains NO-GO: schema 045, no Ready Production deployment of `edaac483`, and the environment gaps re-read in section 6. Do not deploy Production from this update.
 
 ## 1. Candidate mapping (9 October snapshot)
 
@@ -75,7 +121,7 @@ Vercel project `quotr-2-0` (`prj_fPvYMlTj74oC5vcFolpkCHJJ8s0i`), team `quotr1`. 
 
 ### Jointly tested pair
 
-The pair recorded on 9 October is below. The pair tested on 19 October is in the current-candidate section: `e85029eac87bb16d6343213975e13660578a344c`, deployment `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts`, Preview schema **111**.
+The pair recorded on 9 October is below. The pair now serving the workflow Preview is in the current-candidate section: `edaac4833564cfcf600381e1d1ad1f824b8e7a86`, deployment `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9`, Preview schema **111**. The morning pair `e85029ea` / `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts` is the acceptance record, not the deployment now aliased to `app.get-quotr.com`.
 
 The 9 October pair was:
 
@@ -88,20 +134,20 @@ That commit contains `supabase/migrations/107_rfq_price_notification.sql`, and P
 These mixtures were **not** jointly tested as the candidate:
 
 - hardening code `58d7681` with Preview schema 107 (same database, older application)
-- candidate code with Production schema 045
+- candidate code `edaac483` with Production schema 045
 - a local Docker database (Docker was not running)
 
-`NEXT_PUBLIC_SITE_URL` on Preview is the hardening alias. Quote and invite links use that origin (`resolveConfiguredSiteOrigin`). Any *.vercel.app origin other than the hardening alias is treated as ephemeral, including the workflow alias. RFQ public links use `VERCEL_BRANCH_URL` instead, so they stay on the branch that sent them. Signup and recovery mail use the request host, then the branch host, then the deployment host, and do not substitute the hardening alias. A quote or invitation opened from the workflow app can still land on `58d7681` while reading the schema-107 database. That is a different pair from the candidate.
+`NEXT_PUBLIC_SITE_URL` on the shared Preview environment was re-read on 19 October 2026. Its host is `quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`. Quote and invite links use that origin (`resolveConfiguredSiteOrigin`). Any *.vercel.app origin other than the hardening alias is treated as ephemeral, including the workflow alias. RFQ public links use `VERCEL_BRANCH_URL` instead, so they stay on the branch that sent them. Signup and recovery mail use the request host, then the branch host, then the deployment host, and do not substitute the hardening alias. A quote or invitation opened from the workflow app can still land on `58d7681` while reading the schema-111 database. That is a different pair from the candidate.
 
 ## 2. Schema heads
 
 | Place | History | Head |
 | --- | --- | --- |
-| Repository files on the 19 October application SHA | 001–036, 038–054, 056–111 | file head **111** |
-| Local applied database | **unavailable** | Docker daemon is not running (`npipe:////./pipe/dockerDesktopLinuxEngine` missing). `supabase status` could not inspect a local database. |
+| Repository files on `edaac483` | 001–036, 038–054, 056–111 | file head **111** |
+| Local applied database | **unavailable** | Docker daemon was not running at the morning inventory. It was not started for this update. |
 | Local `.env.local` target | hosted Preview | project ref `shhpjsoldmqtkdbgrbtm` (not Production) |
-| Preview `shhpjsoldmqtkdbgrbtm` | same version list as the application files, each local version present remotely, read 19 October 2026 | **111** |
-| Production `lxvnylhsbvudzzupxeqr` | 001–036, 038–045 present; 046–111 absent, read 19 October 2026 | **045** |
+| Preview `shhpjsoldmqtkdbgrbtm` | `npm run db:preview:status` on 19 October 2026: every local version present remotely, remote empty nowhere in that list | **111** |
+| Production `lxvnylhsbvudzzupxeqr` | `npm run db:production:status` on 19 October 2026: 001–036 and 038–045 present; remote empty from 046 through 111. Status only. Nothing was pushed. | **045** |
 
 There is no remote-only version on either hosted database. Preview matches the candidate files. Production matches those files through 045 and then stops.
 
@@ -195,18 +241,18 @@ No product-behaviour assertion in this set failed. The red scripts are stale hea
 
 ### Stale assertions
 
-Do not delete these tests. Retarget the head or selector, then re-run. Lexicographic last file on this tree is `107_rfq_price_notification.sql`.
+Do not delete these tests. Retarget the head or selector, then re-run. The newest migration file on `edaac483` is `111_deck_concrete_calibration_benchmark.sql`. These scripts were not re-run for this inventory.
 
 | Test | Assertion | Current result | Proposed resolution |
 | --- | --- | --- | --- |
-| `verify-quote-transaction-01.ts` | `041 quote transaction exists; later migrations follow additively` requires last file `080_project_document_delete.sql` | FAIL | Keep the “041–054 remain” checks. Point the head at 107. |
+| `verify-quote-transaction-01.ts` | `041 quote transaction exists; later migrations follow additively` requires last file `080_project_document_delete.sql` | FAIL | Keep the “041–054 remain” checks. Point the head at 111. |
 | `verify-quote-delivery-01.ts` | `042 delivery architecture remains; later billing/membership migrations are additive` also requires last file 080 | FAIL | Same retarget. |
 | `verify-quote-acceptance-01.ts` | `044 acceptance remains; later billing/membership migrations follow additively` also requires last file 080 | FAIL | Same retarget. |
-| `verify-billing-2.ts` | `047 past_due authority exists locally; 053 role RLS remains; 063 remains and 071 is latest` | FAIL | Keep 047 and 063 present. Point the head at 107. |
-| `verify-billing-3.ts` | `053 role RLS is latest numbered local migration; 048 trial remains` | FAIL | Keep 048 present. Point the head at 107. |
-| `verify-billing-4.ts` | `049 memberships remain and 053 role RLS is latest numbered local migration` | FAIL | Keep 049–053 present. Point the head at 107. |
-| `verify-beta-launch.ts` | `latest migration is 057 repeated work area acceptance` | FAIL | Keep “no 037” and “046–053 present”, which passed. Point the head at 107. |
-| `verify-security-053.ts` | `latest migration is 056 Bathroom DNA catalogue seed` | FAIL | Keep “053 remains”. Point the head at 107. |
+| `verify-billing-2.ts` | `047 past_due authority exists locally; 053 role RLS remains; 063 remains and 071 is latest` | FAIL | Keep 047 and 063 present. Point the head at 111. |
+| `verify-billing-3.ts` | `053 role RLS is latest numbered local migration; 048 trial remains` | FAIL | Keep 048 present. Point the head at 111. |
+| `verify-billing-4.ts` | `049 memberships remain and 053 role RLS is latest numbered local migration` | FAIL | Keep 049–053 present. Point the head at 111. |
+| `verify-beta-launch.ts` | `latest migration is 057 repeated work area acceptance` | FAIL | Keep “no 037” and “046–053 present”, which passed. Point the head at 111. |
+| `verify-security-053.ts` | `latest migration is 056 Bathroom DNA catalogue seed` | FAIL | Keep “053 remains”. Point the head at 111. |
 | `verify-customers-01.ts` | `contacts title` requires the literal `title="Contacts"` in `ContactsPageFrame.tsx` | FAIL | Assert the default parameter `title = "Contacts"` and `section="customers"`. The page still renders Contacts. |
 | `verify-billing-4.ts` | `permission registry stays small` requires fewer than 40 `/"[a-z.]+"/` matches in `lib/team/permissions.ts` | FAIL | Count `ORG_PERMISSIONS` (16 names) and still require `team.invite` and `billing.manage`. The file now repeats those names across role sets and helpers, so the old cap is stale. |
 
@@ -265,7 +311,7 @@ Presence and target only. Secret values were not printed. Sensitive Vercel value
 | `NEXT_PUBLIC_SUPABASE_URL` | `shhpjsoldmqtkdbgrbtm` | same Preview ref | same Preview ref | `lxvnylhsbvudzzupxeqr` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | present | inherited | inherited | present |
 | `SUPABASE_SERVICE_ROLE_KEY` | present, sensitive | override present, sensitive | no override seen | present, sensitive |
-| `NEXT_PUBLIC_SITE_URL` | hardening alias | inherited hardening alias | inherited hardening alias | **unset** |
+| `NEXT_PUBLIC_SITE_URL` | host `quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`, re-read 19 October | inherited | inherited | **unset**, re-read 19 October |
 | Resend key, from addresses, webhook secret | present, sensitive | inherited | inherited | **unset** |
 | Stripe secret, webhook, three prices, NZ GST tax rate, portal configuration | present, sensitive | inherited | inherited | **unset** |
 | `BILLING_ENVIRONMENT` | present, sensitive (literal not read) | no override seen | `test` | **unset** |
@@ -286,8 +332,8 @@ Stripe mode (test vs live) on the shared Preview secret is **unverified** becaus
 
 | Surface | What was verified | What is unverified |
 | --- | --- | --- |
-| Vercel domains on this project | `get-quotr.com` verified, no git branch, no redirect. `app.get-quotr.com` verified and redirecting to `get-quotr.com`. `quotr-2-0.vercel.app` verified. | Which Cloudflare origin actually serves `get-quotr.com`. The HTML is not this app. |
-| Public DNS | `get-quotr.com` and `www.get-quotr.com` are Cloudflare A/AAAA. MX is Google. SPF and DMARC exist as recorded above. | `app.get-quotr.com` and `beta.get-quotr.com` do not resolve. Nested SPF TXT did not resolve here. Resend DKIM was not checked. |
+| Vercel domains on this project | `app.get-quotr.com` is an alias of the workflow Preview and, on 19 October, answered 307 to `/login`. The workflow branch alias did the same. | `get-quotr.com` was not re-fetched. The 9 October waitlist finding is unchanged until someone loads it again. |
+| Public DNS | Not re-queried for this update. | `beta.get-quotr.com`, nested SPF, and Resend DKIM remain unverified. |
 | Production app | `quotr-2-0.vercel.app` is 404. The only Production deployment is Error. | — |
 | Supabase Auth Site URL and redirect allow-list, on both `shhpjsoldmqtkdbgrbtm` and `lxvnylhsbvudzzupxeqr` | CLI could list migrations, so the account can reach the databases. | **Unverified.** Auth URL configuration was not read. Do not copy the hardening Site URL onto Production, and do not assume the workflow callback is allow-listed. |
 | Mail URLs | Code: auth callbacks use `/auth/callback`; quotes use `/q/[token]`; variations use `/v/[token]`; RFQs use `/r/[token]`. | Resend and Supabase SMTP dashboard endpoints were not opened. |
@@ -302,18 +348,18 @@ Build log for `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` on 2026-08-05:
 `Failed to collect page data for /`  
 `npm run build` exited 1.
 
-`assertRequiredEnv()` throws in production builds when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is missing. Both names are **present now**, and the URL ref is the Production project. The Error deployment was never replaced. Current settings would get past that particular build check. They would not make a safe release: site URL, billing, Stripe, Resend, and Google are still unset, and the database is still at 045. Nothing was deployed to confirm a newer build.
+`assertRequiredEnv()` throws in production builds when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is missing. Both names are **present now**. A Production env pull on 19 October showed the URL ref `lxvnylhsbvudzzupxeqr`. The Error deployment was never replaced. Current settings would get past that particular build check. They would not make a safe release: site URL, billing, Stripe, Resend, Loops, and Google are still unset on Production, `BILLING_ENFORCEMENT_MODE` is unset, and the database is still at 045. Stripe test versus live on Preview is still unreadable because the secret cannot be pulled. Nothing was deployed to confirm a newer build.
 
 ## 7. Ordered blockers
 
 | # | Blocker | Owner | Evidence that closes it |
 | --- | --- | --- | --- |
-| 1 | No Ready Production deployment. The only one is Error on `383133d`, an old `main` SHA, not the candidate. `quotr-2-0.vercel.app` is 404. | Owner | A later Ready Production deployment of the approved SHA, after the rows below are closed. Do not deploy from this inventory. |
-| 2 | Production schema is 045. The candidate database is 111. Delta is 046–111 except absent 037 and 055. | Owner | Backup or PITR confirmation, then a rehearsed apply in the order in section 2. 048 live singleton inserted in the same window. 060–062 not left half-applied. Preview bootstrap function not called. |
-| 3 | Production env has no site URL, Stripe, billing mode, Resend, or Google key. | Owner | Names present on Production only, live Stripe mode confirmed in the dashboard, site URL equal to the approved domain. Preview values must not be copied. |
-| 4 | `get-quotr.com` does not serve this app and does not link to `/signup`. `app.get-quotr.com` does not resolve even though Vercel lists a redirect. | Owner | Public DNS and a page load of the approved origin showing this app’s signup, plus a marketing link to that URL. |
+| 1 | No Ready Production deployment. Re-read 19 October: the only one is still Error `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` from 5 August 2026, aliases `quotr-2-0-quotr1.vercel.app` and the `main` git alias. It is not `edaac483`. | Owner | A later Ready Production deployment of the approved SHA, after the rows below are closed. Do not deploy from this inventory. |
+| 2 | Production schema is 045. Re-read 19 October with `db:production:status`. The candidate database is 111. Delta is 046–111 except absent 037 and 055. | Owner | Backup or PITR confirmation, then a rehearsed apply in the order in section 2 and the stop points in section 8. 048 live singleton inserted in the same window. 060–062 not left half-applied. Preview bootstrap function not called. |
+| 3 | Production env, re-read 19 October, has Supabase URL ref `lxvnylhsbvudzzupxeqr`, anon key, and service role. It has no site URL, Stripe, billing mode, Resend, Loops, or Google key. | Owner | Names present on Production only, live Stripe mode confirmed in the dashboard, site URL equal to the approved domain. Preview values must not be copied. |
+| 4 | `get-quotr.com` was a waitlist on 9 October and was not re-fetched. It does not, in that record, link to `/signup`. `app.get-quotr.com` now serves this Preview and redirects to `/login`; that is not the Production domain. | Owner | A page load of the approved origin showing this app’s signup, plus a marketing link to that URL. |
 | 5 | Supabase Auth Site URL and redirect allow-list are unverified on both projects. | Owner | Dashboard read of both projects: Site URL and redirects for the approved origin, with the workflow callback kept only for Preview. |
-| 6 | Quote and invite links on Preview still resolve to the hardening alias (`58d7681`) while the candidate is `1cfa7d2` on schema 107. | Owner | A decision, then one workflow-alias send whose public link stays on that deployment. Do not move the hardening alias as part of this inventory. |
+| 6 | Quote and invite links on Preview still use the hardening host, re-read 19 October, while the candidate is `edaac483` on schema 111. | Owner | A decision, then one workflow-alias send whose public link stays on that deployment. Do not move the hardening alias as part of this inventory. |
 | 7 | Preview Stripe secret mode was not readable. | Owner | Stripe dashboard shows the Preview secret is test mode. |
 | 8 | Resend alignment with Google MX / SPF is unverified. | Owner | Resend domain status for `get-quotr.com`, plus one delivered invite and one delivered quote. |
 | 9 | Google key restrictions are unverified, and Production has no key. | Owner | Referrer list includes the approved origin before a Production key is used. |
@@ -321,30 +367,85 @@ Build log for `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` on 2026-08-05:
 | 11 | Release scripts are red on stale heads and one UI selector. | Engineering, after this inventory | Retarget as in section 4 and re-run. Do not delete the tests. |
 | 12 | Local tenant-isolation suite did not run. | Engineering | Docker up, then `verify-batch-2a5-tenant-isolation.ts`. Optional later: security-053 and security-082 `--live` on Preview only. |
 
-## 8. Rehearsal and rollback
+## 8. Staged release runbook
 
-Do not run this section now.
+Do not run this section now. Production migrations, a Production deploy, the hardening alias, and the `app.get-quotr.com` assignment stay as they are.
 
-1. Confirm a Production backup or PITR point. That confirmation is not in this repo.
-2. Read Production and Preview Auth URLs. Set the approved Production origin only when it exists.
-3. Set Production environment names from section 6. `BILLING_ENVIRONMENT=live`. Stripe live keys and live prices only. Resend production sender only. Google key restricted to the approved origin.
-4. Read-only `npm run db:production:status`. Expect head 045. If it is not 045, stop.
-5. Count owner-role profiles per organisation. More than one owner blocks 049.
-6. Apply 046 through 107 in the order in section 2, one window. Immediately after 048, insert the live billing singleton. Do not call `bootstrap_missing_preview_internal_trials()`. Apply 060, 061, and 062 without leaving the database on 060 or 061.
-7. Deploy Production only from `e85029eac87bb16d6343213975e13660578a344c` (or a later SHA that has been paired again with schema 111). Do not deploy `58d7681` onto schema 111. Do not deploy the candidate onto schema 045. Do not deploy Production as part of the 19 October acceptance update.
-8. Smoke the approved origin: signup, phone duplicate, Viewer denial, one quote link host, one variation link host.
-9. Rollback for the database is restore of the backup taken before 046. There is no down-migration. 049 memberships, 052 rate provenance, phone claims, storage objects, and issued quote or variation rows are not safely reversible. There is no previous Ready Production deployment to alias back to. `quotr-2-0.vercel.app` is already 404. Do not alias Production at the Error deployment and call that a rollback. Leave the hardening alias on `58d7681`.
+### Preparation
+
+Stop unless every line is true.
+
+- Application SHA is still `edaac4833564cfcf600381e1d1ad1f824b8e7a86`, or a later SHA that has been paired again with schema 111 and written into this inventory.
+- `npm run db:production:status` still shows remote head 045 and an empty remote column from 046.
+- A Production backup or PITR point is confirmed outside this repo.
+- Owner profiles are counted. `049` creates `organisation_memberships_one_owner_uidx`. More than one owner profile in one organisation stops the rehearsal.
+- Preview and Production Auth Site URL and redirect allow-lists have been read. The Production list is not copied from the hardening alias.
+- The full commercial catalogue is still not a prerequisite. The unverified paths in sections 3 and 4 stay listed until they are run.
+
+### Migration rehearsal
+
+Apply only the ordered list in section 2. Skip 037 and 055. Check, then continue. Stop on any failed check.
+
+| After | Check before the next version |
+| --- | --- |
+| 046–047 | Billing tables exist. `past_due_since` exists. No signup yet. |
+| 048 | `billing_runtime_config` has one row, `billing_environment = 'live'`, inserted by ops in this window. Do not call `bootstrap_missing_preview_internal_trials()`. It refuses unless the singleton is `test`. |
+| 049 | One owner membership per organisation. A missing membership must not be left as the way a user writes data. Not safely reversible. |
+| 050–053 | Removed members lose `profiles.org_id`. Role policies are the 053 policies. Estimator and Viewer behaviour is the intended authority. |
+| 051 | Timezone backfill is accepted: NZ settings become `Pacific/Auckland` or `Pacific/Chatham`; other regions stay null. |
+| 052 | `rates.source` is `explicit_company` where it was null, then NOT NULL. This does not edit the rate amounts. |
+| 054, 056 | Catalogue seeds applied with `ON CONFLICT DO NOTHING`. Benchmark values remain an owner decision. |
+| 057–059 | Repeated work areas use instance identity. 059 copied hosted quote transactions into the lifecycle ledger. |
+| 060–062 | These three are one window. Do not pause on 060 or 061. After 062 the preview-fixture delete bypass is gone. |
+| 063–073 | Variation immutability holds. Private bucket `variation-attachments` exists after 071. |
+| 074–075 | Consent stays opted out. The sync-pending flag exists. There is still no cron and no `LOOPS_API_KEY` reader in this repo. |
+| 076–082 | Onboarding and ABN columns exist. 082 write policies allow only an active Owner, Admin, or Estimator. |
+| 083–084 | Customers exist. Manual pricing continuation uniqueness holds. Issued quotes were not rewritten. |
+| 085–086 | `claim_signup_account_phone` is AFTER INSERT on `auth.users`. A duplicate E.164 rolls the new user back. A missing phone is allowed unless `signup_phone_required` is true. |
+| 087–089 | Subcontractors exist. Private bucket `subcontractor-documents` exists after 088. |
+| 090–107 | Private bucket `rfq-response-files` exists after 090. Submitted responses and supplier-priced lines are frozen. 107 notifies on a priced submit. |
+| 108–111 | Calibration-catalogue productivity only. 110 adds `pricing_documents.provisional_ceiling_confirmation`. No organisation rate, quote, variation, or issued snapshot was rewritten. Head is 111. |
+
+`pgcrypto` is already in 001. Branding bucket `organisation-branding` is already in 034, which Production has. New private buckets are `variation-attachments`, `project-documents`, `subcontractor-documents`, and `rfq-response-files`.
+
+### Production configuration
+
+Set Production names only. Do not copy Preview secrets.
+
+- `NEXT_PUBLIC_SITE_URL` is the approved Production origin, not the hardening alias and not `app.get-quotr.com` while that host is the Preview.
+- `BILLING_ENVIRONMENT=live`. Stripe secret, webhook, three prices, NZ GST tax rate, and portal configuration are live-mode. Preview’s secret mode is still unread, so it is not evidence for Production.
+- Resend key, from addresses, and webhook secret. `QUOTE_DELIVERY_PROVIDER` is unset in both environments today; decide it before the first Production quote email.
+- Google key restricted to the approved origin.
+- Leave `LOOPS_API_KEY` unset unless a scheduler exists. Migration 075 only stores a flag.
+
+### Deployment
+
+Deploy Production from `edaac4833564cfcf600381e1d1ad1f824b8e7a86` only after the migration head is 111 and the configuration checks above passed. Do not deploy `58d7681` onto schema 111. Do not deploy the candidate onto schema 045. Do not deploy as part of this inventory.
+
+### Smoke checks
+
+On the approved origin, before the domain cutover: signup, a duplicate E.164 rejected, a Viewer cannot create a project or edit pricing, one quote link host, one variation link host, and one price-request draft that is not sent to a supplier.
+
+### Domain transition
+
+Point the approved origin at the Ready Production deployment. Marketing `get-quotr.com` links to that origin’s `/signup`. Leave the hardening alias on `58d7681`. Move `app.get-quotr.com` off the workflow Preview only in this stage, and only onto the Ready Production deployment.
+
+### Rollback and stop points
+
+Stop before 046 if the backup or the owner count is missing. Stop after 048 if the live singleton is missing. Stop inside 060–062 if 062 has not been applied. Stop before deploy if the schema head is not 111 or the site URL is unset.
+
+Database rollback is restore of the backup taken before 046. There is no down-migration. Memberships, rate provenance, phone claims, storage objects, and issued quote or variation rows are not safely reversible. There is no previous Ready Production deployment to alias back to. Do not alias Production at the Error deployment and call that a rollback. Leave the hardening alias on `58d7681`.
 
 ## 9. Go / no-go for the proper domain
 
 | Gate | Result |
 | --- | --- |
-| Candidate SHA is the Ready workflow deployment | yes — `e85029eac87bb16d6343213975e13660578a344c` on `dpl_5Td3Gm35VfzjsD2L9zLeaaMLczts` |
-| That SHA is paired with Preview schema 111 | yes |
+| Candidate SHA is the Ready workflow deployment | yes — `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9`, also `app.get-quotr.com` |
+| That SHA is paired with Preview schema 111 | yes, re-read 19 October |
 | Working tree was clean and matched origin at inventory start | yes |
 | Candidate labelled frozen | **no** |
 | Production deployment Ready on that SHA | **no** |
-| Production schema 111 | **no** — still 045 |
+| Production schema 111 | **no** — still 045, re-read 19 October |
 | Production site URL, Stripe live, billing live, Resend, Google | **no** |
 | Auth redirects read and matching the approved origin | **no** |
 | Marketing signup link to the app | **no** |
@@ -354,4 +455,4 @@ Do not run this section now.
 
 ## 10. Smallest next action
 
-Leave Production and the hardening alias untouched. The next action is an owner read of blockers 1–6, starting with the fact that the recorded Production failure is a missing-Supabase-env build from 5 August 2026 and that those two variables exist now, while schema 045, the empty Production site URL, and the absent Ready deployment still block a release.
+Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. The next executable step is preparation only: confirm a Production backup or PITR point, count owner profiles per organisation, and read the Auth Site URL and redirect allow-list on both `shhpjsoldmqtkdbgrbtm` and `lxvnylhsbvudzzupxeqr`. Do not apply 046. The 5 August Error deployment was a missing-Supabase-env build; those two variables exist now and still do not make a release.
