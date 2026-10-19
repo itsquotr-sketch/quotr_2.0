@@ -146,12 +146,14 @@ export async function saveRfqDraft(input: {
   const id = (data as { id?: string }).id;
   if (!id) return { ok: false, error: SAVE_FAILED };
   const mode = input.pricingRequest === "schedule" ? "schedule" : "lump_sum";
-  const modeResult = await loaded.context.supabase.rpc("set_rfq_pricing_request_v1", {
-    p_rfq: id,
-    p_mode: mode,
-  });
-  const modeMessage = modeResult.error ? SAVE_FAILED : rpcError(modeResult.data, SAVE_FAILED);
-  if (modeMessage) return { ok: false, error: modeMessage };
+  if (mode !== "lump_sum" || input.id) {
+    const modeResult = await loaded.context.supabase.rpc("set_rfq_pricing_request_v1", {
+      p_rfq: id,
+      p_mode: mode,
+    });
+    const modeMessage = modeResult.error ? SAVE_FAILED : rpcError(modeResult.data, SAVE_FAILED);
+    if (modeMessage) return { ok: false, error: modeMessage };
+  }
   if (mode === "schedule") {
     const scheduleResult = await loaded.context.supabase.rpc("save_rfq_schedule_v1", {
       p_rfq: id,
