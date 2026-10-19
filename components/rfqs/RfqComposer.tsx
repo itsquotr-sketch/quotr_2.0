@@ -242,6 +242,7 @@ export function RfqComposer({
       }
       sessionStorage.removeItem(storageKey);
       router.push(`/app/projects/${projectId}/requests/${result.id}`);
+      router.refresh();
     } catch {
       saveLock.current = false;
       setPending(null);

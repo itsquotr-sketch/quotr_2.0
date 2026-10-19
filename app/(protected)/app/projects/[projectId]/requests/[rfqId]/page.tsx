@@ -28,7 +28,6 @@ export default async function RfqDetailPage({ params, searchParams }: PageProps)
   const deliveryNotice = query.delivery === "accepted" || query.delivery === "failed" ? query.delivery : null;
   const auth = await requireAuthOrgContext();
   if (!auth.ok) notFound();
-  const marked = markRfqQuestionNotificationsRead({ projectId, rfqId });
   const [project, tabContext, quoteSummary, detail, pricing, access] = await Promise.all([
     getProjectWithContext(auth, projectId),
     getProjectWorkspaceTabContextWithContext(auth, projectId),
@@ -37,11 +36,8 @@ export default async function RfqDetailPage({ params, searchParams }: PageProps)
     loadRfqPricingTargets(auth.supabase, projectId),
     getOnboardingAccess(),
   ]);
-  if (!project || !detail) {
-    await marked;
-    notFound();
-  }
-  await marked;
+  if (!project || !detail) notFound();
+  await markRfqQuestionNotificationsRead({ projectId, rfqId });
   return (
     <div className="min-h-0 flex-1 overflow-auto overflow-x-hidden bg-muted/30" data-workspace-scroll="">
       <header className="border-b bg-background">
