@@ -1,9 +1,9 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the Preview link-origin deployment and the Production recovery read. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
-**Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, plus the link-origin commit `f42553a490c83089ff3d01eeabb1774725fffe60`.  
+**Updated:** 19 October 2026, after the Preview candidate alignment. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Application candidate:** `f42553a490c83089ff3d01eeabb1774725fffe60` on `ui/core-workflow-overhaul`. It is pushed. Its parent is `edaac4833564cfcf600381e1d1ad1f824b8e7a86`.  
 **This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
-**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` remains on the performance-pass deployment. Section 13 is the current host and recovery record.
+**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. Section 14 is the current Preview host record. Production remains **NO-GO**.
 
 **Go / no-go for the proper domain: NO-GO.**
 
@@ -11,16 +11,16 @@
 
 | Fact | Value |
 | --- | --- |
-| Application branch | `ui/core-workflow-overhaul`, clean, same SHA as `origin/ui/core-workflow-overhaul` |
-| Application SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` |
-| Commit | 2026-10-19 — Run the navigation feedback script in the first HTML. |
+| Application branch | `ui/core-workflow-overhaul`. The pushed candidate is `f42553a490c83089ff3d01eeabb1774725fffe60`. |
+| Performance-pass SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` |
+| Performance-pass commit | 2026-10-19 — Run the navigation feedback script in the first HTML. |
 | Documentation | separate branch `docs/release-candidate-notes`. Prior inventory commit `a0247cb42fdccc3e4c0356d575eccb991404b88d` recorded the morning acceptance. It is not the application SHA. |
 | Performance-pass Preview deployment | `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
 | Performance-pass deployment URL | `https://quotr-2-0-4etkibj0g-quotr1.vercel.app` |
 | Performance-pass git SHA | `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`, read from the deployment record |
 | Created | 2026-10-19 14:40 +1300, Ready, target preview |
-| `app.get-quotr.com` | still that performance-pass deployment. Signup HTML matches `quotr-2-0-4etkibj0g`. |
-| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` now serves the link-origin deployment in section 13 |
+| `app.get-quotr.com` | aligned Preview deployment in section 14, `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY` |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` serves that same deployment |
 | Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, Ready, created 2026-09-29. SHA remains `58d7681d6eb8d8e811ad6ec115f6a006bc179642`. |
 | Preview schema | local files and remote `shhpjsoldmqtkdbgrbtm` head **111**, re-read 19 October 2026. Versions 037 and 055 are absent on purpose. |
 | Production schema | remote `lxvnylhsbvudzzupxeqr` head **045**, re-read 19 October 2026. Remote column empty for 046–111. 037 and 055 absent. |
@@ -440,7 +440,7 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 | Gate | Result |
 | --- | --- |
-| Candidate SHA is the Ready workflow deployment | the workflow alias now serves `f42553a490c83089ff3d01eeabb1774725fffe60` on `dpl_2XZXfurwfKVqAEo3eAeowrmQwvDd`. `app.get-quotr.com` still serves `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` |
+| Candidate SHA is the Ready workflow deployment | yes — `f42553a490c83089ff3d01eeabb1774725fffe60` on `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY`. The workflow alias and `app.get-quotr.com` both resolve to that deployment. Section 14. |
 | That SHA is paired with Preview schema 111 | yes, re-read 19 October |
 | Working tree was clean and matched origin at inventory start | yes |
 | Candidate labelled frozen | **no** |
@@ -455,7 +455,7 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 ## 10. Smallest next action
 
-Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. The isolated rehearsal in section 12 is clean and is not a Production restore point. The recovery option still required is an owner-approved Pro plan daily backup, or Pro plus Small compute plus a PITR tier, verified by the checks in section 13. Production Auth and the missing live site, Stripe, billing, and email names in section 11.4 remain to be set after that restore point exists.
+Leave Production and the hardening alias untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. Preview hosts are aligned in section 14. The isolated rehearsal in section 12 is clean and is not a Production restore point. The recovery option still required is an owner-approved Pro plan daily backup, or Pro plus Small compute plus a PITR tier, verified by the checks in section 13. Production Auth and the missing live site, Stripe, billing, and email names in section 11.4 remain to be set after that restore point exists.
 
 ## 11. Production preflight — 19 October 2026
 
@@ -689,3 +689,33 @@ Production Auth was read again and left unchanged. Site URL is `https://quotr-2-
 Before a Production deployment, set the Production Auth Site URL and `/auth/callback` allow-list to the approved Production origin. The names in section 11.4 are still unset on Production: `NEXT_PUBLIC_SITE_URL`, `BILLING_ENVIRONMENT`, the Stripe secret, webhook, three prices, NZ GST rate, and portal configuration, and the Resend key, from addresses, and webhook secret. `BILLING_ENVIRONMENT` must be `live`. `QUOTE_DELIVERY_PROVIDER`, `BILLING_ENFORCEMENT_MODE`, `LOOPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` stay optional as recorded in that section.
 
 Production remains **NO-GO**.
+
+## 14. Aligned Preview candidate — 19 October 2026
+
+`f42553a490c83089ff3d01eeabb1774725fffe60` was pushed to `ui/core-workflow-overhaul`. The git Preview deployment is Ready.
+
+| Fact | Value |
+| --- | --- |
+| Application SHA | `f42553a490c83089ff3d01eeabb1774725fffe60` |
+| Deployment | `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY` |
+| Unique URL | `https://quotr-2-0-5ozcfhrgf-quotr1.vercel.app` |
+| Created | 2026-10-19 16:40 +1300, Ready, target preview |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` → that deployment |
+| `app.get-quotr.com` | that same deployment |
+| Signup HTML | SHA-256 prefix `bd1168ebce33` on the unique URL, the workflow alias, and `app.get-quotr.com` |
+| Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` |
+
+Immediately after the push, `app.get-quotr.com` already resolved to `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY`. The workflow alias still resolved to the earlier upload `dpl_2XZXfurwfKVqAEo3eAeowrmQwvDd` (`https://quotr-2-0-4k6o7g1n2-quotr1.vercel.app`, signup prefix `3b22be5880ed`). That earlier upload is the same SHA. It is a different deployment. The workflow alias was then assigned to `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY`. After that assignment, both hosts resolve to the git deployment. Neither host remains on `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` (`edaac4833564cfcf600381e1d1ad1f824b8e7a86`, signup prefix `b6f633f99577`).
+
+`npx tsc --noEmit` completed with no errors. `scripts/verify-application-email-01.ts` passed. Generated hosts on that check:
+
+| Link | Host and path |
+| --- | --- |
+| Invite | `quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` `/invite/{token}` |
+| Quote | same host `/q/{token}` |
+| Variation | same host `/v/{token}` and `/v/{token}/response` |
+| RFQ | same host `/r/{token}` |
+
+A signup started on `https://app.get-quotr.com` keeps `https://app.get-quotr.com/auth/callback?next=/app/setup?mode=basics`. The invalid-token signup verify returned HTTP 303 to `app.get-quotr.com` `/auth/callback`. No account was created. No customer email was sent and no commercial document was issued.
+
+Production was not migrated, deployed, or changed. Production Auth was not changed. The hardening alias was not moved. Production remains **NO-GO**.
