@@ -98,6 +98,7 @@ export function SubcontractorsDirectory({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [workArea, setWorkArea] = useState("");
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const visible = useMemo(
     () => filterSubcontractors(subcontractors, search, workArea),
     [subcontractors, search, workArea]
@@ -160,7 +161,13 @@ export function SubcontractorsDirectory({
         </label>
       </div>
 
-      {emptyDirectory ? (
+      {openingId ? (
+        <p className="text-sm text-muted-foreground" role="status" data-subcontractor-pending="true">
+          Loading subcontractor…
+        </p>
+      ) : null}
+
+      {!openingId && emptyDirectory ? (
         <div className="rounded-xl border border-border/60 bg-card px-4 py-10 text-center">
           <p className="text-base font-medium">
             {archived ? "No archived subcontractors" : "No subcontractors yet"}
@@ -178,13 +185,13 @@ export function SubcontractorsDirectory({
         </div>
       ) : null}
 
-      {emptyFilter ? (
+      {!openingId && emptyFilter ? (
         <p className="rounded-xl border border-border/60 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
           No subcontractors match that search or work area.
         </p>
       ) : null}
 
-      {visible.length > 0 ? (
+      {!openingId && visible.length > 0 ? (
         <>
           <div
             className="hidden overflow-hidden rounded-xl border border-border/60 bg-card md:block"
@@ -214,6 +221,7 @@ export function SubcontractorsDirectory({
                         href={profileHref(subcontractor)}
                         className="block truncate font-medium underline-offset-2 hover:underline"
                         title={subcontractor.trading_name}
+                        onClick={() => setOpeningId(subcontractor.id)}
                       >
                         {subcontractor.trading_name}
                       </Link>
@@ -257,6 +265,7 @@ export function SubcontractorsDirectory({
                       <Link
                         href={profileHref(subcontractor)}
                         className="min-w-0 break-words text-base font-medium underline-offset-2 hover:underline"
+                        onClick={() => setOpeningId(subcontractor.id)}
                       >
                         {subcontractor.trading_name}
                       </Link>

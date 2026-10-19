@@ -141,6 +141,7 @@ export function SubcontractorProfile({
   const [minimum, setMinimum] = useState(subcontractor.minimum_charge_notes ?? "");
   const [travel, setTravel] = useState(subcontractor.travel_notes ?? "");
   const [pending, setPending] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (error) errorRef.current?.focus();
@@ -305,6 +306,7 @@ export function SubcontractorProfile({
             href={archived ? "/app/contacts/subcontractors?archived=1" : "/app/contacts/subcontractors"}
             className="inline-flex h-11 min-h-11 items-center rounded-xl border border-border bg-card px-4 text-sm font-medium"
             data-back-to-subcontractors
+            onClick={() => setLeaving(true)}
           >
             Back to subcontractors
           </Link>
@@ -320,6 +322,12 @@ export function SubcontractorProfile({
         ) : null}
       </div>
 
+      {leaving ? (
+        <p className="text-sm text-muted-foreground" role="status" data-subcontractors-pending="true">
+          Loading subcontractors…
+        </p>
+      ) : (
+      <>
       <div onKeyDown={onTabsKeyDown}>
           <SettingsSectionNav
           items={VIEWS}
@@ -581,6 +589,8 @@ export function SubcontractorProfile({
           </div>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }
