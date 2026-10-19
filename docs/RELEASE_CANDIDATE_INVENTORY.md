@@ -1,6 +1,6 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the Preview candidate alignment. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Updated:** 19 October 2026, after the Production plan and backup read. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record. Section 15 is the current backup, configuration, and migration-stage record.  
 **Application candidate:** `f42553a490c83089ff3d01eeabb1774725fffe60` on `ui/core-workflow-overhaul`. It is pushed. Its parent is `edaac4833564cfcf600381e1d1ad1f824b8e7a86`.  
 **This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
 **Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. Section 14 is the current Preview host record. Production remains **NO-GO**.
@@ -455,7 +455,7 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 ## 10. Smallest next action
 
-Leave Production and the hardening alias untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. Preview hosts are aligned in section 14. The isolated rehearsal in section 12 is clean and is not a Production restore point. The recovery option still required is an owner-approved Pro plan daily backup, or Pro plus Small compute plus a PITR tier, verified by the checks in section 13. Production Auth and the missing live site, Stripe, billing, and email names in section 11.4 remain to be set after that restore point exists.
+Leave Production and the hardening alias untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. Preview hosts are aligned in section 14. Section 15 records the Pro daily backups now listed for Production. PITR stays off. The live site, Auth, Stripe, billing, and Resend values are still unset. Production stays **NO-GO** until those values are entered and checked. The next step is that owner configuration, plus a separate copy of the one existing Storage object, before any stage in section 15.5 is run.
 
 ## 11. Production preflight — 19 October 2026
 
@@ -719,3 +719,201 @@ Immediately after the push, `app.get-quotr.com` already resolved to `dpl_DXpwuYy
 A signup started on `https://app.get-quotr.com` keeps `https://app.get-quotr.com/auth/callback?next=/app/setup?mode=basics`. The invalid-token signup verify returned HTTP 303 to `app.get-quotr.com` `/auth/callback`. No account was created. No customer email was sent and no commercial document was issued.
 
 Production was not migrated, deployed, or changed. Production Auth was not changed. The hardening alias was not moved. Production remains **NO-GO**.
+
+## 15. Production backup, configuration, and staged migrations — 19 October 2026
+
+Candidate `f42553a490c83089ff3d01eeabb1774725fffe60`. No migration was applied. PITR was not enabled. Billing was not changed. Production Auth was not changed. No Production deployment was created. `app.get-quotr.com` stays on Preview `dpl_DXpwuYynyDVRDR6Btoza98QAy1WY` until the controlled domain cutover. The hardening alias stays on `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`.
+
+### 15.1 Plan and backups
+
+Organisation `quotr` (`rkstzmnnkcorevoazhny`) now reports plan `pro`. Project `lxvnylhsbvudzzupxeqr` still has `pitr_enabled` false and `physical_backup_data` empty. There is no PITR restore window.
+
+`GET /v1/projects/lxvnylhsbvudzzupxeqr/database/backups` returned HTTP 200 and seven backups. Each object has `id`, `inserted_at`, `is_physical_backup: true`, and `status: COMPLETED`. That list is the daily restore set the dashboard uses. A restore was not run. Schema head is still `045` / `commercial_close`.
+
+| Order | `inserted_at` (UTC) |
+| --- | --- |
+| First | `2026-10-12T17:45:37.819Z` |
+| | `2026-10-12T23:12:28.442Z` |
+| | `2026-10-14T19:43:14.752Z` |
+| | `2026-10-15T17:45:21.182Z` |
+| | `2026-10-16T17:44:49.848Z` |
+| | `2026-10-17T17:46:02.071Z` |
+| Latest | `2026-10-18T17:45:14.209Z` |
+
+The latest completed backup is the current restore point: `2026-10-18T17:45:14.209Z` (19 October 2026, 06:45 +1300). The plan change alone is not a migration go-ahead. Live configuration in this section is still unset.
+
+### 15.2 Storage objects the database backup does not restore
+
+Read-only counts. No object was downloaded.
+
+| Bucket | Public | Objects | Bytes |
+| --- | --- | ---: | ---: |
+| `organisation-branding` | yes | 1 | 100407 |
+
+That one branding object needs its own copy before the migration window. A database restore restores the Storage metadata row and does not restore the uploaded bytes. Migrations `071`, `078`, `088`, and `090` create `variation-attachments`, `project-documents`, `subcontractor-documents`, and `rfq-response-files`. Those buckets are absent at head 045, so they have no files to copy.
+
+### 15.3 Where each value is entered
+
+The approved Production origin is still unset. It must be an `https` origin with no path. It must not be `app.get-quotr.com` while that host serves Preview. It must not be the hardening alias. On a Production deployment, `resolveConfiguredSiteOrigin` returns null for localhost and for a unique `*.vercel.app` host.
+
+Enter Vercel values on project `quotr-2-0`, environment **Production** only. Do not copy Preview secrets. Do not print the values back into this document.
+
+#### Build
+
+`assertRequiredEnv()` fails a production build only when these two are missing. Both are already set on Production, and the URL’s project ref is `lxvnylhsbvudzzupxeqr`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+`SUPABASE_SERVICE_ROLE_KEY` is already set. It is not required for the build. Signup provisioning uses an authenticated RPC.
+
+#### Signup, invites, and recovery
+
+| Name | Purpose | Where the owner enters it |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Production link origin for invite, Quote, and variation mail, and the fallback Auth origin. Unset, localhost, or a unique `*.vercel.app` host makes `resolveConfiguredSiteOrigin` return null. | Vercel Production |
+| Auth Site URL | GoTrue substitutes this host when `redirect_to` is not allowed. Set it to the approved origin. | Supabase Dashboard → Authentication → URL configuration, project `lxvnylhsbvudzzupxeqr` |
+| Redirect allow-list | Must include `https://<approved-origin>/auth/callback*` so signup (`next=/app/setup?mode=basics`), recovery (`next=/reset-password`), and invite (`next=/invite/{token}`) stay on that host. | Same Auth URL configuration |
+
+Current Production Auth was read and left unchanged: Site URL `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`; allow-list `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`, `http://localhost:3000/auth/callback`, and the hardening `/auth/callback`. Replace those entries with the approved origin when that origin is chosen. Do not point them at `app.get-quotr.com`.
+
+#### Payment
+
+| Name | Purpose | Where the owner enters it |
+| --- | --- | --- |
+| `BILLING_ENVIRONMENT=live` | Hosted production throws unless this is exactly `live`. | Vercel Production |
+| `billing_runtime_config` singleton | Database authority. One row, `id true`, `billing_environment 'live'`. Insert it only after 048 commits and before 049. Do not call `bootstrap_missing_preview_internal_trials()`. | SQL editor for `lxvnylhsbvudzzupxeqr`, section 15.5 |
+| `STRIPE_SECRET_KEY` | Live-mode secret. `getStripe()` throws when a client is constructed without it. | Vercel Production. Create it in Stripe live mode. |
+| `STRIPE_PRICE_BUILDER_MONTHLY`, `STRIPE_PRICE_BUSINESS_BASE_MONTHLY`, `STRIPE_PRICE_BUSINESS_SEAT_MONTHLY` | Checkout prices. All three together, or none. A partial set throws. | Vercel Production. Live-mode price ids. |
+| `STRIPE_TAX_RATE_NZ_GST` | NZ GST tax rate on checkout. | Vercel Production. Live-mode tax rate id. |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | Billing portal configuration. | Vercel Production. Live-mode portal configuration. |
+| `STRIPE_WEBHOOK_SECRET` | Verifies `POST /api/webhooks/stripe`. | Vercel Production. The Stripe live webhook endpoint is `https://<approved-origin>/api/webhooks/stripe`. |
+
+Checkout return URLs use `NEXT_PUBLIC_SITE_URL` under `/app/settings/billing`.
+
+#### Email
+
+| Name | Purpose | Where the owner enters it |
+| --- | --- | --- |
+| `RESEND_API_KEY` | Sends Quote, team, and price-request mail. | Vercel Production |
+| `RESEND_TEAM_FROM_EMAIL` | Team invite From. Must not be the Quote mailbox `quotes@get-quotr.com`. | Vercel Production. The address must be verified in Resend. |
+| `RESEND_QUOTE_FROM_EMAIL` | Quote From. The Quote channel mailbox is `quotes@get-quotr.com`. | Vercel Production. Verified in Resend. |
+| `RESEND_FROM_EMAIL` | Fallback when a channel address is unset. | Vercel Production |
+| `RESEND_WEBHOOK_SECRET` | Verifies the Svix signature on `POST /api/webhooks/resend`. | Vercel Production. The Resend webhook endpoint is `https://<approved-origin>/api/webhooks/resend`. |
+| `QUOTE_DELIVERY_PROVIDER` | Optional. Unset selects Resend. `mock` selects the mock provider. | Leave unset for live sending. |
+
+`BILLING_ENFORCEMENT_MODE`, `LOOPS_API_KEY`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` stay optional, as in section 11.4.
+
+### 15.4 Why `db push` cannot stop at 048
+
+`npm run db:production:push` runs `supabase db push --project-ref lxvnylhsbvudzzupxeqr --skip-vault --yes` against the full `supabase/migrations` directory. That command has no stop version. It would apply 046 through 111, including the open 060–062 window, and it would pass 048 with `billing_runtime_config` still empty. Do not run it for these stages.
+
+`supabase db query --project-ref` without `--linked` is rejected. Do not link the CLI to Production.
+
+### 15.5 Stages
+
+Run these only after the owner configuration in 15.3 is ready to verify, and after a fresh backup read still shows a `COMPLETED` backup. Re-read the latest `inserted_at` immediately before stage A and treat that timestamp as the restore point. None of these commands were run.
+
+Each stage uses a separate checkout of `f42553a490c83089ff3d01eeabb1774725fffe60`. Delete every migration file whose numeric prefix is above the stage end. Keep every file already applied through `045`, so remote history still matches the directory. `037` and `055` are already absent.
+
+Stage A, stop at 048. In that checkout:
+
+```powershell
+Get-ChildItem supabase\migrations -File |
+  Where-Object { [int]$_.Name.Substring(0,3) -gt 48 } |
+  Remove-Item
+npx supabase db push --project-ref lxvnylhsbvudzzupxeqr --skip-vault --dry-run
+```
+
+The dry-run must list only `046_billing_foundation.sql`, `047_past_due_authority.sql`, and `048_billing_checkout_trial.sql`. If any other version appears, stop and do not push. When it matches:
+
+```powershell
+npx supabase db push --project-ref lxvnylhsbvudzzupxeqr --skip-vault --yes
+```
+
+Then, in the Supabase SQL editor for `lxvnylhsbvudzzupxeqr`, confirm the head and the empty singleton:
+
+```sql
+select version, name
+from supabase_migrations.schema_migrations
+order by version desc
+limit 1;
+
+select count(*) as rows
+from public.billing_runtime_config;
+```
+
+Stop unless the version is `048` and the count is 0.
+
+Insert and verify the live row. Do not call `bootstrap_missing_preview_internal_trials()`.
+
+```sql
+insert into public.billing_runtime_config (id, billing_environment)
+values (true, 'live');
+
+select count(*) as rows,
+       count(*) filter (where billing_environment = 'live') as live_rows,
+       count(*) filter (where billing_environment = 'test') as test_rows
+from public.billing_runtime_config;
+```
+
+Stop unless the result is 1 row, 1 live, 0 test.
+
+Stage B, 049–059. Use a new checkout and remove files above `059`. Dry-run must list only `049`, `050`, `051`, `052`, `053`, `054`, `056`, `057`, `058`, and `059`. `055` stays absent. Then run the same `db push` with `--yes`.
+
+Stage C, 060–062. Use a new checkout and remove files above `062`. Dry-run must list only `060_preview_lifecycle_fixture_cleanup.sql`, `061_preview_lifecycle_fixture_cleanup_order.sql`, and `062_remove_preview_lifecycle_cleanup.sql`. Run that one push without a pause. Immediately afterwards:
+
+```sql
+select to_regprocedure('public.preview_lifecycle_fixture_cleanup(uuid)') is null
+   and to_regprocedure('public.preview_fixture_org(uuid)') is null as bypass_closed;
+
+select pg_get_functiondef('public.enforce_quote_events_append_only()'::regprocedure)
+         like '%quote_events are append-only%'
+   and pg_get_functiondef('public.enforce_quote_events_append_only()'::regprocedure)
+         not like '%preview_fixture_org%' as append_only;
+```
+
+Stop unless both results are true. Do not start 063 while either cleanup function exists.
+
+Stage D, 063–111. From the full checkout, dry-run must start at `063` and end at `111_deck_concrete_calibration_benchmark.sql`, with `055` absent. If `046` or `060` appears, stop. Then `db push` with `--yes`.
+
+Final checks, still in the SQL editor:
+
+```sql
+select version, name
+from supabase_migrations.schema_migrations
+order by version desc
+limit 1;
+
+select
+  (select count(*) from public.organisations) as organisations,
+  (select count(*) from public.organisation_memberships where status = 'active' and role = 'owner') as active_owners,
+  (select count(*) from (
+     select org_id
+     from public.organisation_memberships
+     where status = 'active' and role = 'owner'
+     group by org_id
+     having count(*) > 1
+  ) extra) as multi_owner;
+
+select id, public
+from storage.buckets
+order by id;
+
+select c.relrowsecurity as billing_rls
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relname = 'billing_runtime_config';
+
+select count(*) as billing_policies
+from pg_policies
+where schemaname = 'public' and tablename = 'billing_runtime_config';
+```
+
+Pass only when the head is `111`, `active_owners` equals `organisations`, `multi_owner` is 0, `billing_rls` is true, and `billing_policies` is 0. The bucket list must include `organisation-branding`, `variation-attachments`, `project-documents`, `subcontractor-documents`, and `rfq-response-files`. `pricing_documents.provisional_ceiling_confirmation` must exist. Repeat the stage C bypass check. Confirm the Vercel Production names in 15.3 are present without printing their values.
+
+### 15.6 Stop conditions
+
+Stop before stage A when the backup list has no `COMPLETED` timestamp, or when the approved origin and the Vercel, Auth, Stripe, and Resend values in 15.3 are still unset. Stop when a dry-run lists a version outside its stage. Stop after 048 when the singleton is not one live row. Stop inside 060–062 when 062 has not been applied. Stop before 063 when the bypass check fails. Stop before a Production deployment when the head is not 111 or `NEXT_PUBLIC_SITE_URL` is unset.
+
+There is no down migration. Database rollback is a restore of the latest `COMPLETED` backup from 15.1, followed by the separate branding-object copy. Do not run that restore in this preparation. Production remains **NO-GO**.
