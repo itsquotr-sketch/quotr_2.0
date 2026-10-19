@@ -1,6 +1,6 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the focused performance pass. The morning acceptance on this page remains the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Updated:** 19 October 2026, after the Production preflight. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
 **Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`.  
 **This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
 **Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` was not reassigned.
@@ -335,7 +335,7 @@ Stripe mode (test vs live) on the shared Preview secret is **unverified** becaus
 | Vercel domains on this project | `app.get-quotr.com` is an alias of the workflow Preview and, on 19 October, answered 307 to `/login`. The workflow branch alias did the same. | `get-quotr.com` was not re-fetched. The 9 October waitlist finding is unchanged until someone loads it again. |
 | Public DNS | Not re-queried for this update. | `beta.get-quotr.com`, nested SPF, and Resend DKIM remain unverified. |
 | Production app | `quotr-2-0.vercel.app` is 404. The only Production deployment is Error. | — |
-| Supabase Auth Site URL and redirect allow-list, on both `shhpjsoldmqtkdbgrbtm` and `lxvnylhsbvudzzupxeqr` | CLI could list migrations, so the account can reach the databases. | **Unverified.** Auth URL configuration was not read. Do not copy the hardening Site URL onto Production, and do not assume the workflow callback is allow-listed. |
+| Supabase Auth Site URL and redirect allow-list, on both `shhpjsoldmqtkdbgrbtm` and `lxvnylhsbvudzzupxeqr` | Read 19 October. Full hosts and paths are in section 11. Both Site URLs are the hardening alias. `app.get-quotr.com` is on neither allow-list. | The approved Production origin is still unset, so these lists do not yet match a live domain. |
 | Mail URLs | Code: auth callbacks use `/auth/callback`; quotes use `/q/[token]`; variations use `/v/[token]`; RFQs use `/r/[token]`. | Resend and Supabase SMTP dashboard endpoints were not opened. |
 | Webhook routes in this app | `/api/webhooks/stripe` and `/api/webhooks/resend` exist. | Whether Stripe or Resend is pointed at the workflow host, the hardening host, or Production. Production has no webhook secrets. |
 | Signup links | Marketing page links are `/` and `/#sign-in` only. | No `get-quotr.com` link to this app’s `/signup` was found. |
@@ -355,10 +355,10 @@ Build log for `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` on 2026-08-05:
 | # | Blocker | Owner | Evidence that closes it |
 | --- | --- | --- | --- |
 | 1 | No Ready Production deployment. Re-read 19 October: the only one is still Error `dpl_EVCFu6wXBDvAvSB1oNcmsEzZe5Ji` from 5 August 2026, aliases `quotr-2-0-quotr1.vercel.app` and the `main` git alias. It is not `edaac483`. | Owner | A later Ready Production deployment of the approved SHA, after the rows below are closed. Do not deploy from this inventory. |
-| 2 | Production schema is 045. Re-read 19 October with `db:production:status`. The candidate database is 111. Delta is 046–111 except absent 037 and 055. | Owner | Backup or PITR confirmation, then a rehearsed apply in the order in section 2 and the stop points in section 8. 048 live singleton inserted in the same window. 060–062 not left half-applied. Preview bootstrap function not called. |
+| 2 | Production schema is 045. Re-read 19 October with `db:production:status`, and the preflight query again returned schema head 045. The candidate database is 111. Delta is 046–111 except absent 037 and 055. | Owner | A usable backup or PITR point, which section 11 did not find, then a rehearsed apply in the order in section 2. 048 live singleton inserted before 049. 060–062 not left half-applied. Preview bootstrap function not called. |
 | 3 | Production env, re-read 19 October, has Supabase URL ref `lxvnylhsbvudzzupxeqr`, anon key, and service role. It has no site URL, Stripe, billing mode, Resend, Loops, or Google key. | Owner | Names present on Production only, live Stripe mode confirmed in the dashboard, site URL equal to the approved domain. Preview values must not be copied. |
 | 4 | `get-quotr.com` was a waitlist on 9 October and was not re-fetched. It does not, in that record, link to `/signup`. `app.get-quotr.com` now serves this Preview and redirects to `/login`; that is not the Production domain. | Owner | A page load of the approved origin showing this app’s signup, plus a marketing link to that URL. |
-| 5 | Supabase Auth Site URL and redirect allow-list are unverified on both projects. | Owner | Dashboard read of both projects: Site URL and redirects for the approved origin, with the workflow callback kept only for Preview. |
+| 5 | Auth Site URL and redirect allow-lists were read on 19 October. Both projects use the hardening alias as Site URL. Production’s allow-list has an old deployment host, localhost, and the hardening callback. | Owner | Replace those Production values with the approved origin’s `/auth/callback` only when that origin is chosen. Leave the Preview list on the workflow host. |
 | 6 | Quote and invite links on Preview still use the hardening host, re-read 19 October, while the candidate is `edaac483` on schema 111. | Owner | A decision, then one workflow-alias send whose public link stays on that deployment. Do not move the hardening alias as part of this inventory. |
 | 7 | Preview Stripe secret mode was not readable. | Owner | Stripe dashboard shows the Preview secret is test mode. |
 | 8 | Resend alignment with Google MX / SPF is unverified. | Owner | Resend domain status for `get-quotr.com`, plus one delivered invite and one delivered quote. |
@@ -377,9 +377,9 @@ Stop unless every line is true.
 
 - Application SHA is still `edaac4833564cfcf600381e1d1ad1f824b8e7a86`, or a later SHA that has been paired again with schema 111 and written into this inventory.
 - `npm run db:production:status` still shows remote head 045 and an empty remote column from 046.
-- A Production backup or PITR point is confirmed outside this repo.
-- Owner profiles are counted. `049` creates `organisation_memberships_one_owner_uidx`. More than one owner profile in one organisation stops the rehearsal.
-- Preview and Production Auth Site URL and redirect allow-lists have been read. The Production list is not copied from the hardening alias.
+- A Production backup or PITR point with a timestamp exists. The 19 October read does not satisfy this line. See section 11.
+- Owner profiles are counted. The 19 October aggregate is 8 organisations with one owner each and 0 with more than one. `049` creates `organisation_memberships_one_owner_uidx`. More than one owner profile in one organisation stops the rehearsal.
+- Preview and Production Auth Site URL and redirect allow-lists have been read. The current Production Site URL is already the hardening alias; a later change uses the approved origin.
 - The full commercial catalogue is still not a prerequisite. The unverified paths in sections 3 and 4 stay listed until they are run.
 
 ### Migration rehearsal
@@ -389,14 +389,14 @@ Apply only the ordered list in section 2. Skip 037 and 055. Check, then continue
 | After | Check before the next version |
 | --- | --- |
 | 046–047 | Billing tables exist. `past_due_since` exists. No signup yet. |
-| 048 | `billing_runtime_config` has one row, `billing_environment = 'live'`, inserted by ops in this window. Do not call `bootstrap_missing_preview_internal_trials()`. It refuses unless the singleton is `test`. |
+| 048 | Stop the push here. `048` creates the singleton and does not insert it. Ops then inserts one row with `billing_environment = 'live'`. `db push` has no stop-at flag, so this insert is a separate step before 049. Do not call `bootstrap_missing_preview_internal_trials()`. |
 | 049 | One owner membership per organisation. A missing membership must not be left as the way a user writes data. Not safely reversible. |
 | 050–053 | Removed members lose `profiles.org_id`. Role policies are the 053 policies. Estimator and Viewer behaviour is the intended authority. |
 | 051 | Timezone backfill is accepted: NZ settings become `Pacific/Auckland` or `Pacific/Chatham`; other regions stay null. |
 | 052 | `rates.source` is `explicit_company` where it was null, then NOT NULL. This does not edit the rate amounts. |
 | 054, 056 | Catalogue seeds applied with `ON CONFLICT DO NOTHING`. Benchmark values remain an owner decision. |
 | 057–059 | Repeated work areas use instance identity. 059 copied hosted quote transactions into the lifecycle ledger. |
-| 060–062 | These three are one window. Do not pause on 060 or 061. After 062 the preview-fixture delete bypass is gone. |
+| 060–062 | One uninterrupted `db push` for these three files. Each file commits on its own, so a pause after 060 or 061 leaves the delete bypass in place. After 062, `preview_lifecycle_fixture_cleanup(uuid)` and `preview_fixture_org(uuid)` are absent, and `enforce_quote_events_append_only` raises `quote_events are append-only`. |
 | 063–073 | Variation immutability holds. Private bucket `variation-attachments` exists after 071. |
 | 074–075 | Consent stays opted out. The sync-pending flag exists. There is still no cron and no `LOOPS_API_KEY` reader in this repo. |
 | 076–082 | Onboarding and ABN columns exist. 082 write policies allow only an active Owner, Admin, or Estimator. |
@@ -447,7 +447,7 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 | Production deployment Ready on that SHA | **no** |
 | Production schema 111 | **no** — still 045, re-read 19 October |
 | Production site URL, Stripe live, billing live, Resend, Google | **no** |
-| Auth redirects read and matching the approved origin | **no** |
+| Auth redirects read and matching the approved origin | **read** — both Site URLs are the hardening alias |
 | Marketing signup link to the app | **no** |
 | Quote links proven on the candidate host rather than the hardening alias | **no** |
 | Owner review of rates and Work Area maturity | **no** |
@@ -455,4 +455,104 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 ## 10. Smallest next action
 
-Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. The next executable step is preparation only: confirm a Production backup or PITR point, count owner profiles per organisation, and read the Auth Site URL and redirect allow-list on both `shhpjsoldmqtkdbgrbtm` and `lxvnylhsbvudzzupxeqr`. Do not apply 046. The 5 August Error deployment was a missing-Supabase-env build; those two variables exist now and still do not make a release.
+The preflight in section 11 is complete. Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. An isolated migration rehearsal is also **NO-GO** until Production has a usable backup or PITR recovery point.
+
+## 11. Production preflight — 19 October 2026
+
+Reads only. No restore, no migration, no Auth change, no env change, and no secret value is recorded here. Application candidate `edaac4833564cfcf600381e1d1ad1f824b8e7a86`. Inventory base `be0a376b8e6dba103b8a839a3cea9fe4768bb0e4`. The owner query also returned schema head `045`, so the counts are from Production `lxvnylhsbvudzzupxeqr`.
+
+**Isolated migration rehearsal: NO-GO.** The owner backfill precondition is clear, and the 048 / 060–062 sequence is identified. Rollback of that rehearsal is a restore of a backup taken before 046, and no such recovery point was returned.
+
+### 11.1 Backup and PITR
+
+`GET /v1/projects/lxvnylhsbvudzzupxeqr/database/backups` returned HTTP 200:
+
+| Field | Value |
+| --- | --- |
+| Region | `ap-northeast-1` |
+| `pitr_enabled` | false |
+| `walg_enabled` | true |
+| `physical_backup_data` | empty object, no earliest or latest timestamp |
+| `backups` | empty list, count 0 |
+| Selected add-ons | empty. PITR is offered as 7, 14, or 28 days and is not selected |
+
+There is no recovery timestamp and no retention window in force. `supabase backups restore --project-ref lxvnylhsbvudzzupxeqr --timestamp <unix>` is the PITR restore command. It was not run. With PITR disabled and the backup list empty, that command has no timestamp to target. WAL-G reported as enabled, without a base-backup timestamp, is not a usable customer recovery point.
+
+### 11.2 Migration 049 owner backfill
+
+Counts only. No names, emails, or other personal data.
+
+| Owner profiles in the organisation | Organisations | Bound profile rows |
+| --- | ---: | ---: |
+| Zero | 0 | 0 |
+| One | 8 | 8 |
+| More than one | 0 | 0 |
+
+Eight profiles exist. All eight are bound, and all eight have role `owner`. Unbound profiles, null roles, roles outside `owner` / `admin` / `estimator` / `viewer` / `member`, and bound profiles whose organisation id is missing are all 0. Admin, estimator, viewer, and legacy `member` rows are all 0.
+
+The backfill inserts one active membership for every profile with `org_id` set. On this data that is 8 active owner memberships. `organisation_memberships_one_owner_uidx` would accept that. The `profiles_role_check` added before the insert would accept the current roles. No foreign key would fail.
+
+Rows that would stop 049 or create a membership the backfill comment does not intend, all currently 0:
+
+- More than one `owner` profile in one organisation fails the unique owner index and rolls 049 back.
+- A role outside the five allowed values fails `profiles_role_check` before the insert.
+- A bound profile whose `org_id` is not an `organisations.id` fails the membership foreign key.
+- A null role passes the check and the `else` branch inserts an active `estimator`.
+- A legacy `member` becomes an active `estimator`. That mapping is what 049 comments. It affects 0 Production rows.
+- An organisation with bound non-owner profiles and zero owners succeeds and leaves active memberships with no owner.
+
+### 11.3 Auth Site URL and redirect allow-lists
+
+Read from `supabase config pull --dry-run` for each project. Nothing was written.
+
+| Project | Site URL | Additional redirect URLs |
+| --- | --- | --- |
+| Preview `shhpjsoldmqtkdbgrbtm` | `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | `http://localhost:3000/auth/callback`; `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback`; `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/**` |
+| Production `lxvnylhsbvudzzupxeqr` | `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`; `http://localhost:3000/auth/callback`; `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback` |
+
+Paths the candidate builds:
+
+| Flow | Path |
+| --- | --- |
+| Signup, login confirmation, and password recovery | `{origin}/auth/callback`, with `next=/reset-password` for recovery. App pages are `/signup`, `/login`, and `/forgot-password`. Those three are not post-auth return targets. |
+| Invite | `{origin}/auth/callback?next=/invite/…`, then `/invite/{token}` and `/invite/continue` |
+| Quote access | `/q/{token}` |
+| Variation access | `/v/{token}` and `/v/{token}/response` |
+| Price-request access | `/r/{token}` |
+
+`app.get-quotr.com` is the temporary Vercel mapping: it and the workflow alias serve Preview deployment `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` and return 307 to `/login`. It is not an Auth Site URL and it is not on either redirect allow-list. The intended Production mapping is the approved Production origin, with `NEXT_PUBLIC_SITE_URL` and the Production Auth Site URL and `/auth/callback` set to that origin. That origin is unset. The hardening alias is the current Site URL on both projects; it stays the Preview stable alias in code and is not the Production origin.
+
+### 11.4 Missing Production environment names
+
+`vercel env list production` on 19 October. Values were not recorded. `assertRequiredEnv()` throws during a production build only when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is missing. Both are set, so they are not in this table.
+
+| Name | Set on Production | When it is required | What uses it |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | unset | Before live signup, invite, recovery, and quote email | `resolveConfiguredSiteOrigin` returns null on hosted production when this is missing, localhost, or an ephemeral `*.vercel.app` host. `getAuthCallbackOrigin` then uses `http://localhost:3000`. Invite and quote links use `getAuthSiteOrigin`. |
+| `BILLING_ENVIRONMENT` | unset | Before live signup and payment | `resolveBillingEnvironment` throws on hosted production unless the value is `live`. The protected app reads it through `getOrgBillingState`. The database singleton is separate and is the insert in section 11.5. |
+| `BILLING_ENFORCEMENT_MODE` | unset | Optional for launch | Unset resolves to `compatibility`. Unknown values throw. |
+| `STRIPE_SECRET_KEY` | unset | Before live payment | `getStripe()` throws when a client is constructed without it. |
+| `STRIPE_WEBHOOK_SECRET` | unset | Before live payment | Stripe webhook verification. |
+| `STRIPE_PRICE_BUILDER_MONTHLY`, `STRIPE_PRICE_BUSINESS_BASE_MONTHLY`, `STRIPE_PRICE_BUSINESS_SEAT_MONTHLY` | unset | Before live payment | `readStripePriceConfig` returns null when all three are unset and throws when only some are set. |
+| `STRIPE_TAX_RATE_NZ_GST` | unset | Before live payment | NZ GST on checkout. |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | unset | Before live payment | Billing portal. |
+| `RESEND_API_KEY` | unset | Before live email | Quote, team, and price-request sends. |
+| `RESEND_FROM_EMAIL`, `RESEND_TEAM_FROM_EMAIL`, `RESEND_QUOTE_FROM_EMAIL` | unset | Before live email | From addresses. Team and quote fall back to `RESEND_FROM_EMAIL` when their own name is unset. |
+| `RESEND_WEBHOOK_SECRET` | unset | Before live email delivery events | `/api/webhooks/resend`. |
+| `QUOTE_DELIVERY_PROVIDER` | unset | Optional for launch | Unset selects the Resend provider. `mock` selects the mock provider. |
+| `LOOPS_API_KEY` | unset | Optional for launch | No reader in the candidate source. Migration 075 only stores `marketing_loops_sync_pending`. No cron. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | unset | Optional for launch | Places autocomplete. Typed addresses still work when it is empty. |
+
+### 11.5 Migration 048, the live row, 049, and 060–062
+
+`048_billing_checkout_trial.sql` creates `billing_runtime_config` and `billing_runtime_environment()`. The file does not insert a row. Zero rows or more than one row make that function raise `BILLING:RUNTIME_ENV_UNCONFIGURED`. `bootstrap_missing_preview_internal_trials()` raises `BILLING:BOOTSTRAP_PREVIEW_TEST_ONLY` unless the singleton is `test`, so it cannot populate Production and must not be called there.
+
+The live row is an operator insert after 048 has committed and before signup:
+
+`insert into public.billing_runtime_config (id, billing_environment) values (true, 'live');`
+
+`supabase db push` applies every pending file and has no stop-at flag. One push from 046 through 111 would pass 048 and continue into 049 with the singleton still empty. The rehearsal therefore stops after 048, runs that insert, confirms exactly one `live` row, and only then continues at 049. 049 does not read the singleton. The pause keeps signup from running while the database fail-closes, and it keeps the Preview trial bootstrap out of the chain.
+
+060 replaces the append-only quote triggers with a `service_role` delete exception for organisations whose name matches `PLATFORM-02C %`, through `preview_fixture_org(uuid)`. 061 adds `preview_lifecycle_fixture_cleanup(uuid)` and deletes fixture projects before profiles. 062 restores `enforce_quote_events_append_only`, `enforce_quote_acceptance_evidence_append_only`, and `prevent_quote_item_snapshot_mutation`, then drops both cleanup functions.
+
+060, 061, and 062 can run in one uninterrupted `db push`. Each file is its own committed migration, so they are not one database transaction. Stopping after 060 or 061 leaves the bypass open. The check that it is closed, run only after 062, is: `preview_lifecycle_fixture_cleanup(uuid)` and `preview_fixture_org(uuid)` are both absent, and `enforce_quote_events_append_only` raises `quote_events are append-only` with no fixture branch. Those functions are not on Production at schema 045, so that check waits until after 062.
