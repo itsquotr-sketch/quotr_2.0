@@ -112,7 +112,6 @@ export function QuoteWorkspace({
   );
   const [trackedEditable, setTrackedEditable] = useState(initiallyEditable);
   const [isSaving, startSave] = useTransition();
-  const [isChoicePending, startChoice] = useTransition();
   const [choicePending, setChoicePending] = useState<
     null | "presentation" | "display"
   >(null);
@@ -256,7 +255,7 @@ export function QuoteWorkspace({
     choiceLockRef.current = true;
     setSaveError(null);
     setChoicePending("presentation");
-    startChoice(async () => {
+    void (async () => {
       try {
         const result = await updateQuote(quoteId, { presentation_mode: mode });
         if (result.error) {
@@ -271,7 +270,7 @@ export function QuoteWorkspace({
         releaseChoice();
         setSaveError("Could not save this choice. Try again.");
       }
-    });
+    })();
   };
 
   const handleDisplayOptionsChange = (options: QuoteDisplayOptions) => {
@@ -279,7 +278,7 @@ export function QuoteWorkspace({
     choiceLockRef.current = true;
     setSaveError(null);
     setChoicePending("display");
-    startChoice(async () => {
+    void (async () => {
       try {
         const result = await updateQuote(quoteId, { display_options: options });
         if (result.error) {
@@ -294,7 +293,7 @@ export function QuoteWorkspace({
         releaseChoice();
         setSaveError("Could not save this choice. Try again.");
       }
-    });
+    })();
   };
 
   const clientDisplaySummary = formatQuoteDisplayPreview(
@@ -740,12 +739,12 @@ export function QuoteWorkspace({
                     ) : null}
                     <QuotePresentationControl
                       value={quote.presentation_mode}
-                      disabled={isSaving || isChoicePending || choicePending != null}
+                      disabled={isSaving || choicePending != null}
                       onChange={handlePresentationModeChange}
                     />
                     <QuoteDisplayControl
                       quote={quote}
-                      disabled={isSaving || isChoicePending || choicePending != null}
+                      disabled={isSaving || choicePending != null}
                       onChange={handleDisplayOptionsChange}
                     />
                   </>
