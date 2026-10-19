@@ -1,6 +1,6 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the Production preflight. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
+**Updated:** 19 October 2026, after the Preview callback allow-list check and the isolated migration rehearsal. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record.  
 **Application candidate:** `edaac4833564cfcf600381e1d1ad1f824b8e7a86` on `ui/core-workflow-overhaul`.  
 **This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
 **Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. `app.get-quotr.com` was not reassigned.
@@ -455,13 +455,13 @@ Database rollback is restore of the backup taken before 046. There is no down-mi
 
 ## 10. Smallest next action
 
-The preflight in section 11 is complete. Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. An isolated migration rehearsal is also **NO-GO** until Production has a usable backup or PITR recovery point.
+Leave Production, the hardening alias, and the `app.get-quotr.com` assignment untouched. Do not apply 046 and do not create a Production deployment. The domain release stays **NO-GO**. The isolated rehearsal in section 12 is clean. Production still needs a real backup or PITR recovery point, and the live site, Stripe, billing, and email configuration, before that decision can change.
 
 ## 11. Production preflight — 19 October 2026
 
 Reads only. No restore, no migration, no Auth change, no env change, and no secret value is recorded here. Application candidate `edaac4833564cfcf600381e1d1ad1f824b8e7a86`. Inventory base `be0a376b8e6dba103b8a839a3cea9fe4768bb0e4`. The owner query also returned schema head `045`, so the counts are from Production `lxvnylhsbvudzzupxeqr`.
 
-**Isolated migration rehearsal: NO-GO.** The owner backfill precondition is clear, and the 048 / 060–062 sequence is identified. Rollback of that rehearsal is a restore of a backup taken before 046, and no such recovery point was returned.
+The preflight rehearsal decision was **NO-GO** because Production had no PITR point. Section 12 then ran the migrations on a separate local copy. Production itself is still **NO-GO**.
 
 ### 11.1 Backup and PITR
 
@@ -520,7 +520,7 @@ Paths the candidate builds:
 | Variation access | `/v/{token}` and `/v/{token}/response` |
 | Price-request access | `/r/{token}` |
 
-`app.get-quotr.com` is the temporary Vercel mapping: it and the workflow alias serve Preview deployment `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9` and return 307 to `/login`. It is not an Auth Site URL and it is not on either redirect allow-list. The intended Production mapping is the approved Production origin, with `NEXT_PUBLIC_SITE_URL` and the Production Auth Site URL and `/auth/callback` set to that origin. That origin is unset. The hardening alias is the current Site URL on both projects; it stays the Preview stable alias in code and is not the Production origin.
+`app.get-quotr.com` is the temporary Vercel mapping: it and the workflow alias serve Preview deployment `dpl_CkhKCmWTfTNwhUn5bB8Pv6VXAxK9`. At this read it was not an Auth Site URL and it was not on either redirect allow-list. Section 12 records the later Preview allow-list addition. The intended Production mapping is the approved Production origin, with `NEXT_PUBLIC_SITE_URL` and the Production Auth Site URL and `/auth/callback` set to that origin. That origin is unset. The hardening alias remains the Site URL on both projects.
 
 ### 11.4 Missing Production environment names
 
@@ -556,3 +556,75 @@ The live row is an operator insert after 048 has committed and before signup:
 060 replaces the append-only quote triggers with a `service_role` delete exception for organisations whose name matches `PLATFORM-02C %`, through `preview_fixture_org(uuid)`. 061 adds `preview_lifecycle_fixture_cleanup(uuid)` and deletes fixture projects before profiles. 062 restores `enforce_quote_events_append_only`, `enforce_quote_acceptance_evidence_append_only`, and `prevent_quote_item_snapshot_mutation`, then drops both cleanup functions.
 
 060, 061, and 062 can run in one uninterrupted `db push`. Each file is its own committed migration, so they are not one database transaction. Stopping after 060 or 061 leaves the bypass open. The check that it is closed, run only after 062, is: `preview_lifecycle_fixture_cleanup(uuid)` and `preview_fixture_org(uuid)` are both absent, and `enforce_quote_events_append_only` raises `quote_events are append-only` with no fixture branch. Those functions are not on Production at schema 045, so that check waits until after 062.
+
+## 12. Callback allow-list and isolated rehearsal — 19 October 2026
+
+Production was not migrated and not deployed. `db:production:status` after the rehearsal still shows remote head 045 and an empty remote column from 046 through 111.
+
+### 12.1 Public account entry on app.get-quotr.com
+
+`/signup`, `/login`, `/forgot-password`, and `/reset-password` each returned HTTP 200. Signup is the server-action form “Create your Quotr account”. On this Preview host the candidate builds:
+
+| Flow | Redirect URL |
+| --- | --- |
+| Signup | `https://app.get-quotr.com/auth/callback?next=/app/setup?mode=basics` |
+| Password recovery | `https://app.get-quotr.com/auth/callback?next=/reset-password` |
+| Invite signup submitted on this host | `https://app.get-quotr.com/auth/callback?next=/invite/{token}` |
+
+Invite emails use `getAuthSiteOrigin()`, which on Preview is the hardening alias from `NEXT_PUBLIC_SITE_URL`. That link is `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/invite/{token}`. It is an application link, not a Supabase redirect. The site URL was not changed.
+
+GoTrue v2.197.0 accepts a `redirect_to` only when the host matches the Site URL or the allow-list glob matches. Otherwise it substitutes the Site URL. The missing `app.get-quotr.com` entry therefore blocked the callback: a verify request with an invalid token and no account creation returned 303 to `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/` for the signup, recovery, and invite callback URLs. The same request with the hardening callback stayed on `/auth/callback`.
+
+Preview allow-list before:
+
+`http://localhost:3000/auth/callback`, `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback`, `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app/**`
+
+Added only `https://app.get-quotr.com/auth/callback*`. The `*` matches the encoded `next` query. Site URL stayed `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`.
+
+After the same invalid-token verify:
+
+| Redirect | HTTP | Host and path |
+| --- | --- | --- |
+| Signup, recovery, and invite callbacks | 303 | `app.get-quotr.com` `/auth/callback` |
+| Hardening callback | 303 | `quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` `/auth/callback` |
+
+Production Auth was read again after the patch. Site URL and allow-list were unchanged: Site URL is still the hardening alias, and the allow-list is still `https://quotr-2-0-5f7fdzeub-quotr1.vercel.app/`, `http://localhost:3000/auth/callback`, and the hardening `/auth/callback`. The Vercel domain assignment was not changed.
+
+### 12.2 Isolated migration rehearsal
+
+Production PITR is still absent. A read-only `supabase db dump` of `lxvnylhsbvudzzupxeqr` produced a public schema snapshot and a separate data snapshot. Each dump is consistent by itself. They were taken one after the other, not inside one database transaction. The restored counts matched the preflight, so the copy was fit to rehearse.
+
+The data snapshot was filtered before restore. The local database received `public` rows, `auth.users`, `auth.identities`, and `storage.buckets`. Session, refresh-token, and other auth credential tables were dropped from the restore file, and the full data file was deleted. No row contents are recorded here.
+
+The target was a new local Supabase database, project id `rehearsal-db`, started with an empty migration directory. Before any migration it had 8 organisations, 8 profiles, 8 owner profiles, 0 unbound profiles, 0 organisations with more than one owner, 9 auth users, and neither `billing_runtime_config` nor `organisation_memberships`. The ninth auth user has no profile, so 049 does not give that user a membership.
+
+Migrations then ran in numeric order on that local database only. 048 does not call `bootstrap_missing_preview_internal_trials()`. After 048 the rehearsal inserted one `billing_runtime_config` row with `billing_environment = 'live'`. The check was 1 row, 1 live, 0 test. 060, 061, and 062 ran consecutively. None failed. No signup, payment, email, or webhook was sent.
+
+| Version | ms | Version | ms | Version | ms |
+| --- | ---: | --- | ---: | --- | ---: |
+| 046 | 288 | 047 | 157 | 048 | 171 |
+| live row | 158 | 049 | 474 | 050 | 140 |
+| 051 | 144 | 052 | 252 | 053 | 236 |
+| 054 | 146 | 056 | 133 | 057 | 150 |
+| 058 | 350 | 059 | 139 | 060 | 166 |
+| 061 | 150 | 062 | 149 | 063 | 491 |
+| 064 | 153 | 065 | 133 | 066 | 145 |
+| 067 | 260 | 068 | 205 | 069 | 237 |
+| 070 | 151 | 071 | 343 | 072 | 268 |
+| 073 | 237 | 074 | 166 | 075 | 174 |
+| 076 | 146 | 077 | 132 | 078 | 282 |
+| 079 | 151 | 080 | 146 | 081 | 182 |
+| 082 | 168 | 083 | 241 | 084 | 137 |
+| 085 | 216 | 086 | 146 | 087 | 358 |
+| 088 | 356 | 089 | 140 | 090 | 603 |
+| 091 | 165 | 092 | 151 | 093 | 226 |
+| 094 | 186 | 095 | 148 | 096 | 164 |
+| 097 | 179 | 098 | 156 | 099 | 149 |
+| 100 | 151 | 101 | 303 | 102 | 206 |
+| 103 | 205 | 104 | 194 | 105 | 136 |
+| 106 | 139 | 107 | 146 | 108 | 185 |
+| 109 | 134 | 110 | 139 | 111 | 127 |
+
+66 steps, 0 failures, 13359 ms in total. 055 is absent and was skipped. Head on the isolated copy is 111: `pricing_documents.provisional_ceiling_confirmation` exists. Final checks: `preview_lifecycle_fixture_cleanup(uuid)` and `preview_fixture_org(uuid)` are absent, `enforce_quote_events_append_only` contains `quote_events are append-only` and does not mention `preview_fixture_org`, and there are 8 active owner memberships across 8 organisations.
+
+The local database and the export files were removed after those checks. This logical copy is not a Production restore point. Production remains **NO-GO** until a real Production backup or PITR point exists, the live configuration is prepared, and a later rehearsal is still clean. Migration 046 was not applied to Production.
