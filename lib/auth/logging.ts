@@ -57,6 +57,7 @@ const FORBIDDEN_KEYS = new Set([
   "refresh_token",
   "confirmation_token",
   "recovery_token",
+  "token_hash",
   "code_verifier",
   "service_role",
   "serviceRoleKey",

@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { logout } from "@/app/(auth)/actions";
 import {
   resetPasswordWithRecoverySession,
   type RecoveryActionState,
@@ -22,11 +24,38 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
+function SignOutContinue() {
+  const { pending } = useFormStatus();
+  return (
+    <AuthSubmitButton
+      pending={pending}
+      idle="Sign out and continue"
+      pendingLabel="Signing out…"
+    />
+  );
+}
+
 export function ResetPasswordClient() {
   const [state, formAction, pending] = useActionState(
     resetPasswordWithRecoverySession,
     initialState
   );
+
+  if (state.success) {
+    return (
+      <AuthCard>
+        <AuthCardHeader
+          title="Password updated"
+          description="Your new password is saved. Sign out, then sign in with it."
+        />
+        <form action={logout}>
+          <AuthCardFooter>
+            <SignOutContinue />
+          </AuthCardFooter>
+        </form>
+      </AuthCard>
+    );
+  }
 
   return (
     <AuthCard>

@@ -1,0 +1,109 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
+import { logAuthEvent } from "@/lib/auth/logging";
+import { recoveryTokenHash } from "@/lib/auth/recovery-continue";
+import "@/lib/env";
+
+function requestHost(request: NextRequest): string {
+  return (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "")
+    .split(",")[0]
+    ?.trim() ?? "";
+}
+
+function sameSitePost(request: NextRequest): boolean {
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (fetchSite === "cross-site") return false;
+  const origin = request.headers.get("origin");
+  if (!origin || origin === "null") {
+    return fetchSite === "same-origin" || fetchSite === "same-site" || fetchSite === "none";
+  }
+  const host = requestHost(request);
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+function resetPath(value: FormDataEntryValue | null): string {
+  const candidate = typeof value === "string" ? getSafeInternalPath(value) : null;
+  return candidate?.startsWith("/reset-password") ? candidate : "/reset-password";
+}
+
+/**
+ * Redeems a recovery token_hash and sends the browser to the reset form with
+ * the session cookie on this redirect. GET never calls this.
+ */
+export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
+  const form = await request.formData().catch(() => null);
+  const tokenHash = recoveryTokenHash(form ? String(form.get("token_hash") ?? "") : null);
+  const type = form?.get("type");
+  const next = resetPath(form?.get("next") ?? null);
+  const origin = `${request.nextUrl.protocol}//${requestHost(request)}`;
+  const invalid = NextResponse.redirect(new URL("/reset-password?error=invalid", origin), 303);
+
+  if (!sameSitePost(request) || !tokenHash || type !== "recovery") {
+    logAuthEvent({
+      event: "confirmation_callback_failed",
+      category: "RESET_LINK_INVALID",
+      elapsedMs: Date.now() - startedAt,
+    });
+    return invalid;
+  }
+
+  let redirectResponse = NextResponse.redirect(new URL(next, origin), 303);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          redirectResponse = NextResponse.redirect(new URL(next, origin), 303);
+          cookiesToSet.forEach(({ name, value, options }) => {
+            redirectResponse.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  const { error } = await supabase.auth.verifyOtp({
+    type: "recovery",
+    token_hash: tokenHash,
+  });
+
+  if (error) {
+    logAuthEvent({
+      event: "confirmation_callback_failed",
+      category: "RESET_LINK_INVALID",
+      elapsedMs: Date.now() - startedAt,
+    });
+    return invalid;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    logAuthEvent({
+      event: "confirmation_callback_failed",
+      category: "RESET_LINK_INVALID",
+      elapsedMs: Date.now() - startedAt,
+    });
+    return invalid;
+  }
+
+  logAuthEvent({
+    event: "confirmation_callback_completed",
+    userId: user.id,
+    elapsedMs: Date.now() - startedAt,
+  });
+  return redirectResponse;
+}

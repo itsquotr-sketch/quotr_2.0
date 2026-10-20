@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
   classifyAuthProviderError,
@@ -48,9 +47,12 @@ export async function requestPasswordReset(
   }
 
   const { email } = parsed.data;
-  const supabase = await createClient();
   const origin = await getAuthCallbackOrigin();
   const redirectTo = buildAuthCallbackUrl(origin, "/reset-password");
+  // The recovery template appends token_hash to redirectTo. The emailed link
+  // is redeemed by POST /auth/recovery-verify, so it does not need the PKCE
+  // verifier cookie from the browser that requested the email.
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
@@ -144,9 +146,7 @@ export async function resetPasswordWithRecoverySession(
     elapsedMs: Date.now() - startedAt,
   });
 
-  // Session remains valid after updateUser({ password }) — route through the
-  // normal app gate (dashboard or setup-required via layout).
-  redirect("/app/dashboard");
+  return { success: "Your password has been updated." };
 }
 
 /**

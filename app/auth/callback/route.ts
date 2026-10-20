@@ -16,6 +16,12 @@ import {
   type PendingInviteKind,
 } from "@/lib/auth/email-confirm-destination";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
+import { recoveryHashHandoffHtml } from "@/lib/auth/recovery-hash-handoff";
+import {
+  isPrefetch,
+  recoveryContinueHtml,
+  recoveryTokenHash,
+} from "@/lib/auth/recovery-continue";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import "@/lib/env";
 
@@ -34,6 +40,31 @@ export async function GET(request: NextRequest) {
   const correlationId = createAuthCorrelationId();
   const startedAt = Date.now();
   const { searchParams, origin } = request.nextUrl;
+  const tokenHash = recoveryTokenHash(searchParams.get("token_hash"));
+  if (tokenHash && searchParams.get("type") === "recovery") {
+    if (isPrefetch(request)) {
+      return new NextResponse(null, {
+        status: 204,
+        headers: { "cache-control": "no-store" },
+      });
+    }
+    const requestedNext = getSafeInternalPath(searchParams.get("next"));
+    const destination = requestedNext.startsWith("/reset-password")
+      ? requestedNext
+      : "/reset-password";
+    logAuthEvent({
+      event: "confirmation_callback_started",
+      correlationId,
+    });
+    return new NextResponse(recoveryContinueHtml(tokenHash, destination), {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+
   const code = searchParams.get("code");
   const next = getSafeInternalPath(searchParams.get("next"));
   const errorCode = searchParams.get("error_code");
@@ -72,6 +103,21 @@ export async function GET(request: NextRequest) {
     const {
       data: { user: existingUser },
     } = await supabase.auth.getUser();
+    if (
+      next.startsWith("/reset-password") &&
+      !existingUser &&
+      !errorCode &&
+      !errorDescription
+    ) {
+      return new NextResponse(recoveryHashHandoffHtml(), {
+        status: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "referrer-policy": "no-referrer",
+        },
+      });
+    }
     const action = decideConfirmationCallback({
       code,
       next,

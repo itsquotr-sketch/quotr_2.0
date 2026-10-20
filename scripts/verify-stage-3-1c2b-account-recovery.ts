@@ -79,6 +79,13 @@ function main() {
     !callback.includes("createAdminClient") &&
       !callback.includes("SERVICE_ROLE")
   );
+  assert(
+    "fragment recovery session is accepted in the browser before the invalid redirect",
+    callback.includes("recoveryHashHandoffHtml") &&
+      read("lib/auth/recovery-hash-handoff.ts").includes("Confirming your reset link") &&
+      read("app/auth/recovery-session/route.ts").includes("setSession") &&
+      !read("lib/auth/recovery-hash-handoff.ts").includes("access_token=")
+  );
 
   section("REDIRECT SECURITY");
   assert(
@@ -155,6 +162,29 @@ function main() {
   );
   const recovery = read("lib/auth/recovery-actions.ts");
   assert("uses resetPasswordForEmail", /resetPasswordForEmail/.test(recovery));
+  const recoveryVerify = read("app/auth/recovery-verify/route.ts");
+  const recoveryContinue = read("lib/auth/recovery-continue.ts");
+  const recoveryTemplate = read("lib/auth/recovery-email-template.ts");
+  assert(
+    "recovery email uses token_hash on the app callback",
+    recoveryTemplate.includes("{{ .TokenHash }}") &&
+      recoveryTemplate.includes("{{ .RedirectTo }}") &&
+      recoveryTemplate.includes("type=recovery") &&
+      !recoveryTemplate.includes("{{ .ConfirmationURL }}")
+  );
+  assert(
+    "GET callback does not redeem token_hash",
+    callback.includes("recoveryContinueHtml") &&
+      callback.includes("isPrefetch") &&
+      !callback.includes("verifyOtp")
+  );
+  assert(
+    "recovery verify redeems token_hash only on POST",
+    recoveryVerify.includes("verifyOtp") &&
+      recoveryVerify.includes('type: "recovery"') &&
+      recoveryVerify.includes("token_hash") &&
+      !recoveryContinue.includes("verifyOtp")
+  );
   assert(
     "non-enumerating ack copy",
     recovery.includes("PASSWORD_RESET_REQUEST_ACK") ||
