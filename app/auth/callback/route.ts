@@ -1,38 +1,38 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import {
+  confirmationHelpPath,
   confirmationLoginPath,
   decideConfirmationCallback,
   decideFailedExchange,
   type ConfirmationCallbackAction,
 } from "@/lib/auth/confirmation-link";
+import { destinationAfterEmailConfirmation } from "@/lib/auth/finish-email-confirmation";
 import { createAuthCorrelationId, logAuthEvent } from "@/lib/auth/logging";
 import type { AuthErrorCategory } from "@/lib/auth/errors";
-import {
-  explicitFullNameFromUserMetadata,
-  organisationNameFromUserMetadata,
-  resolveEmailConfirmDestination,
-  shouldProvisionSignupOrganisation,
-  type PendingInviteKind,
-} from "@/lib/auth/email-confirm-destination";
-import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { recoveryHashHandoffHtml } from "@/lib/auth/recovery-hash-handoff";
 import {
   isPrefetch,
   recoveryContinueHtml,
   recoveryTokenHash,
 } from "@/lib/auth/recovery-continue";
+import {
+  signupConfirmContinueHtml,
+  signupConfirmationNext,
+} from "@/lib/auth/signup-confirm-continue";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import "@/lib/env";
 
 /**
- * Supabase Auth PKCE callback (signup confirmation + password recovery).
+ * Supabase Auth callback (signup confirmation + password recovery).
  *
- * Exchange the `code` server-side, set session cookies, then route:
- * - recovery next=/reset-password → reset page (session required)
- * - invite next=/invite/… → invitation (BILLING-4)
- * - ordinary Owner → provision if needed → company basics
- * - authenticated but missing company and not invited → /app/setup-required
+ * Signup confirmation arrives as token_hash on RedirectTo. GET only shows
+ * progress; POST /auth/signup-verify redeems it and sets the session cookie.
+ * Recovery still uses its own token_hash POST and is not redeemed here.
+ *
+ * A leftover PKCE code is exchanged only when this browser still has the
+ * verifier. A missing verifier is a session failure, not an expired link.
+ * An existing session is not treated as confirmation of this email.
  *
  * Never logs auth codes or tokens.
  */
@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   const { searchParams, origin } = request.nextUrl;
   const tokenHash = recoveryTokenHash(searchParams.get("token_hash"));
-  if (tokenHash && searchParams.get("type") === "recovery") {
+  const tokenType = searchParams.get("type");
+  if (tokenHash && tokenType === "recovery") {
     if (isPrefetch(request)) {
       return new NextResponse(null, {
         status: 204,
@@ -57,6 +58,27 @@ export async function GET(request: NextRequest) {
       correlationId,
     });
     return new NextResponse(recoveryContinueHtml(tokenHash, destination), {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+
+  if (tokenHash && tokenType === "email") {
+    if (isPrefetch(request)) {
+      return new NextResponse(null, {
+        status: 204,
+        headers: { "cache-control": "no-store" },
+      });
+    }
+    const destination = signupConfirmationNext(searchParams.get("next"));
+    logAuthEvent({
+      event: "confirmation_callback_started",
+      correlationId,
+    });
+    return new NextResponse(signupConfirmContinueHtml(tokenHash, destination), {
       status: 200,
       headers: {
         "content-type": "text/html; charset=utf-8",
@@ -123,22 +145,13 @@ export async function GET(request: NextRequest) {
       next,
       errorCode,
       errorDescription,
-      hasConfirmedSession: Boolean(existingUser),
     });
-    if (action.type === "continue" && existingUser) {
-      return finishConfirmedSession(
-        supabase,
-        existingUser,
-        next,
-        origin,
-        redirectResponse,
-        correlationId,
-        startedAt
-      );
-    }
     logAuthEvent({
       event: "confirmation_callback_failed",
-      category: "CONFIRMATION_LINK_INVALID",
+      category:
+        action.type === "help" && action.reason === "session"
+          ? "CONFIRMATION_FAILED"
+          : "CONFIRMATION_LINK_INVALID",
       correlationId,
       elapsedMs: Date.now() - startedAt,
     });
@@ -148,28 +161,16 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    const {
-      data: { user: existingUser },
-    } = await supabase.auth.getUser();
     const action = decideFailedExchange({
       next,
-      providerMessage: error.message,
-      hasConfirmedSession: Boolean(existingUser),
+      providerMessage: `${error.name ?? ""} ${error.message ?? ""}`,
     });
-    if (action.type === "continue" && existingUser) {
-      return finishConfirmedSession(
-        supabase,
-        existingUser,
-        next,
-        origin,
-        redirectResponse,
-        correlationId,
-        startedAt
-      );
-    }
     logAuthEvent({
       event: "confirmation_callback_failed",
-      category: "CONFIRMATION_LINK_INVALID",
+      category:
+        action.type === "help" && action.reason === "session"
+          ? "CONFIRMATION_FAILED"
+          : "CONFIRMATION_LINK_INVALID",
       correlationId,
       elapsedMs: Date.now() - startedAt,
     });
@@ -183,11 +184,11 @@ export async function GET(request: NextRequest) {
   if (!user) {
     logAuthEvent({
       event: "confirmation_callback_failed",
-      category: "CONFIRMATION_LINK_INVALID",
+      category: "CONFIRMATION_FAILED",
       correlationId,
       elapsedMs: Date.now() - startedAt,
     });
-    return redirectAuthError(origin, "CONFIRMATION_LINK_INVALID");
+    return redirectAuthError(origin, "CONFIRMATION_FAILED");
   }
 
   return finishConfirmedSession(
@@ -215,14 +216,18 @@ async function finishConfirmedSession(
   correlationId: string,
   startedAt: number
 ) {
-  if (!user.email_confirmed_at && !next.startsWith("/reset-password")) {
-    await supabase.auth.signOut();
-    const url = new URL("/signup", origin);
-    url.searchParams.set("confirm", "required");
-    const response = NextResponse.redirect(url);
-    redirectResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie);
-    });
+  const destination = await destinationAfterEmailConfirmation(
+    supabase,
+    user,
+    next,
+    correlationId
+  );
+  const finalResponse = NextResponse.redirect(new URL(destination, origin));
+  redirectResponse.cookies.getAll().forEach((cookie) => {
+    finalResponse.cookies.set(cookie);
+  });
+
+  if (destination.startsWith("/signup")) {
     logAuthEvent({
       event: "confirmation_callback_failed",
       category: "CONFIRMATION_PENDING",
@@ -230,84 +235,8 @@ async function finishConfirmedSession(
       userId: user.id,
       elapsedMs: Date.now() - startedAt,
     });
-    return response;
+    return finalResponse;
   }
-
-  let destination = next;
-  if (next.startsWith("/reset-password")) {
-    destination = "/reset-password";
-  } else if (next.startsWith("/invite/")) {
-    destination = next;
-  } else {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("org_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    let hasOrg = Boolean(profile?.org_id);
-    if (hasOrg && profile?.org_id) {
-      const { data: organisation } = await supabase
-        .from("organisations")
-        .select("id")
-        .eq("id", profile.org_id)
-        .maybeSingle();
-      hasOrg = Boolean(organisation);
-    }
-
-    let pendingInvite: PendingInviteKind = "none";
-    if (!hasOrg) {
-      const { data: pending } = await supabase.rpc(
-        "lookup_pending_invitation_for_current_user"
-      );
-      const row = Array.isArray(pending) ? pending[0] : pending;
-      const count = Number(row?.invite_count ?? 0);
-      if (count > 1) pendingInvite = "multiple";
-      else if (count === 1) pendingInvite = "one";
-    }
-
-    let provisioned = false;
-    const metadata = user.user_metadata as Record<string, unknown>;
-    const orgName = organisationNameFromUserMetadata(metadata);
-    const fullName = explicitFullNameFromUserMetadata(metadata);
-    if (
-      shouldProvisionSignupOrganisation({
-        hasOrg,
-        pendingInvite,
-        organisationName: orgName,
-        fullName,
-      }) &&
-      orgName &&
-      fullName
-    ) {
-      const result = await provisionOrganisationForCurrentUser(
-        supabase as never,
-        {
-          organisationName: orgName,
-          fullName,
-          correlationId,
-          userId: user.id,
-          context: "signup",
-        }
-      );
-      provisioned = result.ok;
-      if (result.ok === false && result.category === "INVITE_PENDING") {
-        pendingInvite = "one";
-      }
-    }
-
-    destination = resolveEmailConfirmDestination({
-      next,
-      hasOrg,
-      pendingInvite,
-      provisioned,
-    });
-  }
-
-  const finalResponse = NextResponse.redirect(new URL(destination, origin));
-  redirectResponse.cookies.getAll().forEach((cookie) => {
-    finalResponse.cookies.set(cookie);
-  });
 
   logAuthEvent({
     event: "confirmation_callback_completed",
@@ -330,6 +259,11 @@ function redirectConfirmationAction(
     const url = new URL(confirmationLoginPath(action.error), origin);
     return NextResponse.redirect(url);
   }
+  if (action.type === "help") {
+    return NextResponse.redirect(
+      new URL(confirmationHelpPath(action.reason), origin)
+    );
+  }
   return redirectAuthError(origin, "CONFIRMATION_LINK_INVALID");
 }
 
@@ -339,7 +273,12 @@ function redirectAuthError(origin: string, category: AuthErrorCategory) {
     url.searchParams.set("error", "invalid");
     return NextResponse.redirect(url);
   }
+  if (category === "CONFIRMATION_FAILED") {
+    return NextResponse.redirect(
+      new URL(confirmationHelpPath("session"), origin)
+    );
+  }
 
-  const url = new URL(confirmationLoginPath("confirmation_invalid"), origin);
+  const url = new URL(confirmationHelpPath("invalid"), origin);
   return NextResponse.redirect(url);
 }

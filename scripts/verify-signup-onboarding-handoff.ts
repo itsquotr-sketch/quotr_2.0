@@ -8,7 +8,10 @@ import { join } from "path";
 import {
   ALREADY_CONFIRMED_MESSAGE,
   confirmationContinueOmitsError,
+  confirmationHelpMessage,
+  confirmationHelpPath,
   confirmationLoginPath,
+  CONFIRMATION_SESSION_MESSAGE,
   decideConfirmationCallback,
   decideFailedExchange,
   loginConfirmationPresentation,
@@ -191,14 +194,22 @@ function main() {
       provisionSql.includes("v_existing_org, v_uid, true")
   );
 
-  const callback = read("app/auth/callback/route.ts");
+  const callback = `${read("app/auth/callback/route.ts")}\n${read("lib/auth/finish-email-confirmation.ts")}`;
+  const confirmationLink = read("lib/auth/confirmation-link.ts");
+  const signupTemplate = read("lib/auth/signup-email-template.ts");
+  const signupVerify = read("app/auth/signup-verify/route.ts");
   assert(
     "callback uses the confirmation decision and does not invent success",
     callback.includes("decideConfirmationCallback") &&
       callback.includes("decideFailedExchange") &&
       callback.includes("shouldProvisionSignupOrganisation") &&
-      callback.includes("explicitFullNameFromUserMetadata")
+      callback.includes("explicitFullNameFromUserMetadata") &&
+      !read("app/auth/callback/route.ts").includes("verifyOtp")
   );
+  const pkceMiss = decideFailedExchange({
+    next: POST_SIGNUP_DESTINATION,
+    providerMessage: "pkce code verifier not found",
+  });
   assert(
     "successful confirmation does not add an invalid-link error",
     confirmationContinueOmitsError(POST_SIGNUP_DESTINATION) &&
@@ -208,13 +219,13 @@ function main() {
         next: POST_SIGNUP_DESTINATION,
         errorCode: null,
         errorDescription: null,
-        hasConfirmedSession: false,
       }).type === "exchange" &&
-      decideFailedExchange({
-        next: POST_SIGNUP_DESTINATION,
-        providerMessage: "pkce code verifier not found",
-        hasConfirmedSession: true,
-      }).type === "continue"
+      pkceMiss.type === "help" &&
+      pkceMiss.reason === "session" &&
+      confirmationHelpPath("session") === "/signup?confirm=link&reason=session" &&
+      confirmationHelpMessage("session") === CONFIRMATION_SESSION_MESSAGE &&
+      !CONFIRMATION_SESSION_MESSAGE.toLowerCase().includes("expired") &&
+      !confirmationLink.includes("hasConfirmedSession")
   );
   assert(
     "already-confirmed reused link uses the calm message",
@@ -223,31 +234,41 @@ function main() {
       next: POST_SIGNUP_DESTINATION,
       errorCode: "email_already_confirmed",
       errorDescription: "Email address already confirmed",
-      hasConfirmedSession: false,
     }).type === "login" &&
       confirmationLoginPath("confirmation_already") ===
         "/login?error=confirmation_already" &&
       loginConfirmationPresentation("confirmation_already").message ===
-        ALREADY_CONFIRMED_MESSAGE &&
-      loginConfirmationPresentation("confirmation_already").showResend === false
+        ALREADY_CONFIRMED_MESSAGE
+  );
+  const invalidLink = decideConfirmationCallback({
+    code: null,
+    next: POST_SIGNUP_DESTINATION,
+    errorCode: "otp_expired",
+    errorDescription: "Email link is invalid or has expired",
+  });
+  const invalidExchange = decideFailedExchange({
+    next: POST_SIGNUP_DESTINATION,
+    providerMessage: "invalid token",
+  });
+  assert(
+    "a genuinely invalid token uses the confirmation help screen",
+    invalidLink.type === "help" &&
+      invalidLink.reason === "invalid" &&
+      invalidExchange.type === "help" &&
+      confirmationHelpPath("invalid") === "/signup?confirm=link&reason=invalid" &&
+      confirmationHelpMessage("invalid") ===
+        AUTH_USER_MESSAGES.CONFIRMATION_LINK_INVALID
   );
   assert(
-    "a genuinely invalid token keeps the existing error and a resend route",
-    decideConfirmationCallback({
-      code: null,
-      next: POST_SIGNUP_DESTINATION,
-      errorCode: "otp_expired",
-      errorDescription: "Email link is invalid or has expired",
-      hasConfirmedSession: false,
-    }).type === "login" &&
-      loginConfirmationPresentation("confirmation_invalid").message ===
-        AUTH_USER_MESSAGES.CONFIRMATION_LINK_INVALID &&
-      loginConfirmationPresentation("confirmation_invalid").showResend === true &&
-      decideFailedExchange({
-        next: POST_SIGNUP_DESTINATION,
-        providerMessage: "invalid token",
-        hasConfirmedSession: false,
-      }).type === "login"
+    "signup mail uses the token hash on RedirectTo",
+    signupTemplate.includes("{{ .RedirectTo }}") &&
+      signupTemplate.includes("{{ .TokenHash }}") &&
+      signupTemplate.includes("type=email") &&
+      !signupTemplate.includes("{{ .ConfirmationURL }}") &&
+      !signupTemplate.includes("{{ .SiteURL }}") &&
+      callback.includes("signupConfirmContinueHtml") &&
+      signupVerify.includes("verifyOtp") &&
+      signupVerify.includes('type: otpType')
   );
   assert(
     "invitation and password-recovery callbacks stay on their paths",
@@ -256,12 +277,10 @@ function main() {
       next: "/reset-password",
       errorCode: "otp_expired",
       errorDescription: "Email address already confirmed",
-      hasConfirmedSession: true,
     }).type === "recovery_invalid" &&
       decideFailedExchange({
         next: "/reset-password",
         providerMessage: "pkce code verifier not found",
-        hasConfirmedSession: true,
       }).type === "recovery_invalid" &&
       resolveEmailConfirmDestination({
         next: "/invite/abc",
@@ -303,11 +322,21 @@ function main() {
   );
 
   const login = read("app/(auth)/login/page.tsx");
+  const signupForm = read("components/auth/SignupForm.tsx");
   assert(
-    "login shows the calm copy and the resend action",
+    "login keeps the calm copy and does not add a resend form",
     login.includes("loginConfirmationPresentation") &&
-      login.includes("resendSignupConfirmation") &&
-      login.includes("Resend confirmation email")
+      !login.includes("resendSignupConfirmation") &&
+      !login.includes('id="resend-email"') &&
+      !login.includes("Resend confirmation email")
+  );
+  assert(
+    "check-email keeps one resend button and a change-email action",
+    signupForm.includes("Check your email") &&
+      signupForm.includes("Resend confirmation email") &&
+      signupForm.includes("Change email") &&
+      signupForm.includes("Sending…") &&
+      signupForm.includes('type="hidden" name="email"')
   );
 
   if (process.exitCode) {

@@ -20,6 +20,7 @@ import {
   logAuthEvent,
 } from "@/lib/auth/logging";
 import { passwordSchema } from "@/lib/auth/password";
+import { rememberPendingSignupEmail } from "@/lib/auth/pending-signup-email";
 import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { readSafeNext, getSafeInternalPath } from "@/lib/auth/safe-redirect";
@@ -267,6 +268,7 @@ export async function signup(
       userId,
       elapsedMs: Date.now() - startedAt,
     });
+    await rememberPendingSignupEmail(signupEmail);
     return {
       error: presentAuthError("CONFIRMATION_PENDING"),
       confirmationPending: true,
@@ -293,6 +295,7 @@ export async function signup(
       userId,
       elapsedMs: Date.now() - startedAt,
     });
+    await rememberPendingSignupEmail(signupEmail);
     return {
       error: presentAuthError("CONFIRMATION_PENDING"),
       confirmationPending: true,

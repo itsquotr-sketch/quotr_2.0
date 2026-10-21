@@ -3,6 +3,18 @@ import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  if (
+    request.nextUrl.pathname === "/login" &&
+    request.nextUrl.searchParams.get("error") === "confirmation_invalid"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    url.search = "";
+    url.searchParams.set("confirm", "link");
+    url.searchParams.set("reason", "invalid");
+    return NextResponse.redirect(url);
+  }
+
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 

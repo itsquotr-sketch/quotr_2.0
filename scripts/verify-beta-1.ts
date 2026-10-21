@@ -166,7 +166,7 @@ function main() {
     organisationNameFromUserMetadata({ organisation_name: " Smith Build " }) ===
       "Smith Build"
   );
-  const callback = read("app/auth/callback/route.ts");
+  const callback = `${read("app/auth/callback/route.ts")}\n${read("lib/auth/finish-email-confirmation.ts")}`;
   assert(
     "callback uses resolveEmailConfirmDestination",
     /resolveEmailConfirmDestination/.test(callback)

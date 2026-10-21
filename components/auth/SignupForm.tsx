@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { signup, type AuthActionState } from "@/app/(auth)/actions";
 import {
   resendSignupConfirmation,
@@ -19,6 +19,7 @@ import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
+import { confirmationHelpMessage } from "@/lib/auth/confirmation-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -30,47 +31,67 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
-function ConfirmationPending({ email }: { email?: string }) {
+function ConfirmationEmail({
+  mode,
+  email,
+  reason = "invalid",
+}: {
+  mode: "pending" | "link";
+  email?: string;
+  reason?: "invalid" | "session";
+}) {
   const [resendState, resendAction, resendPending] = useActionState(
     resendSignupConfirmation,
     resendInitial
   );
   const resendLock = useRef(false);
+  const retained = email?.trim() ?? "";
+  const [editing, setEditing] = useState(!retained);
 
   useEffect(() => {
     if (!resendPending) resendLock.current = false;
   }, [resendPending]);
 
+  const title = mode === "pending" ? "Check your email" : "Confirm your email";
+  const description =
+    mode === "pending" ? (
+      <>
+        We&apos;ve sent a confirmation link
+        {retained ? (
+          <>
+            {" "}
+            to <span className="font-medium text-foreground">{retained}</span>
+          </>
+        ) : (
+          " to your email address"
+        )}
+        . Open the link to finish creating your Quotr account.
+      </>
+    ) : (
+      confirmationHelpMessage(reason)
+    );
+
   return (
     <AuthCard>
-      <AuthCardHeader
-        title="Check your email"
-        description={
-          <>
-            We&apos;ve sent a confirmation link
-            {email ? (
-              <>
-                {" "}
-                to <span className="font-medium text-foreground">{email}</span>
-              </>
-            ) : (
-              " to your email address"
-            )}
-            . Open the link to finish creating your Quotr account.
-          </>
-        }
-      />
+      <AuthCardHeader title={title} description={description} />
       <AuthCardContent>
-        <p className="text-sm text-muted-foreground">
-          After you confirm, you&apos;ll be signed in. If you were invited to a
-          company, we&apos;ll take you back to the invitation.
-        </p>
+        {mode === "pending" ? (
+          <p className="text-sm text-muted-foreground">
+            After you confirm, you&apos;ll be signed in. If you were invited to a
+            company, we&apos;ll take you back to the invitation.
+          </p>
+        ) : null}
         {resendState.error ? (
           <p
             role="alert"
             className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {resendState.error}
+          </p>
+        ) : null}
+        {resendState.fieldErrors?.email?.[0] ? (
+          <p role="alert" className="text-sm text-destructive">
+            {resendState.fieldErrors.email[0]}
           </p>
         ) : null}
         {resendState.success ? (
@@ -87,18 +108,21 @@ function ConfirmationPending({ email }: { email?: string }) {
             resendLock.current = true;
             resendAction(formData);
           }}
+          className="flex flex-col gap-3"
         >
-          {email ? (
-            <input type="hidden" name="email" value={email} />
+          {retained && !editing ? (
+            <input type="hidden" name="email" value={retained} />
           ) : (
-            <div className="mb-3 space-y-1.5">
+            <div className="space-y-1.5">
               <Label htmlFor="resend-email">Email</Label>
               <Input
                 id="resend-email"
                 name="email"
                 type="email"
+                inputMode="email"
                 autoComplete="email"
                 required
+                defaultValue={retained || undefined}
                 className="h-11"
               />
             </div>
@@ -110,9 +134,19 @@ function ConfirmationPending({ email }: { email?: string }) {
             variant="outline"
           />
         </form>
+        {retained && !editing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 w-full"
+            onClick={() => setEditing(true)}
+          >
+            Change email
+          </Button>
+        ) : null}
       </AuthCardContent>
       <AuthCardFooter>
-        <Button render={<Link href="/login" />} className="h-11 w-full">
+        <Button render={<Link href="/login" />} variant="outline" className="h-11 w-full">
           Return to login
         </Button>
       </AuthCardFooter>
@@ -124,15 +158,28 @@ export function SignupForm(props: {
   inviteToken: string;
   invitedEmail: string;
   confirmRequired?: boolean;
+  confirmLink?: boolean;
+  linkReason?: "invalid" | "session";
+  pendingEmail?: string;
 }) {
   const inviteToken = props.inviteToken;
   const invitedEmail = props.invitedEmail;
   const [state, formAction, pending] = useActionState(signup, initialState);
+  const retainedEmail =
+    state.confirmationEmail || invitedEmail || props.pendingEmail || undefined;
+
+  if (props.confirmLink && !state.confirmationPending) {
+    return (
+      <ConfirmationEmail
+        mode="link"
+        email={retainedEmail}
+        reason={props.linkReason}
+      />
+    );
+  }
 
   if (state.confirmationPending || props.confirmRequired) {
-    return (
-      <ConfirmationPending email={state.confirmationEmail ?? invitedEmail} />
-    );
+    return <ConfirmationEmail mode="pending" email={retainedEmail} />;
   }
 
   if (state.continueTo) {

@@ -68,7 +68,9 @@ function main() {
   );
   assert(
     "missing profile → setup-required",
-    /setup-required/.test(callback)
+    /setup-required/.test(
+      `${callback}\n${read("lib/auth/email-confirm-destination.ts")}`
+    )
   );
   assert(
     "uses getSafeInternalPath for next",
