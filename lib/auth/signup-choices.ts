@@ -4,7 +4,7 @@
  */
 
 /**
- * Application Terms version. This is the document at /terms.
+ * Application Terms at /terms, dated 22 October 2026.
  * 2026-10-15 remains the website-only Terms and is not reused or backfilled.
  */
 export const TERMS_OF_USE_VERSION = "2026-10-22";

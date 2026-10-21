@@ -79,13 +79,15 @@ assert(
 
 assert(
   "application documents use the stored version and stay separate from the website terms",
-  termsPage.includes("TERMS_OF_USE_VERSION") &&
-    termsPage.includes("Application Terms") &&
-    termsPage.includes("get-quotr.com") &&
+    termsPage.includes("TERMS_OF_USE_VERSION") &&
+    termsPage.includes("Flowra Limited") &&
+    termsPage.includes("9429052916465") &&
+    termsPage.includes("hello@get-quotr.com") &&
     privacyPage.includes("TERMS_OF_USE_VERSION") &&
-    privacyPage.includes("Privacy Notice") &&
-    termsPage.includes("Proposed, not yet approved") &&
-    privacyPage.includes("ap-northeast-1") &&
+    privacyPage.includes("Flowra Limited") &&
+    privacyPage.includes("hello@get-quotr.com") &&
+    !termsPage.includes("90-day") &&
+    !privacyPage.includes("90-day") &&
     !termsPage.includes("privacy@quotr.co.nz") &&
     !privacyPage.includes("privacy@quotr.co.nz") &&
     !termsPage.includes("Quotr Limited") &&

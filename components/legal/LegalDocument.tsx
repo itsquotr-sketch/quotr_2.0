@@ -25,10 +25,6 @@ export function LegalDocument({
             <QuotrLogo variant="wordmark" href={null} height={32} className="h-8 w-auto" />
           </Link>
           <p className="text-sm text-muted-foreground">{QUOTR_PRODUCT_LINE}</p>
-          <p className="rounded-xl border border-border bg-muted/60 px-3 py-3 text-sm leading-6">
-            Draft for owner review. This document is not yet in force. It is
-            not published on the Production application.
-          </p>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{kicker}</p>
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
