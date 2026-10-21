@@ -1,14 +1,45 @@
 # Release-candidate inventory
 
-**Updated:** 21 October 2026. This closeout is the current record. The 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 22 October 2026. This closeout is the current record. The 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `0f96d93a02845ce276df488b30ecfd13b0a49952` on `ui/core-workflow-overhaul`. It is pushed. Its parent is `330df0b9e30f06e300817ce3e3087f7ce892181f`.
+**Application release:** `c00f159461cd520dbed952775ba158792c392751` on `fix/onboarding-address-benchmarks-terms`. It is pushed. Its parent line includes the previous Production application `316f1fac9d7e6bd93e5e6c4eb373e70676ced417`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 21 October 2026
+## Closed release — 22 October 2026
 
-Production is serving the application SHA above. Schema head on both hosted databases is **111**. Password recovery and Quote/email delivery have passed owner QA. The Preview sandbox billing journey, including the Dahlia cancellation fix, is recorded below. The remaining item is operational: watch the first genuine live subscription webhook. Do not manufacture that subscription, and do not edit Production billing rows to simulate it.
+The owner approved publication of Application Terms and Privacy Notice version `2026-10-22`. Production is serving the application SHA above. Production schema head is **112**. No further signup was created, no confirmation email was sent, and Checkout was not submitted.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `fix/onboarding-address-benchmarks-terms` |
+| Application SHA | `c00f159461cd520dbed952775ba158792c392751` |
+| Commit | 2026-10-22 — Send signup confirmation to the onboarding Preview callback. |
+| Working tree | Clean, and the SHA matches `origin/fix/onboarding-address-benchmarks-terms`. |
+| Included | Approved legal pages, public auth scrolling, signup help buttons, corrected confirmation links, Change email controls, carpenter $60 and labourer $35 benchmarks, and the existing recovery, sign-out, and billing fixes from `330df0b9`, `3ff55e2a`, `0f96d93a`, and `316f1fac`. |
+| Production deployment | `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq` |
+| Production URL | `https://quotr-2-0-kkz27lt3t-quotr1.vercel.app` |
+| Production status | Ready, target production. Fresh build of this SHA. The Preview deployment `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So` was not promoted. |
+| `app.get-quotr.com` | that Production deployment. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing title through Cloudflare. `quotr-2-0.vercel.app` was put back on `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. The Vercel project record for `get-quotr.com` names the new Production deployment; pinning that record back to `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7` was rejected because that deployment has no certificate for the domain. Public traffic still shows the marketing page. |
+| Onboarding Preview alias | `quotr-2-0-git-fix-onboarding-address-benchmarks-terms-quotr1.vercel.app` restored to Preview `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. |
+| Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`. |
+| Workflow alias | unchanged: `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **112**. The dry-run before apply listed only `112_signup_terms_acceptance.sql`. After apply, local and remote match through 112 and a later dry-run reports up to date. Twelve existing profiles remain without Terms acceptance. |
+| Production backup | Latest completed backup before the apply remained available: physical, completed `2026-10-21T17:44:16.682Z`, 8 of 8 completed. |
+| Production build settings | Production Supabase `lxvnylhsbvudzzupxeqr`, `BILLING_ENVIRONMENT=live`, `NEXT_PUBLIC_SITE_URL=https://app.get-quotr.com`, and the existing Production Google Maps browser key. |
+| Preview schema | `shhpjsoldmqtkdbgrbtm` head **112**. The already-applied Preview objects were recorded in migration history, and the following dry-run reports up to date. |
+
+### Focused checks
+
+Signed-out `/terms` and `/privacy` on `app.get-quotr.com` show version `2026-10-22`, Flowra Limited, NZBN `9429052916465`, Auckland, New Zealand, and `hello@get-quotr.com`. Signup scrolls at desktop and at 390×640. Phone and product-update help buttons open. Resend confirmation, Change email, and Return to login stay reachable, and the retained address stays visible. No signup was submitted. Business address search on `app.get-quotr.com` returned five New Zealand suggestions. The company rates screen is behind sign-in, so its labels were not opened; the deployed source shows Carpenter / builder at a $60 benchmark and Labourer at $35 per person-hour. Production email confirmation stays required. Its callback allow-list includes `app.get-quotr.com/auth/callback`, and the confirmation and recovery templates still use the token hash. No commercial document was rewritten.
+
+The first genuine live subscription webhook remains the open operational watch from the 21 October closeout. Do not manufacture that subscription.
+
+## Historical closeout — 21 October 2026
+
+This section records the 21 October writeup for `0f96d93a02845ce276df488b30ecfd13b0a49952`. It is not the deployment serving the app now. Schema head on both hosted databases was then **111**. Password recovery and Quote/email delivery have passed owner QA. The Preview sandbox billing journey, including the Dahlia cancellation fix, is recorded below. The remaining item is operational: watch the first genuine live subscription webhook. Do not manufacture that subscription, and do not edit Production billing rows to simulate it.
 
 | Fact | Value |
 | --- | --- |
