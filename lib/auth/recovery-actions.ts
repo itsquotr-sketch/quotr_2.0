@@ -17,6 +17,7 @@ import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
 import {
   buildAuthCallbackUrl,
   getAuthCallbackOrigin,
+  getSignupConfirmationOrigin,
 } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 
@@ -169,7 +170,7 @@ export async function resendSignupConfirmation(
   }
 
   const supabase = await createClient();
-  const origin = await getAuthCallbackOrigin();
+  const origin = await getSignupConfirmationOrigin();
   const emailRedirectTo = buildAuthCallbackUrl(origin, POST_SIGNUP_DESTINATION);
   await rememberPendingSignupEmail(parsed.data.email);
 

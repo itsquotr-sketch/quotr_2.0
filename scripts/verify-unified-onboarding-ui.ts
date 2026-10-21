@@ -364,8 +364,8 @@ function main(): void {
       !ready.includes("Improve Quotr")
   );
   assert(
-    "signup confirmation still uses the request host",
-    signup.includes("getAuthCallbackOrigin") &&
+    "signup confirmation uses the branch confirmation origin",
+    signup.includes("getSignupConfirmationOrigin") &&
       read("components/auth/AuthShell.tsx").includes("min-h-dvh") &&
       read("lib/auth/errors.ts").includes(
         "This confirmation link is invalid or has expired."

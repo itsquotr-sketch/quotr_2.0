@@ -27,9 +27,16 @@ import { POST_SIGNUP_DESTINATION } from "../lib/auth/post-auth-navigation";
 import { buildSignupUserMetadata } from "../lib/auth/account-phone";
 import { AUTH_USER_MESSAGES } from "../lib/auth/errors";
 import {
+  ONBOARDING_PREVIEW_AUTH_ORIGIN,
+  ONBOARDING_PREVIEW_BRANCH,
   PREVIEW_AUTH_SITE_ORIGIN_STABLE,
   resolveAuthEmailOrigin,
+  resolveSignupConfirmationOrigin,
 } from "../lib/auth/site-url";
+import {
+  SIGNUP_EMAIL_TEMPLATE,
+  signupConfirmationHref,
+} from "../lib/auth/signup-email-template";
 
 const WORKFLOW_ORIGIN =
   "https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app";
@@ -100,7 +107,7 @@ function main() {
     signup.includes("full_name") &&
       signup.includes("organisation_name") &&
       signup.includes("email: signupEmail") &&
-      signup.includes("getAuthCallbackOrigin")
+      signup.includes("getSignupConfirmationOrigin")
   );
   assert(
     "invite signup does not store a new organisation name",
@@ -259,13 +266,56 @@ function main() {
       confirmationHelpMessage("invalid") ===
         AUTH_USER_MESSAGES.CONFIRMATION_LINK_INVALID
   );
+  const uniqueDeployment = "https://quotr-2-0-dpl123-quotr1.vercel.app";
+  const onboardingOrigin = resolveSignupConfirmationOrigin({
+    vercelEnv: "preview",
+    gitBranch: ONBOARDING_PREVIEW_BRANCH,
+    requestOrigin: uniqueDeployment,
+    branchHost: "quotr-2-0-dpl123-quotr1.vercel.app",
+    deploymentHost: "quotr-2-0-dpl123-quotr1.vercel.app",
+    configuredSiteUrl: PREVIEW_AUTH_SITE_ORIGIN_STABLE,
+  });
+  assert(
+    "this branch confirms on the stable onboarding alias",
+    onboardingOrigin === ONBOARDING_PREVIEW_AUTH_ORIGIN &&
+      onboardingOrigin !== uniqueDeployment &&
+      onboardingOrigin !== PREVIEW_AUTH_SITE_ORIGIN_STABLE
+  );
+  const siteUrl = PREVIEW_AUTH_SITE_ORIGIN_STABLE;
+  const supplied = `${ONBOARDING_PREVIEW_AUTH_ORIGIN}/auth/callback?next=${encodeURIComponent(POST_SIGNUP_DESTINATION)}`;
+  const suppliedHref = new URL(
+    signupConfirmationHref({
+      redirectTo: supplied,
+      siteUrl,
+      tokenHash: "example-token-hash",
+    })
+  );
+  const fallbackHref = new URL(
+    signupConfirmationHref({
+      redirectTo: siteUrl,
+      siteUrl,
+      tokenHash: "example-token-hash",
+    })
+  );
   assert(
     "signup mail uses the token hash on RedirectTo",
     signupTemplate.includes("{{ .RedirectTo }}") &&
+      signupTemplate.includes("eq .RedirectTo .SiteURL") &&
       signupTemplate.includes("{{ .TokenHash }}") &&
       signupTemplate.includes("type=email") &&
+      SIGNUP_EMAIL_TEMPLATE.includes(ONBOARDING_PREVIEW_AUTH_ORIGIN) &&
       !signupTemplate.includes("{{ .ConfirmationURL }}") &&
       !signupTemplate.includes("{{ .SiteURL }}") &&
+      suppliedHref.protocol === "https:" &&
+      suppliedHref.host === new URL(ONBOARDING_PREVIEW_AUTH_ORIGIN).host &&
+      suppliedHref.pathname === "/auth/callback" &&
+      suppliedHref.searchParams.get("type") === "email" &&
+      suppliedHref.searchParams.get("next") === POST_SIGNUP_DESTINATION &&
+      suppliedHref.searchParams.has("token_hash") &&
+      fallbackHref.host === suppliedHref.host &&
+      fallbackHref.pathname === "/auth/callback" &&
+      fallbackHref.searchParams.get("type") === "email" &&
+      !fallbackHref.href.includes(`${new URL(siteUrl).host}&`) &&
       callback.includes("signupConfirmContinueHtml") &&
       signupVerify.includes("verifyOtp") &&
       signupVerify.includes('type: otpType')

@@ -30,6 +30,15 @@ export const PREVIEW_AUTH_SITE_ORIGIN_STABLE =
   "https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app";
 
 /**
+ * Stable alias for `fix/onboarding-address-benchmarks-terms`.
+ * Signup confirmation on this branch uses this host, including when the
+ * form is opened on a commit-specific deployment URL.
+ */
+export const ONBOARDING_PREVIEW_BRANCH = "fix/onboarding-address-benchmarks-terms";
+export const ONBOARDING_PREVIEW_AUTH_ORIGIN =
+  "https://quotr-2-0-git-fix-onboarding-address-benchmarks-terms-quotr1.vercel.app";
+
+/**
  * Stable git alias for `ui/core-workflow-overhaul`.
  * This is not a commit-specific deployment URL and not app.get-quotr.com.
  */
@@ -226,6 +235,61 @@ function isPreviewRequestOrigin(origin: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Signup and confirmation-resend origin.
+ * This onboarding branch always returns to its stable Preview alias.
+ * Other branches keep the request host. Password recovery does not use this.
+ */
+export function resolveSignupConfirmationOrigin(input: {
+  vercelEnv: string | undefined;
+  gitBranch: string | null;
+  requestOrigin: string | null;
+  branchHost: string | null;
+  deploymentHost: string | null;
+  configuredSiteUrl: string | null;
+}): string {
+  if (
+    input.vercelEnv === "preview" &&
+    input.gitBranch === ONBOARDING_PREVIEW_BRANCH
+  ) {
+    return ONBOARDING_PREVIEW_AUTH_ORIGIN;
+  }
+  return resolveAuthEmailOrigin({
+    vercelEnv: input.vercelEnv,
+    requestOrigin: input.requestOrigin,
+    branchHost: input.branchHost,
+    deploymentHost: input.deploymentHost,
+    configuredSiteUrl: input.configuredSiteUrl,
+  });
+}
+
+export async function getSignupConfirmationOrigin(): Promise<string> {
+  if (process.env.VERCEL_ENV !== "preview") {
+    return getAuthCallbackOrigin();
+  }
+  let requestOrigin: string | null = null;
+  try {
+    const headerStore = await headers();
+    const forwarded =
+      headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+    requestOrigin =
+      originFromForwardedHost(
+        forwarded,
+        headerStore.get("x-forwarded-proto")
+      ) ?? normalizeAuthSiteOrigin(headerStore.get("origin"));
+  } catch {
+    requestOrigin = null;
+  }
+  return resolveSignupConfirmationOrigin({
+    vercelEnv: "preview",
+    gitBranch: process.env.VERCEL_GIT_COMMIT_REF ?? null,
+    requestOrigin,
+    branchHost: process.env.VERCEL_BRANCH_URL ?? null,
+    deploymentHost: process.env.VERCEL_URL ?? null,
+    configuredSiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+  });
 }
 
 /**

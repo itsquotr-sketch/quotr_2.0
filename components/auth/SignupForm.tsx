@@ -138,25 +138,28 @@ function ConfirmationEmail({
             pending={resendPending}
             idle="Resend confirmation email"
             pendingLabel="Sending…"
-            variant="outline"
           />
         </form>
-        {retained && !editing ? (
+        <div className="flex flex-col gap-2">
+          {retained && !editing ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              onClick={() => setEditing(true)}
+            >
+              Change email
+            </Button>
+          ) : null}
           <Button
-            type="button"
-            variant="ghost"
+            render={<Link href="/login" />}
+            variant="outline"
             className="h-11 w-full"
-            onClick={() => setEditing(true)}
           >
-            Change email
+            Return to login
           </Button>
-        ) : null}
+        </div>
       </AuthCardContent>
-      <AuthCardFooter>
-        <Button render={<Link href="/login" />} variant="outline" className="h-11 w-full">
-          Return to login
-        </Button>
-      </AuthCardFooter>
     </AuthCard>
   );
 }
