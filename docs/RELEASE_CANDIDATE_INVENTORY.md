@@ -22,7 +22,7 @@ The owner approved publication of Application Terms and Privacy Notice version `
 | Production status | Ready, target production. Fresh build of this SHA. The Preview deployment `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So` was not promoted. |
 | `app.get-quotr.com` | that Production deployment. |
 | Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
-| Marketing website | `https://get-quotr.com` still returns the marketing title through Cloudflare. `quotr-2-0.vercel.app` was put back on `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. The Vercel project record for `get-quotr.com` names the new Production deployment; pinning that record back to `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7` was rejected because that deployment has no certificate for the domain. Public traffic still shows the marketing page. |
+| Marketing website | `https://get-quotr.com` returns the marketing site through Cloudflare. `www.get-quotr.com` does not. The domain check is in the next section. `quotr-2-0.vercel.app` remains on `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. |
 | Onboarding Preview alias | `quotr-2-0-git-fix-onboarding-address-benchmarks-terms-quotr1.vercel.app` restored to Preview `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. |
 | Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`. |
 | Workflow alias | unchanged: `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. |
@@ -36,6 +36,22 @@ The owner approved publication of Application Terms and Privacy Notice version `
 Signed-out `/terms` and `/privacy` on `app.get-quotr.com` show version `2026-10-22`, Flowra Limited, NZBN `9429052916465`, Auckland, New Zealand, and `hello@get-quotr.com`. Signup scrolls at desktop and at 390×640. Phone and product-update help buttons open. Resend confirmation, Change email, and Return to login stay reachable, and the retained address stays visible. No signup was submitted. Business address search on `app.get-quotr.com` returned five New Zealand suggestions. The company rates screen is behind sign-in, so its labels were not opened; the deployed source shows Carpenter / builder at a $60 benchmark and Labourer at $35 per person-hour. Production email confirmation stays required. Its callback allow-list includes `app.get-quotr.com/auth/callback`, and the confirmation and recovery templates still use the token hash. No commercial document was rewritten.
 
 The first genuine live subscription webhook remains the open operational watch from the 21 October closeout. Do not manufacture that subscription.
+
+### Marketing domain check — 22 October 2026
+
+No DNS, certificate, alias, or domain assignment was changed for this check.
+
+| Name | Public DNS | Vercel project `quotr-2-0` | What a browser receives |
+| --- | --- | --- | --- |
+| `get-quotr.com` | Cloudflare nameservers `elsa.ns.cloudflare.com` and `bryce.ns.cloudflare.com`. Proxied A records `104.21.30.227` and `172.67.173.230`. No public CNAME. | Verified production domain, no redirect. Alias `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. | Cloudflare serves the Astro marketing site, title “Builder Estimating & Quoting Software NZ — Quotr”. Favicon and `/_astro/BaseLayout.B9LP2_qi.css` return 200. Nine links point at `https://app.get-quotr.com/signup`, and that address returns the application signup page. |
+| `www.get-quotr.com` | Same Cloudflare proxy addresses. No public CNAME. | Not attached. Alias lookup returns 404. | Cloudflare returns 522, and one read returned 523. The marketing page does not load. |
+| `app.get-quotr.com` | CNAME `9f773dd5fb451769.vercel-dns-017.com`. | Alias `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. | The application. Included here only to show which name actually uses Vercel. |
+
+The changed Vercel assignment does not receive current apex traffic. Public DNS for `get-quotr.com` ends at Cloudflare, and Cloudflare is serving the marketing origin. Before this release the same Vercel record already named an application deployment, `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`, not the marketing origin. It now names the current application deployment. The future risk is unchanged in kind: if the apex DNS is later pointed at Vercel, visitors would get the application instead of the marketing site.
+
+`www` is outside that Vercel record, so the assignment did not cause its failure. Cloudflare’s edge answers, and the origin behind `www` times out.
+
+Smallest correction, not applied: in Cloudflare, redirect `www.get-quotr.com` to `https://get-quotr.com` on the existing marketing origin. Do not add `www` to the application project. Leave the apex Vercel record unchanged unless the apex DNS is going to move; removing `get-quotr.com` from the Vercel project is the smaller way to retire that future cutover, and it is separate from the `www` fix.
 
 ## Historical closeout — 21 October 2026
 
