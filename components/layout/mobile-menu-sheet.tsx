@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   BookUser,
@@ -15,7 +15,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { logout } from "@/app/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
@@ -39,7 +39,6 @@ const rowClass =
 
 export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
   const pathname = usePathname();
   const { setupIncomplete, showTeamNav } = useAppUser();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -167,19 +166,18 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
               variant="menu"
               className="min-h-11 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-muted"
             />
-            <button
-              type="button"
-              className={cn(rowClass, "text-destructive hover:bg-muted")}
-              disabled={pending}
-              onClick={() => {
-                startTransition(async () => {
-                  await logout();
-                });
-              }}
-            >
-              <LogOut className="size-4 shrink-0" aria-hidden />
-              <span>{pending ? "Signing out…" : "Sign out"}</span>
-            </button>
+            <LogoutForm>
+              {(pending) => (
+                <button
+                  type="submit"
+                  className={cn(rowClass, "text-destructive hover:bg-muted")}
+                  disabled={pending}
+                >
+                  <LogOut className="size-4 shrink-0" aria-hidden />
+                  <span>{pending ? "Signing out…" : "Sign out"}</span>
+                </button>
+              )}
+            </LogoutForm>
           </div>
           <div className="mt-auto shrink-0 border-t pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <SidebarAccount />

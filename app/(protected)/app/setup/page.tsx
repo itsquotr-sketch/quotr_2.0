@@ -18,7 +18,8 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     redirect(modeRedirect);
   }
 
-  const state = await getSetupState();
+  const mode = setupShellMode(params.mode, stage);
+  const state = await getSetupState(mode);
 
-  return <SetupShell initialState={state} mode={setupShellMode(params.mode, stage)} />;
+  return <SetupShell initialState={state} mode={mode} />;
 }

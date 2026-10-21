@@ -53,7 +53,9 @@ function ReviewRow({
 export function FirstRunReady({ state }: { state: SetupState }) {
   const router = useRouter();
   const settings = state.settings;
-  const [productUpdates, setProductUpdates] = useState(state.marketingConsent === true);
+  const [productUpdates, setProductUpdates] = useState<boolean | null>(
+    state.marketingConsent === true ? true : state.marketingConsent === false ? false : null
+  );
   const [error, setError] = useState<string | null>(null);
   const [consentNote, setConsentNote] = useState<string | null>(null);
   const [resumePath, setResumePath] = useState<string | null>(null);
@@ -79,6 +81,19 @@ export function FirstRunReady({ state }: { state: SetupState }) {
       ? `${settings.default_margin_percent}%`
       : "Not set";
 
+  async function choose(next: boolean) {
+    setProductUpdates(next);
+    setConsentNote(null);
+    try {
+      const result = await recordOnboardingMarketingConsent(next);
+      if (result.error) {
+        setConsentNote("Could not save product updates. Try again.");
+      }
+    } catch {
+      setConsentNote("Could not save product updates. Try again.");
+    }
+  }
+
   async function finish(destination: "dashboard" | "project") {
     if (pendingRef.current) return;
     pendingRef.current = true;
@@ -87,9 +102,9 @@ export function FirstRunReady({ state }: { state: SetupState }) {
     setConsentNote(null);
     setResumePath(null);
     let consentFailed = false;
-    if (productUpdates) {
+    if (productUpdates !== null) {
       try {
-        const consent = await recordOnboardingMarketingConsent(true);
+        const consent = await recordOnboardingMarketingConsent(productUpdates);
         consentFailed = Boolean(consent.error);
       } catch {
         consentFailed = true;
@@ -148,16 +163,31 @@ export function FirstRunReady({ state }: { state: SetupState }) {
         />
         <ReviewRow title="Target margin" detail={margin} href={FIRST_RUN_LABOUR_PATH} />
       </div>
-      <label className="mt-4 flex min-h-11 w-full cursor-pointer items-center gap-3 py-2 text-sm leading-snug">
-        <input
-          type="checkbox"
-          className="size-4 shrink-0"
-          checked={productUpdates}
-          disabled={pendingAction !== null}
-          onChange={(event) => setProductUpdates(event.target.checked)}
-        />
-        <span>Send me occasional product updates and practical Quotr tips. Unsubscribe anytime.</span>
-      </label>
+      <fieldset className="mt-4 space-y-2" disabled={pendingAction !== null}>
+        <legend className="text-sm leading-snug">
+          Send me occasional product updates and practical Quotr tips. Unsubscribe anytime.
+        </legend>
+        <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border border-border px-3 text-sm">
+          <input
+            type="radio"
+            name="productUpdates"
+            className="size-4 shrink-0"
+            checked={productUpdates === true}
+            onChange={() => void choose(true)}
+          />
+          Yes, send them
+        </label>
+        <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border border-border px-3 text-sm">
+          <input
+            type="radio"
+            name="productUpdates"
+            className="size-4 shrink-0"
+            checked={productUpdates === false}
+            onChange={() => void choose(false)}
+          />
+          No thanks
+        </label>
+      </fieldset>
       {consentNote ? (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           {consentNote}

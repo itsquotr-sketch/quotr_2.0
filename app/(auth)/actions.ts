@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, RedirectType } from "next/navigation";
 import { z } from "zod";
 import { signupWasBlockedByExistingPhone } from "@/lib/auth/account-phone-claim";
 import {
@@ -256,6 +256,24 @@ export async function signup(
     userId,
   });
 
+  if (!authData.user.email_confirmed_at) {
+    if (authData.session) {
+      await supabase.auth.signOut();
+    }
+    logAuthEvent({
+      event: "confirmation_pending",
+      category: "CONFIRMATION_PENDING",
+      correlationId,
+      userId,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return {
+      error: presentAuthError("CONFIRMATION_PENDING"),
+      confirmationPending: true,
+      confirmationEmail: signupEmail,
+    };
+  }
+
   const hasSession = await ensureSignupSession(
     supabase,
     signupEmail,
@@ -432,25 +450,25 @@ export async function finishAccountSetup(
 export async function logout() {
   const correlationId = createAuthCorrelationId();
   const supabase = await createClient();
-
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    await supabase.auth.signOut();
-    logAuthEvent({
-      event: "logout",
-      correlationId,
-      userId: user?.id,
-    });
-  } catch {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.auth.signOut();
+  const message = error?.message ?? "";
+  const alreadySignedOut = /session missing|session_not_found/i.test(message);
+  if (error && !alreadySignedOut) {
     logAuthEvent({
       event: "logout",
       category: "LOGOUT_FAILED",
       correlationId,
+      userId: user?.id,
     });
-    // Still redirect — session may already be cleared.
+    return { error: presentAuthError("LOGOUT_FAILED") };
   }
-
-  redirect("/login");
+  logAuthEvent({
+    event: "logout",
+    correlationId,
+    userId: user?.id,
+  });
+  redirect("/login", RedirectType.replace);
 }

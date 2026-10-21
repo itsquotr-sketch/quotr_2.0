@@ -8,7 +8,11 @@ import {
   validateMarginPercent,
 } from "@/lib/security/margin-validation";
 import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
-import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import {
+  getAuthOrgContext,
+  requireAuthOrgContext,
+  runInsideAuthScope,
+} from "@/lib/security/auth-org-context";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import {
   getRequestMembershipRole,
@@ -45,6 +49,7 @@ import {
   onboardingMutationIsTenantScoped,
   resolveFirstRunStage,
   type FirstRunStage,
+  type OnboardingShellMode,
 } from "@/lib/setup/first-run-stage";
 import {
   assessRequiredOnboarding,
@@ -97,6 +102,28 @@ async function getSetupAuthContext(): Promise<SetupAuthContext | null> {
     ...context,
     organisationName,
   };
+}
+
+/** Writes do not display the organisation name, so skip that extra read. */
+async function getSetupMutationContext(): Promise<SetupAuthContext | null> {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) return null;
+  return {
+    supabase: auth.supabase,
+    user: { id: auth.user.id, email: auth.user.email },
+    orgId: auth.orgId,
+    organisationName: "",
+  };
+}
+
+function beginSetupMutation<T>(name: string, run: () => Promise<T>): Promise<T> {
+  const started = performance.now();
+  return runInsideAuthScope(run).finally(() => {
+    if (process.env.VERCEL_ENV === "production") return;
+    console.info(
+      `[onboarding-continue] ${name} ms=${Math.round(performance.now() - started)}`
+    );
+  });
 }
 
 function normalizeSettings(
@@ -667,7 +694,9 @@ export async function savePricingBasics(input: {
   return { success: true };
 }
 
-export async function getSetupState(): Promise<SetupState> {
+export async function getSetupState(
+  focus: OnboardingShellMode | "full" = "full"
+): Promise<SetupState> {
   const context = await getSetupAuthContext();
 
   if (!context) {
@@ -683,27 +712,45 @@ export async function getSetupState(): Promise<SetupState> {
   const { supabase, orgId, organisationName } = context;
   const cachedSettings = await loadOrganisationSettingsRow(orgId);
   const settingsRow = cachedSettings ?? (await ensureDefaultSettings(supabase, orgId));
+  const loadWork = focus === "full" || focus === "work" || focus === "ready";
+  const loadRates = focus === "full" || focus === "labour";
+  const loadConsent = focus === "full" || focus === "ready";
 
   const [{ data: workAreas }, { data: rates }, { data: profile }] = await Promise.all([
-    supabase
-      .from("organisation_work_areas")
-      .select(
-        "id, work_area_type, label, category, description, estimate_support, enabled, sort_order"
-      )
-      .eq("org_id", orgId)
-      .order("sort_order"),
-    supabase
-      .from("rates")
-      .select(
-        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
-      )
-      .eq("org_id", orgId)
-      .eq("active", true),
-    supabase
-      .from("profiles")
-      .select("marketing_consent, marketing_consent_source")
-      .eq("id", context.user.id)
-      .maybeSingle(),
+    loadWork
+      ? supabase
+          .from("organisation_work_areas")
+          .select(
+            "id, work_area_type, label, category, description, estimate_support, enabled, sort_order"
+          )
+          .eq("org_id", orgId)
+          .order("sort_order")
+      : Promise.resolve({ data: [] }),
+    loadRates
+      ? focus === "labour"
+        ? supabase
+            .from("rates")
+            .select(
+              "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
+            )
+            .eq("org_id", orgId)
+            .eq("active", true)
+            .in("item_key", [CARPENTER_LABOUR_RATE_KEY, LABOURER_LABOUR_RATE_KEY])
+        : supabase
+            .from("rates")
+            .select(
+              "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
+            )
+            .eq("org_id", orgId)
+            .eq("active", true)
+      : Promise.resolve({ data: [] }),
+    loadConsent
+      ? supabase
+          .from("profiles")
+          .select("marketing_consent, marketing_consent_source")
+          .eq("id", context.user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   const consentSource = profile?.marketing_consent_source;
   const marketingConsent =
@@ -900,67 +947,71 @@ export async function savePrimaryWorkAreas(input: {
     };
   }
 
-  const context = await getSetupAuthContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
-  }
-  const denied = await permissionDeniedError({
-    orgId: context.orgId,
-    userId: context.user.id,
-    permission: "company.edit",
+  return beginSetupMutation("savePrimaryWorkAreas", async () => {
+    const context = await getSetupMutationContext();
+    if (!context) {
+      return MISSING_ORG_ERROR;
+    }
+    const denied = await permissionDeniedError({
+      orgId: context.orgId,
+      userId: context.user.id,
+      permission: "company.edit",
+    });
+    if (denied) return denied;
+
+    const { supabase, orgId } = context;
+    const selectionMap = new Map(
+      parsed.data.selections.map((s) => [s.work_area_type, s.enabled])
+    );
+
+    const rows = SCOPE_CATALOGUE.map((item, index) => ({
+      org_id: orgId,
+      work_area_type: item.type,
+      label: item.label,
+      category: item.category,
+      description: item.description,
+      estimate_support: item.estimateSupport,
+      enabled: selectionMap.get(item.type) === true,
+      sort_order: index,
+    }));
+
+    const [upsertResult, settingsResult] = await Promise.all([
+      supabase
+        .from("organisation_work_areas")
+        .upsert(rows, { onConflict: "org_id,work_area_type" }),
+      supabase
+        .from("organisation_settings")
+        .select("onboarding_status, onboarding_step")
+        .eq("org_id", orgId)
+        .maybeSingle(),
+    ]);
+
+    if (upsertResult.error) {
+      return setupDbError(upsertResult.error);
+    }
+
+    const settings = settingsResult.data;
+    if (
+      settings?.onboarding_status !== "completed" &&
+      (settings?.onboarding_step === "work_areas" ||
+        settings?.onboarding_step === "company")
+    ) {
+      const { error: settingsError } = await supabase
+        .from("organisation_settings")
+        .update({
+          onboarding_status: "in_progress",
+          onboarding_step: "labour",
+        })
+        .eq("org_id", orgId);
+      if (settingsError) return setupDbError(settingsError);
+    }
+
+    revalidatePath("/app/setup");
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/rates");
+
+    return { success: true };
   });
-  if (denied) return denied;
-
-  const { supabase, orgId } = context;
-  const selectionMap = new Map(
-    parsed.data.selections.map((s) => [s.work_area_type, s.enabled])
-  );
-
-  const rows = SCOPE_CATALOGUE.map((item, index) => ({
-    org_id: orgId,
-    work_area_type: item.type,
-    label: item.label,
-    category: item.category,
-    description: item.description,
-    estimate_support: item.estimateSupport,
-    enabled: selectionMap.get(item.type) === true,
-    sort_order: index,
-  }));
-
-  const { error: upsertError } = await supabase
-    .from("organisation_work_areas")
-    .upsert(rows, { onConflict: "org_id,work_area_type" });
-
-  if (upsertError) {
-    return setupDbError(upsertError);
-  }
-
-  const { data: settings } = await supabase
-    .from("organisation_settings")
-    .select("onboarding_status, onboarding_step")
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  if (
-    settings?.onboarding_status !== "completed" &&
-    (settings?.onboarding_step === "work_areas" ||
-      settings?.onboarding_step === "company")
-  ) {
-    const { error: settingsError } = await supabase
-      .from("organisation_settings")
-      .update({
-        onboarding_status: "in_progress",
-        onboarding_step: "labour",
-      })
-      .eq("org_id", orgId);
-    if (settingsError) return setupDbError(settingsError);
-  }
-
-  revalidatePath("/app/setup");
-  revalidatePath("/app/dashboard");
-  revalidatePath("/app/rates");
-
-  return { success: true };
 }
 
 const rateValueSchema = z
@@ -1128,7 +1179,8 @@ export async function saveRequiredLabourCosts(input: {
   if (!margin.ok) fieldErrors.targetMarginPercent = [margin.error];
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  const context = await getSetupAuthContext();
+  return beginSetupMutation("saveRequiredLabourCosts", async () => {
+  const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
   const orgId = context.orgId;
   if (!onboardingMutationIsTenantScoped(orgId, orgId)) {
@@ -1145,35 +1197,37 @@ export async function saveRequiredLabourCosts(input: {
 
   if (!carpenter.ok || !labourer.ok || !margin.ok) return { fieldErrors };
 
-  if (carpenter.writeRate) {
-    const carpenterError = await upsertInternalLabourCost({
-      supabase: context.supabase,
-      orgId,
-      itemKey: CARPENTER_LABOUR_RATE_KEY,
-      trade: "carpenter",
-      label: "Carpenter / builder",
-      costRate: carpenter.costRate,
-    });
-    if (carpenterError) return carpenterError;
-  }
+  const [carpenterError, labourerError, settingsResult] = await Promise.all([
+    carpenter.writeRate
+      ? upsertInternalLabourCost({
+          supabase: context.supabase,
+          orgId,
+          itemKey: CARPENTER_LABOUR_RATE_KEY,
+          trade: "carpenter",
+          label: "Carpenter / builder",
+          costRate: carpenter.costRate,
+        })
+      : Promise.resolve(null),
+    labourer.writeRate
+      ? upsertInternalLabourCost({
+          supabase: context.supabase,
+          orgId,
+          itemKey: LABOURER_LABOUR_RATE_KEY,
+          trade: "labourer",
+          label: "Labourer",
+          costRate: labourer.costRate,
+        })
+      : Promise.resolve(null),
+    context.supabase
+      .from("organisation_settings")
+      .select("onboarding_status")
+      .eq("org_id", orgId)
+      .maybeSingle(),
+  ]);
+  if (carpenterError) return carpenterError;
+  if (labourerError) return labourerError;
 
-  if (labourer.writeRate) {
-    const labourerError = await upsertInternalLabourCost({
-      supabase: context.supabase,
-      orgId,
-      itemKey: LABOURER_LABOUR_RATE_KEY,
-      trade: "labourer",
-      label: "Labourer",
-      costRate: labourer.costRate,
-    });
-    if (labourerError) return labourerError;
-  }
-
-  const { data: settings } = await context.supabase
-    .from("organisation_settings")
-    .select("onboarding_status")
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const settings = settingsResult.data;
 
   const settingsUpdate: Record<string, unknown> = {
     default_margin_percent: margin.marginPercent,
@@ -1194,6 +1248,7 @@ export async function saveRequiredLabourCosts(input: {
   revalidatePath("/app/rates");
   revalidatePath("/app/dashboard");
   return { success: true };
+  });
 }
 
 function optionalText(value: string | undefined, max: number): string | null {
@@ -1258,21 +1313,25 @@ export async function saveBusinessIdentity(input: {
   if (countryCode !== "NZ" && countryCode !== "AU") return { fieldErrors };
   if (website === "invalid") return { fieldErrors };
 
-  const context = await getSetupAuthContext();
+  return beginSetupMutation("saveBusinessIdentity", async () => {
+  const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
-  const denied = await permissionDeniedError({
-    orgId: context.orgId,
-    userId: context.user.id,
-    permission: "company.edit",
-  });
+  const [denied, existingResult] = await Promise.all([
+    permissionDeniedError({
+      orgId: context.orgId,
+      userId: context.user.id,
+      permission: "company.edit",
+    }),
+    context.supabase
+      .from("organisation_settings")
+      .select("onboarding_status, timezone")
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+  ]);
   if (denied) return denied;
 
   const country = getCountryOption(countryCode);
-  const { data: existing } = await context.supabase
-    .from("organisation_settings")
-    .select("onboarding_status, timezone")
-    .eq("org_id", context.orgId)
-    .maybeSingle();
+  const existing = existingResult.data;
   const timezone =
     (typeof existing?.timezone === "string" && existing.timezone) ||
     defaultTimezoneForCountry({ country: countryCode }) ||
@@ -1299,6 +1358,7 @@ export async function saveBusinessIdentity(input: {
   revalidatePath("/app/setup");
   revalidatePath("/app/settings/company");
   return { success: true };
+  });
 }
 
 /**
@@ -1324,20 +1384,24 @@ export async function saveBusinessAddress(input: {
   }
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  const context = await getSetupAuthContext();
+  return beginSetupMutation("saveBusinessAddress", async () => {
+  const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
-  const denied = await permissionDeniedError({
-    orgId: context.orgId,
-    userId: context.user.id,
-    permission: "company.edit",
-  });
+  const [denied, existingResult] = await Promise.all([
+    permissionDeniedError({
+      orgId: context.orgId,
+      userId: context.user.id,
+      permission: "company.edit",
+    }),
+    context.supabase
+      .from("organisation_settings")
+      .select("country, onboarding_status")
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+  ]);
   if (denied) return denied;
 
-  const { data: existing } = await context.supabase
-    .from("organisation_settings")
-    .select("country, onboarding_status")
-    .eq("org_id", context.orgId)
-    .maybeSingle();
+  const existing = existingResult.data;
   const countryCode = normalizeCountryCode(
     typeof existing?.country === "string" ? existing.country : null
   );
@@ -1363,6 +1427,7 @@ export async function saveBusinessAddress(input: {
   revalidatePath("/app/setup");
   revalidatePath("/app/settings/company");
   return { success: true };
+  });
 }
 
 /**
@@ -1382,20 +1447,24 @@ export async function saveGstRegistration(input: {
     };
   }
 
-  const context = await getSetupAuthContext();
+  return beginSetupMutation("saveGstRegistration", async () => {
+  const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
-  const denied = await permissionDeniedError({
-    orgId: context.orgId,
-    userId: context.user.id,
-    permission: "company.edit",
-  });
+  const [denied, existingResult] = await Promise.all([
+    permissionDeniedError({
+      orgId: context.orgId,
+      userId: context.user.id,
+      permission: "company.edit",
+    }),
+    context.supabase
+      .from("organisation_settings")
+      .select("country, onboarding_status")
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+  ]);
   if (denied) return denied;
 
-  const { data: existing } = await context.supabase
-    .from("organisation_settings")
-    .select("country, onboarding_status")
-    .eq("org_id", context.orgId)
-    .maybeSingle();
+  const existing = existingResult.data;
   const countryCode = normalizeCountryCode(
     typeof existing?.country === "string" ? existing.country : null
   );
@@ -1450,29 +1519,34 @@ export async function saveGstRegistration(input: {
   revalidatePath("/app/setup");
   revalidatePath("/app/settings/company");
   return { success: true };
+  });
 }
 
 /**
  * Optional product-update choice. A failure here must not block completion.
+ * An untouched choice is not sent here. An explicit yes or no is stored.
  * Source is always onboarding.
  */
 export async function recordOnboardingMarketingConsent(
   consent: boolean
 ): Promise<ActionResult> {
-  if (consent !== true) return { success: true };
-  const context = await getSetupAuthContext();
-  if (!context) return MISSING_ORG_ERROR;
-  const { error } = await context.supabase.rpc("set_own_marketing_consent", {
-    p_consent: true,
-    p_source: "onboarding",
+  if (consent !== true && consent !== false) return { success: true };
+  return beginSetupMutation("recordOnboardingMarketingConsent", async () => {
+    const context = await getSetupMutationContext();
+    if (!context) return MISSING_ORG_ERROR;
+    const { error } = await context.supabase.rpc("set_own_marketing_consent", {
+      p_consent: consent,
+      p_source: "onboarding",
+    });
+    if (error) return { error: "Could not save product updates. Try again." };
+    return { success: true };
   });
-  if (error) return { error: "Could not save product updates." };
-  return { success: true };
 }
 
 /** Single completion event. Safe to call again. Does not require marketing consent. */
 export async function completeRequiredOnboarding(): Promise<ActionResult> {
-  const context = await getSetupAuthContext();
+  return beginSetupMutation("completeRequiredOnboarding", async () => {
+  const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
 
   const denied = await permissionDeniedError({
@@ -1496,6 +1570,7 @@ export async function completeRequiredOnboarding(): Promise<ActionResult> {
   }
 
   return writeCanonicalOnboardingCompletion(context);
+  });
 }
 
 export async function dismissOptionalPersonalisation(): Promise<ActionResult> {

@@ -215,6 +215,24 @@ async function finishConfirmedSession(
   correlationId: string,
   startedAt: number
 ) {
+  if (!user.email_confirmed_at && !next.startsWith("/reset-password")) {
+    await supabase.auth.signOut();
+    const url = new URL("/signup", origin);
+    url.searchParams.set("confirm", "required");
+    const response = NextResponse.redirect(url);
+    redirectResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie);
+    });
+    logAuthEvent({
+      event: "confirmation_callback_failed",
+      category: "CONFIRMATION_PENDING",
+      correlationId,
+      userId: user.id,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return response;
+  }
+
   let destination = next;
   if (next.startsWith("/reset-password")) {
     destination = "/reset-password";

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { QuotrLoader } from "@/components/brand/QuotrLoader";
 import { AppShell } from "@/components/layout/app-shell";
+import { ProtectedHistoryGuard } from "@/components/layout/protected-history-guard";
 import { OnboardingFrame } from "@/components/setup/OnboardingFrame";
 import { getOrgBillingState } from "@/lib/billing/server";
 import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
@@ -15,7 +16,7 @@ import {
 import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { getFirstRunStage, getOnboardingAccess } from "@/lib/setup/actions";
+import { getOnboardingAccess } from "@/lib/setup/actions";
 import { resolveProtectedOnboardingAccess } from "@/lib/setup/first-run-stage";
 import { markAnalytics, startAnalyticsClock } from "@/lib/analytics/server-timing";
 import { memberCanCreateProjects } from "@/lib/team/permissions";
@@ -76,23 +77,27 @@ async function AuthenticatedApp({
       redirect(SETUP_REQUIRED_PATH);
     }
 
-    return <AuthShell>{children}</AuthShell>;
+    return (
+      <>
+        <ProtectedHistoryGuard />
+        <AuthShell>{children}</AuthShell>
+      </>
+    );
   }
 
   if (onSetupRequired) {
     redirect("/app/dashboard");
   }
 
-  const [display, firstRunStage, onboardingAccess, billingState] = await Promise.all([
+  const billingPromise = getOrgBillingState(auth.orgId).catch(() => null);
+  const [display, onboardingAccess] = await Promise.all([
     getAuthDisplayProfile(),
-    getFirstRunStage(),
     getOnboardingAccess(),
-    getOrgBillingState(auth.orgId).catch(() => null),
   ]);
 
   if (timingAnalytics) markAnalytics("shell");
   const onboardingAccessDecision = resolveProtectedOnboardingAccess({
-    stage: firstRunStage,
+    stage: onboardingAccess.stage,
     role: onboardingAccess.role,
     pathname,
   });
@@ -103,6 +108,8 @@ async function AuthenticatedApp({
 
   if (onboardingLocked) {
     return (
+      <>
+        <ProtectedHistoryGuard />
       <OnboardingFrame
         userEmail={display?.userEmail ?? auth.user.email}
         fullName={display?.fullName}
@@ -112,8 +119,11 @@ async function AuthenticatedApp({
       >
         {children}
       </OnboardingFrame>
+      </>
     );
   }
+
+  const billingState = await billingPromise;
 
   let billingNotice: TrialBannerNotice | null = null;
   let showTeamNav = false;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QuotrLoader } from "@/components/brand/QuotrLoader";
 import type { OnboardingShellMode } from "@/lib/setup/first-run-stage";
 
 const STEPS: Array<{ mode: OnboardingShellMode; name: string }> = [
@@ -96,9 +97,10 @@ export function OnboardingActions({
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        aria-busy={pending || undefined}
+        className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-100"
       >
-        {pending ? "Saving…" : continueLabel}
+        {pending ? <QuotrLoader variant="compact" status="Saving…" /> : continueLabel}
       </button>
     </div>
   );

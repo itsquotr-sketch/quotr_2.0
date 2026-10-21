@@ -8,7 +8,7 @@ import {
   type ProfileActionState,
 } from "@/lib/auth/profile-actions";
 import { PHONE_ALREADY_LINKED_MESSAGE } from "@/lib/auth/account-phone";
-import { logout } from "@/app/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -263,11 +263,13 @@ export function ProfilePageContent({
             Sign out of Quotr on this device.
           </p>
         </div>
-        <form action={logout}>
-          <Button type="submit" variant="outline">
-            Log out
-          </Button>
-        </form>
+        <LogoutForm returnTo="/app/profile">
+          {(pending) => (
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Signing out…" : "Log out"}
+            </Button>
+          )}
+        </LogoutForm>
       </section>
     </div>
   );

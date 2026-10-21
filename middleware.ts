@@ -11,8 +11,22 @@ export async function middleware(request: NextRequest) {
     pathname === "/signup" ||
     pathname === "/forgot-password";
   const isProtectedRoute = pathname.startsWith("/app");
+  const emailConfirmed = Boolean(user?.email_confirmed_at);
+  const authenticated = Boolean(user && emailConfirmed);
 
-  if (isProtectedRoute && !user) {
+  if (user && !emailConfirmed && isProtectedRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    url.search = "";
+    url.searchParams.set("confirm", "required");
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
+
+  if (isProtectedRoute && !authenticated) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -29,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   // Logged-in users on login/signup/forgot → app (layout → setup-required if needed).
   // /reset-password is intentionally excluded so recovery sessions can set a password.
-  if (isPublicAuthRoute && user) {
+  if (isPublicAuthRoute && authenticated) {
     const url = request.nextUrl.clone();
     url.pathname = "/app/dashboard";
     url.search = "";
@@ -50,6 +64,10 @@ export async function middleware(request: NextRequest) {
   supabaseResponse.cookies.getAll().forEach((cookie) => {
     response.cookies.set(cookie);
   });
+
+  if (isProtectedRoute) {
+    response.headers.set("Cache-Control", "private, no-store");
+  }
 
   return response;
 }

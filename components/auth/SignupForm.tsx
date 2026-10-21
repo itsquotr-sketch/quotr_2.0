@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { signup, type AuthActionState } from "@/app/(auth)/actions";
 import {
   resendSignupConfirmation,
@@ -35,6 +35,11 @@ function ConfirmationPending({ email }: { email?: string }) {
     resendSignupConfirmation,
     resendInitial
   );
+  const resendLock = useRef(false);
+
+  useEffect(() => {
+    if (!resendPending) resendLock.current = false;
+  }, [resendPending]);
 
   return (
     <AuthCard>
@@ -76,17 +81,35 @@ function ConfirmationPending({ email }: { email?: string }) {
             {resendState.success}
           </p>
         ) : null}
-        {email ? (
-          <form action={resendAction}>
+        <form
+          action={(formData) => {
+            if (resendPending || resendLock.current) return;
+            resendLock.current = true;
+            resendAction(formData);
+          }}
+        >
+          {email ? (
             <input type="hidden" name="email" value={email} />
-            <AuthSubmitButton
-              pending={resendPending}
-              idle="Resend confirmation email"
-              pendingLabel="Sending…"
-              variant="outline"
-            />
-          </form>
-        ) : null}
+          ) : (
+            <div className="mb-3 space-y-1.5">
+              <Label htmlFor="resend-email">Email</Label>
+              <Input
+                id="resend-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="h-11"
+              />
+            </div>
+          )}
+          <AuthSubmitButton
+            pending={resendPending}
+            idle="Resend confirmation email"
+            pendingLabel="Sending…"
+            variant="outline"
+          />
+        </form>
       </AuthCardContent>
       <AuthCardFooter>
         <Button render={<Link href="/login" />} className="h-11 w-full">
@@ -100,12 +123,13 @@ function ConfirmationPending({ email }: { email?: string }) {
 export function SignupForm(props: {
   inviteToken: string;
   invitedEmail: string;
+  confirmRequired?: boolean;
 }) {
   const inviteToken = props.inviteToken;
   const invitedEmail = props.invitedEmail;
   const [state, formAction, pending] = useActionState(signup, initialState);
 
-  if (state.confirmationPending) {
+  if (state.confirmationPending || props.confirmRequired) {
     return (
       <ConfirmationPending email={state.confirmationEmail ?? invitedEmail} />
     );

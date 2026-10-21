@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useContinueSubmit } from "./use-continue-submit";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -77,7 +78,7 @@ export function WorkAreasStep({
   );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { saving, run } = useContinueSubmit();
 
   const scopesByCategory = useMemo(() => {
     return SCOPE_CATEGORIES.map((category) => ({
@@ -101,8 +102,6 @@ export function WorkAreasStep({
       return;
     }
 
-    setSaving(true);
-
     const payload = {
       selections: Object.entries(selections).map(([work_area_type, enabled]) => ({
         work_area_type,
@@ -110,11 +109,12 @@ export function WorkAreasStep({
       })),
     };
 
-    const result = isFirstRun
-      ? await savePrimaryWorkAreas(payload)
-      : await saveOrganisationWorkAreas(payload);
-
-    setSaving(false);
+    const result = await run(
+      () =>
+        isFirstRun ? savePrimaryWorkAreas(payload) : saveOrganisationWorkAreas(payload),
+      isFirstRun
+    );
+    if (!result) return;
 
     if (result.error) {
       setError(result.error);

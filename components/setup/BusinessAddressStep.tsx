@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useContinueSubmit } from "./use-continue-submit";
 import { useRouter } from "next/navigation";
 import { AddressSearch } from "@/components/addresses/AddressSearch";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,7 @@ export function BusinessAddressStep({ state }: { state: SetupState }) {
   const [postcode, setPostcode] = useState(settings?.postcode ?? "");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { saving, run } = useContinueSubmit();
   const errorSignature = [
     error ?? "",
     ...Object.entries(fieldErrors).map(([key, messages]) => `${key}:${messages[0] ?? ""}`),
@@ -47,15 +48,18 @@ export function BusinessAddressStep({ state }: { state: SetupState }) {
     event.preventDefault();
     setError(null);
     setFieldErrors({});
-    setSaving(true);
-    const result = await saveBusinessAddress({
-      addressLine1,
-      addressLine2,
-      city,
-      region,
-      postcode,
-    });
-    setSaving(false);
+    const result = await run(
+      () =>
+        saveBusinessAddress({
+          addressLine1,
+          addressLine2,
+          city,
+          region,
+          postcode,
+        }),
+      true
+    );
+    if (!result) return;
     if (result.error) {
       setError(result.error);
       return;

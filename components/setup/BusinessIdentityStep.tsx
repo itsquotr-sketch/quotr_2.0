@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useContinueSubmit } from "./use-continue-submit";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ export function BusinessIdentityStep({ state }: { state: SetupState }) {
   );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { saving, run } = useContinueSubmit();
   const errorSignature = [
     error ?? "",
     ...Object.entries(fieldErrors).map(([key, messages]) => `${key}:${messages[0] ?? ""}`),
@@ -42,16 +43,19 @@ export function BusinessIdentityStep({ state }: { state: SetupState }) {
     event.preventDefault();
     setError(null);
     setFieldErrors({});
-    setSaving(true);
-    const result = await saveBusinessIdentity({
-      tradingName,
-      legalName,
-      contactEmail,
-      contactPhone,
-      website,
-      country,
-    });
-    setSaving(false);
+    const result = await run(
+      () =>
+        saveBusinessIdentity({
+          tradingName,
+          legalName,
+          contactEmail,
+          contactPhone,
+          website,
+          country,
+        }),
+      true
+    );
+    if (!result) return;
     if (result.error) {
       setError(result.error);
       return;

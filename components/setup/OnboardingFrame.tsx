@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { LogoutFailureNotice } from "@/components/auth/LogoutForm";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
@@ -46,6 +48,9 @@ export function OnboardingFrame({
           <div className="mb-5">
             <QuotrLogo variant="wordmark" href={null} height={22} />
           </div>
+          <Suspense fallback={null}>
+            <LogoutFailureNotice />
+          </Suspense>
           {children}
         </div>
       </div>

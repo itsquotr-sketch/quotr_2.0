@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { POST_SIGNUP_DESTINATION } from "../lib/auth/post-auth-navigation";
 import { shouldProvisionSignupOrganisation } from "../lib/auth/email-confirm-destination";
 import { formatOnboardingAddress } from "../lib/setup/format-onboarding-address";
+import { quotrLabourBenchmarkLabel } from "../lib/setup/labour-benchmark-label";
 import { parseRequiredTargetMargin } from "../lib/setup/pricing-basics";
 import {
   FIRST_RUN_ADDRESS_PATH,
@@ -173,7 +174,12 @@ function main(): void {
     labour.includes('name="carpenterChoice"') &&
       labour.includes('name="labourerChoice"') &&
       labour.includes("Use my company cost") &&
-      labour.includes("Use the Quotr benchmark")
+      labour.includes("Use the Quotr benchmark") &&
+      labour.includes("quotrLabourBenchmarkLabel") &&
+      labour.includes("not a client charge-out rate") &&
+      read("lib/setup/labour-benchmark-label.ts").includes("per person-hour") &&
+      quotrLabourBenchmarkLabel("carpenter") === "$60 per person-hour" &&
+      quotrLabourBenchmarkLabel("labourer") === "$60 per person-hour"
   );
   assert(
     "benchmark does not write a company rate",
@@ -204,8 +210,10 @@ function main(): void {
       ) &&
       ready.includes("marketingConsent === true") &&
       ready.includes("min-h-11 w-full cursor-pointer") &&
+      ready.includes('type="radio"') &&
       ready.includes("recordOnboardingMarketingConsent") &&
-      ready.includes("if (productUpdates)") &&
+      ready.includes("if (productUpdates !== null)") &&
+      actions.includes("p_consent: consent") &&
       ready.includes("Product updates were not saved. You can update this later.") &&
       !actions.slice(actions.indexOf("export async function completeRequiredOnboarding")).includes(
         "marketing_consent"

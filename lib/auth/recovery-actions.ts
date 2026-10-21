@@ -12,6 +12,7 @@ import {
   logAuthEvent,
 } from "@/lib/auth/logging";
 import { newPasswordPairSchema } from "@/lib/auth/password";
+import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
 import {
   buildAuthCallbackUrl,
   getAuthCallbackOrigin,
@@ -168,7 +169,7 @@ export async function resendSignupConfirmation(
 
   const supabase = await createClient();
   const origin = await getAuthCallbackOrigin();
-  const emailRedirectTo = buildAuthCallbackUrl(origin, "/app/dashboard");
+  const emailRedirectTo = buildAuthCallbackUrl(origin, POST_SIGNUP_DESTINATION);
 
   const { error } = await supabase.auth.resend({
     type: "signup",
@@ -190,7 +191,7 @@ export async function resendSignupConfirmation(
     // Non-enumerating: still acknowledge for most provider failures.
     return {
       success:
-        "If that email can receive a confirmation link, we've sent another one.",
+        "If that email can receive a confirmation link, we've sent another one. Check your inbox and spam folder.",
     };
   }
 
@@ -202,6 +203,6 @@ export async function resendSignupConfirmation(
 
   return {
     success:
-      "If that email can receive a confirmation link, we've sent another one.",
+      "If that email can receive a confirmation link, we've sent another one. Check your inbox and spam folder.",
   };
 }

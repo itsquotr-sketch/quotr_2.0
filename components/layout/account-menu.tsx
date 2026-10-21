@@ -1,9 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CreditCard, Building2, LogOut, UserRound } from "lucide-react";
-import { logout } from "@/app/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import {
   getDisplayUserName,
   useAppUser,
@@ -60,7 +59,7 @@ export function AccountMenu({
   className,
 }: AccountMenuProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const pathname = usePathname();
   const appUser = useAppUser();
   const onboardingLocked = appUser.onboardingLocked === true;
 
@@ -71,17 +70,10 @@ export function AccountMenu({
   const showIdentity = variant === "sidebar" || variant === "panel";
   const isSidebar = variant === "sidebar";
 
-  function handleLogout() {
-    startTransition(async () => {
-      await logout();
-    });
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         type="button"
-        disabled={pending}
         className={cn(
           "inline-flex cursor-pointer items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60",
           // Header: adequate tap target around avatar
@@ -181,15 +173,18 @@ export function AccountMenu({
           Billing
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          className="min-h-10 cursor-pointer sm:min-h-8"
-          disabled={pending}
-          onClick={handleLogout}
-        >
-          <LogOut className="size-4" />
-          {pending ? "Signing out…" : "Log out"}
-        </DropdownMenuItem>
+        <LogoutForm returnTo={pathname} className="px-1 pb-1">
+          {(pending) => (
+            <button
+              type="submit"
+              disabled={pending}
+              className="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] disabled:opacity-60 sm:min-h-8"
+            >
+              <LogOut className="size-4" />
+              {pending ? "Signing out…" : "Log out"}
+            </button>
+          )}
+        </LogoutForm>
       </DropdownMenuContent>
     </DropdownMenu>
   );

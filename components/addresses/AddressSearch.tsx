@@ -18,6 +18,7 @@ import {
   loadPlacesLibrary,
   PLACE_DETAIL_FIELDS,
   type PlacesAutocompleteElement,
+  type PlacesPlace,
 } from "@/lib/addresses/places-loader";
 
 type AddressSearchProps = {
@@ -61,11 +62,14 @@ export function AddressSearch({ countryCode, disabled = false, onAddress }: Addr
     let cancelled = false;
     let element: PlacesAutocompleteElement | null = null;
     let acceptedPrediction = "";
+    let selectionGeneration: number | null = null;
 
     const onInput = () => {
       const value = element?.value ?? "";
       if (acceptedPrediction && sameText(value, acceptedPrediction)) return;
+      if (selectionGeneration != null && value.trim() === "") return;
       acceptedPrediction = "";
+      selectionGeneration = null;
       generationRef.current += 1;
       setStatus(null);
     };
@@ -77,18 +81,17 @@ export function AddressSearch({ countryCode, disabled = false, onAddress }: Addr
 
     const onSelect = (event: Event) => {
       const selectEvent = event as Event & {
+        place?: PlacesPlace;
         placePrediction?: {
           text?: { toString(): string };
-          toPlace?: () => {
-            addressComponents?: Parameters<typeof mapAddressComponents>[0];
-            fetchFields: (request: { fields: readonly string[] }) => Promise<void>;
-          };
+          toPlace?: () => PlacesPlace;
         };
       };
       const prediction = selectEvent.placePrediction;
-      const place = prediction?.toPlace?.();
-      if (!place) return;
+      const place = selectEvent.place ?? prediction?.toPlace?.();
+      if (!place?.fetchFields) return;
       const generation = generationRef.current;
+      selectionGeneration = generation;
       const countryAtRequest = countryRef.current;
       const predictionText = prediction?.text?.toString() ?? "";
       acceptedPrediction = predictionText;

@@ -3,9 +3,9 @@
 import { useActionState } from "react";
 import {
   finishAccountSetup,
-  logout,
   type AuthActionState,
 } from "@/app/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import {
   AuthCard,
   AuthCardContent,
@@ -112,16 +112,18 @@ export function SetupRequiredForm({
         </AuthCardFooter>
       </form>
       <AuthCardFooter className="border-t pt-(--card-spacing)">
-        <form action={logout} className="w-full">
-          <Button
-            type="submit"
-            variant="ghost"
-            className="h-11 w-full"
-            disabled={pending}
-          >
-            Sign out
-          </Button>
-        </form>
+        <LogoutForm returnTo="/app/setup-required" className="w-full">
+          {(signingOut) => (
+            <Button
+              type="submit"
+              variant="ghost"
+              className="h-11 w-full"
+              disabled={pending || signingOut}
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          )}
+        </LogoutForm>
       </AuthCardFooter>
     </AuthCard>
   );

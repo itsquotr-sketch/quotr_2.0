@@ -3,7 +3,7 @@ import { isWellFormedInviteToken } from "@/lib/team/tokens";
 import { SignupForm } from "@/components/auth/SignupForm";
 
 type SignupPageProps = {
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; confirm?: string }>;
 };
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
@@ -17,6 +17,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   }
 
   return (
-    <SignupForm inviteToken={inviteToken} invitedEmail={invitedEmail} />
+    <SignupForm
+      inviteToken={inviteToken}
+      invitedEmail={invitedEmail}
+      confirmRequired={params.confirm === "required"}
+    />
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { LogoutFailureNotice } from "@/components/auth/LogoutForm";
+import { ProtectedHistoryGuard } from "@/components/layout/protected-history-guard";
 import { AppSidebarNav } from "@/components/app-sidebar";
 import { TrialNoticeBanner } from "@/components/billing/TrialNoticeBanner";
 import { IncompleteSetupNotice } from "@/components/setup/IncompleteSetupNotice";
@@ -78,6 +81,10 @@ export function AppShell({
         canCreateProject,
       }}
     >
+      <ProtectedHistoryGuard />
+      <Suspense fallback={null}>
+        <LogoutFailureNotice />
+      </Suspense>
       <NotificationProvider>
       <div className="hidden" aria-hidden="true">
         <Link href="/app/profile" prefetch tabIndex={-1} />

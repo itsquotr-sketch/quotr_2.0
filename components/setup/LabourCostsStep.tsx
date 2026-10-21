@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { quotrLabourBenchmarkLabel } from "@/lib/setup/labour-benchmark-label";
+import { useContinueSubmit } from "./use-continue-submit";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,7 +42,7 @@ function storedChoice(value: string | null | undefined): LabourChoice {
 
 function choiceCardClass(selected: boolean) {
   return [
-    "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm outline-none",
+    "flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-sm outline-none",
     "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--brand-orange)] has-[:focus-visible]:ring-offset-2",
     selected
       ? "border-[var(--brand-orange)] bg-[var(--brand-orange-muted)]"
@@ -60,6 +62,7 @@ function RoleChoice({
   costId,
   hasSavedRate,
   costError,
+  benchmarkLabel,
 }: {
   legend: string;
   name: string;
@@ -72,6 +75,7 @@ function RoleChoice({
   costId: string;
   hasSavedRate: boolean;
   costError?: string;
+  benchmarkLabel: string;
 }) {
   return (
     <fieldset className="space-y-2">
@@ -97,7 +101,12 @@ function RoleChoice({
           onChange={() => onChoice("quotr_benchmark")}
           className="size-4 shrink-0"
         />
-        Use the Quotr benchmark
+        <span className="min-w-0 break-words">
+          Use the Quotr benchmark
+          <span className="mt-0.5 block font-normal text-muted-foreground">
+            {benchmarkLabel}. Labour cost to the business, not a client charge-out rate.
+          </span>
+        </span>
       </label>
       {choice !== "company" && costError ? (
         <OnboardingFieldError id={`${costId}-choice`} message={costError} />
@@ -158,7 +167,9 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
   );
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-  const [saving, setSaving] = useState(false);
+  const { saving, run } = useContinueSubmit();
+  const carpenterBenchmark = quotrLabourBenchmarkLabel("carpenter");
+  const labourerBenchmark = quotrLabourBenchmarkLabel("labourer");
   const errorSignature = [
     error ?? "",
     ...Object.entries(fieldErrors).map(([key, messages]) => `${key}:${messages[0] ?? ""}`),
@@ -180,15 +191,18 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
       setFieldErrors(nextErrors);
       return;
     }
-    setSaving(true);
-    const result = await saveRequiredLabourCosts({
-      carpenterChoice,
-      labourerChoice,
-      carpenterCost: carpenterChoice === "company" ? carpenterCost : "",
-      labourerCost: labourerChoice === "company" ? labourerCost : "",
-      targetMarginPercent,
-    });
-    setSaving(false);
+    const result = await run(
+      () =>
+        saveRequiredLabourCosts({
+          carpenterChoice,
+          labourerChoice,
+          carpenterCost: carpenterChoice === "company" ? carpenterCost : "",
+          labourerCost: labourerChoice === "company" ? labourerCost : "",
+          targetMarginPercent,
+        }),
+      true
+    );
+    if (!result) return;
     if (result.error) {
       setError(result.error);
       return;
@@ -224,6 +238,7 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
           costId="carpenter-cost"
           hasSavedRate={existingCost(state, CARPENTER_LABOUR_RATE_KEY) !== ""}
           costError={fieldErrors.carpenterCost?.[0] ?? fieldErrors.carpenterChoice?.[0]}
+          benchmarkLabel={carpenterBenchmark}
         />
         <RoleChoice
           legend="Labourer"
@@ -237,6 +252,7 @@ export function LabourCostsStep({ state }: { state: SetupState }) {
           costId="labourer-cost"
           hasSavedRate={existingCost(state, LABOURER_LABOUR_RATE_KEY) !== ""}
           costError={fieldErrors.labourerCost?.[0] ?? fieldErrors.labourerChoice?.[0]}
+          benchmarkLabel={labourerBenchmark}
         />
         <div className="space-y-1.5">
           <Label htmlFor="target-margin">Default target gross margin %</Label>
