@@ -3,12 +3,16 @@
  * Existing accounts are not backfilled and are not sent through signup again.
  */
 
-export const TERMS_OF_USE_VERSION = "2026-10-15";
-export const TERMS_OF_USE_URL = "https://get-quotr.com/terms";
-export const PRIVACY_POLICY_URL = "https://get-quotr.com/privacy";
+/**
+ * Application Terms version. This is the document at /terms.
+ * 2026-10-15 remains the website-only Terms and is not reused or backfilled.
+ */
+export const TERMS_OF_USE_VERSION = "2026-10-22";
+export const TERMS_OF_USE_URL = "/terms";
+export const PRIVACY_POLICY_URL = "/privacy";
 
 export const TERMS_ACCEPTANCE_REQUIRED =
-  "Agree to the Terms of Use to create an account.";
+  "Agree to the Application Terms to create an account.";
 export const MARKETING_CHOICE_REQUIRED =
   "Choose whether you want product updates.";
 

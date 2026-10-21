@@ -383,7 +383,7 @@ export function SignupForm(props: {
                   rel="noreferrer"
                   className={authTextLinkClass}
                 >
-                  Terms of Use
+                  Application Terms
                 </a>
                 .
               </span>
@@ -395,7 +395,7 @@ export function SignupForm(props: {
                 rel="noreferrer"
                 className={authTextLinkClass}
               >
-                Privacy Policy
+                Privacy Notice
               </a>
             </p>
             <FieldError

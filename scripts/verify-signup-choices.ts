@@ -30,6 +30,8 @@ const form = read("components/auth/SignupForm.tsx");
 const choices = read("lib/auth/signup-choices.ts");
 const preferences = read("lib/auth/signup-preferences.ts");
 const migration = read("supabase/migrations/112_signup_terms_acceptance.sql");
+const termsPage = read("app/(legal)/terms/page.tsx");
+const privacyPage = read("app/(legal)/privacy/page.tsx");
 const missing = signupChoiceErrors({ termsAccepted: false, marketingConsent: null });
 const yes = signupChoiceErrors({ termsAccepted: true, marketingConsent: "yes" });
 const no = signupChoiceErrors({ termsAccepted: true, marketingConsent: "no" });
@@ -43,13 +45,13 @@ assert("either marketing choice continues once Terms are accepted", Object.keys(
 assert("Terms alone do not imply a marketing choice", Object.keys(signupChoiceErrors({ termsAccepted: true, marketingConsent: null })).length === 1);
 assert(
   "signup form has one unchecked Terms control and an unselected marketing choice",
-  form.includes("I agree to the") &&
-    form.includes("Terms of Use") &&
+    form.includes("I agree to the") &&
+    form.includes("Application Terms") &&
     form.includes("TERMS_OF_USE_URL") &&
-    choices.includes("https://get-quotr.com/terms") &&
-    form.includes("Privacy Policy") &&
+    choices.includes('"/terms"') &&
+    form.includes("Privacy Notice") &&
     form.includes("PRIVACY_POLICY_URL") &&
-    choices.includes("https://get-quotr.com/privacy") &&
+    choices.includes('"/privacy"') &&
     form.includes("Would you like occasional product updates and practical Quotr tips?") &&
     form.includes("Yes, send me updates") &&
     form.includes("No thanks") &&
@@ -62,7 +64,9 @@ assert(
   "acceptance is recorded server-side without backfilling existing accounts",
   migration.includes("where id = v_uid") &&
     migration.includes("Existing profiles stay null") &&
-    migration.includes(TERMS_OF_USE_VERSION) &&
+    migration.includes("2026-10-15") &&
+    TERMS_OF_USE_VERSION === "2026-10-22" &&
+    !migration.includes(TERMS_OF_USE_VERSION) &&
     migration.includes("terms_accepted_at is not null") 
 );
 assert(
@@ -71,6 +75,18 @@ assert(
     preferences.includes("set_own_marketing_consent") &&
     !preferences.includes("loops.so") &&
     !preferences.includes("activateCampaign")
+);
+
+assert(
+  "application documents use the stored version and stay separate from the website terms",
+  termsPage.includes("TERMS_OF_USE_VERSION") &&
+    termsPage.includes("Application Terms") &&
+    termsPage.includes("get-quotr.com") &&
+    privacyPage.includes("TERMS_OF_USE_VERSION") &&
+    privacyPage.includes("Privacy Notice") &&
+    privacyPage.includes("privacy@quotr.co.nz") &&
+    !termsPage.includes("Quotr Limited") &&
+    !privacyPage.includes("Quotr Limited")
 );
 
 if (failed > 0) {
