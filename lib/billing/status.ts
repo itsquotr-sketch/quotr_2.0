@@ -11,7 +11,9 @@ export type StripeStatusMapInput = {
 
 /**
  * Stripe subscription state → Quotr internal status.
- * cancel_at_period_end while still within the paid period → scheduled_to_cancel.
+ * cancel_at_period_end, or cancel_at while the Stripe status is still open,
+ * maps to scheduled_to_cancel. Access continues until the earlier of the
+ * billing period end and cancel_at.
  * Stripe `canceled` → `cancelled`. pause_collection → paused (even if Stripe
  * status remains active).
  */

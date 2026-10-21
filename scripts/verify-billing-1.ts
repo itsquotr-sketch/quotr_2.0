@@ -6,6 +6,7 @@
  * Run: npx tsx scripts/verify-billing-1.ts
  */
 import { readFileSync, readdirSync } from "node:fs";
+import { resolveEffectiveAccessPolicy } from "../lib/billing/access-policy";
 import Stripe from "stripe";
 import { upsertTrustedCustomerMapping } from "../lib/billing/customer-mapping";
 import { assertCustomerMappingAssignable } from "../lib/billing/customers";
@@ -219,6 +220,7 @@ function subscriptionObject(input: {
   cancelAtPeriodEnd?: boolean;
   pause?: boolean;
   canceledAt?: number | null;
+  cancelAt?: number | null;
   trialEnd?: number | null;
   items: Array<{ price: string; quantity?: number; start?: number; end?: number }>;
   metadata?: Record<string, string>;
@@ -229,6 +231,7 @@ function subscriptionObject(input: {
     customer: input.customer,
     status: input.status ?? "active",
     cancel_at_period_end: input.cancelAtPeriodEnd ?? false,
+    cancel_at: input.cancelAt ?? null,
     pause_collection: input.pause ? { behavior: "void" } : null,
     canceled_at: input.canceledAt ?? null,
     trial_end: input.trialEnd ?? null,
@@ -866,7 +869,107 @@ async function runAsyncChecks() {
   assert(
     "scheduled cancellation is mirrored",
     scheduled.result === "processed" &&
-      afterScheduled?.status === "scheduled_to_cancel"
+      afterScheduled?.status === "scheduled_to_cancel" &&
+      afterScheduled.cancelAtPeriodEnd === true &&
+      afterScheduled.currentPeriodEnd === new Date(1_702_592_000 * 1000).toISOString()
+  );
+
+  const dahliaStore = createMemoryStore({
+    customers: [mappedCustomer(ORG_A, CUSTOMER_A)],
+  });
+  const dahliaCancel = await process(
+    dahliaStore,
+    event({
+      id: "evt_dahlia_cancel_at",
+      type: "customer.subscription.updated",
+      created: 1_700_000_400,
+      object: subscriptionObject({
+        id: "sub_builder",
+        customer: CUSTOMER_A,
+        cancelAtPeriodEnd: false,
+        cancelAt: 1_702_592_000,
+        canceledAt: 1_700_000_350,
+        items: [
+          {
+            price: PRICES.businessBaseMonthly,
+            end: 1_702_592_000,
+          },
+        ],
+      }),
+    })
+  );
+  const afterDahliaCancel = await dahliaStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "Dahlia cancel_at with cancel_at_period_end false is scheduled",
+    dahliaCancel.result === "processed" &&
+      afterDahliaCancel?.status === "scheduled_to_cancel" &&
+      afterDahliaCancel.cancelAtPeriodEnd === true &&
+      afterDahliaCancel.currentPeriodEnd === new Date(1_702_592_000 * 1000).toISOString()
+  );
+
+  const earlierCancelAt = 1_701_000_000;
+  const earlierStore = createMemoryStore({
+    customers: [mappedCustomer(ORG_A, CUSTOMER_A)],
+  });
+  const earlierCancel = await process(
+    earlierStore,
+    event({
+      id: "evt_dahlia_cancel_at_earlier",
+      type: "customer.subscription.updated",
+      created: 1_700_000_450,
+      object: subscriptionObject({
+        id: "sub_builder",
+        customer: CUSTOMER_A,
+        cancelAtPeriodEnd: false,
+        cancelAt: earlierCancelAt,
+        items: [{ price: PRICES.businessBaseMonthly, end: 1_702_592_000 }],
+      }),
+    })
+  );
+  const afterEarlier = await earlierStore.getSubscriptionByOrg(ORG_A, "test");
+  const earlierEnd = new Date(earlierCancelAt * 1000);
+  const beforeEarlier = resolveEffectiveAccessPolicy({
+    subscription: afterEarlier,
+    activeOverride: null,
+    now: new Date(earlierEnd.getTime() - 1000),
+  });
+  const afterEarlierInstant = resolveEffectiveAccessPolicy({
+    subscription: afterEarlier,
+    activeOverride: null,
+    now: new Date(earlierEnd.getTime() + 1000),
+  });
+  assert(
+    "earlier cancel_at shortens service end and access",
+    earlierCancel.result === "processed" &&
+      afterEarlier?.status === "scheduled_to_cancel" &&
+      afterEarlier.currentPeriodEnd === earlierEnd.toISOString() &&
+      beforeEarlier.accessClass === "full" &&
+      afterEarlierInstant.accessClass === "read_export"
+  );
+
+  const laterStore = createMemoryStore({
+    customers: [mappedCustomer(ORG_A, CUSTOMER_A)],
+  });
+  const laterCancel = await process(
+    laterStore,
+    event({
+      id: "evt_dahlia_cancel_at_later",
+      type: "customer.subscription.updated",
+      created: 1_700_000_460,
+      object: subscriptionObject({
+        id: "sub_builder",
+        customer: CUSTOMER_A,
+        cancelAtPeriodEnd: false,
+        cancelAt: 1_703_000_000,
+        items: [{ price: PRICES.businessBaseMonthly, end: 1_702_592_000 }],
+      }),
+    })
+  );
+  const afterLater = await laterStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "later cancel_at does not extend access past the paid period",
+    laterCancel.result === "processed" &&
+      afterLater?.currentPeriodEnd === new Date(1_702_592_000 * 1000).toISOString()
   );
 
   const liveMismatch = await process(

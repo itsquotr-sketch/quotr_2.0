@@ -178,6 +178,8 @@ export type StripeSubscriptionLike = {
   customerId: string;
   status: string;
   cancelAtPeriodEnd: boolean;
+  /** Stripe `cancel_at` unix seconds. Null when the payload has no scheduled instant. */
+  cancelAt: number | null;
   canceledAt: number | null;
   trialEnd: number | null;
   pauseCollection: boolean;

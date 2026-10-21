@@ -93,11 +93,23 @@ export function parseStripeSubscriptionLike(
     }
   }
 
+  const status = typeof object.status === "string" ? object.status : "incomplete";
+  const cancelAt = typeof object.cancel_at === "number" ? object.cancel_at : null;
+  const openForScheduledCancel =
+    status === "active" || status === "trialing" || status === "past_due";
+  // Dahlia (2026-08-26) portal cancellation sets cancel_at and leaves
+  // cancel_at_period_end false. Either signal schedules cancellation. The
+  // service end is the earlier of cancel_at and the billing period end.
+  const cancelAtPeriodEnd =
+    object.cancel_at_period_end === true ||
+    (cancelAt != null && openForScheduledCancel);
+
   return {
     id,
     customerId,
-    status: typeof object.status === "string" ? object.status : "incomplete",
-    cancelAtPeriodEnd: object.cancel_at_period_end === true,
+    status,
+    cancelAtPeriodEnd,
+    cancelAt,
     canceledAt:
       typeof object.canceled_at === "number" ? object.canceled_at : null,
     trialEnd: typeof object.trial_end === "number" ? object.trial_end : null,
@@ -137,6 +149,24 @@ export function pendingUpdatePriceIdsFromSubscriptionObject(
   });
 }
 
+/**
+ * Service end for a scheduled cancellation.
+ * `cancel_at` is the effective cancellation instant. It is not assumed to
+ * equal the billing period end. An earlier `cancel_at` wins so access cannot
+ * continue until the later period end. A later `cancel_at` does not extend
+ * access past the period already paid.
+ */
+export function effectiveScheduledServiceEnd(
+  periodEndUnix: number | null,
+  cancelAtUnix: number | null
+): string | null {
+  const periodEnd = unixSecondsToIso(periodEndUnix);
+  const cancelAt = unixSecondsToIso(cancelAtUnix);
+  if (cancelAt == null) return periodEnd;
+  if (periodEnd == null) return cancelAt;
+  return Date.parse(cancelAt) < Date.parse(periodEnd) ? cancelAt : periodEnd;
+}
+
 export function periodFromSubscriptionItems(
   subscription: StripeSubscriptionLike
 ): { start: string | null; end: string | null } {
@@ -170,6 +200,9 @@ export function mapStripeSubscriptionToMirror(input: {
   }
 
   const period = periodFromSubscriptionItems(input.subscription);
+  const periodEndUnix =
+    input.subscription.items.find((item) => item.currentPeriodEnd != null)
+      ?.currentPeriodEnd ?? null;
   const status = input.deleted
     ? "cancelled"
     : mapStripeSubscriptionStatus({
@@ -197,7 +230,10 @@ export function mapStripeSubscriptionToMirror(input: {
       stripeSeatPriceId: plan.stripeSeatPriceId,
       paidSeatQuantity: plan.paidSeatQuantity,
       currentPeriodStart: period.start,
-      currentPeriodEnd: period.end,
+      currentPeriodEnd:
+        status === "scheduled_to_cancel"
+          ? effectiveScheduledServiceEnd(periodEndUnix, input.subscription.cancelAt)
+          : period.end,
       trialEndsAt: unixSecondsToIso(input.subscription.trialEnd),
       cancelAtPeriodEnd: input.subscription.cancelAtPeriodEnd,
       cancelledAt:

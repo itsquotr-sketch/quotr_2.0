@@ -146,10 +146,12 @@ export function resolveEffectiveAccessPolicy(input: {
     subscription.source === "override" ? "override" : "stripe";
 
   if (subscription.status === "scheduled_to_cancel") {
-    const periodEnd = subscription.currentPeriodEnd
+    // Mirror stores the effective service end here: the earlier of the billing
+    // period end and Stripe cancel_at. Do not treat those instants as equal.
+    const serviceEnd = subscription.currentPeriodEnd
       ? new Date(subscription.currentPeriodEnd).getTime()
       : null;
-    if (periodEnd != null && Number.isFinite(periodEnd) && now.getTime() > periodEnd) {
+    if (serviceEnd != null && Number.isFinite(serviceEnd) && now.getTime() > serviceEnd) {
       return {
         source: stripeSource,
         accessClass: "read_export",
