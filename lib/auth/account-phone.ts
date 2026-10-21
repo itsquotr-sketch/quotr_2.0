@@ -104,6 +104,9 @@ export function buildSignupUserMetadata(input: {
   fullName: string;
   organisationName?: string | null;
   phone: NormalizedAccountPhone;
+  termsVersion?: string;
+  termsAcceptedAt?: string;
+  marketingConsent?: boolean;
 }): Record<string, string> {
   const metadata: Record<string, string> = {
     full_name: input.fullName,
@@ -112,6 +115,13 @@ export function buildSignupUserMetadata(input: {
     phone_country: input.phone.country,
     phone_display: input.phone.display,
   };
+  if (input.termsVersion && input.termsAcceptedAt) {
+    metadata.terms_version = input.termsVersion;
+    metadata.terms_accepted_at = input.termsAcceptedAt;
+  }
+  if (input.marketingConsent === true || input.marketingConsent === false) {
+    metadata.marketing_consent = input.marketingConsent ? "true" : "false";
+  }
   if (!input.invite) {
     metadata.organisation_name = input.organisationName?.trim() ?? "";
   }

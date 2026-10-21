@@ -7,6 +7,10 @@ import {
   PERGOLA_BENCHMARKS,
   RETAINING_WALL_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
+import {
+  QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR,
+  QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR,
+} from "@/lib/estimate/rates";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import {
   SPECIFIC_MATERIAL_RATE_CATALOGUE,
@@ -41,7 +45,7 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     trade: "carpenter",
     unit: "hour",
     description: "Primary trade rate used across most estimates. Quotr fallback is cost-only; charge-out uses company gross margin.",
-    defaultCostRate: 60, // QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR
+    defaultCostRate: QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR,
     recommended: true,
     calculatorSupport: "used_now",
     section: "labour",
@@ -53,8 +57,8 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     trade: "labourer",
     unit: "hour",
-    description: "Quotr fallback cost is $60 per person-hour when this company row is empty. A saved company cost still wins. Sell follows company gross margin. Priced Work Areas use the labourer path only when the calculator asks for a labourer.",
-    defaultCostRate: 60,
+    description: "Quotr fallback cost is $35 per person-hour when this company row is empty. Owner-approved 22 October 2026. Not a workbook figure. A saved company cost still wins. Sell follows company gross margin. Priced Work Areas use the labourer path only when the calculator asks for a labourer.",
+    defaultCostRate: QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR,
     recommended: true,
     calculatorSupport: "planned",
     section: "labour",

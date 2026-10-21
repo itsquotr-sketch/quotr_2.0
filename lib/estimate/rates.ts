@@ -21,6 +21,14 @@ import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-au
  * When benchmark fallback is off, cost is not this number — absence is Pricing Required.
  */
 export const QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR = 60;
+/**
+ * Owner-approved labourer benchmark revision, 22 October 2026.
+ * NZ$35 per person-hour. This figure is not taken from the workbook.
+ * Carpenter stays $60. General and apprentice benchmarks are unchanged.
+ * Company labour rows and calibrations still win. Saved estimates,
+ * Pricing documents, Quotes, and snapshots are not rewritten.
+ */
+export const QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR = 35;
 const DEFAULT_LABOUR_COST_RATE = QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR;
 
 /** Legacy onboarding keys mapped to current catalogue keys */
@@ -399,11 +407,16 @@ export function resolveLabourRate(params: {
 
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   const sourceType: RateSourceType = benchmarkAllowed ? "benchmark" : "missing";
-  const costRate = benchmarkAllowed ? DEFAULT_LABOUR_COST_RATE : 0;
-  // Approved Quotr fallback is $60 cost per person-hour when no company
-  // labour row applies. Sell derives from applicable GM. Company rows,
-  // including paired sells, stay above. A disallowed benchmark is Pricing
-  // Required, not a silent $60. Rates labels this "Quotr benchmark".
+  const benchmarkCost =
+    params.trade === "labourer"
+      ? QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR
+      : DEFAULT_LABOUR_COST_RATE;
+  const costRate = benchmarkAllowed ? benchmarkCost : 0;
+  // Carpenter and general fall back to $60. Labourer falls back to the
+  // owner-approved $35 benchmark. Sell derives from applicable GM. Company
+  // rows, including paired sells, stay above. A disallowed benchmark is
+  // Pricing Required, not a silent benchmark. Rates labels this
+  // "Quotr benchmark".
   const classified = classifyResolvedSell({
     costRate,
     sellRate: null,

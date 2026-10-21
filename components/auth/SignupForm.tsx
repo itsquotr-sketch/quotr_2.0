@@ -20,6 +20,12 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
 import { confirmationHelpMessage } from "@/lib/auth/confirmation-link";
+import {
+  MARKETING_CHOICE_REQUIRED,
+  PRIVACY_POLICY_URL,
+  TERMS_ACCEPTANCE_REQUIRED,
+  TERMS_OF_USE_URL,
+} from "@/lib/auth/signup-choices";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -165,6 +171,9 @@ export function SignupForm(props: {
   const inviteToken = props.inviteToken;
   const invitedEmail = props.invitedEmail;
   const [state, formAction, pending] = useActionState(signup, initialState);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [productUpdates, setProductUpdates] = useState<boolean | null>(null);
+  const [choiceErrors, setChoiceErrors] = useState<Record<string, string[]>>({});
   const retainedEmail =
     state.confirmationEmail || invitedEmail || props.pendingEmail || undefined;
 
@@ -219,7 +228,19 @@ export function SignupForm(props: {
             : "Set up your company and start your first job."
         }
       />
-      <form action={formAction} className="flex flex-col gap-(--card-spacing)">
+      <form
+        action={formAction}
+        className="flex flex-col gap-(--card-spacing)"
+        onSubmit={(event) => {
+          const next: Record<string, string[]> = {};
+          if (!termsAccepted) next.terms_accepted = [TERMS_ACCEPTANCE_REQUIRED];
+          if (productUpdates === null) {
+            next.marketing_consent = [MARKETING_CHOICE_REQUIRED];
+          }
+          setChoiceErrors(next);
+          if (Object.keys(next).length > 0) event.preventDefault();
+        }}
+      >
         {inviteToken ? (
           <input type="hidden" name="invite_token" value={inviteToken} />
         ) : null}
@@ -324,6 +345,118 @@ export function SignupForm(props: {
             />
             <FieldError messages={state.fieldErrors?.password} />
           </div>
+
+          <input
+            type="hidden"
+            name="terms_accepted"
+            value={termsAccepted ? "true" : "false"}
+          />
+          <input
+            type="hidden"
+            name="marketing_consent"
+            value={
+              productUpdates === true ? "yes" : productUpdates === false ? "no" : ""
+            }
+          />
+
+          <div className="space-y-2">
+            <label className="flex min-h-11 items-start gap-3 text-sm leading-snug">
+              <input
+                type="checkbox"
+                name="terms_choice"
+                checked={termsAccepted}
+                onChange={(event) => {
+                  setTermsAccepted(event.target.checked);
+                  setChoiceErrors((current) => {
+                    const next = { ...current };
+                    delete next.terms_accepted;
+                    return next;
+                  });
+                }}
+                className="mt-0.5 size-4 shrink-0"
+              />
+              <span>
+                I agree to the{" "}
+                <a
+                  href={TERMS_OF_USE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={authTextLinkClass}
+                >
+                  Terms of Use
+                </a>
+                .
+              </span>
+            </label>
+            <p className="text-sm text-muted-foreground">
+              <a
+                href={PRIVACY_POLICY_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={authTextLinkClass}
+              >
+                Privacy Policy
+              </a>
+            </p>
+            <FieldError
+              messages={
+                choiceErrors.terms_accepted ?? state.fieldErrors?.terms_accepted
+              }
+            />
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm leading-snug">
+              Would you like occasional product updates and practical Quotr tips?
+            </legend>
+            <p className="text-sm text-muted-foreground">
+              You can unsubscribe anytime.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Account, security, and service emails are separate. Quotr still
+              sends those, including confirmation and password reset.
+            </p>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="product_updates"
+                checked={productUpdates === true}
+                onChange={() => {
+                  setProductUpdates(true);
+                  setChoiceErrors((current) => {
+                    const next = { ...current };
+                    delete next.marketing_consent;
+                    return next;
+                  });
+                }}
+                className="size-4 shrink-0"
+              />
+              Yes, send me updates
+            </label>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="product_updates"
+                checked={productUpdates === false}
+                onChange={() => {
+                  setProductUpdates(false);
+                  setChoiceErrors((current) => {
+                    const next = { ...current };
+                    delete next.marketing_consent;
+                    return next;
+                  });
+                }}
+                className="size-4 shrink-0"
+              />
+              No thanks
+            </label>
+            <FieldError
+              messages={
+                choiceErrors.marketing_consent ??
+                state.fieldErrors?.marketing_consent
+              }
+            />
+          </fieldset>
         </AuthCardContent>
         <AuthCardFooter>
           <AuthSubmitButton

@@ -7,6 +7,7 @@ import {
   type PendingInviteKind,
 } from "@/lib/auth/email-confirm-destination";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
+import { recordSignupPreferences } from "@/lib/auth/signup-preferences";
 
 type ConfirmationClient = ReturnType<typeof createServerClient>;
 type ConfirmationUser = NonNullable<
@@ -30,7 +31,13 @@ export async function destinationAfterEmailConfirmation(
   }
 
   if (next.startsWith("/reset-password")) return "/reset-password";
-  if (next.startsWith("/invite/")) return next;
+  if (next.startsWith("/invite/")) {
+    await recordSignupPreferences(
+      supabase,
+      user.user_metadata as Record<string, unknown>
+    );
+    return next;
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -87,6 +94,10 @@ export async function destinationAfterEmailConfirmation(
     if (result.ok === false && result.category === "INVITE_PENDING") {
       pendingInvite = "one";
     }
+  }
+
+  if (hasOrg || provisioned) {
+    await recordSignupPreferences(supabase, metadata);
   }
 
   return resolveEmailConfirmDestination({

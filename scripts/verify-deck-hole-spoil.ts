@@ -404,10 +404,12 @@ const savedLabourer = resolveLabourRate({
   organisationSettings: { allow_benchmark_rates: true, default_margin_percent: 20 },
 });
 check(
-  "carpenter, labourer, and general fall back to $60 benchmark",
+  "carpenter and general stay $60; labourer benchmark is $35; company labourer wins",
   carpenter.costRate === 60 &&
+    carpenter.sellRate === 75 &&
     carpenter.sourceType === "benchmark" &&
-    labourer.costRate === 60 &&
+    labourer.costRate === 35 &&
+    labourer.sellRate === 43.75 &&
     labourer.sourceType === "benchmark" &&
     general.costRate === 60 &&
     general.sourceType === "benchmark" &&
@@ -415,15 +417,24 @@ check(
     savedLabourer.sellRate === 70 &&
     savedLabourer.sourceType === "user_rate"
 );
+const benchmarksOff = resolveLabourRate({
+  rates: [],
+  trade: "labourer",
+  organisationSettings: { allow_benchmark_rates: false, default_margin_percent: 20 },
+});
+check(
+  "disabled benchmarks do not invent a labourer cost",
+  benchmarksOff.costRate === 0 && benchmarksOff.sourceType === "missing"
+);
 check(
   "Rates can edit hole excavation hours",
   editableProductivityCatalogueKeys().includes("deck.hole.excavate.hours_per_hole") &&
     getCatalogueEntry("deck.hole.excavate.hours_per_hole")?.defaultCostRate === 0.5
 );
 check(
-  "catalogue labour defaults are $60 cost only",
+  "catalogue labour defaults keep carpenter and general at $60 and labourer at $35",
   getCatalogueEntry("labour.carpenter.hour")?.defaultCostRate === 60 &&
-    getCatalogueEntry("labour.labourer.hour")?.defaultCostRate === 60 &&
+    getCatalogueEntry("labour.labourer.hour")?.defaultCostRate === 35 &&
     getCatalogueEntry("labour.labourer.hour")?.defaultSellRate == null &&
     getCatalogueEntry("labour.general.hour")?.defaultCostRate === 60 &&
     getCatalogueEntry("labour.general.hour")?.defaultSellRate == null &&

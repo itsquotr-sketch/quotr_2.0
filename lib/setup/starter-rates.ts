@@ -9,6 +9,7 @@
  * but excluded from primary buildStarterRateRows.
  */
 
+import { QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR } from "@/lib/estimate/rates";
 import {
   MATERIAL_RATE_CATALOGUE,
   SCOPE_RATE_CATALOGUE,
@@ -67,8 +68,8 @@ export const CORE_LABOUR_STARTER_RATES: StarterRateRowDefinition[] = [
     fields: ["cost_rate", "sell_rate"],
     section: "labour",
     description:
-      "Optional company labourer cost. Empty means the Quotr fallback of $60 per person-hour. A saved company cost still wins. Charge-out uses company gross margin.",
-    benchmarkCost: 60,
+      `Optional company labourer cost. Empty means the Quotr benchmark of $${QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR} per person-hour. A saved company cost still wins. Charge-out uses company gross margin.`,
+    benchmarkCost: QUOTR_LABOURER_BENCHMARK_COST_PER_HOUR,
     authorityHint: "benchmark",
   },
 ];

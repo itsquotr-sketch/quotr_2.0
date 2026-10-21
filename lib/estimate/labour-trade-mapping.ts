@@ -5,7 +5,9 @@
  *   no trade / carpenter → labour.carpenter.hour, then labour.general.hour
  *   labourer             → labour.labourer.hour, then labour.general.hour, then carpenter
  *   apprentice           → labour.apprentice.hour, then labour.general.hour, then carpenter
- * When none of those company rows has a cost, the Quotr fallback is $60/h.
+ * When none of those company rows has a cost, carpenter and general fall
+ * back to $60/h. Labourer falls back to the owner-approved $35/h benchmark.
+ * Apprentice resolution is unchanged.
  *
  * Onboarding stores both carpenter and labourer company costs. It does not
  * backfill existing organisations and does not rewrite Quote, accepted

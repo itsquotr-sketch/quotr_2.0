@@ -11,6 +11,7 @@ import {
   type AuthErrorCategory,
 } from "@/lib/auth/errors";
 import { logAuthEvent } from "@/lib/auth/logging";
+import { recordSignupPreferences } from "@/lib/auth/signup-preferences";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -122,6 +123,12 @@ export async function provisionOrganisationForCurrentUser(
       elapsedMs: Date.now() - startedAt,
     });
   }
+
+  const { data: signedIn } = await supabase.auth.getUser();
+  await recordSignupPreferences(
+    supabase,
+    signedIn.user?.user_metadata as Record<string, unknown> | undefined
+  );
 
   return {
     ok: true,

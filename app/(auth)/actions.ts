@@ -10,6 +10,12 @@ import {
   signupAuthErrorText,
 } from "@/lib/auth/account-phone";
 import {
+  marketingConsentFromSignup,
+  signupChoiceErrors,
+  TERMS_OF_USE_VERSION,
+} from "@/lib/auth/signup-choices";
+import { recordSignupPreferences } from "@/lib/auth/signup-preferences";
+import {
   classifyAuthProviderError,
   presentAuthError,
   presentLoginError,
@@ -153,8 +159,21 @@ export async function signup(
   const organisationMissing =
     !inviteToken &&
     !(parsed.success && parsed.data.organisation_name?.trim());
+  const marketingChoice = marketingConsentFromSignup(
+    formData.get("marketing_consent")
+  );
+  const choiceErrors = signupChoiceErrors({
+    termsAccepted: formData.get("terms_accepted") === "true",
+    marketingConsent:
+      marketingChoice === true ? "yes" : marketingChoice === false ? "no" : null,
+  });
 
-  if (!parsed.success || !phone.ok || organisationMissing) {
+  if (
+    !parsed.success ||
+    !phone.ok ||
+    organisationMissing ||
+    Object.keys(choiceErrors).length > 0
+  ) {
     return {
       fieldErrors: {
         ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
@@ -162,6 +181,7 @@ export async function signup(
         ...(organisationMissing
           ? { organisation_name: ["Company name is required"] }
           : {}),
+        ...choiceErrors,
       },
     };
   }
@@ -214,6 +234,9 @@ export async function signup(
         fullName: full_name,
         organisationName: organisation_name,
         phone,
+        termsVersion: TERMS_OF_USE_VERSION,
+        termsAcceptedAt: new Date().toISOString(),
+        marketingConsent: marketingChoice === true,
       }),
     },
   });

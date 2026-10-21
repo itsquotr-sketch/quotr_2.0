@@ -179,7 +179,7 @@ function main(): void {
       labour.includes("not a client charge-out rate") &&
       read("lib/setup/labour-benchmark-label.ts").includes("per person-hour") &&
       quotrLabourBenchmarkLabel("carpenter") === "$60 per person-hour" &&
-      quotrLabourBenchmarkLabel("labourer") === "$60 per person-hour"
+      quotrLabourBenchmarkLabel("labourer") === "$35 per person-hour"
   );
   assert(
     "benchmark does not write a company rate",
