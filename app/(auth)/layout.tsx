@@ -5,5 +5,12 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AuthShell>{children}</AuthShell>;
+  return (
+    <div
+      data-auth-scroll
+      className="fixed inset-0 overflow-y-auto print:static print:h-auto print:overflow-visible"
+    >
+      <AuthShell>{children}</AuthShell>
+    </div>
+  );
 }
