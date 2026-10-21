@@ -1,11 +1,104 @@
 # Release-candidate inventory
 
-**Updated:** 19 October 2026, after the Production plan and backup read. The performance-pass record and the morning acceptance on this page remain the commercial record. The 9 October observations remain the earlier inventory. Where they disagree with this update, this update is the current record. Section 15 is the current backup, configuration, and migration-stage record.  
-**Application candidate:** `f42553a490c83089ff3d01eeabb1774725fffe60` on `ui/core-workflow-overhaul`. It is pushed. Its parent is `edaac4833564cfcf600381e1d1ad1f824b8e7a86`.  
-**This document is not the application candidate.** It lives on `docs/release-candidate-notes`. Documentation commits, including `a0247cb42fdccc3e4c0356d575eccb991404b88d` and the commit that records this update, are not part of the Preview deployment and are not merged into the application branch.  
-**Not frozen.** Production was not migrated or deployed. The hardening alias was not moved. Section 14 is the current Preview host record. Production remains **NO-GO**.
+**Updated:** 21 October 2026. This closeout is the current record. The 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Go / no-go for the proper domain: NO-GO.**
+**Application release:** `0f96d93a02845ce276df488b30ecfd13b0a49952` on `ui/core-workflow-overhaul`. It is pushed. Its parent is `330df0b9e30f06e300817ce3e3087f7ce892181f`.
+
+**This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
+
+## Closed release — 21 October 2026
+
+Production is serving the application SHA above. Schema head on both hosted databases is **111**. Password recovery and Quote/email delivery have passed owner QA. The Preview sandbox billing journey, including the Dahlia cancellation fix, is recorded below. The remaining item is operational: watch the first genuine live subscription webhook. Do not manufacture that subscription, and do not edit Production billing rows to simulate it.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `ui/core-workflow-overhaul` |
+| Application SHA | `0f96d93a02845ce276df488b30ecfd13b0a49952` |
+| Commit | 2026-10-21 — Record Stripe `cancel_at` as the service end so access stops on that date. |
+| Parent | `330df0b9e30f06e300817ce3e3087f7ce892181f` — Redeem password recovery on the server so the reset form can see the session. |
+| Production deployment | `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7` |
+| Production URL | `https://quotr-2-0-n9rts7b16-quotr1.vercel.app` |
+| Production status | Ready, target production, created 2026-10-21 18:33 +1300. Promoted from the committed preview deployment `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. The dirty preview upload was not promoted. |
+| `app.get-quotr.com` | that Production deployment. Unauthenticated `/app/settings/billing` returns 307 to `/login`; the login page returns 200. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
+| Marketing domain | `https://get-quotr.com` still returns the marketing title through Cloudflare. It was not retargeted. |
+| Workflow alias | `https://quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app` serves `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`, the same SHA, Ready, target preview. |
+| Hardening alias | unchanged: `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2` / `quotr-2-0-5vp6wvo61`, Ready, created 2026-09-29. |
+| Preview schema | `shhpjsoldmqtkdbgrbtm` head **111**, re-read 21 October 2026 with `npm run db:preview:status`. Local files on this SHA match. Versions 037 and 055 are absent on purpose. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **111**, re-read the same day with `npm run db:production:status`. Local and remote match through 111. No remote-only version. 037 and 055 are absent. This supersedes the 19 October head of 045 in section 2. Do not run the section 15 pending list again. |
+| Production billing mode | `BILLING_ENVIRONMENT=live`. `NEXT_PUBLIC_SUPABASE_URL` host is `lxvnylhsbvudzzupxeqr.supabase.co`. `NEXT_PUBLIC_SITE_URL` host is `app.get-quotr.com`. |
+
+### Recovery and email QA
+
+Owner QA on Production passed before the sandbox billing check. Password recovery and Quote/email delivery were accepted on `app.get-quotr.com`. The recovery correction in this release is `330df0b9e30f06e300817ce3e3087f7ce892181f`, which is the parent of the Production SHA. Those journeys were not repeated for this closeout.
+
+### Sandbox billing
+
+One Preview sandbox Checkout was completed for disposable organisation `PREVIEW-STRIPE-CHECK`, Preview user `68086eeb-81e8-418b-90cd-562d13b0ca07`, on Preview database `shhpjsoldmqtkdbgrbtm`. It was not repeated for this closeout.
+
+| Check | Result |
+| --- | --- |
+| Checkout | Builder, test mode. Stripe subscription `sub_1USrBsR6sbl77rmF5w2qHmtD`, customer `cus_VToScievKJKeES`, `livemode` false. |
+| Prices | Existing test prices. Builder `price_1UB0B0R6sbl77rmFZatpKuv3`. Business `price_1UB0BPR6sbl77rmFonhXvUHu`. NZD monthly, tax exclusive. GST 15%. |
+| Upgrade | Quotr’s own Builder-to-Business upgrade, not the Customer Portal. Invoice `in_1USrCuR6sbl77rmFhU5FGiEH`, `subscription_update`, 1610 NZD cents, which is the $14 ex-GST difference plus 15% GST. |
+| Portal | Test configuration `bpc_1UB4yQR6sbl77rmFZqx8d5xR`. Plan changes disabled. Cancel mode is at period end. Portal settings were not changed. |
+| Cancellation request | Portal cancel-at-period-end. Stripe API `2026-08-26.dahlia` stored `cancel_at` and `current_period_end` at 1795235510 (2026-11-21 04:31:50 UTC), `cancel_at_period_end` false, and `cancellation_details.reason` `cancellation_requested`. |
+| Applied event | `evt_1USrDXR6sbl77rmFwIU7w4MC` was resent only to the workflow test destination after its processed receipt was released. The subscription row was not hand-edited. |
+| Mirror | Plan `business`, status `scheduled_to_cancel`, source `stripe`, `billing_environment` `test`, `cancel_at_period_end` true, `current_period_end` 2026-11-21 04:31:50+00, `cancelled_at` null. The billing page showed Quotr Business, Scheduled to cancel, current period ends 21 Nov 2026. |
+
+### Cancellation fix
+
+`0f96d93a02845ce276df488b30ecfd13b0a49952` changes only `lib/billing/access-policy.ts`, `lib/billing/mirror.ts`, `lib/billing/status.ts`, `lib/billing/types.ts`, and `scripts/verify-billing-1.ts`.
+
+Stripe’s Dahlia cancel-at-period-end sets `cancel_at` and leaves `cancel_at_period_end` false. The parser now treats an open subscription with `cancel_at` as scheduled to cancel, and stores the earlier of `cancel_at` and the paid period end as the service end. A boolean `cancel_at_period_end` still uses the period end. An equal `cancel_at` stays on that instant. A later `cancel_at` does not extend access past the paid period.
+
+Targeted checks in `scripts/verify-billing-1.ts` passed on 21 October 2026:
+
+- `cancel_at_period_end` maps to `scheduled_to_cancel`
+- scheduled cancellation is mirrored
+- Dahlia `cancel_at` with `cancel_at_period_end` false is scheduled
+- earlier `cancel_at` shortens the service end and access
+- later `cancel_at` does not extend access past the paid period
+
+The same script still exits because of the separate migration-number assertion below. That failure was not changed.
+
+### Preview webhook destination
+
+Preview deployments share `shhpjsoldmqtkdbgrbtm`, including `org_subscriptions` and `stripe_processed_events`. The first handler to claim an event id wins. One test destination is authoritative.
+
+| Endpoint | State |
+| --- | --- |
+| `we_1USrp5R6sbl77rmFwsQ6R3Ms` | Authoritative. Enabled, test mode, API `2026-08-26.dahlia`, host `quotr-2-0-git-ui-core-workflow-overhaul-quotr1.vercel.app`, path `/api/webhooks/stripe`. That host serves `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf` at the Production SHA. Its signing secret is a Preview secret scoped to git branch `ui/core-workflow-overhaul`. |
+| `we_1UB0GpR6sbl77rmFLLstelbV` | Disabled. Before disable it was enabled, test mode, the same API version, description “Quotr Preview Stripe Test Webhook”, on the hardening host, path `/api/webhooks/stripe`, for `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.deleted`, `customer.subscription.updated`, `invoice.paid`, and `invoice.payment_failed`. It had no other required consumer. The hardening deployment and alias were not deleted. |
+
+The live webhook destination, live Stripe products, and the Preview database were not changed for this fix.
+
+### Separate migration-number assertion
+
+These verifier lines are stale filename checks. They are not a schema mismatch. Production and Preview are at 111, and the local directory on `0f96d93a` ends at `111_deck_concrete_calibration_benchmark.sql`. Versions 037 and 055 remain absent on purpose. The assertions were not edited in the cancellation commit.
+
+| Script | Assertion | Why it fails |
+| --- | --- | --- |
+| `scripts/verify-billing-1.ts` | “051 timezone remains; 053 role RLS is latest numbered local migration; 049 memberships remain” | It requires the last migration filename to be `053_role_aware_rls_hardening.sql`. The file exists. It is not the last file. |
+| `scripts/verify-billing-2.ts` | “047 past_due authority exists locally; 053 role RLS remains; 063 remains and 071 is latest” | It requires the last migration filename to be `071_variation_attachments.sql`. The file exists. It is not the last file. |
+
+Both scripts can still exit 1 after the cancellation checks have passed. Do not treat that exit as a failed release schema.
+
+### Outstanding operational validation
+
+First-genuine-customer webhook monitoring is still open. The cancellation code is deployed. No live subscription was created, and no Production billing row was edited. A live cancellation is proven only when a real customer event arrives on the existing live destination.
+
+When that subscription arrives, inspect these places only:
+
+1. Stripe Dashboard, live mode, Developers → Webhooks, the existing live endpoint. Open the `customer.subscription.created` or `customer.subscription.updated` event and read the delivery attempt and HTTP status. Do not change the endpoint URL.
+2. Vercel project `quotr-2-0`, production deployment `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`, runtime logs for `POST /api/webhooks/stripe` on `quotr-2-0-quotr1.vercel.app` and `app.get-quotr.com`.
+3. Supabase project `lxvnylhsbvudzzupxeqr`, table `public.stripe_processed_events`, for that event id with `billing_environment` `live` and status `processed`.
+4. Same project, table `public.org_subscriptions`, for `source` `stripe`, `billing_environment` `live`, and the plan, status, `current_period_end`, `cancel_at_period_end`, and `last_stripe_event_id` written by that event.
+5. The customer’s billing page at `https://app.get-quotr.com/app/settings/billing`.
+
+## Historical record — 19 October 2026
+
+The sections below are the 19 October record. They described a NO-GO because Production was then at schema 045 and had no Ready deployment of the candidate. That is no longer the current state.
 
 ## Current candidate — 19 October 2026, after the performance pass
 
