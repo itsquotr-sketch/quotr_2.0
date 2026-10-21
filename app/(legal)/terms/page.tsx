@@ -14,16 +14,15 @@ export default function ApplicationTermsPage() {
       <LegalSection id="about" title="1. About these terms">
         <p>
           These Application Terms are version {TERMS_OF_USE_VERSION}. They are
-          the terms for an account in the Quotr application. They are separate
-          from the website terms at get-quotr.com, which govern only the public
-          website.
+          a draft for the Quotr application. They are not yet in force. They
+          are separate from the website terms at get-quotr.com, which govern
+          only the public website.
         </p>
         <p>
-          Quotr helps a building business turn job notes into an estimate and a
-          quote. The registered name, company number, and address of the
-          business that supplies Quotr will be added to this section before
-          these terms are used for new Production accounts. Until that name is
-          published, these terms are a draft.
+          The supplier’s registered name, address, and monitored contact are
+          not stated here. They will be inserted only after the owner confirms
+          them. Until then, do not treat any name or email on the public
+          website as the contracting party for these terms.
         </p>
         <p>
           “You” means the person who creates the account and the organisation
@@ -41,8 +40,8 @@ export default function ApplicationTermsPage() {
           To create an account you give your name, work email, phone number,
           and a password, and you name the organisation. You confirm the email
           address before the account can be used. The phone number is stored
-          with the account. It is not used to sign in, and Quotr does not text
-          it.
+          with the account. It is not used to sign in, and the application does
+          not text it.
         </p>
         <p>
           You confirm that you are allowed to open the account for that
@@ -50,87 +49,117 @@ export default function ApplicationTermsPage() {
           create the account.
         </p>
         <p>
-          You can invite other people into the organisation. They get the
+          You can invite other people into the organisation. They receive the
           access that goes with the role you give them. You are responsible for
-          who you invite and for removing access when someone should no longer
-          have it. Builder includes one user. Business includes one user and
+          who you invite and for removing someone who should no longer have
+          access. The trial includes Business features for one user. A paid
+          Builder plan is one user. A paid Business plan includes one user and
           can add further users up to five in total. A custom arrangement, if
-          we agree one, is set outside self-serve checkout.
+          one is agreed, is set outside self-serve checkout.
         </p>
       </LegalSection>
 
       <LegalSection id="service" title="3. The estimating and quoting service">
         <p>
           Quotr provides tools to record a job, calculate an estimate, set
-          prices, and prepare a quote or variation for your customer. Some
-          calculations use your rates, your calibrations, or Quotr benchmarks.
-          You choose whether benchmarks are used. Where you have entered a
-          company rate, that rate is used instead of the benchmark.
+          prices, and prepare a quote or variation. Some calculations use your
+          rates, your calibrations, or Quotr benchmarks. You choose whether
+          benchmarks are used. Where you have entered a company rate, that rate
+          is used instead of the benchmark.
         </p>
         <p>
           Outputs depend on what you enter and on the assumptions still open in
           the job. Quotr does not visit the site, check the plans, or decide
           what you should charge. You review quantities, assumptions,
           benchmarks, and prices before you rely on them or send them to a
-          customer. An estimate or quote is your document. It is not our advice,
-          and it is not a promise that the job will cost that amount.
+          customer. An estimate or quote is your document. It is not our
+          advice, and it is not a promise that the job will cost that amount.
         </p>
         <p>
           GST on a quote you send is your GST treatment. It is separate from
-          GST on the subscription you pay us. If you tell Quotr you are not GST
-          registered, quote GST is not added from that choice. Your NZBN is not
-          used to decide GST registration.
+          GST on a subscription you pay us. If you tell Quotr you are not GST
+          registered, quote GST is not added from that choice. An NZBN stored
+          on the organisation is not used to decide GST registration.
         </p>
       </LegalSection>
 
       <LegalSection id="plans" title="4. Trial, plans, and GST on our fees">
         <p>
-          A new organisation starts a 14-day trial. The trial does not ask for a
-          card. During the trial you have Business features for one user. When
-          the trial ends, existing projects, estimates, pricing, and quotes stay
-          available to view. Creating and sending new work needs a paid plan.
+          A new organisation starts a 14-day trial. The trial does not ask for
+          a card. During the trial the organisation has Business features for
+          one user. When the trial ends, new estimating and quoting work is
+          blocked. Records already in the account are not deleted by that
+          change.
         </p>
         <p>
-          Paid plans are billed monthly in New Zealand dollars through Stripe.
-          The application currently shows Quotr Builder at $65 a month and Quotr
-          Business at $79 a month, plus GST. An extra Business user is shown at
-          $35 a month, plus GST. GST on these fees is 15% and is added on top of
-          the monthly amount. The amount you confirm at checkout, and later
-          invoices, are the charge. If a displayed amount and Stripe ever
-          differ, the Stripe amount you confirm is the one you pay.
+          Paid plans are offered monthly in New Zealand dollars through Stripe.
+          The application shows Quotr Builder at $65 a month, Quotr Business at
+          $79 a month, and an extra Business user at $35 a month. Those amounts
+          are exclusive of GST. Where a New Zealand GST tax rate is configured
+          on the subscription, GST of 15% is added on top. The amount confirmed
+          at checkout, and later invoices, are the charge. The application does
+          not keep a second price list that can override Stripe.
         </p>
       </LegalSection>
 
-      <LegalSection id="billing" title="5. Changes, cancellation, and service end">
+      <LegalSection id="billing" title="5. Changes, cancellation, and what access remains">
         <p>
           You can choose Builder or Business from billing, and you can upgrade
           from Builder to Business. Extra Business users are added from Team.
-          Seat changes and plan changes take effect when billing confirms them.
-          If a payment for an upgrade does not complete, you stay on the plan
-          billing has confirmed.
+          A plan or seat change takes effect when billing confirms it. If
+          payment for an upgrade does not complete, you stay on the plan
+          billing has already confirmed.
         </p>
         <p>
-          You cancel from the billing portal. Cancellation is scheduled. Access
-          to create and send new work continues until the service end. That
-          time is the earlier of the cancellation time and the end of the
-          current billing period. It is not extended to a later date. After the
-          service end, existing work stays available to view. The same view
-          access applies if a paid subscription is unpaid or paused.
+          You cancel in the Stripe billing portal. Access to create estimates,
+          create or send quotes, and manage the team continues until the
+          service end. That time is the earlier of the cancellation time and
+          the end of the current billing period. It is not extended past that
+          earlier time. After the service end, those new-work actions stop.
+          Accepting a quote that was already sent can still be completed. The
+          same block on new work applies when a trial has ended, or when a
+          paid subscription is unpaid or paused.
         </p>
         <p>
-          If a payment is past due, full access continues for seven days with a
-          warning, counted from when the payment became past due. After that,
-          access returns to viewing existing work until the payment is resolved.
+          If a payment is past due, full access continues for seven days from
+          the time the payment became past due, with a billing warning. The
+          seventh-day instant is outside that window. If that start time is
+          missing, the grace period is not given. After the window, new work is
+          blocked until the payment is resolved.
         </p>
         <p>
-          This version does not set a refund rule. Cancellation stops the next
-          renewal. It does not, by itself, refund the period you are in. A
-          refund rule will be added here only if it is approved. Nothing in
-          this section removes a refund or remedy that the law requires.
+          The application does not delete projects, estimates, pricing, or
+          quotes when a trial ends or a subscription is cancelled. It also does
+          not currently switch view access off after a set number of days. A
+          90-day figure exists in the billing code and is not applied. There is
+          no full-account download.
+        </p>
+        <p>
+          Proposed, not yet approved: cancellation or the end of a trial would
+          leave existing work open to view for 90 days after the service end,
+          and sign-in access to that job content would then stop. Billing and
+          tax records would be kept for seven years because New Zealand
+          business records are generally kept for that long. Job notes, photos,
+          and customer details would not be kept for those seven years. This
+          cutoff is not running. Approving it means a later change has to
+          enforce it. Until then, the current behaviour above is what the
+          application does. Nothing in this proposal refunds a fee.
         </p>
       </LegalSection>
 
-      <LegalSection id="information" title="6. Your information">
+      <LegalSection id="refunds" title="6. Refunds — proposed, not yet approved">
+        <p>
+          Proposed, not yet approved: fees are billed in advance. Cancelling
+          stops the next renewal. It does not by itself refund the period you
+          are in. A fee paid for a period you could not use because we failed
+          to provide the service, and any refund the law requires, would still
+          be paid. This draft does not adopt a blanket no-refund rule. If this
+          proposal is rejected, a different refund rule has to be written
+          before these terms are used.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="information" title="7. Your information">
         <p>
           You keep ownership of the job information, files, prices, and
           customer details you put into Quotr. We do not claim that work as
@@ -140,67 +169,45 @@ export default function ApplicationTermsPage() {
           You give us permission to host, store, back up, and display that
           information so we can provide the service, including to people you
           invite and to a customer you send a quote or variation to. If you use
-          an analysis or assistant feature, you also give us permission to send
-          the relevant text to the provider described in the Privacy Notice,
-          so that feature can return a result.
+          an analysis or assistant feature, you also give permission for the
+          relevant text to be sent to Anthropic as the Privacy Notice
+          describes, so that feature can return a result.
         </p>
         <p>
           You confirm that you have the right to enter that information and to
-          send it to your customer. You are responsible for what the quote says.
+          send it to your customer. You are responsible for what the quote
+          says.
         </p>
       </LegalSection>
 
-      <LegalSection id="use" title="7. Acceptable use and security">
+      <LegalSection id="use" title="8. Acceptable use and security">
         <p>
           Use Quotr for your own estimating and quoting. Do not misuse it. In
           particular, do not break the law with it, interfere with the service,
-          attempt to get another organisation’s information, send malware, or
-          use the service to build a competing copy of Quotr.
+          attempt to get another organisation’s information, or send malware.
         </p>
         <p>
-          Keep the password confidential and tell us if you believe the account
-          is compromised. We may sign the account out, require a new password,
-          or suspend access if we reasonably need to protect the service or
-          another person’s information.
+          Keep the password confidential and tell us, once a monitored contact
+          is published, if you believe the account is compromised. We may
+          require a new password or suspend access if that is reasonably needed
+          to protect the service or another person’s information. Where that
+          can be done without adding to the harm, we will use the account email
+          before access ends.
         </p>
       </LegalSection>
 
-      <LegalSection id="end" title="8. Suspension, ending the account, and retrieval">
+      <LegalSection id="changes" title="9. Changes to the service and these terms">
         <p>
-          You can stop using Quotr at any time. We may suspend or end access if
-          fees remain unpaid after the period in section 5, if the use breaches
-          these terms in a serious way, or if we need to protect the service.
-          Where we can do so without adding to the harm, we will tell the
-          account email before access ends.
-        </p>
-        <p>
-          While the account is open, and during view access after a trial or a
-          cancelled subscription, you can open the projects, estimates, pricing,
-          and quotes the application already shows you, and you can use the
-          print and send actions those screens provide. This version does not
-          promise a separate download of the whole account. You can ask for a
-          copy of personal information as described in the Privacy Notice.
-        </p>
-        <p>
-          This version does not set a general deletion period after an account
-          closes. We will not delete current job records merely because a
-          subscription ends. How long closed-account information is kept will
-          be stated here before these terms are used in Production.
+          We may change features, including features still in preview. A change
+          to these terms will use a new version number. The version stored on
+          an account is the version that account accepted. An older account is
+          not treated as having accepted a later version unless that acceptance
+          is recorded. Existing acceptance records are not rewritten. If you do
+          not agree to a later version, you can cancel under section 5.
         </p>
       </LegalSection>
 
-      <LegalSection id="changes" title="9. Changes">
-        <p>
-          We may change the application, including features that are still in
-          preview. A change to these terms will use a new version number. The
-          version you accepted is the one stored with your account. We will not
-          treat an older account as having accepted a later version unless you
-          accept that version. If you do not agree to a new version, you can
-          cancel. Existing acceptance records are not rewritten.
-        </p>
-      </LegalSection>
-
-      <LegalSection id="liability" title="10. Liability and rights that remain">
+      <LegalSection id="liability" title="10. Liability — including proposals">
         <p>
           We provide Quotr with reasonable care. We do not guarantee that an
           estimate, quantity, benchmark, or price is accurate, complete, or fit
@@ -208,33 +215,40 @@ export default function ApplicationTermsPage() {
           on it.
         </p>
         <p>
-          This version does not set a dollar cap on our liability, and it does
-          not ask you to indemnify us without limit. We are not liable for
-          profit you expected to make on a job, or for a price you chose to
-          send, except where the law does not allow that exclusion.
+          Proposed, not yet approved: we would not be liable for profit you
+          expected from a job, or for a price you chose to send, except where
+          the law does not allow that exclusion. No dollar cap is proposed in
+          this draft. No unlimited indemnity is proposed. If a cap is wanted,
+          it has to be written and approved before these terms are used. A cap
+          cannot apply to liability that the law says cannot be limited.
         </p>
         <p>
           Nothing in these terms excludes or limits a right that cannot
           lawfully be excluded. That includes rights under the Fair Trading Act
           1986, and rights under the Consumer Guarantees Act 1993 where that
-          Act applies and cannot be contracted out of. This draft does not
-          contain a business contracting-out clause. If you are using Quotr in
-          trade, do not read this section as a contracting-out of the Consumer
-          Guarantees Act.
+          Act applies and has not been contracted out of.
+        </p>
+        <p>
+          Proposed, not yet approved: where you acquire Quotr in trade, and it
+          is fair and reasonable to do so, the Consumer Guarantees Act 1993
+          would not apply to the application. That proposal is not in force.
+          It would not remove Fair Trading Act rights, or any guarantee the law
+          does not allow to be contracted out of. If this proposal is rejected,
+          the Act continues to apply wherever it applies.
         </p>
       </LegalSection>
 
       <LegalSection id="law" title="11. Complaints and New Zealand law">
         <p>
-          If something goes wrong, email privacy@quotr.co.nz and include the
-          account email and what you would like us to do. We will look into a
-          complaint and respond. You can also take a privacy complaint to the
-          Privacy Commissioner, as the Privacy Notice explains.
+          A complaint can be sent once a monitored contact is published in
+          these terms. That contact is not published in this draft. You can
+          also take a privacy complaint to the Privacy Commissioner, as the
+          Privacy Notice explains.
         </p>
         <p>
-          These terms use New Zealand law. The courts of New Zealand can hear a
-          dispute about them. That choice does not remove a right a law says
-          you keep.
+          Proposed, not yet approved: these terms would use New Zealand law, and
+          the courts of New Zealand could hear a dispute about them. That
+          choice would not remove a right a law says you keep.
         </p>
       </LegalSection>
     </LegalDocument>

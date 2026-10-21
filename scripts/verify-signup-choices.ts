@@ -84,7 +84,10 @@ assert(
     termsPage.includes("get-quotr.com") &&
     privacyPage.includes("TERMS_OF_USE_VERSION") &&
     privacyPage.includes("Privacy Notice") &&
-    privacyPage.includes("privacy@quotr.co.nz") &&
+    termsPage.includes("Proposed, not yet approved") &&
+    privacyPage.includes("ap-northeast-1") &&
+    !termsPage.includes("privacy@quotr.co.nz") &&
+    !privacyPage.includes("privacy@quotr.co.nz") &&
     !termsPage.includes("Quotr Limited") &&
     !privacyPage.includes("Quotr Limited")
 );
