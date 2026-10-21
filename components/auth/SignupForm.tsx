@@ -19,6 +19,7 @@ import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
+import { HelpPopover } from "@/components/ui/help-popover";
 import { confirmationHelpMessage } from "@/lib/auth/confirmation-link";
 import {
   MARKETING_CHOICE_REQUIRED,
@@ -327,6 +328,7 @@ export function SignupForm(props: {
           </div>
 
           <AccountPhoneField
+            help
             error={
               state.fieldErrors?.phone_number?.[0] ??
               state.fieldErrors?.phone_country?.[0]
@@ -406,16 +408,16 @@ export function SignupForm(props: {
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-sm leading-snug">
-              Would you like occasional product updates and practical Quotr tips?
+            <legend className="flex items-start gap-1.5 text-sm leading-snug">
+              <span>Would you like occasional product updates and practical Quotr tips?</span>
+              <HelpPopover label="Product updates help">
+                <p>You can unsubscribe anytime.</p>
+                <p>
+                  Account, security, and service emails are separate. Quotr still
+                  sends those, including confirmation and password reset.
+                </p>
+              </HelpPopover>
             </legend>
-            <p className="text-sm text-muted-foreground">
-              You can unsubscribe anytime.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Account, security, and service emails are separate. Quotr still
-              sends those, including confirmation and password reset.
-            </p>
             <label className="flex min-h-11 items-center gap-3 text-sm">
               <input
                 type="radio"

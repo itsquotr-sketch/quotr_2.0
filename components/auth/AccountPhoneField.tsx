@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HelpPopover } from "@/components/ui/help-popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -17,23 +18,37 @@ export function AccountPhoneField({
   required = true,
   disabled = false,
   error,
+  help = false,
 }: {
   defaultCountry?: AccountPhoneCountry;
   defaultNumber?: string;
   required?: boolean;
   disabled?: boolean;
   error?: string;
+  /** Signup puts the example and texting note behind the label help control. */
+  help?: boolean;
 }) {
   const [country, setCountry] = useState<AccountPhoneCountry>(
     defaultCountry === "AU" ? "AU" : "NZ"
   );
   const example = EXAMPLES[country];
+  const explanation = (
+    <>
+      Example: {example.local}. {example.international} is the same number.
+      We will not text this number, and it is not used to sign in.
+    </>
+  );
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs" htmlFor="phone_country">
-        Phone number
-      </Label>
+      <div className="flex items-center gap-1.5">
+        <Label className="text-xs" htmlFor="phone_country">
+          Phone number
+        </Label>
+        {help ? (
+          <HelpPopover label="Phone number help">{explanation}</HelpPopover>
+        ) : null}
+      </div>
       <div className="grid gap-2 sm:grid-cols-[9.5rem_1fr]">
         <select
           id="phone_country"
@@ -60,15 +75,16 @@ export function AccountPhoneField({
           required={required}
           disabled={disabled}
           maxLength={40}
-          aria-describedby="account-phone-hint"
+          aria-describedby={help ? undefined : "account-phone-hint"}
           aria-invalid={error ? true : undefined}
           className="h-11"
         />
       </div>
-      <p id="account-phone-hint" className="text-sm text-muted-foreground">
-        Example: {example.local}. {example.international} is the same number.
-        We will not text this number, and it is not used to sign in.
-      </p>
+      {help ? null : (
+        <p id="account-phone-hint" className="text-sm text-muted-foreground">
+          {explanation}
+        </p>
+      )}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
