@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { LogoutForm } from "@/components/auth/LogoutForm";
 import { FeedbackLink } from "@/components/layout/feedback-link";
+import { HelpLink } from "@/components/layout/help-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
 import { useAppUser } from "@/components/layout/app-user-context";
@@ -162,6 +163,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
               <span className="text-sm font-medium">Notifications</span>
               <NotificationBell variant="header" />
             </div>
+            <HelpLink variant="menu" onNavigate={close} />
             <FeedbackLink
               variant="menu"
               className="min-h-11 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-muted"

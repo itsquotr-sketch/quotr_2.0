@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import {
   finishAccountSetup,
@@ -101,6 +102,14 @@ export function SetupRequiredForm({
             If you already belong to a company, ask your company owner for help
             or contact support. Do not create a second company for an existing
             team account.
+          </p>
+          <p className="text-sm">
+            <Link
+              href="/help"
+              className="inline-flex min-h-11 items-center font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+            >
+              Help
+            </Link>
           </p>
         </AuthCardContent>
         <AuthCardFooter className="gap-3">

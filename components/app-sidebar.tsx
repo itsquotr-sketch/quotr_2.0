@@ -4,6 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, BookUser, Briefcase, Building2, DollarSign, LayoutDashboard, Users } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
+import { HelpLink } from "@/components/layout/help-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
@@ -144,6 +145,7 @@ export function AppSidebarNav({
           <p className="text-[13px] text-white/55">Notifications</p>
           <NotificationBell variant="sidebar" />
         </div>
+        <HelpLink variant="sidebar-footer" />
         <FeedbackLink variant="sidebar-footer" className="min-h-11" />
         <SidebarAccount variant="sidebar" />
       </div>

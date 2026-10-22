@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { LogoutFailureNotice } from "@/components/auth/LogoutForm";
 import { AppUserProvider } from "@/components/layout/app-user-context";
+import { HelpLink } from "@/components/layout/help-link";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
 type OnboardingFrameProps = {
@@ -13,8 +14,9 @@ type OnboardingFrameProps = {
 };
 
 /**
- * Focused setup shell. The page scrolls with the keyboard. Back and
- * Continue stay in the form, so they do not cover fields.
+ * Focused setup shell. No primary nav. The page scrolls with the keyboard.
+ * Back and Continue stay in the form, so they do not cover fields.
+ * Help stays available while setup is unfinished.
  */
 export function OnboardingFrame({
   children,
@@ -45,8 +47,9 @@ export function OnboardingFrame({
         }}
       >
         <div className="m-auto w-full min-w-0 max-w-xl py-4">
-          <div className="mb-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <QuotrLogo variant="wordmark" href={null} height={22} />
+            <HelpLink variant="text" />
           </div>
           <Suspense fallback={null}>
             <LogoutFailureNotice />
