@@ -118,6 +118,32 @@ export function compareLoopsRetryPriority(
   return left.attempts - right.attempts;
 }
 
+const EXPLICIT_CONSENT_SOURCES = new Set(["signup", "settings", "onboarding"]);
+
+/**
+ * Whether this sync may send engagementEligible: true.
+ * The property is omitted in every other case, including Preview,
+ * an unset activation time, consent recorded before activation,
+ * and a contact that was already marked.
+ */
+export function loopsEngagementEligibleUpdate(input: {
+  scope: MarketingLoopsScope;
+  activatedAt: string | null | undefined;
+  consent: boolean;
+  consentSource: string | null | undefined;
+  consentAt: string | null | undefined;
+  alreadyEligible: boolean;
+}): boolean {
+  if (input.scope !== "production") return false;
+  if (input.alreadyEligible) return false;
+  if (input.consent !== true) return false;
+  if (!input.consentSource || !EXPLICIT_CONSENT_SOURCES.has(input.consentSource)) return false;
+  const activatedAt = Date.parse(input.activatedAt ?? "");
+  const consentAt = Date.parse(input.consentAt ?? "");
+  if (!Number.isFinite(activatedAt) || !Number.isFinite(consentAt)) return false;
+  return consentAt >= activatedAt;
+}
+
 /** How many contacts the next wave may start. Zero means leave the rest pending. */
 export function planLoopsRetryWave(input: {
   elapsedMs: number;

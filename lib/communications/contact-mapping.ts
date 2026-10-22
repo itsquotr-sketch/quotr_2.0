@@ -147,6 +147,11 @@ export type LoopsContactDraft = {
   quotesSent?: number | null;
   quotesAccepted?: number | null;
   ratesConfigured?: boolean | null;
+  /**
+   * Sent once, and only as true, when a Production contact newly qualifies
+   * for the unpublished engagement sequence. Omitted on every other sync.
+   */
+  engagementEligible?: boolean;
 };
 
 export function buildLoopsContactProperties(
@@ -193,6 +198,7 @@ export function buildLoopsContactProperties(
   if (typeof draft.ratesConfigured === "boolean") {
     properties.ratesConfigured = draft.ratesConfigured;
   }
+  if (draft.engagementEligible === true) properties.engagementEligible = true;
 
   return properties;
 }

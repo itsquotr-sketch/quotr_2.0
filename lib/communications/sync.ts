@@ -15,6 +15,10 @@ import {
   runIsolatedLoopsTask,
   upsertLoopsContact,
 } from "@/lib/communications/loops-client";
+import {
+  attachEngagementMarker,
+  recordEngagementMarker,
+} from "@/lib/communications/engagement";
 import { withConsentLease } from "@/lib/communications/sync-lease";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { createClient } from "@/lib/supabase/server";
@@ -94,6 +98,8 @@ async function syncSessionUserWithinTask(
 
   const draft = await loadSessionDraft(supabase);
   if (!draft) return;
+  const admin = openEngagementAdmin();
+  if (admin) await attachEngagementMarker(admin, draft);
   const sent = stampOf(draft);
   const before = await readSessionStamp(supabase, draft.userId);
   if (!sameStamp(before, sent)) return;
@@ -128,6 +134,9 @@ async function syncSessionUserWithinTask(
       if (!result.ok) {
         logLoopsFailure(result.code);
         return;
+      }
+      if (admin && draft.engagementEligible === true && result.skipped !== "unconfigured") {
+        await recordEngagementMarker(admin, draft.userId);
       }
       const after = await readSessionStamp(supabase, draft.userId);
       if (!after) return;
@@ -188,6 +197,7 @@ async function syncOrganisationContactsWithinTask(orgId: string): Promise<void> 
       preferencePending: true,
       consentRevision: revisionOf(profile?.marketing_consent_revision),
     };
+    await attachEngagementMarker(admin, draft);
     const sent = stampOf(draft);
     const before = await readAdminStamp(admin, userId);
     if (!sameStamp(before, sent)) continue;
@@ -221,6 +231,9 @@ async function syncOrganisationContactsWithinTask(orgId: string): Promise<void> 
         if (!result.ok) {
           logLoopsFailure(result.code);
           return;
+        }
+        if (draft.engagementEligible === true && result.skipped !== "unconfigured") {
+          await recordEngagementMarker(admin, userId);
         }
         const afterStamp = await readAdminStamp(admin, userId);
         if (!afterStamp) return;
@@ -261,6 +274,15 @@ async function loadSessionDraft(supabase: ServerClient): Promise<LoopsContactDra
     preferencePending: profile.marketing_loops_sync_pending === true,
     consentRevision: revisionOf(profile.marketing_consent_revision),
   };
+}
+
+function openEngagementAdmin(): AdminClient | null {
+  try {
+    return createAdminClient();
+  } catch {
+    logLoopsFailure("engagement_marker_unavailable");
+    return null;
+  }
 }
 
 function revisionOf(value: unknown): number {

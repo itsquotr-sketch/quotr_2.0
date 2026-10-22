@@ -37,6 +37,7 @@ import {
   MARKETING_LOOPS_RETRY_SCHEDULE,
   marketingLoopsAllowsEmail,
   marketingLoopsRetriesExistingPending,
+  loopsEngagementEligibleUpdate,
   marketingLoopsScope,
   planLoopsRetryWave,
   PREVIEW_LOOPS_TEST_EMAIL,
@@ -255,6 +256,11 @@ console.log("=== Loops communications stage 1 ===\n");
   assert("maps company, country, region", properties.companyName === "Smith Building Co." && properties.country === "NZ" && properties.region === "Auckland");
   assert("maps counts and rates", properties.projectsCreated === 2 && properties.estimatesGenerated === 3 && properties.quotesSent === 1 && properties.quotesAccepted === 0 && properties.ratesConfigured === true);
   assert("default consent is false on the contact", properties.marketingConsent === false);
+  assert(
+    "the engagement marker stays off a routine contact",
+    !("engagementEligible" in properties) &&
+      buildLoopsContactProperties({ ...baseDraft, engagementEligible: true }).engagementEligible === true
+  );
   assert("stage 1 gaps stay unset", contactPropertiesOmitStage1Gaps(properties));
   assert("contact payload does not include subscribed", !("subscribed" in properties));
   const allowed = new Set([
@@ -932,6 +938,9 @@ let overlapCheck: Promise<unknown> = Promise.resolve();
   const retryRoute = read("app/api/internal/marketing-loops-retry/route.ts");
   const leaseMigration = read("supabase/migrations/116_marketing_loops_sync_lease.sql");
   const retryMigration = read("supabase/migrations/117_marketing_loops_retry_schedule.sql");
+  const engagementMigration = read("supabase/migrations/118_marketing_engagement_marker.sql");
+  const engagementSync = read("lib/communications/engagement.ts");
+  const sessionSync = read("lib/communications/sync.ts");
   assert(
     "confirmed signup is eligible and an unconfirmed signup is not",
     confirmedSignupLoopsEligible({
@@ -966,6 +975,85 @@ let overlapCheck: Promise<unknown> = Promise.resolve();
         VERCEL_ENV: "production",
         NEXT_PUBLIC_SUPABASE_URL: "https://lxvnylhsbvudzzupxeqr.supabase.co",
       }) === "production"
+  );
+  const activated = "2026-10-22T00:00:00.000Z";
+  const afterActivation = "2026-10-22T00:00:01.000Z";
+  assert(
+    "the engagement marker is production-only and only for new explicit consent after activation",
+    loopsEngagementEligibleUpdate({
+      scope: "production",
+      activatedAt: activated,
+      consent: true,
+      consentSource: "signup",
+      consentAt: afterActivation,
+      alreadyEligible: false,
+    }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "preview",
+        activatedAt: activated,
+        consent: true,
+        consentSource: "signup",
+        consentAt: afterActivation,
+        alreadyEligible: false,
+      }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "production",
+        activatedAt: null,
+        consent: true,
+        consentSource: "settings",
+        consentAt: afterActivation,
+        alreadyEligible: false,
+      }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "production",
+        activatedAt: activated,
+        consent: true,
+        consentSource: "signup",
+        consentAt: "2026-10-21T23:59:59.000Z",
+        alreadyEligible: false,
+      }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "production",
+        activatedAt: activated,
+        consent: true,
+        consentSource: null,
+        consentAt: afterActivation,
+        alreadyEligible: false,
+      }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "production",
+        activatedAt: activated,
+        consent: false,
+        consentSource: "onboarding",
+        consentAt: afterActivation,
+        alreadyEligible: false,
+      }) &&
+      !loopsEngagementEligibleUpdate({
+        scope: "production",
+        activatedAt: activated,
+        consent: true,
+        consentSource: "signup",
+        consentAt: afterActivation,
+        alreadyEligible: true,
+      }) &&
+      !engagementSync.includes("projectsCreated") &&
+      engagementMigration.includes("activated_at timestamptz") &&
+      engagementMigration.includes("values (true, null)") &&
+      !engagementMigration.includes("clock_timestamp()") &&
+      engagementMigration.includes("marketing_engagement_eligible boolean not null default false") &&
+      !engagementMigration.includes("set marketing_engagement_eligible = true")
+  );
+  const failedRetry = pendingSync.indexOf("if (!upsert.ok)");
+  const recordedRetry = pendingSync.indexOf("await recordEngagementMarker");
+  assert(
+    "a failed retry does not record enrolment and a successful send records it once",
+    failedRetry >= 0 &&
+      recordedRetry > failedRetry &&
+      pendingSync.slice(failedRetry, recordedRetry).includes('return "failed"') &&
+      pendingSync.includes('upsert.skipped !== "unconfigured"') &&
+      sessionSync.includes('result.skipped !== "unconfigured"') &&
+      !pendingSync.includes("engagementEligible: false") &&
+      !sessionSync.includes("engagementEligible: false")
   );
   assert(
     "existing pending rows stay outside the scheduled retry until the flag is set",

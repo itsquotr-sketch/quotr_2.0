@@ -22,6 +22,10 @@ import {
   MARKETING_LOOPS_RETRY_ATTEMPT_CAP,
   planLoopsRetryWave,
 } from "@/lib/communications/loops-automation";
+import {
+  attachEngagementMarker,
+  recordEngagementMarker,
+} from "@/lib/communications/engagement";
 import { logLoopsFailure, upsertLoopsContact } from "@/lib/communications/loops-client";
 import { withConsentLease } from "@/lib/communications/sync-lease";
 
@@ -165,6 +169,7 @@ async function syncOnePending(
     preferencePending: true,
     consentRevision: sentRevision,
   };
+  await attachEngagementMarker(admin, draft);
 
   const before = await readStamp(admin, row.id);
   if (
@@ -219,6 +224,9 @@ async function sendPendingContact(
     logLoopsFailure(upsert.code);
     await noteLoopsRetryFailure(admin, userId, attempts, upsert.code);
     return "failed";
+  }
+  if (draft.engagementEligible === true && upsert.skipped !== "unconfigured") {
+    await recordEngagementMarker(admin, userId);
   }
 
   const stored = await readStamp(admin, userId);
