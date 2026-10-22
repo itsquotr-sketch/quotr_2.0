@@ -839,19 +839,11 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         blocks: [
           {
             type: "p",
-            text: "At signup you answer whether you want occasional product updates and practical Quotr tips. Yes or no both let you create the account. Signed in, open **Profile** and find **Email preferences**. The choice is **Send me occasional product updates and practical Quotr tips.** Select that, or **No thanks**, then **Save preference**.",
+            text: "Signed in, open **Profile** → **Email preferences**. Choose occasional product updates and practical Quotr tips, or **No thanks**, then **Save preference**. If you have not chosen, the page says no choice is saved yet. The button says **Saving…**, then **Preference saved.** If saving fails, the choice you selected stays on the page.",
           },
           {
             type: "p",
-            text: "If you have not chosen, the page says no choice is saved yet. While the save runs the button says **Saving…**. After it is stored, the page says **Preference saved.** If saving fails, the choice you selected stays on the page and you can try again.",
-          },
-          {
-            type: "p",
-            text: "You can unsubscribe anytime. Account, security, and service emails, including confirmation and password reset, are still sent either way. The control stays available when a trial or subscription has stopped new work. It is not in Company settings or Billing.",
-          },
-          {
-            type: "p",
-            text: "Quotr has not started sending those product updates. Choosing yes stores your consent so it can be honoured when sending starts. If you cannot sign in, email [hello@get-quotr.com](mailto:hello@get-quotr.com).",
+            text: "Loops processes the contact, consent, and account-usage information needed for those optional updates. You can unsubscribe from them separately from account, security, and service emails. Campaign sending has not started. If you cannot sign in, email [hello@get-quotr.com](mailto:hello@get-quotr.com).",
           },
         ],
       },

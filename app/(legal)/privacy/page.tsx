@@ -151,22 +151,16 @@ export default function ApplicationPrivacyPage() {
           account. A profile with no recorded choice is not treated as consent.
         </p>
         <p>
-          Signed in, you can change that choice under Profile, Email
-          preferences, including when a trial or subscription has stopped new
-          work. You can opt in or opt out there. Account, security, and service
-          emails are separate. We still send those, including confirmation and
-          password reset, whether or not you want product updates.
+          Signed in, that choice is under Profile → Email preferences. You can
+          opt in or opt out there. You can unsubscribe from those product
+          updates separately from account, security, and service emails. We
+          still send the service emails, including confirmation and password
+          reset.
         </p>
         <p>
-          We have not started sending those product updates. When we do, the
-          sender is Loops (loops.so). We send Loops the account email, name,
-          the product-update choice, and the company fields needed to honour
-          that choice: company name, country, region, plan, and counts of
-          projects, estimates, and quotes. We do not send project, client, or
-          quote contents. We do not start a campaign by storing the choice.
-          You can unsubscribe in Profile or from the message. An unsubscribe
-          in the message is kept: a later routine update does not subscribe
-          you again.
+          Loops (loops.so) processes the contact, consent, and account-usage
+          information needed for those optional updates. It does not receive
+          project, client, or quote contents. Campaign sending has not started.
         </p>
       </LegalSection>
 

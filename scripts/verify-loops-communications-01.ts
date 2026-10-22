@@ -756,6 +756,15 @@ async function main(): Promise<void> {
   assert("profile has Email preferences", profile.includes("Email preferences"));
   assert("profile uses the product-update label", profile.includes("EMAIL_PREFERENCE_LABEL") && EMAIL_PREFERENCE_LABEL === "Send me occasional product updates and practical Quotr tips.");
   assert("profile helper separates service email", profile.includes("EMAIL_PREFERENCE_HELPER") && EMAIL_PREFERENCE_HELPER.includes("Account, security, and service emails are separate."));
+  const help = read("lib/help/content.ts");
+  const privacy = read("app/(legal)/privacy/page.tsx");
+  assert(
+    "help and privacy name Profile email preferences and say campaigns have not started",
+    help.includes("Profile** → **Email preferences") &&
+      help.includes("Campaign sending has not started.") &&
+      privacy.includes("Profile → Email preferences") &&
+      privacy.includes("Campaign sending has not started.")
+  );
   assert("profile shows saving and saved feedback", profile.includes("Saving…") && profile.includes("Save preference"));
   assert("profile keeps an unset choice visible", profile.includes("No choice saved yet."));
 
@@ -862,6 +871,7 @@ async function main(): Promise<void> {
       revisionMigration.includes("marketing_consent_revision is distinct from p_revision")
   );
   const operator = read("scripts/sync-preview-marketing-loops.ts");
+  const productionOperator = read("scripts/sync-production-marketing-loops.ts");
   const pendingSync = read("lib/communications/pending-sync.ts");
   assert(
     "operator sync is preview-only and pending-only",
@@ -872,6 +882,15 @@ async function main(): Promise<void> {
       pendingSync.includes('eq("marketing_loops_sync_pending", true)') &&
       !pendingSync.includes("/campaigns") &&
       !pendingSync.includes("/events")
+  );
+  assert(
+    "production operator sync requires one email and ignores .env.local",
+    productionOperator.includes("lxvnylhsbvudzzupxeqr") &&
+      productionOperator.includes("without one --email") &&
+      productionOperator.includes("email,") &&
+      productionOperator.includes("Does not load .env.local") &&
+      !productionOperator.includes("parseEnvFile") &&
+      !productionOperator.includes("shhpjsoldmqtkdbgrbtm")
   );
   assert(
     "preference save does not surface a Loops failure",
