@@ -49,6 +49,19 @@ export async function POST(request: Request) {
 
   try {
     const result = await sendPreviewAccountWelcomeTest();
+    if (result.outcome === "failed") {
+      return NextResponse.json({
+        ok: false,
+        outcome: "failed",
+        errorCode: result.errorCode ?? "send",
+        from: result.from,
+        idempotencyKey: result.idempotencyKey,
+        providerMessageId: result.providerMessageId,
+        identified: "preview_test",
+        providerAccepted: false,
+        deliveryConfirmed: false,
+      });
+    }
     if (!result.recipientMatched || result.outcome === "refused") {
       return NextResponse.json({ ok: false, outcome: "refused" }, { status: 409 });
     }
@@ -65,7 +78,12 @@ export async function POST(request: Request) {
         result.outcome === "skipped_accepted",
       deliveryConfirmed: false,
     });
-  } catch {
-    return NextResponse.json({ ok: false, outcome: "failed" }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const errorCode = message.startsWith("WELCOME_") ? message : "failed";
+    return NextResponse.json(
+      { ok: false, outcome: "failed", errorCode },
+      { status: 500 }
+    );
   }
 }

@@ -15,8 +15,24 @@ import {
 } from "@/lib/auth/account-welcome-send";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const PREVIEW_TEST_RECIPIENT = "hello+test@erccontracting.co.nz";
+
+function createWelcomeAdmin(): SupabaseClient {
+  try {
+    return createAdminClient();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("Missing Supabase")) {
+      throw new Error("WELCOME_ADMIN_MISSING");
+    }
+    if (message.includes("not a service_role")) {
+      throw new Error("WELCOME_ADMIN_ROLE");
+    }
+    throw new Error("WELCOME_ADMIN_UNAVAILABLE");
+  }
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -40,7 +56,7 @@ function statusOf(value: unknown): AccountWelcomeStatus | null {
 }
 
 async function deliverId(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: SupabaseClient,
   deliveryId: string,
   allowRecipient?: (email: string) => boolean
 ): Promise<AccountWelcomeDeliveryResult> {
@@ -56,7 +72,7 @@ async function deliverId(
 export async function deliverAccountWelcomeById(
   deliveryId: string
 ): Promise<AccountWelcomeDeliveryResult> {
-  const admin = createAdminClient();
+  const admin = createWelcomeAdmin();
   return deliverId(admin, deliveryId);
 }
 
@@ -75,7 +91,7 @@ export async function scheduleAccountWelcomeEmail(input: {
     const environment =
       input.environment ?? resolveAccountWelcomeEnvironment();
     if (!environment) return;
-    const admin = createAdminClient();
+    const admin = createWelcomeAdmin();
     const { data, error } = await admin.rpc("enqueue_account_welcome_signup_v1", {
       p_user_id: input.userId,
       p_org_id: input.orgId,
@@ -99,19 +115,24 @@ export async function scheduleAccountWelcomeEmail(input: {
 }
 
 export async function sendPreviewAccountWelcomeTest(): Promise<
-  AccountWelcomeDeliveryResult & { recipientMatched: boolean }
+  AccountWelcomeDeliveryResult & { recipientMatched: boolean; errorCode?: string }
 > {
-  const admin = createAdminClient();
+  const admin = createWelcomeAdmin();
   const { data, error } = await admin.rpc(
     "enqueue_account_welcome_preview_test_v1"
   );
   if (error || !data) {
+    const message = error?.message ?? "";
+    const errorCode = message.includes("WELCOME:")
+      ? message.slice(message.indexOf("WELCOME:"), message.indexOf("WELCOME:") + 40).split(/\s/)[0]
+      : "enqueue";
     return {
       outcome: "failed",
       providerMessageId: null,
       idempotencyKey: null,
       from: accountWelcomeFromHeader(),
       recipientMatched: false,
+      errorCode,
     };
   }
   const row = asRecord(data);
