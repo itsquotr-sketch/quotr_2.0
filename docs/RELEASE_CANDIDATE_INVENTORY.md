@@ -1,10 +1,38 @@
 # Release-candidate inventory
 
-**Updated:** 23 October 2026. The reminder schema is on Production and enrolment is still off. The 22 October activation closeout stays below. Where they disagree about schema head, this section wins. The serving application is still the 22 October release. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 23 October 2026. The four reminders are Sending and Production reminder enrolment is active. The schema-only note and the 22 October activation closeout stay below. Where they disagree, this section wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** Production is still serving `5ec8439c140903f15bc635d1097fa5a5baaaadf9`. The reminder candidate `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a` is pushed on `feat/email-preferences-loops` and includes that release. It has not been deployed.
+**Application release:** `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a` on `feat/email-preferences-loops`. It is pushed and includes the previous Production application `5ec8439c140903f15bc635d1097fa5a5baaaadf9`.
+
+## Activation — 23 October 2026, four reminders
+
+The replacement Production deployment was Ready before activation. The signed Loops test reached that deployment and wrote no send row. “First job and rates” was Sending with a step-only empty-`engagementReminder` filter before each email. The full-audience count of contacts with `engagementReminder` not empty was 0. All four reminder workflows were Sending. The activation time was then set with `clock_timestamp()` because it was null. No reminder row was inserted and no contact was enrolled by hand.
+
+| Fact | Value |
+| --- | --- |
+| Application SHA | `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a` |
+| Production deployment | `dpl_BNn4qtg4b5JAPHkZnvXhoFnaEGwp` at `https://quotr-2-0-gxgdqe9ez-quotr1.vercel.app`. Target production. Ready. |
+| Application hostnames | `app.get-quotr.com` and `quotr-2-0-quotr1.vercel.app` serve that deployment. |
+| Other hostnames | `get-quotr.com` remains `quotr-2-0-kkz27lt3t-quotr1.vercel.app`. `quotr-2-0.vercel.app` remains `quotr-2-0-n9rts7b16-quotr1.vercel.app`. The Preview aliases were not reassigned. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **120**. |
+| Reminder activation | `marketing_reminder_runtime.activated_at` = `2026-10-22 19:46:57.683864+00`. That is 23 October 2026, 08:46:57.683864 NZDT. The following read returned the same value. It was not backdated. |
+| Preview activation | `marketing_reminder_runtime.activated_at` remains null. Preview engagement activation remains null. |
+| Engagement activation | Unchanged: `2026-10-22 07:19:35.375118+00`. |
+| Queue at activation | Reminder rows 0. Recorded workflow sends 0. |
+| Webhook | `https://app.get-quotr.com/api/webhooks/loops`, event `loop.email.sent`. The replacement secret is on the deployment above. The signed test returned 200 at 22 October 2026, 19:39:00.872 UTC (23 October 2026, 08:39:00.872 NZDT) and created no send row. |
+| First job and rates | Sending, `cmvj3nhtv0e7a0j58xfml0vuz`, revision `cmvjy9sbt0wjf0jxnbbyw75ln`. Consent still applies downstream. Each email has its own following filter: `engagementReminder` is empty, and that filter applies to that send only. |
+| Company setup | Sending, `cmvj8dmen05y50j3szg1v4gnr`, revision `cmvjyavl60wwd0jtyale71kt1`. |
+| First estimate | Sending, `cmvj8egqx0h5d0j583ygc9ycd`, revision `cmvjyb12s0top0jvtd7hwb375`. |
+| Client Quote | Sending, `cmvj8ejo20h6m0j5spsa7qj4s`, revision `cmvjyb61u0x1v0jxb0mp23mds`. |
+| Trial ending | Sending, `cmvj8emtg00vj0j46kyap046g`, revision `cmvjybbwk0x8n0jzm5rw81jag`. |
+
+Spacing is best effort. A Loops send event can arrive after Quotr has already released the other email, so there is no guaranteed 48-hour cap. A released behavioural reminder permanently suppresses later generic tips for that contact, including tips outside 48 hours.
+
+Pause future reminder enrolment by clearing Production `marketing_reminder_runtime.activated_at` back to null. Do not replace it with an earlier time, and leave Preview null. Contacts already waiting in “First job and rates” stay on their timers through Pause. Do not Stop that workflow. Stop drops contacts queued to enter.
 
 ## Schema only — 23 October 2026, reminders not activated
+
+This section records the schema apply before the deployment and activation above. It is not the current serving state.
 
 Migrations 119 and 120 were the only pending Production migrations. The latest completed backup before the apply was physical backup `2040261415`, completed `2026-10-22T17:46:33.981Z`. Both migrations were applied. No contact was enrolled, no reminder row was inserted, and no send time was backfilled.
 
