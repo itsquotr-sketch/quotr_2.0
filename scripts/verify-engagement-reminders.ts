@@ -2,8 +2,16 @@
  * Optional engagement reminder rules.
  * Run: npx tsx scripts/verify-engagement-reminders.ts
  */
+import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { formatTrialEndDate } from "../lib/billing/trial-countdown";
+import {
+  LIVE_TIP_WORKFLOW_ID,
+  parseOptionalEmailSend,
+  verifyLoopsWebhookSignature,
+} from "../lib/communications/loops-webhook";
+import { formatReminderTrialEndsOn } from "../lib/communications/reminder-trial-date";
 import {
   boundedReminderAt,
   coordinatedSendAt,
@@ -43,6 +51,70 @@ const consent = {
   consentAtMs: markedAt,
   engagementActivatedAtMs: engagementAt,
 };
+
+const aucklandEvening = "2026-11-19T11:00:00.000Z";
+assert(
+  "the reminder date uses the Auckland calendar day and a long month",
+  formatReminderTrialEndsOn(aucklandEvening) === "20 November 2026" &&
+    formatTrialEndDate(aucklandEvening) === "20 Nov 2026" &&
+    formatReminderTrialEndsOn("2026-11-19T10:59:00.000Z") === "19 November 2026"
+);
+
+const tipSent = markedAt;
+assert(
+  "a recorded tip send holds the next reminder for 48 hours",
+  coordinatedSendAt(tipSent + 60 * 60 * 1000, [tipSent]) === tipSent + ENGAGEMENT_QUIET_MS
+);
+const recordedTipEnd = Date.parse("2026-11-20T00:00:00.000Z");
+assert(
+  "a tip inside the trial window skips a reminder that would miss the trial",
+  boundedReminderAt({
+    idealAtMs: recordedTipEnd - 12 * 60 * 60 * 1000,
+    reservedSendTimes: [recordedTipEnd - 12 * 60 * 60 * 1000],
+    expiresAtMs: recordedTipEnd,
+  }).action === "skip"
+);
+
+const webhookBody = JSON.stringify({
+  eventName: "loop.email.sent",
+  eventTime: 1_763_600_000,
+  loopId: LIVE_TIP_WORKFLOW_ID,
+  contactIdentity: {
+    userId: "11111111-1111-4111-8111-111111111111",
+    email: "hidden@example.com",
+  },
+});
+const webhookSecret = `whsec_${Buffer.from("loops-test-secret").toString("base64")}`;
+const webhookNow = 1_763_600_000 * 1000;
+const webhookId = "msg_optional_send";
+const webhookSignature = createHmac("sha256", Buffer.from("loops-test-secret"))
+  .update(`${webhookId}.${webhookNow / 1000}.${webhookBody}`)
+  .digest("base64");
+const parsedSend = parseOptionalEmailSend(JSON.parse(webhookBody));
+assert(
+  "a signed tip send is evidence and an address is not kept",
+  verifyLoopsWebhookSignature({
+    secret: webhookSecret,
+    webhookId,
+    webhookTimestamp: String(webhookNow / 1000),
+    signatureHeader: `v1,${webhookSignature}`,
+    rawBody: webhookBody,
+    nowMs: webhookNow,
+  }) &&
+    parsedSend?.userId === "11111111-1111-4111-8111-111111111111" &&
+    parsedSend.workflowId === LIVE_TIP_WORKFLOW_ID &&
+    parsedSend.sentAtMs === webhookNow &&
+    !JSON.stringify(parsedSend).includes("hidden@example.com") &&
+    parseOptionalEmailSend({ eventName: "email.opened", loopId: LIVE_TIP_WORKFLOW_ID }) === null &&
+    !verifyLoopsWebhookSignature({
+      secret: webhookSecret,
+      webhookId,
+      webhookTimestamp: String(webhookNow / 1000 - 600),
+      signatureHeader: `v1,${webhookSignature}`,
+      rawBody: webhookBody,
+      nowMs: webhookNow,
+    })
+);
 
 assert(
   "setup stays 24 hours after the marker",
@@ -294,7 +366,10 @@ assert(
     help.includes("Those reminders are not sending yet.") &&
     privacy.includes("First job and rates sequence, which is sending") &&
     privacy.includes("Those reminders are not sending yet.") &&
-    !schedule.includes("liveSequenceSendTimes")
+    !schedule.includes("liveSequenceSendTimes") &&
+    schedule.includes("marketing_optional_email_sends") &&
+    schedule.includes("formatReminderTrialEndsOn") &&
+    !schedule.includes("formatTrialEndDate")
 );
 
 if (failed > 0) {

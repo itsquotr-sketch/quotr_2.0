@@ -11,7 +11,7 @@ import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveBillingEnvironment } from "@/lib/billing/environment";
 import { isBillingOverrideActive } from "@/lib/billing/overrides";
-import { formatTrialEndDate } from "@/lib/billing/trial-countdown";
+import { formatReminderTrialEndsOn } from "@/lib/communications/reminder-trial-date";
 import { loopsOnboardingComplete } from "@/lib/communications/contact-mapping";
 import type { LoopsContactProperties } from "@/lib/communications/contact-mapping";
 import {
@@ -147,19 +147,27 @@ async function ownerEmail(admin: Admin, userId: string): Promise<string | null> 
 async function reservedSends(
   admin: Admin,
   orgId: string,
+  userId: string,
   options?: { includeUnreleased?: boolean; excludeReminderId?: string }
 ): Promise<number[]> {
   const reserved: number[] = [];
-  const { data } = await admin
-    .from("marketing_engagement_reminders")
-    .select("id, due_at, released_at")
-    .eq("org_id", orgId);
-  for (const row of data ?? []) {
+  const [reminders, sends] = await Promise.all([
+    admin
+      .from("marketing_engagement_reminders")
+      .select("id, due_at, released_at")
+      .eq("org_id", orgId),
+    admin.from("marketing_optional_email_sends").select("sent_at").eq("user_id", userId),
+  ]);
+  for (const row of reminders.data ?? []) {
     if (options?.excludeReminderId && row.id === options.excludeReminderId) continue;
     const released = Date.parse((row.released_at as string | null) ?? "");
     const due = Date.parse((row.due_at as string | null) ?? "");
     if (Number.isFinite(released)) reserved.push(released);
     else if (options?.includeUnreleased && Number.isFinite(due)) reserved.push(due);
+  }
+  for (const row of sends.data ?? []) {
+    const sent = Date.parse((row.sent_at as string | null) ?? "");
+    if (Number.isFinite(sent)) reserved.push(sent);
   }
   return reserved;
 }
@@ -230,7 +238,7 @@ async function considerSetupReminder(userId: string): Promise<void> {
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
   const dueAtMs = setupReminderDueAt({
     markedAtMs,
-    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
+    reservedSendTimes: await reservedSends(admin, orgId, userId, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -279,7 +287,7 @@ async function considerEstimateReminder(orgId: string, projectId: string): Promi
   const dueAtMs = milestoneReminderDueAt({
     kind: "estimate",
     milestoneAtMs: createdAtMs,
-    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
+    reservedSendTimes: await reservedSends(admin, orgId, owner.id, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -329,7 +337,7 @@ async function considerQuoteReminder(orgId: string, projectId: string): Promise<
   const dueAtMs = milestoneReminderDueAt({
     kind: "quote",
     milestoneAtMs: estimateAt,
-    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
+    reservedSendTimes: await reservedSends(admin, orgId, owner.id, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -371,7 +379,7 @@ async function considerTrialReminderForUser(userId: string): Promise<void> {
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
   const slot = boundedReminderAt({
     idealAtMs: plan.dueAtMs,
-    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
+    reservedSendTimes: await reservedSends(admin, orgId, owner.id, { includeUnreleased: true }),
     expiresAtMs: plan.trialEndsAtMs,
   });
   if (slot.action === "skip") return;
@@ -591,7 +599,9 @@ async function releaseOne(
     await markSuppressed(admin, row.id);
     return "suppressed";
   }
-  const reserved = await reservedSends(admin, row.org_id, { excludeReminderId: row.id });
+  const reserved = await reservedSends(admin, row.org_id, row.recipient_user_id, {
+    excludeReminderId: row.id,
+  });
   const trialRelease = row.kind === "trial" ? await readTrialPlan(admin, row.org_id, gate, "release") : null;
   if (row.kind === "trial" && !trialRelease) {
     await markSuppressed(admin, row.id);
@@ -636,7 +646,7 @@ async function releaseOne(
     onboardingComplete: onboarding.complete,
   };
   if (trialRelease) {
-    properties.trialEndsOn = formatTrialEndDate(trialRelease.trialEndsAt);
+    properties.trialEndsOn = formatReminderTrialEndsOn(trialRelease.trialEndsAt);
   }
   const upsert = await upsertLoopsContact({
     properties,
