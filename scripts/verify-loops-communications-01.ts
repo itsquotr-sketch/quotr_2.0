@@ -27,12 +27,18 @@ import {
 } from "../lib/communications/email-preference";
 import {
   confirmedSignupLoopsEligible,
-  MARKETING_LOOPS_RETRY_DELAY_HOURS,
-  MARKETING_LOOPS_RETRY_LIMIT,
+  compareLoopsRetryPriority,
+  cronAuthorizationMatches,
+  loopsRetryBackoffMs,
+  loopsRetryDisposition,
+  MARKETING_LOOPS_RETRY_ATTEMPT_CAP,
+  MARKETING_LOOPS_RETRY_BATCH,
+  MARKETING_LOOPS_RETRY_CONCURRENCY,
   MARKETING_LOOPS_RETRY_SCHEDULE,
   marketingLoopsAllowsEmail,
   marketingLoopsRetriesExistingPending,
   marketingLoopsScope,
+  planLoopsRetryWave,
   PREVIEW_LOOPS_TEST_EMAIL,
 } from "../lib/communications/loops-automation";
 import {
@@ -40,6 +46,14 @@ import {
   upsertLoopsContact,
 } from "../lib/communications/loops-client";
 import { withConsentLease } from "../lib/communications/sync-lease";
+
+function existsVercelCron(): boolean {
+  try {
+    return read("vercel.json").includes("crons");
+  } catch {
+    return false;
+  }
+}
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -917,7 +931,7 @@ let overlapCheck: Promise<unknown> = Promise.resolve();
   const signupSync = read("lib/communications/signup-sync.ts");
   const retryRoute = read("app/api/internal/marketing-loops-retry/route.ts");
   const leaseMigration = read("supabase/migrations/116_marketing_loops_sync_lease.sql");
-  const cron = read("vercel.json");
+  const retryMigration = read("supabase/migrations/117_marketing_loops_retry_schedule.sql");
   assert(
     "confirmed signup is eligible and an unconfirmed signup is not",
     confirmedSignupLoopsEligible({
@@ -972,13 +986,35 @@ let overlapCheck: Promise<unknown> = Promise.resolve();
       !welcome.includes("marketing_consent")
   );
   assert(
-    "daily hobby retry is bounded and does not call Loops from Stripe",
-    cron.includes(MARKETING_LOOPS_RETRY_SCHEDULE) &&
-      !cron.includes("* * * * *") &&
-      MARKETING_LOOPS_RETRY_LIMIT === 2 &&
-      MARKETING_LOOPS_RETRY_DELAY_HOURS === 24 &&
+    "supabase cron replaces the daily Vercel schedule",
+    retryMigration.includes(MARKETING_LOOPS_RETRY_SCHEDULE) &&
+      retryMigration.includes("vault.decrypted_secrets") &&
+      !retryMigration.includes("app.get-quotr.com") &&
+      !retryMigration.includes("vercel.app") &&
+      !retryMigration.includes("Bearer sk") &&
+      retryRoute.includes("scheduled: true") &&
       retryRoute.includes("CRON_SECRET") &&
-      leaseMigration.includes("claim_marketing_loops_sync")
+      !existsVercelCron()
+  );
+  assert(
+    "opt-outs go first, a wave stops before the timeout, and permanent errors stop",
+    compareLoopsRetryPriority(
+      { marketingConsent: false, attempts: 3 },
+      { marketingConsent: true, attempts: 0 }
+    ) < 0 &&
+      planLoopsRetryWave({ elapsedMs: 0, remaining: 8 }) === MARKETING_LOOPS_RETRY_CONCURRENCY &&
+      planLoopsRetryWave({ elapsedMs: 1_000, remaining: 8 }) === 0 &&
+      MARKETING_LOOPS_RETRY_BATCH === 8 &&
+      loopsRetryDisposition("update_400") === "permanent" &&
+      loopsRetryDisposition("update_429") === "transient" &&
+      loopsRetryDisposition("network") === "transient" &&
+      loopsRetryBackoffMs(1) === 5 * 60 * 1000 &&
+      loopsRetryBackoffMs(2) === 10 * 60 * 1000 &&
+      loopsRetryBackoffMs(MARKETING_LOOPS_RETRY_ATTEMPT_CAP) <= 6 * 60 * 60 * 1000 &&
+      !cronAuthorizationMatches("short", "Bearer short") &&
+      !cronAuthorizationMatches("1234567890123456", null) &&
+      !cronAuthorizationMatches("1234567890123456", "Bearer 1234567890123457") &&
+      cronAuthorizationMatches("1234567890123456", "Bearer 1234567890123456")
   );
   let heldRevision: number | null = null;
   let sends = 0;

@@ -15,6 +15,13 @@ import {
   loopsPreferenceAckDecision,
   type LoopsContactDraft,
 } from "@/lib/communications/contact-mapping";
+import {
+  compareLoopsRetryPriority,
+  loopsRetryBackoffMs,
+  loopsRetryDisposition,
+  MARKETING_LOOPS_RETRY_ATTEMPT_CAP,
+  planLoopsRetryWave,
+} from "@/lib/communications/loops-automation";
 import { logLoopsFailure, upsertLoopsContact } from "@/lib/communications/loops-client";
 import { withConsentLease } from "@/lib/communications/sync-lease";
 
@@ -26,6 +33,7 @@ export type PendingSyncResult = {
   rearmed: number;
   failed: number;
   skipped: number;
+  deferred: number;
 };
 
 type ProfileRow = {
@@ -35,6 +43,7 @@ type ProfileRow = {
   marketing_consent: boolean | null;
   marketing_loops_sync_pending: boolean | null;
   marketing_consent_revision: number | string | null;
+  marketing_loops_retry_attempts: number | string | null;
 };
 
 export async function syncPendingMarketingContacts(input: {
@@ -43,8 +52,11 @@ export async function syncPendingMarketingContacts(input: {
   email?: string;
   userId?: string;
   limit?: number;
-  /** Daily retry. Existing pending rows stay out unless the caller opts in. */
+  /** Scheduled retry. Existing pending rows stay out unless the caller opts in. */
   autoRetryOnly?: boolean;
+  /** Respect backoff and stopped rows. An explicit user or email bypasses this. */
+  scheduled?: boolean;
+  concurrency?: number;
 }): Promise<PendingSyncResult> {
   const limit = input.limit ?? DEFAULT_LIMIT;
   const result: PendingSyncResult = {
@@ -53,16 +65,23 @@ export async function syncPendingMarketingContacts(input: {
     rearmed: 0,
     failed: 0,
     skipped: 0,
+    deferred: 0,
   };
 
   let query = input.admin
     .from("profiles")
     .select(
-      "id, org_id, full_name, marketing_consent, marketing_loops_sync_pending, marketing_consent_revision"
+      "id, org_id, full_name, marketing_consent, marketing_loops_sync_pending, marketing_consent_revision, marketing_loops_retry_attempts"
     )
     .eq("marketing_loops_sync_pending", true);
   if (input.userId) query = query.eq("id", input.userId);
   if (input.autoRetryOnly) query = query.eq("marketing_loops_auto_retry", true);
+  if (input.scheduled) {
+    const now = new Date().toISOString();
+    query = query
+      .eq("marketing_loops_retry_stopped", false)
+      .or(`marketing_loops_retry_after.is.null,marketing_loops_retry_after.lte.${now}`);
+  }
   const { data, error } = await query.limit(limit);
 
   if (error || !data) {
@@ -71,21 +90,54 @@ export async function syncPendingMarketingContacts(input: {
   }
 
   const wanted = input.email?.trim().toLowerCase() ?? "";
-  for (const row of data as ProfileRow[]) {
-    const authUser = await input.admin.auth.admin.getUserById(row.id);
-    const email = authUser.data.user?.email?.trim() ?? "";
-    if (!email) {
-      result.skipped += 1;
-      continue;
+  const ordered = (data as ProfileRow[])
+    .slice()
+    .sort((left, right) =>
+      compareLoopsRetryPriority(
+        {
+          marketingConsent: left.marketing_consent === true,
+          attempts: attemptsOf(left.marketing_loops_retry_attempts),
+        },
+        {
+          marketingConsent: right.marketing_consent === true,
+          attempts: attemptsOf(right.marketing_loops_retry_attempts),
+        }
+      )
+    );
+  const queue = [...ordered];
+  const started = Date.now();
+  while (queue.length > 0) {
+    const waveSize = input.scheduled
+      ? planLoopsRetryWave({
+          elapsedMs: Date.now() - started,
+          remaining: queue.length,
+          concurrency: input.concurrency,
+        })
+      : Math.min(input.concurrency ?? 1, queue.length);
+    if (waveSize === 0) {
+      result.deferred += queue.length;
+      break;
     }
-    if (wanted && email.toLowerCase() !== wanted) {
-      result.skipped += 1;
-      continue;
-    }
-
-    result.examined += 1;
-    const outcome = await syncOnePending(input.admin, input.apiKey, row, email);
-    result[outcome] += 1;
+    const wave = queue.splice(0, waveSize);
+    await Promise.all(
+      wave.map(async (row) => {
+        const authUser = await input.admin.auth.admin.getUserById(row.id);
+        const email = authUser.data.user?.email?.trim() ?? "";
+        if (!email || (wanted && email.toLowerCase() !== wanted)) {
+          result.skipped += 1;
+          return;
+        }
+        result.examined += 1;
+        const outcome = await syncOnePending(
+          input.admin,
+          input.apiKey,
+          row,
+          email,
+          attemptsOf(row.marketing_loops_retry_attempts)
+        );
+        result[outcome] += 1;
+      })
+    );
   }
 
   return result;
@@ -95,7 +147,8 @@ async function syncOnePending(
   admin: SupabaseClient,
   apiKey: string,
   row: ProfileRow,
-  email: string
+  email: string,
+  attempts: number
 ): Promise<"cleared" | "rearmed" | "failed" | "skipped"> {
   const sentConsent = row.marketing_consent === true;
   const sentRevision = revisionOf(row.marketing_consent_revision);
@@ -140,7 +193,7 @@ async function syncOnePending(
         p_revision: sentRevision,
       });
     },
-    run: () => sendPendingContact(admin, apiKey, row.id, draft, sentConsent, sentRevision),
+    run: () => sendPendingContact(admin, apiKey, row.id, draft, sentConsent, sentRevision, attempts),
   });
   if (!leased.claimed) return "skipped";
   return leased.result;
@@ -152,7 +205,8 @@ async function sendPendingContact(
   userId: string,
   draft: LoopsContactDraft,
   sentConsent: boolean,
-  sentRevision: number
+  sentRevision: number,
+  attempts: number
 ): Promise<"cleared" | "rearmed" | "failed" | "skipped"> {
   const upsert = await upsertLoopsContact({
     properties: buildLoopsContactProperties(draft),
@@ -163,6 +217,7 @@ async function sendPendingContact(
   });
   if (!upsert.ok) {
     logLoopsFailure(upsert.code);
+    await noteLoopsRetryFailure(admin, userId, attempts, upsert.code);
     return "failed";
   }
 
@@ -183,7 +238,13 @@ async function sendPendingContact(
   if (decision === "clear") {
     const { error } = await admin
       .from("profiles")
-      .update({ marketing_loops_sync_pending: false })
+      .update({
+        marketing_loops_sync_pending: false,
+        marketing_loops_retry_attempts: 0,
+        marketing_loops_retry_after: null,
+        marketing_loops_retry_stopped: false,
+        marketing_loops_last_error: null,
+      })
       .eq("id", userId)
       .eq("marketing_consent", sentConsent)
       .eq("marketing_consent_revision", sentRevision)
@@ -209,6 +270,36 @@ async function sendPendingContact(
   }
 
   return "skipped";
+}
+
+function attemptsOf(value: unknown): number {
+  const attempts = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(attempts) && attempts > 0 ? attempts : 0;
+}
+
+async function noteLoopsRetryFailure(
+  admin: SupabaseClient,
+  userId: string,
+  attempts: number,
+  code: string
+): Promise<void> {
+  const safeCode = code.replace(/[^a-z0-9_]/gi, "").slice(0, 64) || "unknown";
+  const nextAttempts = attempts + 1;
+  const disposition = loopsRetryDisposition(safeCode);
+  const stopped = disposition === "permanent" || nextAttempts >= MARKETING_LOOPS_RETRY_ATTEMPT_CAP;
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      marketing_loops_retry_attempts: nextAttempts,
+      marketing_loops_retry_stopped: stopped,
+      marketing_loops_retry_after: stopped
+        ? null
+        : new Date(Date.now() + loopsRetryBackoffMs(nextAttempts)).toISOString(),
+      marketing_loops_last_error: safeCode,
+    })
+    .eq("id", userId)
+    .eq("marketing_loops_sync_pending", true);
+  if (error) logLoopsFailure("retry_note_failed");
 }
 
 function revisionOf(value: unknown): number {

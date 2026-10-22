@@ -1,7 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
-  MARKETING_LOOPS_RETRY_LIMIT,
+  cronAuthorizationMatches,
+  MARKETING_LOOPS_RETRY_BATCH,
+  MARKETING_LOOPS_RETRY_CONCURRENCY,
   marketingLoopsAllowsEmail,
   marketingLoopsRetriesExistingPending,
   marketingLoopsScope,
@@ -16,14 +17,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 /**
- * Daily Hobby cron. One run, at most two pending contacts.
+ * Invoked by Supabase pg_cron every five minutes.
  * Existing pending rows are skipped unless MARKETING_LOOPS_RETRY_EXISTING=true.
  * Preview can sync only hello+test@erccontracting.co.nz.
  * Production refuses the Preview database.
- * Vercel calls this on Production only. An unset CRON_SECRET refuses.
+ * An unset or wrong CRON_SECRET refuses. The secret is not logged.
  */
 export async function GET(request: Request) {
-  if (!cronAuthorized(request)) {
+  if (!cronAuthorizationMatches(process.env.CRON_SECRET, request.headers.get("authorization"))) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
@@ -48,8 +49,10 @@ export async function GET(request: Request) {
       admin: createAdminClient(),
       apiKey,
       email,
-      limit: MARKETING_LOOPS_RETRY_LIMIT,
+      limit: MARKETING_LOOPS_RETRY_BATCH,
       autoRetryOnly: !includeExisting,
+      scheduled: true,
+      concurrency: MARKETING_LOOPS_RETRY_CONCURRENCY,
     });
     return NextResponse.json({
       ok: true,
@@ -58,16 +61,9 @@ export async function GET(request: Request) {
       cleared: result.cleared,
       failed: result.failed,
       skipped: result.skipped,
+      deferred: result.deferred,
     });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });
   }
-}
-
-function cronAuthorized(request: Request): boolean {
-  const expected = process.env.CRON_SECRET?.trim() ?? "";
-  const header = request.headers.get("authorization") ?? "";
-  const provided = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : "";
-  if (expected.length < 16 || expected.length !== provided.length) return false;
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
 }

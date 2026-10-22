@@ -36,7 +36,13 @@ export async function scheduleConfirmedSignupLoopsSync(input: {
 
     await admin
       .from("profiles")
-      .update({ marketing_loops_auto_retry: true })
+      .update({
+        marketing_loops_auto_retry: true,
+        marketing_loops_retry_stopped: false,
+        marketing_loops_retry_attempts: 0,
+        marketing_loops_retry_after: null,
+        marketing_loops_last_error: null,
+      })
       .eq("id", userId)
       .eq("marketing_loops_sync_pending", true);
 
@@ -56,7 +62,7 @@ export async function scheduleConfirmedSignupLoopsSync(input: {
           autoRetryOnly: true,
         });
       } catch {
-        // Pending stays set for the daily retry.
+        // Pending stays set for the five-minute retry.
       }
     });
   } catch {
