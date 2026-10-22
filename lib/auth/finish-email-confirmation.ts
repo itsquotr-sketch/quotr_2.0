@@ -6,6 +6,8 @@ import {
   shouldProvisionSignupOrganisation,
   type PendingInviteKind,
 } from "@/lib/auth/email-confirm-destination";
+import { isAccountWelcomeEligible } from "@/lib/auth/account-welcome";
+import { scheduleAccountWelcomeEmail } from "@/lib/auth/account-welcome-delivery";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { recordSignupPreferences } from "@/lib/auth/signup-preferences";
 
@@ -67,6 +69,8 @@ export async function destinationAfterEmailConfirmation(
   }
 
   let provisioned = false;
+  let welcomeUserId: string | null = null;
+  let welcomeOrgId: string | null = null;
   const metadata = user.user_metadata as Record<string, unknown>;
   const orgName = organisationNameFromUserMetadata(metadata);
   const fullName = explicitFullNameFromUserMetadata(metadata);
@@ -91,6 +95,10 @@ export async function destinationAfterEmailConfirmation(
       }
     );
     provisioned = result.ok;
+    if (result.ok && result.alreadyProvisioned === false) {
+      welcomeUserId = result.profileId;
+      welcomeOrgId = result.orgId;
+    }
     if (result.ok === false && result.category === "INVITE_PENDING") {
       pendingInvite = "one";
     }
@@ -100,10 +108,28 @@ export async function destinationAfterEmailConfirmation(
     await recordSignupPreferences(supabase, metadata);
   }
 
-  return resolveEmailConfirmDestination({
+  const destination = resolveEmailConfirmDestination({
     next,
     hasOrg,
     pendingInvite,
     provisioned,
   });
+
+  if (
+    welcomeUserId &&
+    welcomeOrgId &&
+    isAccountWelcomeEligible({
+      trigger: "signup_confirmation",
+      emailConfirmed: Boolean(user.email_confirmed_at),
+      newlyProvisioned: true,
+      destination,
+    })
+  ) {
+    await scheduleAccountWelcomeEmail({
+      userId: welcomeUserId,
+      orgId: welcomeOrgId,
+    });
+  }
+
+  return destination;
 }
