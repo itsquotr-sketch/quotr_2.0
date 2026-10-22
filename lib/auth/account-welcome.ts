@@ -7,6 +7,7 @@
  * Existing accounts are not scanned or backfilled.
  */
 
+import { QUOTR_WORDMARK_NATIVE } from "@/lib/branding/assets";
 import { teamInviteFromHeader } from "@/lib/email/application-email";
 
 export const ACCOUNT_WELCOME_TEMPLATE_VERSION = "account-welcome-v1";
@@ -20,6 +21,16 @@ export const ACCOUNT_WELCOME_FIRST_JOB_URL =
   "https://app.get-quotr.com/help/your-first-job";
 /** Same mailbox as HELP_SUPPORT_EMAIL. Kept local so confirmation does not load the help catalogue. */
 export const ACCOUNT_WELCOME_REPLY_TO = "hello@get-quotr.com";
+/** Official wordmark, black + orange, served from the public app. */
+export const ACCOUNT_WELCOME_WORDMARK_URL =
+  "https://app.get-quotr.com/branding/quotr-wordmark-black.png";
+export const ACCOUNT_WELCOME_WORDMARK_WIDTH = 120;
+export const ACCOUNT_WELCOME_WORDMARK_HEIGHT = Math.round(
+  (ACCOUNT_WELCOME_WORDMARK_WIDTH * QUOTR_WORDMARK_NATIVE.height) /
+    QUOTR_WORDMARK_NATIVE.width
+);
+/** Resend keeps an idempotency key for 24 hours. After that, do not send again. */
+export const ACCOUNT_WELCOME_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const ACCOUNT_WELCOME_EMAIL_ENABLED_ENV =
   "ACCOUNT_WELCOME_EMAIL_ENABLED" as const;
 export const ACCOUNT_WELCOME_EMAIL_PRODUCTION_ENV =
@@ -129,14 +140,16 @@ function escapeHtml(value: string): string {
 export function buildAccountWelcomeEmail(input: {
   fullName: string | null | undefined;
   previewTest?: boolean;
+  environment?: AccountWelcomeEnvironment | null;
 }): { subject: string; html: string; text: string } {
   const greeting = accountWelcomeGreetingLine(input.fullName);
   const continueUrl = ACCOUNT_WELCOME_CONTINUE_URL;
   const gettingStartedUrl = ACCOUNT_WELCOME_GETTING_STARTED_URL;
   const firstJobUrl = ACCOUNT_WELCOME_FIRST_JOB_URL;
-  const identification = input.previewTest
-    ? "Preview test of the account welcome email."
-    : null;
+  const identification =
+    input.previewTest === true && input.environment !== "production"
+      ? "Preview test of the account welcome email."
+      : null;
   const text = [
     identification,
     identification ? "" : null,
@@ -173,24 +186,26 @@ export function buildAccountWelcomeEmail(input: {
   <title>${escapeHtml(ACCOUNT_WELCOME_SUBJECT)}</title>
 </head>
 <body style="padding:0;margin:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 12px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#f4f4f5;">
     <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;padding:28px 24px">
+      <td align="center" style="padding:24px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:12px;table-layout:fixed;">
           <tr>
-            <td>
+            <td style="padding:28px 24px;word-wrap:break-word;">
               ${identificationHtml}
-              <p style="padding:0 0 16px 0;margin:0;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#111">Quotr</p>
-              <p style="padding:0 0 16px 0;margin:0;font-size:15px">${escapeHtml(greeting)}</p>
-              <p style="padding:0 0 16px 0;margin:0;font-size:15px">Your email is confirmed and your Quotr account is ready.</p>
-              <p style="padding:0 0 16px 0;margin:0;font-size:15px">Finish your company setup, then start your first job. Add a clear description of the work, review the details, and Quotr will help you build your estimate.</p>
-              <p style="padding:8px 0 0 0;margin:0">
-                <a href="${escapeHtml(continueUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 20px;border-radius:8px">Continue to Quotr</a>
+              <p style="padding:0 0 20px 0;margin:0;">
+                <img src="${escapeHtml(ACCOUNT_WELCOME_WORDMARK_URL)}" alt="Quotr" width="${ACCOUNT_WELCOME_WORDMARK_WIDTH}" height="${ACCOUNT_WELCOME_WORDMARK_HEIGHT}" style="display:block;width:${ACCOUNT_WELCOME_WORDMARK_WIDTH}px;height:${ACCOUNT_WELCOME_WORDMARK_HEIGHT}px;border:0;outline:none;text-decoration:none;" />
               </p>
-              <p style="padding:24px 0 0 0;margin:0;font-size:13px;color:#52525b"><a href="${escapeHtml(gettingStartedUrl)}" style="color:#111111">Getting started</a></p>
-              <p style="padding:8px 0 0 0;margin:0;font-size:13px;color:#52525b"><a href="${escapeHtml(firstJobUrl)}" style="color:#111111">Your first job</a></p>
-              <p style="padding:24px 0 0 0;margin:0;font-size:13px;color:#52525b">Need a hand? Reply to this email or contact <a href="mailto:${escapeHtml(ACCOUNT_WELCOME_REPLY_TO)}" style="color:#111111">${escapeHtml(ACCOUNT_WELCOME_REPLY_TO)}</a>.</p>
-              <p style="padding:16px 0 0 0;margin:0;font-size:13px;color:#111">The Quotr team</p>
+              <p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px">${escapeHtml(greeting)}</p>
+              <p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px">Your email is confirmed and your Quotr account is ready.</p>
+              <p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px">Finish your company setup, then start your first job. Add a clear description of the work, review the details, and Quotr will help you build your estimate.</p>
+              <p style="padding:8px 0 0 0;margin:0">
+                <a href="${escapeHtml(continueUrl)}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;line-height:20px;padding:12px 20px;border-radius:8px">Continue to Quotr</a>
+              </p>
+              <p style="padding:24px 0 0 0;margin:0;font-size:15px;line-height:22px;color:#52525b"><a href="${escapeHtml(gettingStartedUrl)}" style="color:#111111">Getting started</a></p>
+              <p style="padding:8px 0 0 0;margin:0;font-size:15px;line-height:22px;color:#52525b"><a href="${escapeHtml(firstJobUrl)}" style="color:#111111">Your first job</a></p>
+              <p style="padding:24px 0 0 0;margin:0;font-size:15px;line-height:22px;color:#52525b">Need a hand? Reply to this email or contact <a href="mailto:${escapeHtml(ACCOUNT_WELCOME_REPLY_TO)}" style="color:#111111">${escapeHtml(ACCOUNT_WELCOME_REPLY_TO)}</a>.</p>
+              <p style="padding:16px 0 0 0;margin:0;font-size:15px;line-height:22px;color:#111">The Quotr team</p>
             </td>
           </tr>
         </table>
@@ -208,11 +223,13 @@ export function decideAccountWelcomeSend(input: {
   leaseUntil: string | null;
   now: string;
   idempotencyKey: string;
+  idempotencyStartedAt?: string | null;
+  providerMessageId?: string | null;
 }): {
-  action: "skip_accepted" | "skip_in_flight" | "send";
+  action: "skip_accepted" | "skip_in_flight" | "reconcile" | "send";
   idempotencyKey: string;
 } {
-  if (input.status === "accepted") {
+  if (input.status === "accepted" || input.providerMessageId) {
     return { action: "skip_accepted", idempotencyKey: input.idempotencyKey };
   }
   if (
@@ -221,6 +238,17 @@ export function decideAccountWelcomeSend(input: {
     Date.parse(input.leaseUntil) > Date.parse(input.now)
   ) {
     return { action: "skip_in_flight", idempotencyKey: input.idempotencyKey };
+  }
+  if (input.idempotencyStartedAt) {
+    const started = Date.parse(input.idempotencyStartedAt);
+    const now = Date.parse(input.now);
+    if (
+      Number.isFinite(started) &&
+      Number.isFinite(now) &&
+      now - started >= ACCOUNT_WELCOME_IDEMPOTENCY_WINDOW_MS
+    ) {
+      return { action: "reconcile", idempotencyKey: input.idempotencyKey };
+    }
   }
   return { action: "send", idempotencyKey: input.idempotencyKey };
 }

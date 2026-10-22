@@ -10,9 +10,13 @@ import {
   ACCOUNT_WELCOME_CONTINUE_URL,
   ACCOUNT_WELCOME_FIRST_JOB_URL,
   ACCOUNT_WELCOME_GETTING_STARTED_URL,
+  ACCOUNT_WELCOME_IDEMPOTENCY_WINDOW_MS,
   ACCOUNT_WELCOME_REPLY_TO,
   ACCOUNT_WELCOME_SUBJECT,
   ACCOUNT_WELCOME_TEMPLATE_VERSION,
+  ACCOUNT_WELCOME_WORDMARK_HEIGHT,
+  ACCOUNT_WELCOME_WORDMARK_URL,
+  ACCOUNT_WELCOME_WORDMARK_WIDTH,
   accountWelcomeGreetingLine,
   accountWelcomeIdempotencyKey,
   buildAccountWelcomeEmail,
@@ -193,8 +197,30 @@ assert(
     customer.html.includes(">Continue to Quotr<") &&
     customer.html.includes("width=device-width") &&
     customer.html.includes("max-width:560px") &&
+    customer.html.includes(`alt="Quotr"`) &&
+    customer.html.includes(`src="${ACCOUNT_WELCOME_WORDMARK_URL}"`) &&
+    customer.html.includes(`width="${ACCOUNT_WELCOME_WORDMARK_WIDTH}"`) &&
+    customer.html.includes(`height="${ACCOUNT_WELCOME_WORDMARK_HEIGHT}"`) &&
+    ACCOUNT_WELCOME_WORDMARK_WIDTH >= 110 &&
+    ACCOUNT_WELCOME_WORDMARK_WIDTH <= 130 &&
+    ACCOUNT_WELCOME_WORDMARK_HEIGHT === 30 &&
+    customer.html.includes("line-height:20px;padding:12px 20px") &&
+    customer.html.includes("font-size:16px;line-height:24px") &&
+    !customer.html.includes("text-transform:uppercase") &&
     !/upgrade|discount|unsubscribe|loops/i.test(customer.text) &&
-    !customer.text.includes("Preview test")
+    !customer.text.includes("Preview test") &&
+    !customer.html.includes("Preview test")
+);
+const productionMarked = buildAccountWelcomeEmail({
+  fullName: "Alex Builder",
+  previewTest: true,
+  environment: "production",
+});
+assert(
+  "a production welcome never carries the preview identification line",
+  !productionMarked.text.includes("Preview test") &&
+    !productionMarked.html.includes("Preview test") &&
+    productionMarked.html.includes(`alt="Quotr"`)
 );
 assert(
   "reply-to is the established support mailbox",
@@ -242,7 +268,25 @@ assert(
       leaseUntil: null,
       now: "2026-10-22T00:01:00.000Z",
       idempotencyKey: signupKey,
-    }).idempotencyKey === signupKey
+    }).idempotencyKey === signupKey &&
+    decideAccountWelcomeSend({
+      status: "failed",
+      leaseUntil: null,
+      now: "2026-10-23T01:00:00.000Z",
+      idempotencyKey: signupKey,
+      idempotencyStartedAt: "2026-10-22T01:00:00.000Z",
+    }).action === "reconcile" &&
+    decideAccountWelcomeSend({
+      status: "failed",
+      leaseUntil: null,
+      now: new Date(
+        Date.parse("2026-10-22T01:00:00.000Z") +
+          ACCOUNT_WELCOME_IDEMPOTENCY_WINDOW_MS -
+          1000
+      ).toISOString(),
+      idempotencyKey: signupKey,
+      idempotencyStartedAt: "2026-10-22T01:00:00.000Z",
+    }).action === "send"
 );
 
 type MemoryRow = {
@@ -253,6 +297,9 @@ type MemoryRow = {
   fullName: string | null;
   recipientEmail: string;
   source: "signup" | "preview_test";
+  environment: "preview" | "production";
+  idempotencyStartedAt: string | null;
+  reconcile: boolean;
   failCount: number;
 };
 
@@ -264,7 +311,20 @@ function memoryStore(row: MemoryRow, ackFails: { remaining: number }): AccountWe
         leaseUntil: row.leaseUntil,
         now: now.toISOString(),
         idempotencyKey: row.idempotencyKey,
+        idempotencyStartedAt: row.idempotencyStartedAt,
+        providerMessageId: row.providerMessageId,
       });
+      if (decision.action === "reconcile") {
+        row.reconcile = true;
+        row.status = "failed";
+        row.leaseUntil = null;
+        return {
+          claimed: false,
+          reason: "reconcile",
+          providerMessageId: null,
+          idempotencyKey: row.idempotencyKey,
+        };
+      }
       if (decision.action === "skip_accepted") {
         return {
           claimed: false,
@@ -283,6 +343,7 @@ function memoryStore(row: MemoryRow, ackFails: { remaining: number }): AccountWe
       }
       row.status = "sending";
       row.leaseUntil = new Date(now.getTime() + 90_000).toISOString();
+      if (!row.idempotencyStartedAt) row.idempotencyStartedAt = now.toISOString();
       return {
         claimed: true,
         row: {
@@ -294,6 +355,8 @@ function memoryStore(row: MemoryRow, ackFails: { remaining: number }): AccountWe
           providerMessageId: row.providerMessageId,
           leaseUntil: row.leaseUntil,
           source: row.source,
+          environment: row.environment,
+          idempotencyStartedAt: row.idempotencyStartedAt,
         } satisfies AccountWelcomeClaimedRow,
       };
     },
@@ -342,6 +405,9 @@ const row: MemoryRow = {
   fullName: "Preview Stripe",
   recipientEmail: "hello+test@erccontracting.co.nz",
   source: "preview_test",
+  environment: "preview",
+  idempotencyStartedAt: null,
+  reconcile: false,
   failCount: 0,
 };
 const ackFails = { remaining: 3 };
@@ -384,6 +450,9 @@ const failedRow: MemoryRow = {
   fullName: "Alex Builder",
   recipientEmail: "alex@example.com",
   source: "signup",
+  environment: "production",
+  idempotencyStartedAt: null,
+  reconcile: false,
   failCount: 0,
 };
 let calls = 0;
@@ -463,6 +532,9 @@ const refused = await deliverAccountWelcomeEmail({
       fullName: "Other",
       recipientEmail: "other@example.com",
       source: "preview_test",
+      environment: "preview",
+      idempotencyStartedAt: null,
+      reconcile: false,
       failCount: 0,
     },
     { remaining: 0 }
@@ -477,6 +549,7 @@ assert(
 );
 
 const migration = read("supabase/migrations/113_account_welcome_email.sql");
+const activation = read("supabase/migrations/114_account_welcome_activation.sql");
 const confirmation = read("lib/auth/finish-email-confirmation.ts");
 const login = read("app/(auth)/actions.ts");
 const recovery = read("lib/auth/recovery-actions.ts");
@@ -491,7 +564,13 @@ assert(
     migration.includes("user_id, template_version, environment, source") &&
     migration.includes("account_welcome_deliveries_idempotency_uidx") &&
     migration.includes("account-welcome-v1:' || p_environment || ':' || p_user_id") &&
-    migration.includes("WELCOME:NOT_NEW") &&
+    activation.includes("account-welcome-v1:' || p_environment || ':' || p_user_id") &&
+    activation.includes("WELCOME:BEFORE_ACTIVATION") &&
+    activation.includes("WELCOME:INVITE") &&
+    activation.includes("interval '24 hours'") &&
+    activation.includes("for update") &&
+    !activation.includes("interval '2 hours'") &&
+    !activation.includes("WELCOME:NOT_NEW") &&
     migration.includes("revoke all on table public.account_welcome_deliveries from public, anon, authenticated") &&
     migration.includes("grant execute on function public.enqueue_account_welcome_signup_v1(uuid, uuid, text) to service_role") &&
     !migration.includes("grant execute on function public.enqueue_account_welcome_signup_v1(uuid, uuid, text) to authenticated") &&
@@ -523,8 +602,53 @@ assert(
     resendSource.includes('"Idempotency-Key": payload.idempotencyKey') &&
     resendSource.includes("https://api.resend.com/emails") &&
     read("lib/auth/account-welcome-delivery.ts").includes("getQuoteDeliveryProvider") &&
-    read("lib/auth/account-welcome.ts").includes("teamInviteFromHeader")
+    read("lib/auth/account-welcome.ts").includes("teamInviteFromHeader") &&
+    read("scripts/retry-preview-account-welcome.ts").includes("shhpjsoldmqtkdbgrbtm") &&
+    read("scripts/retry-production-account-welcome.ts").includes("lxvnylhsbvudzzupxeqr") &&
+    read("docs/architecture/QUOTR_APPLICATION_EMAIL.md").includes(
+      "npx tsx scripts/retry-preview-account-welcome.ts --yes"
+    ) &&
+    read("docs/architecture/QUOTR_APPLICATION_EMAIL.md").includes(
+      "npx tsx scripts/retry-production-account-welcome.ts --yes"
+    )
 );
+const expiredRow: MemoryRow = {
+  status: "failed",
+  idempotencyKey: signupKey,
+  providerMessageId: null,
+  leaseUntil: null,
+  fullName: "Alex Builder",
+  recipientEmail: "alex@example.com",
+  source: "signup",
+  environment: "production",
+  idempotencyStartedAt: "2026-10-22T01:00:00.000Z",
+  reconcile: false,
+  failCount: 0,
+};
+let expiredCalls = 0;
+const expired = await deliverAccountWelcomeEmail({
+  deliveryId: "delivery-4",
+  store: memoryStore(expiredRow, { remaining: 0 }),
+  provider: {
+    name: "resend",
+    isConfigured: () => true,
+    async send() {
+      expiredCalls += 1;
+      return { ok: true, providerMessageId: "email_late" };
+    },
+  },
+  from: "Quotr <no-reply@get-quotr.com>",
+  now: new Date("2026-10-23T01:00:00.000Z"),
+});
+assert(
+  "an uncertain welcome past the 24-hour window is not sent again",
+  expired.outcome === "reconcile" &&
+    expired.idempotencyKey === signupKey &&
+    expiredRow.reconcile === true &&
+    expiredRow.idempotencyKey === signupKey &&
+    expiredCalls === 0
+);
+
 assert(
   "marketing consent is untouched",
   consent.includes('value === "signup"') &&

@@ -1,6 +1,7 @@
 import {
   ACCOUNT_WELCOME_REPLY_TO,
   buildAccountWelcomeEmail,
+  type AccountWelcomeEnvironment,
   type AccountWelcomeSource,
   type AccountWelcomeStatus,
 } from "@/lib/auth/account-welcome";
@@ -19,13 +20,15 @@ export type AccountWelcomeClaimedRow = {
   providerMessageId: string | null;
   leaseUntil: string | null;
   source: AccountWelcomeSource;
+  environment: AccountWelcomeEnvironment | null;
+  idempotencyStartedAt: string | null;
 };
 
 export type AccountWelcomeDeliveryStore = {
   claim(id: string, now: Date): Promise<
     | {
         claimed: false;
-        reason: "accepted" | "in_flight" | "missing";
+        reason: "accepted" | "in_flight" | "reconcile" | "missing";
         providerMessageId: string | null;
         idempotencyKey: string | null;
       }
@@ -49,6 +52,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function environmentOf(value: unknown): AccountWelcomeEnvironment | null {
+  if (value === "preview" || value === "production" || value === "development") {
+    return value;
+  }
+  return null;
 }
 
 export function createAccountWelcomeStore(db: WelcomeRpc): AccountWelcomeDeliveryStore {
@@ -76,7 +86,9 @@ export function createAccountWelcomeStore(db: WelcomeRpc): AccountWelcomeDeliver
       }
       if (row.claimed !== true) {
         const reason =
-          row.reason === "accepted" || row.reason === "in_flight"
+          row.reason === "accepted" ||
+          row.reason === "in_flight" ||
+          row.reason === "reconcile"
             ? row.reason
             : "missing";
         return {
@@ -119,6 +131,8 @@ export function createAccountWelcomeStore(db: WelcomeRpc): AccountWelcomeDeliver
           providerMessageId: text(row.provider_message_id),
           leaseUntil: text(row.lease_until),
           source,
+          environment: environmentOf(row.environment),
+          idempotencyStartedAt: text(row.idempotency_started_at),
         },
       };
     },
@@ -150,7 +164,8 @@ export type AccountWelcomeDeliveryResult = {
     | "accepted"
     | "accepted_unacked"
     | "failed"
-    | "refused";
+    | "refused"
+    | "reconcile";
   providerMessageId: string | null;
   idempotencyKey: string | null;
   from: string | null;
@@ -193,6 +208,14 @@ export async function deliverAccountWelcomeEmail(input: {
         from: input.from,
       };
     }
+    if (claimed.reason === "reconcile") {
+      return {
+        outcome: "reconcile",
+        providerMessageId: null,
+        idempotencyKey: claimed.idempotencyKey,
+        from: input.from,
+      };
+    }
     return {
       outcome: "missing",
       providerMessageId: null,
@@ -229,7 +252,8 @@ export async function deliverAccountWelcomeEmail(input: {
 
   const email = buildAccountWelcomeEmail({
     fullName: row.fullName,
-    previewTest: row.source === "preview_test",
+    previewTest: row.source === "preview_test" && row.environment === "preview",
+    environment: row.environment,
   });
   let sent: QuoteDeliveryProviderResult;
   try {

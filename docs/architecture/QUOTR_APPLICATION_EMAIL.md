@@ -23,4 +23,13 @@
  *
  * Team From never uses quotes@get-quotr.com (Quote channel).
  * Resend webhooks match on provider message id, not From address.
+ *
+ * Account welcome (service mail after a new self-signup confirms):
+ *   Same team From and Reply-To hello@get-quotr.com.
+ *   Sends only when confirmation is at or after account_welcome_runtime.activated_at.
+ *   Retry the same payload and idempotency key for 24 hours:
+ *     npx tsx scripts/retry-preview-account-welcome.ts --yes
+ *     npx tsx scripts/retry-production-account-welcome.ts --yes
+ *   Each command refuses the other database. After 24 hours an uncertain
+ *   send is left for operator reconciliation and is not sent again.
  */
