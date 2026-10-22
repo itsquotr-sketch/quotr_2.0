@@ -2,13 +2,49 @@
 
 **Updated:** 22 October 2026. This closeout is the current record. The email-preferences closeout, the account-welcome closeout, the 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `82b10891a863bb693813eac3ad6f4da041e8da73` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `9f5002ad60568da8e63b76629575fb37583ca9da`.
+**Application release:** `5ec8439c140903f15bc635d1097fa5a5baaaadf9` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `82b10891a863bb693813eac3ad6f4da041e8da73`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026, automatic Loops sync
+## Closed release — 22 October 2026, inactive engagement enrolment
 
-Production is serving the application SHA above on the application and webhook aliases. A confirmed signup still syncs in the background after the response, separately from the Resend welcome. Failed syncs retry every five minutes. Existing pending profiles stay out of that run. No account was created, no email was sent, no campaign or workflow was published, and the individual Production sync was not run.
+Production is serving the application SHA above on the application and webhook aliases. The engagement sequence stays unpublished and its activation time is null, so no contact is eligible. The automatic Loops sync and five-minute retry from `82b10891` remain in place. No account was created, no email was sent in this release, and no workflow or campaign was published.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `feat/email-preferences-loops` |
+| Application SHA | `5ec8439c140903f15bc635d1097fa5a5baaaadf9` |
+| Commit | `5ec8439c` — Add an inactive production enrolment marker so the draft sequence can later enrol once. |
+| Parent | `82b10891a863bb693813eac3ad6f4da041e8da73`. The difference is migration 118 and the production-only marker. Signup sync, the five-minute retry, the Resend welcome, and the preference flow are unchanged. |
+| Working tree | Clean, and the SHA matches `origin/feat/email-preferences-loops`. Production `82b10891` is the parent. |
+| Production deployment | `dpl_5D3QPGEfZ5f6tiVa1hLL6wLLzDDc` |
+| Production URL | `https://quotr-2-0-eztayrgpm-quotr1.vercel.app` |
+| Production status | Ready. Fresh build with Production environment settings. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that release deployment. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same release deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing site. Its Vercel alias remains `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. `www.get-quotr.com` still redirects there. The production deploy did not replace that alias. |
+| `quotr-2-0.vercel.app` | unchanged: `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. |
+| Preview aliases | unchanged. Help Preview remains `dpl_reLaubadsvWcA2QVjzjbjneoz8pf`. Onboarding Preview remains `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. Hardening remains `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`. Workflow remains `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. Branch Preview remains `dpl_BZZfQAMfhXrW7kBZ8rSXjjnpuk8S`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **118**. The dry-run listed only `118_marketing_engagement_marker.sql`. It was applied with `activated_at` null and no backfill. |
+| Production backup | Latest completed backup before the apply: physical, completed `2026-10-21T17:44:16.682Z`, id `2030690646`. The 22 October backup had not run yet. |
+| Enrolment | `marketing_engagement_runtime.activated_at` is null. Production profiles with `marketing_engagement_eligible` true: 0. The marker is sent only for a new explicit production opt-in recorded at or after activation, and only after Loops accepts that sync. A failed retry does not record it. |
+| Scheduler | The existing job `marketing-loops-retry` remains the only one, schedule `*/5 * * * *`. `MARKETING_LOOPS_RETRY_EXISTING` stays unset. |
+| Loops | Team QUOTR. “First job and rates”, the waitlist, the community template, and the campaign template are Draft. None were published. |
+| Draft sequence | Trigger: `engagementEligible` changes from empty to true, once. Before each email, marketing consent is true and the contact is subscribed. Wait 2 days, then another 3 days. |
+| Sender | From `hello@mail.get-quotr.com`. Reply-To `hello@get-quotr.com`. Stored subjects do not contain `[PREVIEW]`. |
+| Campaigns | Sending has not started. |
+
+### Later activation, not done in this release
+
+1. Confirm “First job and rates” is still Draft and no contact has `engagementEligible` set to true.
+2. Publish that workflow while `activated_at` is still null. Publishing does not enrol existing contacts, because the trigger is the change from empty to true.
+3. Then set `marketing_engagement_runtime.activated_at` to the chosen time. Only an explicit production opt-in recorded at or after that time receives the marker, once.
+
+Do not set the timestamp before publishing. A contact marked while the workflow is still Draft will not enter when it is published later, because the empty-to-true change has already happened.
+
+## Previous closeout — 22 October 2026, automatic Loops sync
+
+That release served `82b10891a863bb693813eac3ad6f4da041e8da73` on the application and webhook aliases. A confirmed signup still syncs in the background after the response, separately from the Resend welcome. Failed syncs retry every five minutes. Existing pending profiles stay out of that run. No account was created, no email was sent, no campaign or workflow was published, and the individual Production sync was not run.
 
 | Fact | Value |
 | --- | --- |
