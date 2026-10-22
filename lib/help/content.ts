@@ -843,7 +843,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           },
           {
             type: "p",
-            text: "Loops processes the contact, consent, and account-usage information needed for those optional updates. You can unsubscribe from them separately from account, security, and service emails. Campaign sending has not started. If you cannot sign in, email [hello@get-quotr.com](mailto:hello@get-quotr.com).",
+            text: "Loops processes the contact, consent, and account-usage information needed for those optional updates. The same choice covers optional reminders about unfinished setup, a first estimate, a first Quote, and a trial that is ending. Those reminders are separate from billing and service email. You can unsubscribe from them separately from account, security, and service emails. Campaign sending has not started. If you cannot sign in, email [hello@get-quotr.com](mailto:hello@get-quotr.com).",
           },
         ],
       },

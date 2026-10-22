@@ -10,6 +10,7 @@ import {
 } from "@/lib/communications/loops-automation";
 import { readLoopsApiKey } from "@/lib/communications/loops-client";
 import { syncPendingMarketingContacts } from "@/lib/communications/pending-sync";
+import { releaseDueEngagementReminders } from "@/lib/communications/reminder-schedule";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -54,6 +55,16 @@ export async function GET(request: Request) {
       scheduled: true,
       concurrency: MARKETING_LOOPS_RETRY_CONCURRENCY,
     });
+    let reminders = { released: 0, postponed: 0, suppressed: 0 };
+    try {
+      reminders = await releaseDueEngagementReminders({
+        admin: createAdminClient(),
+        apiKey,
+        limit: 4,
+      });
+    } catch {
+      reminders = { released: 0, postponed: 0, suppressed: 0 };
+    }
     return NextResponse.json({
       ok: true,
       ran: true,
@@ -62,6 +73,7 @@ export async function GET(request: Request) {
       failed: result.failed,
       skipped: result.skipped,
       deferred: result.deferred,
+      reminders,
     });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });

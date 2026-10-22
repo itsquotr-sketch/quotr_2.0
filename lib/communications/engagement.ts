@@ -11,6 +11,7 @@ import {
   marketingLoopsScope,
 } from "@/lib/communications/loops-automation";
 import { logLoopsFailure } from "@/lib/communications/loops-client";
+import { noteSetupReminder } from "@/lib/communications/reminder-schedule";
 
 export async function attachEngagementMarker(
   admin: SupabaseClient,
@@ -23,12 +24,26 @@ export async function recordEngagementMarker(
   admin: SupabaseClient,
   userId: string
 ): Promise<void> {
-  const { error } = await admin
+  const { data, error } = await admin
     .from("profiles")
     .update({ marketing_engagement_eligible: true })
     .eq("id", userId)
-    .eq("marketing_engagement_eligible", false);
-  if (error) logLoopsFailure("engagement_marker_failed");
+    .eq("marketing_engagement_eligible", false)
+    .select("id");
+  if (error || !data?.length) {
+    if (error) logLoopsFailure("engagement_marker_failed");
+    return;
+  }
+  const marked = await admin
+    .from("profiles")
+    .update({ marketing_engagement_marked_at: new Date().toISOString() })
+    .eq("id", userId)
+    .is("marketing_engagement_marked_at", null);
+  if (marked.error) {
+    logLoopsFailure("engagement_marker_failed");
+    return;
+  }
+  noteSetupReminder(userId);
 }
 
 async function engagementMarkerDue(

@@ -159,8 +159,11 @@ export default function ApplicationPrivacyPage() {
         </p>
         <p>
           Loops (loops.so) processes the contact, consent, and account-usage
-          information needed for those optional updates. It does not receive
-          project, client, or quote contents. Campaign sending has not started.
+          information needed for those optional updates. The same choice covers
+          optional reminders about unfinished setup, a first estimate, a first
+          Quote, and a trial that is ending. Those reminders are separate from
+          billing and service email. It does not receive project, client, or
+          quote contents. Campaign sending has not started.
         </p>
       </LegalSection>
 

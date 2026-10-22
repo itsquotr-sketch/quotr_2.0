@@ -189,6 +189,41 @@ async function readFindBody(response: LoopsHttpResponse): Promise<boolean> {
   return Array.isArray(body) && body.length > 0;
 }
 
+/**
+ * Subscription state for one existing contact. Does not create or update.
+ * Missing and unsubscribed contacts are not enrolled by the caller.
+ */
+export async function readLoopsContactSubscription(input: {
+  userId: string;
+  apiKey?: string | null;
+  fetchImpl?: FetchLike;
+}): Promise<"subscribed" | "unsubscribed" | "missing" | "error"> {
+  const apiKey = input.apiKey === undefined ? readLoopsApiKey() : input.apiKey;
+  const userId = input.userId.trim();
+  if (!apiKey || !userId) return "error";
+  const fetchImpl = input.fetchImpl ?? fetch;
+  try {
+    const response = await fetchImpl(
+      `${LOOPS_API_ORIGIN}/contacts/find?userId=${encodeURIComponent(userId)}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      }
+    );
+    if (!response.ok) return "error";
+    const body = await response.json();
+    if (!Array.isArray(body) || body.length === 0) return "missing";
+    const contact = body[0];
+    if (!contact || typeof contact !== "object") return "missing";
+    return (contact as { subscribed?: unknown }).subscribed === true
+      ? "subscribed"
+      : "unsubscribed";
+  } catch {
+    return "error";
+  }
+}
+
 export function logLoopsFailure(code: string): void {
   console.error("[communications]", { scope: "loops", code });
 }

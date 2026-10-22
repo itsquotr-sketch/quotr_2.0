@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import { noteQuoteSent } from "@/lib/communications/reminder-schedule";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import {
   deckStatedCountPricingBlock,
@@ -1841,6 +1842,7 @@ export async function sendQuoteToClient(input: {
       quote: working,
       previousStatus: "draft",
     });
+    noteQuoteSent(orgId, working.project_id);
   }
 
   revalidateQuoteDashboard(
@@ -1938,6 +1940,7 @@ export async function finalizeQuoteDelivery(
       quote: loaded.quote,
       previousStatus: "draft",
     });
+    noteQuoteSent(loaded.orgId, loaded.quote.project_id);
   }
 
   revalidateQuoteDashboard(

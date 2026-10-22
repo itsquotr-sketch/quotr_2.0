@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
+import { noteFirstProject } from "@/lib/communications/reminder-schedule";
 import { createProjectInputSchema, updateProjectDetailsSchema } from "@/lib/projects/schema";
 import { projectSnapshotFromCustomer } from "@/lib/customers/snapshot";
 import {
@@ -490,6 +491,7 @@ export async function createProject(
         .maybeSingle();
       if (existing?.id) {
         revalidatePath("/app/dashboard");
+        noteFirstProject(orgId, existing.id);
         return { projectId: existing.id };
       }
     }
@@ -515,6 +517,7 @@ export async function createProject(
       }
 
       revalidatePath("/app/dashboard");
+      noteFirstProject(orgId, fallbackProject.id);
       return { projectId: fallbackProject.id };
     }
 
@@ -525,6 +528,7 @@ export async function createProject(
   }
 
   revalidatePath("/app/dashboard");
+  noteFirstProject(orgId, project.id);
   return { projectId: project.id };
 }
 

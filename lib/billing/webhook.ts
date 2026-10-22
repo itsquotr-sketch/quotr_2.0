@@ -3,6 +3,7 @@ import {
   shouldApplyStripeEvent,
 } from "@/lib/billing/events";
 import { eventMatchesBillingEnvironment } from "@/lib/billing/environment";
+import { notePaidOrClosed } from "@/lib/communications/reminder-schedule";
 import { logBillingEvent } from "@/lib/billing/logging";
 import {
   extractInvoiceCustomerId,
@@ -294,6 +295,15 @@ async function handleClaimedEvent(input: {
     }
 
     await store.upsertSubscription(mapped.row);
+    if (
+      mapped.row.source === "stripe" &&
+      (mapped.row.status === "active" ||
+        mapped.row.status === "cancelled" ||
+        mapped.row.status === "scheduled_to_cancel" ||
+        event.type === "customer.subscription.deleted")
+    ) {
+      notePaidOrClosed(mapped.row.orgId);
+    }
     return { result: "processed", orgId: customer.orgId };
   }
 

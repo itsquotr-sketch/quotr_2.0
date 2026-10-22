@@ -8,6 +8,7 @@ import {
 } from "@/lib/communications/loops-automation";
 import { readLoopsApiKey } from "@/lib/communications/loops-client";
 import { syncPendingMarketingContacts } from "@/lib/communications/pending-sync";
+import { noteTrialFromUser } from "@/lib/communications/reminder-schedule";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -61,6 +62,7 @@ export async function scheduleConfirmedSignupLoopsSync(input: {
           limit: 1,
           autoRetryOnly: true,
         });
+        await noteTrialFromUser(userId);
       } catch {
         // Pending stays set for the five-minute retry.
       }

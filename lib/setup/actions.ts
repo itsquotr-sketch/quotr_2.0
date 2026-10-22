@@ -21,6 +21,7 @@ import {
 import type { MembershipRole } from "@/lib/team/roles";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import type { createClient } from "@/lib/supabase/server";
+import { noteSetupCompleted } from "@/lib/communications/reminder-schedule";
 import { revalidatePath } from "next/cache";
 import type {
   ActionResult,
@@ -1109,6 +1110,7 @@ async function writeCanonicalOnboardingCompletion(
     return setupDbError(error);
   }
 
+  noteSetupCompleted(context.orgId);
   revalidatePath("/app/setup");
   revalidatePath("/app/dashboard");
   return { success: true };

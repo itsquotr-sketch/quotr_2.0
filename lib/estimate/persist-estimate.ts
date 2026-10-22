@@ -13,6 +13,7 @@ import {
 } from "@/lib/estimate/requirement-snapshot-persist";
 import { createSupabaseRequirementSnapshotStore } from "@/lib/estimate/requirement-snapshot-store";
 import type { EstimateResult } from "@/lib/estimate/types";
+import { noteEstimateGenerated } from "@/lib/communications/reminder-schedule";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
 type PersistEstimateSnapshot =
@@ -339,6 +340,7 @@ async function persistEstimateResultLegacyMultiCall(
   }
 
   await markPricingRecalibration(supabase, orgId, projectId);
+  noteEstimateGenerated(orgId, projectId);
 
   return { success: true, estimateId, snapshot };
 }
@@ -359,6 +361,7 @@ export async function persistEstimateResult(
   const rpc = await persistEstimateGenerationViaRpc(supabase, payload);
   if (rpc.ok) {
     await markPricingRecalibration(supabase, orgId, projectId);
+    noteEstimateGenerated(orgId, projectId);
     return {
       success: true,
       estimateId: rpc.result.estimate_id,
