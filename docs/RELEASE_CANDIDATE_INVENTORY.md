@@ -1,14 +1,45 @@
 # Release-candidate inventory
 
-**Updated:** 22 October 2026. This closeout is the current record. The 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 22 October 2026. This closeout is the current record. The account-welcome closeout, the 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `c936bd25b69bf6ed930477ff3683597087e5d85c` on `feat/account-welcome-email`. It is pushed. Its parent line includes the previous Production application `010176106f69df59f84d31d4ab40ed8306eb5dab`.
+**Application release:** `9f5002ad60568da8e63b76629575fb37583ca9da` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `c936bd25b69bf6ed930477ff3683597087e5d85c`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026, account welcome
+## Closed release — 22 October 2026, email preferences
 
-The owner approved the test email’s content and layout. Production is serving the application SHA above. The Help centre from `01017610` is included and was not rewritten. No account was created for this release, and no welcome email was sent to prove activation. Production `account_welcome_deliveries` has zero rows.
+Production is serving the application SHA above. The account welcome, Help centre, onboarding, recovery, billing, and the rest of the Privacy Notice are included. No account was created, no email was sent, no campaign or workflow was published, and the Production operator sync was not run.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `feat/email-preferences-loops` |
+| Application SHA | `9f5002ad60568da8e63b76629575fb37583ca9da` |
+| Commits | `9f5002ad` — Check the Production Loops team during the release build without printing the key. `b0e6c8e9` — State that campaign sending has not started and keep Production Loops sync to one address. `e6f835bb` — Let signed-in users set product-update email and keep Loops pending until that consent is accepted. |
+| Parent | `c936bd25b69bf6ed930477ff3683597087e5d85c`. The difference is the Profile email preference, Loops consent acknowledgement, migration 115, and the public product-update wording. |
+| Working tree | Clean, and the SHA matches `origin/feat/email-preferences-loops`. |
+| Production deployment | `dpl_Fdiq1MvSTdYJxEHmKVK1Fd4AwZxb` |
+| Production URL | `https://quotr-2-0-ggciafr1s-quotr1.vercel.app` |
+| Production status | Ready, target production. Fresh build with Production environment settings. The application domain was assigned after it was Ready. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that Production deployment. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing site through Cloudflare. Its Vercel alias remains `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. `www.get-quotr.com` still redirects there and was not changed. |
+| `quotr-2-0.vercel.app` | unchanged: `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. |
+| Preview aliases | unchanged. Help Preview remains `dpl_reLaubadsvWcA2QVjzjbjneoz8pf`. Onboarding Preview remains `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. Hardening remains `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`. Workflow remains `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. |
+| Branch preview | `dpl_7yKqY4EoMmriWzBpNFJAitUBJ2w4` is the same SHA, target preview. It was not assigned to `app.get-quotr.com`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **115**. The dry-run listed only `115_marketing_consent_revision.sql`. After apply, local and remote match through 115. Existing consent rows were not backfilled. |
+| Production backup | Latest completed backup before the apply remained available: physical, completed `2026-10-21T17:44:16.682Z`, id `2030690646`. |
+| Loops | Production `LOOPS_API_KEY` authenticated to team QUOTR. Both workflows are Draft. The one campaign is Draft. None were published. |
+| Automatic sync | Saving Email preferences syncs that signed-in user only, because the Production key is present. Signup does not call Loops. The Stripe webhook does not call Loops. Nothing is scheduled, and nothing imports every pending profile. |
+| Operator sync | `npx tsx scripts/sync-production-marketing-loops.ts --yes --email <one-address>`. It does not load `.env.local`. It refuses unless `NEXT_PUBLIC_SUPABASE_URL` is `https://lxvnylhsbvudzzupxeqr.supabase.co`, `--yes` is present, and one email is given. It was not run. |
+| Campaigns | Sending has not started. |
+
+### Focused checks
+
+Signed-out `https://app.get-quotr.com/app/profile` returns 307 to `/login?next=%2Fapp%2Fprofile`. `/help` and `/privacy` return 200. Privacy names Profile → Email preferences, says Loops processes the contact, consent, and account-usage information, and says campaign sending has not started. The rest of the notice, including Flowra Limited, is still there. `/terms` returns 200. `https://get-quotr.com` returns 200 through Cloudflare. No authorised session was available, so the preference control was not opened while signed in and no consent was changed.
+
+## Previous closeout — 22 October 2026, account welcome
+
+The owner approved the test email’s content and layout. That release served `c936bd25b69bf6ed930477ff3683597087e5d85c`. The Help centre from `01017610` is included and was not rewritten. No account was created for this release, and no welcome email was sent to prove activation. Production `account_welcome_deliveries` has zero rows.
 
 | Fact | Value |
 | --- | --- |
