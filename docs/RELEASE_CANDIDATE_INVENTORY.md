@@ -1,10 +1,30 @@
 # Release-candidate inventory
 
-**Updated:** 22 October 2026. This closeout is the current record. The email-preferences closeout, the account-welcome closeout, the 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 23 October 2026. The reminder schema is on Production and enrolment is still off. The 22 October activation closeout stays below. Where they disagree about schema head, this section wins. The serving application is still the 22 October release. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `5ec8439c140903f15bc635d1097fa5a5baaaadf9` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `82b10891a863bb693813eac3ad6f4da041e8da73`.
+**Application release:** Production is still serving `5ec8439c140903f15bc635d1097fa5a5baaaadf9`. The reminder candidate `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a` is pushed on `feat/email-preferences-loops` and includes that release. It has not been deployed.
 
-**This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
+## Schema only — 23 October 2026, reminders not activated
+
+Migrations 119 and 120 were the only pending Production migrations. The latest completed backup before the apply was physical backup `2040261415`, completed `2026-10-22T17:46:33.981Z`. Both migrations were applied. No contact was enrolled, no reminder row was inserted, and no send time was backfilled.
+
+| Fact | Value |
+| --- | --- |
+| Candidate | `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a`, pushed. Production `5ec8439c` is an ancestor. |
+| Serving deployment | Unchanged: `dpl_5D3QPGEfZ5f6tiVa1hLL6wLLzDDc` at `https://quotr-2-0-eztayrgpm-quotr1.vercel.app`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **120**. |
+| Reminder activation | `marketing_reminder_runtime.activated_at` is null. Preview activation is null. |
+| Engagement activation | Unchanged: `2026-10-22 07:19:35.375118+00`. |
+| Queue | Reminder rows 0. Recorded workflow sends 0. |
+| Scheduler | `marketing-loops-retry` remains the only job, schedule `*/5 * * * *`. |
+| Sync counts | Pending excluded 2. Retrying 0. Pending with an error 0. Stopped 0. `engagementEligible` true: 0. |
+| Loops | “First job and rates” remains Sending, revision `cmvj7lzwf0cvk0j56fc833d8q`. The four reminder workflows remain Draft. The webhook endpoint was not changed. |
+
+Spacing between a generic tip and a behavioural reminder is best effort. A provider send event can arrive after Quotr has already released the other email, so this is not a guaranteed 48-hour cap. A released behavioural reminder permanently suppresses later generic tips for that contact once the tip-workflow filter is in place. That filter is not a 48-hour window.
+
+Activation stays null until the webhook secret is stored, this candidate is deployed with Production settings, the tip workflow has the per-send filter, and all four reminder workflows are Sending. Pause “First job and rates” to hold contacts already waiting. Do not Stop it.
+
+**This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment. The serving application remains the deployment named above.
 
 ## Activation — 22 October 2026, First job and rates
 
