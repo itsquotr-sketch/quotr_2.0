@@ -6,9 +6,24 @@
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026, inactive engagement enrolment
+## Activation — 22 October 2026, First job and rates
 
-Production is serving the application SHA above on the application and webhook aliases. The engagement sequence stays unpublished and its activation time is null, so no contact is eligible. The automatic Loops sync and five-minute retry from `82b10891` remain in place. No account was created, no email was sent in this release, and no workflow or campaign was published.
+The application release is unchanged. “First job and rates” is Sending, and Production enrolment was activated only after that status was confirmed. The full Loops audience, with other filters cleared, had zero contacts with `engagementEligible` true before publication. No deployment, migration, account, import, test email, or manual enrolment was made.
+
+| Fact | Value |
+| --- | --- |
+| Workflow | “First job and rates”, `cmvj3nhtv0e7a0j58xfml0vuz`, status **Sending**. Trigger: `engagementEligible` changes from empty to true, once. Marketing consent and subscribed status are required before each email. Wait 2 days, then another 3 days. |
+| Production activation | `marketing_engagement_runtime.activated_at` = `2026-10-22 07:19:35.375118+00`. That is 22 October 2026, 20:19:35.375118 NZDT. It was set with `clock_timestamp()` because the stored value was null. It was not backdated. |
+| Preview activation | `marketing_engagement_runtime.activated_at` remains null. |
+| Enrolment marker | Production profiles with `marketing_engagement_eligible` true: 0. A new explicit production opt-in recorded at or after the activation time receives the marker once, after Loops accepts that sync. |
+| Still Draft | Quotr Waitlist, Welcome to the Community, and Quotr Update — Template. |
+| Sender | From `hello@mail.get-quotr.com`. Reply-To `hello@get-quotr.com`. |
+
+Pause future enrolment by clearing Production `activated_at` back to null. Do not replace it with an earlier time, and leave Preview null. Contacts already inside the workflow stay there. Separately, Pause in the Loops inspector holds scheduled sends and delivers them on resume; new matches queue for 24 hours. Stop does not queue new contacts, and contacts already queued to enter do not enter. Either Loops control holds sending until the workflow is resumed.
+
+## Previous closeout — 22 October 2026, inactive engagement enrolment
+
+Production was serving the application SHA above on the application and webhook aliases. At that release the engagement sequence was unpublished and its activation time was null. The automatic Loops sync and five-minute retry from `82b10891` remain in place. No account was created, no email was sent in that release, and no workflow or campaign was published then.
 
 | Fact | Value |
 | --- | --- |
@@ -34,13 +49,7 @@ Production is serving the application SHA above on the application and webhook a
 | Sender | From `hello@mail.get-quotr.com`. Reply-To `hello@get-quotr.com`. Stored subjects do not contain `[PREVIEW]`. |
 | Campaigns | Sending has not started. |
 
-### Later activation, not done in this release
-
-1. Confirm “First job and rates” is still Draft and no contact has `engagementEligible` set to true.
-2. Publish that workflow while `activated_at` is still null. Publishing does not enrol existing contacts, because the trigger is the change from empty to true.
-3. Then set `marketing_engagement_runtime.activated_at` to the chosen time. Only an explicit production opt-in recorded at or after that time receives the marker, once.
-
-Do not set the timestamp before publishing. A contact marked while the workflow is still Draft will not enter when it is published later, because the empty-to-true change has already happened.
+Activation was completed afterwards and is recorded in the section above. The timestamp was set only after the workflow status was Sending. A contact marked while the workflow was still Draft would not have entered on publication, because the trigger is the empty-to-true change.
 
 ## Previous closeout — 22 October 2026, automatic Loops sync
 
