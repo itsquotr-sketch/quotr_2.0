@@ -1,14 +1,50 @@
 # Release-candidate inventory
 
-**Updated:** 22 October 2026. This closeout is the current record. The account-welcome closeout, the 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 22 October 2026. This closeout is the current record. The email-preferences closeout, the account-welcome closeout, the 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `9f5002ad60568da8e63b76629575fb37583ca9da` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `c936bd25b69bf6ed930477ff3683597087e5d85c`.
+**Application release:** `82b10891a863bb693813eac3ad6f4da041e8da73` on `feat/email-preferences-loops`. It is pushed. Its parent line includes the previous Production application `9f5002ad60568da8e63b76629575fb37583ca9da`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026, email preferences
+## Closed release — 22 October 2026, automatic Loops sync
 
-Production is serving the application SHA above. The account welcome, Help centre, onboarding, recovery, billing, and the rest of the Privacy Notice are included. No account was created, no email was sent, no campaign or workflow was published, and the Production operator sync was not run.
+Production is serving the application SHA above on the application and webhook aliases. A confirmed signup still syncs in the background after the response, separately from the Resend welcome. Failed syncs retry every five minutes. Existing pending profiles stay out of that run. No account was created, no email was sent, no campaign or workflow was published, and the individual Production sync was not run.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `feat/email-preferences-loops` |
+| Application SHA | `82b10891a863bb693813eac3ad6f4da041e8da73` |
+| Commits | `82b10891` — Retry failed Loops syncs every five minutes so opt-outs are not left waiting on a two-contact daily run. `6052a4d3` — Sync each new confirmed signup to Loops after the response and retry failures once a day. |
+| Parent | `9f5002ad60568da8e63b76629575fb37583ca9da`. The difference is the confirmed-signup background sync, the five-minute retry, migrations 116 and 117, and removal of the daily Vercel cron. |
+| Working tree | Clean, and the SHA matches `origin/feat/email-preferences-loops`. Production `9f5002ad` is an ancestor. No newer Production application was overwritten. |
+| Production deployment | `dpl_Dhm4yT6SPAD8uFLAfZpJveewNwqh` |
+| Production URL | `https://quotr-2-0-a5nou176x-quotr1.vercel.app` |
+| Production status | Ready. Fresh build with Production environment settings, after the Production `CRON_SECRET` was saved. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that release deployment. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same release deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing site through Cloudflare. Its Vercel alias remains `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. `www.get-quotr.com` still redirects there. The production deploy claimed `get-quotr.com`; it was returned to the marketing deployment before the scheduler was activated. |
+| `quotr-2-0.vercel.app` | unchanged: `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. The production deploy claimed it and it was returned. |
+| Preview aliases | unchanged. Help Preview remains `dpl_reLaubadsvWcA2QVjzjbjneoz8pf`. Onboarding Preview remains `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. Hardening remains `dpl_7HV1zMhfbcpNcSp3KeQphXraFTN2`. Workflow remains `dpl_BfK5K8mFV5nMnAGKXxUvmhfAD5cf`. Branch Preview remains `dpl_BZZfQAMfhXrW7kBZ8rSXjjnpuk8S`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **117**. The dry-run listed only `116_marketing_loops_sync_lease.sql` and `117_marketing_loops_retry_schedule.sql`. Both were applied. Existing consent rows were not backfilled. |
+| Production backup | Latest completed backup before the apply: physical, completed `2026-10-21T17:44:16.682Z`, id `2030690646`. |
+| Scheduler | One Supabase job, `marketing-loops-retry`, schedule `*/5 * * * *`. Vercel lists no cron jobs. The Vault URL is exactly `https://app.get-quotr.com/api/internal/marketing-loops-retry`. |
+| Scheduler activation | Vault secrets saved `2026-10-22 05:19:53+00`. The job did nothing before that. |
+| Successful invocation | Cron run started `2026-10-22 05:20:00.03714+00`, status succeeded. The HTTP result, stored separately, is status 200 at `2026-10-22 05:20:00.064767+00`: `{"ok":true,"ran":true,"examined":0,"cleared":0,"failed":0,"skipped":0,"deferred":0}`. |
+| Pending counts | After that run: pending 2, excluded existing 2, eligible 0, overdue 0, waiting on backoff 0, stopped 0. |
+| Authentication | Production `CRON_SECRET` is a new Sensitive Production variable. It is not the Preview bearer. `MARKETING_LOOPS_RETRY_EXISTING` is unset. A request to the Production retry route with no Authorization header returned 401 `{"ok":false}`. |
+| Loops | Team QUOTR. Both workflows are Draft. The one campaign is Draft. None were published. |
+| Automatic sync | A new confirmed signup syncs that user after the response. The Resend welcome stays independent. Saving Email preferences still syncs that signed-in user only. The Stripe webhook does not call Loops. The schedule does not import existing pending profiles. |
+| Inspect | `npx tsx scripts/inspect-marketing-loops-retry.ts --yes`. Preview loads `.env.local`. Production does not: set the Production URL and service role, and `CONFIRM_PRODUCTION_DB=lxvnylhsbvudzzupxeqr`. It prints counts only. |
+| Individual recovery | `npx tsx scripts/sync-production-marketing-loops.ts --yes --email <one-address>`. It does not load `.env.local`. It refuses unless the URL is the Production database, `--yes` is present, and one email is given. It was not run. |
+| Campaigns | Sending has not started. |
+
+### Focused checks
+
+Signed-out `https://app.get-quotr.com/api/internal/marketing-loops-retry` returns 401. `https://get-quotr.com` still returns the marketing homepage. `https://www.get-quotr.com` returns 301 to `https://get-quotr.com/`. No consent was changed and no email was sent.
+
+## Previous closeout — 22 October 2026, email preferences
+
+That release served `9f5002ad60568da8e63b76629575fb37583ca9da`. The account welcome, Help centre, onboarding, recovery, billing, and the rest of the Privacy Notice are included. No account was created, no email was sent, no campaign or workflow was published, and the Production operator sync was not run.
 
 | Fact | Value |
 | --- | --- |
