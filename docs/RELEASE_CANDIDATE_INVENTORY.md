@@ -2,13 +2,43 @@
 
 **Updated:** 22 October 2026. This closeout is the current record. The 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `c00f159461cd520dbed952775ba158792c392751` on `fix/onboarding-address-benchmarks-terms`. It is pushed. Its parent line includes the previous Production application `316f1fac9d7e6bd93e5e6c4eb373e70676ced417`.
+**Application release:** `010176106f69df59f84d31d4ab40ed8306eb5dab` on `help/public-help-centre`. It is pushed. Its parent is the previous Production application `c00f159461cd520dbed952775ba158792c392751`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026
+## Closed release — 22 October 2026, Help centre
 
-The owner approved publication of Application Terms and Privacy Notice version `2026-10-22`. Production is serving the application SHA above. Production schema head is **112**. No further signup was created, no confirmation email was sent, and Checkout was not submitted.
+The owner approved the public Help centre. Production is serving the application SHA above. No migration was applied. The recorded Production schema head remains **112**. No account was created, no email was sent, and no commercial record was created.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `help/public-help-centre` |
+| Application SHA | `010176106f69df59f84d31d4ab40ed8306eb5dab` |
+| Commits | `01017610` — Make the public help centre easier to read and move through. `08801885` — Add a public help centre builders can open without signing in. |
+| Parent | `c00f159461cd520dbed952775ba158792c392751`. The difference is the Help pages, their navigation links, local search, and the Help check. |
+| Working tree | Clean, and the SHA matches `origin/help/public-help-centre`. |
+| Production deployment | `dpl_2DwWB8RNwQDSfarF9fzPrt7YnDfS` |
+| Production URL | `https://quotr-2-0-erpadngwq-quotr1.vercel.app` |
+| Production status | Ready, target production. Fresh build with Production environment settings. Domains were not assigned until it was Ready. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that Production deployment. Help is `https://app.get-quotr.com/help`. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing site through Cloudflare. Its Vercel alias remains `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. `www.get-quotr.com` was not changed. |
+| `quotr-2-0.vercel.app` | unchanged: `dpl_8gsKqiawJdccmfgdibcjzSJSRqV7`. |
+| Preview aliases | unchanged. Help Preview remains `quotr-2-0-pq72p24bd-quotr1.vercel.app`. Onboarding Preview remains `quotr-2-0-ot3jieuom-quotr1.vercel.app`. |
+| Hardening alias | unchanged: `quotr-2-0-5vp6wvo61-quotr1.vercel.app`. |
+| Workflow alias | unchanged: `quotr-2-0-cayf5rl0f-quotr1.vercel.app`. |
+| Production schema | Not migrated. The recorded head remains **112**. |
+| Production build settings | Production Supabase `lxvnylhsbvudzzupxeqr`, `BILLING_ENVIRONMENT=live`, `NEXT_PUBLIC_SITE_URL=https://app.get-quotr.com`, and the existing Production Google Maps browser key. |
+
+### Focused checks
+
+Signed-out `https://app.get-quotr.com/help` and all eight guides return 200 and do not redirect to login. Search, heading anchors, related guides, and the support mail link work. Signed-out readers see **Sign in**. `/app/dashboard` and `/app/settings/billing` redirect to login. The desktop and 390×640 reading checks were repeated on the live site: row links, search, heading navigation, keyboard focus, wrapping headings, and no horizontal overflow. No existing authorised session was available, so Help was not opened from inside the application and **Back to Quotr** was not clicked while signed in.
+
+## Previous closeout — 22 October 2026, onboarding and legal pages
+
+This section records the onboarding and legal release. It is included in the Help release above. It is not, by itself, the deployment serving the app now.
+
+The owner approved publication of Application Terms and Privacy Notice version `2026-10-22`. That release served `c00f159461cd520dbed952775ba158792c392751`. Production schema head was **112**. No further signup was created, no confirmation email was sent, and Checkout was not submitted.
 
 | Fact | Value |
 | --- | --- |
