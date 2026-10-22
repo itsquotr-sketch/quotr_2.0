@@ -7,10 +7,13 @@ import { readFileSync } from "node:fs";
 import {
   HELP_ARTICLES,
   HELP_GROUPS,
+  HELP_ON_THIS_PAGE_MIN_SECTIONS,
   HELP_SUPPORT_EMAIL,
   getHelpArticle,
   helpArticlePlainText,
+  helpSectionId,
 } from "../lib/help/content";
+import { helpInlineParts } from "../lib/help/inline";
 import { searchHelp } from "../lib/help/search";
 
 let failed = 0;
@@ -77,7 +80,11 @@ const onboarding = readFileSync("components/setup/OnboardingFrame.tsx", "utf8");
 const setupRequired = readFileSync("components/auth/SetupRequiredForm.tsx", "utf8");
 const middleware = readFileSync("middleware.ts", "utf8");
 const helpPage = readFileSync("app/help/page.tsx", "utf8");
+const helpLayout = readFileSync("app/help/layout.tsx", "utf8");
 const articlePage = readFileSync("app/help/[slug]/page.tsx", "utf8");
+const helpSearch = readFileSync("components/help/help-search.tsx", "utf8");
+const helpArticle = readFileSync("components/help/help-article.tsx", "utf8");
+const helpFrame = readFileSync("components/help/help-frame.tsx", "utf8");
 
 assert(
   "sidebar help sits with report issue and is not a primary destination",
@@ -103,10 +110,55 @@ assert(
   "public help is not an authenticated app route",
   middleware.includes('pathname.startsWith("/app")') &&
     !middleware.includes('pathname.startsWith("/help")') &&
+    !/pathname === "\/help"[\s\S]{0,400}redirect\(/.test(middleware) &&
     helpPage.includes("How can we help?") &&
     articlePage.includes("generateStaticParams") &&
     !helpPage.includes("supabase") &&
-    !articlePage.includes("supabase")
+    !articlePage.includes("supabase") &&
+    !helpLayout.includes("supabase") &&
+    !helpLayout.includes("getOrgBillingState")
+);
+assert(
+  "signed-in return uses the existing session flag only",
+  middleware.includes('requestHeaders.set("x-quotr-help-return", authenticated ? "1" : "0")') &&
+    helpLayout.includes('headerStore.get("x-quotr-help-return") === "1"') &&
+    helpFrame.includes("Back to Quotr") &&
+    helpFrame.includes('href="/app/dashboard"') &&
+    helpFrame.includes("Sign in") &&
+    helpFrame.includes('href="/login"')
+);
+assert(
+  "landing search and first group stay readable",
+  HELP_GROUPS[0]?.label === "Start here" &&
+    helpSearch.includes("Search help") &&
+    !helpSearch.includes("sr-only") &&
+    helpSearch.includes("Search help, e.g. rates or sending a quote") &&
+    helpArticle.includes("max-w-[760px]") === false &&
+    helpFrame.includes("max-w-[760px]") &&
+    helpArticle.includes("leading-[1.6]") &&
+    helpArticle.includes("On this page") === false &&
+    readFileSync("components/help/help-on-this-page.tsx", "utf8").includes("On this page")
+);
+assert(
+  "longer guides have stable unique section anchors and no empty media",
+  HELP_ARTICLES.every((article) => {
+    const ids = article.sections.map(helpSectionId);
+    return (
+      new Set(ids).size === ids.length &&
+      ids.every((id) => id.length > 0) &&
+      article.sections.every((section) => section.media == null)
+    );
+  }) &&
+    HELP_ARTICLES.some((article) => article.sections.length >= HELP_ON_THIS_PAGE_MIN_SECTIONS) &&
+    HELP_ARTICLES.some((article) => article.sections.length < HELP_ON_THIS_PAGE_MIN_SECTIONS)
+);
+assert(
+  "guide references are links and labels stay visible in search",
+  plain.includes("select continue to save your answers and open the next step.") &&
+    helpInlineParts("See [Rates and productivity](/help/rates-and-productivity).").some(
+      (part) => part.kind === "link" && part.href === "/help/rates-and-productivity"
+    ) &&
+    searchHelp("continue").every((hit) => !hit.excerpt.includes("**") && !hit.excerpt.includes("]("))
 );
 
 if (failed > 0) {

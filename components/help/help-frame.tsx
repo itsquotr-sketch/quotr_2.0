@@ -6,10 +6,16 @@ import { HELP_SUPPORT_EMAIL } from "@/lib/help/content";
 const linkClass =
   "underline decoration-foreground/30 underline-offset-4 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2";
 
-export function HelpFrame({ children }: { children: ReactNode }) {
+export function HelpFrame({
+  children,
+  signedIn,
+}: {
+  children: ReactNode;
+  signedIn: boolean;
+}) {
   return (
     <div className="fixed inset-0 overflow-x-hidden overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto w-full min-w-0 max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-[760px] px-4 py-6 sm:px-6 sm:py-10">
         <header className="flex items-center justify-between gap-3">
           <Link
             href="/help"
@@ -18,11 +24,25 @@ export function HelpFrame({ children }: { children: ReactNode }) {
           >
             <QuotrLogo variant="wordmark" href={null} height={28} className="h-7 w-auto" />
           </Link>
-          <Link href="/login" className={`inline-flex min-h-11 items-center text-sm ${linkClass}`}>
-            Sign in
-          </Link>
+          {signedIn ? (
+            <Link
+              href="/app/dashboard"
+              data-help-return="signed-in"
+              className={`inline-flex min-h-11 items-center text-sm ${linkClass}`}
+            >
+              Back to Quotr
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              data-help-return="signed-out"
+              className={`inline-flex min-h-11 items-center text-sm ${linkClass}`}
+            >
+              Sign in
+            </Link>
+          )}
         </header>
-        <div className="mt-6 min-w-0">{children}</div>
+        <div className="mt-8 min-w-0">{children}</div>
       </div>
     </div>
   );
@@ -30,11 +50,11 @@ export function HelpFrame({ children }: { children: ReactNode }) {
 
 export function HelpSupport() {
   return (
-    <section className="mt-10 border-t border-border pt-6" aria-labelledby="help-support-heading">
+    <section className="mt-8 border-t border-border pt-8" aria-labelledby="help-support-heading">
       <h2 id="help-support-heading" className="text-base font-semibold tracking-tight">
         Need a hand?
       </h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+      <p className="mt-3 text-base leading-[1.6] text-foreground/75">
         Email{" "}
         <a className={linkClass} href={`mailto:${HELP_SUPPORT_EMAIL}`}>
           {HELP_SUPPORT_EMAIL}

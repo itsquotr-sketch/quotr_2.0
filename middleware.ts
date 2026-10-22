@@ -68,6 +68,10 @@ export async function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
+  const helpRoute = pathname === "/help" || pathname.startsWith("/help/");
+  if (helpRoute) {
+    requestHeaders.set("x-quotr-help-return", authenticated ? "1" : "0");
+  }
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
@@ -77,7 +81,7 @@ export async function middleware(request: NextRequest) {
     response.cookies.set(cookie);
   });
 
-  if (isProtectedRoute) {
+  if (isProtectedRoute || helpRoute) {
     response.headers.set("Cache-Control", "private, no-store");
   }
 

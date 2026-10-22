@@ -1,4 +1,5 @@
 import { HELP_ARTICLES, type HelpArticle, type HelpBlock } from "@/lib/help/content";
+import { helpVisibleText } from "@/lib/help/inline";
 
 export type HelpSearchHit = {
   slug: string;
@@ -27,14 +28,14 @@ function collapse(value: string): string {
 function blockExcerpt(block: HelpBlock): string {
   switch (block.type) {
     case "p":
-      return block.text;
+      return helpVisibleText(block.text);
     case "steps":
     case "list":
-      return block.items.join(" ");
+      return block.items.map(helpVisibleText).join(" ");
     case "links":
       return block.items.map((item) => item.label).join(" ");
     case "details":
-      return block.paragraphs.join(" ");
+      return block.paragraphs.map(helpVisibleText).join(" ");
   }
 }
 
@@ -53,7 +54,10 @@ function fieldsFor(article: HelpArticle): SearchField[] {
       const text = blockExcerpt(block);
       fields.push({ text, excerpt: text });
       if (block.type === "details") {
-        fields.push({ text: block.summary, excerpt: block.paragraphs.join(" ") });
+        fields.push({
+          text: helpVisibleText(block.summary),
+          excerpt: helpVisibleText(block.paragraphs.join(" ")),
+        });
       }
     }
   }
