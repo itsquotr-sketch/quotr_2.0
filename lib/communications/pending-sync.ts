@@ -16,6 +16,7 @@ import {
   type LoopsContactDraft,
 } from "@/lib/communications/contact-mapping";
 import { logLoopsFailure, upsertLoopsContact } from "@/lib/communications/loops-client";
+import { withConsentLease } from "@/lib/communications/sync-lease";
 
 const DEFAULT_LIMIT = 50;
 
@@ -40,7 +41,10 @@ export async function syncPendingMarketingContacts(input: {
   admin: SupabaseClient;
   apiKey: string;
   email?: string;
+  userId?: string;
   limit?: number;
+  /** Daily retry. Existing pending rows stay out unless the caller opts in. */
+  autoRetryOnly?: boolean;
 }): Promise<PendingSyncResult> {
   const limit = input.limit ?? DEFAULT_LIMIT;
   const result: PendingSyncResult = {
@@ -51,13 +55,15 @@ export async function syncPendingMarketingContacts(input: {
     skipped: 0,
   };
 
-  const { data, error } = await input.admin
+  let query = input.admin
     .from("profiles")
     .select(
       "id, org_id, full_name, marketing_consent, marketing_loops_sync_pending, marketing_consent_revision"
     )
-    .eq("marketing_loops_sync_pending", true)
-    .limit(limit);
+    .eq("marketing_loops_sync_pending", true);
+  if (input.userId) query = query.eq("id", input.userId);
+  if (input.autoRetryOnly) query = query.eq("marketing_loops_auto_retry", true);
+  const { data, error } = await query.limit(limit);
 
   if (error || !data) {
     logLoopsFailure("pending_unavailable");
@@ -116,6 +122,38 @@ async function syncOnePending(
     return "skipped";
   }
 
+  const leased = await withConsentLease({
+    claim: async () => {
+      const { data, error } = await admin.rpc("claim_marketing_loops_sync", {
+        p_user_id: row.id,
+        p_revision: sentRevision,
+      });
+      if (error) {
+        logLoopsFailure("lease_unavailable");
+        return false;
+      }
+      return data === true;
+    },
+    release: async () => {
+      await admin.rpc("release_marketing_loops_sync", {
+        p_user_id: row.id,
+        p_revision: sentRevision,
+      });
+    },
+    run: () => sendPendingContact(admin, apiKey, row.id, draft, sentConsent, sentRevision),
+  });
+  if (!leased.claimed) return "skipped";
+  return leased.result;
+}
+
+async function sendPendingContact(
+  admin: SupabaseClient,
+  apiKey: string,
+  userId: string,
+  draft: LoopsContactDraft,
+  sentConsent: boolean,
+  sentRevision: number
+): Promise<"cleared" | "rearmed" | "failed" | "skipped"> {
   const upsert = await upsertLoopsContact({
     properties: buildLoopsContactProperties(draft),
     mode: "routine",
@@ -128,7 +166,7 @@ async function syncOnePending(
     return "failed";
   }
 
-  const stored = await readStamp(admin, row.id);
+  const stored = await readStamp(admin, userId);
   if (!stored) return "failed";
   const sentSubscribed = "sentSubscribed" in upsert ? upsert.sentSubscribed : undefined;
   const decision = loopsPreferenceAckDecision({
@@ -146,7 +184,7 @@ async function syncOnePending(
     const { error } = await admin
       .from("profiles")
       .update({ marketing_loops_sync_pending: false })
-      .eq("id", row.id)
+      .eq("id", userId)
       .eq("marketing_consent", sentConsent)
       .eq("marketing_consent_revision", sentRevision)
       .eq("marketing_loops_sync_pending", true);
@@ -161,7 +199,7 @@ async function syncOnePending(
     const { error } = await admin
       .from("profiles")
       .update({ marketing_loops_sync_pending: true })
-      .eq("id", row.id)
+      .eq("id", userId)
       .neq("marketing_consent_revision", sentRevision);
     if (error) {
       logLoopsFailure("preference_rearm_failed");

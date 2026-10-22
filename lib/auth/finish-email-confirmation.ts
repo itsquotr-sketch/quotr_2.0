@@ -8,6 +8,8 @@ import {
 } from "@/lib/auth/email-confirm-destination";
 import { isAccountWelcomeEligible } from "@/lib/auth/account-welcome";
 import { scheduleAccountWelcomeEmail } from "@/lib/auth/account-welcome-delivery";
+import { confirmedSignupLoopsEligible } from "@/lib/communications/loops-automation";
+import { scheduleConfirmedSignupLoopsSync } from "@/lib/communications/signup-sync";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { recordSignupPreferences } from "@/lib/auth/signup-preferences";
 
@@ -125,10 +127,32 @@ export async function destinationAfterEmailConfirmation(
       destination,
     })
   ) {
-    await scheduleAccountWelcomeEmail({
-      userId: welcomeUserId,
-      orgId: welcomeOrgId,
-    });
+    try {
+      await scheduleAccountWelcomeEmail({
+        userId: welcomeUserId,
+        orgId: welcomeOrgId,
+      });
+    } catch {
+      // The welcome row stays available for its own retry.
+    }
+  }
+
+  if (
+    welcomeUserId &&
+    confirmedSignupLoopsEligible({
+      emailConfirmed: Boolean(user.email_confirmed_at),
+      newlyProvisioned: true,
+      destination,
+    })
+  ) {
+    try {
+      await scheduleConfirmedSignupLoopsSync({
+        userId: welcomeUserId,
+        email: user.email ?? "",
+      });
+    } catch {
+      // Consent stays pending. The welcome email is unaffected.
+    }
   }
 
   return destination;

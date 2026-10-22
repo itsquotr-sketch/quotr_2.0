@@ -26,9 +26,20 @@ import {
   emailPreferenceChoice,
 } from "../lib/communications/email-preference";
 import {
+  confirmedSignupLoopsEligible,
+  MARKETING_LOOPS_RETRY_DELAY_HOURS,
+  MARKETING_LOOPS_RETRY_LIMIT,
+  MARKETING_LOOPS_RETRY_SCHEDULE,
+  marketingLoopsAllowsEmail,
+  marketingLoopsRetriesExistingPending,
+  marketingLoopsScope,
+  PREVIEW_LOOPS_TEST_EMAIL,
+} from "../lib/communications/loops-automation";
+import {
   runIsolatedLoopsTask,
   upsertLoopsContact,
 } from "../lib/communications/loops-client";
+import { withConsentLease } from "../lib/communications/sync-lease";
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -724,6 +735,8 @@ async function main(): Promise<void> {
   );
 }
 
+let overlapCheck: Promise<unknown> = Promise.resolve();
+
 {
   const migration = read("supabase/migrations/074_marketing_consent.sql");
   assert("consent defaults false", /marketing_consent boolean not null default false/.test(migration));
@@ -777,6 +790,8 @@ async function main(): Promise<void> {
     for (const file of walk(join(process.cwd(), dir))) {
       const source = readFileSync(file, "utf8");
       if (source.includes('"use server"') || source.includes("'use server'")) continue;
+      const normalised = file.replaceAll("\\", "/");
+      if (normalised.includes("/app/api/") && normalised.endsWith("/route.ts")) continue;
       if (
         source.includes("LOOPS_API_KEY") ||
         source.includes("app.loops.so") ||
@@ -898,6 +913,131 @@ async function main(): Promise<void> {
       !/return \{ error:[^}]*[Ll]oops/.test(consentAction)
   );
 
+  const confirmation = read("lib/auth/finish-email-confirmation.ts");
+  const signupSync = read("lib/communications/signup-sync.ts");
+  const retryRoute = read("app/api/internal/marketing-loops-retry/route.ts");
+  const leaseMigration = read("supabase/migrations/116_marketing_loops_sync_lease.sql");
+  const cron = read("vercel.json");
+  assert(
+    "confirmed signup is eligible and an unconfirmed signup is not",
+    confirmedSignupLoopsEligible({
+      emailConfirmed: true,
+      newlyProvisioned: true,
+      destination: "/app/setup",
+    }) &&
+      !confirmedSignupLoopsEligible({
+        emailConfirmed: false,
+        newlyProvisioned: true,
+        destination: "/app/setup",
+      }) &&
+      !confirmedSignupLoopsEligible({
+        emailConfirmed: true,
+        newlyProvisioned: false,
+        destination: "/app/setup",
+      })
+  );
+  assert(
+    "preview automation allows only the test address and production refuses the preview database",
+    marketingLoopsScope({
+      VERCEL_ENV: "preview",
+      NEXT_PUBLIC_SUPABASE_URL: "https://shhpjsoldmqtkdbgrbtm.supabase.co",
+    }) === "preview" &&
+      marketingLoopsAllowsEmail("preview", PREVIEW_LOOPS_TEST_EMAIL) &&
+      !marketingLoopsAllowsEmail("preview", "someoneelse@erccontracting.co.nz") &&
+      marketingLoopsScope({
+        VERCEL_ENV: "production",
+        NEXT_PUBLIC_SUPABASE_URL: "https://shhpjsoldmqtkdbgrbtm.supabase.co",
+      }) === "off" &&
+      marketingLoopsScope({
+        VERCEL_ENV: "production",
+        NEXT_PUBLIC_SUPABASE_URL: "https://lxvnylhsbvudzzupxeqr.supabase.co",
+      }) === "production"
+  );
+  assert(
+    "existing pending rows stay outside the scheduled retry until the flag is set",
+    !marketingLoopsRetriesExistingPending({}) &&
+      marketingLoopsRetriesExistingPending({ MARKETING_LOOPS_RETRY_EXISTING: "true" }) &&
+      leaseMigration.includes("marketing_loops_auto_retry boolean not null default false") &&
+      retryRoute.includes("autoRetryOnly: !includeExisting")
+  );
+  assert(
+    "confirmation schedules Loops after the response and keeps welcome independent",
+    confirmation.includes("scheduleConfirmedSignupLoopsSync") &&
+      confirmation.includes("scheduleAccountWelcomeEmail") &&
+      !confirmation.includes("upsertLoopsContact") &&
+      !confirmation.includes("app.loops.so") &&
+      signupSync.includes("after(async () =>") &&
+      !signupSync.includes("account-welcome") &&
+      !welcome.includes("loops") &&
+      !welcome.includes("marketing_consent")
+  );
+  assert(
+    "daily hobby retry is bounded and does not call Loops from Stripe",
+    cron.includes(MARKETING_LOOPS_RETRY_SCHEDULE) &&
+      !cron.includes("* * * * *") &&
+      MARKETING_LOOPS_RETRY_LIMIT === 2 &&
+      MARKETING_LOOPS_RETRY_DELAY_HOURS === 24 &&
+      retryRoute.includes("CRON_SECRET") &&
+      leaseMigration.includes("claim_marketing_loops_sync")
+  );
+  let heldRevision: number | null = null;
+  let sends = 0;
+  overlapCheck = Promise.all([
+    withConsentLease({
+      claim: async () => {
+        if (heldRevision === 4) return false;
+        heldRevision = 4;
+        return true;
+      },
+      release: async () => {
+        if (heldRevision === 4) heldRevision = null;
+      },
+      run: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        sends += 1;
+        return "sent";
+      },
+    }),
+    withConsentLease({
+      claim: async () => {
+        if (heldRevision === 4) return false;
+        heldRevision = 4;
+        return true;
+      },
+      release: async () => {
+        if (heldRevision === 4) heldRevision = null;
+      },
+      run: async () => {
+        sends += 1;
+        return "sent";
+      },
+    }),
+  ]).then(() => {
+    assert("overlapping workers do not send the same consent revision", sends === 1);
+  });
+  const stale = loopsPreferenceAckDecision({
+    preferencePending: true,
+    sentSubscribed: false,
+    loopsAccepted: true,
+    skippedUnconfigured: false,
+    sentConsent: false,
+    sentRevision: 2,
+    storedConsent: true,
+    storedRevision: 3,
+  });
+  assert("a failed opt-out retry still sends subscribed false", loopsSubscribedField({
+    mode: "routine",
+    contactExists: true,
+    marketingConsent: false,
+    preferencePending: true,
+  }) === false);
+  assert("a stale revision is re-armed and a routine update still omits subscribed", stale === "rearm" && loopsSubscribedField({
+    mode: "routine",
+    contactExists: true,
+    marketingConsent: true,
+    preferencePending: false,
+  }) === undefined);
+
   const webhook = read("lib/billing/webhook-http.ts");
   assert(
     "Stripe webhook still processes the billing event",
@@ -912,7 +1052,7 @@ async function main(): Promise<void> {
   );
 }
 
-void main().then(() => {
+void Promise.all([main(), overlapCheck]).then(() => {
   if (!process.exitCode) {
     console.log("\nLoops communications checks passed.");
   }

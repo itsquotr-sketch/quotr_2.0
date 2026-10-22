@@ -15,6 +15,7 @@ import {
   runIsolatedLoopsTask,
   upsertLoopsContact,
 } from "@/lib/communications/loops-client";
+import { withConsentLease } from "@/lib/communications/sync-lease";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -29,8 +30,8 @@ type ConsentStamp = {
 /**
  * Contact sync for one signed-in user, or for members of one organisation.
  *
- * The signup response does not call this module. Signup stores consent with
- * set_own_marketing_consent and leaves marketing_loops_sync_pending set.
+ * Email confirmation schedules one background sync after the response.
+ * It does not await Loops, and this module does not send the welcome email.
  * The Stripe webhook does not call this module.
  *
  * Pending is cleared only after Loops accepts `subscribed` for the revision
@@ -96,21 +97,44 @@ async function syncSessionUserWithinTask(
   const sent = stampOf(draft);
   const before = await readSessionStamp(supabase, draft.userId);
   if (!sameStamp(before, sent)) return;
-
-  const result = await upsertLoopsContact({
-    properties: buildLoopsContactProperties(draft),
-    mode,
-    marketingConsent: draft.marketingConsent,
-    preferencePending: draft.preferencePending === true,
-    apiKey,
-  });
-  if (!result.ok) {
-    logLoopsFailure(result.code);
-    return;
+  if (draft.preferencePending) {
+    await supabase.rpc("mark_own_marketing_loops_auto_retry");
   }
-  const after = await readSessionStamp(supabase, draft.userId);
-  if (!after) return;
-  await applySessionAck(supabase, draft, result, after);
+
+  const leased = await withConsentLease({
+    claim: async () => {
+      const { data, error } = await supabase.rpc("claim_own_marketing_loops_sync", {
+        p_revision: sent.consentRevision,
+      });
+      if (error) {
+        logLoopsFailure("lease_unavailable");
+        return false;
+      }
+      return data === true;
+    },
+    release: async () => {
+      await supabase.rpc("release_own_marketing_loops_sync", {
+        p_revision: sent.consentRevision,
+      });
+    },
+    run: async () => {
+      const result = await upsertLoopsContact({
+        properties: buildLoopsContactProperties(draft),
+        mode,
+        marketingConsent: draft.marketingConsent,
+        preferencePending: draft.preferencePending === true,
+        apiKey,
+      });
+      if (!result.ok) {
+        logLoopsFailure(result.code);
+        return;
+      }
+      const after = await readSessionStamp(supabase, draft.userId);
+      if (!after) return;
+      await applySessionAck(supabase, draft, result, after);
+    },
+  });
+  if (!leased.claimed) return;
 }
 
 async function syncOrganisationContactsWithinTask(orgId: string): Promise<void> {
@@ -168,20 +192,41 @@ async function syncOrganisationContactsWithinTask(orgId: string): Promise<void> 
     const before = await readAdminStamp(admin, userId);
     if (!sameStamp(before, sent)) continue;
 
-    const result = await upsertLoopsContact({
-      properties: buildLoopsContactProperties(draft),
-      mode: "routine",
-      marketingConsent: draft.marketingConsent,
-      preferencePending: draft.preferencePending === true,
-      apiKey,
+    await withConsentLease({
+      claim: async () => {
+        const { data, error } = await admin.rpc("claim_marketing_loops_sync", {
+          p_user_id: userId,
+          p_revision: sent.consentRevision,
+        });
+        if (error) {
+          logLoopsFailure("lease_unavailable");
+          return false;
+        }
+        return data === true;
+      },
+      release: async () => {
+        await admin.rpc("release_marketing_loops_sync", {
+          p_user_id: userId,
+          p_revision: sent.consentRevision,
+        });
+      },
+      run: async () => {
+        const result = await upsertLoopsContact({
+          properties: buildLoopsContactProperties(draft),
+          mode: "routine",
+          marketingConsent: draft.marketingConsent,
+          preferencePending: draft.preferencePending === true,
+          apiKey,
+        });
+        if (!result.ok) {
+          logLoopsFailure(result.code);
+          return;
+        }
+        const afterStamp = await readAdminStamp(admin, userId);
+        if (!afterStamp) return;
+        await applyAdminAck(admin, draft, result, afterStamp);
+      },
     });
-    if (!result.ok) {
-      logLoopsFailure(result.code);
-      continue;
-    }
-    const after = await readAdminStamp(admin, userId);
-    if (!after) continue;
-    await applyAdminAck(admin, draft, result, after);
   }
 }
 
