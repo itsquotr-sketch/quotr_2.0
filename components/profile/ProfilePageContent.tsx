@@ -7,6 +7,13 @@ import {
   updateProfileFullName,
   type ProfileActionState,
 } from "@/lib/auth/profile-actions";
+import { updateMarketingConsent } from "@/lib/communications/consent-actions";
+import {
+  EMAIL_PREFERENCE_HELPER,
+  EMAIL_PREFERENCE_LABEL,
+  emailPreferenceChoice,
+  type EmailPreferenceChoice,
+} from "@/lib/communications/email-preference";
 import { PHONE_ALREADY_LINKED_MESSAGE } from "@/lib/auth/account-phone";
 import { LogoutForm } from "@/components/auth/LogoutForm";
 import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
@@ -49,6 +56,8 @@ type ProfilePageContentProps = {
   organisationName: string;
   phoneCountry: "NZ" | "AU";
   phoneNumber: string;
+  marketingConsent: boolean;
+  marketingConsentSource: string | null;
 };
 
 export function ProfilePageContent({
@@ -58,6 +67,8 @@ export function ProfilePageContent({
   organisationName,
   phoneCountry,
   phoneNumber,
+  marketingConsent,
+  marketingConsentSource,
 }: ProfilePageContentProps) {
   const [profileState, profileAction, profilePending] = useActionState(
     updateProfileFullName,
@@ -67,10 +78,30 @@ export function ProfilePageContent({
     changePassword,
     initialState
   );
+  const [consentState, consentAction, consentPending] = useActionState(
+    updateMarketingConsent,
+    initialState
+  );
+  const serverChoice = emailPreferenceChoice({
+    marketingConsent,
+    marketingConsentSource,
+  });
+  const [choice, setChoice] = useState<EmailPreferenceChoice>(serverChoice);
+  const [seenServerChoice, setSeenServerChoice] = useState(serverChoice);
   const [hideProfileSuccess, setHideProfileSuccess] = useState(false);
   const [hidePasswordSuccess, setHidePasswordSuccess] = useState(false);
+  const [hideConsentSuccess, setHideConsentSuccess] = useState(false);
+  if (
+    consentState.success &&
+    !consentPending &&
+    serverChoice !== seenServerChoice
+  ) {
+    setSeenServerChoice(serverChoice);
+    setChoice(serverChoice);
+  }
   if (profilePending && hideProfileSuccess) setHideProfileSuccess(false);
   if (passwordPending && hidePasswordSuccess) setHidePasswordSuccess(false);
+  if (consentPending && hideConsentSuccess) setHideConsentSuccess(false);
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-8">
@@ -177,6 +208,60 @@ export function ProfilePageContent({
               {profilePending ? "Saving…" : "Save changes"}
             </Button>
           </div>
+        </form>
+      </section>
+
+      <section className="space-y-4 border-t pt-8">
+        <form
+          action={consentAction}
+          aria-busy={consentPending}
+          className="space-y-4"
+          onChange={() => {
+            if (consentState.success) setHideConsentSuccess(true);
+          }}
+        >
+          <fieldset className="space-y-3" disabled={consentPending}>
+            <legend className="text-base font-semibold tracking-tight">
+              Email preferences
+            </legend>
+            <label className="flex min-h-11 items-start gap-3 text-sm leading-snug">
+              <input
+                type="radio"
+                name="marketing_consent"
+                value="yes"
+                checked={choice === "yes"}
+                onChange={() => setChoice("yes")}
+                className="mt-0.5 size-4 shrink-0"
+              />
+              <span>{EMAIL_PREFERENCE_LABEL}</span>
+            </label>
+            <label className="flex min-h-11 items-center gap-3 text-sm">
+              <input
+                type="radio"
+                name="marketing_consent"
+                value="no"
+                checked={choice === "no"}
+                onChange={() => setChoice("no")}
+                className="size-4 shrink-0"
+              />
+              No thanks
+            </label>
+            <p className="text-sm text-muted-foreground">{EMAIL_PREFERENCE_HELPER}</p>
+            <p className="text-sm text-muted-foreground">
+              {serverChoice === "unset"
+                ? "No choice saved yet."
+                : serverChoice === "yes"
+                  ? "You are opted in."
+                  : "You are opted out."}
+            </p>
+          </fieldset>
+          {consentState.error ? <Alert tone="error">{consentState.error}</Alert> : null}
+          {consentState.success && !hideConsentSuccess && !consentPending ? (
+            <Alert tone="success">{consentState.success}</Alert>
+          ) : null}
+          <Button type="submit" disabled={consentPending} className="min-w-36">
+            {consentPending ? "Saving…" : "Save preference"}
+          </Button>
         </form>
       </section>
 

@@ -839,20 +839,19 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
         blocks: [
           {
             type: "p",
-            text: "At signup you can answer whether you want occasional product updates and practical Quotr tips. Yes or no both let you create the account. There is no product-update control in Profile, Company settings, or Billing.",
+            text: "At signup you answer whether you want occasional product updates and practical Quotr tips. Yes or no both let you create the account. Signed in, open **Profile** and find **Email preferences**. The choice is **Send me occasional product updates and practical Quotr tips.** Select that, or **No thanks**, then **Save preference**.",
           },
           {
             type: "p",
-            text: "To change or withdraw that choice, email [hello@get-quotr.com](mailto:hello@get-quotr.com). Quotr does not currently send those updates from a marketing email tool. Account, security, and service emails, including confirmation and password reset, are still sent either way.",
+            text: "If you have not chosen, the page says no choice is saved yet. While the save runs the button says **Saving…**. After it is stored, the page says **Preference saved.** If saving fails, the choice you selected stays on the page and you can try again.",
           },
           {
-            type: "links",
-            items: [
-              {
-                href: "mailto:hello@get-quotr.com",
-                label: "Email hello@get-quotr.com",
-              },
-            ],
+            type: "p",
+            text: "You can unsubscribe anytime. Account, security, and service emails, including confirmation and password reset, are still sent either way. The control stays available when a trial or subscription has stopped new work. It is not in Company settings or Billing.",
+          },
+          {
+            type: "p",
+            text: "Quotr has not started sending those product updates. Choosing yes stores your consent so it can be honoured when sending starts. If you cannot sign in, email [hello@get-quotr.com](mailto:hello@get-quotr.com).",
           },
         ],
       },

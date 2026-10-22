@@ -57,6 +57,12 @@ export default async function ProfilePage() {
       ? accountPhone.phone_display
       : "";
 
+  const { data: consentRow } = await auth.supabase
+    .from("profiles")
+    .select("marketing_consent, marketing_consent_source")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
   // STATE C — display could not be assembled from the signed-in org
   if (!display) {
     redirect("/app/setup-required");
@@ -78,6 +84,12 @@ export default async function ProfilePage() {
           organisationName={display.organisationName?.trim() || "Company not set"}
           phoneCountry={phoneCountry}
           phoneNumber={phoneNumber}
+          marketingConsent={consentRow?.marketing_consent === true}
+          marketingConsentSource={
+            typeof consentRow?.marketing_consent_source === "string"
+              ? consentRow.marketing_consent_source
+              : null
+          }
         />
       </SettingsContainer>
     </div>

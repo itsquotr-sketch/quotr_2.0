@@ -146,15 +146,27 @@ export default function ApplicationPrivacyPage() {
       <LegalSection id="messages" title="6. Product updates and service email">
         <p>
           At signup you choose whether you want occasional product updates and
-          practical tips. Yes is stored as consent. No is stored as no consent.
-          Either choice lets you create the account. We do not currently send
-          those product updates from a marketing email tool.
+          practical tips. Yes is stored as consent, with the time of that
+          choice. No is stored as no consent. Either choice lets you create the
+          account. A profile with no recorded choice is not treated as consent.
         </p>
         <p>
-          To change or withdraw that choice, email hello@get-quotr.com. We will
-          record the change. Account, security, and service emails are
-          separate. We still send those, including confirmation and password
-          reset, whether or not you want product updates.
+          Signed in, you can change that choice under Profile, Email
+          preferences, including when a trial or subscription has stopped new
+          work. You can opt in or opt out there. Account, security, and service
+          emails are separate. We still send those, including confirmation and
+          password reset, whether or not you want product updates.
+        </p>
+        <p>
+          We have not started sending those product updates. When we do, the
+          sender is Loops (loops.so). We send Loops the account email, name,
+          the product-update choice, and the company fields needed to honour
+          that choice: company name, country, region, plan, and counts of
+          projects, estimates, and quotes. We do not send project, client, or
+          quote contents. We do not start a campaign by storing the choice.
+          You can unsubscribe in Profile or from the message. An unsubscribe
+          in the message is kept: a later routine update does not subscribe
+          you again.
         </p>
       </LegalSection>
 
