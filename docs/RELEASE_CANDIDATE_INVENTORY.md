@@ -2,13 +2,43 @@
 
 **Updated:** 22 October 2026. This closeout is the current record. The 21 October closeout, the 19 October plan, the performance pass, the morning acceptance, and the 9 October observations stay below as history. Where they disagree with this closeout, this closeout wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
-**Application release:** `010176106f69df59f84d31d4ab40ed8306eb5dab` on `help/public-help-centre`. It is pushed. Its parent is the previous Production application `c00f159461cd520dbed952775ba158792c392751`.
+**Application release:** `c936bd25b69bf6ed930477ff3683597087e5d85c` on `feat/account-welcome-email`. It is pushed. Its parent line includes the previous Production application `010176106f69df59f84d31d4ab40ed8306eb5dab`.
 
 **This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into the application branch and is not the Production deployment.
 
-## Closed release — 22 October 2026, Help centre
+## Closed release — 22 October 2026, account welcome
 
-The owner approved the public Help centre. Production is serving the application SHA above. No migration was applied. The recorded Production schema head remains **112**. No account was created, no email was sent, and no commercial record was created.
+The owner approved the test email’s content and layout. Production is serving the application SHA above. The Help centre from `01017610` is included and was not rewritten. No account was created for this release, and no welcome email was sent to prove activation. Production `account_welcome_deliveries` has zero rows.
+
+| Fact | Value |
+| --- | --- |
+| Application branch | `feat/account-welcome-email` |
+| Application SHA | `c936bd25b69bf6ed930477ff3683597087e5d85c` |
+| Commits | `c936bd25` — Use the Quotr wordmark on the account welcome and keep late confirmations eligible. `5f2a1192` — Report a safe reason when the preview welcome test cannot reach the database. `99e2b048` — Send a setup welcome after a new self-signup confirms. |
+| Parent | `010176106f69df59f84d31d4ab40ed8306eb5dab`. The difference is the welcome email, its outbox, and the shared Resend send helper. |
+| Working tree | Clean, and the SHA matches `origin/feat/account-welcome-email`. |
+| Production deployment | `dpl_ABL6zStJdxEBS8kmLW9sdidxn5da` |
+| Production URL | `https://quotr-2-0-1kg4uqfzf-quotr1.vercel.app` |
+| Production status | Ready, target production. Fresh build with Production environment settings, after both welcome flags were set. Domains were assigned after it was Ready. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that Production deployment. |
+| Production webhook alias | `https://quotr-2-0-quotr1.vercel.app` serves the same Production deployment. The live Stripe webhook destination was not changed. |
+| Marketing website | `https://get-quotr.com` still returns the marketing site through Cloudflare. Its Vercel alias remains `dpl_D1Cdu9Wpr8WvGvDBbe83fyz1QrHq`. `www.get-quotr.com` was not changed. |
+| Preview aliases | unchanged. Help Preview remains `dpl_reLaubadsvWcA2QVjzjbjneoz8pf`. Onboarding Preview remains `dpl_4iT259t3Sy7whYr9S9i2PuxCF1So`. |
+| Production schema | `lxvnylhsbvudzzupxeqr` head **114**. The dry-run listed only `113_account_welcome_email.sql` and `114_account_welcome_activation.sql`. After apply, local and remote match through 114. |
+| Activation | `account_welcome_runtime.activated_at` = `2026-10-22 02:29:44.889605+00`. Confirmations before that time are refused. Nothing scans existing users. |
+| Production flags | `ACCOUNT_WELCOME_EMAIL_ENABLED=true` and `ACCOUNT_WELCOME_EMAIL_PRODUCTION=true`, both Config, set before this build. |
+| Production backup | Latest completed backup before the apply remained available: physical, completed `2026-10-21T17:44:16.682Z`, id `2030690646`. |
+| Sender | `Quotr <no-reply@get-quotr.com>`. Reply-To `hello@get-quotr.com`. |
+| Wordmark | `https://app.get-quotr.com/branding/quotr-wordmark-black.png`, the existing public PNG, 120×30, alt `Quotr`. |
+| Operator retry | Preview: `npx tsx scripts/retry-preview-account-welcome.ts --yes`. Production: `npx tsx scripts/retry-production-account-welcome.ts --yes`. The Production command does not load `.env.local`. Same payload and idempotency key for 24 hours from the first claim. After that, an unaccepted row is marked for reconciliation and is not sent again. |
+
+### Focused checks
+
+Signed-out `https://app.get-quotr.com/help`, `/help/getting-started`, and `/help/your-first-job` return 200. The wordmark PNG returns 200 as `image/png`. `/app/dashboard` redirects to login. `https://get-quotr.com` still returns 200 through Cloudflare. No customer account was changed and no email was sent.
+
+## Previous closeout — 22 October 2026, Help centre
+
+The owner approved the public Help centre. That release served `010176106f69df59f84d31d4ab40ed8306eb5dab`. No migration was applied. The recorded Production schema head was **112**. No account was created, no email was sent, and no commercial record was created.
 
 | Fact | Value |
 | --- | --- |
