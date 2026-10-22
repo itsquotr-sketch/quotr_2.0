@@ -1,8 +1,10 @@
 /**
  * Pure rules for the four optional engagement reminders.
- * Loops timers are fixed, and Loops has no cross-workflow sending cap
- * and no "three days before a date" trigger. Timing and the 48-hour
- * limit are decided here. Nothing in this module reads the database.
+ * Loops has no cross-workflow sending cap and no "three days before a
+ * date" trigger. The 48-hour limit applies to reminder sends this app
+ * has recorded. Assumed times for the live "First job and rates"
+ * workflow are not used: that workflow is still Sending and is not
+ * edited here, so those times are not a guarantee.
  */
 
 export const REMINDER_KINDS = ["setup", "estimate", "quote", "trial"] as const;
@@ -10,9 +12,6 @@ export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
 export const ENGAGEMENT_QUIET_MS = 48 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Live "First job and rates" sends. That workflow is not edited here. */
-export const LIVE_SEQUENCE_OFFSETS_MS = [2 * DAY_MS, 5 * DAY_MS] as const;
 
 export const REMINDER_DELAY_MS: Record<Exclude<ReminderKind, "trial">, number> = {
   setup: DAY_MS,
@@ -24,13 +23,9 @@ export const TRIAL_REMINDER_LEAD_MS = 3 * DAY_MS;
 
 const EXPLICIT_CONSENT_SOURCES = new Set(["signup", "settings", "onboarding"]);
 
-export function liveSequenceSendTimes(markedAtMs: number): number[] {
-  return LIVE_SEQUENCE_OFFSETS_MS.map((offset) => markedAtMs + offset);
-}
-
 /**
  * Earliest time that is at least 48 hours away from every reserved send.
- * Reserved times are the live sequence and reminders already released.
+ * Reserved times are other reminders this app has scheduled or released.
  */
 export function coordinatedSendAt(idealAtMs: number, reservedSendTimes: number[]): number {
   let candidate = idealAtMs;
@@ -124,7 +119,7 @@ export function quoteReminderStillDue(input: {
   return input.firstEstimateAtMs >= input.reminderActivatedAtMs;
 }
 
-export function trialReminderPlan(input: {
+type TrialReminderInput = {
   source: string | null;
   status: string | null;
   trialEndsAt: string | null;
@@ -133,12 +128,16 @@ export function trialReminderPlan(input: {
   nowMs: number;
   engagementActivatedAtMs: number;
   reminderActivatedAtMs: number;
-}): { ok: true; dueAtMs: number } | { ok: false; reason: string } {
+};
+
+function trialReminderFacts(
+  input: TrialReminderInput
+): { ok: true; dueAtMs: number; trialEndsAtMs: number } | { ok: false; reason: string } {
   if (input.hasActiveOverride) return { ok: false, reason: "complimentary" };
   if (input.source !== "internal_trial") return { ok: false, reason: "not_internal_trial" };
   if (input.status !== "trialing") return { ok: false, reason: "not_trialing" };
-  const ends = Date.parse(input.trialEndsAt ?? "");
-  if (!Number.isFinite(ends)) return { ok: false, reason: "no_trial_end" };
+  const trialEndsAtMs = Date.parse(input.trialEndsAt ?? "");
+  if (!Number.isFinite(trialEndsAtMs)) return { ok: false, reason: "no_trial_end" };
   if (input.trialStartedAtMs == null) return { ok: false, reason: "no_start" };
   if (input.trialStartedAtMs < input.engagementActivatedAtMs) {
     return { ok: false, reason: "before_engagement_activation" };
@@ -146,7 +145,44 @@ export function trialReminderPlan(input: {
   if (input.trialStartedAtMs < input.reminderActivatedAtMs) {
     return { ok: false, reason: "historical" };
   }
-  const dueAtMs = ends - TRIAL_REMINDER_LEAD_MS;
-  if (dueAtMs <= input.nowMs) return { ok: false, reason: "window_passed" };
-  return { ok: true, dueAtMs };
+  return { ok: true, dueAtMs: trialEndsAtMs - TRIAL_REMINDER_LEAD_MS, trialEndsAtMs };
+}
+
+/** Queue only while the three-day point is still ahead. */
+export function trialReminderPlan(
+  input: TrialReminderInput
+): { ok: true; dueAtMs: number; trialEndsAtMs: number } | { ok: false; reason: string } {
+  const facts = trialReminderFacts(input);
+  if (!facts.ok) return facts;
+  if (facts.dueAtMs <= input.nowMs) return { ok: false, reason: "window_passed" };
+  return facts;
+}
+
+/** A queued trial reminder may still send until the trial ends. */
+export function trialReminderOpen(
+  input: TrialReminderInput
+): { ok: true; dueAtMs: number; trialEndsAtMs: number } | { ok: false; reason: string } {
+  const facts = trialReminderFacts(input);
+  if (!facts.ok) return facts;
+  if (input.nowMs >= facts.trialEndsAtMs) return { ok: false, reason: "trial_ended" };
+  return facts;
+}
+
+/**
+ * Keep the ideal time unless another recorded reminder is inside 48 hours.
+ * A trial slot that would fall on or after the trial end is skipped.
+ */
+export function boundedReminderAt(input: {
+  idealAtMs: number;
+  reservedSendTimes: number[];
+  expiresAtMs?: number | null;
+}): { action: "schedule"; atMs: number } | { action: "skip"; reason: "expired" | "frequency" } {
+  if (input.expiresAtMs != null && input.idealAtMs >= input.expiresAtMs) {
+    return { action: "skip", reason: "expired" };
+  }
+  const atMs = coordinatedSendAt(input.idealAtMs, input.reservedSendTimes);
+  if (input.expiresAtMs != null && atMs >= input.expiresAtMs) {
+    return { action: "skip", reason: "frequency" };
+  }
+  return { action: "schedule", atMs };
 }

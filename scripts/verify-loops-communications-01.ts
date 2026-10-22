@@ -792,11 +792,13 @@ let overlapCheck: Promise<unknown> = Promise.resolve();
   const help = read("lib/help/content.ts");
   const privacy = read("app/(legal)/privacy/page.tsx");
   assert(
-    "help and privacy name Profile email preferences and say campaigns have not started",
+    "help and privacy name Profile email preferences and the active sequence",
     help.includes("Profile** → **Email preferences") &&
-      help.includes("Campaign sending has not started.") &&
+      help.includes("First job and rates sequence, which is sending") &&
+      help.includes("Those reminders are not sending yet.") &&
       privacy.includes("Profile → Email preferences") &&
-      privacy.includes("Campaign sending has not started.")
+      privacy.includes("First job and rates sequence, which is sending") &&
+      privacy.includes("Those reminders are not sending yet.")
   );
   assert("profile shows saving and saved feedback", profile.includes("Saving…") && profile.includes("Save preference"));
   assert("profile keeps an unset choice visible", profile.includes("No choice saved yet."));

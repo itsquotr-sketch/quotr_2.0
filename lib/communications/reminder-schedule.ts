@@ -24,14 +24,14 @@ import {
   marketingLoopsScope,
 } from "@/lib/communications/loops-automation";
 import {
-  coordinatedSendAt,
+  boundedReminderAt,
   estimateReminderStillDue,
   explicitConsentAllowsReminder,
-  liveSequenceSendTimes,
   milestoneReminderDueAt,
   quoteReminderStillDue,
   setupReminderDueAt,
   setupReminderStillDue,
+  trialReminderOpen,
   trialReminderPlan,
   type ReminderKind,
 } from "@/lib/communications/reminder-rules";
@@ -147,10 +147,9 @@ async function ownerEmail(admin: Admin, userId: string): Promise<string | null> 
 async function reservedSends(
   admin: Admin,
   orgId: string,
-  markedAtMs: number | null,
   options?: { includeUnreleased?: boolean; excludeReminderId?: string }
 ): Promise<number[]> {
-  const reserved = markedAtMs == null ? [] : liveSequenceSendTimes(markedAtMs);
+  const reserved: number[] = [];
   const { data } = await admin
     .from("marketing_engagement_reminders")
     .select("id, due_at, released_at")
@@ -231,9 +230,7 @@ async function considerSetupReminder(userId: string): Promise<void> {
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
   const dueAtMs = setupReminderDueAt({
     markedAtMs,
-    reservedSendTimes: await reservedSends(admin, orgId, markedAtMs, {
-      includeUnreleased: true,
-    }),
+    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -279,16 +276,10 @@ async function considerEstimateReminder(orgId: string, projectId: string): Promi
   }
   const email = await ownerEmail(admin, owner.id);
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
-  const markedAtMs = Date.parse(owner.marketing_engagement_marked_at ?? "");
   const dueAtMs = milestoneReminderDueAt({
     kind: "estimate",
     milestoneAtMs: createdAtMs,
-    reservedSendTimes: await reservedSends(
-      admin,
-      orgId,
-      Number.isFinite(markedAtMs) ? markedAtMs : null,
-      { includeUnreleased: true }
-    ),
+    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -335,16 +326,10 @@ async function considerQuoteReminder(orgId: string, projectId: string): Promise<
   }
   const email = await ownerEmail(admin, owner.id);
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
-  const markedAtMs = Date.parse(owner.marketing_engagement_marked_at ?? "");
   const dueAtMs = milestoneReminderDueAt({
     kind: "quote",
     milestoneAtMs: estimateAt,
-    reservedSendTimes: await reservedSends(
-      admin,
-      orgId,
-      Number.isFinite(markedAtMs) ? markedAtMs : null,
-      { includeUnreleased: true }
-    ),
+    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
   });
   await insertReminder(admin, {
     orgId,
@@ -369,7 +354,7 @@ async function considerTrialReminderForUser(userId: string): Promise<void> {
   if (!orgId) return;
   const owner = await loadOwner(admin, orgId);
   if (!owner || owner.id !== userId) return;
-  const plan = await readTrialPlan(admin, orgId, gate);
+  const plan = await readTrialPlan(admin, orgId, gate, "schedule");
   if (!plan) return;
   const consentAtMs = Date.parse(owner.marketing_consent_at ?? "");
   if (
@@ -384,18 +369,17 @@ async function considerTrialReminderForUser(userId: string): Promise<void> {
   }
   const email = await ownerEmail(admin, owner.id);
   if (!email || !marketingLoopsAllowsEmail("production", email)) return;
-  const markedAtMs = Date.parse(owner.marketing_engagement_marked_at ?? "");
-  const dueAtMs = coordinatedSendAt(
-    plan.dueAtMs,
-    await reservedSends(admin, orgId, Number.isFinite(markedAtMs) ? markedAtMs : null, {
-      includeUnreleased: true,
-    })
-  );
+  const slot = boundedReminderAt({
+    idealAtMs: plan.dueAtMs,
+    reservedSendTimes: await reservedSends(admin, orgId, { includeUnreleased: true }),
+    expiresAtMs: plan.trialEndsAtMs,
+  });
+  if (slot.action === "skip") return;
   await insertReminder(admin, {
     orgId,
     kind: "trial",
     recipientUserId: owner.id,
-    dueAtMs,
+    dueAtMs: slot.atMs,
     milestoneAtMs: plan.startedAtMs,
   });
 }
@@ -494,8 +478,9 @@ async function projectQuoteSent(admin: Admin, projectId: string): Promise<boolea
 async function readTrialPlan(
   admin: Admin,
   orgId: string,
-  gate: Extract<RuntimeGate, { open: true }>
-): Promise<{ dueAtMs: number; startedAtMs: number; trialEndsAt: string } | null> {
+  gate: Extract<RuntimeGate, { open: true }>,
+  mode: "schedule" | "release"
+): Promise<{ dueAtMs: number; startedAtMs: number; trialEndsAt: string; trialEndsAtMs: number } | null> {
   let billingEnvironment: "test" | "live";
   try {
     billingEnvironment = resolveBillingEnvironment(process.env);
@@ -525,7 +510,7 @@ async function readTrialPlan(
     )
   );
   const startedAtMs = Date.parse((subscription.created_at as string | null) ?? "");
-  const plan = trialReminderPlan({
+  const facts = {
     source: (subscription.source as string | null) ?? null,
     status: (subscription.status as string | null) ?? null,
     trialEndsAt: (subscription.trial_ends_at as string | null) ?? null,
@@ -534,12 +519,14 @@ async function readTrialPlan(
     nowMs: Date.now(),
     engagementActivatedAtMs: gate.engagementActivatedAtMs,
     reminderActivatedAtMs: gate.reminderActivatedAtMs,
-  });
+  };
+  const plan = mode === "schedule" ? trialReminderPlan(facts) : trialReminderOpen(facts);
   if (!plan.ok) return null;
   return {
     dueAtMs: plan.dueAtMs,
     startedAtMs,
     trialEndsAt: subscription.trial_ends_at as string,
+    trialEndsAtMs: plan.trialEndsAtMs,
   };
 }
 
@@ -604,14 +591,22 @@ async function releaseOne(
     await markSuppressed(admin, row.id);
     return "suppressed";
   }
-  const markedAtMs = Date.parse(owner.marketing_engagement_marked_at ?? "");
-  const reserved = await reservedSends(
-    admin,
-    row.org_id,
-    Number.isFinite(markedAtMs) ? markedAtMs : null,
-    { excludeReminderId: row.id }
-  );
-  const sendAt = coordinatedSendAt(Date.now(), reserved);
+  const reserved = await reservedSends(admin, row.org_id, { excludeReminderId: row.id });
+  const trialRelease = row.kind === "trial" ? await readTrialPlan(admin, row.org_id, gate, "release") : null;
+  if (row.kind === "trial" && !trialRelease) {
+    await markSuppressed(admin, row.id);
+    return "suppressed";
+  }
+  const slot = boundedReminderAt({
+    idealAtMs: Date.now(),
+    reservedSendTimes: reserved,
+    expiresAtMs: trialRelease?.trialEndsAtMs ?? null,
+  });
+  if (slot.action === "skip") {
+    await markSuppressed(admin, row.id);
+    return "suppressed";
+  }
+  const sendAt = slot.atMs;
   if (sendAt > Date.now() + 60_000) {
     const { error } = await admin
       .from("marketing_engagement_reminders")
@@ -640,13 +635,8 @@ async function releaseOne(
     engagementReminder: row.kind,
     onboardingComplete: onboarding.complete,
   };
-  if (row.kind === "trial") {
-    const plan = await readTrialPlan(admin, row.org_id, gate);
-    if (!plan) {
-      await markSuppressed(admin, row.id);
-      return "suppressed";
-    }
-    properties.trialEndsOn = formatTrialEndDate(plan.trialEndsAt);
+  if (trialRelease) {
+    properties.trialEndsOn = formatTrialEndDate(trialRelease.trialEndsAt);
   }
   const upsert = await upsertLoopsContact({
     properties,
@@ -713,7 +703,7 @@ async function reminderStillDue(
       reminderActivatedAtMs: gate.reminderActivatedAtMs,
     });
   }
-  const plan = await readTrialPlan(admin, row.org_id, gate);
+  const plan = await readTrialPlan(admin, row.org_id, gate, "release");
   return plan != null;
 }
 

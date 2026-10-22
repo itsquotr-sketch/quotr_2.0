@@ -5,15 +5,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  boundedReminderAt,
   coordinatedSendAt,
   ENGAGEMENT_QUIET_MS,
   estimateReminderStillDue,
   explicitConsentAllowsReminder,
-  liveSequenceSendTimes,
   quoteReminderStillDue,
   REMINDER_DELAY_MS,
   setupReminderDueAt,
   setupReminderStillDue,
+  trialReminderOpen,
   trialReminderPlan,
   TRIAL_REMINDER_LEAD_MS,
 } from "../lib/communications/reminder-rules";
@@ -44,17 +45,17 @@ const consent = {
 };
 
 assert(
-  "setup waits until 48 hours after the live sequence",
-  setupReminderDueAt({
-    markedAtMs: markedAt,
-    reservedSendTimes: liveSequenceSendTimes(markedAt),
-  }) === markedAt + 7 * day
+  "setup stays 24 hours after the marker",
+  setupReminderDueAt({ markedAtMs: markedAt, reservedSendTimes: [] }) ===
+    markedAt + REMINDER_DELAY_MS.setup
 );
 
 assert(
-  "a contact outside the live sequence keeps the 24 hour setup delay",
-  setupReminderDueAt({ markedAtMs: markedAt, reservedSendTimes: [] }) ===
-    markedAt + REMINDER_DELAY_MS.setup
+  "another recorded reminder inside 48 hours waits once",
+  setupReminderDueAt({
+    markedAtMs: markedAt,
+    reservedSendTimes: [markedAt + 12 * 60 * 60 * 1000],
+  }) === markedAt + 12 * 60 * 60 * 1000 + ENGAGEMENT_QUIET_MS
 );
 
 const firstSend = markedAt + 2 * day;
@@ -230,6 +231,35 @@ assert(
     }).ok === false
 );
 
+const trialInput = {
+  source: "internal_trial",
+  status: "trialing",
+  trialEndsAt: new Date(trialEnds).toISOString(),
+  trialStartedAtMs: trialStart,
+  hasActiveOverride: false,
+  engagementActivatedAtMs: engagementAt,
+  reminderActivatedAtMs: reminderAt,
+};
+assert(
+  "a queued trial reminder can send until the trial ends and then expires",
+  trialReminderOpen({ ...trialInput, nowMs: trialEnds - day }).ok === true &&
+    trialReminderOpen({ ...trialInput, nowMs: trialEnds }).ok === false &&
+    trialReminderOpen({ ...trialInput, nowMs: trialEnds + 60_000 }).ok === false
+);
+assert(
+  "a frequency clash skips a trial reminder that would be late",
+  boundedReminderAt({
+    idealAtMs: trialEnds - day,
+    reservedSendTimes: [trialEnds - day],
+    expiresAtMs: trialEnds,
+  }).action === "skip" &&
+    boundedReminderAt({
+      idealAtMs: trialEnds - 3 * day,
+      reservedSendTimes: [],
+      expiresAtMs: trialEnds,
+    }).action === "schedule"
+);
+
 const schedule = read("lib/communications/reminder-schedule.ts");
 const migration = read("supabase/migrations/119_marketing_engagement_reminders.sql");
 const engagement = read("lib/communications/engagement.ts");
@@ -260,10 +290,11 @@ assert(
   !mapping.includes("engagementReminder") &&
     !mapping.includes("trialEndsOn") &&
     !engagement.includes("projectsCreated") &&
-    help.includes("Campaign sending has not started.") &&
-    help.includes("optional reminders") &&
-    privacy.includes("Campaign sending has not started.") &&
-    privacy.includes("optional reminders")
+    help.includes("First job and rates sequence, which is sending") &&
+    help.includes("Those reminders are not sending yet.") &&
+    privacy.includes("First job and rates sequence, which is sending") &&
+    privacy.includes("Those reminders are not sending yet.") &&
+    !schedule.includes("liveSequenceSendTimes")
 );
 
 if (failed > 0) {
