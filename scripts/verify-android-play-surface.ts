@@ -112,6 +112,10 @@ assert(
   "the Android app opens the Play preview host",
   manifest.includes("${twaDefaultUrl}") && manifest.includes("${twaHost}")
 );
+assert(
+  "the Android app declares the browser helper site-settings activity",
+  manifest.includes("com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity")
+);
 
 if (process.exitCode) {
   console.error("android play surface checks failed");

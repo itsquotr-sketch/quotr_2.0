@@ -50,5 +50,14 @@
                     android:host="${twaHost}" />
             </intent-filter>
         </activity>
+
+        <!-- The browser helper enables this for its site-settings shortcut. -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="${twaDefaultUrl}" />
+        </activity>
     </application>
 </manifest>
