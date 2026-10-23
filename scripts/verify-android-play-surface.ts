@@ -100,6 +100,15 @@ assert(
     !gradle.includes("com.flowra.quotr") &&
     !assetLinks.includes("com.flowra.quotr")
 );
+assert(
+  "Digital Asset Links names the upload and Play signing certificates",
+  assetLinks.includes(
+    "DA:0C:A3:38:23:58:F5:D4:9B:EE:7B:62:10:6F:23:A2:3B:5C:BA:B6:25:78:4C:97:C5:E9:C0:00:4E:40:F0:04"
+  ) &&
+    assetLinks.includes(
+      "65:6A:33:D6:DF:17:30:A1:FF:FF:A2:33:4C:9A:3D:31:3C:66:17:57:78:15:C8:16:99:F4:BB:D7:19:40:F5:D1"
+    )
+);
 const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
 assert("the Android app declares internet only", manifest.includes("android.permission.INTERNET"));
 assert(
