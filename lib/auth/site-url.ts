@@ -15,6 +15,11 @@
  */
 
 import { headers } from "next/headers";
+import {
+  isPlaySurfaceHost,
+  PLAY_SURFACE_HOST,
+  WEBSITE_APP_ORIGIN,
+} from "@/lib/android/play-surface";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 
 export const LOCAL_AUTH_SITE_ORIGIN = "http://localhost:3000";
@@ -134,6 +139,20 @@ function isEphemeralVercelOrigin(origin: string): boolean {
 }
 
 /**
+ * Quote, invite, and variation links must not use the Android host.
+ * A Play-host site URL is replaced with the website origin.
+ */
+function applicationOrigin(origin: string | null): string | null {
+  if (!origin) return null;
+  try {
+    if (new URL(origin).hostname === PLAY_SURFACE_HOST) return WEBSITE_APP_ORIGIN;
+  } catch {
+    return origin;
+  }
+  return origin;
+}
+
+/**
  * Canonical public app origin. Hosted Preview never uses localhost or a
  * commit-specific Vercel URL — those produced invite CTAs that looked like
  * buttons after email clients stripped the href.
@@ -151,7 +170,7 @@ export function resolveConfiguredSiteOrigin(
   }
 ): string | null {
   const vercelEnv = env.VERCEL_ENV;
-  const fromEnv = normalizeAuthSiteOrigin(env.NEXT_PUBLIC_SITE_URL);
+  const fromEnv = applicationOrigin(normalizeAuthSiteOrigin(env.NEXT_PUBLIC_SITE_URL));
 
   if (vercelEnv === "preview") {
     if (
@@ -205,6 +224,28 @@ export function resolveAuthEmailOrigin(input: {
     NEXT_PUBLIC_SITE_URL: input.configuredSiteUrl ?? undefined,
   });
   return configured ?? LOCAL_AUTH_SITE_ORIGIN;
+}
+
+/**
+ * Password reset and confirmation return to the Play host that started them.
+ * Every other host keeps the existing origin. Customer links do not use this.
+ */
+export function selectAuthCallbackOrigin(input: {
+  vercelEnv: string | undefined;
+  requestOrigin: string | null;
+  branchHost: string | null;
+  deploymentHost: string | null;
+  configuredSiteUrl: string | null;
+}): string {
+  const request = normalizeAuthSiteOrigin(input.requestOrigin);
+  if (request) {
+    try {
+      if (isPlaySurfaceHost(new URL(request).hostname)) return request;
+    } catch {
+      // Fall through to the configured origin.
+    }
+  }
+  return resolveAuthEmailOrigin(input);
 }
 
 export function originFromForwardedHost(
@@ -298,22 +339,26 @@ export async function getSignupConfirmationOrigin(): Promise<string> {
  * then the current deployment host. It does not substitute the shared
  * hardening alias or a Production origin.
  */
+async function readRequestOrigin(): Promise<string | null> {
+  try {
+    const headerStore = await headers();
+    const forwarded =
+      headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+    return (
+      originFromForwardedHost(
+        forwarded,
+        headerStore.get("x-forwarded-proto")
+      ) ?? normalizeAuthSiteOrigin(headerStore.get("origin"))
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthCallbackOrigin(): Promise<string> {
+  const requestOrigin = await readRequestOrigin();
   if (process.env.VERCEL_ENV === "preview") {
-    let requestOrigin: string | null = null;
-    try {
-      const headerStore = await headers();
-      const forwarded =
-        headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-      requestOrigin =
-        originFromForwardedHost(
-          forwarded,
-          headerStore.get("x-forwarded-proto")
-        ) ?? normalizeAuthSiteOrigin(headerStore.get("origin"));
-    } catch {
-      requestOrigin = null;
-    }
-    return resolveAuthEmailOrigin({
+    return selectAuthCallbackOrigin({
       vercelEnv: "preview",
       requestOrigin,
       branchHost: process.env.VERCEL_BRANCH_URL ?? null,
@@ -322,9 +367,9 @@ export async function getAuthCallbackOrigin(): Promise<string> {
     });
   }
 
-  return resolveAuthEmailOrigin({
+  return selectAuthCallbackOrigin({
     vercelEnv: process.env.VERCEL_ENV,
-    requestOrigin: null,
+    requestOrigin,
     branchHost: null,
     deploymentHost: null,
     configuredSiteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,

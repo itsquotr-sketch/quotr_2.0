@@ -8,11 +8,17 @@
  * A matching host only changes what that host shows and which purchase
  * actions it will start. It does not grant or remove an entitlement.
  *
- * The preview host is the stable Vercel alias for android/play-twa.
+ * play.get-quotr.com is the stable Android host. The preview alias remains
+ * until the Android launch URL is changed. Neither host is the website.
  */
+
+export const PLAY_SURFACE_HOST = "play.get-quotr.com";
 
 export const PLAY_SURFACE_PREVIEW_HOST =
   "quotr-2-0-git-android-play-twa-quotr1.vercel.app";
+
+/** Customer and application links stay on the website, not the Android host. */
+export const WEBSITE_APP_ORIGIN = "https://app.get-quotr.com";
 
 export const PLAY_SURFACE_BILLING_NOTE =
   "This app does not sell plans or seats. An existing Quotr subscription is managed on the Quotr website.";
@@ -30,7 +36,7 @@ export function isPlaySurfaceHost(hostHeader: string | null | undefined): boolea
 }
 
 export function playSurfaceHosts(): Set<string> {
-  const hosts = new Set<string>([PLAY_SURFACE_PREVIEW_HOST]);
+  const hosts = new Set<string>([PLAY_SURFACE_HOST, PLAY_SURFACE_PREVIEW_HOST]);
   const extra = process.env.QUOTR_PLAY_SURFACE_HOSTS ?? "";
   for (const part of extra.split(",")) {
     const hostname = hostnameFromHeader(part);

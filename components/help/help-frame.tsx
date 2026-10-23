@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 import { HELP_SUPPORT_EMAIL } from "@/lib/help/content";
+import { LegalDocumentLinks } from "@/components/legal/LegalDocumentLinks";
 
 const linkClass =
   "underline decoration-foreground/30 underline-offset-4 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2";
@@ -61,6 +62,7 @@ export function HelpSupport() {
         </a>
         .
       </p>
+      <LegalDocumentLinks className="mt-3" />
     </section>
   );
 }

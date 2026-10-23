@@ -5,6 +5,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import { readPendingSignupEmail } from "@/lib/auth/pending-signup-email";
 import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
 import { isPlaySurfaceRequest } from "@/lib/android/play-surface.server";
+import { LegalDocumentLinks } from "@/components/legal/LegalDocumentLinks";
 import {
   AuthCard,
   AuthCardContent,
@@ -36,6 +37,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               Sign in
             </Link>
           </p>
+          <LegalDocumentLinks className="text-center" />
         </AuthCardFooter>
       </AuthCard>
     );

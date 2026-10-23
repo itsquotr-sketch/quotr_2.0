@@ -8,8 +8,14 @@ import { helpArticleForPlaySurface } from "../lib/help/play-surface-article";
 import {
   isPlaySurfaceHost,
   PLAY_SURFACE_BILLING_NOTE,
+  PLAY_SURFACE_HOST,
   PLAY_SURFACE_PREVIEW_HOST,
+  WEBSITE_APP_ORIGIN,
 } from "../lib/android/play-surface";
+import {
+  resolveConfiguredSiteOrigin,
+  selectAuthCallbackOrigin,
+} from "../lib/auth/site-url";
 
 function assert(label: string, condition: boolean) {
   if (!condition) {
@@ -21,6 +27,18 @@ function assert(label: string, condition: boolean) {
 }
 
 const previous = process.env.QUOTR_PLAY_SURFACE_HOSTS;
+delete process.env.QUOTR_PLAY_SURFACE_HOSTS;
+
+assert(
+  "stable Android host is a Play host without extra configuration",
+  isPlaySurfaceHost(PLAY_SURFACE_HOST) &&
+    isPlaySurfaceHost(`${PLAY_SURFACE_HOST}:443`)
+);
+assert(
+  "preview alias remains a Play host",
+  isPlaySurfaceHost(PLAY_SURFACE_PREVIEW_HOST)
+);
+
 process.env.QUOTR_PLAY_SURFACE_HOSTS = "android.get-quotr.com";
 
 assert(
@@ -52,7 +70,43 @@ assert(
   "listing Production in the environment does not make it a Play host",
   !isPlaySurfaceHost("app.get-quotr.com") && isPlaySurfaceHost("android.get-quotr.com")
 );
-process.env.QUOTR_PLAY_SURFACE_HOSTS = previous;
+if (previous === undefined) delete process.env.QUOTR_PLAY_SURFACE_HOSTS;
+else process.env.QUOTR_PLAY_SURFACE_HOSTS = previous;
+
+assert(
+  "a Play-host site URL does not become the customer link origin",
+  resolveConfiguredSiteOrigin({
+    VERCEL_ENV: "production",
+    NEXT_PUBLIC_SITE_URL: `https://${PLAY_SURFACE_HOST}`,
+  }) === WEBSITE_APP_ORIGIN
+);
+assert(
+  "the website site URL stays the customer link origin",
+  resolveConfiguredSiteOrigin({
+    VERCEL_ENV: "production",
+    NEXT_PUBLIC_SITE_URL: WEBSITE_APP_ORIGIN,
+  }) === WEBSITE_APP_ORIGIN
+);
+assert(
+  "password reset on the Android host returns to that host",
+  selectAuthCallbackOrigin({
+    vercelEnv: "production",
+    requestOrigin: `https://${PLAY_SURFACE_HOST}`,
+    branchHost: null,
+    deploymentHost: null,
+    configuredSiteUrl: WEBSITE_APP_ORIGIN,
+  }) === `https://${PLAY_SURFACE_HOST}`
+);
+assert(
+  "password reset on the website stays on the website",
+  selectAuthCallbackOrigin({
+    vercelEnv: "production",
+    requestOrigin: WEBSITE_APP_ORIGIN,
+    branchHost: null,
+    deploymentHost: null,
+    configuredSiteUrl: WEBSITE_APP_ORIGIN,
+  }) === WEBSITE_APP_ORIGIN
+);
 
 const article = HELP_ARTICLES.find((item) => item.slug === "account-and-billing");
 if (!article) {
@@ -120,6 +174,40 @@ assert(
 assert(
   "the Android app opens the Play preview host",
   manifest.includes("${twaDefaultUrl}") && manifest.includes("${twaHost}")
+);
+assert(
+  "the Android launch URL is unchanged",
+  gradle.includes(
+    'def twaHost = "quotr-2-0-git-android-play-twa-quotr1.vercel.app"'
+  ) && !gradle.includes(PLAY_SURFACE_HOST)
+);
+
+const terms = readFileSync("app/(legal)/terms/page.tsx", "utf8");
+const privacy = readFileSync("app/(legal)/privacy/page.tsx", "utf8");
+const login = readFileSync("app/(auth)/login/page.tsx", "utf8");
+const signup = readFileSync("app/(auth)/signup/page.tsx", "utf8");
+const helpFrame = readFileSync("components/help/help-frame.tsx", "utf8");
+const legalLinks = readFileSync("components/legal/LegalDocumentLinks.tsx", "utf8");
+assert(
+  "Application Terms and Privacy Notice do not link to a purchase",
+  !terms.includes('href="/signup"') &&
+    !terms.includes('href="/app/settings/billing"') &&
+    !terms.includes("checkout.stripe") &&
+    !privacy.includes('href="/signup"') &&
+    !privacy.includes('href="/app/settings/billing"') &&
+    privacy.includes("TERMS_OF_USE_URL") &&
+    terms.includes("PRIVACY_POLICY_URL")
+);
+assert(
+  "Play sign-in and Help keep the legal documents reachable",
+  legalLinks.includes('href="/terms"') &&
+    legalLinks.includes('href="/privacy"') &&
+    !legalLinks.includes('href="/signup"') &&
+    !legalLinks.includes('href="/app/settings/billing"') &&
+    login.includes("<LegalDocumentLinks") &&
+    signup.includes("<LegalDocumentLinks") &&
+    signup.indexOf("await isPlaySurfaceRequest()") < signup.indexOf("<SignupForm") &&
+    helpFrame.includes("<LegalDocumentLinks")
 );
 assert(
   "the Android app declares the browser helper site-settings activity",

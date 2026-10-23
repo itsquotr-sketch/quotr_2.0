@@ -21,6 +21,7 @@ import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
 import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
+import { LegalDocumentLinks } from "@/components/legal/LegalDocumentLinks";
 
 const initialState: AuthActionState = {};
 
@@ -121,9 +122,12 @@ function LoginForm() {
             pendingLabel="Signing in…"
           />
           {playSurface ? (
-            <p className="text-center text-sm text-muted-foreground">
-              {PLAY_SURFACE_BILLING_NOTE} Sign in with an existing account.
-            </p>
+            <>
+              <p className="text-center text-sm text-muted-foreground">
+                {PLAY_SURFACE_BILLING_NOTE} Sign in with an existing account.
+              </p>
+              <LegalDocumentLinks className="text-center" />
+            </>
           ) : (
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
