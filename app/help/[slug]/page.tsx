@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { HelpArticleBody } from "@/components/help/help-article";
 import { HelpSupport } from "@/components/help/help-frame";
 import { getHelpArticle, HELP_ARTICLES } from "@/lib/help/content";
+import { helpArticleForPlaySurface } from "@/lib/help/play-surface-article";
+import { isPlaySurfaceRequest } from "@/lib/android/play-surface.server";
 
 export function generateStaticParams() {
   return HELP_ARTICLES.map((article) => ({ slug: article.slug }));
@@ -16,8 +18,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = getHelpArticle(slug);
-  if (!article) return { title: "Help | Quotr" };
+  const stored = getHelpArticle(slug);
+  if (!stored) return { title: "Help | Quotr" };
+  const article = (await isPlaySurfaceRequest())
+    ? helpArticleForPlaySurface(stored)
+    : stored;
   return {
     title: `${article.title} | Quotr Help`,
     description: article.summary,
@@ -30,8 +35,11 @@ export default async function HelpArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = getHelpArticle(slug);
-  if (!article) notFound();
+  const stored = getHelpArticle(slug);
+  if (!stored) notFound();
+  const article = (await isPlaySurfaceRequest())
+    ? helpArticleForPlaySurface(stored)
+    : stored;
 
   return (
     <>

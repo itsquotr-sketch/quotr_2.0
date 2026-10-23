@@ -20,6 +20,8 @@ import {
   BUSINESS_PLAN_SUMMARY,
 } from "@/lib/billing/plan-copy";
 import { Button } from "@/components/ui/button";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Card,
@@ -80,6 +82,7 @@ export function BillingPageContent({
     null
   );
   const [isPending, startTransition] = useTransition();
+  const playSurface = usePlaySurface();
 
   useEffect(() => {
     if (checkout !== "success" && upgrade !== "pending" && upgrade !== "payment") {
@@ -149,7 +152,13 @@ export function BillingPageContent({
 
   return (
     <div className="space-y-6">
-      {checkout === "cancelled" ? (
+      {playSurface ? (
+        <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+          {PLAY_SURFACE_BILLING_NOTE}
+        </p>
+      ) : null}
+
+      {checkout === "cancelled" && !playSurface ? (
         <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
           Checkout was cancelled. Your trial is unchanged.
         </p>
@@ -171,9 +180,9 @@ export function BillingPageContent({
 
       {upgradePaymentNeeded && !confirmingUpgrade && view.planCode !== "business" ? (
         <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
-          Your upgrade has not completed because payment needs attention. You
-          remain on Builder until billing confirms Business. Use Manage billing
-          to update payment, then refresh.
+          {playSurface
+            ? "A plan change has not completed because payment needs attention. You remain on Builder until billing confirms Business."
+            : "Your upgrade has not completed because payment needs attention. You remain on Builder until billing confirms Business. Use Manage billing to update payment, then refresh."}
         </p>
       ) : null}
 
@@ -188,9 +197,9 @@ export function BillingPageContent({
           <CardHeader>
             <CardTitle>Your 14-day trial has ended</CardTitle>
             <CardDescription>
-              Choose Quotr Builder or Business to continue creating and sending
-              new work. Existing Projects, Estimates, Pricing, and Quotes stay
-              available to view.
+              {playSurface
+                ? "Existing Projects, Estimates, Pricing, and Quotes stay available to view. Creating and sending new work follows the same subscription rules as the website."
+                : "Choose Quotr Builder or Business to continue creating and sending new work. Existing Projects, Estimates, Pricing, and Quotes stay available to view."}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -213,7 +222,7 @@ export function BillingPageContent({
               </p>
             ) : null}
           </CardContent>
-          {showPlans ? (
+          {showPlans && !playSurface ? (
             <CardFooter>
               <p className="text-sm text-muted-foreground">{trialCta} below.</p>
             </CardFooter>
@@ -247,7 +256,9 @@ export function BillingPageContent({
                     {view.reservedUserCount} of {view.maxSelfServiceUsers} users
                   </p>
                 ) : null}
-                {view.extraUserPriceLabel ? <p>{view.extraUserPriceLabel}</p> : null}
+                {view.extraUserPriceLabel && !playSurface ? (
+                  <p>{view.extraUserPriceLabel}</p>
+                ) : null}
               </div>
             ) : view.planCode === "builder" ? (
               <p className="text-muted-foreground">1 user</p>
@@ -258,6 +269,7 @@ export function BillingPageContent({
               </p>
             ) : null}
           </CardContent>
+          {playSurface ? null : (
           <CardFooter className="flex flex-wrap gap-2">
             {view.canManagePortal ? (
               <Button
@@ -281,10 +293,11 @@ export function BillingPageContent({
               </Button>
             ) : null}
           </CardFooter>
+          )}
         </Card>
       ) : null}
 
-      {showPlans ? (
+      {showPlans && !playSurface ? (
         <div className="grid gap-4 md:grid-cols-2">
           <PlanSelectCard
             plan="builder"
@@ -299,14 +312,16 @@ export function BillingPageContent({
             onSelect={() => runAction("business", () => startCheckout("business"))}
           />
         </div>
-      ) : view.checkoutBlockedReason && view.kind !== "trial" ? (
+      ) : view.checkoutBlockedReason && view.kind !== "trial" && !playSurface ? (
         <p className="text-sm text-muted-foreground">{view.checkoutBlockedReason}</p>
       ) : null}
 
+      {playSurface ? null : (
       <p className="text-sm text-muted-foreground">
         Additional Business users are $35 + GST per user/month. Invite people
         from Team.
       </p>
+      )}
       {view.billingManageBlockedReason ? (
         <p className="text-sm text-muted-foreground">
           {view.billingManageBlockedReason}

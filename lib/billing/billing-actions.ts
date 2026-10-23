@@ -39,6 +39,8 @@ import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { reservedSeatCount } from "@/lib/team/capacity";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { isPlaySurfacePurchaseRequest } from "@/lib/android/play-surface.server";
 
 export type BillingActionResult = { error: string };
 
@@ -88,9 +90,18 @@ export async function getBillingPageState(): Promise<BillingPageView | { error: 
   });
 }
 
+async function playSurfacePurchaseBlock(): Promise<BillingActionResult | null> {
+  if (await isPlaySurfacePurchaseRequest()) {
+    return { error: PLAY_SURFACE_BILLING_NOTE };
+  }
+  return null;
+}
+
 export async function startCheckout(
   planInput: string
 ): Promise<BillingActionResult | void> {
+  const blocked = await playSurfacePurchaseBlock();
+  if (blocked) return blocked;
   const plan = parseCheckoutPlanCode(planInput);
   if (!plan) {
     return { error: "Choose Quotr Builder or Business." };
@@ -201,6 +212,8 @@ export async function startCheckout(
 }
 
 export async function startCustomerPortal(): Promise<BillingActionResult | void> {
+  const blocked = await playSurfacePurchaseBlock();
+  if (blocked) return blocked;
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
   const manageDenied = await permissionDeniedError({
@@ -236,6 +249,8 @@ export async function startCustomerPortal(): Promise<BillingActionResult | void>
 }
 
 export async function upgradeToBusiness(): Promise<BillingActionResult | void> {
+  const blocked = await playSurfacePurchaseBlock();
+  if (blocked) return blocked;
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
   const manageDenied = await permissionDeniedError({

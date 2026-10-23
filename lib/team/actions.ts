@@ -27,6 +27,8 @@ import {
   type MembershipRole,
 } from "@/lib/team/roles";
 import { SEAT_PAYMENT_FAILED_MESSAGE } from "@/lib/team/seat-operations";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { isPlaySurfacePurchaseRequest } from "@/lib/android/play-surface.server";
 import {
   ownAcceptanceIssuesStripeMutation,
   SEAT_QUEUED_MESSAGE,
@@ -132,6 +134,9 @@ export async function inviteTeamMember(input: {
   email: string;
   role: string;
 }): Promise<TeamActionResult> {
+  if (await isPlaySurfacePurchaseRequest()) {
+    return { error: PLAY_SURFACE_BILLING_NOTE };
+  }
   const context = await getAuthOrgContext();
   if (!context) return { error: "Your organisation profile could not be loaded." };
 

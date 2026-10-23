@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 
 const initialState: AuthActionState = {};
 
@@ -33,6 +35,7 @@ function LoginForm() {
   const linkError = searchParams.get("error");
   const [state, formAction, pending] = useActionState(login, initialState);
 
+  const playSurface = usePlaySurface();
   const confirmation = loginConfirmationPresentation(linkError);
   const bannerError =
     state.error ??
@@ -117,12 +120,18 @@ function LoginForm() {
             idle="Sign in"
             pendingLabel="Signing in…"
           />
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className={authTextLinkClass}>
-              Create account
-            </Link>
-          </p>
+          {playSurface ? (
+            <p className="text-center text-sm text-muted-foreground">
+              {PLAY_SURFACE_BILLING_NOTE} Sign in with an existing account.
+            </p>
+          ) : (
+            <p className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className={authTextLinkClass}>
+                Create account
+              </Link>
+            </p>
+          )}
         </AuthCardFooter>
       </form>
     </AuthCard>

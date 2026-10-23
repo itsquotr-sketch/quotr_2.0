@@ -1,0 +1,63 @@
+plugins {
+    id "com.android.application"
+}
+
+// Stable Preview alias for android/play-twa. Not app.get-quotr.com.
+def twaHost = "quotr-2-0-git-android-play-twa-quotr1.vercel.app"
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace "com.flowra.quotr"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.flowra.quotr"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "0.1.0"
+        manifestPlaceholders = [
+            twaHost: twaHost,
+            twaDefaultUrl: "https://${twaHost}/login"
+        ]
+        resValue "string", "asset_statements", "[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://${twaHost}\"}}]"
+    }
+
+    signingConfigs {
+        upload {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.upload
+            }
+        }
+        release {
+            minifyEnabled false
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.upload
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.7.4"
+}

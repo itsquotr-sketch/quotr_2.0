@@ -12,6 +12,8 @@ import { SEAT_ADD_DISCLOSURE, SEAT_REMOVE_DISCLOSURE } from "@/lib/billing/seat-
 import { roleOptionCopy, type TeamPageView } from "@/lib/team/team-page-view";
 import { ROLE_DESCRIPTIONS, ROLE_LABELS, type MembershipRole } from "@/lib/team/roles";
 import { Button } from "@/components/ui/button";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Dialog,
@@ -52,6 +54,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
     name: string;
   } | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const playSurface = usePlaySurface();
   const [inviteRole, setInviteRole] = useState("estimator");
   const [dismissInviteSuccess, setDismissInviteSuccess] = useState(false);
   if (invitePending && dismissInviteSuccess) setDismissInviteSuccess(false);
@@ -126,10 +129,13 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
         {view.pendingLabel ? (
           <p className="mt-2 text-sm text-muted-foreground">{view.pendingLabel}</p>
         ) : null}
-        {view.extraUserPriceLabel ? (
+        {view.extraUserPriceLabel && !playSurface ? (
           <p className="mt-2 text-sm text-muted-foreground">{view.extraUserPriceLabel}</p>
         ) : null}
-        {view.ctaHref && view.ctaLabel ? (
+        {playSurface && (view.kind === "builder" || view.kind === "trial" || view.canInvite) ? (
+          <p className="mt-3 text-sm text-muted-foreground">{PLAY_SURFACE_BILLING_NOTE}</p>
+        ) : null}
+        {view.ctaHref && view.ctaLabel && !playSurface ? (
           <Button
             render={<Link href={view.ctaHref} />}
             size="touch"
@@ -139,7 +145,11 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
           </Button>
         ) : null}
         {view.kind === "builder" || view.kind === "trial" ? (
-          <p className="mt-3 text-sm">{view.emptyState}</p>
+          <p className="mt-3 text-sm">
+            {playSurface
+              ? "People already in this account stay listed. Adding a paid seat is not available in this app."
+              : view.emptyState}
+          </p>
         ) : null}
       </section>
 
@@ -156,7 +166,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
         <>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-semibold tracking-tight">Active members</h2>
-            {view.canInvite ? (
+            {view.canInvite && !playSurface ? (
               <Button
                 type="button"
                 size="touch"
@@ -273,7 +283,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
             </div>
           ) : null}
 
-          {view.canInvite ? (
+          {view.canInvite && !playSurface ? (
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
@@ -343,7 +353,7 @@ export function TeamPageContent({ view }: { view: TeamPageView }) {
                 </form>
               </DialogContent>
             </Dialog>
-          ) : view.kind === "business" || view.kind === "custom" ? (
+          ) : !view.canInvite && (view.kind === "business" || view.kind === "custom") ? (
             <p className="text-sm text-muted-foreground">
               Only the Owner can invite or remove people.
             </p>

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import type { TrialBannerNotice } from "@/lib/billing/trial-countdown";
 import { cn } from "@/lib/utils";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 
 type TrialNoticeBannerProps = {
   notice: TrialBannerNotice;
@@ -15,6 +19,7 @@ const TONE_CLASS: Record<TrialBannerNotice["tone"], string> = {
 };
 
 export function TrialNoticeBanner({ notice }: TrialNoticeBannerProps) {
+  const playSurface = usePlaySurface();
   return (
     <div
       className={cn(
@@ -24,14 +29,18 @@ export function TrialNoticeBanner({ notice }: TrialNoticeBannerProps) {
     >
       <div className="min-w-0">
         <p className="text-sm font-medium">{notice.title}</p>
-        <p className="text-sm opacity-90">{notice.message}</p>
+        <p className="text-sm opacity-90">
+          {playSurface ? PLAY_SURFACE_BILLING_NOTE : notice.message}
+        </p>
       </div>
+      {playSurface ? null : (
       <Link
         href={notice.href}
         className="shrink-0 text-sm font-medium underline-offset-4 hover:underline"
       >
         {notice.ctaLabel}
       </Link>
+      )}
     </div>
   );
 }

@@ -47,3 +47,12 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Android signing and local build output. The upload keystore stays outside git.
+/android/keystore.properties
+/android/local.properties
+/android/.gradle/
+/android/build/
+/android/app/build/
+*.jks
+*.keystore

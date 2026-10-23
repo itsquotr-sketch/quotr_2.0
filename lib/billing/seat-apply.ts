@@ -14,6 +14,8 @@ import {
 } from "@/lib/billing/stripe-idempotency";
 import { paidSeatQuantityFromExtraSeats } from "@/lib/billing/seats";
 import type { StripePendingUpdateLike } from "@/lib/billing/upgrade-policy";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { isPlaySurfacePurchaseRequest } from "@/lib/android/play-surface.server";
 
 function pendingFromStripe(pending: unknown): StripePendingUpdateLike {
   if (!pending || typeof pending !== "object") return null;
@@ -53,6 +55,13 @@ export async function applyPaidSeatIncrease(input: {
   operationId: string;
   desiredPaidSeatQuantity: number;
 }): Promise<SeatStripeApplyResult> {
+  if (await isPlaySurfacePurchaseRequest()) {
+    return {
+      ok: false,
+      errorCode: "play_surface",
+      errorSafe: PLAY_SURFACE_BILLING_NOTE,
+    };
+  }
   const prices = requireStripePriceConfig();
   const stripe = getStripeClient();
   const billingEnvironment = resolveBillingEnvironment();

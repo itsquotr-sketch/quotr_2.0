@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import type { UpgradeTarget } from "@/lib/billing/entitlement-reasons";
 import { Button } from "@/components/ui/button";
+import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 
 export type BillingAccessDeniedProps = {
   error: string;
@@ -49,6 +53,7 @@ export function BillingAccessDenied({
   upgradeTarget,
   className,
 }: BillingAccessDeniedProps) {
+  const playSurface = usePlaySurface();
   const actions = actionsFor({ error, reasonCode, upgradeTarget });
   return (
     <div
@@ -58,7 +63,12 @@ export function BillingAccessDenied({
       }
       role="alert"
     >
-      <p className="text-destructive">{error}</p>
+      <p className="text-destructive">
+        {playSurface
+          ? `This action is not available on the current subscription. ${PLAY_SURFACE_BILLING_NOTE}`
+          : error}
+      </p>
+      {playSurface ? null : (
       <div className="flex flex-wrap gap-2">
         {actions.primary ? (
           <Button size="sm" render={<Link href={actions.primary.href} />}>
@@ -75,6 +85,7 @@ export function BillingAccessDenied({
           </Button>
         ) : null}
       </div>
+      )}
     </div>
   );
 }
