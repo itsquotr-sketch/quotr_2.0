@@ -32,7 +32,19 @@ const WEBSITE_HOSTS = new Set([
 export function isPlaySurfaceHost(hostHeader: string | null | undefined): boolean {
   const hostname = hostnameFromHeader(hostHeader);
   if (!hostname) return false;
-  return playSurfaceHosts().has(hostname);
+  return playSurfaceHosts().has(hostname) || isQuotrPlayDeploymentHost(hostname);
+}
+
+/**
+ * Public addresses of the quotr-play project. They serve the same production
+ * deployment as play.get-quotr.com, so they must not be able to start a purchase.
+ * quotr-2-0 addresses are left unchanged.
+ */
+export function isQuotrPlayDeploymentHost(hostname: string): boolean {
+  return (
+    hostname === "quotr-play.vercel.app" ||
+    (hostname.startsWith("quotr-play-") && hostname.endsWith(".vercel.app"))
+  );
 }
 
 export function playSurfaceHosts(): Set<string> {

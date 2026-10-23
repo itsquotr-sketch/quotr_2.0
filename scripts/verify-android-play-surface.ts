@@ -7,6 +7,7 @@ import { HELP_ARTICLES } from "../lib/help/content";
 import { helpArticleForPlaySurface } from "../lib/help/play-surface-article";
 import {
   isPlaySurfaceHost,
+  isQuotrPlayDeploymentHost,
   PLAY_SURFACE_BILLING_NOTE,
   PLAY_SURFACE_HOST,
   PLAY_SURFACE_PREVIEW_HOST,
@@ -37,6 +38,19 @@ assert(
 assert(
   "preview alias remains a Play host",
   isPlaySurfaceHost(PLAY_SURFACE_PREVIEW_HOST)
+);
+assert(
+  "quotr-play deployment addresses are Play hosts",
+  isQuotrPlayDeploymentHost("quotr-play.vercel.app") &&
+    isPlaySurfaceHost("quotr-play.vercel.app") &&
+    isPlaySurfaceHost("quotr-play-quotr1.vercel.app") &&
+    isPlaySurfaceHost("quotr-play-ape0wuei8-quotr1.vercel.app")
+);
+assert(
+  "the main project addresses are not Play hosts",
+  !isPlaySurfaceHost("quotr-2-0.vercel.app") &&
+    !isPlaySurfaceHost("quotr-2-0-gxgdqe9ez-quotr1.vercel.app") &&
+    !isQuotrPlayDeploymentHost("quotr-2-0-git-android-play-twa-quotr1.vercel.app")
 );
 
 process.env.QUOTR_PLAY_SURFACE_HOSTS = "android.get-quotr.com";
