@@ -90,6 +90,16 @@ assert(
     invite.indexOf("create_organisation_invitation_v1")
 );
 
+const gradle = readFileSync("android/app/build.gradle", "utf8");
+const assetLinks = readFileSync("public/.well-known/assetlinks.json", "utf8");
+assert(
+  "the Android package is com.getquotr.app",
+  gradle.includes('applicationId "com.getquotr.app"') &&
+    gradle.includes('namespace "com.getquotr.app"') &&
+    assetLinks.includes('"package_name": "com.getquotr.app"') &&
+    !gradle.includes("com.flowra.quotr") &&
+    !assetLinks.includes("com.flowra.quotr")
+);
 const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
 assert("the Android app declares internet only", manifest.includes("android.permission.INTERNET"));
 assert(

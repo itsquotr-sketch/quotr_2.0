@@ -11,11 +11,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.flowra.quotr"
+    namespace "com.getquotr.app"
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.flowra.quotr"
+        applicationId "com.getquotr.app"
         minSdk 26
         targetSdk 36
         versionCode 1
