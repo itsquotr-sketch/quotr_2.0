@@ -35,6 +35,8 @@ export function SignedInDeletionForm({
           <p className="text-sm text-muted-foreground">{copy.body}</p>
           {record ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              <dt className="text-muted-foreground">State</dt>
+              <dd>{copy?.title}</dd>
               <dt className="text-muted-foreground">Identity</dt>
               <dd>{record.identityConfirmed ? "Confirmed" : "Not confirmed"}</dd>
               <dt className="text-muted-foreground">Other people</dt>
@@ -73,7 +75,7 @@ export function SignedInDeletionForm({
             />
           </div>
           <Button type="submit" disabled={pending}>
-            {pending ? "Recording…" : "Record deletion request"}
+            {pending ? "Recording…" : "Request account deletion"}
           </Button>
         </form>
       )}
@@ -120,7 +122,7 @@ export function PublicDeletionForm() {
         />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Recording…" : "Record deletion request"}
+        {pending ? "Recording…" : "Request account deletion"}
       </Button>
     </form>
   );

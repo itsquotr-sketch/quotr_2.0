@@ -1,31 +1,67 @@
 # Account-deletion requests
 
-A row in `account_deletion_requests` records that a person asked for their account to be closed. The product does not delete the login, the company, issued quotes, or the subscription.
+Jean-Luc Ellis (jeanluc@erccontracting.co.nz) is the initial operator. The tool refuses every other operator, and it refuses his own login. A second operator is required before that login can be deleted.
 
-Production schema changes are not part of this procedure. Apply the request table to Preview only until the owner accepts it for Production.
+A request is not deletion. The states are requested, verified, processing, and completed. Completed means the personal login was deleted. It does not mean the company was closed.
 
-## What the request already checked
+Production schema changes are not part of this procedure. Migrations 121 and 122 stay on Preview until the owner accepts them.
 
-Signed-in requests set `identity_confirmed` only after the current password is accepted. Public requests stay unconfirmed. Do not treat an unconfirmed public request as proof of identity.
+## States
 
-`resolution = needs_support` means other active members still belong to the company. That is not a refusal. There is no ownership transfer. Do not remove those members, and do not delete the company, to make the owner’s request succeed.
+- **Requested.** The ask is stored. Identity is not verified. No destructive action is allowed.
+- **Verified.** A signed-in person accepted their current password, or an operator has otherwise confirmed a public request by that person signing in and confirming. Still nothing is deleted.
+- **Processing.** The operator started a confirmed fulfilment. The login is not gone until the status is completed.
+- **Completed.** The Supabase Auth user was deleted. The profile and that person’s membership cascade from it.
 
-`issued_quote_count` counts quotes for that company with `sent_at` set. `subscription_status` is the subscription status read at request time, or empty when billing could not be read.
+## What can be fulfilled
 
-## Fulfilment, when an operator is actually going to delete
+The Preview command is:
 
-1. Confirm identity. A signed-in row with `identity_confirmed` has already accepted the current password. An unconfirmed public row still needs the person to sign in and confirm, or a separate check that the request came from them. Do not delete from an unconfirmed row.
-2. Read the open row for that normalised email. Do not create a second open request.
-3. Do not delete `auth.users` or `profiles` while projects or quotes still reference that profile. Those foreign keys reject the delete.
-4. Do not delete the organisation. That cascade removes projects, quotes, and subscription rows.
-5. If other people are active members, stop the data deletion. Email them and the owner from hello@get-quotr.com and agree what happens to the company. The product cannot transfer ownership.
-6. Do not cancel a Stripe subscription from this table. Cancellation stays on the Quotr website. Leave `org_subscriptions` and `org_billing_customers` in place. The Privacy Notice already says subscription and tax records may be kept for the period New Zealand tax law requires. No separate product retention period has been chosen.
-7. Leave issued quotes, including pages opened from a customer link, in place. The Privacy Notice says job notes, photos, quotes, and customer details are not kept merely to meet that tax period. Whether a sent quote may be removed is an owner decision. This request does not remove it.
-8. There is no product action that performs the deletion. Closing the request in the database, when that is eventually done by hand, only changes the request row. It does not delete the account.
+```
+npx tsx scripts/fulfil-account-deletion.ts --request <id> --operator jeanluc@erccontracting.co.nz
+```
+
+That is a dry-run. It prints the effects and deletes nothing. Execution also requires `--confirm delete-personal-account`. The project must be Preview `shhpjsoldmqtkdbgrbtm`.
+
+Execution is allowed only when all of these are true:
+
+- The operator is Jean-Luc Ellis, and the target is not that same login.
+- Identity is verified.
+- The person is not an active member alongside anyone else.
+- The company has no issued quote (`sent_at` is empty for every quote).
+- No subscription row is stored for the company.
+- No project, quote, pricing document, project note, or note proposal references the profile.
+
+The effects of that case are:
+
+1. Record the email in `account_deletion_suppressions` before the login is deleted. Later Loops updates see that row and do not create the contact again.
+2. Delete the Loops contact when `LOOPS_API_KEY` is configured. If it is not configured, the suppression row still stands.
+3. Delete the Supabase Auth user. The profile and membership cascade. Organisation storage is not a personal bucket and is not removed.
+4. Mark the request completed and store the retained rows with their reasons.
+
+The company row is retained. Closing a company is a separate decision. Deleting the company would cascade its projects, quotes, and subscription rows, so this tool does not do it.
+
+## What cannot be fulfilled yet
+
+- A public request that is still **requested**. Identity has to be verified first.
+- An owner with other active members. The request stays **verified** with resolution `needs_support` and is not refused. Support resolves the company at hello@get-quotr.com. Ownership cannot be transferred in the product, so the login is not deleted.
+- Any issued quote. Customer links stay on `https://app.get-quotr.com/q/…`. Variation links stay on `https://app.get-quotr.com/v/…`. The login is not deleted while a quote or project references the profile.
+- A stored `org_subscriptions` row. The subscription stays with the company. Cancellation stays on the Quotr website. The login is not removed while that row exists, because the company would be left billed and without an owner.
+- The operator’s own login.
+
+No separate product retention period is set. A retained row names the record and the reason. It does not name a number of days.
+
+## Issued-document links
+
+- No issued quote: there is no customer link to change.
+- Issued quotes exist: the links stay on the website. The request is not completed.
+- Other people remain: the links stay, whether or not a quote was sent. Support resolves the company.
+- Completed personal deletion: this only happens when no issued quote existed, so no customer link is removed.
 
 ## Owner decisions still open
 
-- The product retention period, if any, beyond the tax-law statement already in the Privacy Notice.
-- Whether a quote that was sent can later be removed, and what happens to the customer link.
-- How a company with other members is closed or transferred. The product cannot do either today.
-- Who at Quotr is allowed to fulfil a confirmed request once a real deletion path exists.
+- A second operator, so the initial operator’s own login can be fulfilled.
+- How ownership is transferred before a company with other members can lose its owner.
+- Whether `created_by` on projects and quotes may be detached so a personal login can be deleted while the issued link stays.
+- Who cancels a Stripe subscription on the website before a sole member’s login can be removed.
+- Whether an empty company left behind by a completed personal deletion should later be closed.

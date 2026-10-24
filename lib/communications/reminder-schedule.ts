@@ -654,7 +654,12 @@ async function releaseOne(
     marketingConsent: true,
     apiKey,
   });
-  if (!upsert.ok || upsert.skipped === "unconfigured") return "postponed";
+  if (!upsert.ok) return "postponed";
+  if (upsert.skipped === "suppressed") {
+    await markSuppressed(admin, row.id);
+    return "suppressed";
+  }
+  if (upsert.skipped === "unconfigured") return "postponed";
   const releasedAt = new Date().toISOString();
   const { error } = await admin
     .from("marketing_engagement_reminders")

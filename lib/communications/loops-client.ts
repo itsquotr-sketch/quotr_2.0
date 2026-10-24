@@ -21,6 +21,7 @@ export function readLoopsApiKey(): string | null {
 
 export type LoopsUpsertResult =
   | { ok: true; skipped: "unconfigured" }
+  | { ok: true; skipped: "suppressed" }
   | { ok: true; skipped?: undefined; sentSubscribed: boolean | undefined }
   | { ok: false; code: string };
 
@@ -75,6 +76,12 @@ export async function upsertLoopsContact(input: {
   const email = typeof input.properties.email === "string" ? input.properties.email : "";
   const userId = typeof input.properties.userId === "string" ? input.properties.userId : "";
   if (!email || !userId) return { ok: false, code: "invalid_contact" };
+  const { isDeletedContactSuppressed } = await import(
+    "@/lib/account-deletion/suppression"
+  );
+  if (await isDeletedContactSuppressed(email)) {
+    return { ok: true, skipped: "suppressed" };
+  }
 
   const fetchImpl = input.fetchImpl ?? fetch;
 
@@ -221,6 +228,30 @@ export async function readLoopsContactSubscription(input: {
       : "unsubscribed";
   } catch {
     return "error";
+  }
+}
+
+export async function deleteLoopsContact(input: {
+  email: string;
+  apiKey?: string | null;
+  fetchImpl?: FetchLike;
+}): Promise<"deleted" | "unconfigured" | "failed"> {
+  const apiKey = input.apiKey === undefined ? readLoopsApiKey() : input.apiKey;
+  if (!apiKey) return "unconfigured";
+  const fetchImpl = input.fetchImpl ?? fetch;
+  try {
+    const response = await fetchImpl(`${LOOPS_API_ORIGIN}/contacts/delete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: input.email }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    return response.ok ? "deleted" : "failed";
+  } catch {
+    return "failed";
   }
 }
 

@@ -135,7 +135,7 @@ async function syncSessionUserWithinTask(
         logLoopsFailure(result.code);
         return;
       }
-      if (admin && draft.engagementEligible === true && result.skipped !== "unconfigured") {
+      if (admin && draft.engagementEligible === true && result.skipped !== "unconfigured" && result.skipped !== "suppressed") {
         await recordEngagementMarker(admin, draft.userId);
       }
       const after = await readSessionStamp(supabase, draft.userId);
@@ -232,7 +232,7 @@ async function syncOrganisationContactsWithinTask(orgId: string): Promise<void> 
           logLoopsFailure(result.code);
           return;
         }
-        if (draft.engagementEligible === true && result.skipped !== "unconfigured") {
+        if (draft.engagementEligible === true && result.skipped !== "unconfigured" && result.skipped !== "suppressed") {
           await recordEngagementMarker(admin, userId);
         }
         const afterStamp = await readAdminStamp(admin, userId);
@@ -340,14 +340,14 @@ async function readAdminStamp(
 async function applySessionAck(
   supabase: ServerClient,
   draft: LoopsContactDraft,
-  result: { ok: true; skipped?: "unconfigured"; sentSubscribed?: boolean },
+  result: { ok: true; skipped?: "unconfigured" | "suppressed"; sentSubscribed?: boolean },
   stored: ConsentStamp
 ): Promise<void> {
   const sent = stampOf(draft);
   const decision = loopsPreferenceAckDecision({
     preferencePending: draft.preferencePending === true,
     sentSubscribed: result.sentSubscribed,
-    loopsAccepted: result.skipped !== "unconfigured",
+    loopsAccepted: result.skipped !== "unconfigured" && result.skipped !== "suppressed",
     skippedUnconfigured: result.skipped === "unconfigured",
     sentConsent: sent.marketingConsent,
     sentRevision: sent.consentRevision,
@@ -373,14 +373,14 @@ async function applySessionAck(
 async function applyAdminAck(
   admin: AdminClient,
   draft: LoopsContactDraft,
-  result: { ok: true; skipped?: "unconfigured"; sentSubscribed?: boolean },
+  result: { ok: true; skipped?: "unconfigured" | "suppressed"; sentSubscribed?: boolean },
   stored: ConsentStamp
 ): Promise<void> {
   const sent = stampOf(draft);
   const decision = loopsPreferenceAckDecision({
     preferencePending: draft.preferencePending === true,
     sentSubscribed: result.sentSubscribed,
-    loopsAccepted: result.skipped !== "unconfigured",
+    loopsAccepted: result.skipped !== "unconfigured" && result.skipped !== "suppressed",
     skippedUnconfigured: result.skipped === "unconfigured",
     sentConsent: sent.marketingConsent,
     sentRevision: sent.consentRevision,

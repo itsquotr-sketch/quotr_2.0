@@ -6,6 +6,7 @@ import {
   normalizeDeletionEmail,
   publicDeletionAcknowledgement,
   type DeletionActionState,
+  type DeletionLifecycle,
   type DeletionRequestRecord,
 } from "@/lib/account-deletion/request";
 import { presentAuthError } from "@/lib/auth/errors";
@@ -25,6 +26,19 @@ const passwordSchema = z.object({
   current_password: z.string().min(1, "Current password is required."),
 });
 
+function lifecycleOf(status: string, identityConfirmed: boolean): DeletionLifecycle | null {
+  if (
+    status === "requested" ||
+    status === "verified" ||
+    status === "processing" ||
+    status === "completed"
+  ) {
+    return status;
+  }
+  if (status === "open") return identityConfirmed ? "verified" : "requested";
+  return null;
+}
+
 function storedFromRow(row: {
   identity_confirmed: boolean;
   resolution: string;
@@ -32,9 +46,13 @@ function storedFromRow(row: {
   issued_quote_count: number;
   subscription_status: string | null;
   email_normalized: string;
+  status: string;
 }): StoredRequest | null {
+  const status = lifecycleOf(row.status, row.identity_confirmed);
+  if (!status) return null;
   if (row.resolution !== "recorded" && row.resolution !== "needs_support") return null;
   return {
+    status,
     identityConfirmed: row.identity_confirmed,
     resolution: row.resolution,
     otherActiveMemberCount: row.other_active_member_count,
@@ -49,10 +67,10 @@ async function readOpenRequest(emailNormalized: string): Promise<StoredRequest |
   const { data, error } = await admin
     .from("account_deletion_requests")
     .select(
-      "identity_confirmed, resolution, other_active_member_count, issued_quote_count, subscription_status, email_normalized"
+      "identity_confirmed, resolution, other_active_member_count, issued_quote_count, subscription_status, email_normalized, status"
     )
     .eq("email_normalized", emailNormalized)
-    .eq("status", "open")
+    .in("status", ["requested", "verified", "processing", "open"])
     .maybeSingle();
   if (error || !data) return null;
   return storedFromRow(data);
@@ -166,6 +184,7 @@ export async function submitSignedInDeletionRequest(
   const context = await requestContext(user.id);
   const resolution = deletionRequestResolution(context);
   const record: DeletionRequestRecord = {
+    status: "verified",
     identityConfirmed: true,
     resolution,
     otherActiveMemberCount: context.otherActiveMemberCount,
@@ -179,7 +198,7 @@ export async function submitSignedInDeletionRequest(
     source: "signed_in" as const,
     identity_confirmed: true,
     resolution,
-    status: "open" as const,
+    status: "verified" as const,
     other_active_member_count: context.otherActiveMemberCount,
     issued_quote_count: context.issuedQuoteCount,
     subscription_status: context.subscriptionStatus,
@@ -191,7 +210,7 @@ export async function submitSignedInDeletionRequest(
         .from("account_deletion_requests")
         .update(payload)
         .eq("email_normalized", email)
-        .eq("status", "open")
+        .in("status", ["requested", "verified", "open"])
     : await admin.from("account_deletion_requests").insert(payload);
 
   if (write.error) {
@@ -235,7 +254,7 @@ export async function submitPublicDeletionRequest(
     source: "public",
     identity_confirmed: false,
     resolution: "recorded",
-    status: "open",
+    status: "requested",
     other_active_member_count: 0,
     issued_quote_count: 0,
     subscription_status: null,

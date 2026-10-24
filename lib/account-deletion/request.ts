@@ -8,7 +8,16 @@ export const ACCOUNT_DELETION_SUPPORT_EMAIL = "hello@get-quotr.com";
 export const DELETION_RESOLUTIONS = ["recorded", "needs_support"] as const;
 export type DeletionResolution = (typeof DELETION_RESOLUTIONS)[number];
 
+export const DELETION_LIFECYCLE = [
+  "requested",
+  "verified",
+  "processing",
+  "completed",
+] as const;
+export type DeletionLifecycle = (typeof DELETION_LIFECYCLE)[number];
+
 export type DeletionRequestRecord = {
+  status: DeletionLifecycle;
   identityConfirmed: boolean;
   resolution: DeletionResolution;
   otherActiveMemberCount: number;
@@ -47,22 +56,32 @@ export function deletionStatusCopy(record: DeletionRequestRecord): {
   title: string;
   body: string;
 } {
-  const retained =
-    "Quotr has not deleted the account, the company, issued quotes, or the subscription. No deletion period is promised, because deletion is not carried out from this request.";
-  if (!record.identityConfirmed) {
+  if (record.status === "completed") {
     return {
-      title: "Request recorded, identity not confirmed",
-      body: `${retained} Confirm it is you with your current password. Until then, support will not treat this as confirmed.`,
+      title: "Completed",
+      body: "The personal login was deleted. The company, issued documents, and any subscription were not deleted.",
     };
   }
-  if (record.resolution === "needs_support") {
+  if (record.status === "processing") {
     return {
-      title: "Request recorded for support",
-      body: `${retained} Other people still belong to this company, and ownership cannot be transferred here. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL} and support will resolve the company and those people with you.`,
+      title: "Processing",
+      body: "An operator is fulfilling the verified request. The personal login has not been deleted yet.",
+    };
+  }
+  if (record.status === "verified" && record.resolution === "needs_support") {
+    return {
+      title: "Verified",
+      body: `Other people still belong to this company. This is not a refusal. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL} and support will resolve the company with you. Nothing has been deleted.`,
+    };
+  }
+  if (record.status === "verified") {
+    return {
+      title: "Verified",
+      body: "Identity is verified. An operator can review the request. Nothing has been deleted.",
     };
   }
   return {
-    title: "Request recorded",
-    body: `${retained} Support will review the confirmed request.`,
+    title: "Requested",
+    body: "The request is recorded and identity is not verified. Nothing has been deleted.",
   };
 }
