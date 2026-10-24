@@ -15,7 +15,7 @@ import {
   buildSignupUserMetadata,
   normalizeAccountPhone,
   PHONE_ALREADY_LINKED_MESSAGE,
-  signupAuthErrorText,
+  signupFailureText,
 } from "@/lib/auth/account-phone";
 import {
   marketingConsentFromSignup,
@@ -42,7 +42,7 @@ import {
   buildAuthCallbackUrl,
   getSignupConfirmationOrigin,
 } from "@/lib/auth/site-url";
-import { createClient } from "@/lib/supabase/server";
+import { createAuthAttemptClient, createClient } from "@/lib/supabase/server";
 import { lookupPublicInvitation } from "@/lib/team/public-invite";
 import { normalizeInviteEmail } from "@/lib/team/email-normalize";
 import { isWellFormedInviteToken } from "@/lib/team/tokens";
@@ -267,7 +267,8 @@ export async function signup(
     correlationId,
   });
 
-  const supabase = await createClient();
+  const attempt = await createAuthAttemptClient();
+  const supabase = attempt.supabase;
   const origin = await getSignupConfirmationOrigin();
   const emailRedirectTo = buildAuthCallbackUrl(
     origin,
@@ -292,7 +293,7 @@ export async function signup(
   });
 
   if (authError) {
-    const providerText = signupAuthErrorText(authError);
+    const providerText = signupFailureText(authError, attempt.failureBody());
     const category = classifyAuthProviderError(providerText, "signup");
     // Rate limit and email collision stay on the existing Auth responses.
     // The phone check runs only after that submit, and only for a database
