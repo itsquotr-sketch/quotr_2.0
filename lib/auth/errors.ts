@@ -51,9 +51,9 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   EMAIL_NOT_CONFIRMED: "Email or password is incorrect.",
   RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
   EMAIL_ALREADY_REGISTERED:
-    "An account with this email already exists. Try signing in instead.",
+    "This email already has a Quotr account. Sign in or reset your password.",
   PHONE_ALREADY_LINKED:
-    "This phone number is already linked to an account. Sign in or use a different number.",
+    "This phone number is already associated with a Quotr account. Sign in, or contact support if you believe this is incorrect.",
   SIGNUP_FAILED: "We couldn’t create your account. Please try again.",
   ORG_PROVISION_FAILED:
     "We couldn’t finish setting up your company. Please try again shortly.",

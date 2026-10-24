@@ -96,6 +96,26 @@ function kindFromState(state: OrgBillingState): BillingPageKind {
   return "uninitialized";
 }
 
+export function billingAccountHasStatusCard(
+  view: Pick<BillingPageView, "kind" | "source" | "trial">
+): boolean {
+  return (
+    view.kind === "trial_expired" ||
+    (view.kind === "trial" && view.trial != null) ||
+    view.source === "stripe" ||
+    view.source === "override"
+  );
+}
+
+/** Title for an account whose trial and paid cards do not apply. */
+export function billingFallbackTitle(
+  view: Pick<BillingPageView, "kind" | "source" | "planLabel" | "statusLabel">
+): string {
+  if (view.planLabel) return view.planLabel;
+  if (view.kind === "uninitialized" || view.source === "none") return "No subscription";
+  return view.statusLabel;
+}
+
 export function buildBillingPageView(
   state: OrgBillingState,
   now: Date = new Date(),

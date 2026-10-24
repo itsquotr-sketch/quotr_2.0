@@ -18,6 +18,7 @@ import { PasswordField } from "@/components/auth/PasswordField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
+import { retainedAuthEmail } from "@/lib/auth/signup-existing-account";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
 import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
@@ -33,6 +34,7 @@ function FieldError({ messages }: { messages?: string[] }) {
 function LoginForm() {
   const searchParams = useSearchParams();
   const next = getSafeInternalPath(searchParams.get("next"));
+  const retainedEmail = retainedAuthEmail(searchParams.get("email"));
   const linkError = searchParams.get("error");
   const [state, formAction, pending] = useActionState(login, initialState);
 
@@ -91,6 +93,7 @@ function LoginForm() {
               autoComplete="email"
               placeholder="you@company.com"
               required
+              defaultValue={retainedEmail}
               className="h-11"
             />
             <FieldError messages={state.fieldErrors?.email} />
@@ -100,7 +103,11 @@ function LoginForm() {
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <Label className="text-xs" htmlFor="password">Password</Label>
               <Link
-                href="/forgot-password"
+                href={
+                  retainedEmail
+                    ? `/forgot-password?email=${encodeURIComponent(retainedEmail)}`
+                    : "/forgot-password"
+                }
                 className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
               >
                 Forgot password?
