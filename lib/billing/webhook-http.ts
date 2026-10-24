@@ -6,6 +6,7 @@ import { constructStripeWebhookEvent } from "@/lib/billing/stripe";
 import { createSupabaseBillingStore } from "@/lib/billing/supabase-store";
 import { processBillingStripeEvent } from "@/lib/billing/webhook";
 import type { StripeEventLike } from "@/lib/billing/types";
+import { schedulePaidPlanConfirmation } from "@/lib/billing/plan-confirmation-delivery";
 import { advanceSeatQueueAfterMirror } from "@/lib/billing/seat-queue-process";
 
 export async function handleStripeWebhookRequest(
@@ -67,6 +68,14 @@ export async function handleStripeWebhookRequest(
       await advanceSeatQueueAfterMirror(result.orgId);
     } catch {
       // Mirror remains authority. Queue advance retries on the next event or user refresh.
+    }
+  }
+
+  if (result.planConfirmation) {
+    try {
+      await schedulePaidPlanConfirmation(result.planConfirmation);
+    } catch {
+      // The subscription mirror is already saved. Email failure must not reject the webhook.
     }
   }
 
