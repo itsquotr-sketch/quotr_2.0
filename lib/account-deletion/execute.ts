@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   confirmationMatches,
+  deletionOutcome,
   planPersonalDeletion,
   type DeletionFacts,
   type DeletionPlan,
@@ -47,7 +48,7 @@ async function countWhere(
 ): Promise<number> {
   const { count, error } = await admin
     .from(table)
-    .select("id", { count: "exact", head: true })
+    .select(column, { count: "exact", head: true })
     .eq(column, value);
   if (error) {
     if (missingTable(error)) return 0;
@@ -81,7 +82,6 @@ async function loadFacts(
     requestId: string;
     operatorEmail: string;
     continuingMemberId?: string | null;
-    retainSubscriptionConfirmed: boolean;
     retainIssuedDocumentsConfirmed: boolean;
   }
 ): Promise<{ facts: DeletionFacts; userId: string | null; status: string }> {
@@ -139,15 +139,21 @@ async function loadFacts(
     : 0;
 
   let subscriptionStatus: string | null = null;
+  let subscriptionSource: string | null = null;
+  let cancelAtPeriodEnd = false;
+  let currentPeriodEnd: string | null = null;
   if (organisationId) {
     const { data: subscription, error: subscriptionError } = await admin
       .from("org_subscriptions")
-      .select("status")
+      .select("status, source, cancel_at_period_end, current_period_end")
       .eq("org_id", organisationId)
       .limit(1)
       .maybeSingle();
     if (subscriptionError) throw new Error("Could not read the subscription before deletion.");
     subscriptionStatus = subscription?.status ?? null;
+    subscriptionSource = subscription?.source ?? null;
+    cancelAtPeriodEnd = subscription?.cancel_at_period_end === true;
+    currentPeriodEnd = subscription?.current_period_end ?? null;
   }
 
   let restrictedAuthorCount = 0;
@@ -177,11 +183,13 @@ async function loadFacts(
       targetIsOwner,
       issuedQuoteCount,
       subscriptionStatus,
+      subscriptionSource,
+      cancelAtPeriodEnd,
+      currentPeriodEnd,
       restrictedAuthorCount,
       detachableAuthorCount,
       organisationId,
       continuingMemberId,
-      retainSubscriptionConfirmed: input.retainSubscriptionConfirmed,
       retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed,
     },
   };
@@ -223,7 +231,28 @@ async function transferOwnership(
     if (promoted.error) {
       throw new Error("Ownership could not be transferred. The login was not deleted.");
     }
-    await admin.from("profiles").update({ role: "owner" }).eq("id", input.toUserId);
+  }
+
+  const confirmed = await admin
+    .from("organisation_memberships")
+    .select("role")
+    .eq("org_id", input.orgId)
+    .eq("user_id", input.toUserId)
+    .eq("status", "active")
+    .maybeSingle();
+  const profile = await admin
+    .from("profiles")
+    .select("org_id, role")
+    .eq("id", input.toUserId)
+    .maybeSingle();
+  if (
+    confirmed.error ||
+    confirmed.data?.role !== "owner" ||
+    profile.error ||
+    profile.data?.org_id !== input.orgId ||
+    profile.data?.role !== "owner"
+  ) {
+    throw new Error("The continuing member cannot administer this company. The login was not deleted.");
   }
 }
 
@@ -235,9 +264,8 @@ export async function fulfilPersonalDeletion(
     projectRef: string;
     confirmation?: string;
     continuingMemberId?: string | null;
-    retainSubscriptionConfirmed?: boolean;
     retainIssuedDocumentsConfirmed?: boolean;
-    deleteContact?: (email: string) => Promise<"deleted" | "unconfigured" | "failed">;
+    deleteContact?: (email: string) => Promise<"deleted" | "absent" | "unconfigured" | "failed">;
   }
 ): Promise<FulfilResult> {
   if (!isDeletionOperator(input.operatorEmail)) {
@@ -251,7 +279,6 @@ export async function fulfilPersonalDeletion(
     requestId: input.requestId,
     operatorEmail: input.operatorEmail,
     continuingMemberId: input.continuingMemberId,
-    retainSubscriptionConfirmed: input.retainSubscriptionConfirmed === true,
     retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed === true,
   });
   const plan = planPersonalDeletion(loaded.facts);
@@ -291,11 +318,21 @@ export async function fulfilPersonalDeletion(
   if (suppressionError && suppressionError.code !== "23505") {
     throw new Error("The contact suppression was not recorded. The login was not deleted.");
   }
+  const reminders = await admin
+    .from("marketing_engagement_reminders")
+    .update({ suppressed_at: new Date().toISOString() })
+    .eq("recipient_user_id", loaded.userId)
+    .is("released_at", null)
+    .is("suppressed_at", null);
+  if (reminders.error && !missingTable(reminders.error)) {
+    throw new Error("A queued reminder could not be stopped. The login was not deleted.");
+  }
+
   const provider = input.deleteContact
     ? await input.deleteContact(loaded.facts.targetEmail)
     : await deleteLoopsContact({ email: loaded.facts.targetEmail });
-  if (provider === "failed") {
-    throw new Error("The contact provider was not updated. The login was not deleted.");
+  if (provider !== "deleted" && provider !== "absent") {
+    throw new Error("The Loops contact was not removed. The login was not deleted.");
   }
 
   if (
@@ -342,13 +379,32 @@ export async function fulfilPersonalDeletion(
     throw new Error("The login was not deleted.");
   }
 
+  const phoneLeft = await countWhere(admin, "account_phone_numbers", "user_id", loaded.userId);
+  const profileLeft = await countWhere(admin, "profiles", "id", loaded.userId);
+  const queueLeft = await countWhere(admin, "marketing_engagement_reminders", "recipient_user_id", loaded.userId);
+  if (phoneLeft > 0 || profileLeft > 0 || queueLeft > 0) {
+    throw new Error("Personal records still remain. The request was not marked completed.");
+  }
+
+  const effects = plan.effects.map((effect) =>
+    effect.action === "delete" && effect.target === "loops_contact"
+      ? {
+          ...effect,
+          detail:
+            provider === "absent"
+              ? "No Loops contact remained."
+              : "The Loops contact was deleted.",
+        }
+      : effect
+  );
+  const outcome = deletionOutcome(effects);
   const completed = await admin
     .from("account_deletion_requests")
     .update({
       status: "completed",
       completed_at: new Date().toISOString(),
       operator_email: input.operatorEmail,
-      retained: { summary: plan.outcome, effects: plan.effects },
+      retained: { summary: outcome, effects },
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.requestId);
@@ -356,5 +412,9 @@ export async function fulfilPersonalDeletion(
     throw new Error("The login was deleted, but the request row was not marked completed.");
   }
 
-  return { dryRun: false, plan: { ...plan, lifecycle: "completed" }, completed: true };
+  return {
+    dryRun: false,
+    plan: { ...plan, lifecycle: "completed", outcome, effects },
+    completed: true,
+  };
 }

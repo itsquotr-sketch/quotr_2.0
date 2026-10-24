@@ -26,6 +26,17 @@ const passwordSchema = z.object({
   current_password: z.string().min(1, "Current password is required."),
 });
 
+function logDeletionFailure(category: string): void {
+  console.error("[account-deletion]", { category });
+}
+
+function adminFailureCategory(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("does not match")) return "admin_key_project_mismatch";
+  if (message.includes("Missing")) return "missing_admin_env";
+  return "admin_key_rejected";
+}
+
 function lifecycleOf(status: string, identityConfirmed: boolean): DeletionLifecycle | null {
   if (
     status === "requested" ||
@@ -172,7 +183,8 @@ export async function submitSignedInDeletionRequest(
   let admin;
   try {
     admin = createAdminClient();
-  } catch {
+  } catch (error) {
+    logDeletionFailure(adminFailureCategory(error));
     return { error: "The request could not be recorded. Email hello@get-quotr.com." };
   }
 
@@ -214,6 +226,7 @@ export async function submitSignedInDeletionRequest(
     : await admin.from("account_deletion_requests").insert(payload);
 
   if (write.error) {
+    logDeletionFailure(`insert_${write.error.code ?? "unknown"}`);
     const again = await readOpenRequest(email);
     if (again) return { record: again };
     return { error: "The request could not be recorded. Email hello@get-quotr.com." };
@@ -240,7 +253,8 @@ export async function submitPublicDeletionRequest(
   let admin;
   try {
     admin = createAdminClient();
-  } catch {
+  } catch (error) {
+    logDeletionFailure(adminFailureCategory(error));
     return { error: "The request could not be recorded. Email hello@get-quotr.com." };
   }
 
@@ -260,6 +274,7 @@ export async function submitPublicDeletionRequest(
     subscription_status: null,
   });
   if (error && error.code !== "23505") {
+    logDeletionFailure(`insert_${error.code ?? "unknown"}`);
     return { error: "The request could not be recorded. Email hello@get-quotr.com." };
   }
   return { acknowledgement };

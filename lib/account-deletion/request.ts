@@ -74,7 +74,7 @@ export function deletionStatusCopy(record: DeletionRequestRecord): {
   if (record.status === "verified" && record.resolution === "needs_support") {
     return {
       title: "Verified",
-      body: `Other people still belong to this company. This is not a refusal. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL} and support will resolve the company with you. Nothing has been deleted.`,
+      body: `Other people still belong to this company. This is not a refusal. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL} and name the active member who will own the company. Nothing has been deleted.`,
     };
   }
   if (record.status === "verified") {

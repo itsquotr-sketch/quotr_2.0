@@ -30,11 +30,13 @@ const base: DeletionFacts = {
   targetIsOwner: true,
   issuedQuoteCount: 0,
   subscriptionStatus: null,
+  subscriptionSource: null,
+  cancelAtPeriodEnd: false,
+  currentPeriodEnd: null,
   restrictedAuthorCount: 0,
   detachableAuthorCount: 0,
   organisationId: "org-fixture",
   continuingMemberId: null,
-  retainSubscriptionConfirmed: false,
   retainIssuedDocumentsConfirmed: false,
 };
 
@@ -60,14 +62,39 @@ const issued = planPersonalDeletion({
   retainIssuedDocumentsConfirmed: true,
 });
 const issuedUnconfirmed = planPersonalDeletion({ ...base, issuedQuoteCount: 1 });
-const subscribed = planPersonalDeletion({ ...base, subscriptionStatus: "active" });
-const subscribedKept = planPersonalDeletion({
+const subscribed = planPersonalDeletion({
   ...base,
   subscriptionStatus: "active",
-  issuedQuoteCount: 1,
-  restrictedAuthorCount: 1,
-  retainSubscriptionConfirmed: true,
-  retainIssuedDocumentsConfirmed: true,
+  subscriptionSource: "stripe",
+});
+const subscribedAcknowledged = planPersonalDeletion({
+  ...base,
+  subscriptionStatus: "active",
+  subscriptionSource: "stripe",
+});
+const scheduled = planPersonalDeletion({
+  ...base,
+  subscriptionStatus: "active",
+  subscriptionSource: "stripe",
+  cancelAtPeriodEnd: true,
+  currentPeriodEnd: "2026-11-01T00:00:00.000Z",
+});
+const historical = planPersonalDeletion({
+  ...base,
+  subscriptionStatus: "cancelled",
+  subscriptionSource: "stripe",
+});
+const overrideRecord = planPersonalDeletion({
+  ...base,
+  subscriptionStatus: "active",
+  subscriptionSource: "override",
+});
+const transferredBilling = planPersonalDeletion({
+  ...base,
+  otherActiveMemberCount: 1,
+  continuingMemberId: "member-fixture",
+  subscriptionStatus: "active",
+  subscriptionSource: "stripe",
 });
 const referenced = planPersonalDeletion({ ...base, restrictedAuthorCount: 3, detachableAuthorCount: 1 });
 const self = planPersonalDeletion({ ...base, targetEmail: operator });
@@ -103,12 +130,31 @@ assert(
     issued.executable
 );
 assert(
-  "a subscription stays until retention is confirmed, and is not cancelled",
+  "a renewing Stripe subscription blocks a sole owner without a billing owner",
   !subscribed.executable &&
-    subscribed.blockers.includes("subscription_retention_unconfirmed") &&
-    subscribedKept.executable &&
-    subscribedKept.effects.some((effect) => effect.target === "subscription" && effect.action === "retain") &&
-    !subscribedKept.outcome.toLowerCase().includes("cancelled the subscription")
+    !subscribedAcknowledged.executable &&
+    subscribed.blockers.includes("billing_resolution_required") &&
+    !subscribed.effects.some((effect) => effect.action === "delete")
+);
+assert(
+  "a scheduled cancellation is retained without changing Stripe",
+  scheduled.executable &&
+    scheduled.outcome.includes("already scheduled") &&
+    scheduled.outcome.includes("2026-11-01T00:00:00.000Z") &&
+    !scheduled.outcome.toLowerCase().includes("cancelled the subscription")
+);
+assert(
+  "historical and non-Stripe rows stay without authorising a live charge",
+  historical.executable &&
+    historical.outcome.includes("not renewing") &&
+    overrideRecord.executable &&
+    overrideRecord.outcome.includes("no Stripe subscription")
+);
+assert(
+  "a continuing owner can administer a subscription that is not cancelled here",
+  transferredBilling.executable &&
+    transferredBilling.effects.some((effect) => effect.action === "transfer") &&
+    transferredBilling.outcome.includes("can administer billing")
 );
 assert(
   "a sole owner can be planned while project rows stay",
@@ -148,8 +194,8 @@ assert(
     otherActiveMemberCount: 0,
     issuedQuoteCount: 1,
     subscriptionStatus: "active",
-    outcome: subscribedKept.outcome,
-  }).body === subscribedKept.outcome
+    outcome: historical.outcome,
+  }).body === historical.outcome
 );
 assert(
   "a completed row without an outcome is not described as finished work",

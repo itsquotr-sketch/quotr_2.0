@@ -235,7 +235,7 @@ export async function deleteLoopsContact(input: {
   email: string;
   apiKey?: string | null;
   fetchImpl?: FetchLike;
-}): Promise<"deleted" | "unconfigured" | "failed"> {
+}): Promise<"deleted" | "absent" | "unconfigured" | "failed"> {
   const apiKey = input.apiKey === undefined ? readLoopsApiKey() : input.apiKey;
   if (!apiKey) return "unconfigured";
   const fetchImpl = input.fetchImpl ?? fetch;
@@ -249,6 +249,7 @@ export async function deleteLoopsContact(input: {
       body: JSON.stringify({ email: input.email }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    if (response.status === 404) return "absent";
     return response.ok ? "deleted" : "failed";
   } catch {
     return "failed";

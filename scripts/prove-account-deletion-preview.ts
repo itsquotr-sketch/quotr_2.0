@@ -141,20 +141,53 @@ async function proveEmpty(admin: SupabaseClient): Promise<void> {
     const userId = await createFixtureUser(admin, email, orgId, "owner");
     userIds.push(userId);
     const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    const phone = `+6421${String(1000000 + Math.floor(Math.random() * 8999999))}`;
+    const phoneRow = await admin.from("account_phone_numbers").insert({
+      user_id: userId,
+      phone_e164: phone,
+      phone_display: phone,
+      country_code: "NZ",
+    });
+    if (phoneRow.error) throw new Error(phoneRow.error.message);
+    const reminder = await admin.from("marketing_engagement_reminders").insert({
+      org_id: orgId,
+      kind: "setup",
+      recipient_user_id: userId,
+      due_at: new Date(Date.now() + 86_400_000).toISOString(),
+      milestone_at: new Date().toISOString(),
+    });
+    if (reminder.error) throw new Error(reminder.error.message);
     const dryRun = await fulfilPersonalDeletion(admin, {
       requestId,
       operatorEmail: operator,
       projectRef: PREVIEW_SUPABASE_PROJECT_REF,
-      deleteContact: async () => "unconfigured",
+      deleteContact: async () => "deleted",
     });
+    let providerBlocked = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        deleteContact: async () => "unconfigured",
+      });
+    } catch {
+      providerBlocked = true;
+    }
+    const stillThere = await admin.auth.admin.getUserById(userId);
     const executed = await fulfilPersonalDeletion(admin, {
       requestId,
       operatorEmail: operator,
       projectRef: PREVIEW_SUPABASE_PROJECT_REF,
       confirmation: "delete-personal-account",
-      deleteContact: async () => "unconfigured",
+      deleteContact: async () => "deleted",
     });
     const userAfter = await admin.auth.admin.getUserById(userId);
+    const phoneAfter = await admin
+      .from("account_phone_numbers")
+      .select("user_id", { count: "exact", head: true })
+      .eq("user_id", userId);
     const orgAfter = await admin.from("organisations").select("id").eq("id", orgId).maybeSingle();
     const calls: string[] = [];
     const retry = await upsertLoopsContact({
@@ -171,8 +204,12 @@ async function proveEmpty(admin: SupabaseClient): Promise<void> {
       dryRun.dryRun &&
       dryRun.plan.executable &&
       !dryRun.completed &&
+      providerBlocked &&
+      stillThere.data.user?.id === userId &&
       executed.completed &&
+      executed.plan.outcome.includes("The Loops contact was deleted") &&
       userAfter.data.user == null &&
+      (phoneAfter.count ?? 0) === 0 &&
       orgAfter.data?.id === orgId &&
       retry.ok &&
       retry.skipped === "suppressed" &&
@@ -243,7 +280,7 @@ async function proveReferencesAndMembers(admin: SupabaseClient): Promise<void> {
       confirmation: "delete-personal-account",
       continuingMemberId: ownerId,
       retainIssuedDocumentsConfirmed: true,
-      deleteContact: async () => "unconfigured",
+      deleteContact: async () => "deleted",
     });
     const memberAfter = await admin.auth.admin.getUserById(memberId);
     const ownerAfter = await admin.auth.admin.getUserById(ownerId);
@@ -254,6 +291,11 @@ async function proveReferencesAndMembers(admin: SupabaseClient): Promise<void> {
       .select("role")
       .eq("user_id", ownerId)
       .eq("status", "active")
+      .maybeSingle();
+    const ownerProfile = await admin
+      .from("profiles")
+      .select("org_id, role")
+      .eq("id", ownerId)
       .maybeSingle();
     const stored = await admin
       .from("account_deletion_requests")
@@ -273,6 +315,8 @@ async function proveReferencesAndMembers(admin: SupabaseClient): Promise<void> {
       quoteAfter.data?.sent_at != null &&
       quoteAfter.data?.created_by == null &&
       ownerMembership.data?.role === "owner" &&
+      ownerProfile.data?.role === "owner" &&
+      ownerProfile.data?.org_id === orgId &&
       stored.data?.status === "completed" &&
       summary.includes("The personal login was deleted") &&
       summary.includes("not remove them") &&
@@ -342,9 +386,8 @@ async function proveSoleOwner(admin: SupabaseClient): Promise<void> {
       operatorEmail: operator,
       projectRef: PREVIEW_SUPABASE_PROJECT_REF,
       confirmation: "delete-personal-account",
-      retainSubscriptionConfirmed: true,
       retainIssuedDocumentsConfirmed: true,
-      deleteContact: async () => "unconfigured",
+      deleteContact: async () => "deleted",
     });
     const userAfter = await admin.auth.admin.getUserById(userId);
     const projectAfter = await admin.from("projects").select("id, created_by").eq("id", project.data.id).single();
@@ -359,8 +402,8 @@ async function proveSoleOwner(admin: SupabaseClient): Promise<void> {
     results.soleOwner =
       dryRun.dryRun &&
       !dryRun.plan.executable &&
-      dryRun.plan.blockers.includes("subscription_retention_unconfirmed") &&
       dryRun.plan.blockers.includes("issued_documents_retention_unconfirmed") &&
+      !dryRun.plan.blockers.includes("billing_resolution_required") &&
       dryRun.plan.effects.some((effect) => effect.action === "retain" && effect.target === "subscription") &&
       refused &&
       stillThere.data.user?.id === userId &&
@@ -373,8 +416,111 @@ async function proveSoleOwner(admin: SupabaseClient): Promise<void> {
       subscriptionAfter.data?.status === "active" &&
       subscriptionAfter.data?.source === "override" &&
       stored.data?.status === "completed" &&
-      summary.includes("was not cancelled") &&
+      summary.includes("no Stripe subscription") &&
       summary.includes("The company was not closed");
+  } finally {
+    await cleanup(admin, { orgId, emails: [email], userIds });
+  }
+}
+
+async function proveOwnerLeaves(admin: SupabaseClient): Promise<void> {
+  const ownerEmail = "deletion-fixture-departing-owner@example.invalid";
+  const memberEmail = "deletion-fixture-next-owner@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture transfer" });
+    if (org.error) throw new Error(org.error.message);
+    const ownerId = await createFixtureUser(admin, ownerEmail, orgId, "owner");
+    const memberId = await createFixtureUser(admin, memberEmail, orgId, "admin");
+    userIds.push(ownerId, memberId);
+    const project = await admin.from("projects").insert({
+      org_id: orgId,
+      created_by: ownerId,
+      title: "Deletion fixture owned project",
+    }).select("id").single();
+    if (project.error || !project.data) throw new Error(project.error?.message ?? "project");
+    const requestId = await insertRequest(admin, {
+      userId: ownerId,
+      email: ownerEmail,
+      otherActiveMemberCount: 1,
+    });
+    const executed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      continuingMemberId: memberId,
+      deleteContact: async () => "deleted",
+    });
+    const ownerAfter = await admin.auth.admin.getUserById(ownerId);
+    const memberProfile = await admin.from("profiles").select("org_id, role").eq("id", memberId).single();
+    const memberMembership = await admin
+      .from("organisation_memberships")
+      .select("role, status")
+      .eq("user_id", memberId)
+      .maybeSingle();
+    const projectAfter = await admin.from("projects").select("created_by").eq("id", project.data.id).single();
+    results.ownerTransfer =
+      executed.completed &&
+      ownerAfter.data.user == null &&
+      memberMembership.data?.role === "owner" &&
+      memberMembership.data?.status === "active" &&
+      memberProfile.data?.role === "owner" &&
+      memberProfile.data?.org_id === orgId &&
+      projectAfter.data?.created_by === memberId;
+  } finally {
+    await cleanup(admin, { orgId, emails: [ownerEmail, memberEmail], userIds });
+  }
+}
+
+async function proveRenewingSubscription(admin: SupabaseClient): Promise<void> {
+  const email = "deletion-fixture-renewing@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture renewing" });
+    if (org.error) throw new Error(org.error.message);
+    const userId = await createFixtureUser(admin, email, orgId, "owner");
+    userIds.push(userId);
+    const subscription = await admin.from("org_subscriptions").insert({
+      org_id: orgId,
+      billing_environment: "test",
+      plan_code: "builder",
+      status: "active",
+      source: "stripe",
+      stripe_subscription_id: "sub_deletion_fixture_not_real",
+      stripe_customer_id: "cus_deletion_fixture_not_real",
+      cancel_at_period_end: false,
+      paid_seat_quantity: 1,
+    }).select("id").single();
+    if (subscription.error || !subscription.data) throw new Error(subscription.error?.message ?? "subscription");
+    const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    let refused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        deleteContact: async () => "deleted",
+      });
+    } catch {
+      refused = true;
+    }
+    const userAfter = await admin.auth.admin.getUserById(userId);
+    const subscriptionAfter = await admin
+      .from("org_subscriptions")
+      .select("status, cancel_at_period_end")
+      .eq("id", subscription.data.id)
+      .single();
+    const stored = await admin.from("account_deletion_requests").select("status").eq("id", requestId).single();
+    results.renewingBlocked =
+      refused &&
+      userAfter.data.user?.id === userId &&
+      subscriptionAfter.data?.status === "active" &&
+      subscriptionAfter.data?.cancel_at_period_end === false &&
+      stored.data?.status !== "completed";
   } finally {
     await cleanup(admin, { orgId, emails: [email], userIds });
   }
@@ -386,14 +532,23 @@ async function main() {
   });
   await proveEmpty(admin);
   await proveReferencesAndMembers(admin);
+  await proveOwnerLeaves(admin);
   await proveSoleOwner(admin);
+  await proveRenewingSubscription(admin);
   const leftover = await admin
     .from("organisations")
     .select("id", { count: "exact", head: true })
     .like("name", "Deletion fixture%");
   results.leftoverOrganisations = (leftover.count ?? 0) === 0;
   console.log(JSON.stringify(results));
-  if (!results.empty || !results.references || !results.soleOwner || !results.leftoverOrganisations) {
+  if (
+    !results.empty ||
+    !results.references ||
+    !results.ownerTransfer ||
+    !results.soleOwner ||
+    !results.renewingBlocked ||
+    !results.leftoverOrganisations
+  ) {
     process.exit(1);
   }
 }

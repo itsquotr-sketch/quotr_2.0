@@ -15,26 +15,39 @@ function readServerEnv(name: string): string | undefined {
   return process.env[name];
 }
 
-function serviceRoleJwtRole(token: string): string | null {
+function serviceRoleClaims(token: string): { role: string | null; ref: string | null } {
   try {
     const payload = JSON.parse(
       Buffer.from(token.split(".")[1], "base64url").toString("utf8")
-    ) as { role?: unknown };
-    return typeof payload.role === "string" ? payload.role : null;
+    ) as { role?: unknown; ref?: unknown };
+    return {
+      role: typeof payload.role === "string" ? payload.role : null,
+      ref: typeof payload.ref === "string" ? payload.ref : null,
+    };
   } catch {
-    return null;
+    return { role: null, ref: null };
   }
 }
 
+function projectRefFromUrl(url: string): string | null {
+  const match = url.match(/^https:\/\/([a-z]{20})\.supabase\.co\/?$/);
+  return match?.[1] ?? null;
+}
+
 export function createAdminClient() {
-  const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL")?.trim() ?? "";
+  const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY")?.trim().replace(/^"|"$/g, "") ?? "";
 
   if (!url || !serviceRoleKey) {
     throw new Error("Missing Supabase admin environment variables.");
   }
-  if (serviceRoleJwtRole(serviceRoleKey) !== "service_role") {
+  const claims = serviceRoleClaims(serviceRoleKey);
+  const urlRef = projectRefFromUrl(url);
+  if (claims.role !== "service_role") {
     throw new Error("Supabase admin key is not a service_role JWT.");
+  }
+  if (urlRef && claims.ref && claims.ref !== urlRef) {
+    throw new Error("Supabase admin key does not match this project.");
   }
 
   return createClient(url, serviceRoleKey, {

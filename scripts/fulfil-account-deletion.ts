@@ -4,8 +4,10 @@
  *
  * Run: npx tsx scripts/fulfil-account-deletion.ts --request <id> --operator jeanluc@erccontracting.co.nz
  * Execute: add --confirm delete-personal-account
- * When a subscription or issued document stays, also pass
- * --retain-subscription and --retain-issued-documents.
+ * When an issued document stays, also pass --retain-issued-documents.
+ * A renewing Stripe subscription is not approved by a flag. The dry-run
+ * reports the billing resolution, and a sole owner stays blocked until
+ * cancellation is already scheduled or another owner can administer billing.
  * When another member continues as owner, pass --continuing-member <user id>.
  */
 import { readFileSync } from "node:fs";
@@ -57,9 +59,7 @@ async function main() {
     projectRef: PREVIEW_SUPABASE_PROJECT_REF,
     confirmation: flag("--confirm"),
     continuingMemberId: flag("--continuing-member"),
-    retainSubscriptionConfirmed: process.argv.includes("--retain-subscription"),
     retainIssuedDocumentsConfirmed: process.argv.includes("--retain-issued-documents"),
-    deleteContact: async () => "unconfigured",
   });
 
   console.log(

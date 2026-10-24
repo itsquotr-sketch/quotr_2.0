@@ -17,13 +17,24 @@ export type DeletionFacts = {
   targetIsOwner: boolean;
   issuedQuoteCount: number;
   subscriptionStatus: string | null;
+  subscriptionSource: string | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
   restrictedAuthorCount: number;
   detachableAuthorCount: number;
   organisationId: string | null;
   continuingMemberId: string | null;
-  retainSubscriptionConfirmed: boolean;
   retainIssuedDocumentsConfirmed: boolean;
 };
+
+export type BillingResolution =
+  | "none"
+  | "historical"
+  | "scheduled_cancellation"
+  | "not_stripe"
+  | "continuing_billing_owner"
+  | "owner_remains"
+  | "renewing_unresolved";
 
 export type DeletionEffect = {
   action: "delete" | "suppress" | "retain" | "detach" | "transfer";
@@ -47,6 +58,50 @@ const LINKS_REMAIN =
 
 function issuedLinks(count: number): string {
   return count > 0 ? LINKS_REMAIN : NO_ISSUED_LINKS;
+}
+
+const RENEWING_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "incomplete",
+  "paused",
+  "unpaid",
+]);
+
+export function classifyBilling(facts: DeletionFacts): BillingResolution {
+  if (!facts.subscriptionStatus) return "none";
+  const ownerRemains = !facts.targetIsOwner && facts.otherActiveMemberCount > 0;
+  const transferredOwner = Boolean(
+    facts.continuingMemberId && facts.targetIsOwner && facts.otherActiveMemberCount > 0
+  );
+  if (ownerRemains) return "owner_remains";
+  if (transferredOwner) return "continuing_billing_owner";
+  if (facts.subscriptionSource !== "stripe") return "not_stripe";
+  if (facts.subscriptionStatus === "scheduled_to_cancel" || facts.cancelAtPeriodEnd) {
+    return "scheduled_cancellation";
+  }
+  if (RENEWING_STATUSES.has(facts.subscriptionStatus)) return "renewing_unresolved";
+  return "historical";
+}
+
+function subscriptionDetail(facts: DeletionFacts, resolution: BillingResolution): string {
+  if (resolution === "scheduled_cancellation") {
+    const end = facts.currentPeriodEnd
+      ? ` The current period ends ${facts.currentPeriodEnd}.`
+      : "";
+    return `Cancellation is already scheduled. This request did not change the subscription.${end}`;
+  }
+  if (resolution === "historical") {
+    return `The subscription record stays with status ${facts.subscriptionStatus}. It is not renewing, and this request did not change it.`;
+  }
+  if (resolution === "not_stripe") {
+    return `The stored subscription is ${facts.subscriptionSource ?? "unspecified"} with status ${facts.subscriptionStatus}. There is no Stripe subscription to cancel, and this request did not change the row.`;
+  }
+  if (resolution === "continuing_billing_owner" || resolution === "owner_remains") {
+    return `The subscription stays ${facts.subscriptionStatus}. It was not cancelled. The remaining owner can administer billing.`;
+  }
+  return "The subscription is still set to renew. This request does not cancel it and does not delete the login.";
 }
 
 export function deletionOutcome(effects: DeletionEffect[]): string {
@@ -84,8 +139,9 @@ export function planPersonalDeletion(facts: DeletionFacts): DeletionPlan {
   if (needsContinuingMember && !continuingMember) {
     structural.push("continuing_member_required");
   }
-  if (facts.subscriptionStatus && !facts.retainSubscriptionConfirmed) {
-    confirmation.push("subscription_retention_unconfirmed");
+  const billing = classifyBilling(facts);
+  if (billing === "renewing_unresolved") {
+    structural.push("billing_resolution_required");
   }
   if (facts.issuedQuoteCount > 0 && !facts.retainIssuedDocumentsConfirmed) {
     confirmation.push("issued_documents_retention_unconfirmed");
@@ -107,7 +163,7 @@ export function planPersonalDeletion(facts: DeletionFacts): DeletionPlan {
     retained.push({
       action: "retain",
       target: "subscription",
-      detail: `The subscription stays ${facts.subscriptionStatus}. It was not cancelled and its status was not changed.`,
+      detail: subscriptionDetail(facts, billing),
     });
   }
   if (facts.issuedQuoteCount > 0) {
