@@ -40,7 +40,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Only the Play preview host. Production links stay in the browser. -->
+            <!-- Only the Production Android host. Website links stay in the browser. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

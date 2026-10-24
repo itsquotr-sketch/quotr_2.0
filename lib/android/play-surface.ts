@@ -8,8 +8,8 @@
  * A matching host only changes what that host shows and which purchase
  * actions it will start. It does not grant or remove an entitlement.
  *
- * play.get-quotr.com is the stable Android host. The preview alias remains
- * until the Android launch URL is changed. Neither host is the website.
+ * play.get-quotr.com is the Android launch host. The previous preview alias
+ * stays a non-purchase surface so an already installed package cannot buy a plan.
  */
 
 export const PLAY_SURFACE_HOST = "play.get-quotr.com";

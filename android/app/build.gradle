@@ -2,8 +2,8 @@ plugins {
     id "com.android.application"
 }
 
-// Stable Preview alias for android/play-twa. Not app.get-quotr.com.
-def twaHost = "quotr-2-0-git-android-play-twa-quotr1.vercel.app"
+// Production Android host. Not the website and not a Preview alias.
+def twaHost = "play.get-quotr.com"
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
@@ -18,8 +18,8 @@ android {
         applicationId "com.getquotr.app"
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 2
+        versionName "0.1.1"
         manifestPlaceholders = [
             twaHost: twaHost,
             twaDefaultUrl: "https://${twaHost}/login"

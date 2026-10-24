@@ -186,14 +186,17 @@ assert(
     !manifest.includes("READ_MEDIA")
 );
 assert(
-  "the Android app opens the Play preview host",
+  "the Android app opens the packaged host",
   manifest.includes("${twaDefaultUrl}") && manifest.includes("${twaHost}")
 );
 assert(
-  "the Android launch URL is unchanged",
-  gradle.includes(
-    'def twaHost = "quotr-2-0-git-android-play-twa-quotr1.vercel.app"'
-  ) && !gradle.includes(PLAY_SURFACE_HOST)
+  "the Android launch URL is the Production play host",
+  gradle.includes('def twaHost = "play.get-quotr.com"') &&
+    gradle.includes('twaDefaultUrl: "https://${twaHost}/login"') &&
+    gradle.includes("versionCode 2") &&
+    gradle.includes('versionName "0.1.1"') &&
+    !gradle.includes("quotr-2-0-git-android-play-twa") &&
+    !manifest.includes("quotr-2-0-git-android-play-twa")
 );
 
 const terms = readFileSync("app/(legal)/terms/page.tsx", "utf8");
