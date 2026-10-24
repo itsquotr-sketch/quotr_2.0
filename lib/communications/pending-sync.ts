@@ -225,7 +225,7 @@ async function sendPendingContact(
     await noteLoopsRetryFailure(admin, userId, attempts, upsert.code);
     return "failed";
   }
-  if (draft.engagementEligible === true && upsert.skipped !== "unconfigured") {
+  if (draft.engagementEligible === true && upsert.skipped !== "unconfigured" && upsert.skipped !== "suppressed") {
     await recordEngagementMarker(admin, userId);
   }
 
@@ -235,7 +235,7 @@ async function sendPendingContact(
   const decision = loopsPreferenceAckDecision({
     preferencePending: true,
     sentSubscribed,
-    loopsAccepted: upsert.skipped !== "unconfigured",
+    loopsAccepted: upsert.skipped !== "unconfigured" && upsert.skipped !== "suppressed",
     skippedUnconfigured: upsert.skipped === "unconfigured",
     sentConsent,
     sentRevision,

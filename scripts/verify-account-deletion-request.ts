@@ -29,6 +29,7 @@ assert(
 );
 
 const support = deletionStatusCopy({
+  status: "verified",
   identityConfirmed: true,
   resolution: "needs_support",
   otherActiveMemberCount: 2,
@@ -36,6 +37,7 @@ const support = deletionStatusCopy({
   subscriptionStatus: "active",
 });
 const recorded = deletionStatusCopy({
+  status: "verified",
   identityConfirmed: true,
   resolution: "recorded",
   otherActiveMemberCount: 0,
@@ -43,6 +45,7 @@ const recorded = deletionStatusCopy({
   subscriptionStatus: null,
 });
 const unconfirmed = deletionStatusCopy({
+  status: "requested",
   identityConfirmed: false,
   resolution: "recorded",
   otherActiveMemberCount: 0,
@@ -53,11 +56,13 @@ const publicCopy = publicDeletionAcknowledgement();
 const combined = `${support.body}\n${recorded.body}\n${unconfirmed.body}\n${publicCopy}`;
 
 assert("support path stays available", support.body.includes("hello@get-quotr.com"));
-assert("status says the account has not been deleted", recorded.body.includes("has not deleted"));
-assert("unconfirmed identity stays visible", unconfirmed.title.includes("not confirmed"));
+assert("support is not a refusal", support.body.includes("not a refusal"));
+assert("verified state is distinct", recorded.title === "Verified");
+assert("requested state is distinct", unconfirmed.title === "Requested");
+assert("a request says nothing has been deleted", recorded.body.includes("Nothing has been deleted."));
 assert(
-  "copy does not promise a deletion period or a completed deletion",
-  !/within \d+ days|will be deleted|has been deleted|retention period of/i.test(combined)
+  "copy does not promise a deletion period",
+  !/within \d+ days|will be deleted|retention period of/i.test(combined)
 );
 assert("email is normalised", normalizeDeletionEmail("  Person@Example.com ") === "person@example.com");
 assert("a blank email is rejected", normalizeDeletionEmail("   ") === null);
