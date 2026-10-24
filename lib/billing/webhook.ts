@@ -3,6 +3,11 @@ import {
   shouldApplyStripeEvent,
 } from "@/lib/billing/events";
 import { eventMatchesBillingEnvironment } from "@/lib/billing/environment";
+import {
+  shouldEnqueuePaidPlanConfirmation,
+  type PaidPlanConfirmationSignal,
+  type PlanConfirmationSubscriptionEvent,
+} from "@/lib/billing/plan-confirmation";
 import { notePaidOrClosed } from "@/lib/communications/reminder-schedule";
 import { logBillingEvent } from "@/lib/billing/logging";
 import {
@@ -44,6 +49,7 @@ export type StripeWebhookResult = {
     | "rejected";
   errorCode?: string;
   orgId?: string | null;
+  planConfirmation?: PaidPlanConfirmationSignal;
   httpStatus: number;
 };
 
@@ -116,6 +122,7 @@ export async function processBillingStripeEvent(input: {
       result: handled.result,
       errorCode: handled.errorCode,
       orgId: handled.orgId,
+      planConfirmation: handled.planConfirmation,
       httpStatus: handled.result === "failed" ? 500 : 200,
     };
   } catch {
@@ -167,6 +174,46 @@ async function recordIgnored(
   });
 }
 
+function paidPlanActivationSignal(input: {
+  eventType: string;
+  previous: OrgSubscription | null;
+  next: OrgSubscription;
+}): PaidPlanConfirmationSignal | undefined {
+  if (
+    input.eventType !== "customer.subscription.created" &&
+    input.eventType !== "customer.subscription.updated"
+  ) {
+    return undefined;
+  }
+  const eventType: PlanConfirmationSubscriptionEvent = input.eventType;
+  const eligible = shouldEnqueuePaidPlanConfirmation({
+    eventType,
+    activeOverride: false,
+    previous: input.previous
+      ? {
+          source: input.previous.source,
+          status: input.previous.status,
+          stripeSubscriptionId: input.previous.stripeSubscriptionId,
+        }
+      : null,
+    next: {
+      source: input.next.source,
+      status: input.next.status,
+      planCode: input.next.planCode,
+      stripeSubscriptionId: input.next.stripeSubscriptionId,
+    },
+  });
+  if (!eligible || !input.next.stripeCustomerId || !input.next.stripeSubscriptionId) {
+    return undefined;
+  }
+  return {
+    orgId: input.next.orgId,
+    billingEnvironment: input.next.billingEnvironment,
+    stripeCustomerId: input.next.stripeCustomerId,
+    stripeSubscriptionId: input.next.stripeSubscriptionId,
+  };
+}
+
 async function handleClaimedEvent(input: {
   event: StripeEventLike;
   billingEnvironment: BillingEnvironment;
@@ -177,6 +224,7 @@ async function handleClaimedEvent(input: {
   errorCode?: string;
   errorSafe?: string;
   orgId?: string | null;
+  planConfirmation?: PaidPlanConfirmationSignal;
 }> {
   const { event, billingEnvironment, prices, store } = input;
   const object =
@@ -304,7 +352,15 @@ async function handleClaimedEvent(input: {
     ) {
       notePaidOrClosed(mapped.row.orgId);
     }
-    return { result: "processed", orgId: customer.orgId };
+    return {
+      result: "processed",
+      orgId: customer.orgId,
+      planConfirmation: paidPlanActivationSignal({
+        eventType: event.type,
+        previous: existing,
+        next: mapped.row,
+      }),
+    };
   }
 
   if (event.type === "invoice.paid") {

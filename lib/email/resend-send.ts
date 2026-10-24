@@ -4,7 +4,7 @@ import type {
 } from "@/lib/quotes/delivery-types";
 
 /**
- * Shared Resend send used by quote, team, and account welcome mail.
+ * Shared Resend send used by quote, team, account welcome, and paid plan confirmation.
  * The Idempotency-Key is the provider-side duplicate lock. A repeat of the
  * same key returns the original acceptance and does not send a second email.
  */
