@@ -129,6 +129,39 @@ function signupFail(
   };
 }
 
+async function existingEmailResult(
+  email: string,
+  correlationId: string,
+  startedAt: number
+): Promise<AuthActionState> {
+  const confirmation = await lookupSignupEmailConfirmation(email);
+  logAuthEvent({
+    event: "signup_failed",
+    category:
+      confirmation === "unconfirmed"
+        ? "CONFIRMATION_PENDING"
+        : "EMAIL_ALREADY_REGISTERED",
+    correlationId,
+    elapsedMs: Date.now() - startedAt,
+  });
+  if (confirmation === "unconfirmed") {
+    await rememberPendingSignupEmail(email);
+    return {
+      existingEmail: "unconfirmed",
+      confirmationPending: true,
+      confirmationEmail: email,
+    };
+  }
+  return {
+    existingEmail: confirmation,
+    confirmationEmail: email,
+    error:
+      confirmation === "confirmed"
+        ? EXISTING_EMAIL_MESSAGE
+        : EXISTING_EMAIL_UNKNOWN_MESSAGE,
+  };
+}
+
 /**
  * Ensure an authenticated session exists after signUp.
  * Returns true when a session is available for the provisioning RPC.
@@ -268,17 +301,7 @@ export async function signup(
       return signupFail(category, correlationId, startedAt);
     }
     if (category === "EMAIL_ALREADY_REGISTERED") {
-      logAuthEvent({
-        event: "signup_failed",
-        category,
-        correlationId,
-        elapsedMs: Date.now() - startedAt,
-      });
-      return {
-        existingEmail: "unknown",
-        confirmationEmail: signupEmail,
-        error: EXISTING_EMAIL_UNKNOWN_MESSAGE,
-      };
+      return existingEmailResult(signupEmail, correlationId, startedAt);
     }
     if (await signupWasBlockedByExistingPhone(providerText, phone.e164)) {
       logAuthEvent({
@@ -290,6 +313,7 @@ export async function signup(
       return {
         phoneAlreadyLinked: true,
         error: PHONE_ALREADY_LINKED_MESSAGE,
+        fieldErrors: { phone_number: [PHONE_ALREADY_LINKED_MESSAGE] },
       };
     }
     return signupFail(category, correlationId, startedAt);
@@ -307,32 +331,7 @@ export async function signup(
         // The account already exists. Guidance still has to be shown.
       }
     }
-    const confirmation = await lookupSignupEmailConfirmation(signupEmail);
-    logAuthEvent({
-      event: "signup_failed",
-      category:
-        confirmation === "unconfirmed"
-          ? "CONFIRMATION_PENDING"
-          : "EMAIL_ALREADY_REGISTERED",
-      correlationId,
-      elapsedMs: Date.now() - startedAt,
-    });
-    if (confirmation === "unconfirmed") {
-      await rememberPendingSignupEmail(signupEmail);
-      return {
-        existingEmail: "unconfirmed",
-        confirmationPending: true,
-        confirmationEmail: signupEmail,
-      };
-    }
-    return {
-      existingEmail: confirmation === "confirmed" ? "confirmed" : "unknown",
-      confirmationEmail: signupEmail,
-      error:
-        confirmation === "confirmed"
-          ? EXISTING_EMAIL_MESSAGE
-          : EXISTING_EMAIL_UNKNOWN_MESSAGE,
-    };
+    return existingEmailResult(signupEmail, correlationId, startedAt);
   }
 
   const userId = authData.user.id;

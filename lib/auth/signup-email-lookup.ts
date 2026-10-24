@@ -36,7 +36,10 @@ export async function lookupSignupEmailConfirmation(
       },
       cache: "no-store",
     });
-    if (!response.ok) return "unknown";
+    if (!response.ok) {
+      console.info("[auth] signup_email_lookup_failed", { status: response.status });
+      return "unknown";
+    }
     const body = (await response.json()) as { users?: ListedUser[] };
     const matches = (body.users ?? []).filter(
       (user) => (user.email ?? "").trim().toLowerCase() === normalised
