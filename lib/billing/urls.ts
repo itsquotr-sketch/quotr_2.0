@@ -1,12 +1,29 @@
 import "server-only";
 
+import {
+  FREE_SIGNUP_PREVIEW_BRANCH,
+  freeSignupPreviewWebsiteOrigin,
+} from "@/lib/billing/checkout-return";
 import { quoteDeliverySiteOrigin } from "@/lib/quotes/delivery-email";
 
 /**
  * Stable public origin for Checkout / Portal return URLs.
- * Preview: NEXT_PUBLIC_SITE_URL must be the stable Preview origin, not Production.
+ * Preview generally uses the shared site URL. The free-signup candidate
+ * returns to its own deployment website instead of the hardening alias.
  */
-export function billingSiteOrigin(): string {
+export function billingSiteOrigin(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): string {
+  if (
+    env.VERCEL_ENV === "preview" &&
+    (env.VERCEL_GIT_COMMIT_REF ?? "").trim() === FREE_SIGNUP_PREVIEW_BRANCH
+  ) {
+    const website = freeSignupPreviewWebsiteOrigin(env);
+    if (!website) {
+      throw new Error("Checkout return host is not the free-signup preview website.");
+    }
+    return website;
+  }
   const origin = quoteDeliverySiteOrigin();
   if (!origin) {
     throw new Error("NEXT_PUBLIC_SITE_URL is not configured.");

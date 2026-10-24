@@ -36,6 +36,7 @@ import {
   resolveConfiguredSiteOrigin,
   selectAuthCallbackOrigin,
 } from "../lib/auth/site-url";
+import { freeSignupPreviewWebsiteOrigin } from "../lib/billing/checkout-return";
 
 function assert(label: string, condition: boolean) {
   if (!condition) {
@@ -125,6 +126,56 @@ assert(
     VERCEL_ENV: "production",
     NEXT_PUBLIC_SITE_URL: WEBSITE_APP_ORIGIN,
   }) === WEBSITE_APP_ORIGIN
+);
+const candidateDeployment = "https://quotr-2-0-hq1p0pvyx-quotr1.vercel.app";
+assert(
+  "free-signup preview Checkout returns to that deployment website",
+  freeSignupPreviewWebsiteOrigin({
+    VERCEL_ENV: "preview",
+    VERCEL_GIT_COMMIT_REF: "preview/android-free-signup",
+    VERCEL_URL: "quotr-2-0-hq1p0pvyx-quotr1.vercel.app",
+  }) === candidateDeployment
+);
+assert(
+  "free-signup preview does not return Checkout to the Android alias",
+  freeSignupPreviewWebsiteOrigin({
+    VERCEL_ENV: "preview",
+    VERCEL_GIT_COMMIT_REF: "preview/android-free-signup",
+    VERCEL_URL: PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST,
+  }) === null && isPlaySurfaceHost(PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST)
+);
+assert(
+  "free-signup preview does not accept an arbitrary Checkout return host",
+  freeSignupPreviewWebsiteOrigin({
+    VERCEL_ENV: "preview",
+    VERCEL_GIT_COMMIT_REF: "preview/android-free-signup",
+    VERCEL_URL: "evil.example",
+  }) === null &&
+    freeSignupPreviewWebsiteOrigin({
+      VERCEL_ENV: "preview",
+      VERCEL_GIT_COMMIT_REF: "preview/android-free-signup",
+      VERCEL_URL: "quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app",
+    }) === null
+);
+assert(
+  "other branches and Production do not use the free-signup Checkout return",
+  freeSignupPreviewWebsiteOrigin({
+    VERCEL_ENV: "preview",
+    VERCEL_GIT_COMMIT_REF: "hardening/stage-2a-security",
+    VERCEL_URL: "quotr-2-0-hq1p0pvyx-quotr1.vercel.app",
+  }) === null &&
+    freeSignupPreviewWebsiteOrigin({
+      VERCEL_ENV: "production",
+      VERCEL_GIT_COMMIT_REF: "preview/android-free-signup",
+      VERCEL_URL: "quotr-2-0-hq1p0pvyx-quotr1.vercel.app",
+    }) === null
+);
+assert(
+  "shared Preview site resolution still falls back to the hardening alias",
+  resolveConfiguredSiteOrigin({
+    VERCEL_ENV: "preview",
+    NEXT_PUBLIC_SITE_URL: candidateDeployment,
+  }) === "https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app"
 );
 assert(
   "password reset on the Android host returns to that host",
