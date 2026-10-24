@@ -830,7 +830,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
           },
           {
             type: "p",
-            text: "Cancelling does not delete projects, estimates, pricing, or quotes, and it does not close the account. There is no download of the whole account. To ask for the account to be closed, or for personal information to be deleted, email [hello@get-quotr.com](mailto:hello@get-quotr.com). That is separate from cancellation.",
+            text: "Cancelling does not delete projects, estimates, pricing, or quotes, and it does not close the account. There is no download of the whole account. To ask for the account to be closed, or for personal information to be deleted, open [Request account deletion](/account-deletion) or email [hello@get-quotr.com](mailto:hello@get-quotr.com). That request does not delete the account, and it is separate from cancellation.",
           },
         ],
       },

@@ -25,7 +25,7 @@ export function helpArticleForPlaySurface(article: HelpArticle): HelpArticle {
             },
             {
               type: "p" as const,
-              text: "Stopping a subscription does not delete projects, estimates, pricing, or quotes, and it does not close the account. To ask for the account to be closed, or for personal information to be deleted, email [hello@get-quotr.com](mailto:hello@get-quotr.com). This app does not delete the account.",
+              text: "Stopping a subscription does not delete projects, estimates, pricing, or quotes, and it does not close the account. To ask for the account to be closed, or for personal information to be deleted, open [Request account deletion](/account-deletion) or email [hello@get-quotr.com](mailto:hello@get-quotr.com). That request does not delete the account.",
             },
           ],
         },
