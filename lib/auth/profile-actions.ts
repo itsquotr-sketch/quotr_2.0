@@ -15,7 +15,7 @@ import {
   createAuthCorrelationId,
   logAuthEvent,
 } from "@/lib/auth/logging";
-import { newPasswordPairSchema, passwordSchema } from "@/lib/auth/password";
+import { passwordSchema } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileActionState = {
@@ -47,9 +47,6 @@ const changePasswordSchema = z
     message: "New password must be different from your current password",
     path: ["new_password"],
   });
-
-// Ensure shared pair schema stays the recovery/reset authority.
-export const profilePasswordPairSchema = newPasswordPairSchema;
 
 /**
  * Update the signed-in user's full name only.

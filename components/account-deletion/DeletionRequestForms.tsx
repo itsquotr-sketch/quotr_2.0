@@ -4,9 +4,11 @@ import { useActionState } from "react";
 import {
   submitPublicDeletionRequest,
   submitSignedInDeletionRequest,
-  type DeletionActionState,
 } from "@/lib/account-deletion/actions";
-import { deletionStatusCopy } from "@/lib/account-deletion/request";
+import {
+  deletionStatusCopy,
+  type DeletionActionState,
+} from "@/lib/account-deletion/request";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -5,18 +5,13 @@ import {
   deletionRequestResolution,
   normalizeDeletionEmail,
   publicDeletionAcknowledgement,
+  type DeletionActionState,
   type DeletionRequestRecord,
 } from "@/lib/account-deletion/request";
 import { presentAuthError } from "@/lib/auth/errors";
 import { getOrgBillingState } from "@/lib/billing/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-
-export type DeletionActionState = {
-  error?: string;
-  acknowledgement?: string;
-  record?: DeletionRequestRecord;
-};
 
 type StoredRequest = DeletionRequestRecord & {
   emailNormalized: string;

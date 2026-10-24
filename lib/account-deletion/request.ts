@@ -16,6 +16,12 @@ export type DeletionRequestRecord = {
   subscriptionStatus: string | null;
 };
 
+export type DeletionActionState = {
+  error?: string;
+  acknowledgement?: string;
+  record?: DeletionRequestRecord;
+};
+
 export function normalizeDeletionEmail(email: string): string | null {
   const normalized = email.trim().toLowerCase();
   if (!normalized || normalized.length > 320 || !normalized.includes("@")) return null;
