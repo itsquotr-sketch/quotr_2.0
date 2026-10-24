@@ -15,8 +15,12 @@ import {
   createAuthCorrelationId,
   logAuthEvent,
 } from "@/lib/auth/logging";
-import { newPasswordPairSchema, passwordSchema } from "@/lib/auth/password";
+import { passwordSchema } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/server";
+
+// Password rules stay in lib/auth/password.ts. This module is "use server"
+// and may only export async functions. An exported schema object crashes
+// every Profile save, including marketing consent.
 
 export type ProfileActionState = {
   error?: string;
@@ -47,9 +51,6 @@ const changePasswordSchema = z
     message: "New password must be different from your current password",
     path: ["new_password"],
   });
-
-// Ensure shared pair schema stays the recovery/reset authority.
-export const profilePasswordPairSchema = newPasswordPairSchema;
 
 /**
  * Update the signed-in user's full name only.

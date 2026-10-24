@@ -7,7 +7,12 @@ import {
   startCustomerPortal,
   upgradeToBusiness,
 } from "@/lib/billing/billing-actions";
-import type { BillingPageKind, BillingPageView } from "@/lib/billing/billing-page-view";
+import {
+  billingAccountHasStatusCard,
+  billingFallbackTitle,
+  type BillingPageKind,
+  type BillingPageView,
+} from "@/lib/billing/billing-page-view";
 import {
   formatExclusivePlusGst,
   PLAN_DISPLAY_CATALOGUE,
@@ -294,6 +299,26 @@ export function BillingPageContent({
             ) : null}
           </CardFooter>
           )}
+        </Card>
+      ) : null}
+
+      {!billingAccountHasStatusCard(view) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              {billingFallbackTitle(view)}
+              <StatusBadge variant={billingBadgeVariant(view.kind)}>
+                {view.statusLabel}
+              </StatusBadge>
+            </CardTitle>
+            {billingFallbackTitle(view) === "No subscription" ? (
+              <CardDescription>
+                {playSurface
+                  ? "This account does not have a subscription. Plans and seats are not sold in this app."
+                  : "This account does not have a subscription yet."}
+              </CardDescription>
+            ) : null}
+          </CardHeader>
         </Card>
       ) : null}
 

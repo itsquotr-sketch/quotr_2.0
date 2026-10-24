@@ -80,7 +80,7 @@ function main() {
   assert(
     "linked-number message is the safe sentence",
     PHONE_ALREADY_LINKED_MESSAGE ===
-      "This phone number is already linked to an account. Sign in or use a different number." &&
+      "This phone number is already associated with a Quotr account. Sign in, or contact support if you believe this is incorrect." &&
       presentAuthError("PHONE_ALREADY_LINKED") === PHONE_ALREADY_LINKED_MESSAGE
   );
   assert(
@@ -154,11 +154,11 @@ function main() {
 
   const form = read("components/auth/SignupForm.tsx");
   assert(
-    "signup links sign-in and account recovery",
-    form.includes('href="/forgot-password"') &&
+    "signup links sign-in and support for a linked number",
+    form.includes("PHONE_ALREADY_LINKED_MESSAGE") &&
       form.includes('"/login"') &&
-      form.includes("Account recovery") &&
-      form.includes("This phone number is already linked to an account.")
+      form.includes("Contact support") &&
+      form.includes("HELP_SUPPORT_EMAIL")
   );
   assert("signup phone field is country aware", form.includes("AccountPhoneField"));
   assert(

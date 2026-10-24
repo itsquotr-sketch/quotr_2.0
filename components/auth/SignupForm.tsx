@@ -21,6 +21,13 @@ import { AccountPhoneField } from "@/components/auth/AccountPhoneField";
 import { Button } from "@/components/ui/button";
 import { HelpPopover } from "@/components/ui/help-popover";
 import { confirmationHelpMessage } from "@/lib/auth/confirmation-link";
+import { PHONE_ALREADY_LINKED_MESSAGE } from "@/lib/auth/account-phone";
+import { HELP_SUPPORT_EMAIL } from "@/lib/help/content";
+import {
+  EXISTING_EMAIL_MESSAGE,
+  EXISTING_EMAIL_UNKNOWN_MESSAGE,
+  retainedAuthEmail,
+} from "@/lib/auth/signup-existing-account";
 import {
   MARKETING_CHOICE_REQUIRED,
   PRIVACY_POLICY_URL,
@@ -38,12 +45,18 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
+function emailHref(path: string, email: string | undefined): string {
+  const retained = retainedAuthEmail(email);
+  if (!retained) return path;
+  return `${path}?email=${encodeURIComponent(retained)}`;
+}
+
 function ConfirmationEmail({
   mode,
   email,
   reason = "invalid",
 }: {
-  mode: "pending" | "link";
+  mode: "pending" | "link" | "resend" | "unknown";
   email?: string;
   reason?: "invalid" | "session";
 }) {
@@ -59,9 +72,24 @@ function ConfirmationEmail({
     if (!resendPending) resendLock.current = false;
   }, [resendPending]);
 
-  const title = mode === "pending" ? "Check your email" : "Confirm your email";
+  const title =
+    mode === "pending"
+      ? "Check your email"
+      : mode === "resend"
+        ? "Confirm this signup"
+        : mode === "unknown"
+          ? "Account already exists"
+          : "Confirm your email";
   const description =
-    mode === "pending" ? (
+    mode === "unknown" ? (
+      EXISTING_EMAIL_UNKNOWN_MESSAGE
+    ) : mode === "resend" ? (
+      <>
+        This email already has an unconfirmed Quotr signup. Resend the
+        confirmation email to finish creating the account. A second company is
+        not created.
+      </>
+    ) : mode === "pending" ? (
       <>
         We&apos;ve sent a confirmation link
         {retained ? (
@@ -152,12 +180,21 @@ function ConfirmationEmail({
             </Button>
           ) : null}
           <Button
-            render={<Link href="/login" />}
+            render={<Link href={emailHref("/login", retained)} />}
             variant="outline"
             className="h-11 w-full"
           >
-            Return to login
+            {mode === "unknown" ? "Sign in" : "Return to login"}
           </Button>
+          {mode === "unknown" ? (
+            <Button
+              render={<Link href={emailHref("/forgot-password", retained)} />}
+              variant="outline"
+              className="h-11 w-full"
+            >
+              Forgot password
+            </Button>
+          ) : null}
         </div>
       </AuthCardContent>
     </AuthCard>
@@ -189,6 +226,48 @@ export function SignupForm(props: {
         reason={props.linkReason}
       />
     );
+  }
+
+  if (state.existingEmail === "unknown") {
+    return (
+      <ConfirmationEmail
+        mode="unknown"
+        email={state.confirmationEmail || retainedEmail}
+      />
+    );
+  }
+
+  if (state.existingEmail === "confirmed") {
+    const retained = state.confirmationEmail || retainedEmail;
+    return (
+      <AuthCard>
+        <AuthCardHeader
+          title="Account already exists"
+          description={EXISTING_EMAIL_MESSAGE}
+        />
+        <AuthCardContent>
+          <div className="flex flex-col gap-2">
+            <Button
+              render={<Link href={emailHref("/login", retained)} />}
+              className="h-11 w-full"
+            >
+              Sign in
+            </Button>
+            <Button
+              render={<Link href={emailHref("/forgot-password", retained)} />}
+              variant="outline"
+              className="h-11 w-full"
+            >
+              Forgot password
+            </Button>
+          </div>
+        </AuthCardContent>
+      </AuthCard>
+    );
+  }
+
+  if (state.existingEmail === "unconfirmed") {
+    return <ConfirmationEmail mode="resend" email={state.confirmationEmail || retainedEmail} />;
   }
 
   if (state.confirmationPending || props.confirmRequired) {
@@ -254,7 +333,7 @@ export function SignupForm(props: {
               role="alert"
               className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
-              This phone number is already linked to an account.{" "}
+              {PHONE_ALREADY_LINKED_MESSAGE}{" "}
               <Link
                 href={
                   inviteToken
@@ -265,10 +344,13 @@ export function SignupForm(props: {
               >
                 Sign in
               </Link>
-              {" or use a different number. "}
-              <Link href="/forgot-password" className={authTextLinkClass}>
-                Account recovery
-              </Link>
+              {" · "}
+              <a
+                href={`mailto:${HELP_SUPPORT_EMAIL}`}
+                className={authTextLinkClass}
+              >
+                Contact support
+              </a>
             </p>
           ) : state.error ? (
             <p
