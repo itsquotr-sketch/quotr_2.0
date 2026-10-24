@@ -203,18 +203,12 @@ function main(): void {
       !parseRequiredTargetMargin("96").ok
   );
   assert(
-    "marketing consent is optional and sourced from onboarding",
-    actions.includes('p_source: "onboarding"') &&
-      ready.includes(
-        "Send me occasional product updates and practical Quotr tips. Unsubscribe anytime."
-      ) &&
-      ready.includes("marketingConsent === true") &&
-      ready.includes("min-h-11 w-full cursor-pointer") &&
-      ready.includes('type="radio"') &&
-      ready.includes("recordOnboardingMarketingConsent") &&
-      ready.includes("if (productUpdates !== null)") &&
-      actions.includes("p_consent: consent") &&
-      ready.includes("Product updates were not saved. You can update this later.") &&
+    "setup does not ask a second marketing question or write consent",
+    !ready.includes("product updates") &&
+      !ready.includes("recordOnboardingMarketingConsent") &&
+      !ready.includes('type="radio"') &&
+      actions.includes("Setup no longer asks a second marketing question") &&
+      !actions.includes('p_source: "onboarding"') &&
       !actions.slice(actions.indexOf("export async function completeRequiredOnboarding")).includes(
         "marketing_consent"
       ) &&

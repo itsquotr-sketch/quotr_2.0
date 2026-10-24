@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { HelpPopover } from "@/components/ui/help-popover";
 import { confirmationHelpMessage } from "@/lib/auth/confirmation-link";
 import { PHONE_ALREADY_LINKED_MESSAGE } from "@/lib/auth/account-phone";
-import { HELP_SUPPORT_EMAIL } from "@/lib/help/content";
 import {
   EXISTING_EMAIL_MESSAGE,
   EXISTING_EMAIL_UNKNOWN_MESSAGE,
@@ -110,6 +109,26 @@ function ConfirmationEmail({
     <AuthCard>
       <AuthCardHeader title={title} description={description} />
       <AuthCardContent>
+        {mode === "unknown" ? (
+          <div className="flex flex-col gap-2">
+            <Button
+              render={<Link href={emailHref("/login", retained)} />}
+              className="h-11 w-full"
+            >
+              Sign in
+            </Button>
+            <Button
+              render={<Link href={emailHref("/forgot-password", retained)} />}
+              variant="outline"
+              className="h-11 w-full"
+            >
+              Reset password
+            </Button>
+          </div>
+        ) : null}
+        {mode === "resend" && retained ? (
+          <p className="text-sm text-foreground">{retained}</p>
+        ) : null}
         {mode === "pending" ? (
           <p className="text-sm text-muted-foreground">
             After you confirm, you&apos;ll be signed in. If you were invited to a
@@ -162,14 +181,25 @@ function ConfirmationEmail({
               />
             </div>
           )}
-          <AuthSubmitButton
-            pending={resendPending}
-            idle="Resend confirmation email"
-            pendingLabel="Sending…"
-          />
+          {mode === "unknown" ? (
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-11 w-full"
+              disabled={resendPending}
+            >
+              {resendPending ? "Sending…" : "Resend confirmation email"}
+            </Button>
+          ) : (
+            <AuthSubmitButton
+              pending={resendPending}
+              idle="Resend confirmation email"
+              pendingLabel="Sending…"
+            />
+          )}
         </form>
         <div className="flex flex-col gap-2">
-          {retained && !editing ? (
+          {mode === "resend" && retained && !editing ? (
             <Button
               type="button"
               variant="outline"
@@ -179,20 +209,13 @@ function ConfirmationEmail({
               Change email
             </Button>
           ) : null}
-          <Button
-            render={<Link href={emailHref("/login", retained)} />}
-            variant="outline"
-            className="h-11 w-full"
-          >
-            {mode === "unknown" ? "Sign in" : "Return to login"}
-          </Button>
-          {mode === "unknown" ? (
+          {mode !== "unknown" ? (
             <Button
-              render={<Link href={emailHref("/forgot-password", retained)} />}
+              render={<Link href={emailHref("/login", retained)} />}
               variant="outline"
               className="h-11 w-full"
             >
-              Forgot password
+              Return to login
             </Button>
           ) : null}
         </div>
@@ -215,6 +238,8 @@ export function SignupForm(props: {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [productUpdates, setProductUpdates] = useState<boolean | null>(null);
   const [choiceErrors, setChoiceErrors] = useState<Record<string, string[]>>({});
+  const [useDifferentEmail, setUseDifferentEmail] = useState(false);
+  const preserved = useRef<Record<string, string>>({});
   const retainedEmail =
     state.confirmationEmail || invitedEmail || props.pendingEmail || undefined;
 
@@ -237,7 +262,7 @@ export function SignupForm(props: {
     );
   }
 
-  if (state.existingEmail === "confirmed") {
+  if (state.existingEmail === "confirmed" && !useDifferentEmail) {
     const retained = state.confirmationEmail || retainedEmail;
     return (
       <AuthCard>
@@ -258,8 +283,15 @@ export function SignupForm(props: {
               variant="outline"
               className="h-11 w-full"
             >
-              Forgot password
+              Reset password
             </Button>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => setUseDifferentEmail(true)}
+            >
+              Use a different email
+            </button>
           </div>
         </AuthCardContent>
       </AuthCard>
@@ -312,9 +344,18 @@ export function SignupForm(props: {
         }
       />
       <form
+        key={useDifferentEmail ? "different-email" : "signup"}
         action={formAction}
         className="flex flex-col gap-(--card-spacing)"
         onSubmit={(event) => {
+          const data = new FormData(event.currentTarget);
+          preserved.current = {
+            full_name: String(data.get("full_name") ?? ""),
+            organisation_name: String(data.get("organisation_name") ?? ""),
+            email: String(data.get("email") ?? ""),
+            phone_country: String(data.get("phone_country") ?? ""),
+            phone_number: String(data.get("phone_number") ?? ""),
+          };
           const next: Record<string, string[]> = {};
           if (!termsAccepted) next.terms_accepted = [TERMS_ACCEPTANCE_REQUIRED];
           if (productUpdates === null) {
@@ -328,31 +369,7 @@ export function SignupForm(props: {
           <input type="hidden" name="invite_token" value={inviteToken} />
         ) : null}
         <AuthCardContent>
-          {state.phoneAlreadyLinked ? (
-            <p
-              role="alert"
-              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              {PHONE_ALREADY_LINKED_MESSAGE}{" "}
-              <Link
-                href={
-                  inviteToken
-                    ? `/login?next=/invite/${inviteToken}`
-                    : "/login"
-                }
-                className={authTextLinkClass}
-              >
-                Sign in
-              </Link>
-              {" · "}
-              <a
-                href={`mailto:${HELP_SUPPORT_EMAIL}`}
-                className={authTextLinkClass}
-              >
-                Contact support
-              </a>
-            </p>
-          ) : state.error ? (
+          {state.phoneAlreadyLinked ? null : state.error ? (
             <p
               role="alert"
               className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
@@ -369,6 +386,7 @@ export function SignupForm(props: {
               autoComplete="name"
               placeholder="Alex Smith"
               required
+              defaultValue={preserved.current.full_name || undefined}
               className="h-11"
             />
             <FieldError messages={state.fieldErrors?.full_name} />
@@ -383,6 +401,7 @@ export function SignupForm(props: {
                 autoComplete="organization"
                 placeholder="Smith Building Co."
                 required
+                defaultValue={preserved.current.organisation_name || undefined}
                 className="h-11"
               />
               <FieldError messages={state.fieldErrors?.organisation_name} />
@@ -400,7 +419,7 @@ export function SignupForm(props: {
               placeholder="you@company.com"
               required
               className="h-11"
-              defaultValue={invitedEmail || undefined}
+              defaultValue={preserved.current.email || invitedEmail || undefined}
               readOnly={Boolean(invitedEmail)}
               aria-readonly={Boolean(invitedEmail)}
             />
@@ -414,15 +433,35 @@ export function SignupForm(props: {
 
           <AccountPhoneField
             help
+            defaultCountry={preserved.current.phone_country === "AU" ? "AU" : "NZ"}
+            defaultNumber={preserved.current.phone_number || ""}
             error={
-              state.fieldErrors?.phone_number?.[0] ??
-              state.fieldErrors?.phone_country?.[0]
+              state.phoneAlreadyLinked
+                ? undefined
+                : state.fieldErrors?.phone_number?.[0] ??
+                  state.fieldErrors?.phone_country?.[0]
             }
           />
+          {state.phoneAlreadyLinked ? (
+            <p role="alert" className="text-sm text-destructive">
+              {PHONE_ALREADY_LINKED_MESSAGE}{" "}
+              <Link
+                href={
+                  inviteToken
+                    ? `/login?next=${encodeURIComponent(`/invite/${inviteToken}`)}&email=${encodeURIComponent(preserved.current.email || retainedEmail || "")}`
+                    : emailHref("/login", preserved.current.email || retainedEmail)
+                }
+                className={authTextLinkClass}
+              >
+                Sign in
+              </Link>
+            </p>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor="password">Password</Label>
             <PasswordField
+              key={state.phoneAlreadyLinked ? "password-after-phone" : "password"}
               id="password"
               name="password"
               autoComplete="new-password"
