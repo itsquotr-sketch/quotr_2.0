@@ -17,11 +17,26 @@ export const PLAY_SURFACE_HOST = "play.get-quotr.com";
 export const PLAY_SURFACE_PREVIEW_HOST =
   "quotr-2-0-git-android-play-twa-quotr1.vercel.app";
 
+/**
+ * Isolated candidate for free signup. It is not the packaged launch host and
+ * not the deployment currently in Google review.
+ */
+export const PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST =
+  "quotr-2-0-git-preview-android-free-signup-quotr1.vercel.app";
+
 /** Customer and application links stay on the website, not the Android host. */
 export const WEBSITE_APP_ORIGIN = "https://app.get-quotr.com";
 
 export const PLAY_SURFACE_BILLING_NOTE =
   "This app does not sell plans or seats. An existing Quotr subscription is managed on the Quotr website.";
+
+export const PLAY_SURFACE_SIGNUP_NOTE =
+  `${PLAY_SURFACE_BILLING_NOTE} A new account includes the existing 14-day trial. This screen does not take payment.`;
+
+export const PLAY_SURFACE_STATUS_REFRESH_LABEL = "Refresh account status";
+
+export const PLAY_SURFACE_RETURN_LINK_NOTE =
+  "This return link does not change access. Refresh account status to re-read the subscription.";
 
 const WEBSITE_HOSTS = new Set([
   "app.get-quotr.com",
@@ -48,7 +63,11 @@ export function isQuotrPlayDeploymentHost(hostname: string): boolean {
 }
 
 export function playSurfaceHosts(): Set<string> {
-  const hosts = new Set<string>([PLAY_SURFACE_HOST, PLAY_SURFACE_PREVIEW_HOST]);
+  const hosts = new Set<string>([
+    PLAY_SURFACE_HOST,
+    PLAY_SURFACE_PREVIEW_HOST,
+    PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST,
+  ]);
   const extra = process.env.QUOTR_PLAY_SURFACE_HOSTS ?? "";
   for (const part of extra.split(",")) {
     const hostname = hostnameFromHeader(part);

@@ -9,10 +9,29 @@ import {
   isPlaySurfaceHost,
   isQuotrPlayDeploymentHost,
   PLAY_SURFACE_BILLING_NOTE,
+  PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST,
   PLAY_SURFACE_HOST,
   PLAY_SURFACE_PREVIEW_HOST,
+  PLAY_SURFACE_RETURN_LINK_NOTE,
+  PLAY_SURFACE_SIGNUP_NOTE,
+  PLAY_SURFACE_STATUS_REFRESH_LABEL,
   WEBSITE_APP_ORIGIN,
 } from "../lib/android/play-surface";
+import {
+  buildBillingPageView,
+  PENDING_SUBSCRIPTION_CONFIRMATION,
+  subscriptionTimingSentence,
+} from "../lib/billing/billing-page-view";
+import {
+  buildInternalTrialSubscription,
+  isNoCardInternalTrial,
+} from "../lib/billing/trial";
+import {
+  playSurfaceTrialMessage,
+  trialBannerNotice,
+  deriveTrialCountdown,
+} from "../lib/billing/trial-countdown";
+import type { OrgBillingState, OrgSubscription } from "../lib/billing/types";
 import {
   resolveConfiguredSiteOrigin,
   selectAuthCallbackOrigin,
@@ -38,6 +57,12 @@ assert(
 assert(
   "preview alias remains a Play host",
   isPlaySurfaceHost(PLAY_SURFACE_PREVIEW_HOST)
+);
+assert(
+  "the isolated free-signup candidate is a Play host",
+  isPlaySurfaceHost(PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST) &&
+    PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST !== PLAY_SURFACE_HOST &&
+    PLAY_SURFACE_FREE_SIGNUP_PREVIEW_HOST !== PLAY_SURFACE_PREVIEW_HOST
 );
 assert(
   "quotr-play deployment addresses are Play hosts",
@@ -223,12 +248,184 @@ assert(
     !legalLinks.includes('href="/app/settings/billing"') &&
     login.includes("<LegalDocumentLinks") &&
     signup.includes("<LegalDocumentLinks") &&
-    signup.indexOf("await isPlaySurfaceRequest()") < signup.indexOf("<SignupForm") &&
+    signup.includes("<SignupForm") &&
     helpFrame.includes("<LegalDocumentLinks")
+);
+const actions = readFileSync("app/(auth)/actions.ts", "utf8");
+assert(
+  "Android signup uses the shared account form",
+  !signup.includes("Use an existing Quotr account") &&
+    !actions.includes("Sign in with an existing account") &&
+    login.includes("Create account") &&
+    !login.includes("Sign in with an existing account") &&
+    signup.includes("PLAY_SURFACE_SIGNUP_NOTE") &&
+    !PLAY_SURFACE_SIGNUP_NOTE.toLowerCase().includes("stripe") &&
+    !PLAY_SURFACE_SIGNUP_NOTE.includes("/app/settings/billing")
+);
+const billingPage = readFileSync("components/billing/BillingPageContent.tsx", "utf8");
+assert(
+  "Android refresh re-reads the server and a success URL does not start confirmation",
+  billingPage.includes("PLAY_SURFACE_STATUS_REFRESH_LABEL") &&
+    billingPage.includes("refreshAccountStatus") &&
+    billingPage.includes("getBillingPageState") &&
+    billingPage.includes('checkout === "success" && !playSurface') &&
+    billingPage.includes("PLAY_SURFACE_RETURN_LINK_NOTE") &&
+    PLAY_SURFACE_STATUS_REFRESH_LABEL === "Refresh account status" &&
+    !PLAY_SURFACE_RETURN_LINK_NOTE.toLowerCase().includes("stripe")
+);
+assert(
+  "Play help explains the free trial without a payment route",
+  article != null &&
+    JSON.stringify(helpArticleForPlaySurface(article!)).includes("14-day") &&
+    JSON.stringify(helpArticleForPlaySurface(article!)).includes("Refresh account status") &&
+    !JSON.stringify(helpArticleForPlaySurface(article!)).includes("/app/settings/billing") &&
+    !JSON.stringify(helpArticleForPlaySurface(article!)).toLowerCase().includes("stripe") &&
+    !JSON.stringify(helpArticleForPlaySurface(article!)).includes("payment link")
 );
 assert(
   "the Android app declares the browser helper site-settings activity",
   manifest.includes("com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity")
+);
+
+function billingState(
+  subscription: OrgSubscription | null,
+  effectiveTrialState: OrgBillingState["effectiveTrialState"]
+): OrgBillingState {
+  return {
+    orgId: "org",
+    billingEnvironment: "test",
+    customer: null,
+    subscription,
+    activeOverride: null,
+    effectiveTrialState,
+  };
+}
+
+const trialNow = new Date("2026-10-10T00:00:00.000Z");
+const trialSub = buildInternalTrialSubscription({
+  id: "trial",
+  orgId: "org",
+  billingEnvironment: "test",
+  now: new Date("2026-10-01T00:00:00.000Z"),
+  trialEndsAt: new Date("2026-10-15T00:00:00.000Z"),
+});
+assert(
+  "an internal trial does not create a Stripe customer or subscription",
+  isNoCardInternalTrial(trialSub)
+);
+const trialView = buildBillingPageView(
+  billingState(trialSub, "trialing"),
+  trialNow
+);
+assert(
+  "an active trial shows its real end date",
+  trialView.kind === "trial" &&
+    trialView.source === "internal_trial" &&
+    trialView.trialEndsOn === "15 Oct 2026"
+);
+const paidSub: OrgSubscription = {
+  ...trialSub,
+  source: "stripe",
+  status: "active",
+  planCode: "business",
+  stripeCustomerId: "cus_test",
+  stripeSubscriptionId: "sub_test",
+  trialEndsAt: null,
+  currentPeriodEnd: "2026-11-10T00:00:00.000Z",
+};
+const paidView = buildBillingPageView(billingState(paidSub, null), trialNow);
+assert(
+  "a paid subscription is not labelled as the internal trial",
+  paidView.kind === "active" &&
+    paidView.source === "stripe" &&
+    paidView.planLabel === "Quotr Business" &&
+    paidView.monthlyPriceLabel === "$79 + GST / month"
+);
+const scheduledView = buildBillingPageView(
+  billingState(
+    {
+      ...paidSub,
+      status: "scheduled_to_cancel",
+      cancelAtPeriodEnd: true,
+      currentPeriodEnd: "2026-11-01T00:00:00.000Z",
+    },
+    null
+  ),
+  trialNow
+);
+assert(
+  "scheduled cancellation names the service end",
+  scheduledView.kind === "scheduled_to_cancel" &&
+    subscriptionTimingSentence(scheduledView) === "Service ends 1 Nov 2026."
+);
+assert(
+  "past-due copy still names the current period",
+  subscriptionTimingSentence(
+    buildBillingPageView(
+      billingState({ ...paidSub, status: "past_due" }, null),
+      trialNow
+    )
+  ) === "Current period ends 10 Nov 2026."
+);
+const pendingView = buildBillingPageView(
+  billingState({ ...paidSub, status: "incomplete" }, null),
+  trialNow
+);
+assert(
+  "pending confirmation is not active access",
+  pendingView.kind === "incomplete" &&
+    pendingView.source === "stripe" &&
+    PENDING_SUBSCRIPTION_CONFIRMATION.includes("until billing confirms")
+);
+const expiredView = buildBillingPageView(
+  billingState(
+    buildInternalTrialSubscription({
+      id: "expired",
+      orgId: "org",
+      billingEnvironment: "test",
+      now: new Date("2026-09-01T00:00:00.000Z"),
+      trialEndsAt: new Date("2026-09-15T00:00:00.000Z"),
+    }),
+    "trial_expired"
+  ),
+  trialNow
+);
+assert("an expired trial is the read-only trial state", expiredView.kind === "trial_expired");
+const activeNotice = trialBannerNotice(
+  deriveTrialCountdown({
+    trialEndsAt: trialSub.trialEndsAt,
+    effectiveTrialState: "trialing",
+    now: trialNow,
+  })
+);
+const expiredNotice = trialBannerNotice(
+  deriveTrialCountdown({
+    trialEndsAt: "2026-09-15T00:00:00.000Z",
+    effectiveTrialState: "trial_expired",
+    now: trialNow,
+  })
+);
+assert(
+  "the Android trial message names the end date and does not offer a purchase",
+  activeNotice != null &&
+    playSurfaceTrialMessage(activeNotice) === "Trial ends 15 Oct 2026." &&
+    !playSurfaceTrialMessage(activeNotice).toLowerCase().includes("subscribe") &&
+    expiredNotice != null &&
+    playSurfaceTrialMessage(expiredNotice).includes("ended on 15 Sept 2026") &&
+    !playSurfaceTrialMessage(expiredNotice).toLowerCase().includes("choose")
+);
+const trialMigration = readFileSync(
+  "supabase/migrations/048_billing_checkout_trial.sql",
+  "utf8"
+);
+assert(
+  "starting a trial does not reset an existing trial",
+  trialMigration.includes("Never resets trial_ends_at")
+);
+assert(
+  "signup does not create a Stripe customer",
+  !actions.includes("ensureOrgStripeCustomer") &&
+    !actions.includes("customers.create")
 );
 
 if (process.exitCode) {

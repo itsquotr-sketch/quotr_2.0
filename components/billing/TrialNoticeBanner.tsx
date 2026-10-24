@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { TrialBannerNotice } from "@/lib/billing/trial-countdown";
+import {
+  playSurfaceTrialMessage,
+  type TrialBannerNotice,
+} from "@/lib/billing/trial-countdown";
 import { cn } from "@/lib/utils";
 import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
 import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
@@ -30,8 +33,11 @@ export function TrialNoticeBanner({ notice }: TrialNoticeBannerProps) {
       <div className="min-w-0">
         <p className="text-sm font-medium">{notice.title}</p>
         <p className="text-sm opacity-90">
-          {playSurface ? PLAY_SURFACE_BILLING_NOTE : notice.message}
+          {playSurface ? playSurfaceTrialMessage(notice) : notice.message}
         </p>
+        {playSurface ? (
+          <p className="text-sm opacity-90">{PLAY_SURFACE_BILLING_NOTE}</p>
+        ) : null}
       </div>
       {playSurface ? null : (
       <Link

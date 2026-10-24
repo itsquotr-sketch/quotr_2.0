@@ -193,3 +193,22 @@ export function buildBillingPageView(
         : null,
   };
 }
+
+/** Period or service-end sentence. Scheduled cancellation uses the service end. */
+export function subscriptionTimingSentence(view: BillingPageView): string | null {
+  if (view.kind === "scheduled_to_cancel") {
+    return view.currentPeriodEnd
+      ? `Service ends ${view.currentPeriodEnd}.`
+      : "Service end is unavailable.";
+  }
+  if (
+    view.currentPeriodEnd &&
+    (view.kind === "active" || view.kind === "past_due")
+  ) {
+    return `Current period ends ${view.currentPeriodEnd}.`;
+  }
+  return null;
+}
+
+export const PENDING_SUBSCRIPTION_CONFIRMATION =
+  "Subscription confirmation is pending. Access stays on the current entitlement until billing confirms the subscription.";

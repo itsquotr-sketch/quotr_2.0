@@ -2,8 +2,6 @@
 
 import { redirect, RedirectType } from "next/navigation";
 import { z } from "zod";
-import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
-import { isPlaySurfaceRequest } from "@/lib/android/play-surface.server";
 import { signupWasBlockedByExistingPhone } from "@/lib/auth/account-phone-claim";
 import { lookupSignupEmailConfirmation } from "@/lib/auth/signup-email-lookup";
 import {
@@ -184,9 +182,6 @@ export async function signup(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  if (await isPlaySurfaceRequest()) {
-    return { error: `${PLAY_SURFACE_BILLING_NOTE} Sign in with an existing account.` };
-  }
   const correlationId = createAuthCorrelationId();
   const startedAt = Date.now();
 

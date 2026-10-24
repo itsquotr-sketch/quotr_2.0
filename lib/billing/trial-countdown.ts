@@ -118,13 +118,24 @@ export type TrialBannerNotice = {
   message: string;
   ctaLabel: string;
   href: string;
+  endsOn: string;
 };
+
+/** Android trial status. Names the real end date and does not offer a purchase. */
+export function playSurfaceTrialMessage(notice: TrialBannerNotice): string {
+  if (notice.tone === "expired") {
+    return `Your 14-day trial ended on ${notice.endsOn}. Existing Projects, Estimates, Pricing, and Quotes stay available to view.`;
+  }
+  return `Trial ends ${notice.endsOn}.`;
+}
 
 export function trialBannerNotice(
   countdown: TrialCountdown | null
 ): TrialBannerNotice | null {
   if (!countdown) return null;
   if (countdown.tone === "normal") return null;
+
+  const endsOn = formatTrialEndDate(countdown.trialEndsAt);
 
   if (countdown.expired) {
     return {
@@ -134,6 +145,7 @@ export function trialBannerNotice(
         "Your 14-day trial has ended. Choose Quotr Builder or Business to continue creating and sending new work.",
       ctaLabel: "Choose a plan",
       href: "/app/settings/billing",
+      endsOn,
     };
   }
 
@@ -144,6 +156,7 @@ export function trialBannerNotice(
       message: `${countdown.label} Subscribe now to keep creating and sending work.`,
       ctaLabel: "Subscribe now",
       href: "/app/settings/billing",
+      endsOn,
     };
   }
 
@@ -154,6 +167,7 @@ export function trialBannerNotice(
       message: `${countdown.label} Choose a plan before your trial ends.`,
       ctaLabel: "Choose a plan",
       href: "/app/settings/billing",
+      endsOn,
     };
   }
 
@@ -163,6 +177,7 @@ export function trialBannerNotice(
     message: "You can choose a plan anytime.",
     ctaLabel: "Choose a plan",
     href: "/app/settings/billing",
+    endsOn,
   };
 }
 

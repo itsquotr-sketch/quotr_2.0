@@ -10,6 +10,8 @@ import {
 import {
   billingAccountHasStatusCard,
   billingFallbackTitle,
+  PENDING_SUBSCRIPTION_CONFIRMATION,
+  subscriptionTimingSentence,
   type BillingPageKind,
   type BillingPageView,
 } from "@/lib/billing/billing-page-view";
@@ -25,7 +27,11 @@ import {
   BUSINESS_PLAN_SUMMARY,
 } from "@/lib/billing/plan-copy";
 import { Button } from "@/components/ui/button";
-import { PLAY_SURFACE_BILLING_NOTE } from "@/lib/android/play-surface";
+import {
+  PLAY_SURFACE_BILLING_NOTE,
+  PLAY_SURFACE_RETURN_LINK_NOTE,
+  PLAY_SURFACE_STATUS_REFRESH_LABEL,
+} from "@/lib/android/play-surface";
 import { usePlaySurface } from "@/components/android/PlaySurfaceProvider";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -74,23 +80,25 @@ export function BillingPageContent({
 }: BillingPageContentProps) {
   const [view, setView] = useState(initialView);
   const [error, setError] = useState<string | null>(null);
-  const [confirmingCheckout, setConfirmingCheckout] = useState(
-    checkout === "success"
-  );
+  const [refreshing, setRefreshing] = useState(false);
+  const playSurface = usePlaySurface();
+  const confirmFromCheckout = checkout === "success" && !playSurface;
+  const confirmUpgrade =
+    !playSurface && (upgrade === "pending" || upgrade === "payment");
+  const [confirmingCheckout, setConfirmingCheckout] = useState(confirmFromCheckout);
   const [confirmingUpgrade, setConfirmingUpgrade] = useState(
-    upgrade === "pending"
+    !playSurface && upgrade === "pending"
   );
   const [upgradePaymentNeeded, setUpgradePaymentNeeded] = useState(
-    upgrade === "payment"
+    !playSurface && upgrade === "payment"
   );
   const [pendingPlan, setPendingPlan] = useState<CheckoutPlanCode | "portal" | "upgrade" | null>(
     null
   );
   const [isPending, startTransition] = useTransition();
-  const playSurface = usePlaySurface();
 
   useEffect(() => {
-    if (checkout !== "success" && upgrade !== "pending" && upgrade !== "payment") {
+    if (!confirmFromCheckout && !confirmUpgrade) {
       return;
     }
     let cancelled = false;
@@ -104,14 +112,11 @@ export function BillingPageContent({
         if (cancelled) return;
         if (!isErrorView(next)) {
           setView(next);
-          if (checkout === "success" && next.source === "stripe") {
+          if (confirmFromCheckout && next.source === "stripe") {
             setConfirmingCheckout(false);
             return;
           }
-          if (
-            (upgrade === "pending" || upgrade === "payment") &&
-            next.planCode === "business"
-          ) {
+          if (confirmUpgrade && next.planCode === "business") {
             setConfirmingUpgrade(false);
             setUpgradePaymentNeeded(false);
             return;
@@ -122,7 +127,7 @@ export function BillingPageContent({
       if (!cancelled) {
         setConfirmingCheckout(false);
         setConfirmingUpgrade(false);
-        if (upgrade === "pending" || upgrade === "payment") {
+        if (confirmUpgrade) {
           setUpgradePaymentNeeded(true);
         }
       }
@@ -132,7 +137,22 @@ export function BillingPageContent({
     return () => {
       cancelled = true;
     };
-  }, [checkout, upgrade]);
+  }, [confirmFromCheckout, confirmUpgrade]);
+
+  async function refreshAccountStatus() {
+    setError(null);
+    setRefreshing(true);
+    try {
+      const next = await getBillingPageState();
+      if (isErrorView(next)) {
+        setError(next.error);
+      } else {
+        setView(next);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function runAction(
     key: CheckoutPlanCode | "portal" | "upgrade",
@@ -158,9 +178,20 @@ export function BillingPageContent({
   return (
     <div className="space-y-6">
       {playSurface ? (
-        <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-          {PLAY_SURFACE_BILLING_NOTE}
-        </p>
+        <div className="space-y-3 rounded-lg border border-border bg-muted/50 px-3 py-2">
+          <p className="text-sm text-muted-foreground">{PLAY_SURFACE_BILLING_NOTE}</p>
+          {checkout === "success" ? (
+            <p className="text-sm text-muted-foreground">{PLAY_SURFACE_RETURN_LINK_NOTE}</p>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={refreshing}
+            onClick={() => void refreshAccountStatus()}
+          >
+            {refreshing ? "Refreshing…" : PLAY_SURFACE_STATUS_REFRESH_LABEL}
+          </Button>
+        </div>
       ) : null}
 
       {checkout === "cancelled" && !playSurface ? (
@@ -268,10 +299,11 @@ export function BillingPageContent({
             ) : view.planCode === "builder" ? (
               <p className="text-muted-foreground">1 user</p>
             ) : null}
-            {view.currentPeriodEnd ? (
-              <p className="text-muted-foreground">
-                Current period ends {view.currentPeriodEnd}.
-              </p>
+            {view.kind === "incomplete" ? (
+              <p>{PENDING_SUBSCRIPTION_CONFIRMATION}</p>
+            ) : null}
+            {subscriptionTimingSentence(view) ? (
+              <p className="text-muted-foreground">{subscriptionTimingSentence(view)}</p>
             ) : null}
           </CardContent>
           {playSurface ? null : (

@@ -129,20 +129,17 @@ function LoginForm() {
             pendingLabel="Signing in…"
           />
           {playSurface ? (
-            <>
-              <p className="text-center text-sm text-muted-foreground">
-                {PLAY_SURFACE_BILLING_NOTE} Sign in with an existing account.
-              </p>
-              <LegalDocumentLinks className="text-center" />
-            </>
-          ) : (
             <p className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className={authTextLinkClass}>
-                Create account
-              </Link>
+              {PLAY_SURFACE_BILLING_NOTE}
             </p>
-          )}
+          ) : null}
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className={authTextLinkClass}>
+              Create account
+            </Link>
+          </p>
+          {playSurface ? <LegalDocumentLinks className="text-center" /> : null}
         </AuthCardFooter>
       </form>
     </AuthCard>

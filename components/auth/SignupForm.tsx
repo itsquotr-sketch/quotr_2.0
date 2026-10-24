@@ -231,6 +231,7 @@ export function SignupForm(props: {
   confirmLink?: boolean;
   linkReason?: "invalid" | "session";
   pendingEmail?: string;
+  surfaceNote?: string;
 }) {
   const inviteToken = props.inviteToken;
   const invitedEmail = props.invitedEmail;
@@ -343,6 +344,9 @@ export function SignupForm(props: {
             : "Set up your company and start your first job."
         }
       />
+      {props.surfaceNote ? (
+        <p className="px-1 text-sm text-muted-foreground">{props.surfaceNote}</p>
+      ) : null}
       <form
         key={useDifferentEmail ? "different-email" : "signup"}
         action={formAction}

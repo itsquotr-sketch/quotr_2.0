@@ -136,7 +136,7 @@ assert(
     login.includes(">Email<") &&
     login.includes(">Password<") &&
     /Forgot password\?/.test(login) &&
-    /href=["']\/forgot-password["']/.test(login) &&
+    login.includes('"/forgot-password"') &&
     login.includes("Create account") &&
     password.includes('aria-label={visible ? "Hide password" : "Show password"}') &&
     password.includes("min-h-11")

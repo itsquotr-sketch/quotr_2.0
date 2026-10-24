@@ -9,7 +9,8 @@ export function helpArticleForPlaySurface(article: HelpArticle): HelpArticle {
   if (article.slug !== "account-and-billing") return article;
   return {
     ...article,
-    summary: "Sign in, the current subscription, and product-update email.",
+    summary:
+      "Create a free account, sign in, the current trial or subscription, and product-update email.",
     keywords: article.keywords.filter((keyword) => keyword !== "stripe"),
     sections: article.sections.flatMap((section) => {
       if (section.heading === "Billing portal and cancellation") return [];
@@ -18,10 +19,18 @@ export function helpArticleForPlaySurface(article: HelpArticle): HelpArticle {
         {
           heading: "Subscription",
           blocks: [
+            {
+              type: "p" as const,
+              text: "Create a free account, or sign in with an account that already exists. A new organisation uses the existing 14-day Business trial. The trial does not ask for a card, and the app does not take payment.",
+            },
             { type: "p" as const, text: PLAY_SURFACE_BILLING_NOTE },
             {
               type: "p" as const,
-              text: "Billing shows the current trial or plan. When a trial ends, or a subscription stops, existing Projects, Estimates, Pricing, and Quotes stay available to view. Creating and sending new work follows the same subscription rules as the website.",
+              text: "Billing shows the trial and its end date, an active subscription, a scheduled cancellation and its service end, or read-only access after a trial or subscription ends. Refresh account status re-reads the subscription. A return link does not grant access.",
+            },
+            {
+              type: "p" as const,
+              text: "When a trial ends, or a subscription stops, existing Projects, Estimates, Pricing, and Quotes stay available to view. Creating and sending new work follows the same subscription rules as the website.",
             },
             {
               type: "p" as const,
