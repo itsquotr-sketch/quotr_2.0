@@ -37,5 +37,10 @@ export async function signupWasBlockedByExistingPhone(
 ): Promise<boolean> {
   if (isExplicitPhoneClaimFailure(providerText)) return true;
   if (!isSignupDatabaseSaveFailure(providerText)) return false;
-  return (await accountPhoneIsClaimed(phoneE164)) === true;
+  const claimed = await accountPhoneIsClaimed(phoneE164);
+  if (claimed === null) {
+    console.info("[auth] phone_claim_check_unavailable");
+    return false;
+  }
+  return claimed;
 }

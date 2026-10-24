@@ -53,7 +53,7 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   EMAIL_ALREADY_REGISTERED:
     "This email already has a Quotr account. Sign in or reset your password.",
   PHONE_ALREADY_LINKED:
-    "This phone number is already associated with a Quotr account. Sign in, or contact support if you believe this is incorrect.",
+    "This phone number is already associated with a Quotr account. Sign in, or contact hello@get-quotr.com if this is incorrect.",
   SIGNUP_FAILED: "We couldn’t create your account. Please try again.",
   ORG_PROVISION_FAILED:
     "We couldn’t finish setting up your company. Please try again shortly.",

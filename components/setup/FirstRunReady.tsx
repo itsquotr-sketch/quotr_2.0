@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  completeRequiredOnboarding,
-  recordOnboardingMarketingConsent,
-} from "@/lib/setup/actions";
+import { completeRequiredOnboarding } from "@/lib/setup/actions";
 import { formatOnboardingAddress } from "@/lib/setup/format-onboarding-address";
 import {
   FIRST_RUN_ADDRESS_PATH,
@@ -53,11 +50,7 @@ function ReviewRow({
 export function FirstRunReady({ state }: { state: SetupState }) {
   const router = useRouter();
   const settings = state.settings;
-  const [productUpdates, setProductUpdates] = useState<boolean | null>(
-    state.marketingConsent === true ? true : state.marketingConsent === false ? false : null
-  );
   const [error, setError] = useState<string | null>(null);
-  const [consentNote, setConsentNote] = useState<string | null>(null);
   const [resumePath, setResumePath] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"project" | "dashboard" | null>(null);
   const pendingRef = useRef(false);
@@ -81,49 +74,22 @@ export function FirstRunReady({ state }: { state: SetupState }) {
       ? `${settings.default_margin_percent}%`
       : "Not set";
 
-  async function choose(next: boolean) {
-    setProductUpdates(next);
-    setConsentNote(null);
-    try {
-      const result = await recordOnboardingMarketingConsent(next);
-      if (result.error) {
-        setConsentNote("Could not save product updates. Try again.");
-      }
-    } catch {
-      setConsentNote("Could not save product updates. Try again.");
-    }
-  }
-
   async function finish(destination: "dashboard" | "project") {
     if (pendingRef.current) return;
     pendingRef.current = true;
     setPendingAction(destination);
     setError(null);
-    setConsentNote(null);
     setResumePath(null);
-    let consentFailed = false;
-    if (productUpdates !== null) {
-      try {
-        const consent = await recordOnboardingMarketingConsent(productUpdates);
-        consentFailed = Boolean(consent.error);
-      } catch {
-        consentFailed = true;
-      }
-    }
     const result = await completeRequiredOnboarding();
     if (result.error) {
       setError(result.error);
       setResumePath(result.resumePath ?? null);
-      if (consentFailed) {
-        setConsentNote("Product updates were not saved. You can update this later.");
-      }
       pendingRef.current = false;
       setPendingAction(null);
       return;
     }
     const params = new URLSearchParams();
     if (destination === "project") params.set("newProject", "1");
-    if (consentFailed) params.set("consent", "unsaved");
     const query = params.toString();
     router.replace(query ? `/app/dashboard?${query}` : "/app/dashboard");
   }
@@ -163,36 +129,6 @@ export function FirstRunReady({ state }: { state: SetupState }) {
         />
         <ReviewRow title="Target margin" detail={margin} href={FIRST_RUN_LABOUR_PATH} />
       </div>
-      <fieldset className="mt-4 space-y-2" disabled={pendingAction !== null}>
-        <legend className="text-sm leading-snug">
-          Send me occasional product updates and practical Quotr tips. Unsubscribe anytime.
-        </legend>
-        <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border border-border px-3 text-sm">
-          <input
-            type="radio"
-            name="productUpdates"
-            className="size-4 shrink-0"
-            checked={productUpdates === true}
-            onChange={() => void choose(true)}
-          />
-          Yes, send them
-        </label>
-        <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border border-border px-3 text-sm">
-          <input
-            type="radio"
-            name="productUpdates"
-            className="size-4 shrink-0"
-            checked={productUpdates === false}
-            onChange={() => void choose(false)}
-          />
-          No thanks
-        </label>
-      </fieldset>
-      {consentNote ? (
-        <p role="status" className="mt-3 text-sm text-muted-foreground">
-          {consentNote}
-        </p>
-      ) : null}
       {error ? (
         <div role="alert" className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <p>{error}</p>

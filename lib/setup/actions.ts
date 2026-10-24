@@ -1182,6 +1182,7 @@ export async function saveRequiredLabourCosts(input: {
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   return beginSetupMutation("saveRequiredLabourCosts", async () => {
+  try {
   const context = await getSetupMutationContext();
   if (!context) return MISSING_ORG_ERROR;
   const orgId = context.orgId;
@@ -1250,6 +1251,16 @@ export async function saveRequiredLabourCosts(input: {
   revalidatePath("/app/rates");
   revalidatePath("/app/dashboard");
   return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const code = message.includes("BILLING_ENVIRONMENT")
+      ? "billing_environment"
+      : /invalid api key|service_role|admin environment/i.test(message)
+        ? "admin_credentials"
+        : "labour_save_failed";
+    console.info(`[onboarding-continue] saveRequiredLabourCosts code=${code}`);
+    return { error: "Could not save your labour costs. Please try again." };
+  }
   });
 }
 
@@ -1525,24 +1536,13 @@ export async function saveGstRegistration(input: {
 }
 
 /**
- * Optional product-update choice. A failure here must not block completion.
- * An untouched choice is not sent here. An explicit yes or no is stored.
- * Source is always onboarding.
+ * Setup no longer asks a second marketing question.
+ * Signup and Profile own the choice. This does not write, clear, or revise it.
  */
 export async function recordOnboardingMarketingConsent(
-  consent: boolean
+  _consent: boolean
 ): Promise<ActionResult> {
-  if (consent !== true && consent !== false) return { success: true };
-  return beginSetupMutation("recordOnboardingMarketingConsent", async () => {
-    const context = await getSetupMutationContext();
-    if (!context) return MISSING_ORG_ERROR;
-    const { error } = await context.supabase.rpc("set_own_marketing_consent", {
-      p_consent: consent,
-      p_source: "onboarding",
-    });
-    if (error) return { error: "Could not save product updates. Try again." };
-    return { success: true };
-  });
+  return { success: true };
 }
 
 /** Single completion event. Safe to call again. Does not require marketing consent. */

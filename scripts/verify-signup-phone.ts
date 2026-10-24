@@ -80,13 +80,14 @@ function main() {
   assert(
     "linked-number message is the safe sentence",
     PHONE_ALREADY_LINKED_MESSAGE ===
-      "This phone number is already associated with a Quotr account. Sign in, or contact support if you believe this is incorrect." &&
+      "This phone number is already associated with a Quotr account. Sign in, or contact hello@get-quotr.com if this is incorrect." &&
       presentAuthError("PHONE_ALREADY_LINKED") === PHONE_ALREADY_LINKED_MESSAGE
   );
   assert(
     "linked-number message discloses no account",
-    !PHONE_ALREADY_LINKED_MESSAGE.includes("@") &&
-      !/organisation|email|owner|admin/i.test(PHONE_ALREADY_LINKED_MESSAGE) &&
+    PHONE_ALREADY_LINKED_MESSAGE.includes("hello@get-quotr.com") &&
+      !PHONE_ALREADY_LINKED_MESSAGE.replace("hello@get-quotr.com", "").includes("@") &&
+      !/organisation|owner|admin/i.test(PHONE_ALREADY_LINKED_MESSAGE) &&
       !containsUnsafeAuthDiagnostic(PHONE_ALREADY_LINKED_MESSAGE)
   );
   assert(
@@ -154,11 +155,10 @@ function main() {
 
   const form = read("components/auth/SignupForm.tsx");
   assert(
-    "signup links sign-in and support for a linked number",
+    "signup links sign-in beside a linked number",
     form.includes("PHONE_ALREADY_LINKED_MESSAGE") &&
-      form.includes('"/login"') &&
-      form.includes("Contact support") &&
-      form.includes("HELP_SUPPORT_EMAIL")
+      form.includes("Sign in") &&
+      form.includes("phoneAlreadyLinked")
   );
   assert("signup phone field is country aware", form.includes("AccountPhoneField"));
   assert(
