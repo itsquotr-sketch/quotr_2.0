@@ -3,6 +3,12 @@
 import { redirect, RedirectType } from "next/navigation";
 import { z } from "zod";
 import { signupWasBlockedByExistingPhone } from "@/lib/auth/account-phone-claim";
+import { lookupSignupEmailConfirmation } from "@/lib/auth/signup-email-lookup";
+import {
+  EXISTING_EMAIL_MESSAGE,
+  EXISTING_EMAIL_UNKNOWN_MESSAGE,
+  signupResponseConcealsExistingAccount,
+} from "@/lib/auth/signup-existing-account";
 import {
   buildSignupUserMetadata,
   normalizeAccountPhone,
@@ -56,6 +62,12 @@ export type AuthActionState = {
    * other account. Signup did not keep an auth user in this case.
    */
   phoneAlreadyLinked?: boolean;
+  /**
+   * signUp concealed an existing account. Not a new profile.
+   * confirmed: sign in or reset. unconfirmed: resend confirmation.
+   * unknown: the account exists, but confirmation state could not be read.
+   */
+  existingEmail?: "confirmed" | "unconfirmed" | "unknown";
   /**
    * After session cookie mutation, client must hard-navigate here
    * (document assign). Soft Server Action redirect can blank protected RSC.
@@ -247,11 +259,21 @@ export async function signup(
     // Rate limit and email collision stay on the existing Auth responses.
     // The phone check runs only after that submit, and only for a database
     // save failure. It is not a public availability endpoint.
-    if (
-      category === "RATE_LIMITED" ||
-      category === "EMAIL_ALREADY_REGISTERED"
-    ) {
+    if (category === "RATE_LIMITED") {
       return signupFail(category, correlationId, startedAt);
+    }
+    if (category === "EMAIL_ALREADY_REGISTERED") {
+      logAuthEvent({
+        event: "signup_failed",
+        category,
+        correlationId,
+        elapsedMs: Date.now() - startedAt,
+      });
+      return {
+        existingEmail: "unknown",
+        confirmationEmail: signupEmail,
+        error: EXISTING_EMAIL_UNKNOWN_MESSAGE,
+      };
     }
     if (await signupWasBlockedByExistingPhone(providerText, phone.e164)) {
       logAuthEvent({
@@ -270,6 +292,42 @@ export async function signup(
 
   if (!authData.user) {
     return signupFail("SIGNUP_FAILED", correlationId, startedAt);
+  }
+
+  if (signupResponseConcealsExistingAccount(authData.user)) {
+    if (authData.session) {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // The account already exists. Guidance still has to be shown.
+      }
+    }
+    const confirmation = await lookupSignupEmailConfirmation(signupEmail);
+    logAuthEvent({
+      event: "signup_failed",
+      category:
+        confirmation === "unconfirmed"
+          ? "CONFIRMATION_PENDING"
+          : "EMAIL_ALREADY_REGISTERED",
+      correlationId,
+      elapsedMs: Date.now() - startedAt,
+    });
+    if (confirmation === "unconfirmed") {
+      await rememberPendingSignupEmail(signupEmail);
+      return {
+        existingEmail: "unconfirmed",
+        confirmationPending: true,
+        confirmationEmail: signupEmail,
+      };
+    }
+    return {
+      existingEmail: confirmation === "confirmed" ? "confirmed" : "unknown",
+      confirmationEmail: signupEmail,
+      error:
+        confirmation === "confirmed"
+          ? EXISTING_EMAIL_MESSAGE
+          : EXISTING_EMAIL_UNKNOWN_MESSAGE,
+    };
   }
 
   const userId = authData.user.id;

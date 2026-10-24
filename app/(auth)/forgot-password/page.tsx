@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   requestPasswordReset,
   type RecoveryActionState,
@@ -16,6 +17,7 @@ import {
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { retainedAuthEmail } from "@/lib/auth/signup-existing-account";
 
 const initialState: RecoveryActionState = {};
 
@@ -24,7 +26,9 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-destructive" role="alert">{messages[0]}</p>;
 }
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordForm() {
+  const searchParams = useSearchParams();
+  const retainedEmail = retainedAuthEmail(searchParams.get("email"));
   const [state, formAction, pending] = useActionState(
     requestPasswordReset,
     initialState
@@ -65,6 +69,7 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               placeholder="you@company.com"
               required
+              defaultValue={retainedEmail}
               className="h-11"
               disabled={pending}
             />
@@ -78,12 +83,33 @@ export default function ForgotPasswordPage() {
             pendingLabel="Sending…"
           />
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/login" className={authTextLinkClass}>
+            <Link
+              href={
+                retainedEmail
+                  ? `/login?email=${encodeURIComponent(retainedEmail)}`
+                  : "/login"
+              }
+              className={authTextLinkClass}
+            >
               Back to login
             </Link>
           </p>
         </AuthCardFooter>
       </form>
     </AuthCard>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="min-h-48" />
+        </AuthCard>
+      }
+    >
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

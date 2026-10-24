@@ -1,6 +1,7 @@
 import {
   TERMS_OF_USE_VERSION,
 } from "@/lib/auth/signup-choices";
+import { marketingConsentFromMetadata } from "@/lib/auth/signup-existing-account";
 
 type PreferenceClient = {
   rpc: (
@@ -30,12 +31,10 @@ export async function recordSignupPreferences(
         p_accepted_at: metadata.terms_accepted_at,
       });
     }
-    if (
-      metadata.marketing_consent === "true" ||
-      metadata.marketing_consent === "false"
-    ) {
+    const marketingConsent = marketingConsentFromMetadata(metadata.marketing_consent);
+    if (marketingConsent !== null) {
       await supabase.rpc("set_own_marketing_consent", {
-        p_consent: metadata.marketing_consent === "true",
+        p_consent: marketingConsent,
         p_source: "signup",
       });
     }

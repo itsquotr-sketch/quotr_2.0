@@ -12,7 +12,7 @@ export const ACCOUNT_PHONE_COUNTRIES = ["NZ", "AU"] as const;
 export type AccountPhoneCountry = (typeof ACCOUNT_PHONE_COUNTRIES)[number];
 
 export const PHONE_ALREADY_LINKED_MESSAGE =
-  "This phone number is already linked to an account. Sign in or use a different number.";
+  "This phone number is already associated with a Quotr account. Sign in, or contact support if you believe this is incorrect.";
 
 export type NormalizedAccountPhone = {
   e164: string;

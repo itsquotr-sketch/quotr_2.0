@@ -20,6 +20,7 @@ import {
   recordEngagementMarker,
 } from "@/lib/communications/engagement";
 import { withConsentLease } from "@/lib/communications/sync-lease";
+import { marketingConsentFromMetadata } from "@/lib/auth/signup-existing-account";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -69,8 +70,8 @@ async function applySignupConsent(supabase: ServerClient): Promise<LoopsSyncMode
   } = await supabase.auth.getUser();
   if (!user) return "routine";
 
-  const raw = user.user_metadata?.marketing_consent;
-  if (typeof raw !== "boolean") return "routine";
+  const consent = marketingConsentFromMetadata(user.user_metadata?.marketing_consent);
+  if (consent === null) return "routine";
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -83,10 +84,10 @@ async function applySignupConsent(supabase: ServerClient): Promise<LoopsSyncMode
 
   const { data: updated, error: writeError } = await supabase.rpc(
     "set_own_marketing_consent",
-    { p_consent: raw, p_source: "signup" }
+    { p_consent: consent, p_source: "signup" }
   );
   if (writeError || updated !== true) return "routine";
-  return raw ? "explicit_opt_in" : "routine";
+  return consent ? "explicit_opt_in" : "explicit_opt_out";
 }
 
 async function syncSessionUserWithinTask(

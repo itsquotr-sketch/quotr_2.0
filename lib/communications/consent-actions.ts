@@ -71,7 +71,11 @@ export async function updateMarketingConsent(
   }
 
   const mode: LoopsSyncMode = next ? "explicit_opt_in" : "explicit_opt_out";
-  await syncSessionUser(supabase, mode);
+  try {
+    await syncSessionUser(supabase, mode);
+  } catch {
+    // The preference is already stored and pending. A Loops failure retries later.
+  }
 
   revalidatePath("/app/profile");
   return { success: "Preference saved." };
