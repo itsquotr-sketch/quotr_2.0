@@ -6,7 +6,9 @@ import { readFileSync } from "node:fs";
 import { deleteLoopsContact } from "../lib/communications/loops-client";
 import {
   INITIAL_DELETION_OPERATOR,
+  deletionDryRunReview,
   deletionProjectAllowed,
+  productionExecutionRequested,
 } from "../lib/account-deletion/operator";
 import { planPersonalDeletion, type DeletionFacts } from "../lib/account-deletion/plan";
 import {
@@ -216,11 +218,44 @@ assert(
 );
 assert("the operator login cannot be the target", !self.executable && self.blockers.includes("operator_account_protected"));
 assert("another person cannot operate the tool", !stranger.executable);
+const productionProof = {
+  confirmedProjectRef: "lxvnylhsbvudzzupxeqr",
+  requestId: "11111111-1111-4111-8111-111111111111",
+  operatorEmail: INITIAL_DELETION_OPERATOR.email,
+  confirmation: "delete-personal-account",
+  dryRunReview: "a".repeat(64),
+};
 assert("production is not a fulfilment project", deletionProjectAllowed("lxvnylhsbvudzzupxeqr") === false);
 assert(
-  "production dry-run is allowed and production execution is not",
+  "production dry-run is allowed and ungated production execution is not",
   deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "dry-run") &&
-    deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "execute") === false
+    deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "execute") === false &&
+    deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "execute", {
+      ...productionProof,
+      confirmedProjectRef: "shhpjsoldmqtkdbgrbtm",
+    }) === false &&
+    deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "execute", productionProof)
+);
+assert(
+  "production execution requires the operator, request, and exact project",
+  productionExecutionRequested({
+    projectRef: "lxvnylhsbvudzzupxeqr",
+    requestId: productionProof.requestId,
+    operatorEmail: INITIAL_DELETION_OPERATOR.email,
+    proof: productionProof,
+  }) &&
+    productionExecutionRequested({
+      projectRef: "lxvnylhsbvudzzupxeqr",
+      requestId: productionProof.requestId,
+      operatorEmail: "someone@example.com",
+      proof: { ...productionProof, operatorEmail: "someone@example.com" },
+    }) === false
+);
+const reviewPlan = planPersonalDeletion(base);
+const review = deletionDryRunReview(productionProof.requestId, reviewPlan);
+assert(
+  "a dry-run review changes when the plan changes",
+  review !== deletionDryRunReview(productionProof.requestId, { ...reviewPlan, outcome: `${reviewPlan.outcome} changed` })
 );
 assert("preview is the fulfilment project", deletionProjectAllowed("shhpjsoldmqtkdbgrbtm", "execute"));
 assert(
@@ -239,10 +274,18 @@ assert(
 );
 const fulfilScript = readFileSync("scripts/fulfil-account-deletion.ts", "utf8");
 assert(
-  "the operator command reads Stripe and refuses Production execution",
+  "the operator command reads Stripe and gates Production execution",
   fulfilScript.includes("api.stripe.com/v1/subscriptions/") &&
     fulfilScript.includes("Refusing Production execution") &&
     fulfilScript.includes("--production-dry-run") &&
+    fulfilScript.includes("--production-execute") &&
+    fulfilScript.includes("--project-ref") &&
+    fulfilScript.includes("--dry-run-review") &&
+    fulfilScript.includes("PRODUCTION_EXECUTION_RECORD") &&
+    readFileSync("lib/account-deletion/operator.ts", "utf8").includes(
+      "Production execution is enabled and has not been exercised against a real account"
+    ) &&
+    executeSource.includes("The dry-run review is no longer current") &&
     !fulfilScript.includes("/cancel")
 );
 const mismatch = interpretStripeSubscription({

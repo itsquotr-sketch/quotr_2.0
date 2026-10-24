@@ -11,8 +11,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fulfilPersonalDeletion } from "../lib/account-deletion/execute";
 import { upsertLoopsContact } from "../lib/communications/loops-client";
 import {
+  DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+  deletionDryRunReview,
   INITIAL_DELETION_OPERATOR,
   PREVIEW_SUPABASE_PROJECT_REF,
+  PRODUCTION_SUPABASE_PROJECT_REF,
 } from "../lib/account-deletion/operator";
 
 function envValue(name: string): string {
@@ -729,6 +732,86 @@ async function proveResume(admin: SupabaseClient): Promise<void> {
   }
 }
 
+async function proveProductionGate(admin: SupabaseClient): Promise<void> {
+  const email = "deletion-fixture-production-gate@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture production gate" });
+    if (org.error) throw new Error(org.error.message);
+    const userId = await createFixtureUser(admin, email, orgId, "owner");
+    userIds.push(userId);
+    const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    let refused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+        confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+        deleteContact: async () => "absent",
+      });
+    } catch {
+      refused = true;
+    }
+    const stillThere = await admin.auth.admin.getUserById(userId);
+    const reviewed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+      deleteContact: async () => "absent",
+    });
+    const review = deletionDryRunReview(requestId, reviewed.plan);
+    let staleRefused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+        confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+        deleteContact: async () => "absent",
+        productionExecution: {
+          confirmedProjectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+          requestId,
+          operatorEmail: operator,
+          confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+          dryRunReview: "b".repeat(64),
+        },
+      });
+    } catch {
+      staleRefused = true;
+    }
+    const stillAfterStale = await admin.auth.admin.getUserById(userId);
+    const executed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+      confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+      deleteContact: async () => "absent",
+      productionExecution: {
+        confirmedProjectRef: PRODUCTION_SUPABASE_PROJECT_REF,
+        requestId,
+        operatorEmail: operator,
+        confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+        dryRunReview: review,
+      },
+    });
+    const gone = await admin.auth.admin.getUserById(userId);
+    const orgAfter = await admin.from("organisations").select("id").eq("id", orgId).maybeSingle();
+    results.productionGate =
+      refused &&
+      stillThere.data.user != null &&
+      reviewed.dryRun &&
+      staleRefused &&
+      stillAfterStale.data.user != null &&
+      executed.completed &&
+      gone.data.user == null &&
+      orgAfter.data?.id === orgId;
+  } finally {
+    await cleanup(admin, { orgId, emails: [email], userIds });
+  }
+}
+
 async function main() {
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -741,6 +824,7 @@ async function main() {
   await proveProviderOverMirror(admin);
   await proveOwnerRepair(admin);
   await proveResume(admin);
+  await proveProductionGate(admin);
   const leftover = await admin
     .from("organisations")
     .select("id", { count: "exact", head: true })
@@ -756,6 +840,7 @@ async function main() {
     !results.providerOverMirror ||
     !results.ownerRepaired ||
     !results.resume ||
+    !results.productionGate ||
     !results.leftoverOrganisations
   ) {
     process.exit(1);

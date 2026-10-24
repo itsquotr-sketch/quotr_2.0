@@ -6,7 +6,7 @@ A request is not deletion. The states are requested, verified, processing, and c
 
 Personal deletion, company closure, and subscription cancellation are separate. This tool deletes a personal login. It does not close a company and it does not cancel a subscription.
 
-Migrations 121, 122, and 123 are the schema for this flow. The fulfilment command can dry-run Production and cannot execute a Production deletion.
+Migrations 121, 122, and 123 are the schema for this flow. They are applied on Production. The fulfilment command can dry-run Production. Production execution is enabled for the authorised operator and has not been exercised against a real account.
 
 ## States
 
@@ -23,7 +23,18 @@ The Preview command is:
 npx tsx scripts/fulfil-account-deletion.ts --request <id> --operator jeanluc@erccontracting.co.nz
 ```
 
-That is a dry-run. It prints the proposed effects and deletes nothing. Execution requires `--confirm delete-personal-account` and the Preview project `shhpjsoldmqtkdbgrbtm`. A Production URL accepts `--production-dry-run` and refuses `--confirm`.
+That is a dry-run. It prints the proposed effects and a `review` value, and it deletes nothing. Preview execution requires `--confirm delete-personal-account` and the Preview project `shhpjsoldmqtkdbgrbtm`.
+
+A Production URL accepts `--production-dry-run`. Production execution is a separate command. It requires all of these together:
+
+- `--production-execute`
+- `--project-ref lxvnylhsbvudzzupxeqr`, matching the Production URL exactly
+- `--request` for one verified request
+- `--operator jeanluc@erccontracting.co.nz`
+- `--dry-run-review` equal to the `review` value from the current dry-run
+- `--confirm delete-personal-account`
+
+The command reads the request again before it deletes anything. If the review no longer matches, the login stays. `--confirm` by itself does not execute a Production deletion. This mode has not been exercised against a real account.
 
 Add the confirmation that matches the dry-run:
 
@@ -52,7 +63,7 @@ The effects are:
 
 The company row is retained. Closing a company is a separate decision. Deleting the company would cascade its projects, quotes, and subscription rows, so this tool does not do it.
 
-Migration 123, on Preview only, allows a sole owner's project author pointer to be empty. It does not drop the foreign key. Until that migration is on a database, a sole owner whose project still requires an author cannot be completed.
+Migration 123 is applied on Production and Preview. It allows a sole owner's project author pointer to be empty. It does not drop the foreign key.
 
 ## What cannot be fulfilled yet
 

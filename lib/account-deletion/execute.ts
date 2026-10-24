@@ -9,8 +9,12 @@ import {
 } from "@/lib/account-deletion/plan";
 import type { StripeProviderCheck } from "@/lib/account-deletion/stripe-verification";
 import {
+  deletionDryRunReview,
   deletionProjectAllowed,
   isDeletionOperator,
+  PRODUCTION_SUPABASE_PROJECT_REF,
+  productionExecutionRequested,
+  type ProductionExecutionProof,
 } from "@/lib/account-deletion/operator";
 import { normalizeDeletionEmail } from "@/lib/account-deletion/request";
 import { deleteLoopsContact } from "@/lib/communications/loops-client";
@@ -342,6 +346,7 @@ type FulfilInput = {
     customerId: string;
   }) => Promise<StripeProviderCheck>;
   afterLoginRemoved?: () => Promise<void>;
+  productionExecution?: ProductionExecutionProof;
 };
 
 async function markCompleted(
@@ -381,22 +386,10 @@ async function markCompleted(
   };
 }
 
-export async function fulfilPersonalDeletion(
+async function currentExecutionPlan(
   admin: SupabaseClient,
   input: FulfilInput
-): Promise<FulfilResult> {
-  if (!isDeletionOperator(input.operatorEmail)) {
-    throw new Error("This operator cannot fulfil a deletion request.");
-  }
-  const executing = confirmationMatches(input.confirmation);
-  if (!deletionProjectAllowed(input.projectRef, executing ? "execute" : "dry-run")) {
-    throw new Error(
-      executing
-        ? "Deletion execution is limited to the Preview project."
-        : "Deletion fulfilment is limited to the Preview project."
-    );
-  }
-
+): Promise<{ facts: DeletionFacts; plan: DeletionPlan; userId: string | null; status: string }> {
   const loaded = await loadFacts(admin, {
     requestId: input.requestId,
     operatorEmail: input.operatorEmail,
@@ -405,6 +398,48 @@ export async function fulfilPersonalDeletion(
   });
   const facts = await withStripeProvider(loaded.facts, input.verifyStripeSubscription);
   const plan = planPersonalDeletion(facts);
+  if (
+    input.projectRef === PRODUCTION_SUPABASE_PROJECT_REF &&
+    confirmationMatches(input.confirmation)
+  ) {
+    const review = deletionDryRunReview(input.requestId, plan);
+    if (review !== input.productionExecution?.dryRunReview) {
+      throw new Error("The dry-run review is no longer current. No account was deleted.");
+    }
+  }
+  return { facts, plan, userId: loaded.userId, status: loaded.status };
+}
+
+export async function fulfilPersonalDeletion(
+  admin: SupabaseClient,
+  input: FulfilInput
+): Promise<FulfilResult> {
+  if (!isDeletionOperator(input.operatorEmail)) {
+    throw new Error("This operator cannot fulfil a deletion request.");
+  }
+  const executing = confirmationMatches(input.confirmation);
+  if (input.projectRef === PRODUCTION_SUPABASE_PROJECT_REF && executing) {
+    if (
+      !productionExecutionRequested({
+        projectRef: input.projectRef,
+        requestId: input.requestId,
+        operatorEmail: input.operatorEmail,
+        proof: input.productionExecution,
+      })
+    ) {
+      throw new Error("Production execution is not confirmed. No account was deleted.");
+    }
+  } else if (!deletionProjectAllowed(input.projectRef, executing ? "execute" : "dry-run")) {
+    throw new Error(
+      executing
+        ? "Deletion execution is limited to the Preview project."
+        : "Deletion fulfilment is limited to the Preview project."
+    );
+  }
+
+  const loaded = await currentExecutionPlan(admin, input);
+  const facts = loaded.facts;
+  const plan = loaded.plan;
   if (loaded.status === "completed") {
     return {
       dryRun: true,
@@ -421,6 +456,7 @@ export async function fulfilPersonalDeletion(
     return { dryRun: true, plan, completed: false };
   }
   if (!loaded.userId) {
+    await currentExecutionPlan(admin, input);
     if (loaded.status !== "processing" || !facts.identityConfirmed || !plan.outcome) {
       throw new Error("This request cannot be fulfilled. No account was deleted.");
     }
@@ -468,6 +504,7 @@ export async function fulfilPersonalDeletion(
     }
   }
   if (!lookup.data.user) {
+    await currentExecutionPlan(admin, input);
     if (!facts.identityConfirmed) {
       throw new Error("This request cannot be fulfilled. No account was deleted.");
     }
@@ -488,9 +525,12 @@ export async function fulfilPersonalDeletion(
     }
     return markCompleted(admin, { requestId: input.requestId, operatorEmail: input.operatorEmail, plan, provider });
   }
-  if (!plan.executable) {
+  const fresh = await currentExecutionPlan(admin, input);
+  if (!fresh.userId || !fresh.plan.executable || fresh.userId !== loaded.userId) {
     throw new Error("This request cannot be fulfilled. No account was deleted.");
   }
+  Object.assign(facts, fresh.facts);
+  Object.assign(plan, fresh.plan);
 
   const processing = await admin
     .from("account_deletion_requests")

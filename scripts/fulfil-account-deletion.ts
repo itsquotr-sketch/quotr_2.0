@@ -1,14 +1,17 @@
 /**
- * Dry-run, then fulfil one disposable Preview personal account.
- * Production accepts a dry-run only. This command never executes a
- * Production deletion. It does not email anyone and it does not cancel Stripe.
+ * Dry-run, then fulfil one personal account.
+ * Production execution is enabled for the authorised operator and has not
+ * been exercised against a real account. This command does not email anyone
+ * and it does not cancel Stripe.
  *
  * Preview dry-run:
  *   npx tsx scripts/fulfil-account-deletion.ts --request <id> --operator jeanluc@erccontracting.co.nz
  * Preview execute: add --confirm delete-personal-account
  * Production dry-run: point NEXT_PUBLIC_SUPABASE_URL at Production and add
  *   --production-dry-run
- * Do not pass --confirm with a Production URL.
+ * Production execute, only after reading that dry-run:
+ *   --production-execute --project-ref lxvnylhsbvudzzupxeqr
+ *   --confirm delete-personal-account --dry-run-review <review>
  *
  * A sole owner's Stripe subscription is read from Stripe with STRIPE_SECRET_KEY
  * on this operator machine. The Android host does not receive that key.
@@ -19,8 +22,13 @@ import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { fulfilPersonalDeletion } from "../lib/account-deletion/execute";
 import {
+  DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+  deletionDryRunReview,
+  isDeletionOperator,
   PREVIEW_SUPABASE_PROJECT_REF,
+  PRODUCTION_EXECUTION_RECORD,
   PRODUCTION_SUPABASE_PROJECT_REF,
+  type ProductionExecutionProof,
 } from "../lib/account-deletion/operator";
 import {
   interpretStripeSubscription,
@@ -44,16 +52,28 @@ const url = envValue("NEXT_PUBLIC_SUPABASE_URL");
 const key = envValue("SUPABASE_SERVICE_ROLE_KEY");
 const production = url.includes(PRODUCTION_SUPABASE_PROJECT_REF);
 const preview = url.includes(PREVIEW_SUPABASE_PROJECT_REF);
-if (production && process.argv.includes("--confirm")) {
-  console.error("Refusing Production execution. Production accepts --production-dry-run only.");
+const productionDryRun = process.argv.includes("--production-dry-run");
+const productionExecute = process.argv.includes("--production-execute");
+if (production && process.argv.includes("--confirm") && !productionExecute) {
+  console.error(
+    "Refusing Production execution. Production execution requires --production-execute, --project-ref lxvnylhsbvudzzupxeqr, a current --dry-run-review, and --confirm delete-personal-account."
+  );
   process.exit(1);
 }
-if (production && !process.argv.includes("--production-dry-run")) {
-  console.error("Refusing Production fulfilment without --production-dry-run.");
+if (production && productionExecute && productionDryRun) {
+  console.error("Refusing a Production command that both dry-runs and executes.");
+  process.exit(1);
+}
+if (production && !productionDryRun && !productionExecute) {
+  console.error("Refusing Production fulfilment without --production-dry-run or --production-execute.");
+  process.exit(1);
+}
+if (preview && productionExecute) {
+  console.error("Refusing Production execution against the Preview project.");
   process.exit(1);
 }
 if (!preview && !production) {
-  console.error("Refusing fulfilment outside Preview or an explicit Production dry-run.");
+  console.error("Refusing fulfilment outside Preview or an explicit Production command.");
   process.exit(1);
 }
 if (!key) {
@@ -95,32 +115,77 @@ async function verifyStripeSubscription(input: {
   }
 }
 
+function described(result: Awaited<ReturnType<typeof fulfilPersonalDeletion>>, review: string) {
+  return {
+    dryRun: result.dryRun,
+    completed: result.completed,
+    review,
+    lifecycle: result.plan.lifecycle,
+    executable: result.plan.executable,
+    blockers: result.plan.blockers,
+    issuedLinks: result.plan.issuedLinks,
+    effects: result.plan.effects,
+    outcome: result.plan.outcome,
+    ...(production ? { productionExecution: PRODUCTION_EXECUTION_RECORD } : {}),
+  };
+}
+
 async function main() {
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const result = await fulfilPersonalDeletion(admin, {
+  const projectRef = production ? PRODUCTION_SUPABASE_PROJECT_REF : PREVIEW_SUPABASE_PROJECT_REF;
+  const shared = {
     requestId,
     operatorEmail: operator,
-    projectRef: production ? PRODUCTION_SUPABASE_PROJECT_REF : PREVIEW_SUPABASE_PROJECT_REF,
-    confirmation: production ? undefined : flag("--confirm"),
+    projectRef,
     continuingMemberId: flag("--continuing-member"),
     retainIssuedDocumentsConfirmed: process.argv.includes("--retain-issued-documents"),
     verifyStripeSubscription,
-  });
+  };
+  if (productionExecute) {
+    const confirmedRef = flag("--project-ref");
+    const suppliedReview = flag("--dry-run-review");
+    if (confirmedRef !== PRODUCTION_SUPABASE_PROJECT_REF) {
+      console.error("Refusing Production execution without the exact project ref lxvnylhsbvudzzupxeqr.");
+      process.exit(1);
+    }
+    if (flag("--confirm") !== DELETE_PERSONAL_ACCOUNT_CONFIRMATION) {
+      console.error("Refusing Production execution without --confirm delete-personal-account.");
+      process.exit(1);
+    }
+    if (!isDeletionOperator(operator) || !suppliedReview) {
+      console.error("Refusing Production execution without the authorised operator and the current dry-run review.");
+      process.exit(1);
+    }
+    const reviewed = await fulfilPersonalDeletion(admin, shared);
+    const review = deletionDryRunReview(requestId, reviewed.plan);
+    if (review !== suppliedReview || !reviewed.plan.executable || reviewed.plan.blockers.includes("operator_account_protected")) {
+      console.log(JSON.stringify(described(reviewed, review)));
+      console.error("Refusing Production execution. The current dry-run was not accepted.");
+      process.exit(1);
+    }
+    const proof: ProductionExecutionProof = {
+      confirmedProjectRef: confirmedRef,
+      requestId,
+      operatorEmail: operator,
+      confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+      dryRunReview: suppliedReview,
+    };
+    const result = await fulfilPersonalDeletion(admin, {
+      ...shared,
+      confirmation: DELETE_PERSONAL_ACCOUNT_CONFIRMATION,
+      productionExecution: proof,
+    });
+    console.log(JSON.stringify(described(result, deletionDryRunReview(requestId, result.plan))));
+    return;
+  }
 
-  console.log(
-    JSON.stringify({
-      dryRun: result.dryRun,
-      completed: result.completed,
-      lifecycle: result.plan.lifecycle,
-      executable: result.plan.executable,
-      blockers: result.plan.blockers,
-      issuedLinks: result.plan.issuedLinks,
-      effects: result.plan.effects,
-      outcome: result.plan.outcome,
-    })
-  );
+  const result = await fulfilPersonalDeletion(admin, {
+    ...shared,
+    confirmation: production ? undefined : flag("--confirm"),
+  });
+  console.log(JSON.stringify(described(result, deletionDryRunReview(requestId, result.plan))));
 }
 
 void main();
