@@ -3,9 +3,11 @@ import {
   confirmationMatches,
   deletionOutcome,
   planPersonalDeletion,
+  soleOwnerStripe,
   type DeletionFacts,
   type DeletionPlan,
 } from "@/lib/account-deletion/plan";
+import type { StripeProviderCheck } from "@/lib/account-deletion/stripe-verification";
 import {
   deletionProjectAllowed,
   isDeletionOperator,
@@ -140,18 +142,24 @@ async function loadFacts(
 
   let subscriptionStatus: string | null = null;
   let subscriptionSource: string | null = null;
+  let stripeSubscriptionId: string | null = null;
+  let stripeCustomerId: string | null = null;
   let cancelAtPeriodEnd = false;
   let currentPeriodEnd: string | null = null;
   if (organisationId) {
     const { data: subscription, error: subscriptionError } = await admin
       .from("org_subscriptions")
-      .select("status, source, cancel_at_period_end, current_period_end")
+      .select(
+        "status, source, cancel_at_period_end, current_period_end, stripe_subscription_id, stripe_customer_id"
+      )
       .eq("org_id", organisationId)
       .limit(1)
       .maybeSingle();
     if (subscriptionError) throw new Error("Could not read the subscription before deletion.");
     subscriptionStatus = subscription?.status ?? null;
     subscriptionSource = subscription?.source ?? null;
+    stripeSubscriptionId = subscription?.stripe_subscription_id ?? null;
+    stripeCustomerId = subscription?.stripe_customer_id ?? null;
     cancelAtPeriodEnd = subscription?.cancel_at_period_end === true;
     currentPeriodEnd = subscription?.current_period_end ?? null;
   }
@@ -184,6 +192,9 @@ async function loadFacts(
       issuedQuoteCount,
       subscriptionStatus,
       subscriptionSource,
+      stripeSubscriptionId,
+      stripeCustomerId,
+      stripeProvider: null,
       cancelAtPeriodEnd,
       currentPeriodEnd,
       restrictedAuthorCount,
@@ -193,6 +204,34 @@ async function loadFacts(
       retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed,
     },
   };
+}
+
+async function activeOwnerIds(admin: SupabaseClient, orgId: string): Promise<string[]> {
+  const { data, error } = await admin
+    .from("organisation_memberships")
+    .select("user_id")
+    .eq("org_id", orgId)
+    .eq("status", "active")
+    .eq("role", "owner");
+  if (error) throw new Error("Could not read the company owner. The login was not deleted.");
+  return (data ?? []).map((row) => row.user_id as string);
+}
+
+async function setMembershipRole(
+  admin: SupabaseClient,
+  input: { orgId: string; userId: string; role: "owner" | "admin"; changedBy?: string }
+): Promise<void> {
+  const { error } = await admin
+    .from("organisation_memberships")
+    .update({
+      role: input.role,
+      role_changed_at: new Date().toISOString(),
+      ...(input.changedBy ? { role_changed_by: input.changedBy } : {}),
+    })
+    .eq("org_id", input.orgId)
+    .eq("user_id", input.userId)
+    .eq("status", "active");
+  if (error) throw new Error("Ownership could not be changed. The login was not deleted.");
 }
 
 async function transferOwnership(
@@ -209,27 +248,41 @@ async function transferOwnership(
   if (successorError || !successor) {
     throw new Error("The continuing member is not an active member of this company. The login was not deleted.");
   }
-  if (successor.role !== "owner") {
-    const demoted = await admin
-      .from("organisation_memberships")
-      .update({ role: "admin", role_changed_at: new Date().toISOString() })
-      .eq("org_id", input.orgId)
-      .eq("user_id", input.fromUserId)
-      .eq("status", "active")
-      .eq("role", "owner");
-    if (demoted.error) {
-      throw new Error("Ownership could not be released. The login was not deleted.");
+
+  let owners = await activeOwnerIds(admin, input.orgId);
+  if (owners.length === 0) {
+    await setMembershipRole(admin, { orgId: input.orgId, userId: input.fromUserId, role: "owner" });
+    owners = await activeOwnerIds(admin, input.orgId);
+    if (!owners.includes(input.fromUserId)) {
+      throw new Error("The company has no active owner. The login was not deleted.");
     }
-    const promoted = await admin
-      .from("organisation_memberships")
-      .update({
+  }
+  if (successor.role === "owner" || owners.includes(input.toUserId)) {
+    const confirmedOwners = await activeOwnerIds(admin, input.orgId);
+    if (confirmedOwners.length < 1 || !confirmedOwners.includes(input.toUserId)) {
+      throw new Error("The company has no active owner. The login was not deleted.");
+    }
+  } else if (!owners.includes(input.fromUserId)) {
+    throw new Error("The named member is not the active owner. The login was not deleted.");
+  } else {
+    await setMembershipRole(admin, { orgId: input.orgId, userId: input.fromUserId, role: "admin" });
+    try {
+      await setMembershipRole(admin, {
+        orgId: input.orgId,
+        userId: input.toUserId,
         role: "owner",
-        role_changed_at: new Date().toISOString(),
-        role_changed_by: input.toUserId,
-      })
-      .eq("id", successor.id);
-    if (promoted.error) {
-      throw new Error("Ownership could not be transferred. The login was not deleted.");
+        changedBy: input.toUserId,
+      });
+    } catch (error) {
+      await setMembershipRole(admin, { orgId: input.orgId, userId: input.fromUserId, role: "owner" });
+      throw error;
+    }
+    const confirmedOwners = await activeOwnerIds(admin, input.orgId);
+    if (confirmedOwners.length !== 1 || confirmedOwners[0] !== input.toUserId) {
+      if (!confirmedOwners.includes(input.toUserId)) {
+        await setMembershipRole(admin, { orgId: input.orgId, userId: input.fromUserId, role: "owner" });
+      }
+      throw new Error("The company would have no active owner. The login was not deleted.");
     }
   }
 
@@ -256,23 +309,92 @@ async function transferOwnership(
   }
 }
 
+async function withStripeProvider(
+  facts: DeletionFacts,
+  verify: FulfilInput["verifyStripeSubscription"]
+): Promise<DeletionFacts> {
+  if (!soleOwnerStripe(facts)) return facts;
+  if (!facts.stripeSubscriptionId || !facts.stripeCustomerId) {
+    return { ...facts, stripeProvider: { available: false, reason: "mismatch" } };
+  }
+  if (!verify) return { ...facts, stripeProvider: { available: false, reason: "unavailable" } };
+  try {
+    const stripeProvider = await verify({
+      subscriptionId: facts.stripeSubscriptionId,
+      customerId: facts.stripeCustomerId,
+    });
+    return { ...facts, stripeProvider };
+  } catch {
+    return { ...facts, stripeProvider: { available: false, reason: "unavailable" } };
+  }
+}
+
+type FulfilInput = {
+  requestId: string;
+  operatorEmail: string;
+  projectRef: string;
+  confirmation?: string;
+  continuingMemberId?: string | null;
+  retainIssuedDocumentsConfirmed?: boolean;
+  deleteContact?: (email: string) => Promise<"deleted" | "absent" | "unconfigured" | "failed">;
+  verifyStripeSubscription?: (input: {
+    subscriptionId: string;
+    customerId: string;
+  }) => Promise<StripeProviderCheck>;
+  afterLoginRemoved?: () => Promise<void>;
+};
+
+async function markCompleted(
+  admin: SupabaseClient,
+  input: { requestId: string; operatorEmail: string; plan: DeletionPlan; provider: "deleted" | "absent" }
+): Promise<FulfilResult> {
+  const effects = input.plan.effects.map((effect) =>
+    effect.action === "delete" && effect.target === "loops_contact"
+      ? {
+          ...effect,
+          detail:
+            input.provider === "absent"
+              ? "No Loops contact remained."
+              : "The Loops contact was deleted.",
+        }
+      : effect
+  );
+  const outcome = deletionOutcome(effects);
+  const completed = await admin
+    .from("account_deletion_requests")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      operator_email: input.operatorEmail,
+      retained: { summary: outcome, effects },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.requestId)
+    .neq("status", "completed");
+  if (completed.error) {
+    throw new Error("The login was deleted, but the request row was not marked completed.");
+  }
+  return {
+    dryRun: false,
+    plan: { ...input.plan, lifecycle: "completed", outcome, effects },
+    completed: true,
+  };
+}
+
 export async function fulfilPersonalDeletion(
   admin: SupabaseClient,
-  input: {
-    requestId: string;
-    operatorEmail: string;
-    projectRef: string;
-    confirmation?: string;
-    continuingMemberId?: string | null;
-    retainIssuedDocumentsConfirmed?: boolean;
-    deleteContact?: (email: string) => Promise<"deleted" | "absent" | "unconfigured" | "failed">;
-  }
+  input: FulfilInput
 ): Promise<FulfilResult> {
   if (!isDeletionOperator(input.operatorEmail)) {
     throw new Error("This operator cannot fulfil a deletion request.");
   }
-  if (!deletionProjectAllowed(input.projectRef)) {
-    throw new Error("Deletion fulfilment is limited to the Preview project.");
+  const executing = confirmationMatches(input.confirmation);
+  if (!deletionProjectAllowed(input.projectRef, executing ? "execute" : "dry-run")) {
+    throw new Error(
+      executing
+        ? "Deletion execution is limited to the Preview project."
+        : "Deletion fulfilment is limited to the Preview project."
+    );
   }
 
   const loaded = await loadFacts(admin, {
@@ -281,7 +403,8 @@ export async function fulfilPersonalDeletion(
     continuingMemberId: input.continuingMemberId,
     retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed === true,
   });
-  const plan = planPersonalDeletion(loaded.facts);
+  const facts = await withStripeProvider(loaded.facts, input.verifyStripeSubscription);
+  const plan = planPersonalDeletion(facts);
   if (loaded.status === "completed") {
     return {
       dryRun: true,
@@ -294,14 +417,79 @@ export async function fulfilPersonalDeletion(
       },
     };
   }
-  if (!confirmationMatches(input.confirmation)) {
+  if (!executing) {
     return { dryRun: true, plan, completed: false };
   }
-  if (!plan.executable || !loaded.userId) {
-    throw new Error("This request cannot be fulfilled. No account was deleted.");
+  if (!loaded.userId) {
+    if (loaded.status !== "processing" || !facts.identityConfirmed || !plan.outcome) {
+      throw new Error("This request cannot be fulfilled. No account was deleted.");
+    }
+    const provider = input.deleteContact
+      ? await input.deleteContact(facts.targetEmail)
+      : await deleteLoopsContact({ email: facts.targetEmail });
+    if (provider !== "deleted" && provider !== "absent") {
+      throw new Error("The Loops contact was not removed. The request was not marked completed.");
+    }
+    return markCompleted(admin, {
+      requestId: input.requestId,
+      operatorEmail: input.operatorEmail,
+      plan,
+      provider,
+    });
   }
   if (!ACTIVE_STATUSES.includes(loaded.status as (typeof ACTIVE_STATUSES)[number])) {
     throw new Error("This request is not open for fulfilment.");
+  }
+
+  const lookup = await admin.auth.admin.getUserById(loaded.userId);
+  if (lookup.error && !/not found/i.test(lookup.error.message)) {
+    throw new Error("Could not read the login. The login was not deleted.");
+  }
+  if (lookup.data.user && facts.organisationId) {
+    const ownersNow = await activeOwnerIds(admin, facts.organisationId);
+    if (ownersNow.length === 0) {
+      await setMembershipRole(admin, {
+        orgId: facts.organisationId,
+        userId: loaded.userId,
+        role: "owner",
+      });
+      const repaired = await activeOwnerIds(admin, facts.organisationId);
+      if (!repaired.includes(loaded.userId)) {
+        throw new Error("The company has no active owner. The login was not deleted.");
+      }
+      const reloaded = await loadFacts(admin, {
+        requestId: input.requestId,
+        operatorEmail: input.operatorEmail,
+        continuingMemberId: input.continuingMemberId,
+        retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed === true,
+      });
+      Object.assign(facts, await withStripeProvider(reloaded.facts, input.verifyStripeSubscription));
+      Object.assign(plan, planPersonalDeletion(facts));
+    }
+  }
+  if (!lookup.data.user) {
+    if (!facts.identityConfirmed) {
+      throw new Error("This request cannot be fulfilled. No account was deleted.");
+    }
+    const provider = input.deleteContact
+      ? await input.deleteContact(facts.targetEmail)
+      : await deleteLoopsContact({ email: facts.targetEmail });
+    if (provider !== "deleted" && provider !== "absent") {
+      throw new Error("The Loops contact was not removed. The request was not marked completed.");
+    }
+    const phoneLeft = await countWhere(admin, "account_phone_numbers", "user_id", loaded.userId);
+    const profileLeft = await countWhere(admin, "profiles", "id", loaded.userId);
+    const queueLeft = await countWhere(admin, "marketing_engagement_reminders", "recipient_user_id", loaded.userId);
+    if (phoneLeft > 0 || profileLeft > 0 || queueLeft > 0) {
+      throw new Error("Personal records still remain. The request was not marked completed.");
+    }
+    if (!plan.outcome) {
+      throw new Error("The billing check is not available. The request was not marked completed.");
+    }
+    return markCompleted(admin, { requestId: input.requestId, operatorEmail: input.operatorEmail, plan, provider });
+  }
+  if (!plan.executable) {
+    throw new Error("This request cannot be fulfilled. No account was deleted.");
   }
 
   const processing = await admin
@@ -329,29 +517,31 @@ export async function fulfilPersonalDeletion(
   }
 
   const provider = input.deleteContact
-    ? await input.deleteContact(loaded.facts.targetEmail)
-    : await deleteLoopsContact({ email: loaded.facts.targetEmail });
+    ? await input.deleteContact(facts.targetEmail)
+    : await deleteLoopsContact({ email: facts.targetEmail });
   if (provider !== "deleted" && provider !== "absent") {
     throw new Error("The Loops contact was not removed. The login was not deleted.");
   }
 
-  if (
-    loaded.facts.continuingMemberId &&
-    loaded.facts.targetIsOwner &&
-    loaded.facts.otherActiveMemberCount > 0 &&
-    loaded.facts.organisationId
-  ) {
+  const ownerIds = facts.organisationId ? await activeOwnerIds(admin, facts.organisationId) : [];
+  const needsTransfer = Boolean(
+    facts.continuingMemberId &&
+      facts.organisationId &&
+      facts.otherActiveMemberCount > 0 &&
+      (facts.targetIsOwner || ownerIds.length === 0)
+  );
+  if (needsTransfer && facts.organisationId && facts.continuingMemberId) {
     await transferOwnership(admin, {
-      orgId: loaded.facts.organisationId,
+      orgId: facts.organisationId,
       fromUserId: loaded.userId,
-      toUserId: loaded.facts.continuingMemberId,
+      toUserId: facts.continuingMemberId,
     });
-  } else if (loaded.facts.continuingMemberId && loaded.facts.organisationId) {
+  } else if (facts.continuingMemberId && facts.organisationId) {
     const successor = await admin
       .from("organisation_memberships")
       .select("id")
       .eq("org_id", loaded.facts.organisationId)
-      .eq("user_id", loaded.facts.continuingMemberId)
+      .eq("user_id", facts.continuingMemberId)
       .eq("status", "active")
       .maybeSingle();
     if (successor.error || !successor.data) {
@@ -362,7 +552,7 @@ export async function fulfilPersonalDeletion(
   for (const [table, column] of CLEAR_AUTHOR) {
     await setAuthor(admin, table, column, loaded.userId, null);
   }
-  const authorDestination = loaded.facts.continuingMemberId;
+  const authorDestination = facts.continuingMemberId;
   for (const [table, column] of RESTRICTED_AUTHOR) {
     await setAuthor(admin, table, column, loaded.userId, authorDestination);
   }
@@ -374,10 +564,19 @@ export async function fulfilPersonalDeletion(
     throw new Error("A personal author pointer is still required. The login was not deleted.");
   }
 
+  if (facts.otherActiveMemberCount > 0 && facts.organisationId) {
+    const owners = await activeOwnerIds(admin, facts.organisationId);
+    if (owners.length < 1 || owners.includes(loaded.userId)) {
+      throw new Error("The company would be left without an active owner. The login was not deleted.");
+    }
+  }
+
   const removed = await admin.auth.admin.deleteUser(loaded.userId);
   if (removed.error) {
-    throw new Error("The login was not deleted.");
+    const again = await admin.auth.admin.getUserById(loaded.userId);
+    if (again.data.user) throw new Error("The login was not deleted.");
   }
+  if (input.afterLoginRemoved) await input.afterLoginRemoved();
 
   const phoneLeft = await countWhere(admin, "account_phone_numbers", "user_id", loaded.userId);
   const profileLeft = await countWhere(admin, "profiles", "id", loaded.userId);
@@ -386,35 +585,10 @@ export async function fulfilPersonalDeletion(
     throw new Error("Personal records still remain. The request was not marked completed.");
   }
 
-  const effects = plan.effects.map((effect) =>
-    effect.action === "delete" && effect.target === "loops_contact"
-      ? {
-          ...effect,
-          detail:
-            provider === "absent"
-              ? "No Loops contact remained."
-              : "The Loops contact was deleted.",
-        }
-      : effect
-  );
-  const outcome = deletionOutcome(effects);
-  const completed = await admin
-    .from("account_deletion_requests")
-    .update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      operator_email: input.operatorEmail,
-      retained: { summary: outcome, effects },
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.requestId);
-  if (completed.error) {
-    throw new Error("The login was deleted, but the request row was not marked completed.");
-  }
-
-  return {
-    dryRun: false,
-    plan: { ...plan, lifecycle: "completed", outcome, effects },
-    completed: true,
-  };
+  return markCompleted(admin, {
+    requestId: input.requestId,
+    operatorEmail: input.operatorEmail,
+    plan,
+    provider,
+  });
 }

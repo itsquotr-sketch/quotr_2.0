@@ -6,6 +6,10 @@ import {
   ACCOUNT_DELETION_SUPPORT_EMAIL,
   type DeletionLifecycle,
 } from "@/lib/account-deletion/request";
+import {
+  stripeProviderDetail,
+  type StripeProviderCheck,
+} from "@/lib/account-deletion/stripe-verification";
 
 export const ISSUED_QUOTE_LINK_ORIGIN = "https://app.get-quotr.com";
 
@@ -18,6 +22,9 @@ export type DeletionFacts = {
   issuedQuoteCount: number;
   subscriptionStatus: string | null;
   subscriptionSource: string | null;
+  stripeSubscriptionId: string | null;
+  stripeCustomerId: string | null;
+  stripeProvider: StripeProviderCheck | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
   restrictedAuthorCount: number;
@@ -85,7 +92,22 @@ export function classifyBilling(facts: DeletionFacts): BillingResolution {
   return "historical";
 }
 
+export function soleOwnerStripe(facts: DeletionFacts): boolean {
+  if (facts.subscriptionSource !== "stripe" || !facts.subscriptionStatus) return false;
+  const ownerRemains = !facts.targetIsOwner && facts.otherActiveMemberCount > 0;
+  const transferredOwner = Boolean(
+    facts.continuingMemberId && facts.targetIsOwner && facts.otherActiveMemberCount > 0
+  );
+  return !ownerRemains && !transferredOwner;
+}
+
 function subscriptionDetail(facts: DeletionFacts, resolution: BillingResolution): string {
+  if (facts.stripeProvider) {
+    return stripeProviderDetail(facts.stripeProvider);
+  }
+  if (soleOwnerStripe(facts)) {
+    return `The stored subscription is stripe with status ${facts.subscriptionStatus}. Execution reads Stripe before anything is deleted and stops if that read is unavailable, the ids differ, or the subscription is still set to renew.`;
+  }
   if (resolution === "scheduled_cancellation") {
     const end = facts.currentPeriodEnd
       ? ` The current period ends ${facts.currentPeriodEnd}.`
@@ -140,7 +162,16 @@ export function planPersonalDeletion(facts: DeletionFacts): DeletionPlan {
     structural.push("continuing_member_required");
   }
   const billing = classifyBilling(facts);
-  if (billing === "renewing_unresolved") {
+  if (soleOwnerStripe(facts)) {
+    const provider = facts.stripeProvider;
+    if (!provider?.available || !provider.nonRenewing) {
+      structural.push(
+        provider?.available
+          ? "billing_resolution_required"
+          : "stripe_provider_verification_required"
+      );
+    }
+  } else if (billing === "renewing_unresolved") {
     structural.push("billing_resolution_required");
   }
   if (facts.issuedQuoteCount > 0 && !facts.retainIssuedDocumentsConfirmed) {

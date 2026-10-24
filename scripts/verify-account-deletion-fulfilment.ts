@@ -9,6 +9,10 @@ import {
   deletionProjectAllowed,
 } from "../lib/account-deletion/operator";
 import { planPersonalDeletion, type DeletionFacts } from "../lib/account-deletion/plan";
+import {
+  interpretStripeSubscription,
+  type StripeProviderCheck,
+} from "../lib/account-deletion/stripe-verification";
 import { deletionStatusCopy } from "../lib/account-deletion/request";
 
 function assert(label: string, condition: boolean) {
@@ -31,6 +35,9 @@ const base: DeletionFacts = {
   issuedQuoteCount: 0,
   subscriptionStatus: null,
   subscriptionSource: null,
+  stripeSubscriptionId: null,
+  stripeCustomerId: null,
+  stripeProvider: null,
   cancelAtPeriodEnd: false,
   currentPeriodEnd: null,
   restrictedAuthorCount: 0,
@@ -62,27 +69,68 @@ const issued = planPersonalDeletion({
   retainIssuedDocumentsConfirmed: true,
 });
 const issuedUnconfirmed = planPersonalDeletion({ ...base, issuedQuoteCount: 1 });
+const stripeIds = {
+  stripeSubscriptionId: "sub_test",
+  stripeCustomerId: "cus_test",
+};
+const confirmedEnd: StripeProviderCheck = {
+  available: true,
+  subscriptionId: "sub_test",
+  customerId: "cus_test",
+  status: "active",
+  nonRenewing: true,
+  cancelAtPeriodEnd: true,
+  serviceEnd: "2026-12-15T00:00:00.000Z",
+  outstanding: true,
+};
+const stillRenewing: StripeProviderCheck = {
+  available: true,
+  subscriptionId: "sub_test",
+  customerId: "cus_test",
+  status: "active",
+  nonRenewing: false,
+  cancelAtPeriodEnd: false,
+  serviceEnd: null,
+  outstanding: false,
+};
 const subscribed = planPersonalDeletion({
   ...base,
+  ...stripeIds,
   subscriptionStatus: "active",
   subscriptionSource: "stripe",
+  stripeProvider: stillRenewing,
 });
 const subscribedAcknowledged = planPersonalDeletion({
   ...base,
+  ...stripeIds,
   subscriptionStatus: "active",
   subscriptionSource: "stripe",
+  cancelAtPeriodEnd: true,
 });
 const scheduled = planPersonalDeletion({
   ...base,
+  ...stripeIds,
   subscriptionStatus: "active",
   subscriptionSource: "stripe",
   cancelAtPeriodEnd: true,
   currentPeriodEnd: "2026-11-01T00:00:00.000Z",
+  stripeProvider: confirmedEnd,
 });
 const historical = planPersonalDeletion({
   ...base,
+  ...stripeIds,
   subscriptionStatus: "cancelled",
   subscriptionSource: "stripe",
+  stripeProvider: {
+    available: true,
+    subscriptionId: "sub_test",
+    customerId: "cus_test",
+    status: "canceled",
+    nonRenewing: true,
+    cancelAtPeriodEnd: false,
+    serviceEnd: "2026-10-01T00:00:00.000Z",
+    outstanding: false,
+  },
 });
 const overrideRecord = planPersonalDeletion({
   ...base,
@@ -134,19 +182,22 @@ assert(
   !subscribed.executable &&
     !subscribedAcknowledged.executable &&
     subscribed.blockers.includes("billing_resolution_required") &&
+    subscribedAcknowledged.blockers.includes("stripe_provider_verification_required") &&
     !subscribed.effects.some((effect) => effect.action === "delete")
 );
 assert(
   "a scheduled cancellation is retained without changing Stripe",
   scheduled.executable &&
-    scheduled.outcome.includes("already scheduled") &&
-    scheduled.outcome.includes("2026-11-01T00:00:00.000Z") &&
-    !scheduled.outcome.toLowerCase().includes("cancelled the subscription")
+    scheduled.outcome.includes("Stripe confirmed sub_test for cus_test") &&
+    scheduled.outcome.includes("A payment is still outstanding") &&
+    scheduled.outcome.includes("2026-12-15T00:00:00.000Z") &&
+    scheduled.outcome.includes("did not change the subscription")
 );
 assert(
   "historical and non-Stripe rows stay without authorising a live charge",
   historical.executable &&
-    historical.outcome.includes("not renewing") &&
+    historical.outcome.includes("Status canceled") &&
+    historical.outcome.includes("2026-10-01T00:00:00.000Z") &&
     overrideRecord.executable &&
     overrideRecord.outcome.includes("no Stripe subscription")
 );
@@ -166,7 +217,12 @@ assert(
 assert("the operator login cannot be the target", !self.executable && self.blockers.includes("operator_account_protected"));
 assert("another person cannot operate the tool", !stranger.executable);
 assert("production is not a fulfilment project", deletionProjectAllowed("lxvnylhsbvudzzupxeqr") === false);
-assert("preview is the fulfilment project", deletionProjectAllowed("shhpjsoldmqtkdbgrbtm"));
+assert(
+  "production dry-run is allowed and production execution is not",
+  deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "dry-run") &&
+    deletionProjectAllowed("lxvnylhsbvudzzupxeqr", "execute") === false
+);
+assert("preview is the fulfilment project", deletionProjectAllowed("shhpjsoldmqtkdbgrbtm", "execute"));
 assert(
   "execution requires the confirmation phrase",
   readFileSync("lib/account-deletion/operator.ts", "utf8").includes("delete-personal-account") &&
@@ -174,10 +230,39 @@ assert(
 );
 assert(
   "fulfilment does not cancel Stripe or delete shared business rows",
-  !executeSource.includes("stripe") &&
+  !executeSource.includes("api.stripe.com") &&
+    !executeSource.includes("STRIPE_SECRET_KEY") &&
+    !executeSource.includes("/cancel") &&
     !executeSource.includes('.from("organisations").delete') &&
     !executeSource.includes('.from("projects").delete') &&
     !executeSource.includes('.from("quotes").delete')
+);
+const fulfilScript = readFileSync("scripts/fulfil-account-deletion.ts", "utf8");
+assert(
+  "the operator command reads Stripe and refuses Production execution",
+  fulfilScript.includes("api.stripe.com/v1/subscriptions/") &&
+    fulfilScript.includes("Refusing Production execution") &&
+    fulfilScript.includes("--production-dry-run") &&
+    !fulfilScript.includes("/cancel")
+);
+const mismatch = interpretStripeSubscription({
+  expectedSubscriptionId: "sub_test",
+  expectedCustomerId: "cus_test",
+  httpOk: true,
+  body: { id: "sub_other", customer: "cus_test", status: "canceled" },
+});
+const unavailable = interpretStripeSubscription({
+  expectedSubscriptionId: "sub_test",
+  expectedCustomerId: "cus_test",
+  httpOk: false,
+  body: null,
+});
+assert(
+  "a Stripe read fails closed on a mismatch or an unavailable provider",
+  mismatch.available === false &&
+    mismatch.reason === "mismatch" &&
+    unavailable.available === false &&
+    unavailable.reason === "unavailable"
 );
 assert(
   "author columns stay protected by their foreign key",

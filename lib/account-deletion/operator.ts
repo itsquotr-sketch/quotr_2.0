@@ -17,6 +17,10 @@ export function isDeletionOperator(email: string): boolean {
   return normalizeDeletionEmail(email) === INITIAL_DELETION_OPERATOR.email;
 }
 
-export function deletionProjectAllowed(projectRef: string): boolean {
-  return projectRef === PREVIEW_SUPABASE_PROJECT_REF;
+export function deletionProjectAllowed(
+  projectRef: string,
+  mode: "dry-run" | "execute" = "execute"
+): boolean {
+  if (projectRef === PREVIEW_SUPABASE_PROJECT_REF) return true;
+  return projectRef === PRODUCTION_SUPABASE_PROJECT_REF && mode === "dry-run";
 }

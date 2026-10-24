@@ -526,6 +526,209 @@ async function proveRenewingSubscription(admin: SupabaseClient): Promise<void> {
   }
 }
 
+async function proveProviderOverMirror(admin: SupabaseClient): Promise<void> {
+  const blockedEmail = "deletion-fixture-mirror@example.invalid";
+  const allowedEmail = "deletion-fixture-provider@example.invalid";
+  const blockedOrg = randomUUID();
+  const allowedOrg = randomUUID();
+  const userIds: string[] = [];
+  try {
+    for (const [orgId, name] of [
+      [blockedOrg, "Deletion fixture mirror"],
+      [allowedOrg, "Deletion fixture provider"],
+    ] as const) {
+      const org = await admin.from("organisations").insert({ id: orgId, name });
+      if (org.error) throw new Error(org.error.message);
+    }
+    const blockedUser = await createFixtureUser(admin, blockedEmail, blockedOrg, "owner");
+    const allowedUser = await createFixtureUser(admin, allowedEmail, allowedOrg, "owner");
+    userIds.push(blockedUser, allowedUser);
+    for (const orgId of [blockedOrg, allowedOrg]) {
+      const subscription = await admin.from("org_subscriptions").insert({
+        org_id: orgId,
+        billing_environment: "test",
+        plan_code: "builder",
+        status: "active",
+        source: "stripe",
+        stripe_subscription_id: `sub_deletion_fixture_${orgId.slice(0, 8)}`,
+        stripe_customer_id: `cus_deletion_fixture_${orgId.slice(0, 8)}`,
+        cancel_at_period_end: true,
+        current_period_end: "2026-11-01T00:00:00.000Z",
+        paid_seat_quantity: 1,
+      });
+      if (subscription.error) throw new Error(subscription.error.message);
+    }
+    const blockedRequest = await insertRequest(admin, {
+      userId: blockedUser,
+      email: blockedEmail,
+      otherActiveMemberCount: 0,
+    });
+    let mirrorRefused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId: blockedRequest,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        verifyStripeSubscription: async () => ({
+          available: true,
+          subscriptionId: `sub_deletion_fixture_${blockedOrg.slice(0, 8)}`,
+          customerId: `cus_deletion_fixture_${blockedOrg.slice(0, 8)}`,
+          status: "active",
+          nonRenewing: false,
+          cancelAtPeriodEnd: false,
+          serviceEnd: null,
+          outstanding: false,
+        }),
+        deleteContact: async () => "deleted",
+      });
+    } catch {
+      mirrorRefused = true;
+    }
+    const allowedRequest = await insertRequest(admin, {
+      userId: allowedUser,
+      email: allowedEmail,
+      otherActiveMemberCount: 0,
+    });
+    const allowed = await fulfilPersonalDeletion(admin, {
+      requestId: allowedRequest,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      verifyStripeSubscription: async () => ({
+        available: true,
+        subscriptionId: `sub_deletion_fixture_${allowedOrg.slice(0, 8)}`,
+        customerId: `cus_deletion_fixture_${allowedOrg.slice(0, 8)}`,
+        status: "past_due",
+        nonRenewing: true,
+        cancelAtPeriodEnd: true,
+        serviceEnd: "2026-12-15T00:00:00.000Z",
+        outstanding: true,
+      }),
+      deleteContact: async () => "deleted",
+    });
+    const blockedUserAfter = await admin.auth.admin.getUserById(blockedUser);
+    const allowedUserAfter = await admin.auth.admin.getUserById(allowedUser);
+    const subscriptionAfter = await admin
+      .from("org_subscriptions")
+      .select("status, cancel_at_period_end")
+      .eq("org_id", allowedOrg)
+      .single();
+    results.providerOverMirror =
+      mirrorRefused &&
+      blockedUserAfter.data.user?.id === blockedUser &&
+      allowed.completed &&
+      allowed.plan.outcome.includes("2026-12-15T00:00:00.000Z") &&
+      allowed.plan.outcome.includes("A payment is still outstanding") &&
+      allowedUserAfter.data.user == null &&
+      subscriptionAfter.data?.status === "active" &&
+      subscriptionAfter.data?.cancel_at_period_end === true;
+  } finally {
+    await cleanup(admin, { orgId: blockedOrg, emails: [blockedEmail], userIds: [userIds[0]].filter(Boolean) });
+    await cleanup(admin, { orgId: allowedOrg, emails: [allowedEmail], userIds: [userIds[1]].filter(Boolean) });
+  }
+}
+
+async function proveOwnerRepair(admin: SupabaseClient): Promise<void> {
+  const ownerEmail = "deletion-fixture-ownerless@example.invalid";
+  const memberEmail = "deletion-fixture-ownerless-member@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture ownerless" });
+    if (org.error) throw new Error(org.error.message);
+    const ownerId = await createFixtureUser(admin, ownerEmail, orgId, "owner");
+    const memberId = await createFixtureUser(admin, memberEmail, orgId, "admin");
+    userIds.push(ownerId, memberId);
+    const demoted = await admin
+      .from("organisation_memberships")
+      .update({ role: "admin" })
+      .eq("org_id", orgId)
+      .eq("user_id", ownerId);
+    if (demoted.error) throw new Error(demoted.error.message);
+    const requestId = await insertRequest(admin, {
+      userId: ownerId,
+      email: ownerEmail,
+      otherActiveMemberCount: 1,
+    });
+    let refused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        deleteContact: async () => "deleted",
+      });
+    } catch {
+      refused = true;
+    }
+    const owners = await admin
+      .from("organisation_memberships")
+      .select("user_id, role")
+      .eq("org_id", orgId)
+      .eq("status", "active")
+      .eq("role", "owner");
+    const ownerAfter = await admin.auth.admin.getUserById(ownerId);
+    const stored = await admin.from("account_deletion_requests").select("status").eq("id", requestId).single();
+    results.ownerRepaired =
+      refused &&
+      owners.data?.length === 1 &&
+      owners.data[0]?.user_id === ownerId &&
+      ownerAfter.data.user?.id === ownerId &&
+      stored.data?.status !== "completed";
+  } finally {
+    await cleanup(admin, { orgId, emails: [ownerEmail, memberEmail], userIds });
+  }
+}
+
+async function proveResume(admin: SupabaseClient): Promise<void> {
+  const email = "deletion-fixture-resume@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture resume" });
+    if (org.error) throw new Error(org.error.message);
+    const userId = await createFixtureUser(admin, email, orgId, "owner");
+    userIds.push(userId);
+    const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    let interrupted = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        deleteContact: async () => "deleted",
+        afterLoginRemoved: async () => {
+          throw new Error("stop before completion");
+        },
+      });
+    } catch {
+      interrupted = true;
+    }
+    const midway = await admin.from("account_deletion_requests").select("status").eq("id", requestId).single();
+    const gone = await admin.auth.admin.getUserById(userId);
+    const resumed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      deleteContact: async () => "absent",
+    });
+    const orgAfter = await admin.from("organisations").select("id").eq("id", orgId).maybeSingle();
+    results.resume =
+      interrupted &&
+      midway.data?.status === "processing" &&
+      gone.data.user == null &&
+      resumed.completed &&
+      resumed.plan.outcome.includes("No Loops contact remained") &&
+      orgAfter.data?.id === orgId;
+  } finally {
+    await cleanup(admin, { orgId, emails: [email], userIds });
+  }
+}
+
 async function main() {
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -535,6 +738,9 @@ async function main() {
   await proveOwnerLeaves(admin);
   await proveSoleOwner(admin);
   await proveRenewingSubscription(admin);
+  await proveProviderOverMirror(admin);
+  await proveOwnerRepair(admin);
+  await proveResume(admin);
   const leftover = await admin
     .from("organisations")
     .select("id", { count: "exact", head: true })
@@ -547,6 +753,9 @@ async function main() {
     !results.ownerTransfer ||
     !results.soleOwner ||
     !results.renewingBlocked ||
+    !results.providerOverMirror ||
+    !results.ownerRepaired ||
+    !results.resume ||
     !results.leftoverOrganisations
   ) {
     process.exit(1);
