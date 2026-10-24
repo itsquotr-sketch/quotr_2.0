@@ -135,6 +135,19 @@ export function signupAuthErrorText(error: {
   return `${error.message ?? ""} ${error.code ?? ""}`.trim();
 }
 
+/**
+ * GoTrue returns PHONE:ALREADY_LINKED as HTTP 500.
+ * supabase-js treats every 500 as a retryable transport error and discards
+ * the body, so the client message is "{}". The captured body keeps the
+ * database code available to the classifier.
+ */
+export function signupFailureText(
+  error: { message?: string | null; code?: string | null },
+  responseBody?: string | null
+): string {
+  return `${signupAuthErrorText(error)} ${responseBody ?? ""}`.trim();
+}
+
 export function isExplicitPhoneClaimFailure(text: string): boolean {
   const value = text.toLowerCase();
   return (
