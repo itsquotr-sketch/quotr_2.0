@@ -11,6 +11,7 @@ import {
   isExplicitPhoneClaimFailure,
   isSignupDatabaseSaveFailure,
   normalizeAccountPhone,
+  signupFailureText,
 } from "../lib/auth/account-phone";
 import {
   containsUnsafeAuthDiagnostic,
@@ -96,6 +97,21 @@ function main() {
       !isExplicitPhoneClaimFailure("User already registered")
   );
   assert(
+    "a discarded HTTP 500 body still exposes PHONE:ALREADY_LINKED",
+    isExplicitPhoneClaimFailure(
+      signupFailureText(
+        { message: "{}" },
+        '{"code":"P0001","message":"PHONE:ALREADY_LINKED"}'
+      )
+    ) &&
+      !isExplicitPhoneClaimFailure(
+        signupFailureText({ message: "{}" }, '{"message":"Internal Server Error"}')
+      ) &&
+      !isSignupDatabaseSaveFailure(
+        signupFailureText({ message: "{}" }, "upstream timeout")
+      )
+  );
+  assert(
     "generic auth database failure can be checked after submit",
     isSignupDatabaseSaveFailure("Database error saving new user") &&
       !isSignupDatabaseSaveFailure("User already registered") &&
@@ -110,6 +126,12 @@ function main() {
   const claimAt = signupBody.indexOf("signupWasBlockedByExistingPhone");
   const provisionAt = signupBody.indexOf("provisionOrganisationForCurrentUser");
   assert("signup validates before Auth signUp", signUpAt > signupBody.indexOf("normalizeAccountPhone"));
+  assert(
+    "signup keeps the GoTrue 500 body for classification",
+    signupBody.includes("createAuthAttemptClient") &&
+      signupBody.includes("signupFailureText") &&
+      signupBody.includes("attempt.failureBody()")
+  );
   assert(
     "phone claim check is after signUp and not a pre-check",
     signUpAt > 0 && claimAt > signUpAt && signupBody.indexOf("accountPhoneIsClaimed") === -1
