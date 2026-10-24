@@ -18,6 +18,10 @@ export function LegalDocumentLinks({ className }: { className?: string }) {
       <Link href="/privacy" className={linkClass}>
         Privacy Notice
       </Link>
+      <span aria-hidden="true"> · </span>
+      <Link href="/account-deletion" className={linkClass}>
+        Request account deletion
+      </Link>
     </p>
   );
 }

@@ -343,6 +343,21 @@ export function ProfilePageContent({
 
       <section className="space-y-3 border-t pt-8">
         <div>
+          <h2 className="text-base font-semibold tracking-tight">Close account</h2>
+          <p className="text-sm text-muted-foreground">
+            Ask for this account to be closed. The request does not delete it.
+          </p>
+        </div>
+        <Link
+          href="/app/profile/deletion"
+          className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4"
+        >
+          Request account deletion
+        </Link>
+      </section>
+
+      <section className="space-y-3 border-t pt-8">
+        <div>
           <h2 className="text-base font-semibold tracking-tight">Account</h2>
           <p className="text-sm text-muted-foreground">
             Sign out of Quotr on this device.
