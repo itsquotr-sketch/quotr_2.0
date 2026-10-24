@@ -7,6 +7,8 @@ export const INITIAL_DELETION_OPERATOR = {
 } as const;
 
 export const DELETE_PERSONAL_ACCOUNT_CONFIRMATION = "delete-personal-account";
+export const RETAIN_SUBSCRIPTION_CONFIRMATION = "retain-subscription";
+export const RETAIN_ISSUED_DOCUMENTS_CONFIRMATION = "retain-issued-documents";
 
 export const PRODUCTION_SUPABASE_PROJECT_REF = "lxvnylhsbvudzzupxeqr";
 export const PREVIEW_SUPABASE_PROJECT_REF = "shhpjsoldmqtkdbgrbtm";

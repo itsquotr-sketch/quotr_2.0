@@ -14,11 +14,30 @@ import { deleteLoopsContact } from "@/lib/communications/loops-client";
 
 const ACTIVE_STATUSES = ["requested", "verified", "processing"] as const;
 
+const CLEAR_AUTHOR: Array<[string, string]> = [
+  ["quotes", "created_by"],
+  ["pricing_documents", "created_by"],
+  ["project_notes", "captured_by"],
+  ["note_proposals", "created_by"],
+  ["note_proposals", "reviewed_by"],
+];
+
+const RESTRICTED_AUTHOR: Array<[string, string]> = [
+  ["projects", "created_by"],
+  ["calibration_responses", "created_by"],
+  ["productivity_calibration_responses", "created_by"],
+  ["subcontractor_rate_applications", "applied_by"],
+];
+
 type FulfilResult = {
   dryRun: boolean;
   plan: DeletionPlan;
   completed: boolean;
 };
+
+function missingTable(error: { code?: string; message?: string }): boolean {
+  return error.code === "42P01" || (error.message ?? "").includes("does not exist");
+}
 
 async function countWhere(
   admin: SupabaseClient,
@@ -30,16 +49,42 @@ async function countWhere(
     .from(table)
     .select("id", { count: "exact", head: true })
     .eq(column, value);
-  if (error) throw new Error(`Could not read ${table} before deletion.`);
+  if (error) {
+    if (missingTable(error)) return 0;
+    throw new Error(`Could not read ${table} before deletion.`);
+  }
   return count ?? 0;
+}
+
+async function setAuthor(
+  admin: SupabaseClient,
+  table: string,
+  column: string,
+  fromUserId: string,
+  nextUserId: string | null
+): Promise<void> {
+  const { error } = await admin
+    .from(table)
+    .update({ [column]: nextUserId })
+    .eq(column, fromUserId);
+  if (error) {
+    if (missingTable(error)) return;
+    throw new Error(
+      `Could not detach ${table}.${column}. The login was not deleted.`
+    );
+  }
 }
 
 async function loadFacts(
   admin: SupabaseClient,
   input: {
-  requestId: string;
-  operatorEmail: string;
-}): Promise<{ facts: DeletionFacts; userId: string | null; status: string }> {
+    requestId: string;
+    operatorEmail: string;
+    continuingMemberId?: string | null;
+    retainSubscriptionConfirmed: boolean;
+    retainIssuedDocumentsConfirmed: boolean;
+  }
+): Promise<{ facts: DeletionFacts; userId: string | null; status: string }> {
   const { data: request, error } = await admin
     .from("account_deletion_requests")
     .select("email_normalized, identity_confirmed, status, user_id")
@@ -60,14 +105,16 @@ async function loadFacts(
 
   let organisationId: string | null = null;
   let otherActiveMemberCount = 0;
+  let targetIsOwner = false;
   if (userId) {
     const { data: membership } = await admin
       .from("organisation_memberships")
-      .select("org_id")
+      .select("org_id, role")
       .eq("user_id", userId)
       .eq("status", "active")
       .maybeSingle();
     organisationId = membership?.org_id ?? null;
+    targetIsOwner = membership?.role === "owner";
     if (organisationId) {
       const { count, error: memberError } = await admin
         .from("organisation_memberships")
@@ -103,19 +150,21 @@ async function loadFacts(
     subscriptionStatus = subscription?.status ?? null;
   }
 
-  let blockingReferenceCount = 0;
+  let restrictedAuthorCount = 0;
+  let detachableAuthorCount = 0;
   if (userId) {
-    const tables: Array<[string, string]> = [
-      ["projects", "created_by"],
-      ["quotes", "created_by"],
-      ["pricing_documents", "created_by"],
-      ["project_notes", "captured_by"],
-      ["note_proposals", "created_by"],
-    ];
-    for (const [table, column] of tables) {
-      blockingReferenceCount += await countWhere(admin, table, column, userId);
+    for (const [table, column] of RESTRICTED_AUTHOR) {
+      restrictedAuthorCount += await countWhere(admin, table, column, userId);
+    }
+    for (const [table, column] of CLEAR_AUTHOR) {
+      detachableAuthorCount += await countWhere(admin, table, column, userId);
     }
   }
+
+  const continuingMemberId =
+    input.continuingMemberId && input.continuingMemberId !== userId
+      ? input.continuingMemberId
+      : null;
 
   return {
     userId,
@@ -125,23 +174,72 @@ async function loadFacts(
       operatorEmail: input.operatorEmail,
       identityConfirmed: request.identity_confirmed === true,
       otherActiveMemberCount,
+      targetIsOwner,
       issuedQuoteCount,
       subscriptionStatus,
-      blockingReferenceCount,
+      restrictedAuthorCount,
+      detachableAuthorCount,
       organisationId,
+      continuingMemberId,
+      retainSubscriptionConfirmed: input.retainSubscriptionConfirmed,
+      retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed,
     },
   };
+}
+
+async function transferOwnership(
+  admin: SupabaseClient,
+  input: { orgId: string; fromUserId: string; toUserId: string }
+): Promise<void> {
+  const { data: successor, error: successorError } = await admin
+    .from("organisation_memberships")
+    .select("id, role")
+    .eq("org_id", input.orgId)
+    .eq("user_id", input.toUserId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (successorError || !successor) {
+    throw new Error("The continuing member is not an active member of this company. The login was not deleted.");
+  }
+  if (successor.role !== "owner") {
+    const demoted = await admin
+      .from("organisation_memberships")
+      .update({ role: "admin", role_changed_at: new Date().toISOString() })
+      .eq("org_id", input.orgId)
+      .eq("user_id", input.fromUserId)
+      .eq("status", "active")
+      .eq("role", "owner");
+    if (demoted.error) {
+      throw new Error("Ownership could not be released. The login was not deleted.");
+    }
+    const promoted = await admin
+      .from("organisation_memberships")
+      .update({
+        role: "owner",
+        role_changed_at: new Date().toISOString(),
+        role_changed_by: input.toUserId,
+      })
+      .eq("id", successor.id);
+    if (promoted.error) {
+      throw new Error("Ownership could not be transferred. The login was not deleted.");
+    }
+    await admin.from("profiles").update({ role: "owner" }).eq("id", input.toUserId);
+  }
 }
 
 export async function fulfilPersonalDeletion(
   admin: SupabaseClient,
   input: {
-  requestId: string;
-  operatorEmail: string;
-  projectRef: string;
-  confirmation?: string;
-  deleteContact?: (email: string) => Promise<"deleted" | "unconfigured" | "failed">;
-}): Promise<FulfilResult> {
+    requestId: string;
+    operatorEmail: string;
+    projectRef: string;
+    confirmation?: string;
+    continuingMemberId?: string | null;
+    retainSubscriptionConfirmed?: boolean;
+    retainIssuedDocumentsConfirmed?: boolean;
+    deleteContact?: (email: string) => Promise<"deleted" | "unconfigured" | "failed">;
+  }
+): Promise<FulfilResult> {
   if (!isDeletionOperator(input.operatorEmail)) {
     throw new Error("This operator cannot fulfil a deletion request.");
   }
@@ -149,13 +247,24 @@ export async function fulfilPersonalDeletion(
     throw new Error("Deletion fulfilment is limited to the Preview project.");
   }
 
-  const loaded = await loadFacts(admin, input);
+  const loaded = await loadFacts(admin, {
+    requestId: input.requestId,
+    operatorEmail: input.operatorEmail,
+    continuingMemberId: input.continuingMemberId,
+    retainSubscriptionConfirmed: input.retainSubscriptionConfirmed === true,
+    retainIssuedDocumentsConfirmed: input.retainIssuedDocumentsConfirmed === true,
+  });
   const plan = planPersonalDeletion(loaded.facts);
   if (loaded.status === "completed") {
     return {
       dryRun: true,
       completed: true,
-      plan: { ...plan, lifecycle: "completed", executable: false, effects: plan.effects.filter((effect) => effect.action === "retain") },
+      plan: {
+        ...plan,
+        lifecycle: "completed",
+        executable: false,
+        effects: plan.effects.filter((effect) => effect.action === "retain"),
+      },
     };
   }
   if (!confirmationMatches(input.confirmation)) {
@@ -189,6 +298,45 @@ export async function fulfilPersonalDeletion(
     throw new Error("The contact provider was not updated. The login was not deleted.");
   }
 
+  if (
+    loaded.facts.continuingMemberId &&
+    loaded.facts.targetIsOwner &&
+    loaded.facts.otherActiveMemberCount > 0 &&
+    loaded.facts.organisationId
+  ) {
+    await transferOwnership(admin, {
+      orgId: loaded.facts.organisationId,
+      fromUserId: loaded.userId,
+      toUserId: loaded.facts.continuingMemberId,
+    });
+  } else if (loaded.facts.continuingMemberId && loaded.facts.organisationId) {
+    const successor = await admin
+      .from("organisation_memberships")
+      .select("id")
+      .eq("org_id", loaded.facts.organisationId)
+      .eq("user_id", loaded.facts.continuingMemberId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (successor.error || !successor.data) {
+      throw new Error("The continuing member is not an active member of this company. The login was not deleted.");
+    }
+  }
+
+  for (const [table, column] of CLEAR_AUTHOR) {
+    await setAuthor(admin, table, column, loaded.userId, null);
+  }
+  const authorDestination = loaded.facts.continuingMemberId;
+  for (const [table, column] of RESTRICTED_AUTHOR) {
+    await setAuthor(admin, table, column, loaded.userId, authorDestination);
+  }
+  let remaining = 0;
+  for (const [table, column] of RESTRICTED_AUTHOR) {
+    remaining += await countWhere(admin, table, column, loaded.userId);
+  }
+  if (remaining > 0) {
+    throw new Error("A personal author pointer is still required. The login was not deleted.");
+  }
+
   const removed = await admin.auth.admin.deleteUser(loaded.userId);
   if (removed.error) {
     throw new Error("The login was not deleted.");
@@ -200,7 +348,7 @@ export async function fulfilPersonalDeletion(
       status: "completed",
       completed_at: new Date().toISOString(),
       operator_email: input.operatorEmail,
-      retained: plan.effects.filter((effect) => effect.action === "retain"),
+      retained: { summary: plan.outcome, effects: plan.effects },
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.requestId);

@@ -1,24 +1,37 @@
 /**
- * Prove the supported personal-deletion path on Preview only.
- * Creates a disposable company and login, dry-runs, then deletes the login.
- * The company row is retained by fulfilment and removed afterwards as fixture cleanup.
- * Does not send email.
+ * Prove supported personal-deletion paths on Preview only.
+ * Disposable fixtures. Does not email, cancel Stripe, or delete a real account.
+ * Fixture companies are removed after the assertions.
  *
  * Run: npx tsx scripts/prove-account-deletion-preview.ts
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { fulfilPersonalDeletion } from "../lib/account-deletion/execute";
+import { upsertLoopsContact } from "../lib/communications/loops-client";
 import {
   INITIAL_DELETION_OPERATOR,
   PREVIEW_SUPABASE_PROJECT_REF,
 } from "../lib/account-deletion/operator";
 
 function envValue(name: string): string {
-  const file = readFileSync(".env.local", "utf8");
-  const line = file.split(/\r?\n/).find((entry) => entry.startsWith(`${name}=`));
-  return line ? line.slice(name.length + 1).replace(/^"|"$/g, "") : "";
+  const fromProcess = process.env[name]?.trim();
+  if (fromProcess) return fromProcess;
+  const candidates = [
+    ".env.local",
+    "c:/Users/Admin/Desktop/quotr_2.0/quotr_2.0/.env.local",
+  ];
+  for (const path of candidates) {
+    try {
+      const file = readFileSync(path, "utf8");
+      const line = file.split(/\r?\n/).find((entry) => entry.startsWith(`${name}=`));
+      if (line) return line.slice(name.length + 1).replace(/^"|"$/g, "");
+    } catch {
+      // Try the next candidate.
+    }
+  }
+  return "";
 }
 
 const url = envValue("NEXT_PUBLIC_SUPABASE_URL");
@@ -30,158 +43,359 @@ if (!url.includes(PREVIEW_SUPABASE_PROJECT_REF) || url.includes("lxvnylhsbvudzzu
 process.env.NEXT_PUBLIC_SUPABASE_URL = url;
 process.env.SUPABASE_SERVICE_ROLE_KEY = key;
 
+const operator = INITIAL_DELETION_OPERATOR.email;
+const results: Record<string, boolean> = {};
+
+function password(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+async function createFixtureUser(
+  admin: SupabaseClient,
+  email: string,
+  orgId: string,
+  role: "owner" | "admin"
+): Promise<string> {
+  const created = await admin.auth.admin.createUser({
+    email,
+    password: password(),
+    email_confirm: true,
+    user_metadata: { deletion_fixture: "true" },
+  });
+  if (created.error || !created.data.user) {
+    throw new Error(`Fixture login was not created: ${created.error?.message ?? "unknown"}`);
+  }
+  const userId = created.data.user.id;
+  const profile = await admin.from("profiles").upsert({
+    id: userId,
+    org_id: orgId,
+    role,
+    full_name: "Deletion Fixture",
+  });
+  if (profile.error) throw new Error(`Fixture profile was not saved: ${profile.error.message}`);
+  const membership = await admin.from("organisation_memberships").insert({
+    org_id: orgId,
+    user_id: userId,
+    role,
+    status: "active",
+    joined_at: new Date().toISOString(),
+  });
+  if (membership.error) throw new Error(`Fixture membership was not saved: ${membership.error.message}`);
+  return userId;
+}
+
+async function insertRequest(
+  admin: SupabaseClient,
+  input: { userId: string; email: string; otherActiveMemberCount: number }
+): Promise<string> {
+  const request = await admin
+    .from("account_deletion_requests")
+    .insert({
+      user_id: input.userId,
+      email_normalized: input.email,
+      source: "signed_in",
+      identity_confirmed: true,
+      resolution: input.otherActiveMemberCount > 0 ? "needs_support" : "recorded",
+      status: "verified",
+      other_active_member_count: input.otherActiveMemberCount,
+      issued_quote_count: 0,
+      subscription_status: null,
+    })
+    .select("id")
+    .single();
+  if (request.error || !request.data) {
+    throw new Error(`Fixture request was not saved: ${request.error?.message ?? "unknown"}`);
+  }
+  return request.data.id as string;
+}
+
+async function cleanup(
+  admin: SupabaseClient,
+  input: { orgId: string; emails: string[]; userIds: string[] }
+): Promise<void> {
+  await admin.from("quotes").delete().eq("org_id", input.orgId);
+  await admin.from("projects").delete().eq("org_id", input.orgId);
+  await admin.from("org_subscriptions").delete().eq("org_id", input.orgId);
+  await admin.from("organisation_memberships").delete().eq("org_id", input.orgId);
+  await admin.from("account_deletion_requests").delete().in("email_normalized", input.emails);
+  await admin.from("account_deletion_suppressions").delete().in("email_normalized", input.emails);
+  for (const userId of input.userIds) {
+    const existing = await admin.auth.admin.getUserById(userId);
+    if (existing.data.user?.user_metadata?.deletion_fixture === "true") {
+      await admin.auth.admin.deleteUser(userId);
+    }
+  }
+  const org = await admin.from("organisations").select("name").eq("id", input.orgId).maybeSingle();
+  if (org.data?.name?.startsWith("Deletion fixture")) {
+    await admin.from("organisations").delete().eq("id", input.orgId);
+  }
+}
+
+async function proveEmpty(admin: SupabaseClient): Promise<void> {
+  const email = "deletion-fixture-empty@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture empty" });
+    if (org.error) throw new Error(org.error.message);
+    const userId = await createFixtureUser(admin, email, orgId, "owner");
+    userIds.push(userId);
+    const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    const dryRun = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      deleteContact: async () => "unconfigured",
+    });
+    const executed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      deleteContact: async () => "unconfigured",
+    });
+    const userAfter = await admin.auth.admin.getUserById(userId);
+    const orgAfter = await admin.from("organisations").select("id").eq("id", orgId).maybeSingle();
+    const calls: string[] = [];
+    const retry = await upsertLoopsContact({
+      properties: { email, userId, source: "settings", marketingConsent: true },
+      mode: "explicit_opt_in",
+      marketingConsent: true,
+      apiKey: "proof-key",
+      fetchImpl: async (input) => {
+        calls.push(String(input));
+        return { ok: false, status: 500, json: async () => ({}) };
+      },
+    });
+    results.empty =
+      dryRun.dryRun &&
+      dryRun.plan.executable &&
+      !dryRun.completed &&
+      executed.completed &&
+      userAfter.data.user == null &&
+      orgAfter.data?.id === orgId &&
+      retry.ok &&
+      retry.skipped === "suppressed" &&
+      calls.length === 0 &&
+      executed.plan.outcome.includes("The personal login was deleted") &&
+      executed.plan.outcome.includes("The company was not closed");
+  } finally {
+    await cleanup(admin, { orgId, emails: [email], userIds });
+  }
+}
+
+async function proveReferencesAndMembers(admin: SupabaseClient): Promise<void> {
+  const ownerEmail = "deletion-fixture-owner@example.invalid";
+  const memberEmail = "deletion-fixture-member@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture members" });
+    if (org.error) throw new Error(org.error.message);
+    const ownerId = await createFixtureUser(admin, ownerEmail, orgId, "owner");
+    const memberId = await createFixtureUser(admin, memberEmail, orgId, "admin");
+    userIds.push(ownerId, memberId);
+    const project = await admin.from("projects").insert({
+      org_id: orgId,
+      created_by: memberId,
+      title: "Deletion fixture project",
+    }).select("id").single();
+    if (project.error || !project.data) throw new Error(project.error?.message ?? "project");
+    const quote = await admin.from("quotes").insert({
+      org_id: orgId,
+      project_id: project.data.id,
+      created_by: memberId,
+      title: "Deletion fixture quote",
+      status: "sent",
+      sent_at: new Date().toISOString(),
+    }).select("id").single();
+    if (quote.error || !quote.data) throw new Error(quote.error?.message ?? "quote");
+
+    const requestId = await insertRequest(admin, {
+      userId: memberId,
+      email: memberEmail,
+      otherActiveMemberCount: 1,
+    });
+    const blocked = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      retainIssuedDocumentsConfirmed: true,
+      deleteContact: async () => "unconfigured",
+    });
+    let refused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        retainIssuedDocumentsConfirmed: true,
+        deleteContact: async () => "unconfigured",
+      });
+    } catch {
+      refused = true;
+    }
+    const executed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      continuingMemberId: ownerId,
+      retainIssuedDocumentsConfirmed: true,
+      deleteContact: async () => "unconfigured",
+    });
+    const memberAfter = await admin.auth.admin.getUserById(memberId);
+    const ownerAfter = await admin.auth.admin.getUserById(ownerId);
+    const projectAfter = await admin.from("projects").select("id, created_by").eq("id", project.data.id).single();
+    const quoteAfter = await admin.from("quotes").select("id, created_by, sent_at").eq("id", quote.data.id).single();
+    const ownerMembership = await admin
+      .from("organisation_memberships")
+      .select("role")
+      .eq("user_id", ownerId)
+      .eq("status", "active")
+      .maybeSingle();
+    const stored = await admin
+      .from("account_deletion_requests")
+      .select("status, retained")
+      .eq("id", requestId)
+      .single();
+    const summary = (stored.data?.retained as { summary?: string } | null)?.summary ?? "";
+    results.references =
+      blocked.dryRun &&
+      !blocked.plan.executable &&
+      blocked.plan.blockers.includes("continuing_member_required") &&
+      refused &&
+      memberAfter.data.user == null &&
+      ownerAfter.data.user?.id === ownerId &&
+      projectAfter.data?.id === project.data.id &&
+      projectAfter.data?.created_by === ownerId &&
+      quoteAfter.data?.sent_at != null &&
+      quoteAfter.data?.created_by == null &&
+      ownerMembership.data?.role === "owner" &&
+      stored.data?.status === "completed" &&
+      summary.includes("The personal login was deleted") &&
+      summary.includes("not remove them") &&
+      executed.completed;
+  } finally {
+    await cleanup(admin, { orgId, emails: [ownerEmail, memberEmail], userIds });
+  }
+}
+
+async function proveSoleOwner(admin: SupabaseClient): Promise<void> {
+  const email = "deletion-fixture-sole@example.invalid";
+  const orgId = randomUUID();
+  const userIds: string[] = [];
+  try {
+    const org = await admin.from("organisations").insert({ id: orgId, name: "Deletion fixture sole" });
+    if (org.error) throw new Error(org.error.message);
+    const userId = await createFixtureUser(admin, email, orgId, "owner");
+    userIds.push(userId);
+    const project = await admin.from("projects").insert({
+      org_id: orgId,
+      created_by: userId,
+      title: "Deletion fixture sole project",
+    }).select("id").single();
+    if (project.error || !project.data) throw new Error(project.error?.message ?? "project");
+    const quote = await admin.from("quotes").insert({
+      org_id: orgId,
+      project_id: project.data.id,
+      created_by: userId,
+      title: "Deletion fixture sole quote",
+      status: "sent",
+      sent_at: new Date().toISOString(),
+    }).select("id").single();
+    if (quote.error || !quote.data) throw new Error(quote.error?.message ?? "quote");
+    const subscription = await admin.from("org_subscriptions").insert({
+      org_id: orgId,
+      billing_environment: "test",
+      plan_code: "builder",
+      status: "active",
+      source: "override",
+      paid_seat_quantity: 1,
+    }).select("id, status").single();
+    if (subscription.error || !subscription.data) {
+      throw new Error(subscription.error?.message ?? "subscription");
+    }
+    const requestId = await insertRequest(admin, { userId, email, otherActiveMemberCount: 0 });
+    const dryRun = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      deleteContact: async () => "unconfigured",
+    });
+    let refused = false;
+    try {
+      await fulfilPersonalDeletion(admin, {
+        requestId,
+        operatorEmail: operator,
+        projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+        confirmation: "delete-personal-account",
+        deleteContact: async () => "unconfigured",
+      });
+    } catch {
+      refused = true;
+    }
+    const stillThere = await admin.auth.admin.getUserById(userId);
+    const executed = await fulfilPersonalDeletion(admin, {
+      requestId,
+      operatorEmail: operator,
+      projectRef: PREVIEW_SUPABASE_PROJECT_REF,
+      confirmation: "delete-personal-account",
+      retainSubscriptionConfirmed: true,
+      retainIssuedDocumentsConfirmed: true,
+      deleteContact: async () => "unconfigured",
+    });
+    const userAfter = await admin.auth.admin.getUserById(userId);
+    const projectAfter = await admin.from("projects").select("id, created_by").eq("id", project.data.id).single();
+    const quoteAfter = await admin.from("quotes").select("sent_at, created_by").eq("id", quote.data.id).single();
+    const subscriptionAfter = await admin
+      .from("org_subscriptions")
+      .select("status, source")
+      .eq("id", subscription.data.id)
+      .single();
+    const stored = await admin.from("account_deletion_requests").select("status, retained").eq("id", requestId).single();
+    const summary = (stored.data?.retained as { summary?: string } | null)?.summary ?? "";
+    results.soleOwner =
+      dryRun.dryRun &&
+      !dryRun.plan.executable &&
+      dryRun.plan.blockers.includes("subscription_retention_unconfirmed") &&
+      dryRun.plan.blockers.includes("issued_documents_retention_unconfirmed") &&
+      dryRun.plan.effects.some((effect) => effect.action === "retain" && effect.target === "subscription") &&
+      refused &&
+      stillThere.data.user?.id === userId &&
+      executed.completed &&
+      userAfter.data.user == null &&
+      projectAfter.data?.id === project.data.id &&
+      projectAfter.data?.created_by == null &&
+      quoteAfter.data?.sent_at != null &&
+      quoteAfter.data?.created_by == null &&
+      subscriptionAfter.data?.status === "active" &&
+      subscriptionAfter.data?.source === "override" &&
+      stored.data?.status === "completed" &&
+      summary.includes("was not cancelled") &&
+      summary.includes("The company was not closed");
+  } finally {
+    await cleanup(admin, { orgId, emails: [email], userIds });
+  }
+}
+
 async function main() {
   const admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const email = "deletion-fixture@example.invalid";
-const operator = INITIAL_DELETION_OPERATOR.email;
-let contactAsked = false;
-
-const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-const existing = listed.data.users.find((user) => user.email === email);
-if (existing) {
-  if (existing.user_metadata?.deletion_fixture !== "true") {
-    console.error("A non-fixture user already uses the proof address. Stopped.");
+  await proveEmpty(admin);
+  await proveReferencesAndMembers(admin);
+  await proveSoleOwner(admin);
+  const leftover = await admin
+    .from("organisations")
+    .select("id", { count: "exact", head: true })
+    .like("name", "Deletion fixture%");
+  results.leftoverOrganisations = (leftover.count ?? 0) === 0;
+  console.log(JSON.stringify(results));
+  if (!results.empty || !results.references || !results.soleOwner || !results.leftoverOrganisations) {
     process.exit(1);
   }
-  const removed = await admin.auth.admin.deleteUser(existing.id);
-  if (removed.error) {
-    console.error("The previous fixture login could not be removed.");
-    process.exit(1);
-  }
-}
-
-const orgId = randomUUID();
-const orgInsert = await admin.from("organisations").insert({
-  id: orgId,
-  name: "Deletion fixture",
-});
-if (orgInsert.error) {
-  console.error("The fixture company could not be created.");
-  process.exit(1);
-}
-
-const created = await admin.auth.admin.createUser({
-  email,
-  password: randomBytes(24).toString("base64url"),
-  email_confirm: true,
-  user_metadata: { deletion_fixture: "true" },
-});
-if (created.error || !created.data.user) {
-  await admin.from("organisations").delete().eq("id", orgId);
-  console.error("The fixture login could not be created.");
-  process.exit(1);
-}
-const userId = created.data.user.id;
-
-const profile = await admin.from("profiles").upsert({
-  id: userId,
-  org_id: orgId,
-  role: "owner",
-  full_name: "Deletion Fixture",
-});
-const membership = await admin.from("organisation_memberships").insert({
-  org_id: orgId,
-  user_id: userId,
-  role: "owner",
-  status: "active",
-  joined_at: new Date().toISOString(),
-});
-const request = await admin
-  .from("account_deletion_requests")
-  .insert({
-    user_id: userId,
-    email_normalized: email,
-    source: "signed_in",
-    identity_confirmed: true,
-    resolution: "recorded",
-    status: "verified",
-    other_active_member_count: 0,
-    issued_quote_count: 0,
-    subscription_status: null,
-  })
-  .select("id")
-  .single();
-
-if (profile.error || membership.error || request.error || !request.data) {
-  await admin.auth.admin.deleteUser(userId);
-  await admin.from("organisations").delete().eq("id", orgId);
-  console.error("The fixture request could not be prepared.");
-  process.exit(1);
-}
-
-const dryRun = await fulfilPersonalDeletion(admin, {
-  requestId: request.data.id,
-  operatorEmail: operator,
-  projectRef: PREVIEW_SUPABASE_PROJECT_REF,
-  deleteContact: async () => {
-    contactAsked = true;
-    return "unconfigured";
-  },
-});
-const dryRunAsked = contactAsked;
-const executed = await fulfilPersonalDeletion(admin, {
-  requestId: request.data.id,
-  operatorEmail: operator,
-  projectRef: PREVIEW_SUPABASE_PROJECT_REF,
-  confirmation: "delete-personal-account",
-  deleteContact: async () => {
-    contactAsked = true;
-    return "unconfigured";
-  },
-});
-
-const userAfter = await admin.auth.admin.getUserById(userId);
-const orgAfter = await admin.from("organisations").select("id").eq("id", orgId).maybeSingle();
-const membersAfter = await admin
-  .from("organisation_memberships")
-  .select("id", { count: "exact", head: true })
-  .eq("org_id", orgId);
-const suppression = await admin
-  .from("account_deletion_suppressions")
-  .select("email_normalized")
-  .eq("email_normalized", email)
-  .maybeSingle();
-const projects = await admin
-  .from("projects")
-  .select("id", { count: "exact", head: true })
-  .eq("org_id", orgId);
-
-const ok =
-  dryRun.dryRun &&
-  !dryRun.completed &&
-  dryRun.plan.executable &&
-  !dryRunAsked &&
-  executed.completed &&
-  !executed.dryRun &&
-  userAfter.data.user == null &&
-  orgAfter.data?.id === orgId &&
-  (membersAfter.count ?? 0) === 0 &&
-  (projects.count ?? 0) === 0 &&
-  suppression.data?.email_normalized === email;
-
-if ((projects.count ?? 0) === 0 && (membersAfter.count ?? 0) === 0) {
-  await admin.from("organisations").delete().eq("id", orgId);
-}
-
-console.log(
-  JSON.stringify({
-    dryRun: dryRun.dryRun,
-    executable: dryRun.plan.executable,
-    blockers: dryRun.plan.blockers,
-    issuedLinks: dryRun.plan.issuedLinks,
-    effects: dryRun.plan.effects.map((effect) => effect.target),
-    providerCalledDuringDryRun: dryRunAsked,
-    completed: executed.completed,
-    loginRemoved: userAfter.data.user == null,
-    companyRetainedUntilCleanup: orgAfter.data?.id === orgId,
-    membershipsAfter: membersAfter.count ?? 0,
-    suppressionRecorded: Boolean(suppression.data),
-    ok,
-  })
-);
-if (!ok) process.exit(1);
 }
 
 void main();

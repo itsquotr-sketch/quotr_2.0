@@ -341,9 +341,17 @@ async function main() {
       phoneSql.includes("PHONE:ALREADY_LINKED")
   );
   const migrations = readdirSync(join(process.cwd(), "supabase/migrations"));
+  const deletionMigrations = [
+    "121_account_deletion_requests.sql",
+    "122_account_deletion_fulfilment.sql",
+    "123_detach_personal_authors.sql",
+  ];
   assert(
-    "this release adds no phone uniqueness migration and no deletion migration",
-    !migrations.some((name) => /^(121|122|123)_/.test(name))
+    "deletion migrations do not add another phone uniqueness rule",
+    deletionMigrations.every((name) => migrations.includes(name)) &&
+      deletionMigrations.every(
+        (name) => !read(`supabase/migrations/${name}`).includes("PHONE:ALREADY_LINKED")
+      )
   );
 
   section("BILLING LABEL");

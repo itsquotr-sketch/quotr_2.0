@@ -14,14 +14,19 @@ export type DeletionFacts = {
   operatorEmail: string;
   identityConfirmed: boolean;
   otherActiveMemberCount: number;
+  targetIsOwner: boolean;
   issuedQuoteCount: number;
   subscriptionStatus: string | null;
-  blockingReferenceCount: number;
+  restrictedAuthorCount: number;
+  detachableAuthorCount: number;
   organisationId: string | null;
+  continuingMemberId: string | null;
+  retainSubscriptionConfirmed: boolean;
+  retainIssuedDocumentsConfirmed: boolean;
 };
 
 export type DeletionEffect = {
-  action: "delete" | "suppress" | "retain";
+  action: "delete" | "suppress" | "retain" | "detach" | "transfer";
   target: string;
   detail: string;
 };
@@ -32,6 +37,7 @@ export type DeletionPlan = {
   effects: DeletionEffect[];
   issuedLinks: string;
   blockers: string[];
+  outcome: string;
 };
 
 const NO_ISSUED_LINKS =
@@ -43,58 +49,65 @@ function issuedLinks(count: number): string {
   return count > 0 ? LINKS_REMAIN : NO_ISSUED_LINKS;
 }
 
+export function deletionOutcome(effects: DeletionEffect[]): string {
+  const removed = effects.filter((effect) => effect.action !== "retain");
+  const retained = effects.filter((effect) => effect.action === "retain");
+  return `Deleted: ${removed.map((effect) => effect.detail).join(" ")} Retained: ${retained.map((effect) => effect.detail).join(" ")}`;
+}
+
 /**
- * Personal-account plan. Organisation closure is never an effect.
- * A plan with blockers is not executable.
+ * Personal-account plan. Company closure and subscription cancellation are
+ * never effects. A plan with blockers is not executable and must not be
+ * marked completed.
  */
 export function planPersonalDeletion(facts: DeletionFacts): DeletionPlan {
   const retained: DeletionEffect[] = [];
-  const blockers: string[] = [];
+  const structural: string[] = [];
+  const confirmation: string[] = [];
+  const continuingMember = facts.continuingMemberId;
 
   if (!isDeletionOperator(facts.operatorEmail)) {
-    blockers.push("operator_not_authorised");
+    structural.push("operator_not_authorised");
   }
   if (
     facts.targetEmail.trim().toLowerCase() ===
     facts.operatorEmail.trim().toLowerCase()
   ) {
-    blockers.push("operator_account_protected");
+    structural.push("operator_account_protected");
   }
   if (!facts.identityConfirmed) {
-    blockers.push("identity_not_verified");
+    structural.push("identity_not_verified");
   }
-  if (facts.otherActiveMemberCount > 0) {
-    blockers.push("other_members_need_support");
+  const needsContinuingMember =
+    (facts.otherActiveMemberCount > 0 && facts.targetIsOwner) ||
+    (facts.restrictedAuthorCount > 0 && facts.otherActiveMemberCount > 0);
+  if (needsContinuingMember && !continuingMember) {
+    structural.push("continuing_member_required");
   }
-  if (facts.issuedQuoteCount > 0) {
-    blockers.push("issued_documents_retained");
+  if (facts.subscriptionStatus && !facts.retainSubscriptionConfirmed) {
+    confirmation.push("subscription_retention_unconfirmed");
   }
-  if (facts.subscriptionStatus) {
-    blockers.push("subscription_retained");
-  }
-  if (facts.blockingReferenceCount > 0) {
-    blockers.push("personal_records_still_referenced");
+  if (facts.issuedQuoteCount > 0 && !facts.retainIssuedDocumentsConfirmed) {
+    confirmation.push("issued_documents_retention_unconfirmed");
   }
 
   if (facts.organisationId) {
     retained.push({
       action: "retain",
       target: "organisation",
-      detail:
-        "Organisation closure is separate. The company row, its projects, and its files stay.",
+      detail: "The company was not closed.",
     });
   }
   retained.push({
     action: "retain",
     target: "organisation_storage",
-    detail:
-      "Storage objects belong to the company. This request does not delete those files.",
+    detail: "Company files were not deleted.",
   });
   if (facts.subscriptionStatus) {
     retained.push({
       action: "retain",
       target: "subscription",
-      detail: `Subscription status ${facts.subscriptionStatus} stays with the company. Cancellation stays on the Quotr website. No retention period is added here.`,
+      detail: `The subscription stays ${facts.subscriptionStatus}. It was not cancelled and its status was not changed.`,
     });
   }
   if (facts.issuedQuoteCount > 0) {
@@ -105,37 +118,55 @@ export function planPersonalDeletion(facts: DeletionFacts): DeletionPlan {
     });
   }
 
-  const executable = blockers.length === 0;
-  const lifecycle: DeletionLifecycle = facts.identityConfirmed ? "verified" : "requested";
-  const effects: DeletionEffect[] = [...retained];
-  if (executable) {
-    effects.unshift(
+  const proposed = structural.length === 0;
+  const executable = proposed && confirmation.length === 0;
+  const effects: DeletionEffect[] = [];
+  if (proposed) {
+    effects.push(
       {
         action: "suppress",
         target: "loops_contact",
         detail:
-          "Record the email so a later Loops retry cannot create the contact again.",
+          "The email is suppressed so a later Loops retry cannot create the contact again.",
       },
       {
         action: "delete",
         target: "loops_contact",
-        detail: "Delete the Loops contact when that provider is configured.",
-      },
-      {
-        action: "delete",
-        target: "supabase_auth_user",
-        detail:
-          "Delete the login. The profile and that person's membership cascade from it.",
+        detail: "The Loops contact is deleted when that provider is configured.",
       }
     );
+    if (facts.restrictedAuthorCount > 0 || facts.detachableAuthorCount > 0) {
+      effects.push({
+        action: "detach",
+        target: "personal_author",
+        detail: continuingMember
+          ? "Project and document rows stay. A required author pointer moves to the continuing member. Other personal pointers are cleared. Customer document links are not removed."
+          : "Project and document rows stay. The personal author pointer is cleared. Customer document links are not removed.",
+      });
+    }
+    if (continuingMember && facts.targetIsOwner && facts.otherActiveMemberCount > 0) {
+      effects.push({
+        action: "transfer",
+        target: "organisation_owner",
+        detail: "The named continuing member becomes the owner. The company is not closed.",
+      });
+    }
+    effects.push({
+      action: "delete",
+      target: "supabase_auth_user",
+      detail:
+        "The personal login was deleted. The profile and that person's membership go with it.",
+    });
   }
+  effects.push(...retained);
 
   return {
-    lifecycle,
+    lifecycle: facts.identityConfirmed ? "verified" : "requested",
     executable,
     effects,
     issuedLinks: issuedLinks(facts.issuedQuoteCount),
-    blockers,
+    blockers: [...structural, ...confirmation],
+    outcome: proposed ? deletionOutcome(effects) : "",
   };
 }
 
@@ -144,5 +175,5 @@ export function confirmationMatches(value: string | undefined): boolean {
 }
 
 export function supportResolutionCopy(): string {
-  return `Other people still belong to this company. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL}. The request stays verified and is not refused.`;
+  return `Other people still belong to this company. Email ${ACCOUNT_DELETION_SUPPORT_EMAIL} and name the continuing owner. The request stays verified and is not refused.`;
 }

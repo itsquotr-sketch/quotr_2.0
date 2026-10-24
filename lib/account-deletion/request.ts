@@ -23,6 +23,7 @@ export type DeletionRequestRecord = {
   otherActiveMemberCount: number;
   issuedQuoteCount: number;
   subscriptionStatus: string | null;
+  outcome?: string;
 };
 
 export type DeletionActionState = {
@@ -59,7 +60,9 @@ export function deletionStatusCopy(record: DeletionRequestRecord): {
   if (record.status === "completed") {
     return {
       title: "Completed",
-      body: "The personal login was deleted. The company, issued documents, and any subscription were not deleted.",
+      body: record.outcome
+        ? record.outcome
+        : "The request is marked completed without a stored outcome. Do not treat that as a description of what was deleted.",
     };
   }
   if (record.status === "processing") {

@@ -4,6 +4,9 @@
  *
  * Run: npx tsx scripts/fulfil-account-deletion.ts --request <id> --operator jeanluc@erccontracting.co.nz
  * Execute: add --confirm delete-personal-account
+ * When a subscription or issued document stays, also pass
+ * --retain-subscription and --retain-issued-documents.
+ * When another member continues as owner, pass --continuing-member <user id>.
  */
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
@@ -53,6 +56,9 @@ async function main() {
     operatorEmail: operator,
     projectRef: PREVIEW_SUPABASE_PROJECT_REF,
     confirmation: flag("--confirm"),
+    continuingMemberId: flag("--continuing-member"),
+    retainSubscriptionConfirmed: process.argv.includes("--retain-subscription"),
+    retainIssuedDocumentsConfirmed: process.argv.includes("--retain-issued-documents"),
     deleteContact: async () => "unconfigured",
   });
 
@@ -65,6 +71,7 @@ async function main() {
       blockers: result.plan.blockers,
       issuedLinks: result.plan.issuedLinks,
       effects: result.plan.effects,
+      outcome: result.plan.outcome,
     })
   );
 }
