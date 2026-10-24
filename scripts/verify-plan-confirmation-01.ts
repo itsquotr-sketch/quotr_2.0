@@ -3,16 +3,21 @@
  * Run: npx tsx scripts/verify-plan-confirmation-01.ts
  */
 import { readFileSync } from "node:fs";
+import { shouldApplyStripeEvent } from "../lib/billing/events";
 import { deliverPaidPlanConfirmation } from "../lib/billing/plan-confirmation-send";
 import {
   buildPlanConfirmationEmail,
   decidePlanConfirmationSend,
   isPlanConfirmationDeliveryEnabled,
   isWebsiteBillingUrl,
+  planConfirmationBillingUrlAccepted,
   planConfirmationFactsFromStripe,
   planConfirmationIdempotencyKey,
+  planConfirmationSkipReason,
+  planConfirmationUsersSentence,
   PLAN_CONFIRMATION_ANDROID_HOST,
   PLAN_CONFIRMATION_PREVIEW_TEST_RECIPIENT,
+  PLAN_CONFIRMATION_PRODUCTION_BILLING_URL,
   selectPaidPlanRecipient,
   shouldEnqueuePaidPlanConfirmation,
 } from "../lib/billing/plan-confirmation";
@@ -105,6 +110,16 @@ assert(
 );
 
 assert(
+  "past due recovery does not confirm again",
+  !shouldEnqueuePaidPlanConfirmation({
+    previous: { source: "stripe", status: "past_due", stripeSubscriptionId: "sub_new" },
+    next: activeBuilder,
+    activeOverride: false,
+    eventType: "customer.subscription.updated",
+  })
+);
+
+assert(
   "renewal of the same active subscription does not confirm",
   !shouldEnqueuePaidPlanConfirmation({
     previous: { source: "stripe", status: "active", stripeSubscriptionId: "sub_new" },
@@ -185,6 +200,14 @@ assert(
 );
 
 assert(
+  "older event timestamp does not apply",
+  shouldApplyStripeEvent({
+    eventCreatedUnix: 100,
+    lastAppliedEventCreatedAt: new Date(200 * 1000).toISOString(),
+  }) === false
+);
+
+assert(
   "a non-owner member is not selected",
   selectPaidPlanRecipient({
     stripeCustomerEmail: "member@example.com",
@@ -213,6 +236,8 @@ const facts = planConfirmationFactsFromStripe({
     },
     latest_invoice: {
       object: "invoice",
+      status: "paid",
+      paid: true,
       subtotal: 200,
       tax: 30,
       total: 230,
@@ -237,7 +262,13 @@ if (facts.ok) {
     email.subject === "Preview test: Your Quotr Builder plan is active"
   );
   assert("body uses stripe amounts", email.text.includes("NZ$10.00") && email.text.includes("NZ$1.50"));
-  assert("body distinguishes today's charge", email.text.includes("Today's charge is NZ$2.30") && email.text.includes("not the ongoing price"));
+  assert("builder says one included user", email.text.includes("Includes 1 user."));
+  assert(
+    "paid prorated invoice is separate from the ongoing price",
+    email.text.includes("The ongoing subscription price is") &&
+      email.text.includes("The first invoice was NZ$2.30") &&
+      email.text.includes("separate from the ongoing subscription price")
+  );
   assert("body does not use a catalogue price", !email.text.includes("NZ$65.00") && !email.text.includes("65.00"));
   assert("wordmark is present", email.html.includes("alt=\"Quotr\""));
   assert("same account covers website and android", email.text.includes("Android app") && email.text.includes("same Quotr account"));
@@ -260,6 +291,107 @@ assert(
       items: { data: [{ quantity: 1, price: { id: "price_builder", unit_amount: 1000, currency: "nzd" } }] },
     },
   }).ok === false
+);
+
+const unpaid = planConfirmationFactsFromStripe({
+  billingEnvironment: "test",
+  expectedCustomerId: "cus_test",
+  prices,
+  subscription: {
+    status: "active",
+    livemode: false,
+    customer: "cus_test",
+    default_tax_rates: [{ percentage: 15, display_name: "GST", inclusive: false }],
+    items: { data: [{ quantity: 1, price: { id: "price_builder", unit_amount: 1000, currency: "nzd" } }] },
+    latest_invoice: {
+      object: "invoice",
+      status: "open",
+      paid: false,
+      subtotal: 200,
+      tax: 30,
+      total: 230,
+      lines: { data: [{ proration: true }] },
+    },
+  },
+});
+assert(
+  "an active subscription does not describe an unpaid invoice as paid",
+  unpaid.ok === true && unpaid.ok && unpaid.facts.openingConfirmedPaid === false
+);
+if (unpaid.ok) {
+  const unpaidEmail = buildPlanConfirmationEmail({
+    companyName: "Preview Test Company",
+    facts: unpaid.facts,
+    billingUrl: "https://quotr.example/app/settings/billing",
+  });
+  assert(
+    "unpaid invoice email has no charge sentence",
+    !unpaidEmail.text.includes("The first invoice was") &&
+      unpaidEmail.text.includes("The ongoing subscription price is")
+  );
+}
+
+const discounted = planConfirmationFactsFromStripe({
+  billingEnvironment: "test",
+  expectedCustomerId: "cus_test",
+  prices,
+  subscription: {
+    status: "active",
+    livemode: false,
+    customer: "cus_test",
+    default_tax_rates: [{ percentage: 15, display_name: "GST", inclusive: false }],
+    items: {
+      data: [
+        { quantity: 1, price: { id: "price_business", unit_amount: 7900, currency: "nzd" } },
+        { quantity: 2, price: { id: "price_seat", unit_amount: 1500, currency: "nzd" } },
+      ],
+    },
+    latest_invoice: {
+      object: "invoice",
+      status: "paid",
+      paid: true,
+      subtotal: 0,
+      tax: 0,
+      total: 0,
+      total_discount_amounts: [{ amount: 10900 }],
+      lines: { data: [{ proration: false }] },
+    },
+  },
+});
+assert("a zero discount invoice is confirmed paid", discounted.ok === true && discounted.ok && discounted.facts.openingKind === "discounted");
+if (discounted.ok) {
+  const discountEmail = buildPlanConfirmationEmail({
+    companyName: "Preview Test Company",
+    facts: discounted.facts,
+    billingUrl: PLAN_CONFIRMATION_PRODUCTION_BILLING_URL,
+  });
+  assert(
+    "zero discount is described as no payment",
+    discountEmail.text.includes("because a discount covered it") &&
+      discountEmail.text.includes("No payment was taken") &&
+      !discountEmail.text.includes("Today's charge")
+  );
+  assert(
+    "business explains included and additional users",
+    planConfirmationUsersSentence(discounted.facts) === "Includes 1 user, plus 2 additional users." &&
+      discountEmail.text.includes("Includes 1 user, plus 2 additional users.")
+  );
+}
+
+assert(
+  "production billing link is the website",
+  planConfirmationBillingUrlAccepted("production", PLAN_CONFIRMATION_PRODUCTION_BILLING_URL) &&
+    !planConfirmationBillingUrlAccepted("production", "https://quotr.example/app/settings/billing") &&
+    PLAN_CONFIRMATION_PRODUCTION_BILLING_URL === "https://app.get-quotr.com/app/settings/billing"
+);
+
+assert(
+  "mismatched recipient reason names the repair and no other person",
+  planConfirmationSkipReason("mismatch").includes("differ") &&
+    planConfirmationSkipReason("mismatch").includes("retry") &&
+    !planConfirmationSkipReason("mismatch").includes("@") &&
+    planConfirmationSkipReason("not_owner").includes("not redirected") === false &&
+    planConfirmationSkipReason("not_owner").includes("Nothing was sent or redirected")
 );
 
 assert(
@@ -301,6 +433,17 @@ const key = planConfirmationIdempotencyKey({
   stripeSubscriptionId: "sub_new",
   source: "activation",
 });
+assert(
+  "24 hour window stops sending",
+  decidePlanConfirmationSend({
+    status: "sending",
+    leaseUntil: null,
+    now: "2026-10-26T00:00:00.000Z",
+    idempotencyKey: key,
+    idempotencyStartedAt: "2026-10-24T23:00:00.000Z",
+  }).action === "reconcile"
+);
+
 assert(
   "retry keeps the same idempotency key",
   decidePlanConfirmationSend({
@@ -411,7 +554,67 @@ const refused = await deliverPaidPlanConfirmation({
 });
 assert("another recipient is refused", refused.outcome === "refused" && sends === 1);
 
+let ackSends = 0;
+const ackKeys: string[] = [];
+const ackProvider: QuoteDeliveryProvider = {
+  name: "resend",
+  isConfigured: () => true,
+  async send(payload) {
+    ackSends += 1;
+    ackKeys.push(payload.idempotencyKey);
+    return { ok: true, providerMessageId: "re_same_message" };
+  },
+};
+let acknowledgeCalls = 0;
+const unacked = await deliverPaidPlanConfirmation({
+  deliveryId: row.id,
+  from: "Quotr <no-reply@get-quotr.com>",
+  provider: ackProvider,
+  store: {
+    async claim() {
+      return { claimed: true, row };
+    },
+    async acknowledge() {
+      acknowledgeCalls += 1;
+      return false;
+    },
+    async fail() {
+      return undefined;
+    },
+  },
+});
+const retriedAck = await deliverPaidPlanConfirmation({
+  deliveryId: row.id,
+  from: "Quotr <no-reply@get-quotr.com>",
+  provider: ackProvider,
+  store: {
+    async claim() {
+      return { claimed: true, row };
+    },
+    async acknowledge() {
+      return true;
+    },
+    async fail() {
+      return undefined;
+    },
+  },
+});
+assert(
+  "acknowledgement failure retries the same provider key",
+  unacked.outcome === "accepted_unacked" &&
+    retriedAck.outcome === "accepted" &&
+    ackSends === 2 &&
+    ackKeys[0] === ackKeys[1] &&
+    unacked.providerMessageId === retriedAck.providerMessageId &&
+    acknowledgeCalls === 3
+);
+
 const migration = readFileSync("supabase/migrations/124_plan_confirmation_email.sql", "utf8");
+const once = readFileSync("supabase/migrations/125_plan_confirmation_once.sql", "utf8");
+assert(
+  "repeat insert reports that it did not create another row",
+  once.includes("'inserted', v_inserted > 0") && once.includes("do nothing")
+);
 assert(
   "migration does not backfill subscriptions",
   !/insert into public\.plan_confirmation_deliveries[\s\S]*select[\s\S]*org_subscriptions/i.test(migration) &&
@@ -421,6 +624,19 @@ const webhook = readFileSync("lib/billing/webhook-http.ts", "utf8");
 assert(
   "email is scheduled after the billing event returns",
   webhook.indexOf("processBillingStripeEvent") < webhook.indexOf("schedulePaidPlanConfirmation")
+);
+const webhookEvents = readFileSync("lib/billing/webhook.ts", "utf8");
+assert(
+  "subscription replacement stays on the serving stale-event guard",
+  !webhookEvents.includes("mayApplyStripeSubscription") &&
+    webhookEvents.includes("shouldApplyStripeEvent") &&
+    webhookEvents.includes("stale_event")
+);
+const schedule = readFileSync("lib/billing/plan-confirmation-delivery.ts", "utf8");
+assert(
+  "email delivery does not depend on the insert flag",
+  !schedule.includes("inserted") &&
+    schedule.includes('status === "accepted"')
 );
 
 if (failed > 0) {

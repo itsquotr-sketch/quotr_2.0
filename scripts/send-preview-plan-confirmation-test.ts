@@ -131,6 +131,7 @@ const preview = buildPlanConfirmationEmail({
     openingTaxCents: storedRow.opening_tax_cents,
     openingTotalCents: storedRow.opening_total_cents,
     openingKind: storedRow.opening_kind,
+    openingConfirmedPaid: storedRow.opening_kind != null,
     nextBillingAt: storedRow.next_billing_at,
   },
 });

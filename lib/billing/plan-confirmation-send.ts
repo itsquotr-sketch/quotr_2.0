@@ -1,6 +1,6 @@
 import {
   buildPlanConfirmationEmail,
-  isWebsiteBillingUrl,
+  planConfirmationBillingUrlAccepted,
   PLAN_CONFIRMATION_REPLY_TO,
   type PlanConfirmationEnvironment,
   type PlanConfirmationOpeningKind,
@@ -250,7 +250,7 @@ export async function deliverPaidPlanConfirmation(input: {
     !input.provider.isConfigured() ||
     !isSafeMailboxAddress(row.recipientEmail) ||
     !isSafeMailboxAddress(PLAN_CONFIRMATION_REPLY_TO) ||
-    !isWebsiteBillingUrl(row.billingUrl)
+    !planConfirmationBillingUrlAccepted(row.environment, row.billingUrl)
   ) {
     await input.store.fail(row.id, "Email delivery is not configured.");
     return {
@@ -289,6 +289,7 @@ export async function deliverPaidPlanConfirmation(input: {
       openingTaxCents: row.openingTaxCents,
       openingTotalCents: row.openingTotalCents,
       openingKind: row.openingKind,
+      openingConfirmedPaid: row.openingKind != null && row.openingTotalCents != null,
       nextBillingAt: row.nextBillingAt,
     },
   });

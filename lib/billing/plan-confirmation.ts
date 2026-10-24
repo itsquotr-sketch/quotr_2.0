@@ -47,6 +47,16 @@ export const PLAN_CONFIRMATION_PREVIEW_TEST_FACTS = {
 };
 export const PLAN_CONFIRMATION_ANDROID_HOST =
   "quotr-2-0-git-preview-android-free-signup-quotr1.vercel.app";
+export const PLAN_CONFIRMATION_PRODUCTION_BILLING_URL =
+  "https://app.get-quotr.com/app/settings/billing";
+
+const ALREADY_ACTIVATED_STATUSES = new Set([
+  "active",
+  "past_due",
+  "scheduled_to_cancel",
+  "cancelled",
+  "paused",
+]);
 
 export type PaidPlanConfirmationSignal = {
   orgId: string;
@@ -85,6 +95,8 @@ export type PlanConfirmationFacts = {
   openingTaxCents: number | null;
   openingTotalCents: number | null;
   openingKind: PlanConfirmationOpeningKind | null;
+  /** True only when Stripe reports the opening invoice as paid. */
+  openingConfirmedPaid: boolean;
   nextBillingAt: string | null;
 };
 
@@ -154,6 +166,19 @@ export function selectPaidPlanRecipient(input: {
   return { ok: true, email: stripeEmail };
 }
 
+/** Stored on the delivery row. Contains no email address. */
+export function planConfirmationSkipReason(
+  reason: "mismatch" | "missing" | "not_owner"
+): string {
+  if (reason === "mismatch") {
+    return "Owner email and Stripe billing email differ. Nothing was sent or redirected. Make them match, then retry this delivery.";
+  }
+  if (reason === "missing") {
+    return "Stripe billing email or stored billing email is missing. Nothing was sent. Add both so they match the confirmed owner, then retry this delivery.";
+  }
+  return "Stripe billing email is not the confirmed owner. Nothing was sent or redirected. Set the Stripe email to that owner, then retry this delivery.";
+}
+
 export function shouldEnqueuePaidPlanConfirmation(input: {
   previous: {
     source: string;
@@ -184,8 +209,8 @@ export function shouldEnqueuePaidPlanConfirmation(input: {
   if (!input.next.stripeSubscriptionId) return false;
   if (
     input.previous?.source === "stripe" &&
-    input.previous.status === "active" &&
-    input.previous.stripeSubscriptionId === input.next.stripeSubscriptionId
+    input.previous.stripeSubscriptionId === input.next.stripeSubscriptionId &&
+    ALREADY_ACTIVATED_STATUSES.has(input.previous.status)
   ) {
     return false;
   }
@@ -343,16 +368,14 @@ export function planConfirmationFactsFromStripe(input: {
     const prorated = Array.isArray(lines?.data)
       ? lines.data.some((raw) => record(raw)?.proration === true)
       : false;
-    const recurringTotal = exclusiveCents + (taxInclusive ? 0 : recurringTaxCents);
-    const differs = total != null && total !== recurringTotal;
-    if (subtotal != null && total != null && (differs || prorated || discounts > 0)) {
+    const paid = invoice.status === "paid" || invoice.paid === true;
+    if (paid && subtotal != null && total != null && (prorated || discounts > 0)) {
       openingExclusiveCents = subtotal;
       openingTaxCents = tax;
       openingTotalCents = total;
       if (prorated && discounts > 0) openingKind = "prorated_discounted";
       else if (prorated) openingKind = "prorated";
-      else if (discounts > 0) openingKind = "discounted";
-      else openingKind = "prorated";
+      else openingKind = "discounted";
     }
   }
 
@@ -372,6 +395,7 @@ export function planConfirmationFactsFromStripe(input: {
       openingTaxCents,
       openingTotalCents,
       openingKind,
+      openingConfirmedPaid: openingKind != null,
       nextBillingAt: unixToIso(periodEnd),
     },
   };
@@ -420,9 +444,21 @@ function recurringSentence(facts: PlanConfirmationFacts): string {
     facts.currency
   );
   if (facts.recurringTaxCents > 0) {
-    return `The ongoing price is ${exclusive} + ${tax} ${taxName(facts)} each month (${total} including ${taxName(facts)}).`;
+    return `The ongoing subscription price is ${exclusive} + ${tax} ${taxName(facts)} each month (${total} including ${taxName(facts)}).`;
   }
-  return `The ongoing price is ${exclusive} each month.`;
+  return `The ongoing subscription price is ${exclusive} each month.`;
+}
+
+export function planConfirmationUsersSentence(facts: PlanConfirmationFacts): string {
+  if (facts.planCode === "builder") return "Includes 1 user.";
+  const included = facts.includedUsers;
+  const additional = Math.max(0, facts.paidUsers - included);
+  const includedLabel = `${included} ${included === 1 ? "user" : "users"}`;
+  if (additional === 0) {
+    return `Includes ${includedLabel}. No additional users are billed.`;
+  }
+  const additionalLabel = `${additional} additional ${additional === 1 ? "user" : "users"}`;
+  return `Includes ${includedLabel}, plus ${additionalLabel}.`;
 }
 
 function openingSentence(facts: PlanConfirmationFacts): string | null {
@@ -437,17 +473,21 @@ function openingSentence(facts: PlanConfirmationFacts): string | null {
   const total = formatPlanConfirmationMoney(facts.openingTotalCents, facts.currency);
   const exclusive = formatPlanConfirmationMoney(facts.openingExclusiveCents, facts.currency);
   const tax = formatPlanConfirmationMoney(facts.openingTaxCents, facts.currency);
+  if (!facts.openingConfirmedPaid) return null;
+  if (facts.openingTotalCents === 0 && facts.openingKind !== "prorated") {
+    return `The first invoice was ${total} because a discount covered it. No payment was taken for that invoice. It is separate from the ongoing subscription price.`;
+  }
   const reason =
     facts.openingKind === "prorated_discounted"
-      ? "This is a prorated first charge and includes a discount."
+      ? "This was a prorated invoice and includes a discount."
       : facts.openingKind === "discounted"
-        ? "This charge includes a discount."
-        : "This is a prorated first charge.";
+        ? "This invoice includes a discount."
+        : "This was a prorated invoice.";
   const taxPart =
     facts.openingTaxCents > 0
       ? ` (${exclusive} + ${tax} ${taxName(facts)})`
       : "";
-  return `Today's charge is ${total}${taxPart}. ${reason} It is not the ongoing price.`;
+  return `The first invoice was ${total}${taxPart}. ${reason} It is separate from the ongoing subscription price.`;
 }
 
 function nextBillingSentence(facts: PlanConfirmationFacts): string | null {
@@ -461,6 +501,17 @@ function nextBillingSentence(facts: PlanConfirmationFacts): string | null {
     year: "numeric",
   }).format(date);
   return `The next billing date is ${formatted}.`;
+}
+
+export function planConfirmationBillingUrlAccepted(
+  environment: PlanConfirmationEnvironment | null,
+  billingUrl: string
+): boolean {
+  if (!isWebsiteBillingUrl(billingUrl)) return false;
+  if (environment === "production") {
+    return billingUrl === PLAN_CONFIRMATION_PRODUCTION_BILLING_URL;
+  }
+  return true;
 }
 
 export function isWebsiteBillingUrl(value: string): boolean {
@@ -485,9 +536,7 @@ export function buildPlanConfirmationEmail(input: {
     planCode: input.facts.planCode,
     previewTest: input.previewTest === true,
   });
-  const users = `${input.facts.includedUsers} included ${
-    input.facts.includedUsers === 1 ? "user" : "users"
-  }, ${input.facts.paidUsers} paid ${input.facts.paidUsers === 1 ? "user" : "users"}.`;
+  const users = planConfirmationUsersSentence(input.facts);
   const identification =
     input.previewTest === true
       ? "Preview test of the paid plan confirmation. This is not a customer activation."

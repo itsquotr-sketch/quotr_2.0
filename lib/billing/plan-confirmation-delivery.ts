@@ -6,7 +6,9 @@ import {
   isPlanConfirmationDeliveryEnabled,
   isWebsiteBillingUrl,
   planConfirmationFactsFromStripe,
+  planConfirmationSkipReason,
   PLAN_CONFIRMATION_PREVIEW_TEST_RECIPIENT,
+  PLAN_CONFIRMATION_PRODUCTION_BILLING_URL,
   resolvePlanConfirmationEnvironment,
   selectPaidPlanRecipient,
   type PaidPlanConfirmationSignal,
@@ -127,7 +129,10 @@ async function prepareActivation(
 
   let billingUrl: string;
   try {
-    billingUrl = billingPortalReturnUrl();
+    billingUrl =
+      resolvePlanConfirmationEnvironment() === "production"
+        ? PLAN_CONFIRMATION_PRODUCTION_BILLING_URL
+        : billingPortalReturnUrl();
   } catch {
     await admin.rpc("fail_paid_plan_confirmation_v1", {
       p_id: deliveryId,
@@ -189,7 +194,7 @@ async function prepareActivation(
   if (!recipient.ok) {
     await admin.rpc("fail_paid_plan_confirmation_v1", {
       p_id: deliveryId,
-      p_error_safe: "The verified billing recipient could not be resolved.",
+      p_error_safe: planConfirmationSkipReason(recipient.reason),
     });
     return {
       outcome: "failed",
@@ -266,7 +271,12 @@ export async function schedulePaidPlanConfirmation(
     const row = asRecord(data);
     const deliveryId = text(row?.id);
     const status = text(row?.status);
-    if (!deliveryId || status === "accepted" || text(row?.provider_message_id)) return;
+    // Eligibility was already decided by the subscription transition.
+    // An existing pending row for that same subscription still uses one
+    // idempotency key. Accepted rows are not sent again.
+    if (!deliveryId || status === "accepted" || text(row?.provider_message_id)) {
+      return;
+    }
     after(async () => {
       try {
         await deliverPaidPlanConfirmationById(deliveryId, signal);
