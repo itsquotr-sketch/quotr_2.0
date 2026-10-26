@@ -191,8 +191,15 @@ export function deckHoleMillimetreError(value: number): string | null {
   return null;
 }
 
-export function deckHoleCountError(value: number): string | null {
-  if (!Number.isInteger(value) || value <= 0) return "Enter a whole number of holes.";
+export function deckHoleCountError(
+  value: number,
+  subject: "holes" | "posts" = "holes"
+): string | null {
+  if (!Number.isInteger(value) || value <= 0) {
+    return subject === "posts"
+      ? "Enter a whole number of posts."
+      : "Enter a whole number of holes.";
+  }
   if (value > DECK_HOLE_COUNT_MAX) return `Use a hole count up to ${DECK_HOLE_COUNT_MAX}.`;
   return null;
 }

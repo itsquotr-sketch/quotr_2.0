@@ -149,9 +149,89 @@ export function normalizeAnswerForUi(
   return null;
 }
 
+const FLOORING_MILLIMETRE_FACT_KEYS = new Set([
+  "flooring.portion.hardwood_board_width_mm",
+  "flooring.portion.tile_width_mm",
+  "flooring.portion.tile_length_mm",
+]);
+
+const SUPPORTED_MILLIMETRE_TEXT = /^(\d+(?:\.\d+)?)\s*(?:mm)?$/i;
+
+export function isFlooringMillimetreFactKey(key: string | null | undefined): boolean {
+  return Boolean(key && FLOORING_MILLIMETRE_FACT_KEYS.has(key));
+}
+
+/**
+ * Values the flooring width controls actually submit: a positive number,
+ * or one of the option labels such as "145 mm". Units are removed once.
+ */
+export function parseSupportedFlooringMillimetres(value: unknown): number | null {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return Math.round(value);
+  }
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(SUPPORTED_MILLIMETRE_TEXT);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.round(parsed);
+}
+
+export function flooringMillimetreFactError(
+  key: string,
+  value: unknown
+): string | null {
+  if (!isFlooringMillimetreFactKey(key)) return null;
+  if (parseSupportedFlooringMillimetres(value) != null) return null;
+  if (key === "flooring.portion.tile_width_mm") {
+    return "Enter a tile width in millimetres, such as 600.";
+  }
+  if (key === "flooring.portion.tile_length_mm") {
+    return "Enter a tile length in millimetres, such as 600.";
+  }
+  return "Enter a board width in millimetres, such as 145.";
+}
+
+function storedValueIsNotSure(value: unknown): boolean {
+  return typeof value === "string" && NOT_SURE_VALUES.has(value.trim().toLowerCase());
+}
+
+/**
+ * Field error for a fact write. Null means the value may be committed.
+ * Flooring millimetre questions name the field. Other non-finite numbers
+ * keep the generic rejection.
+ */
+export function factUpdateError(params: {
+  key: string;
+  value: unknown;
+  valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
+}): string | null {
+  if (storedValueIsNotSure(params.value)) return null;
+  if (params.valueType === "number" && isFlooringMillimetreFactKey(params.key)) {
+    const specific = flooringMillimetreFactError(params.key, params.value);
+    if (specific) return specific;
+  }
+  if (!params.valueType) {
+    return typeof params.value === "number" && !Number.isFinite(params.value)
+      ? "Invalid fact update."
+      : null;
+  }
+  const stored = normalizeAnswerForStorage(
+    params.value as string | number | boolean | string[],
+    params.valueType,
+    params.key
+  );
+  if (typeof stored === "number" && !Number.isFinite(stored)) {
+    return "Invalid fact update.";
+  }
+  return null;
+}
+
 export function normalizeAnswerForStorage(
   value: string | number | boolean | string[],
-  inputType: ScopeQuestionTemplate["inputType"]
+  inputType: ScopeQuestionTemplate["inputType"],
+  factKey?: string
 ): string | number | boolean | string[] {
   if (inputType === "multi_select") {
     let selected: string[];
@@ -170,6 +250,9 @@ export function normalizeAnswerForStorage(
   }
 
   if (inputType === "number") {
+    if (isFlooringMillimetreFactKey(factKey)) {
+      return parseSupportedFlooringMillimetres(value) ?? Number.NaN;
+    }
     if (typeof value === "number") return value;
     if (typeof value === "string" && value.trim() !== "") {
       return Number(value);

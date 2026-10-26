@@ -5,7 +5,11 @@
  */
 
 import { detailsReadinessPhase, detailsStageStatusLabel } from "@/lib/assistant/readiness/details-status";
-import { deckDetailPanelPrompt } from "@/lib/estimate/deck-detail-completeness";
+import {
+  deckDetailPanelPrompt,
+  deckDetailQueuePrompt,
+  type DeckDetailGap,
+} from "@/lib/estimate/deck-detail-completeness";
 
 export type DetailsJourney = {
   readonly phase: "saving" | "ready" | "needs_details";
@@ -23,6 +27,7 @@ export function settleDetailsJourney(input: {
   readonly pendingWrites: number;
   readonly requiredClarifyCount: number;
   readonly postHoleCount: number;
+  readonly postHoleGaps?: readonly DeckDetailGap[];
   readonly optionalRefineCount: number;
 }): DetailsJourney {
   const requiredClarify = Math.max(0, input.requiredClarifyCount);
@@ -45,7 +50,9 @@ export function settleDetailsJourney(input: {
       : null;
   const actionLabel =
     phase === "needs_details" && postHoles > 0 && requiredRemaining === postHoles
-      ? deckDetailPanelPrompt(postHoles)
+      ? input.postHoleGaps
+        ? deckDetailQueuePrompt(input.postHoleGaps)
+        : deckDetailPanelPrompt(postHoles)
       : phase === "needs_details" && requiredRemaining > 0
         ? requiredRemaining === 1
           ? "Finish 1 detail"

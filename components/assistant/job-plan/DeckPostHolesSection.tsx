@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { jobPlanNumber, jobPlanString } from "@/lib/assistant/job-plan/facts";
-import { deckDetailGaps, deckSpoilDestination } from "@/lib/estimate/deck-detail-completeness";
+import {
+  deckCountWriteKey,
+  deckDetailGaps,
+  deckDetailQueuePrompt,
+  deckSpoilDestination,
+} from "@/lib/estimate/deck-detail-completeness";
 import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
@@ -144,7 +149,12 @@ export function DeckPostHolesSection({
     holeCountForPlan > 0
       ? planDeckHoleExcavation({ facts, workAreaId, holeCount: holeCountForPlan })
       : null;
-  const unanswered = deckDetailGaps(facts, workAreaId).length;
+  const detailGaps = deckDetailGaps(facts, workAreaId);
+  const unanswered = detailGaps.length;
+  const queuePrompt = deckDetailQueuePrompt(detailGaps);
+  const countKey = deckCountWriteKey(facts, workAreaId);
+  const countLabel =
+    countKey === "deck.pile_or_post_count" ? "Number of posts" : "Number of post holes";
   const [countError, setCountError] = useState<string | null>(null);
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState<string | null>(null);
@@ -194,9 +204,21 @@ export function DeckPostHolesSection({
       return;
     }
     const next = Number(trimmed);
-    const error = deckHoleCountError(next);
+    const writingPosts = countKey === "deck.pile_or_post_count";
+    const error = deckHoleCountError(next, writingPosts ? "posts" : "holes");
     setCountError(error);
     if (error) return;
+    if (writingPosts) {
+      setReasonError(null);
+      if (statedPosts === next) return;
+      write({
+        key: "deck.pile_or_post_count",
+        label: "Number of posts",
+        value: next,
+        valueType: "number",
+      });
+      return;
+    }
     if (postCount != null && next !== postCount && !savedReason.trim()) {
       setReasonError("Add a short reason when the hole count differs from the post count.");
       reasonRef.current?.focus();
@@ -367,13 +389,18 @@ export function DeckPostHolesSection({
       data-post-holes="true"
       data-post-holes-focus={focusGapId ?? undefined}
       aria-label={
-        unanswered === 0
-          ? "Post holes, no unanswered questions"
-          : `Post holes, ${unanswered} unanswered`
+        unanswered === 0 ? "Post holes, no unanswered questions" : queuePrompt
       }
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Post holes</p>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Post holes</p>
+          {unanswered > 0 ? (
+            <p className="text-sm text-foreground" data-post-hole-queue="">
+              {queuePrompt}
+            </p>
+          ) : null}
+        </div>
         {unanswered === 0 ? (
           <Button
             type="button"
@@ -388,14 +415,19 @@ export function DeckPostHolesSection({
       </div>
       <NumberField
         id={`deck-hole-count-${workAreaId}`}
-        label="Number of post holes"
-        value={displayCount ?? ""}
+        label={countLabel}
+        value={countKey === "deck.pile_or_post_count" ? (statedPosts ?? "") : (displayCount ?? "")}
         min={1}
         error={countError}
         errorAttr="data-hole-count-error"
-        saving={savingKeys.includes("deck.hole_count")}
+        saving={savingKeys.includes(countKey)}
         onCommit={saveCount}
       />
+      {countKey === "deck.pile_or_post_count" && savedCount != null ? (
+        <p className="text-sm text-foreground" data-saved-hole-count="">
+          A hole count of {savedCount} is saved separately. Enter the number of posts.
+        </p>
+      ) : null}
       {postCount != null ? (
         <p className="text-sm text-foreground">Suggested from {postCount} confirmed posts.</p>
       ) : null}
@@ -433,6 +465,7 @@ export function DeckPostHolesSection({
         </div>
       ) : null}
 
+      <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Excavation</p>
       <div className="space-y-2" data-typical-setup="">
         {usingProposal ? (
           <>
@@ -772,7 +805,8 @@ export function DeckPostHolesSection({
       ) : null}
 
       {concreteOn ? (
-        <div className="space-y-3">
+        <div className="space-y-3" data-concrete-questions="">
+          <p className="text-xs font-semibold uppercase tracking-wide text-foreground">Concrete</p>
           <Choice
             id={`deck-concrete-fill-${workAreaId}`}
             label="Concrete fill"
