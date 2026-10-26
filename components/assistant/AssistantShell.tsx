@@ -284,6 +284,7 @@ import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { Button } from "@/components/ui/button";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { cn } from "@/lib/utils";
 import type {
   EstimateEditTarget,
@@ -3887,7 +3888,7 @@ export function AssistantShell({
                   } : undefined}
                 />
               ) : (
-                <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className="min-w-0 space-y-3 overflow-x-hidden">
+                <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
                   {productivityProgress && estimateView !== "overview" ? (
                     <p
                       className="text-sm font-medium text-foreground"
@@ -4026,80 +4027,91 @@ export function AssistantShell({
                       ) : null
                     }
                   />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                   <CompletedSetupDisclosure
+                    className="min-w-0 flex-1"
                     summaryLine={setupSummaryLine}
                     chips={setupChips}
                     expanded={jobDetailsOpen}
                     onExpandedChange={setEstimateBasisOverride}
                   >
-                    <div className="space-y-4 text-sm">
+                    <div className="space-y-5 text-sm">
                       {estimateBasisBrief(briefText, project.briefText) ? (
-                        <dl>
-                          <dt className="text-sm font-semibold text-foreground/80">
+                        <section>
+                          <h3 className="text-sm font-semibold text-foreground">
                             Project brief
-                          </dt>
-                          <dd className="mt-1 text-sm leading-6 text-foreground/80">
+                          </h3>
+                          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
                             {estimateBasisBrief(briefText, project.briefText)}
-                          </dd>
-                        </dl>
+                          </p>
+                        </section>
                       ) : null}
-                      <dl>
-                        <dt className="text-sm font-semibold text-foreground/80">
-                          Work Areas
-                        </dt>
-                        <dd>
-                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
-                            {estimateBasisWorkAreas(workAreaLists.included).map((name) => (
-                              <li key={name}>{name}</li>
-                            ))}
-                          </ul>
-                        </dd>
-                      </dl>
-                      {jobPlan.cards.length > 0 && jobPlan.cards.some((c) => c.included.length > 0) ? (
-                        <dl>
-                          <dt className="text-sm font-semibold text-foreground/80">
-                            Scope
-                          </dt>
-                          <dd>
-                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
-                            {jobPlan.cards.flatMap((c) =>
-                              c.included.map((item) => (
-                                <li key={`${c.workAreaId}-${item.id}`}>
-                                  {jobPlan.cards.length > 1 ? `${c.name}: ` : ""}
-                                  {item.label}
-                                </li>
-                              ))
-                            )}
-                          </ul>
-                          </dd>
-                        </dl>
-                      ) : null}
+                      <section>
+                        <h3 className="text-sm font-semibold text-foreground">
+                          Work areas
+                        </h3>
+                        <ul className="mt-2 space-y-1 text-sm leading-6 text-foreground">
+                          {estimateBasisWorkAreas(workAreaLists.included).map((name) => (
+                            <li key={name}>{name}</li>
+                          ))}
+                        </ul>
+                        {jobPlan.cards.length > 0 && jobPlan.cards.some((c) => c.included.length > 0) ? (
+                          <>
+                            <h4 className="mt-3 text-sm font-semibold text-foreground">Scope</h4>
+                            <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground">
+                              {jobPlan.cards.flatMap((c) =>
+                                c.included.map((item) => (
+                                  <li key={`${c.workAreaId}-${item.id}`}>
+                                    {jobPlan.cards.length > 1 ? `${c.name}: ` : ""}
+                                    {item.label}
+                                  </li>
+                                ))
+                              )}
+                            </ul>
+                          </>
+                        ) : null}
+                      </section>
                       {qualityTitleLabel ? (
-                        <dl>
-                          <dt className="text-sm font-semibold text-foreground/80">
+                        <section>
+                          <h3 className="text-sm font-semibold text-foreground">
                             Finish level
-                          </dt>
-                          <dd className="mt-1 text-sm leading-6 text-foreground/80">{qualityTitleLabel}</dd>
-                        </dl>
+                          </h3>
+                          <p className="mt-1 text-sm leading-6 text-foreground">{qualityTitleLabel}</p>
+                        </section>
                       ) : null}
                       {liveConstraints.length > 0 ? (
-                        <dl>
-                          <dt className="text-sm font-semibold text-foreground/80">
+                        <section>
+                          <h3 className="text-sm font-semibold text-foreground">
                             Project conditions
-                          </dt>
-                          <dd>
-                          <ul className="mt-1 space-y-1 text-sm leading-6 text-foreground/80">
+                          </h3>
+                          <dl className="mt-2 divide-y divide-border/70">
                             {liveConstraints.map((row) => (
-                              <li key={row.id}>
-                                {row.label}: {String(row.value)}
-                              </li>
+                              <div
+                                key={row.id}
+                                className="grid gap-1 py-2 sm:grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)] sm:gap-4"
+                              >
+                                <dt className="text-sm font-medium text-foreground/80">{row.label}</dt>
+                                <dd className="whitespace-pre-wrap text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
+                                  {String(row.value)}
+                                </dd>
+                              </div>
                             ))}
-                          </ul>
-                          </dd>
-                        </dl>
+                          </dl>
+                        </section>
                       ) : null}
                     </div>
                   </CompletedSetupDisclosure>
+                  {canRunEstimates ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 min-h-11 shrink-0"
+                      onClick={() => openEditJob(null)}
+                    >
+                      {ASSISTANT_ACTION_LABELS.editJobDetails}
+                    </Button>
+                  ) : null}
+                  </div>
                 </>
                   )}
                 </div>

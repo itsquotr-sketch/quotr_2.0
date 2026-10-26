@@ -620,7 +620,7 @@ export function PricingWorkspace({
         </p>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,20rem)] lg:gap-6">
         <div className="min-w-0 space-y-5">
           <CeilingProvisionalDecision
             items={items}

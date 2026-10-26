@@ -112,12 +112,12 @@ check(
   "one primary action follows the existing status",
   /<h2[^>]*>\s*Quote\s*<\/h2>/.test(header) &&
     !header.includes("<h1") &&
-    header.includes("text-base font-semibold leading-5 tracking-tight sm:text-lg") &&
+    header.includes("text-lg font-semibold leading-6 tracking-tight") &&
     header.includes("statusDef.label") &&
     header.includes("hasUnsavedChanges") &&
     page.includes("<ProjectWorkspaceHeader") &&
     read("components/projects/ProjectHeader.tsx").includes(
-      "break-words text-base font-semibold leading-5 tracking-tight [overflow-wrap:anywhere] md:text-lg"
+      "break-words text-lg font-semibold leading-6 tracking-tight [overflow-wrap:anywhere] md:text-xl"
     ) &&
     summary.includes("Send quote") &&
     workspace.includes("overflow-x-hidden") &&

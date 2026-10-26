@@ -105,13 +105,13 @@ check(
 );
 check(
   "8 Project Information and Estimate share one header gap",
-  workspacePage.includes("pt-3 pb-4 lg:pt-3") &&
+  workspacePage.includes("pt-4 pb-6 lg:pt-5") &&
     workspacePage.includes('data-workspace-content-gap="progression"') &&
     !workspacePage.includes("lg:pt-8") &&
     !workspacePage.includes("-mt-") &&
     information.includes('className="mt-2 grid gap-2"') &&
     shell.includes('data-estimate-content-gap="12-16"') &&
-    shell.includes('className="min-w-0 space-y-3 overflow-x-hidden"') &&
+    shell.includes('className={cn("min-w-0 space-y-4 overflow-x-hidden"') &&
     shell.includes('"grid min-w-0 gap-3 lg:items-start"') &&
     !shell.includes('"mt-1 grid min-w-0 gap-5 lg:mt-4')
 );

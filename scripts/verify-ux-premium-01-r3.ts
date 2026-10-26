@@ -407,7 +407,7 @@ check(
   shell.includes('data-estimate-ready-mobile-gap={') &&
     shell.includes('"grid min-w-0 gap-3 lg:items-start"') &&
     !shell.includes('"mt-1 grid min-w-0 gap-5 lg:mt-4') &&
-    workspacePage.includes("pt-3 pb-4 lg:pt-3") &&
+    workspacePage.includes("pt-4 pb-6 lg:pt-5") &&
     workspacePage.includes('data-workspace-content-gap="progression"') &&
     !readySurface.includes("mt-8") &&
     readySurface.includes("space-y-3")
