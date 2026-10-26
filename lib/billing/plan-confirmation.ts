@@ -490,17 +490,55 @@ function openingSentence(facts: PlanConfirmationFacts): string | null {
   return `The first invoice was ${total}${taxPart}. ${reason} It is separate from the ongoing subscription price.`;
 }
 
-function nextBillingSentence(facts: PlanConfirmationFacts): string | null {
+function nextBillingDate(facts: PlanConfirmationFacts): string | null {
   if (!facts.nextBillingAt) return null;
   const date = new Date(facts.nextBillingAt);
   if (!Number.isFinite(date.getTime())) return null;
-  const formatted = new Intl.DateTimeFormat("en-NZ", {
+  return new Intl.DateTimeFormat("en-NZ", {
     timeZone: "Pacific/Auckland",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(date);
+}
+
+function nextBillingSentence(facts: PlanConfirmationFacts): string | null {
+  const formatted = nextBillingDate(facts);
+  if (!formatted) return null;
   return `The next billing date is ${formatted}.`;
+}
+
+function planConfirmationOpenUrl(billingUrl: string): string | null {
+  if (!isWebsiteBillingUrl(billingUrl)) return null;
+  const url = new URL(billingUrl);
+  url.pathname = "/app";
+  url.search = "";
+  url.hash = "";
+  return url.href;
+}
+
+function recurringTotalCents(facts: PlanConfirmationFacts): number {
+  return facts.recurringExclusiveCents + facts.recurringTaxCents;
+}
+
+function openingNote(facts: PlanConfirmationFacts): string | null {
+  if (
+    facts.openingKind == null ||
+    facts.openingTotalCents == null ||
+    !facts.openingConfirmedPaid
+  ) {
+    return null;
+  }
+  if (facts.openingTotalCents === 0 && facts.openingKind !== "prorated") {
+    return "A discount covered this invoice. No payment was taken. It is separate from the ongoing subscription price.";
+  }
+  const reason =
+    facts.openingKind === "prorated_discounted"
+      ? "This was a prorated invoice and includes a discount."
+      : facts.openingKind === "discounted"
+        ? "This invoice includes a discount."
+        : "This was a prorated invoice.";
+  return `${reason} It is separate from the ongoing subscription price.`;
 }
 
 export function planConfirmationBillingUrlAccepted(
@@ -525,6 +563,15 @@ export function isWebsiteBillingUrl(value: string): boolean {
   }
 }
 
+function summaryRow(label: string, valueHtml: string, last: boolean): string {
+  return `<tr>
+                  <td style="padding:0 0 ${last ? "0" : "14px"} 0;font-family:Arial,Helvetica,sans-serif;">
+                    <p style="margin:0;padding:0 0 2px 0;font-size:13px;line-height:18px;color:#71717a;">${escapeHtml(label)}</p>
+                    ${valueHtml}
+                  </td>
+                </tr>`;
+}
+
 export function buildPlanConfirmationEmail(input: {
   companyName: string;
   facts: PlanConfirmationFacts;
@@ -536,25 +583,50 @@ export function buildPlanConfirmationEmail(input: {
     planCode: input.facts.planCode,
     previewTest: input.previewTest === true,
   });
+  const heading = `Your Quotr ${plan} plan is active.`;
   const users = planConfirmationUsersSentence(input.facts);
+  const access =
+    "Your access works on the Quotr website and in the Android app with the same Quotr account.";
   const identification =
     input.previewTest === true
       ? "Preview test of the paid plan confirmation. This is not a customer activation."
       : null;
+  const opening = openingSentence(input.facts);
+  const nextDate = nextBillingDate(input.facts);
+  const nextSentence = nextBillingSentence(input.facts);
+  const openUrl = planConfirmationOpenUrl(input.billingUrl);
+  const total = formatPlanConfirmationMoney(
+    recurringTotalCents(input.facts),
+    input.facts.currency
+  );
+  const exclusive = formatPlanConfirmationMoney(
+    input.facts.recurringExclusiveCents,
+    input.facts.currency
+  );
+  const taxAmount = formatPlanConfirmationMoney(
+    input.facts.recurringTaxCents,
+    input.facts.currency
+  );
+  const taxLabel = taxName(input.facts);
+  const priceDetail =
+    input.facts.recurringTaxCents > 0
+      ? `${exclusive} + ${taxAmount} ${taxLabel}`
+      : null;
   const lines = [
     identification,
     identification ? "" : null,
-    `Your Quotr ${plan} plan is active.`,
+    heading,
+    "",
+    access,
     "",
     `Company: ${input.companyName}`,
-    `Plan: ${plan}`,
     users,
     recurringSentence(input.facts),
-    openingSentence(input.facts),
-    nextBillingSentence(input.facts),
+    nextSentence,
+    opening ? "" : null,
+    opening,
     "",
-    "Your access works on the Quotr website and in the Android app with the same Quotr account.",
-    "",
+    openUrl ? `Open Quotr: ${openUrl}` : null,
     `Manage billing: ${input.billingUrl}`,
     "",
     `Questions about your plan: ${PLAN_CONFIRMATION_REPLY_TO}`,
@@ -562,46 +634,133 @@ export function buildPlanConfirmationEmail(input: {
     "This email confirms your plan. It is not a tax invoice. Stripe sends the payment receipt.",
   ].filter((line): line is string => line !== null);
   const text = lines.join("\n");
-  const paragraph = (value: string) =>
-    `<p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px">${escapeHtml(value)}</p>`;
+  const priceValue = `<p style="margin:0;padding:0;font-size:22px;line-height:28px;font-weight:bold;color:#111111;">${escapeHtml(total)}</p>${
+    priceDetail
+      ? `<p style="margin:0;padding:4px 0 0 0;font-size:14px;line-height:22px;color:#52525b;">${escapeHtml(priceDetail)}</p>`
+      : ""
+  }`;
+  const summaryRows = [
+    summaryRow(
+      "Company",
+      `<p style="margin:0;padding:0;font-size:16px;line-height:26px;color:#111111;">${escapeHtml(input.companyName)}</p>`,
+      false
+    ),
+    summaryRow(
+      "Users",
+      `<p style="margin:0;padding:0;font-size:16px;line-height:26px;color:#111111;">${escapeHtml(users)}</p>`,
+      false
+    ),
+    summaryRow(
+      input.facts.recurringTaxCents > 0 ? `Each month, including ${taxLabel}` : "Each month",
+      priceValue,
+      nextDate == null
+    ),
+  ];
+  if (nextDate) {
+    summaryRows.push(
+      summaryRow(
+        "Next billing date",
+        `<p style="margin:0;padding:0;font-size:16px;line-height:26px;color:#111111;">${escapeHtml(nextDate)}</p>`,
+        true
+      )
+    );
+  }
   const identificationHtml = identification
-    ? `<p style="padding:0 0 12px 0;margin:0;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a">${escapeHtml(identification)}</p>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;">
+          <tr>
+            <td style="padding:0 0 24px 0;font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0;padding:12px 16px;background:#fff7ed;border-radius:8px;font-size:15px;line-height:24px;font-weight:bold;color:#9a3412;">${escapeHtml(identification)}</p>
+            </td>
+          </tr>
+        </table>`
     : "";
-  const body = [
-    `Your Quotr ${plan} plan is active.`,
-    `Company: ${input.companyName}`,
-    `Plan: ${plan}`,
-    users,
-    recurringSentence(input.facts),
-    openingSentence(input.facts),
-    nextBillingSentence(input.facts),
-    "Your access works on the Quotr website and in the Android app with the same Quotr account.",
-  ].filter((line): line is string => line !== null);
+  const openingNoteText = openingNote(input.facts);
+  const openingTotal =
+    opening && input.facts.openingTotalCents != null
+      ? formatPlanConfirmationMoney(input.facts.openingTotalCents, input.facts.currency)
+      : null;
+  const openingDetail =
+    opening &&
+    input.facts.openingExclusiveCents != null &&
+    input.facts.openingTaxCents != null &&
+    input.facts.openingTaxCents > 0
+      ? `${formatPlanConfirmationMoney(input.facts.openingExclusiveCents, input.facts.currency)} + ${formatPlanConfirmationMoney(input.facts.openingTaxCents, input.facts.currency)} ${taxLabel}`
+      : null;
+  const openingHtml =
+    opening && openingTotal && openingNoteText
+      ? `<p style="margin:0;padding:0 0 8px 0;font-size:13px;line-height:18px;font-weight:bold;color:#71717a;font-family:Arial,Helvetica,sans-serif;">First invoice</p>
+              <p style="margin:0;padding:0;font-size:18px;line-height:24px;font-weight:bold;color:#111111;font-family:Arial,Helvetica,sans-serif;">${escapeHtml(openingTotal)}</p>
+              ${
+                openingDetail
+                  ? `<p style="margin:0;padding:4px 0 0 0;font-size:14px;line-height:22px;color:#52525b;font-family:Arial,Helvetica,sans-serif;">${escapeHtml(openingDetail)}</p>`
+                  : ""
+              }
+              <p style="margin:0;padding:8px 0 0 0;font-size:16px;line-height:26px;color:#111111;font-family:Arial,Helvetica,sans-serif;">${escapeHtml(openingNoteText)}</p>`
+      : "";
+  const openButton = openUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td bgcolor="#111111" style="border-radius:8px;background:#111111;">
+                    <a href="${escapeHtml(openUrl)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:20px;font-weight:bold;color:#ffffff;text-decoration:none;background:#111111;border-radius:8px;">Open Quotr</a>
+                  </td>
+                </tr>
+              </table>`
+    : "";
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(subject)}</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .quotr-outer { padding: 16px 12px !important; }
+      .quotr-card { padding: 28px 20px !important; }
+    }
+  </style>
 </head>
-<body style="padding:0;margin:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">
+<body style="padding:0;margin:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111111;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#f4f4f5;">
     <tr>
-      <td align="center" style="padding:24px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;background:#ffffff;border-radius:12px;table-layout:fixed;">
+      <td align="center" class="quotr-outer" style="padding:32px 16px;">
+        ${identificationHtml}
+        <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" align="center"><tr><td><![endif]-->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;">
           <tr>
-            <td style="padding:28px 24px;word-wrap:break-word;">
-              ${identificationHtml}
-              <p style="padding:0 0 20px 0;margin:0;">
+            <td class="quotr-card" style="padding:32px 32px;font-family:Arial,Helvetica,sans-serif;word-wrap:break-word;">
+              <p style="margin:0;padding:0 0 28px 0;">
                 <img src="${escapeHtml(ACCOUNT_WELCOME_WORDMARK_URL)}" alt="Quotr" width="${ACCOUNT_WELCOME_WORDMARK_WIDTH}" height="${ACCOUNT_WELCOME_WORDMARK_HEIGHT}" style="display:block;width:${ACCOUNT_WELCOME_WORDMARK_WIDTH}px;height:${ACCOUNT_WELCOME_WORDMARK_HEIGHT}px;border:0;outline:none;text-decoration:none;" />
               </p>
-              ${body.map(paragraph).join("\n")}
-              <p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px"><a href="${escapeHtml(input.billingUrl)}">Manage billing</a></p>
-              <p style="padding:0 0 16px 0;margin:0;font-size:16px;line-height:24px">Questions about your plan: <a href="mailto:${escapeHtml(PLAN_CONFIRMATION_REPLY_TO)}">${escapeHtml(PLAN_CONFIRMATION_REPLY_TO)}</a></p>
-              <p style="padding:0;margin:0;font-size:14px;line-height:22px;color:#52525b">This email confirms your plan. It is not a tax invoice. Stripe sends the payment receipt.</p>
+              <p style="margin:0;padding:0 0 24px 0;font-size:26px;line-height:32px;font-weight:bold;color:#111111;font-family:Arial,Helvetica,sans-serif;">${escapeHtml(heading)}</p>
+              <p style="margin:0;padding:0 0 28px 0;font-size:16px;line-height:26px;color:#111111;font-family:Arial,Helvetica,sans-serif;">${escapeHtml(access)}</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#f6f6f7;border-radius:8px;">
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
+                      ${summaryRows.join("\n")}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              ${
+                openingHtml
+                  ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;"><tr><td style="padding:28px 0 0 0;font-family:Arial,Helvetica,sans-serif;">${openingHtml}</td></tr></table>`
+                  : ""
+              }
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;">
+                <tr>
+                  <td style="padding:32px 0 0 0;font-family:Arial,Helvetica,sans-serif;">
+                    ${openButton}
+                    <p style="margin:0;padding:14px 0 0 0;font-size:16px;line-height:26px;font-family:Arial,Helvetica,sans-serif;"><a href="${escapeHtml(input.billingUrl)}" style="color:#111111;text-decoration:underline;">Manage billing</a></p>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;padding:32px 0 0 0;font-size:14px;line-height:22px;color:#71717a;font-family:Arial,Helvetica,sans-serif;">Questions about your plan: <a href="mailto:${escapeHtml(PLAN_CONFIRMATION_REPLY_TO)}" style="color:#3f3f46;text-decoration:underline;">${escapeHtml(PLAN_CONFIRMATION_REPLY_TO)}</a></p>
+              <p style="margin:0;padding:8px 0 0 0;font-size:14px;line-height:22px;color:#71717a;font-family:Arial,Helvetica,sans-serif;">This email confirms your plan. It is not a tax invoice. Stripe sends the payment receipt.</p>
             </td>
           </tr>
         </table>
+        <!--[if mso]></td></tr></table><![endif]-->
       </td>
     </tr>
   </table>
