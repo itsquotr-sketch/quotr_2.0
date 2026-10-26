@@ -12,10 +12,7 @@ import type {
   EstimateOverviewAction,
   EstimateOverviewModel,
 } from "@/lib/assistant/presentation/estimate-overview";
-import {
-  mobileActionDockClass,
-  mobileNavBottomClass,
-} from "@/components/layout/mobile-nav-metrics";
+import { mobileActionDockClass } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 
 const actionButtonClassName = "h-11 min-h-11 w-full sm:w-auto";
@@ -103,6 +100,24 @@ function ActionItems({
   );
 }
 
+function CompositionBreakdown({
+  rows,
+}: {
+  rows: EstimateOverviewModel["composition"];
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-3" data-estimate-overview-composition>
+      {rows.map((row) => (
+        <div key={row.id} className="min-w-0" data-composition-id={row.id}>
+          <dt className="text-sm font-medium text-foreground/75">{row.label}</dt>
+          <dd className="mt-1 text-base font-medium tabular-nums text-foreground">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function CollapsedNotice({
   summary,
   items,
@@ -179,14 +194,13 @@ export function EstimateOverview({
 
   return (
     <div
-      className={cn(
-        "flex min-w-0 flex-col gap-3 overflow-x-hidden",
-        showPrimaryAction && "max-md:pb-28"
-      )}
+      className="grid min-w-0 grid-cols-1 items-start gap-4 overflow-x-hidden lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
       data-estimate-overview
+      data-estimate-overview-docked={showPrimaryAction || productivityProgress ? "true" : undefined}
     >
+      <div className="order-1 min-w-0 space-y-4">
       <header className="min-w-0">
-        <h2 className="text-base font-semibold leading-5 tracking-tight text-foreground">Estimate</h2>
+        <h2 className="text-lg font-semibold leading-6 tracking-tight text-foreground">Estimate</h2>
         <p
           className="mt-1 text-sm font-medium text-foreground"
           data-estimate-overview-status={model.status}
@@ -204,7 +218,7 @@ export function EstimateOverview({
         ) : null}
       </header>
       {showCommercial ? (
-      <section className="order-1 rounded-xl border border-border/60 shadow-none bg-card px-3 py-3" data-estimate-overview-commercial data-mobile-commercial-overview="true">
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-none" data-estimate-overview-commercial data-mobile-commercial-overview="true">
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
           {sell.presentation === "unresolved" ? (
             <p className="text-lg font-medium" data-estimate-overview-sell="unresolved">
@@ -243,7 +257,7 @@ export function EstimateOverview({
           ) : null}
         </Stat>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-2">
           {direct ? (
             <Stat label={direct.label}>
               <p className="text-lg font-medium tabular-nums" data-composition-id="direct">
@@ -265,41 +279,28 @@ export function EstimateOverview({
               </p>
             </Stat>
           ) : null}
-          <Stat label="Work Areas">
-            <p className="text-lg font-medium" data-estimate-overview-work-area-count>
-              {model.workAreas.summaryLine}
-            </p>
-          </Stat>
-          <Stat label="Pricing Required">
-            <p className="text-lg font-medium tabular-nums" data-estimate-overview-pricing-attention-count>
-              {model.pricingAttentionCount}
-            </p>
-          </Stat>
         </div>
-
-        {model.workAreas.names.length > 0 ? (
-          <p
-            className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-foreground/80"
-            data-estimate-overview-work-areas
-          >
-            {model.workAreas.names.map((name) => (
-              <span key={name}>{name}</span>
-            ))}
-          </p>
-        ) : null}
+        <p className="sr-only" data-estimate-overview-pricing-attention-count>
+          {model.pricingAttentionCount}
+        </p>
 
         {categoryRows.length > 0 ? (
-          <dl
-            className="mt-4 grid grid-cols-1 gap-x-4 gap-y-3 border-t border-border/70 pt-4 sm:grid-cols-2 xl:grid-cols-4"
-            data-estimate-overview-composition
-          >
-            {categoryRows.map((row) => (
-              <div key={row.id} className="min-w-0" data-composition-id={row.id}>
-                <dt className="text-sm font-medium text-foreground/75">{row.label}</dt>
-                <dd className="mt-1 font-medium tabular-nums text-foreground">{row.value}</dd>
+          <>
+            <div className="mt-4 hidden border-t border-border/70 pt-4 lg:block">
+              <h3 className="text-sm font-semibold text-foreground">Cost breakdown</h3>
+              <div className="mt-3">
+                <CompositionBreakdown rows={categoryRows} />
               </div>
-            ))}
-          </dl>
+            </div>
+            <details className="mt-4 border-t border-border/70 pt-3 lg:hidden">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-sm text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Cost breakdown
+              </summary>
+              <div className="mt-3">
+                <CompositionBreakdown rows={categoryRows} />
+              </div>
+            </details>
+          </>
         ) : null}
         {model.reconciliation.note ? (
           <p className="mt-3 text-sm text-foreground/75" data-estimate-overview-reconciliation={model.reconciliation.state}>
@@ -311,15 +312,38 @@ export function EstimateOverview({
           </p>
         )}
         {marginSaveIndicator}
-        <p className="mt-4 text-sm text-foreground/75" data-estimate-overview-boundary>
+        <div className="mt-4 border-t border-border/70 pt-4">
+          <h3 className="text-sm font-semibold text-foreground">Work areas</h3>
+          <p className="mt-1 text-base font-medium text-foreground" data-estimate-overview-work-area-count>
+            {model.workAreas.summaryLine}
+          </p>
+          {model.workAreas.names.length > 0 ? (
+            <p
+              className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm leading-5 text-foreground/80"
+              data-estimate-overview-work-areas
+            >
+              {model.workAreas.names.map((name) => (
+                <span key={name}>{name}</span>
+              ))}
+            </p>
+          ) : null}
+        </div>
+        <p className="mt-4 text-sm leading-6 text-foreground/75" data-estimate-overview-boundary>
           {sell.boundaryCopy}
         </p>
       </section>
       ) : null}
+      </div>
 
+      <div className="order-2 min-w-0 space-y-3 lg:sticky lg:top-0">
       {showActionCentre ? (
-      <section className="order-2 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-actions>
-        <h2 className="text-sm font-semibold text-foreground">Action centre</h2>
+      <section className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-none" data-estimate-overview-actions>
+        <h2 className="text-base font-semibold leading-6 text-foreground">Review</h2>
+        {model.pricingAttentionCount > 0 ? (
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {model.pricingAttentionCount} Pricing Required
+          </p>
+        ) : null}
         {model.primary === "review_productivity" && productivityProgress == null ? (
           <div className="mt-3" data-estimate-overview-productivity-review="true">
             <h3 className="text-sm font-semibold text-foreground">Review Deck productivity</h3>
@@ -331,8 +355,8 @@ export function EstimateOverview({
         {readyForPricing && model.pricingAttention.length === 0 && model.primary !== "review_productivity" ? (
           <div className="mt-3" data-estimate-overview-ready="true">
             <h3 className="text-sm font-semibold text-foreground">Estimate ready</h3>
-            <p className="mt-1 text-sm text-foreground/75">
-              Continue to Pricing when you are ready to prepare the client price.
+            <p className="mt-1 text-sm leading-6 text-foreground/75">
+              Continue to Pricing when you are ready to prepare the client price. This estimate is not a quote ready to send.
             </p>
           </div>
         ) : showRequiredList ? (
@@ -365,10 +389,9 @@ export function EstimateOverview({
 
       <div
         className={cn(
-          "order-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center",
+          "order-3 flex flex-col gap-2",
           (showPrimaryAction || productivityProgress) &&
-            "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:pt-3 max-md:pb-[1.25rem]",
-          (showPrimaryAction || productivityProgress) && mobileNavBottomClass,
+            "max-md:fixed max-md:inset-x-0 max-md:z-30 max-md:border-t max-md:border-border max-md:bg-background max-md:px-4 max-md:pt-3 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
           (showPrimaryAction || productivityProgress) && mobileActionDockClass
         )}
         data-estimate-primary-actions={
@@ -491,6 +514,7 @@ export function EstimateOverview({
           ? "Pricing creation is blocked"
           : "Pricing creation can continue"}
       </p>
+      </div>
     </div>
   );
 }

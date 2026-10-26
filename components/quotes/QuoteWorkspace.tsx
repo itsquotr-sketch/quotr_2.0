@@ -552,10 +552,10 @@ export function QuoteWorkspace({
         </div>
       </div>
 
-      <div className="space-y-3 print:hidden xl:hidden">{deliveryAndHistory}</div>
+      <div className="space-y-3 print:hidden lg:hidden">{deliveryAndHistory}</div>
 
       <div
-        className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] print:block"
+        className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,20rem)] lg:gap-6 print:block xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]"
         data-quote-view={showReview ? (isEditable ? "finalise" : "details") : "preview"}
       >
         <div className="min-w-0 space-y-3">
@@ -925,11 +925,11 @@ export function QuoteWorkspace({
 
         <aside
           data-quote-sidebar="true"
-          className="hidden print:hidden xl:block"
+          className="hidden print:hidden lg:block"
         >
           <div
             data-quote-sidebar-stack="true"
-            className="space-y-3 xl:sticky xl:top-0 xl:self-start"
+            className="space-y-3 lg:sticky lg:top-0 lg:self-start xl:sticky"
           >
             {actionPanel}
           </div>
