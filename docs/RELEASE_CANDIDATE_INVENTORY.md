@@ -1,6 +1,48 @@
 # Release-candidate inventory
 
-**Updated:** 23 October 2026. The four reminders are Sending and Production reminder enrolment is active. The schema-only note and the 22 October activation closeout stay below. Where they disagree, this section wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+**Updated:** 26 October 2026. The approved project workspace layout is serving on both Production hosts. The 23 October reminder activation stays below. Where they disagree, this section wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
+
+**Application releases:** website `40d98384cff9a6fb020c92316b54095e5e1ff873` on `feat/email-preferences-loops`, and Android `879db76020d2ea327ad70db0c044364e379d9b40` on `release/android-play`.
+
+## Layout release — 26 October 2026
+
+The owner approved preview commit `68be9916718e060d91de54f979dd11485a78832c`. Only that workspace layout was integrated onto each host’s serving branch. The Preview branch was not merged. Its ancestry includes the Android app, account deletion, and the free-signup Checkout return, and those commits were not brought onto the website. The pending plan-confirmation email and the Android free-signup changes stayed out. Each host kept its existing signup behaviour.
+
+The selected difference on each host is the same 33 files: project header and navigation, Estimate overview and Job details, Pricing and Quote, responsive spacing and action clearance, the dashboard-only promotional trial rule, and the matching layout checks. No migration is included. No database change was applied. Calculations, saved answers, rates, productivity, permissions, billing entitlements, document snapshots, and sending were not changed.
+
+| Fact | Value |
+| --- | --- |
+| Approved preview | `68be9916718e060d91de54f979dd11485a78832c` on `preview/project-workspace-spacing`, with parent layout commit `080222b96ef46c9059462e1e8390fd67fb2aabf1`. |
+| Website branch | `feat/email-preferences-loops` |
+| Website SHA | `40d98384cff9a6fb020c92316b54095e5e1ff873` |
+| Website commits | `41469ce6` gives the workspace its height back. `40d98384` restores the readable header and groups the estimate workspace. Both are cherry-picks onto `b75291bf`. The trial-countdown conflict kept `trialNoticeVisibleOnPath` and did not add `playSurfaceTrialMessage`. |
+| Website deployment | `dpl_5yVsMkfnbC5LSWW1K1ZB4NWPwGQj` at `https://quotr-2-0-h96isn5l0-quotr1.vercel.app`. Target production. Ready. Built from that commit with Production settings. The Preview deployment was not promoted. |
+| `app.get-quotr.com` | that deployment. Its login page uses the same asset marker as the deployment URL. |
+| `quotr-2-0.vercel.app` | the same deployment. |
+| Marketing website | The deployment lists `get-quotr.com`. Public `https://get-quotr.com` still returns the marketing site through Cloudflare, title “Builder Estimating & Quoting Software NZ \| Quotr”. `www.get-quotr.com` still returns 301 to `https://get-quotr.com/`. DNS was not changed. |
+| Website rollback | `b75291bfa4c45f996c5564ebc58d65ac31b0d446`, deployment `dpl_GCqJQeoS8CkMUFiiqFSUJgdtXL18` at `https://quotr-2-0-hwnk5fshh-quotr1.vercel.app`. |
+| Android branch | `release/android-play` |
+| Android SHA | `879db76020d2ea327ad70db0c044364e379d9b40` |
+| Android commits | `0e4b4656` and `879db760`, cherry-picked onto `11d413fd`. `PlaySurfaceProvider` remains on the Android root layout and was not added to the website. |
+| Android deployment | `dpl_9QwLfefNfSiGwyWRP4hC6uhka24o` at `https://quotr-play-k6gptafo7-quotr1.vercel.app`. Target production. Ready. Git production build, started after the website deployment was Ready. The Preview deployment was not promoted. |
+| `play.get-quotr.com` | that deployment. `quotr-play.vercel.app` serves it as well. |
+| Android rollback | `11d413fd48e5566b404bdf0f228b1c2a6d5d3cdd`, deployment `dpl_EtxMpnAAFCsMFRMKT3NPC4urXpyB` at `https://quotr-play-8w6f9slbr-quotr1.vercel.app`. |
+| Production schema | `lxvnylhsbvudzzupxeqr`. Both projects’ production `NEXT_PUBLIC_SUPABASE_URL` is that project, with no branch override. The website project’s preview Supabase value stays on the preview target. |
+| Billing environment | Production `BILLING_ENVIRONMENT` is `live` on both projects. Website billing still renders Checkout actions. Android purchase controls stay behind the play-surface gate in the trial banner, billing page, team page, and access-denied notice. |
+| Android site URL | Production `NEXT_PUBLIC_SITE_URL` on `quotr-play` remains `https://app.get-quotr.com`. Issued quote and variation links stay on the website. This release did not change it. |
+| Asset links | `https://play.get-quotr.com/.well-known/assetlinks.json` returns 200 for package `com.getquotr.app` with two certificate fingerprints. The same path on the website returns 404. |
+| Not changed | No AAB was built or uploaded. Play Console, webhooks, the scheduler, and Preview aliases were not changed. |
+| Unused website deployments | `dpl_2QDCeAnMdnhinXX9keHZRZcvdm3T` and `dpl_Fi5uL2LrPKAHzzEdfkUGTS2u1TRB` were blocked and are not serving. |
+
+Signed-out `/app/dashboard`, `/app/projects`, and `/app/settings/billing` return 307 to `/login?next=…` on both hosts. `/login`, `/help`, `/privacy`, and `/terms` return 200 on both hosts. Both login pages include `viewport-fit=cover` and `interactive-widget=resizes-content`. The login asset lists differ: 21 shared, 7 only on the website, and 6 only on Android.
+
+Typecheck passed on each release candidate. The focused layout checks passed: estimate overview, project information, project progression, and quote workspace on both; the project-header check on the website; the play-surface check on Android; and the billing UI check on both. The premium verifier reported 41 passed and 2 failed. Those two failures are the existing check 21, “core facts do not block, and initial capture still withholds Estimate now”, and check 31, “existing totals reused”. They are unrelated to this layout. The quote-delivery architecture failure was already present on the layout branch and was not re-run. Both Production builds completed Ready.
+
+Signed-in Production checks were not performed. No production browser session was available. No account was created, no customer record was edited, no email or Quote was sent, and Checkout was not run. Dashboard trial eligibility, omission of the promotional card on project pages, the Estimate, Pricing, and Quote layout, and mobile clearance of the action bar were therefore not rechecked in a signed-in Production session. The released component files are the approved preview layout. In code, a promotional trial notice renders only on `/app/dashboard`; an expired-access notice still renders on working routes; Billing does not repeat the card.
+
+**This document is not the application release.** It lives on `docs/release-candidate-notes`. This documentation commit is not merged into either application branch and is not either Production deployment. The serving applications are the two deployments named above.
+
+**Updated:** 23 October 2026. The four reminders are Sending and Production reminder enrolment is active. The schema-only note and the 22 October activation closeout stay below. Where they disagree with the layout release above, the layout release wins. Section 15 remains the migration procedure that was prepared on 19 October. It is not a list of work still to run.
 
 **Application release:** `b8e202f147745b3838f24dfbe2f6bff4bf3cfd8a` on `feat/email-preferences-loops`. It is pushed and includes the previous Production application `5ec8439c140903f15bc635d1097fa5a5baaaadf9`.
 
