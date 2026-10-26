@@ -13,3 +13,5 @@ Audit and plan only. No estimator rewrite, no Production deploy, and no customer
 | [STAGE_1_BLOCKER_SCOPE.md](./STAGE_1_BLOCKER_SCOPE.md) | The only code changes proposed next |
 
 Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`.
+
+A follow-up pass added the contract gaps that the first write-up had not yet checked: door customer-supply keys, the split between `resolveRate` and `resolveMaterialRate`, cladding’s missing template, the four calculators with no consumed-fact contract, legacy flooring stairs, and the bathroom-floor overlap group. Those notes are in the architecture, defect register, and capability matrix. The fixture locks the template and consumed-fact cases.

@@ -69,6 +69,28 @@ A flooring portion id is stable for a normal field edit (`applyFlooringFactWrite
 
 Scalar deck facts are one row per work area and key. They have no portion id. Two decks are two work areas, not two portions.
 
+## Follow-up contract gaps
+
+These were confirmed in the tree after the first write-up. The fixture now locks the template and consumed-fact cases.
+
+11. **Work-area identity is the database UUID.** Extraction `instance_key` is not a column. Insert dedupe uses type plus name. Renaming a work area changes that key and a later analysis can insert a second row. Portion ids live inside the collection JSON. A re-parse that finds no `id` mints a new one. Ceiling re-analysis is the path that copies the stored portion id back.
+
+12. **Source enums do not match.** `project_facts.source` includes `assumption` and `derived`. `questions.answer_source` does not. `mapFactSourceToQuestionAnswerSource` folds derived, system, and default into `system`, and returns null for `assumption`. Presentation uses another set: brief, answered, calculated, assumed.
+
+13. **Four rate vocabularies.** Line items use `RateSourceType`. Requirements use `RequirementRateSource`. `resolveMaterialRate` uses `company_specific`, `company_category`, `company_scope`, `benchmark_specific`, `benchmark_category`, and `missing`. Pricing uses `calculator`, `benchmark`, `company_rate`, and `user_override`. `resolveMaterialRate` accepts `workAreaType` and category benchmark arguments and ignores both. `resolveRate` is the function that can use a blank-key work-area fallback, and only for an unnamed lookup.
+
+14. **Doors customer supply does not round-trip.** The door template asks `doors.hardware_client_supplied` and `doors.supply_scope`. It does not ask `doors.client_supplied`. The legacy fit-out calculator treats the job as client-supplied only when `doors.client_supplied` is true or `doors.supply_scope` mentions client. The consumed-fact list contains all three keys.
+
+15. **Cladding has no scope template.** `getScopeQuestions("cladding")` is empty. Clarify has to ask from the cladding portion contract. Pergola, demolition, external stairs, and plastering have templates and are absent from the consumed-fact map in `lib/estimate/consumed-facts.ts`.
+
+16. **Legacy flooring is a second recipe.** When `flooring.portions` is absent, `calculateFlooring` prices `FITOUT_BENCHMARKS.flooringPerM2` at cost 120. It does not read `laminateFlooringPerM2`. On that same legacy path, stairs use cost `count × 45` and sell `count × 68` while the line is labelled `derived_from_gross_margin`. `68 / 45` is not `1 / 0.8`. Nested portions do not fall through to this path.
+
+17. **Overlap groups do not collapse bathroom floors with Flooring.** Bathroom floor lines use `bathroom_floor_finish`. Flooring lines use `flooring.area:{portionId}`. Extraction can skip a bathroom-owned or kitchen-owned floor snippet. If both work areas are still confirmed, the deduper does not treat them as one scope. Bathroom stopping and paint are suppressed when a Plastering or Painting work area is present. Bathroom ceiling lining is not suppressed when a Ceilings work area is present.
+
+18. **Deck post hours can include excavation.** `deck.posts.install.hours_per_ea` is documented as an imported 1 h/post that includes excavation. The separate set rate is `deck.posts.set.hours_per_post` at 0.5 h, and hole excavation is its own operation. The calculator holds a calibrated post rate for review until the job confirms the hours are installation only.
+
+19. **Details can offer Generate while the server gate is still closed.** `settleDetailsJourney` can show the create action during `saving`. `evaluateGenerateEstimatePermission` still requires no pending writes, an empty deck-gap list, and package readiness.
+
 ## What V3 should extend
 
 Keep `project_facts`, the collection envelopes, `classifyResolvedSell`, the quote snapshot modules, and the readiness gate. Do not add a second estimator beside them. The gaps are identity, provenance, question lifecycle, and one readiness report. Those are specified in `STAGE_0_IMPLEMENTATION_PLAN.md`.

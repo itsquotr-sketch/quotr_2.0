@@ -1,6 +1,6 @@
 # Estimating V3 Stage 1 — blocker scope
 
-Stage 1 is only the four blockers below. It does not price laminate, add carpet tiles, fix multi-room splitting, or add preliminaries. Those stay in the later stages of `STAGE_0_IMPLEMENTATION_PLAN.md`.
+Stage 1 is only the four blockers below. It does not price laminate, add carpet tiles, fix multi-room splitting, or add preliminaries. It also does not change door customer-supply keys, legacy flooring stairs, the material-rate resolver, cladding templates, or consumed-fact contracts. Those stay in the later stages of `STAGE_0_IMPLEMENTATION_PLAN.md`.
 
 Parent for the work: `estimating/v3-stage-0` at `40d98384`, or a later production SHA if the hosts have moved before Stage 1 starts. Re-check the serving SHAs before editing. Do not deploy Production. Do not change Play Console. Do not migrate. Do not regenerate customer estimates.
 
