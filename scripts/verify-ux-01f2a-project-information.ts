@@ -89,10 +89,10 @@ check(
 );
 check(
   "4 shared header spacing is compact",
-  workspacePage.includes("pt-4 pb-6 lg:pt-6") &&
+  workspacePage.includes("pt-3 pb-4 lg:pt-3") &&
     workspacePage.includes('data-workspace-content-gap="progression"') &&
     !workspacePage.includes("sm:mt-5 sm:pt-6") &&
-    information.includes('className="text-lg font-semibold leading-6"')
+    information.includes('className="text-base font-semibold leading-5"')
 );
 check(
   "5 one project photo appears once in the default view",

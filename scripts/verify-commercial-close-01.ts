@@ -497,8 +497,8 @@ assert(
 console.log("\n--- Sidebar / terms / mobile ---");
 assert(
   "desktop quote sidebar remains one sticky stack",
-  workspaceSrc.includes("xl:sticky xl:top-[4.5rem]") &&
-    workspaceSrc.includes("xl:max-h-[calc(100vh-5.5rem)]")
+  workspaceSrc.includes("xl:sticky xl:top-0 xl:self-start") &&
+    !workspaceSrc.includes("xl:overflow-y-auto")
 );
 assert(
   "duplicate default payment/validity/variations remain stripped",

@@ -62,8 +62,8 @@ export function EstimateViewControl({
   ];
   return (
     <div className="min-w-0 max-w-full overflow-x-hidden" data-estimate-view-control>
-    <label data-estimate-view-select className="grid gap-1 md:hidden">
-      <span className="text-xs leading-4 text-foreground/70">Estimate view</span>
+    <label data-estimate-view-select className="grid md:hidden">
+      <span className="sr-only">Estimate view</span>
       <select
         value={view}
         aria-label="Estimate view"

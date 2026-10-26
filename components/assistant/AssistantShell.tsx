@@ -3737,8 +3737,8 @@ export function AssistantShell({
       <div
         className={cn(
           assistantMode === "estimate_ready"
-            ? "grid min-w-0 gap-5 lg:items-start"
-            : "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
+            ? "grid min-w-0 gap-3 lg:items-start"
+            : "mt-2 grid min-w-0 gap-3 lg:mt-3 lg:items-start",
           assistantMode === "planning" &&
             briefSubmitted &&
             "lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[200px_minmax(0,1fr)_380px]",
@@ -3757,7 +3757,7 @@ export function AssistantShell({
       >
         {assistantMode === "planning" ? (
           <aside className="hidden xl:block">
-            <div className="sticky top-6">
+            <div className="sticky top-0">
               <StepperNav
                 currentStage={stage}
                 needsAttention={stepperAttention}

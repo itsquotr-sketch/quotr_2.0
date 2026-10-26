@@ -15,7 +15,10 @@ import { mobileNavPaddingClass } from "@/components/layout/mobile-nav-metrics";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { NotificationProvider } from "@/components/layout/notification-context";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
-import type { TrialBannerNotice } from "@/lib/billing/trial-countdown";
+import {
+  trialNoticeVisibleOnPath,
+  type TrialBannerNotice,
+} from "@/lib/billing/trial-countdown";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -116,7 +119,7 @@ export function AppShell({
               <AccountMenu variant="header" />
             </div>
           </div>
-          {billingNotice && !pathname?.startsWith("/app/settings/billing") ? (
+          {billingNotice && trialNoticeVisibleOnPath(pathname, billingNotice) ? (
             <TrialNoticeBanner notice={billingNotice} />
           ) : null}
           {incompleteSetupNotice && !pathname?.startsWith("/app/setup") ? (

@@ -29,7 +29,8 @@ function PageContainer({
   return (
     <div
       className={cn(
-        scrollable && "min-h-0 flex-1 overflow-auto overflow-x-hidden",
+        scrollable &&
+          "min-h-0 flex-1 overflow-x-hidden overflow-y-auto scroll-pb-28 md:scroll-pb-8",
         className
       )}
       {...(scrollable ? { "data-workspace-scroll": "" } : {})}

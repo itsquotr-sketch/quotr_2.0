@@ -120,6 +120,23 @@ export type TrialBannerNotice = {
   href: string;
 };
 
+/**
+ * Promotional trial chrome (countdown and subscribe prompts) belongs on the
+ * Dashboard. Expired-access copy stays on every working route. Billing keeps
+ * its own trial detail and does not repeat the card.
+ */
+export function trialNoticeVisibleOnPath(
+  pathname: string | null,
+  notice: TrialBannerNotice
+): boolean {
+  const path = (pathname ?? "").split("?")[0] ?? "";
+  if (path === "/app/settings/billing" || path.startsWith("/app/settings/billing/")) {
+    return false;
+  }
+  if (notice.tone === "expired") return true;
+  return path === "/app/dashboard";
+}
+
 export function trialBannerNotice(
   countdown: TrialCountdown | null
 ): TrialBannerNotice | null {
