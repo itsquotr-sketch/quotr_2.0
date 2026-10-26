@@ -56,6 +56,7 @@ Out of scope: a second estimator, a new answer store, a schema migration, Produc
 | Development branch | `estimating/v3-stage-2a` |
 | Implementation | `bdf18e49` then `11564062` |
 | Preview alias | `https://quotr-2-0-git-estimating-v3-stage-2a-quotr1.vercel.app` |
+| Integration Preview | `https://quotr-2-0-git-estimating-v3-quotr1.vercel.app` (`dpl_c2vm3yJh9Pu9VYEua2GVxMdNeXWc` at `7e2e0feb`) |
 | Preview deployment | `dpl_9DKFFtmVYQeo5dTwMq8mBKxv74Jg` at `bdf18e49`, then the `11564062` deployment on the same alias |
 | Isolated fixture | plus-address `hello+v3-stage-2a.b30dcd11@erccontracting.co.nz`, org `9cfc28ea-8eb6-4d81-85b1-3ff7327506ca` |
 
