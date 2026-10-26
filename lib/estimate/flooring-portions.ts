@@ -182,6 +182,10 @@ export type FlooringPortion = {
   finish_removal_required: boolean | null;
   existing_finish_type: FlooringExistingFinishType | null;
   substrate_removal_required: boolean | null;
+  /** Stated purchase waste. Absent means the priced quantity stays net. */
+  waste_percent?: number | null;
+  /** Requested transition strips. No priced recipe is implied. */
+  transitions_required?: boolean | null;
   other_description: string | null;
   specialist_kind: FlooringSpecialistKind | null;
   finish_authority?: FlooringFieldAuthority;
@@ -735,6 +739,13 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       value.existing_finish_type
     ),
     substrate_removal_required: parseTriBool(value.substrate_removal_required),
+    waste_percent:
+      typeof value.waste_percent === "number" &&
+      Number.isFinite(value.waste_percent) &&
+      value.waste_percent > 0
+        ? value.waste_percent
+        : null,
+    transitions_required: parseTriBool(value.transitions_required),
     other_description: parseFlooringOtherDescription(value.other_description),
     specialist_kind: parseFlooringSpecialistKind(value.specialist_kind),
     finish_authority: parseFieldAuthority(value.finish_authority),

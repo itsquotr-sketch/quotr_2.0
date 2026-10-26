@@ -280,6 +280,8 @@ export function briefRequestsDoorWork(briefText: string): boolean {
   if (/\bdoor jamb\b|\bdoor hardware\b|\bjamb and hardware\b/.test(brief)) {
     return true;
   }
+  if (/\bdoors?\b[^.]{0,40}\bjamb\b|\bdoor sets?\b/.test(brief)) return true;
+  if (/\binclude (?:the |a |one )?doors?\b(?!\s+opening)/.test(brief)) return true;
   if (/\binstall\b[\s\S]{0,48}\bdoors?\b/.test(brief)) return true;
   if (includesAny(brief, ["client supplying door", "client supplied door"])) {
     return true;
@@ -635,6 +637,7 @@ export function briefHasIndependentBathroom(briefText: string): boolean {
     const hasSignal = includesAny(clause, INDEPENDENT_BATHROOM_SIGNALS);
     if (
       hasSignal &&
+      hasRoom &&
       includesAny(clause, [
         "vanity",
         "waterproof",
@@ -751,7 +754,9 @@ export function briefHasExplicitInternalWalls(briefText: string): boolean {
     "rebuild walls",
     "timber framed wall",
     "framed timber",
-  ]);
+    "timber partition",
+    "partition wall",
+  ]) || /\binternal\b[^.]{0,40}\bpartition\b/.test(brief);
 }
 
 function bathroomOwnsEmbeddedTrades(briefText: string, proposedTypes: readonly string[]): boolean {

@@ -123,7 +123,10 @@ export function specialistKindFromSnippet(
   for (const row of SPECIALIST_PHRASES) {
     if (includesAny(raw, row.phrases)) return row.kind;
   }
-  return parseFlooringSpecialistKind(text);
+  if (raw.split(/\s+/).filter(Boolean).length <= 4) {
+    return parseFlooringSpecialistKind(text);
+  }
+  return null;
 }
 
 function installFacingText(text: string): string {
@@ -441,6 +444,9 @@ const FINISH_REMOVAL_NO = [
   "no floor removal required",
   "no flooring removal",
   "no floor removal",
+  "already been removed",
+  "already removed",
+  "has been removed",
   "no removal is required",
   "no removal in",
   "no removal",
@@ -486,14 +492,23 @@ type FlooringRemovalIntent = {
 };
 
 function finishRemovalFromSnippet(text: string): boolean | null {
-  return triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
+  const fromPhrases = triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
+  if (fromPhrases != null) return fromPhrases;
+  if (
+    /\b(?:remove|uplift|dispose of)\b[^.]{0,80}\b(?:existing\s+)?(?:carpet|vinyl|tiles?|hardwood|timber|flooring|floor finish)\b/i.test(
+      text
+    )
+  ) {
+    return true;
+  }
+  return null;
 }
 
 function existingFinishFromSnippet(
   text: string
 ): FlooringExistingFinishType | null {
   const match = text.match(
-    /\b(?:remove|uplift)\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
+    /\b(?:remove|uplift|dispose of)(?:\s+and\s+dispose\s+of)?\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
   );
   if (!match) return null;
   return parseFlooringExistingFinishType(match[1]);
@@ -606,13 +621,24 @@ function snippetHasFlooringSignal(text: string): boolean {
   return clauseHasFlooringOperation(text) || specialistKindFromSnippet(text) != null;
 }
 
+function snippetOwnsFlooringPortion(snippet: string): boolean {
+  const dims = roomDimensionsFromSnippet(snippet);
+  const measured =
+    directAreaFromSnippet(snippet) != null ||
+    (dims.length_m != null && dims.width_m != null);
+  if (!measured && locationFromSnippet(snippet) == null) return false;
+  return finishFromSnippet(snippet) != null || specialistKindFromSnippet(snippet) != null;
+}
+
 function splitFlooringSnippets(briefText: string): string[] {
   const primary = splitFlooringSeparators(briefText);
+  const owned = primary.filter(snippetOwnsFlooringPortion);
+  if (owned.length > 0 && owned.length < primary.length) return owned;
   if (primary.length >= 2) return primary;
   const sentences = briefText
     .split(/(?<=[.!?])\s+/)
     .map((row) => row.trim())
-    .filter((row) => finishFromSnippet(row) != null || specialistKindFromSnippet(row) != null);
+    .filter(snippetOwnsFlooringPortion);
   if (sentences.length >= 2) return sentences;
   return primary;
 }
@@ -647,6 +673,30 @@ function applyGlobalConstraints(
     portion.framing_required_authority = "extracted";
   }
   applyClauseLocalRemoval(portion, briefText, false);
+  const raw = normalise(briefText);
+  if (
+    /\bunderlay where appropriate\b|\bunderlay where required\b|\binclude underlay\b/.test(
+      raw
+    ) &&
+    portion.underlay_required == null
+  ) {
+    portion.underlay_required = portion.finish_type === "carpet";
+    portion.underlay_authority = "extracted";
+  }
+  const waste = raw.match(/(\d+(?:\.\d+)?)\s*%\s*waste/);
+  if (waste && portion.waste_percent == null) {
+    portion.waste_percent = Number(waste[1]);
+  }
+  if (/\btransition strips?\b|\btransitions\b/.test(raw)) {
+    portion.transitions_required = true;
+  }
+  if (
+    /\b(?:exclud\w*|no|without)\b[^.]{0,80}\b(?:major\s+)?subfloor\b/.test(raw) &&
+    portion.framing_required == null
+  ) {
+    portion.framing_required = false;
+    portion.framing_required_authority = "extracted";
+  }
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {
@@ -800,12 +850,14 @@ export function extractFlooringPortionsFromBrief(briefText: string): FlooringPor
     applySnippetToPortion(portion, snippet);
     applyGlobalConstraints(portion, briefText);
     portion.clause_ordinal = index;
-    if (
+    const identifiable =
       portion.finish_type != null ||
       portion.area_m2 != null ||
       portion.length_m != null ||
-      portion.specialist_kind != null ||
-      portion.finish_removal_required === true
+      portion.specialist_kind != null;
+    if (
+      identifiable ||
+      (portion.finish_removal_required === true && snippets.length === 1)
     ) {
       portions.push(portion);
     }

@@ -49,7 +49,9 @@ const PREHUNG_PHRASES = [
   "prehung",
   "pre-hung",
   "complete door set",
+  "door set",
   "door and jamb",
+  "door, jamb",
   "door, jamb and stops",
   "door, jamb, and stops",
   "door set with frame",
@@ -82,6 +84,8 @@ const HARDWARE_INCLUDED_PHRASES = [
   "including door furniture",
   "supply and install hardware",
   "hardware included",
+  "hinges and handle",
+  "hinges",
 ] as const;
 
 const HARDWARE_EXCLUDED_PHRASES = [
@@ -266,9 +270,10 @@ function quantityFromSnippet(text: string): number | null {
     .sort((a, b) => b.length - a.length)
     .join("|");
   const tokenGroup = `(\\d{1,2}|${word})`;
+  const notAMeasure = "(?!\\.\\d|\\s*m(?:m|etre|2|²)?\\b)";
   const patterned = raw.match(
     new RegExp(
-      `\\b${tokenGroup}\\s+(?:(?:\\d{3,4}\\s*(?:mm)?\\s*[x×]\\s*\\d{3,4}\\s*(?:mm)?|[a-z-]+)\\s+)*(?:door leaves|door leaf|doors|door)(?!\\s+opening)\\b`
+      `\\b${tokenGroup}\\b${notAMeasure}\\s+(?:(?:\\d{3,4}\\s*(?:mm)?\\s*[x×]\\s*\\d{3,4}\\s*(?:mm)?|[a-z-]+)\\s+)*(?:door leaves|door leaf|doors|door)(?!\\s+opening)\\b`
     )
   );
   const leading = raw.match(
@@ -278,7 +283,7 @@ function quantityFromSnippet(text: string): number | null {
   );
   const nearby = raw.match(
     new RegExp(
-      `\\b${tokenGroup}\\b(?=[\\s\\S]{0,80}\\b(?:doors?|door leaves?|leaves?)\\b)`
+      `\\b${tokenGroup}\\b${notAMeasure}(?=[\\s\\S]{0,80}\\b(?:doors?|door leaves?|leaves?)\\b)`
     )
   );
   const beforeDim = raw.match(
@@ -287,6 +292,7 @@ function quantityFromSnippet(text: string): number | null {
   const token =
     patterned?.[1] ?? leading?.[1] ?? beforeDim?.[1] ?? nearby?.[1] ?? "";
   if (!token && raw.includes("door assembly")) return 1;
+  if (!token && /\bdoor\b/.test(raw) && !/\bdoors\b/.test(raw)) return 1;
   if (!token) return null;
   const fromWord = QUANTITY_WORDS[token];
   if (fromWord != null) return fromWord;

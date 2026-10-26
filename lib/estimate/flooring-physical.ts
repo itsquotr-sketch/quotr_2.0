@@ -251,6 +251,17 @@ function finishPhrase(finish: FlooringFinishType | null): string {
   return "flooring";
 }
 
+function statedFlooringExtras(portion: FlooringPortion): string {
+  const notes: string[] = [];
+  if (portion.waste_percent != null && portion.waste_percent > 0) {
+    notes.push(`${portion.waste_percent}% waste recorded`);
+  }
+  if (portion.transitions_required === true) {
+    notes.push("transition strips requested, unpriced");
+  }
+  return notes.length > 0 ? ` · ${notes.join(" · ")}` : "";
+}
+
 export function summariseFlooringPhysicalPortion(
   portion: FlooringPortion
 ): string {
@@ -258,12 +269,12 @@ export function summariseFlooringPhysicalPortion(
   const area = physicalNetAreaM2(portion);
   const areaText = area != null ? presentFlooringAreaM2(area) : "area unanswered";
   if (flooringPortionIsSpecialist(portion)) {
-    const core = `${areaText} ${specialistPhrase(portion)} · specialist pricing required`;
+    const core = `${areaText} ${specialistPhrase(portion)} · specialist pricing required${statedFlooringExtras(portion)}`;
     return label ? `${label} · ${core}` : core;
   }
   if (portion.finish_type === "other") {
     const desc = portion.other_description?.trim() || "custom flooring";
-    const core = `${areaText} ${desc}`;
+    const core = `${areaText} ${desc}${statedFlooringExtras(portion)}`;
     return label ? `${label} · ${core}` : core;
   }
   const extras: string[] = [];
@@ -286,7 +297,8 @@ export function summariseFlooringPhysicalPortion(
   const core = [areaText, finishPhrase(portion.finish_type), ...extras]
     .filter(Boolean)
     .join(" ");
-  return label ? `${label} · ${core}` : core;
+  const withExtras = `${core}${statedFlooringExtras(portion)}`;
+  return label ? `${label} · ${withExtras}` : withExtras;
 }
 
 function missingInfoLine(portion: FlooringPortion, fieldKey: string): string {
@@ -1294,6 +1306,14 @@ export function calculateFlooringPhysical(params: {
     requirements.push(...calculated.requirements);
     for (const field of calculated.portion.missingFields) {
       missingInfo.push(missingInfoLine(portion, field));
+    }
+    if (portion.transitions_required === true) {
+      missingInfo.push("Transition strips are requested and have no priced rate.");
+    }
+    if (portion.waste_percent != null && portion.waste_percent > 0) {
+      missingInfo.push(
+        `${portion.waste_percent}% waste is recorded on the new floor coverings and is not in the priced quantity.`
+      );
     }
   }
 

@@ -1,13 +1,17 @@
 # Stage 2A original acceptance briefs
 
-The Stage 0 request says to audit eight owner-supplied prompts. Those eight texts are not in the repository, the Stage 0 request, or the retained transcripts. They were not invented here.
+These three texts are the acceptance inputs. They are stored again, unchanged, in `scripts/fixtures/stage-2a-original-briefs.ts`. The shorter sentences in the Stage 0 and Stage 2A scripts remain supplementary unit cases.
 
-The shorter sentences in `scripts/verify-estimating-v3-stage0.ts` and `scripts/verify-estimating-v3-stage-2a.ts` are supplementary unit cases. They are not replacements for the original acceptance scenarios.
+The other five of the eight prompts named in the Stage 0 request were not supplied. They are not invented here.
 
-This slice therefore cannot run the exact originals named for acceptance:
+## Internal partition
 
-- the 6 m × 2.4 m internal partition brief
-- the 120 m² office fitout brief with six door sets, 120 m² carpet tiles and 45 lm skirting
-- the three-room flooring brief with room dimensions, two carpet bedrooms, a vinyl-plank hallway, existing carpet removal, transitions, underlay and waste
+Build one non-loadbearing internal timber partition, 6m long and 2.4m high, with one opening for a standard internal door. Line both sides with standard plasterboard and insulate the wall cavity. Include the door, jamb, hinges and handle. Stop the plasterboard ready for painting, but exclude painting, electrical work and skirting. Ground-floor access.
 
-Expected facts for those three remain the quantities and exclusions named above. No implementation-shaped substitute was used as the acceptance input.
+## Office fitout
+
+Prepare an estimate for a 120m² office fitout in an occupied commercial building. Include 24 linear metres of new partition walls at 2.7m high, lining both sides, acoustic insulation, six internal door sets, 120m² of carpet tiles and 45 linear metres of skirting. Include painting of the new walls and skirting. Existing flooring has already been removed. We need site establishment, protection of common areas, daily cleaning, final cleaning, deliveries and supervision. No structural, electrical, plumbing or fire-system work is included. Access is by goods lift during booked delivery windows. Duration is not yet confirmed.
+
+## Three-room flooring
+
+Renovate the flooring in three rooms. Bedroom 1 is 3.6m × 3.2m and gets carpet. Bedroom 2 is 4.2m × 3.5m and gets carpet. The hallway is 8m × 1.2m and gets vinyl planks. Remove and dispose of the existing carpet in all three areas. Include underlay where appropriate, transition strips and 10% waste on new floor coverings. Exclude skirting replacement and major subfloor repairs.

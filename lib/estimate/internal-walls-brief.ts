@@ -197,8 +197,10 @@ function liningFromPhrase(
 function parseLengthLm(text: string): number | null {
   const total = text.match(/total(?:ling)?\s+(\d+(?:\.\d+)?)\s*m/);
   if (total) return Number(total[1]);
-  const long = text.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:long|of)/);
-  if (long) return Number(long[1]);
+  const linear = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:linear\s+)?m(?:etre)?s?\s+(?:long|of|at)\b(?!\s+skirting)/
+  );
+  if (linear) return Number(linear[1]);
   const partition = text.match(
     /(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:internal\s+)?(?:partition|wall)\b/
   );
@@ -260,30 +262,74 @@ export function explicitInternalWallsOpenings(text: string): {
   return { hasOpenings: null, doorOpeningCount: null };
 }
 
-export function internalWallsTopicStance(
-  briefText: string,
-  topic: "painting" | "skirting" | "insulation" | "stopping"
-): "included" | "excluded" | null {
-  const brief = normalise(briefText);
+function topicPattern(
+  topic: "painting" | "skirting" | "insulation" | "stopping" | "electrical"
+): RegExp {
   const token =
     topic === "painting"
       ? "paint(?:ing)?"
       : topic === "insulation"
         ? "insulat\\w*"
         : topic === "stopping"
-          ? "stopping"
-          : "skirting";
-  if (!new RegExp(token).test(brief)) return null;
-  const excluded = new RegExp(
-    `(?:no|without|exclud\\w*)(?:\\s+[a-z]+){0,6}\\s+${token}|${token}(?:\\s+and\\s+[a-z]+)?\\s+exclud`
-  );
-  if (excluded.test(brief)) return "excluded";
-  return "included";
+          ? "stopping|stop the (?:plasterboard|lining|gib|walls?)"
+          : topic === "electrical"
+            ? "electrical"
+            : "skirting";
+  return new RegExp(token, "i");
+}
+
+function briefForFinishStance(briefText: string): string {
+  return normalise(briefText).replace(/\bready for painting\b/g, " ");
+}
+
+export function internalWallsTopicStance(
+  briefText: string,
+  topic: "painting" | "skirting" | "insulation" | "stopping" | "electrical"
+): "included" | "excluded" | null {
+  const brief = briefForFinishStance(briefText);
+  const pattern = topicPattern(topic);
+  const sentences = brief.split(/(?<=[.!?])\s+/).filter(Boolean);
+  let included = false;
+  let excluded = false;
+  for (const sentence of sentences.length > 0 ? sentences : [brief]) {
+    const exclusion = sentence.match(
+      /\b(excluded|excluding|exclude|without|no)\b([\s\S]*)$/i
+    );
+    const word = exclusion?.[1]?.toLowerCase() ?? "";
+    const tail = exclusion?.[2] ?? "";
+    const head = exclusion
+      ? sentence.slice(0, exclusion.index ?? sentence.length)
+      : sentence;
+    const topicsBeforeNegation = word === "excluded";
+    if (topic === "stopping") {
+      const stopsLining =
+        /\bstopping\b/.test(sentence) ||
+        /\bstop the (?:plasterboard|lining|gib|walls?)\b/.test(sentence);
+      if (!stopsLining) continue;
+    } else if (!pattern.test(sentence)) {
+      continue;
+    }
+    if (topicsBeforeNegation) {
+      if (pattern.test(head)) excluded = true;
+      continue;
+    }
+    if (tail && pattern.test(tail)) excluded = true;
+    if (pattern.test(head) || (!exclusion && pattern.test(sentence))) {
+      if (topic === "stopping" && !/\bstop/.test(head) && !/\bstop/.test(sentence)) {
+        continue;
+      }
+      included = true;
+    }
+  }
+  if (excluded && !included) return "excluded";
+  if (included) return "included";
+  if (excluded) return "excluded";
+  return null;
 }
 
 function parseHeightM(text: string): number | null {
   const match =
-    text.match(/(\d+(?:\.\d+)?)\s*m\s+high/) ??
+    text.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+high/) ??
     text.match(/(\d+(?:\.\d+)?)\s*high/);
   return match ? Number(match[1]) : null;
 }
@@ -361,6 +407,21 @@ function explicitFinishBothSides(
   return pattern.test(normalise(briefText));
 }
 
+function insulationTypeFromBrief(
+  brief: string,
+  insulation: "included" | "excluded" | null
+): "acoustic" | "thermal" | "fire_acoustic" | "other" | null {
+  if (insulation !== "included" || !/\bacoustic\b/.test(brief)) return null;
+  const sentences = brief.split(/(?<=[.!?])\s+/);
+  for (const sentence of sentences) {
+    if (!/\bacoustic\b/.test(sentence) || !/\binsulat/.test(sentence)) continue;
+    if (/\bfire[-\s]?system\b/.test(sentence)) return "acoustic";
+    if (/\bfire\b/.test(sentence)) return "fire_acoustic";
+    return "acoustic";
+  }
+  return "acoustic";
+}
+
 function finishSideFromBrief(
   briefText: string,
   topic: "skirting" | "painting",
@@ -389,12 +450,7 @@ function withBriefFinish(
     doorOpeningCount: type.doorOpeningCount ?? openings.doorOpeningCount,
     insulationIncluded:
       insulation === "included" ? true : insulation === "excluded" ? false : null,
-    insulationType:
-      insulation === "included" && brief.includes("acoustic")
-        ? brief.includes("fire")
-          ? "fire_acoustic"
-          : "acoustic"
-        : null,
+    insulationType: insulationTypeFromBrief(brief, insulation),
     skirting: finishSideFromBrief(briefText, "skirting", skirting),
     painting: finishSideFromBrief(briefText, "painting", painting),
     stoppingRequested:
@@ -550,11 +606,18 @@ export function internalWallsScopeText(briefText: string): string {
     return includesAny(brief, [
       "internal wall",
       "internal partition",
+      "timber partition",
+      "partition wall",
       "framed timber",
       "timber framed",
       "rebuild the walls",
       "rebuild walls",
       "new partition",
+      "plasterboard",
+      "skirting",
+      "painting",
+      "electrical",
+      "insulat",
       "90x45",
       "90×45",
       "45x90",
@@ -577,6 +640,8 @@ export function extractInternalWallsTypesFromBrief(
     !includesAny(brief, [
       "internal wall",
       "internal partition",
+      "timber partition",
+      "partition wall",
       "framed timber",
       "timber framed",
       "rebuild the walls",
@@ -1234,7 +1299,9 @@ export function stripInventedInternalWallsFacts(
         ) {
           next.cornice_product = null;
         }
-        if (!includesAny(normalise(briefText), ["electrical", "power point"])) {
+        if (internalWallsTopicStance(briefText, "electrical") === "excluded") {
+          next.electrical = "none";
+        } else if (!includesAny(normalise(briefText), ["electrical", "power point"])) {
           next.electrical = null;
         }
         const stoppingStance = internalWallsTopicStance(briefText, "stopping");

@@ -2,9 +2,9 @@
 
 Development branch `estimating/v3-stage-2a`, cut from `estimating/v3` after `237464b2`. No schema migration. No second estimator. No customer-record write. Quantity formulas, rate precedence, productivity, margin, preliminaries, calibration, and the fascia-length fallback are unchanged.
 
-Runnable evidence: `npx tsx scripts/verify-estimating-v3-stage-2a.ts`.
+Runnable evidence: `npx tsx scripts/verify-estimating-v3-stage-2a.ts` and `npx tsx scripts/verify-estimating-v3-stage-2a-briefs.ts`.
 
-The repository did not contain a longer original wording for these three cases. The sentences below keep the Stage 0 fixture text and add only the scope named for Stage 2A.
+The sentences below are the supplementary unit cases. The acceptance briefs are the verbatim texts in [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md).
 
 ## Briefs
 
@@ -49,7 +49,7 @@ Flooring. Bedroom 1, 12 m2 carpet. Bedroom 2, 10 m2 carpet. Hallway 8 m2 vinyl p
 
 ## Still open
 
-- The eight owner briefs are not in the repository. See [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md). The supplementary sentences are not those briefs.
+- The three supplied acceptance briefs are stored verbatim in [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) and `scripts/fixtures/stage-2a-original-briefs.ts`. The other five of the eight Stage 0 prompts were not supplied. The supplementary sentences are not those briefs.
 - Carpet tiles have no priced recipe and no `flooring.carpet_tile.m2` catalogue row. Supply and installation stay visible and unpriced, with a manual allowance. A zero sell is not complete coverage.
 - Stopping level, opening size, door width, and insulation type (when the brief says only “insulation”) stay as follow-up questions.
 - Fascia length is still absent from the live deck question list. A 4.8 m × 3.6 m deck with no length fact is still 16.8 lm from the exposed perimeter.

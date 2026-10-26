@@ -563,6 +563,20 @@ function inferInternalWalls(
       label: "Skirtings",
       value: internalWallsTopicStance(brief, "skirting") !== "excluded",
     });
+    const skirtingLength = brief.match(
+      /(\d+(?:\.\d+)?)\s*(?:linear\s+)?m(?:etre)?s?\s+of\s+skirting\b/i
+    );
+    if (
+      skirtingLength &&
+      internalWallsTopicStance(brief, "skirting") !== "excluded"
+    ) {
+      addFact(extraction, {
+        workAreaType: "internal_walls",
+        key: "internal_walls.skirting_length_lm",
+        label: "Skirting length",
+        value: Number(skirtingLength[1]),
+      });
+    }
   }
 
   const proposedLength =
@@ -2036,6 +2050,9 @@ export function extractConstraintsFromBrief(
     includesAny(brief, [
       "occupied site",
       "occupied dwelling",
+      "occupied commercial",
+      "occupied building",
+      "occupied office",
       "site occupied",
       "house occupied",
       "occupied during",
@@ -2063,6 +2080,40 @@ export function extractConstraintsFromBrief(
       key: "floor_level",
       label: "Floor level",
       value: "Upper floor",
+    });
+  } else if (includesAny(brief, ["ground floor", "ground-floor"])) {
+    constraints.push({
+      key: "floor_level",
+      label: "Floor level",
+      value: "Ground",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "protection of",
+      "protect common",
+      "common areas",
+    ])
+  ) {
+    constraints.push({
+      key: "protection_dust_control",
+      label: "Protection / dust control",
+      value: "Yes",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "booked delivery",
+      "delivery windows",
+      "after hours",
+    ])
+  ) {
+    constraints.push({
+      key: "working_hours",
+      label: "Working hours",
+      value: "Yes",
     });
   }
 
@@ -2225,6 +2276,50 @@ function inferCeilings(
   }
 }
 
+function recordRequestedCoverageGaps(
+  brief: string,
+  extraction: AIExtractionOutput
+): void {
+  const hits: string[] = [];
+  if (/\bsite establishment\b/.test(brief)) hits.push("site establishment");
+  if (/\bdaily cleaning\b/.test(brief)) hits.push("daily cleaning");
+  if (/\bfinal cleaning\b/.test(brief)) hits.push("final cleaning");
+  if (/\bsupervision\b/.test(brief)) hits.push("supervision");
+  if (/\bduration\b[^.]{0,40}\bnot\b/.test(brief)) {
+    hits.push("duration is not confirmed");
+  }
+  if (/\bgoods lift\b/.test(brief)) hits.push("goods-lift access");
+  const excludedTrades: string[] = [];
+  for (const sentence of brief.split(/(?<=[.!?])\s+/)) {
+    if (!/\b(?:no|without|exclud\w*)\b/.test(sentence)) continue;
+    for (const trade of ["structural", "plumbing", "fire", "electrical"] as const) {
+      if (sentence.includes(trade) && !excludedTrades.includes(trade)) {
+        excludedTrades.push(trade);
+      }
+    }
+  }
+  if (hits.length === 0 && excludedTrades.length === 0) return;
+  const note = [
+    hits.length > 0 ? `Requested and not priced: ${hits.join(", ")}.` : "",
+    excludedTrades.length > 0
+      ? `Excluded trades: ${excludedTrades.join(", ")}.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  extraction.warnings.push(note);
+  const host =
+    extraction.workAreas.find((row) => row.type === "internal_walls") ??
+    extraction.workAreas[0];
+  if (!host) return;
+  addFact(extraction, {
+    workAreaType: host.type,
+    key: `${host.type}.coverage_note`,
+    label: "Coverage note",
+    value: note,
+  });
+}
+
 export function enrichExtractionFromBrief(params: {
   briefText: string;
   extraction: AIExtractionOutput;
@@ -2285,6 +2380,8 @@ export function enrichExtractionFromBrief(params: {
   const qualityLevel = extractQualityFromBrief(params.briefText);
   const constraints = extractConstraintsFromBrief(params.briefText);
   mergePossibleConstraints(extraction, constraints);
+
+  recordRequestedCoverageGaps(brief, extraction);
 
   if (extraction.workAreas.length === 0) {
     extraction.warnings.push("No work areas detected after enrichment.");

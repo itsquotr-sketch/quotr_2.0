@@ -15,7 +15,7 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and release branches |
 | [V3_INTEGRATION_BASELINE.md](./V3_INTEGRATION_BASELINE.md) | Integration branch, Preview identities, and Stage 2A scope |
 | [STAGE_2A_HANDOFF.md](./STAGE_2A_HANDOFF.md) | Analysis-to-Details handoff, compatibility, and what is still open |
-| [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) | The eight owner briefs are not in the repository |
+| [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) | The three supplied acceptance briefs, stored verbatim |
 | [STAGE_2A_INSTANCE_IDENTITY.md](./STAGE_2A_INSTANCE_IDENTITY.md) | UUID and measurement matching, and the unapplied identity column |
 
 Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, and `scripts/verify-estimating-v3-stage-2a.ts`.
