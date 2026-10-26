@@ -115,6 +115,33 @@ export function aiFactsToRows(params: {
   return dedupePendingFactRows(rows);
 }
 
+export const CONFIRMED_ANSWER_CONFLICT =
+  "New analysis disagrees with the saved answer. The saved answer was kept." as const;
+
+const PROTECTED_FACT_SOURCES = new Set(["user", "assumption", "derived"]);
+
+/**
+ * Confirmed, assumed, and derived facts stay as stored.
+ * A different extracted value is a review warning, not a new source.
+ */
+export function reanalysisFactWrite(params: {
+  existingSource: string | null | undefined;
+  existingValue: unknown;
+  extractedValue: unknown;
+}):
+  | { readonly action: "replace" }
+  | { readonly action: "keep"; readonly conflictWarning: string | null } {
+  if (!PROTECTED_FACT_SOURCES.has(params.existingSource ?? "")) {
+    return { action: "replace" };
+  }
+  const disagrees =
+    JSON.stringify(params.existingValue) !== JSON.stringify(params.extractedValue);
+  return {
+    action: "keep",
+    conflictWarning: disagrees ? CONFIRMED_ANSWER_CONFLICT : null,
+  };
+}
+
 export function factDedupeKey(
   workAreaId: string | null,
   key: string

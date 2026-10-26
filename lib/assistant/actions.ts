@@ -22,6 +22,7 @@ import {
   aiWorkAreasToRows,
   factDedupeKey,
   dedupePendingFactRows,
+  reanalysisFactWrite,
 } from "@/lib/ai/mappers";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
@@ -36,6 +37,7 @@ import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import {
   existingWorkAreaInstanceKeys,
+  matchExistingWorkAreaInstance,
   shouldInsertWorkAreaInstance,
 } from "@/lib/work-areas/instances";
 import { staleSuggestedOwnedWorkAreasToDrop } from "@/lib/work-areas/ownership";
@@ -74,6 +76,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
+import { mergePersistedInternalWallTypesOnReanalyse } from "@/lib/estimate/internal-walls-brief";
+import { INTERNAL_WALLS_WALL_TYPES_FACT_KEY } from "@/lib/estimate/internal-walls-wall-types";
 import { mergePersistedCeilingPortionsOnReanalyse } from "@/lib/estimate/ceilings-brief";
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
@@ -484,12 +488,21 @@ export async function saveBriefAndSeedWorkAreas(
     orgId,
     projectId,
     catalogueByType: CATALOGUE_BY_TYPE,
-  }).filter((row) =>
-    shouldInsertWorkAreaInstance(
+  }).filter((row) => {
+    const decision = matchExistingWorkAreaInstance(
+      { type: row.type, name: row.name },
+      remainingExisting.map((item) => ({
+        id: item.id,
+        type: item.type,
+        name: item.name,
+      }))
+    );
+    if (decision.action !== "insert") return false;
+    return shouldInsertWorkAreaInstance(
       { type: row.type, name: row.name },
       existingInstanceKeys
-    )
-  );
+    );
+  });
 
   if (workAreaRows.length > 0) {
     const { data: insertedWorkAreas, error: insertError } = await supabase
@@ -695,6 +708,73 @@ export async function saveBriefAndSeedWorkAreas(
         continue;
       }
 
+      if (existing && row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY) {
+        const decision = reanalysisFactWrite({
+          existingSource: existing.source,
+          existingValue: existing.value,
+          extractedValue: row.value,
+        });
+        if (decision.action === "keep") {
+          const { error: conflictError } = await supabase
+            .from("project_facts")
+            .update({ conflict_warning: decision.conflictWarning })
+            .eq("id", existing.id)
+            .eq("project_id", projectId);
+          if (conflictError) {
+            return failPersist(
+              "persist_facts",
+              `fact conflict note failed: ${conflictError.message}`
+            );
+          }
+          continue;
+        }
+        const merged = mergePersistedInternalWallTypesOnReanalyse({
+          extracted: row.value,
+          persisted: existing.value,
+        });
+        const { error: mergeError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: merged,
+            unit: row.unit,
+            source: "ai_extracted",
+            confidence: row.confidence,
+            conflict_warning: null,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+        if (mergeError) {
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${mergeError.message}`
+          );
+        }
+        continue;
+      }
+
+      if (existing) {
+        const decision = reanalysisFactWrite({
+          existingSource: existing.source,
+          existingValue: existing.value,
+          extractedValue: row.value,
+        });
+        if (decision.action === "keep") {
+          const { error: conflictError } = await supabase
+            .from("project_facts")
+            .update({ conflict_warning: decision.conflictWarning })
+            .eq("id", existing.id)
+            .eq("project_id", projectId);
+          if (conflictError) {
+            return failPersist(
+              "persist_facts",
+              `fact conflict note failed: ${conflictError.message}`
+            );
+          }
+          continue;
+        }
+      }
+
       if (existing?.source === "user") {
         continue;
       }
@@ -708,6 +788,7 @@ export async function saveBriefAndSeedWorkAreas(
             unit: row.unit,
             source: "ai_extracted",
             confidence: row.confidence,
+            conflict_warning: null,
           })
           .eq("id", existing.id)
           .eq("project_id", projectId);

@@ -212,6 +212,44 @@ export function shouldInsertWorkAreaInstance(
   return !existingKeys.has(workAreaInstanceKey(row.type, row.name));
 }
 
+export type WorkAreaInstanceMatch =
+  | { readonly action: "reuse"; readonly id: string }
+  | { readonly action: "insert" }
+  | { readonly action: "unresolved" };
+
+function isCatalogueDefaultWorkAreaName(type: string, name: string): boolean {
+  const normalised = normaliseWorkAreaInstanceName(name).toLowerCase();
+  return (
+    normalised === catalogueWorkAreaLabel(type).toLowerCase() ||
+    normalised === shortWorkAreaLabel(type).toLowerCase()
+  );
+}
+
+/**
+ * Exact name reuses that UUID. A catalogue default name reuses the only
+ * instance of that type, so a rename does not insert a second row.
+ * A different specific name still inserts. Several unnamed siblings are
+ * unresolved: no insert and no rewrite.
+ */
+export function matchExistingWorkAreaInstance(
+  row: { type: string; name: string },
+  existing: readonly { id: string; type: string; name: string }[]
+): WorkAreaInstanceMatch {
+  const sameType = existing.filter((item) => item.type === row.type);
+  const wanted = workAreaInstanceKey(row.type, row.name);
+  const exact = sameType.filter(
+    (item) => workAreaInstanceKey(item.type, item.name) === wanted
+  );
+  if (exact.length === 1) return { action: "reuse", id: exact[0]!.id };
+  if (exact.length > 1) return { action: "unresolved" };
+  const extractedDefault = isCatalogueDefaultWorkAreaName(row.type, row.name);
+  if (sameType.length === 1 && extractedDefault) {
+    return { action: "reuse", id: sameType[0]!.id };
+  }
+  if (sameType.length > 1 && extractedDefault) return { action: "unresolved" };
+  return { action: "insert" };
+}
+
 /**
  * Accidental duplicate INSTANCE — same type + normalised name.
  * Same type with a different label is a new instance and must be allowed.

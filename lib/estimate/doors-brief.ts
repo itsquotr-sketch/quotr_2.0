@@ -53,6 +53,7 @@ const PREHUNG_PHRASES = [
   "door, jamb and stops",
   "door, jamb, and stops",
   "door set with frame",
+  "door assembly",
 ] as const;
 
 const REPLACEMENT_PHRASES = [
@@ -255,6 +256,12 @@ function stripOpeningQuantityClauses(text: string): string {
 
 function quantityFromSnippet(text: string): number | null {
   const raw = stripOpeningQuantityClauses(normalise(text));
+  if (
+    /\bdoor assembly\b/.test(raw) &&
+    !/\b(?:one|two|three|four|five|six|\d{1,2})\s+door assembly\b/.test(raw)
+  ) {
+    return 1;
+  }
   const word = Object.keys(QUANTITY_WORDS)
     .sort((a, b) => b.length - a.length)
     .join("|");
@@ -279,6 +286,7 @@ function quantityFromSnippet(text: string): number | null {
   );
   const token =
     patterned?.[1] ?? leading?.[1] ?? beforeDim?.[1] ?? nearby?.[1] ?? "";
+  if (!token && raw.includes("door assembly")) return 1;
   if (!token) return null;
   const fromWord = QUANTITY_WORDS[token];
   if (fromWord != null) return fromWord;
@@ -470,6 +478,33 @@ function readDimensionsFromSnippet(text: string): {
   };
 }
 
+function briefClauseIsWallOpeningOnly(text: string): boolean {
+  const raw = normalise(text);
+  if (
+    includesAny(raw, [
+      "door assembly",
+      "door set",
+      "prehung",
+      "pre-hung",
+      "door leaf",
+      "door and jamb",
+      "supply and install",
+    ])
+  ) {
+    return false;
+  }
+  const stripped = raw
+    .replace(
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+(?:door\s+)?openings?\b/g,
+      " "
+    )
+    .replace(
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+doors?\b/g,
+      " "
+    );
+  return !/\bdoors?\b|\bleaf\b|\bleaves\b/.test(stripped);
+}
+
 function snippetHasDoorSignal(text: string): boolean {
   const raw = normalise(text);
   return (
@@ -596,6 +631,7 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
   const snippets = splitDoorSetSnippets(briefText);
   const portions: DoorPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
+    if (briefClauseIsWallOpeningOnly(snippet)) continue;
     if (!snippetHasDoorSignal(snippet) && snippets.length > 1) continue;
     const portion = createEmptyDoorPortion({
       label: locationFromSnippet(snippet),
@@ -604,7 +640,7 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
     portion.clause_ordinal = index;
     portions.push(portion);
   }
-  if (portions.length === 0 && briefText.trim()) {
+  if (portions.length === 0 && briefText.trim() && !briefClauseIsWallOpeningOnly(briefText)) {
     const fallback = createEmptyDoorPortion();
     applySnippetToPortion(fallback, briefText);
     fallback.clause_ordinal = 0;

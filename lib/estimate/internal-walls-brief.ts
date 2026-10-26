@@ -12,6 +12,7 @@ import {
   createWallTypeId,
   liningProductDisplay,
   parseInternalWallsLiningProduct,
+  parseInternalWallsWallTypes,
   parseInternalWallsTimberSize,
   recommendedSheetLengthMmForProduct,
   resolveInternalWallsWallTypes,
@@ -19,13 +20,19 @@ import {
   type InternalWallsLiningProduct,
   type InternalWallsTimberSize,
 } from "@/lib/estimate/internal-walls-wall-types";
-import { INTERNAL_WALLS_HAS_OPENINGS_KEY } from "@/lib/estimate/internal-walls-openings";
+import {
+  createOpeningId,
+  INTERNAL_WALLS_ADD_OPENING_KEY,
+  INTERNAL_WALLS_HAS_OPENINGS_KEY,
+  INTERNAL_WALLS_OPENING_FIELD_PREFIX,
+} from "@/lib/estimate/internal-walls-openings";
 import {
   INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
   INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
   INTERNAL_WALLS_CORNICE_SIDES_KEY,
   INTERNAL_WALLS_CORNICE_TYPE_KEY,
   INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+  INTERNAL_WALLS_INSULATION_TYPE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
@@ -52,6 +59,14 @@ export type ExtractedInternalWallsType = {
   sameLiningBothSides: boolean | null;
   /** Explicit none from brief language. Null means openings were not stated. */
   hasOpenings: boolean | null;
+  /** Explicit door-opening count. Null when the brief did not count them. */
+  doorOpeningCount: number | null;
+  insulationIncluded: boolean | null;
+  insulationType: "acoustic" | "thermal" | "fire_acoustic" | "other" | null;
+  skirting: InternalWallsSideSelection | null;
+  painting: InternalWallsSideSelection | null;
+  /** True when stopping is named and no level is named. False when excluded. */
+  stoppingRequested: boolean | null;
   sideA: ExtractedInternalWallsFace;
   sideB: ExtractedInternalWallsFace;
   corniceIncluded?: boolean | null;
@@ -184,9 +199,86 @@ function parseLengthLm(text: string): number | null {
   if (total) return Number(total[1]);
   const long = text.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:long|of)/);
   if (long) return Number(long[1]);
+  const partition = text.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:internal\s+)?(?:partition|wall)\b/
+  );
+  if (partition) return Number(partition[1]);
   const is = text.match(/(?:wall is|this wall is)\s+(\d+(?:\.\d+)?)\s*m/);
   if (is) return Number(is[1]);
   return null;
+}
+
+const OPENING_COUNT_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+};
+
+function openingCountToken(token: string): number | null {
+  const word = OPENING_COUNT_WORDS[token];
+  if (word != null) return word;
+  const numeric = Number(token);
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 12) return numeric;
+  return null;
+}
+
+/**
+ * A counted door or door opening is an explicit wall opening.
+ * "Door assembly" is a door set and is not itself an opening count.
+ */
+export function explicitInternalWallsOpenings(text: string): {
+  hasOpenings: boolean | null;
+  doorOpeningCount: number | null;
+} {
+  const brief = normalise(text);
+  if (
+    briefStatesExplicitInternalWallsNoOpenings(text) ||
+    /\bno doors?\b/.test(brief) ||
+    /\bwithout (?:a |any )?doors?\b/.test(brief)
+  ) {
+    return { hasOpenings: false, doorOpeningCount: null };
+  }
+  const counted = brief.match(
+    /\b(one|two|three|four|five|six|\d{1,2})\s+(?:door\s+)?openings?\b/
+  );
+  const countedDoor = brief.match(
+    /\b(one|two|three|four|five|six|\d{1,2})\s+doors?\b(?!\s+assembly)/
+  );
+  const token = counted?.[1] ?? countedDoor?.[1];
+  if (token) {
+    return {
+      hasOpenings: true,
+      doorOpeningCount: openingCountToken(token),
+    };
+  }
+  if (/\bdoor openings?\b|\bopenings?\b/.test(brief)) {
+    return { hasOpenings: true, doorOpeningCount: null };
+  }
+  return { hasOpenings: null, doorOpeningCount: null };
+}
+
+export function internalWallsTopicStance(
+  briefText: string,
+  topic: "painting" | "skirting" | "insulation" | "stopping"
+): "included" | "excluded" | null {
+  const brief = normalise(briefText);
+  const token =
+    topic === "painting"
+      ? "paint(?:ing)?"
+      : topic === "insulation"
+        ? "insulat\\w*"
+        : topic === "stopping"
+          ? "stopping"
+          : "skirting";
+  if (!new RegExp(token).test(brief)) return null;
+  const excluded = new RegExp(
+    `(?:no|without|exclud\\w*)(?:\\s+[a-z]+){0,6}\\s+${token}|${token}(?:\\s+and\\s+[a-z]+)?\\s+exclud`
+  );
+  if (excluded.test(brief)) return "excluded";
+  return "included";
 }
 
 function parseHeightM(text: string): number | null {
@@ -237,6 +329,7 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
   const lengthLm = parseLengthLm(text);
   const heightM = parseHeightM(text);
   if (!timber && !lining.sideA.product && lengthLm == null) return null;
+  const openings = explicitInternalWallsOpenings(text);
   return {
     wallCount: parseWallCount(text, fallbackCount),
     lengthLm,
@@ -244,11 +337,47 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
     frameSystem: timber ? "timber" : null,
     frameSize,
     sameLiningBothSides: lining.sameBoth,
-    hasOpenings: briefStatesExplicitInternalWallsNoOpenings(text)
-      ? false
-      : null,
+    hasOpenings: openings.hasOpenings,
+    doorOpeningCount: openings.doorOpeningCount,
+    insulationIncluded: null,
+    insulationType: null,
+    skirting: null,
+    painting: null,
+    stoppingRequested: null,
     sideA: lining.sideA,
     sideB: lining.sideB,
+  };
+}
+
+function withBriefFinish(
+  type: ExtractedInternalWallsType,
+  briefText: string
+): ExtractedInternalWallsType {
+  const openings = explicitInternalWallsOpenings(briefText);
+  const insulation = internalWallsTopicStance(briefText, "insulation");
+  const painting = internalWallsTopicStance(briefText, "painting");
+  const skirting = internalWallsTopicStance(briefText, "skirting");
+  const stopping = internalWallsTopicStance(briefText, "stopping");
+  const brief = normalise(briefText);
+  const bothSides = type.sameLiningBothSides === true ? "both" : null;
+  return {
+    ...type,
+    hasOpenings: type.hasOpenings ?? openings.hasOpenings,
+    doorOpeningCount: type.doorOpeningCount ?? openings.doorOpeningCount,
+    insulationIncluded:
+      insulation === "included" ? true : insulation === "excluded" ? false : null,
+    insulationType:
+      insulation === "included" && brief.includes("acoustic")
+        ? brief.includes("fire")
+          ? "fire_acoustic"
+          : "acoustic"
+        : null,
+    skirting:
+      skirting === "excluded" ? "none" : skirting === "included" ? bothSides : null,
+    painting:
+      painting === "excluded" ? "none" : painting === "included" ? bothSides : null,
+    stoppingRequested:
+      stopping === "included" ? true : stopping === "excluded" ? false : null,
   };
 }
 
@@ -446,14 +575,19 @@ export function extractInternalWallsTypesFromBrief(
       .filter((row): row is ExtractedInternalWallsType => row != null);
     if (types.length >= 2) {
       const cornice = extractInternalWallsCorniceFromBrief(scoped);
-      return types.map((row) => withExtractedCornice(row, cornice));
+      return types.map((row) =>
+        withBriefFinish(withExtractedCornice(row, cornice), briefText)
+      );
     }
   }
 
   const single = parseSegment(brief, 1);
   if (!single) return [];
   return [
-    withExtractedCornice(single, extractInternalWallsCorniceFromBrief(scoped)),
+    withBriefFinish(
+      withExtractedCornice(single, extractInternalWallsCorniceFromBrief(scoped)),
+      briefText
+    ),
   ];
 }
 
@@ -604,6 +738,59 @@ function applyFaceWrites(params: {
   return facts;
 }
 
+function wallTypeMatchesSpec(
+  row: {
+    length_lm: number | null;
+    height_m: number | null;
+    frame_system: string | null;
+  },
+  spec: {
+    lengthLm: number | null;
+    heightM: number | null;
+    frameSystem: string | null;
+  }
+): boolean {
+  if (spec.lengthLm != null && row.length_lm != null && row.length_lm !== spec.lengthLm) {
+    return false;
+  }
+  if (spec.heightM != null && row.height_m != null && row.height_m !== spec.heightM) {
+    return false;
+  }
+  if (
+    spec.frameSystem &&
+    row.frame_system &&
+    row.frame_system !== spec.frameSystem
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function takeExistingWallType(
+  existing: ReturnType<typeof storedInternalWallsWallTypes>,
+  spec: ExtractedInternalWallsType,
+  used: Set<number>,
+  extractedCount: number
+) {
+  const compatible = existing
+    .map((row, index) => ({ row, index }))
+    .filter((item) => !used.has(item.index) && wallTypeMatchesSpec(item.row, spec));
+  if (compatible.length === 1) {
+    used.add(compatible[0]!.index);
+    return compatible[0]!.row;
+  }
+  if (
+    compatible.length !== 1 &&
+    existing.length === 1 &&
+    extractedCount === 1 &&
+    !used.has(0)
+  ) {
+    used.add(0);
+    return existing[0];
+  }
+  return undefined;
+}
+
 export function applyExtractedInternalWallsToFacts(params: {
   facts: EstimateFact[];
   workAreaId: string;
@@ -611,10 +798,12 @@ export function applyExtractedInternalWallsToFacts(params: {
 }): EstimateFact[] {
   const existing = storedInternalWallsWallTypes(params.facts, params.workAreaId);
   let facts = params.facts;
+  const usedExisting = new Set<number>();
   for (let index = 0; index < params.types.length; index += 1) {
     const spec = params.types[index]!;
-    const wallTypeId = existing[index]?.id ?? createWallTypeId();
-    if (!existing[index]) {
+    const matched = takeExistingWallType(existing, spec, usedExisting, params.types.length);
+    const wallTypeId = matched?.id ?? createWallTypeId();
+    if (!matched) {
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId: params.workAreaId,
@@ -706,7 +895,7 @@ export function applyExtractedInternalWallsToFacts(params: {
         face: spec.sideB,
       });
     }
-    const existingType = existing[index];
+    const existingType = matched;
     const userOwnsOpenings =
       existingType != null &&
       (existingType.has_openings === true || existingType.openings.length > 0);
@@ -716,6 +905,110 @@ export function applyExtractedInternalWallsToFacts(params: {
         workAreaId: params.workAreaId,
         wallTypeId,
         key: INTERNAL_WALLS_HAS_OPENINGS_KEY,
+        value: "No",
+      });
+    }
+    const statedDoorOpenings = spec.doorOpeningCount ?? 0;
+    if (
+      spec.hasOpenings === true &&
+      !userOwnsOpenings &&
+      statedDoorOpenings === 0
+    ) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_HAS_OPENINGS_KEY,
+        value: "Yes",
+      });
+    }
+    const savedDoorOpenings =
+      existingType?.openings.filter((row) => row.type === "door" || row.type == null)
+        .length ?? 0;
+    if (statedDoorOpenings > 0 && savedDoorOpenings === 0) {
+      const openingId = createOpeningId();
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        openingId,
+        key: INTERNAL_WALLS_ADD_OPENING_KEY,
+        value: openingId,
+      });
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        openingId,
+        key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}type`,
+        value: "Door opening",
+      });
+    }
+    if (spec.insulationIncluded === true && existingType?.insulation_included == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+        value: "Yes",
+      });
+    }
+    if (spec.insulationIncluded === false && existingType?.insulation_included == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+        value: "No",
+      });
+    }
+    if (spec.insulationType && existingType?.insulation_type == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_INSULATION_TYPE_KEY,
+        value:
+          spec.insulationType === "acoustic"
+            ? "Acoustic"
+            : spec.insulationType === "fire_acoustic"
+              ? "Fire / acoustic"
+              : spec.insulationType === "thermal"
+                ? "Thermal"
+                : "Other",
+      });
+    }
+    if (spec.skirting && existingType?.skirting == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+        value: spec.skirting === "both" ? "Both sides" : "No",
+      });
+    }
+    if (spec.painting && existingType?.painting == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_PAINTING_SIDES_KEY,
+        value: spec.painting === "both" ? "Both sides" : "No",
+      });
+    }
+    if (spec.stoppingRequested === false && existingType?.stopping_side_a == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+        value: "No",
+      });
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
         value: "No",
       });
     }
@@ -839,13 +1132,13 @@ export function optionalInternalWallsFactIsInvented(
     if (briefStatesExplicitInternalWallsNoOpenings(briefText)) {
       return key.includes("opening.");
     }
-    return !includesAny(brief, ["opening", "doorway", "window"]);
+    return explicitInternalWallsOpenings(briefText).hasOpenings == null;
   }
   if (key.includes("insulation")) {
-    return !includesAny(brief, ["insulat"]);
+    return internalWallsTopicStance(briefText, "insulation") == null;
   }
   if (key.includes("skirting")) {
-    return !includesAny(brief, ["skirting"]);
+    return internalWallsTopicStance(briefText, "skirting") == null;
   }
   if (key.includes("cornice") || key.includes("scotia") || key.includes("cove")) {
     if (key.includes("cornice_product") || key.includes("gib_cove")) {
@@ -857,10 +1150,10 @@ export function optionalInternalWallsFactIsInvented(
     return !includesAny(brief, ["electrical", "power point", "switch"]);
   }
   if (key.includes("stopping") || key.includes("stopping_included")) {
-    return !includesAny(brief, ["stopping", "stop the", "level 4", "level 5"]);
+    return internalWallsTopicStance(briefText, "stopping") == null;
   }
   if (key.includes("painting") || key.includes("painting_included")) {
-    return !includesAny(brief, ["paint", "repaint"]);
+    return internalWallsTopicStance(briefText, "painting") == null;
   }
   return false;
 }
@@ -879,18 +1172,24 @@ export function stripInventedInternalWallsFacts(
           next.has_openings = false;
           next.openings = [];
           next.active_opening_id = null;
-        } else if (
-          !includesAny(normalise(briefText), ["opening", "doorway", "window"])
-        ) {
+        } else if (explicitInternalWallsOpenings(briefText).hasOpenings == null) {
           next.has_openings = null;
           next.openings = [];
           next.active_opening_id = null;
         }
-        if (!includesAny(normalise(briefText), ["insulat"])) {
+        const insulationStance = internalWallsTopicStance(briefText, "insulation");
+        if (insulationStance == null) {
           next.insulation_included = null;
           next.insulation_type = null;
+        } else if (insulationStance === "excluded") {
+          next.insulation_included = false;
+          next.insulation_type = null;
+        } else if (!normalise(briefText).includes("acoustic") && !normalise(briefText).includes("thermal")) {
+          next.insulation_type = null;
         }
-        if (!includesAny(normalise(briefText), ["skirting"])) next.skirting = null;
+        const skirtingStance = internalWallsTopicStance(briefText, "skirting");
+        if (skirtingStance === "excluded") next.skirting = "none";
+        else if (skirtingStance == null) next.skirting = null;
         if (!includesAny(normalise(briefText), ["cornice", "cove", "scotia"])) {
           next.cornice_included = null;
           next.cornice = null;
@@ -911,17 +1210,71 @@ export function stripInventedInternalWallsFacts(
         if (!includesAny(normalise(briefText), ["electrical", "power point"])) {
           next.electrical = null;
         }
-        if (!includesAny(normalise(briefText), ["stopping", "level 4", "level 5"])) {
+        const stoppingStance = internalWallsTopicStance(briefText, "stopping");
+        if (stoppingStance === "excluded") {
+          next.stopping_side_a = "none";
+          next.stopping_side_b = "none";
+        } else if (
+          stoppingStance == null ||
+          !includesAny(normalise(briefText), ["level 4", "level 5"])
+        ) {
           next.stopping_side_a = null;
           next.stopping_side_b = null;
         }
-        if (!includesAny(normalise(briefText), ["paint", "repaint"])) {
-          next.painting = null;
-        }
+        const paintingStance = internalWallsTopicStance(briefText, "painting");
+        if (paintingStance === "excluded") next.painting = "none";
+        else if (paintingStance == null) next.painting = null;
         return next;
       });
       return true;
     }
     return !optionalInternalWallsFactIsInvented(fact.key, briefText);
+  });
+}
+
+/**
+ * Reanalysis keeps a wall type id when the geometry does not conflict.
+ * One door opening keeps its saved id and dimensions. Positional indexes
+ * are not an identity. Ambiguous pairs are left as extracted rows.
+ */
+export function mergePersistedInternalWallTypesOnReanalyse(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+}) {
+  const extracted = parseInternalWallsWallTypes(params.extracted);
+  const persisted = parseInternalWallsWallTypes(params.persisted);
+  if (persisted.length === 0) return extracted;
+  if (extracted.length === 0) return persisted;
+  const used = new Set<number>();
+  return extracted.map((row) => {
+    const compatible = persisted
+      .map((item, index) => ({ item, index }))
+      .filter(
+        (entry) =>
+          !used.has(entry.index) &&
+          wallTypeMatchesSpec(entry.item, {
+            lengthLm: row.length_lm,
+            heightM: row.height_m,
+            frameSystem: row.frame_system,
+          })
+      );
+    const unique = compatible.length === 1 ? compatible[0] : undefined;
+    const sole =
+      unique ??
+      (persisted.length === 1 && extracted.length === 1 && !used.has(0)
+        ? { item: persisted[0]!, index: 0 }
+        : undefined);
+    if (!sole) return row;
+    used.add(sole.index);
+    const next = { ...row, id: sole.item.id };
+    const savedDoor = sole.item.openings.find((opening) => opening.type === "door");
+    const extractedDoors = row.openings.filter((opening) => opening.type === "door");
+    if (savedDoor && extractedDoors.length === 1) {
+      next.openings = row.openings.map((opening) =>
+        opening.type === "door" ? { ...savedDoor } : opening
+      );
+      next.active_opening_id = savedDoor.id;
+    }
+    return next;
   });
 }

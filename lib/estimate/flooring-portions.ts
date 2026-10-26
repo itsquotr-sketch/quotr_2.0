@@ -280,6 +280,9 @@ export function parseFlooringFinishType(
   if (normalised.includes("sheet vinyl")) {
     return "other";
   }
+  if (normalised.includes("carpet tile")) {
+    return "other";
+  }
   if (
     normalised.includes("vinyl plank") ||
     normalised.includes("vinyl planks") ||
@@ -1239,7 +1242,7 @@ function takeExtractedMatch(
 function matchReanalysePortion(
   extracted: readonly FlooringPortion[],
   persisted: FlooringPortion,
-  index: number,
+  _index: number,
   used: Set<number>
 ): FlooringPortion | null {
   const byId = takeExtractedMatch(
@@ -1269,12 +1272,10 @@ function matchReanalysePortion(
     );
     if (byLabel) return byLabel;
   }
-  const byIndex = takeExtractedMatch(
-    extracted,
-    used,
-    (row, i) => i === index && flooringPortionFieldsCompatible(row, persisted)
-  );
-  if (byIndex) return byIndex;
+  if (!label && extracted.length === 1 && persisted.label == null) {
+    const sole = takeExtractedMatch(extracted, used, () => true);
+    if (sole) return sole;
+  }
   return takeExtractedMatch(extracted, used, (row) =>
     flooringPortionFieldsCompatible(row, persisted)
   );
@@ -1297,10 +1298,22 @@ export function mergePersistedFlooringPortionsOnReanalyse(params: {
   const hasUser = persisted.some(flooringPortionHasUserAuthority);
   const consistentSubset = isConsistentProductSubset(persisted, extracted);
   if (!hasUser && extracted.length > persisted.length && !consistentSubset) {
-    return extracted.map((row, i) => {
+    const usedPersisted = new Set<number>();
+    return extracted.map((row) => {
       const next = cloneFlooringPortion(row);
-      const previous = persisted[i];
-      if (previous) next.id = previous.id;
+      const label = row.label?.trim().toLowerCase() ?? "";
+      const matchIndex = label
+        ? persisted.findIndex(
+            (previous, index) =>
+              !usedPersisted.has(index) &&
+              previous.label?.trim().toLowerCase() === label &&
+              flooringPortionFieldsCompatible(previous, row)
+          )
+        : -1;
+      if (matchIndex >= 0) {
+        usedPersisted.add(matchIndex);
+        next.id = persisted[matchIndex]!.id;
+      }
       return next;
     });
   }

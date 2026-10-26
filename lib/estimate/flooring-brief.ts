@@ -85,6 +85,7 @@ function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
 
 const SPECIALIST_PHRASES: readonly { kind: FlooringSpecialistKind; phrases: readonly string[] }[] =
   [
+    { kind: "other_unsupported", phrases: ["carpet tiles", "carpet tile"] },
     { kind: "sheet_vinyl", phrases: ["sheet vinyl"] },
     { kind: "laminate", phrases: ["laminate"] },
     { kind: "engineered_timber", phrases: ["engineered timber", "engineered wood"] },
@@ -139,8 +140,11 @@ function finishFromSnippet(text: string): FlooringFinishType | null {
 }
 
 function locationFromSnippet(text: string): string | null {
+  const bedroom = text.match(/\bbedroom\s+(\d+)\b/i);
+  if (bedroom) return `Bedroom ${bedroom[1]}`;
   if (/\bbedrooms?\b/i.test(text)) return "Bedrooms";
-  if (/\bliving rooms?\b/i.test(text)) return "Living room";
+  if (/\bmeeting rooms?\b/i.test(text)) return "Meeting room";
+  if (/\bliving(?:\s+rooms?)?\b/i.test(text)) return "Living room";
   if (/\blounge\b/i.test(text)) return "Lounge";
   if (/\bensuite\b/i.test(text)) return "Ensuite";
   if (/\bbathroom\b/i.test(text)) return "Bathroom";
@@ -603,6 +607,17 @@ function snippetHasFlooringSignal(text: string): boolean {
 }
 
 function splitFlooringSnippets(briefText: string): string[] {
+  const primary = splitFlooringSeparators(briefText);
+  if (primary.length >= 2) return primary;
+  const sentences = briefText
+    .split(/(?<=[.!?])\s+/)
+    .map((row) => row.trim())
+    .filter((row) => finishFromSnippet(row) != null || specialistKindFromSnippet(row) != null);
+  if (sentences.length >= 2) return sentences;
+  return primary;
+}
+
+function splitFlooringSeparators(briefText: string): string[] {
   const trimmed = briefText.trim();
   if (!trimmed) return [];
   const parts = trimmed
@@ -648,7 +663,9 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.finish_authority = "extracted";
     portion.specialist_kind = specialist;
     portion.specialist_authority = "extracted";
-    portion.other_description = specialistDescriptionFromKind(specialist);
+    portion.other_description = /carpet tiles?/i.test(snippet)
+      ? "carpet tiles"
+      : specialistDescriptionFromKind(specialist);
     portion.other_description_authority = "extracted";
   } else if (finish) {
     portion.finish_type = finish;

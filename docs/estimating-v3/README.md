@@ -14,7 +14,8 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_1_CORRECTION.md](./STAGE_1_CORRECTION.md) | What Stage 1 changed, and what it left untouched |
 | [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and release branches |
 | [V3_INTEGRATION_BASELINE.md](./V3_INTEGRATION_BASELINE.md) | Integration branch, Preview identities, and Stage 2A scope |
+| [STAGE_2A_HANDOFF.md](./STAGE_2A_HANDOFF.md) | Analysis-to-Details handoff, compatibility, and what is still open |
 
-Runnable evidence: `scripts/verify-estimating-v3-stage0.ts` and `scripts/verify-estimating-v3-stage1.ts`.
+Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, and `scripts/verify-estimating-v3-stage-2a.ts`.
 
 A follow-up pass added the contract gaps that the first write-up had not yet checked: door customer-supply keys, the split between `resolveRate` and `resolveMaterialRate`, cladding’s missing template, the four calculators with no consumed-fact contract, legacy flooring stairs, and the bathroom-floor overlap group. Those notes are in the architecture, defect register, and capability matrix. The fixture locks the template and consumed-fact cases.

@@ -354,11 +354,17 @@ const carpetTiles = priceBrief(
   "Supply and install 18 m2 of carpet tiles in the meeting room. No removal."
 );
 check(
-  "carpet tiles are parsed as ordinary carpet",
-  parseFlooringFinishType("carpet tiles") === "carpet" &&
+  "carpet tiles stay an unpriced specialist and are not broadloom carpet",
+  parseFlooringFinishType("carpet tiles") === "other" &&
     carpetTiles.portions.some(
-      (row) => row.finish === "carpet" && row.specialist == null
-    ),
+      (row) =>
+        row.finish === "other" &&
+        row.specialist === "other_unsupported" &&
+        row.area === 18 &&
+        row.label === "Meeting room"
+    ) &&
+    carpetTiles.pricedRequirements === 0 &&
+    carpetTiles.sell === 0,
   JSON.stringify(carpetTiles.portions)
 );
 check(
@@ -376,11 +382,14 @@ const rooms = priceBrief(
   "Flooring. Kitchen 12 m2 vinyl plank. Living 20 m2 carpet. No removal in either room."
 );
 check(
-  "two room sentences collapse when the second does not start with a finish verb",
-  rooms.portions.length === 1 &&
+  "two room sentences stay separate portions when the second names its own finish",
+  rooms.portions.length === 2 &&
     rooms.portions[0]?.label === "Kitchen" &&
     rooms.portions[0]?.finish === "vinyl_plank" &&
-    rooms.portions[0]?.area === 12,
+    rooms.portions[0]?.area === 12 &&
+    rooms.portions[1]?.label === "Living room" &&
+    rooms.portions[1]?.finish === "carpet" &&
+    rooms.portions[1]?.area === 20,
   JSON.stringify(rooms.portions)
 );
 const splitRooms = priceBrief(
@@ -396,12 +405,13 @@ const partitions = extractInternalWallsTypesFromBrief(
   "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, one door."
 );
 check(
-  "an internal partition brief captures height and frame but not 4.2 m length or the door",
+  "an internal partition brief keeps 4.2 m, the height, the frame, and the door opening",
   partitions.length === 1 &&
     partitions[0]?.heightM === 2.4 &&
     partitions[0]?.frameSystem === "timber" &&
-    partitions[0]?.lengthLm == null &&
-    partitions[0]?.hasOpenings == null,
+    partitions[0]?.lengthLm === 4.2 &&
+    partitions[0]?.hasOpenings === true &&
+    partitions[0]?.doorOpeningCount === 1,
   JSON.stringify(
     partitions.map((row) => ({
       walls: row.wallCount,
