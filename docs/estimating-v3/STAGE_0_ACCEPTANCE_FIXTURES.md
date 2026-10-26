@@ -22,6 +22,15 @@ The eight prompts referred to in the Stage 0 request were not in the request. Th
 | Same set with concrete included | Gaps `fill`, `post`, `embedment` only | Those three remain required. They are not described as unfinished excavation. |
 | Deck only, then deck plus bathroom | Project-condition queue grows and is ordered by ask class | Already shown conditions keep their order. New conditions are added without reshuffling answered ones. |
 
+## Fascia length coverage
+
+Not a Stage 1 blocker. Present on `40d98384` and on `d4b6286e`.
+
+| Case | Current result | Desired result, not implemented |
+| --- | --- | --- |
+| Fascia included, no `deck.vertical_face_board_length_lm` | No length question in the live Details queue or beside the fascia control. Quantity is the exposed perimeter: `2 × (length + width)` when both dimensions exist. The 4.8 m × 3.6 m deck is 16.8 lm. | Ask the length when fascia is included. Use a saved length as the quantity. Keep the perimeter only as the fallback when length is unanswered. |
+| Fascia not included | Length stays hidden | Unchanged |
+
 ## Coverage briefs
 
 | Brief | Actual recognition | Questions still open | Money |

@@ -1,6 +1,6 @@
 # Estimating V3 Stage 1 — acceptance status
 
-Recorded 26 October 2026. Production was not deployed. Play Console was not changed.
+Recorded 27 October 2026. The browser checks below passed. Website and Android Production were then built from their own release commits. The Stage 1 Preview deployment was not promoted, and its secrets were not copied. Play Console and AABs were not changed.
 
 ## Browser
 
@@ -47,14 +47,36 @@ These are local only. They were not pushed.
 
 Each tip is the cherry-pick of `74444833`, `978081c2`, and `d4b6286e`, in that order. The file diff against each parent is the same 20 paths as `40d98384..d4b6286e`. Android account deletion, purchase restrictions, signup, and asset links were not changed.
 
-## Still serving
+## Released
 
 | Host | Deployment | SHA | Branch |
 | --- | --- | --- | --- |
-| `app.get-quotr.com` | `dpl_5yVsMkfnbC5LSWW1K1ZB4NWPwGQj` | `40d98384` | `feat/email-preferences-loops` |
-| `play.get-quotr.com` | `dpl_9QwLfefNfSiGwyWRP4hC6uhka24o` | `879db760` | `release/android-play` |
+| `app.get-quotr.com` | `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` | `bc0a7667` | `release/website-estimating-stage-1` |
+| `play.get-quotr.com` | `dpl_98TSTQwHHcz2s1qw9o39CqFLYSZd` | `ff39ba31` | `release/android-estimating-stage-1` |
 
-Rollback remains those two deployments. Older Ready deployments remain website `b75291bf` and Android `11d413fd`.
+`bc0a7667` and `ff39ba31` are the cherry-picks of `74444833`, `978081c2`, and `d4b6286e` onto the previous production commits. The application diff is the same 20 paths as `40d98384..d4b6286e`. Login on both hosts returned HTTP 200. Play `/.well-known/assetlinks.json` still delegates `com.getquotr.app`.
+
+Rollback is the previous production deployments: website `dpl_5yVsMkfnbC5LSWW1K1ZB4NWPwGQj` (`40d98384`) and Android `dpl_9QwLfefNfSiGwyWRP4hC6uhka24o` (`879db760`). Older Ready deployments remain website `b75291bf` and Android `11d413fd`.
+
+## Closed on the existing isolated jobs
+
+Desktop width, after the recorded 400×858 pass. This was a desktop browser viewport, not a physical-device keyboard test.
+
+- Deck post count 12 is still the stated count after reload. The post question is not an open required answer.
+- Hole count 8 remains, with the saved reason “Shared corner posts”. The estimate states that 8 is not 12 and keeps the reason. The reason was not cleared.
+- Excavation is recorded as ordinary soil, hand digging, and spoil on site. Those answers are not in the active queue.
+- Concrete is recorded separately: full fill, 125×125 post, 600 mm embedment. “Concrete placement scope” remains a pricing gap, not an unfinished excavation question.
+- Project conditions are complete and still editable. The values are carting 10–30 m and site access Easy. The active queue had kept library order (site access, then carting) until each was answered. The completed list is sorted by constraint key, which is the unchanged production behaviour.
+
+## Observations left outside this release
+
+Fascia length is not asked by the live Details composer. That absence is already on `40d98384`. Quantity falls back to the exposed perimeter: 16.8 lm for the 4.8 m × 3.6 m deck. The coverage case is in the Stage 0 defect register and acceptance fixtures. Fascia coverage is not complete.
+
+The flooring label briefly showed three areas while the stored portions were two. After reload the label matched the two stored portions. That is not a persisted count defect.
+
+Address search returned the unavailable message on the Preview host. The browser key is the shared Production and Preview setting. Production was not inferred from that Preview response and was not changed.
+
+`GET /api/internal/marketing-loops-retry` had been returning 500 on Preview. The route returns 500 when the authorised handler throws, and it uses the same admin client as job creation. The demonstrated failure matched the Preview service-role key that was corrected for this branch. Production settings were not changed, and Production impact is not inferred.
 
 ## Checks retained
 

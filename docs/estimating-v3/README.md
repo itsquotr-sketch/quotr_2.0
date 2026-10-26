@@ -1,6 +1,6 @@
 # Estimating V3 Stage 0
 
-Audit and plan only. No estimator rewrite, no Production deploy, and no customer-data change.
+Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 later shipped the four completion fixes; the release record is in [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md).
 
 | Document | Contents |
 | --- | --- |

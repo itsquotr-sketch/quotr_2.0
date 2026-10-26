@@ -100,6 +100,18 @@ On the legacy path only, stairs cost `count × 45` and sell `count × 68`, with 
 
 When `bathroom.job_scope` is absent and the legacy coordination conditions match, the calculator adds “Project coordination and site allowance” at cost 800. Sell is `gmSell` of that cost, not the stored pair of 1,200. The mature path does not add it. It can sit beside labour hours that the project access factor has already increased. No second P&G work area exists.
 
+## P2 — Fascia length is not asked, so quantity uses the exposed perimeter
+
+**Reproduction.** Include fascia on a deck (`deck.vertical_face_boards_required = true`). The live Details composer and the deck specification editor ask for fascia material only. They do not ask `deck.vertical_face_board_length_lm`. On the isolated Stage 1 deck (4.8 m × 3.6 m, fascia included, no length fact), the estimate states “Fascia / edge boards use exposed perimeter × 1 course (16.8 lm required).” `16.8 = 2 × (4.8 + 3.6)`.
+
+**Where it comes from.** The length question exists on the deck scope template and is hidden unless fascia is required. `listDeckClarifyDescriptors` / `DECK_INFORMATION_CONTRACT` do not include that key, so the live queue never emits it. `deckExposedPerimeterM` uses the length fact when present, otherwise the rectangular perimeter, otherwise `area × 0.5`.
+
+**Baseline.** The same absence is on `40d98384`. Stage 1 did not add or remove it. This is not a Stage 1 regression, and fascia coverage is not complete.
+
+**Consequence.** A rectangular deck with fascia on every edge is quantified. A deck that needs fascia on only part of the edge, or a non-rectangular edge, is quantified as the full exposed perimeter until a length fact is stored by some other path.
+
+**Later coverage case.** When fascia is included, the Details queue asks for the edge length beside that answer. A saved length is the quantity. With no length, the rectangular perimeter remains the fallback. Do not treat the fallback as a completed fascia measure.
+
 ## Explicitly not weakened
 
 The finite-number rejection stays. Deck readiness stays blocked while real post-hole gaps remain. Specialist laminate is not given the unused 110/165 pair in this pass.
