@@ -86,6 +86,20 @@ Severity is for estimating trust: P0 blocks a correct save or leaves a finished 
 
 `preliminary_allowance` appears only as `WARNING_CODES.PRELIMINARY_ALLOWANCE` in `lib/commercial-engine/contract/codes.ts`. Work-area allowances are not gathered into one preliminary. This is a coverage gap, not a double charge found in this pass.
 
+## P1 — Door customer supply uses a different key from the question
+
+The door template stores `doors.hardware_client_supplied`. The legacy calculator in `calculateDoors` reads `doors.client_supplied` and `doors.supply_scope`. Answering only the hardware question does not set `doors.client_supplied`. Nested door portions are a separate path and were not executed here.
+
+**Smallest later fix.** Map the hardware answer onto the key the active calculator reads, or teach the calculator to read the hardware key. Do not drop either stored answer. This is not in Stage 1.
+
+## P2 — Legacy flooring stairs label gross margin and charge a paired sell
+
+On the legacy path only, stairs cost `count × 45` and sell `count × 68`, with `sellAuthority: "derived_from_gross_margin"`. At one stair that is cost 45 and sell 68. Gross margin at 20% would sell at 56.25. Nested `flooring.portions` do not use this branch. Stage 1 does not change it. A later recipe change needs an explicit version and must not rewrite saved lines.
+
+## P2 — Legacy bathroom coordination is not project-wide P&G
+
+When `bathroom.job_scope` is absent and the legacy coordination conditions match, the calculator adds “Project coordination and site allowance” at cost 800. Sell is `gmSell` of that cost, not the stored pair of 1,200. The mature path does not add it. It can sit beside labour hours that the project access factor has already increased. No second P&G work area exists.
+
 ## Explicitly not weakened
 
 The finite-number rejection stays. Deck readiness stays blocked while real post-hole gaps remain. Specialist laminate is not given the unused 110/165 pair in this pass.
