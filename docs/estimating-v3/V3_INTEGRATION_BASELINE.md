@@ -48,3 +48,17 @@ In scope:
 - Leave carpet-tile pricing, quantity formulas, rate precedence, productivity, margin, preliminaries, calibration, and the fascia-length gap unchanged.
 
 Out of scope: a second estimator, a new answer store, a schema migration, Production, and Android behaviour.
+
+## Stage 2A line
+
+| Item | Value |
+| --- | --- |
+| Development branch | `estimating/v3-stage-2a` |
+| Implementation | `bdf18e49` then `11564062` |
+| Preview alias | `https://quotr-2-0-git-estimating-v3-stage-2a-quotr1.vercel.app` |
+| Preview deployment | `dpl_9DKFFtmVYQeo5dTwMq8mBKxv74Jg` at `bdf18e49`, then the `11564062` deployment on the same alias |
+| Isolated fixture | plus-address `hello+v3-stage-2a.b30dcd11@erccontracting.co.nz`, org `9cfc28ea-8eb6-4d81-85b1-3ff7327506ca` |
+
+The shared Preview service-role value was not a `service_role` JWT, so project creation failed closed. A branch-scoped Preview service role, taken from the existing local Preview credential for `shhpjsoldmqtkdbgrbtm`, was added for `estimating/v3` and `estimating/v3-stage-2a` only. Production keys were not copied. The billing page on that Preview loaded plan choices, which the hosted Preview guard allows only when billing is test. No quote or customer email was sent.
+
+The isolated partition job stored length 4.2 m, height 2.4 m, both-side plasterboard, insulation included with the type still open, painting and skirting excluded, and one door opening. Details asked for the unstated framing size. Reload kept the same work-area id. Carpet-tile pricing and the fascia-length fallback remain open. Live model recognition was checked on this one brief only; the other two briefs are covered by the deterministic script.
