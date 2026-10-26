@@ -17,6 +17,7 @@ import {
   structuralGateApplies,
 } from "@/lib/estimate/internal-walls-scope";
 import {
+  canonicalInternalWallsFinishStance,
   nextInternalWallsWallTypeField,
   parseInternalWallsWallTypes,
   resolveInternalWallsWallTypes,
@@ -589,6 +590,12 @@ export function shouldHideConditionalQuestion(
   }
 
   if (key === "internal_walls.skirting_length_lm") {
+    const types = parseInternalWallsWallTypes(
+      lookupValue(lookup, workAreaId, "internal_walls.wall_types")
+    );
+    const stance = canonicalInternalWallsFinishStance(types, "skirting");
+    if (stance === "excluded") return true;
+    if (stance === "included") return false;
     const included = boolFact(lookup, workAreaId, "internal_walls.skirtings_included");
     if (included === false) return true;
     if (included === null) return true;

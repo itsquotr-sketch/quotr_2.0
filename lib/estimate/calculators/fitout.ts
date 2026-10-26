@@ -65,6 +65,7 @@ import {
   INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT,
   INTERNAL_WALLS_WALL_TYPE_REQUIRED_MESSAGE,
   grossFaceAreaM2,
+  legacyInternalWallsFinishApplies,
   linedFaceCount,
   resolveInternalWallsWallTypes,
   summariseInternalWallsWorkArea,
@@ -434,6 +435,10 @@ export function calculateInternalWalls(
   const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
+  const canonicalTypes = resolveInternalWallsWallTypes({
+    facts,
+    workAreaId: workArea.id,
+  }).types;
   const length = getNumberFact(facts, workArea.id, "internal_walls.length_lm");
   const height = getNumberFact(facts, workArea.id, "internal_walls.height_m");
   const sides = getStringFact(facts, workArea.id, "internal_walls.lining_sides");
@@ -582,7 +587,15 @@ export function calculateInternalWalls(
     )
   );
 
-  if (getBooleanFact(facts, workArea.id, "internal_walls.skirtings_included")) {
+  if (
+    legacyInternalWallsFinishApplies({
+      types: canonicalTypes,
+      field: "skirting",
+      legacyIncluded:
+        getBooleanFact(facts, workArea.id, "internal_walls.skirtings_included") ===
+        true,
+    })
+  ) {
     const skirtingLm =
       getNumberFact(facts, workArea.id, "internal_walls.skirting_length_lm") ??
       length ??
@@ -671,7 +684,15 @@ export function calculateInternalWalls(
     );
   }
 
-  if (getBooleanFact(facts, workArea.id, "internal_walls.painting_included")) {
+  if (
+    legacyInternalWallsFinishApplies({
+      types: canonicalTypes,
+      field: "painting",
+      legacyIncluded:
+        getBooleanFact(facts, workArea.id, "internal_walls.painting_included") ===
+        true,
+    })
+  ) {
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,

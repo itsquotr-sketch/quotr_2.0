@@ -677,6 +677,8 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
     }
     if (hasSkirting) {
       draft = appendScopeClause(draft, "Skirting is included where selected.");
+    } else if (types.every((row) => row.skirting === "none")) {
+      draft = appendScopeClause(draft, "Skirting is excluded.");
     }
     if (hasCornice) {
       draft = appendScopeClause(
@@ -701,6 +703,8 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
         draft,
         "Wall-face painting is included to the selected faces."
       );
+    } else if (types.every((row) => row.painting === "none")) {
+      draft = appendScopeClause(draft, "Painting is excluded.");
     }
     if (hasElectrical) {
       draft = appendScopeClause(
@@ -745,7 +749,13 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
   if (isAffirmative(factValue(facts, "internal_walls.insulation_included"))) {
     draft = appendScopeClause(draft, "Wall insulation is included where applicable.");
   }
-  if (isAffirmative(factValue(facts, "internal_walls.skirtings_included"))) {
+  const legacyTypes = parseInternalWallsQuoteTypes(facts);
+  const legacySkirtingExcluded =
+    legacyTypes.length > 0 && legacyTypes.every((row) => row.skirting === "none");
+  if (
+    !legacySkirtingExcluded &&
+    isAffirmative(factValue(facts, "internal_walls.skirtings_included"))
+  ) {
     draft = appendScopeClause(draft, "Skirting is included where applicable.");
   }
 

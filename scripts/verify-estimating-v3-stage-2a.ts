@@ -9,6 +9,7 @@
  * fascia fallback are not treated as fixed.
  */
 import { reanalysisFactWrite } from "../lib/ai/mappers";
+import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
 import { deckExposedPerimeterM } from "../lib/estimate/deck-fascia";
 import { listDeckClarifyDescriptors } from "../lib/estimate/deck-question-descriptors";
 import { extractDoorPortionsFromBrief } from "../lib/estimate/doors-brief";
@@ -21,16 +22,25 @@ import {
 import { nextInternalWallsFinishField } from "../lib/estimate/internal-walls-finish";
 import { resolveInternalWallsWallTypes } from "../lib/estimate/internal-walls-wall-types";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
-import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
+import {
+  commercializeFlooring,
+  flooringLineIsManualPricingEligible,
+} from "../lib/estimate/flooring-commercial";
+import { FLOORING_SPECIALIST_COMPONENT } from "../lib/estimate/flooring-identities";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
+import { buildNestedFlooringQuoteDraft } from "../lib/estimate/flooring-quote";
 import {
   FLOORING_PORTIONS_FACT_KEY,
+  FLOORING_SPECIALIST_RECIPE_MESSAGE,
   applyFlooringFactWrite,
+  flooringReanalysisIdentityUnresolved,
   mergePersistedFlooringPortionsOnReanalyse,
   parseFlooringPortions,
 } from "../lib/estimate/flooring-portions";
 import type { EstimateFact } from "../lib/estimate/types";
-import { matchExistingWorkAreaInstance } from "../lib/work-areas/instances";
+import { shouldHideConditionalQuestion } from "../lib/scopes/conditional-rules";
+import { buildWorkAreaQuoteDescriptionDraft } from "../lib/work-areas/quote-description";
+import { planWorkAreaInstanceActions } from "../lib/work-areas/instances";
 
 const PARTITION_BRIEF =
   "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, insulation, one door opening, door assembly and stopping. Painting and skirting excluded.";
@@ -169,11 +179,11 @@ const officeSell = officeCommercial.lineItems.reduce(
 );
 const officePriced = officeCommercial.requirements.filter((row) => row.priced).length;
 check(
-  "office partitions keep acoustic insulation, skirting, and painting",
+  "office partitions keep acoustic insulation and do not infer finish sides",
   officeWall?.insulation_included === true &&
     officeWall.insulation_type === "acoustic" &&
-    officeWall.skirting === "both" &&
-    officeWall.painting === "both"
+    officeWall.skirting == null &&
+    officeWall.painting == null
 );
 check(
   "carpet tiles are recognised and not priced or marked complete",
@@ -264,39 +274,62 @@ const reanalysed = mergePersistedFlooringPortionsOnReanalyse({
   persisted: answeredPortions,
 });
 check(
-  "reanalysis matches rooms by label and does not mint replacement ids",
+  "reanalysis keeps flooring ids by measurement, including a reordered extract",
   reanalysed.length === 3 &&
     reanalysed[0]?.id === rooms[0]?.id &&
     reanalysed[1]?.id === rooms[1]?.id &&
     reanalysed[2]?.id === rooms[2]?.id &&
     reanalysed[0]?.underlay_required === true &&
-    reanalysed[1]?.area_m2 === 10
+    reanalysed[1]?.area_m2 === 10 &&
+    !flooringReanalysisIdentityUnresolved({
+      extracted: [...rooms].reverse(),
+      persisted: answeredPortions,
+    })
+);
+const reordered = mergePersistedFlooringPortionsOnReanalyse({
+  extracted: [...rooms].reverse(),
+  persisted: answeredPortions,
+});
+check(
+  "extraction order does not swap flooring portion identities",
+  reordered.map((row) => row.id).join() === rooms.map((row) => row.id).join() &&
+    reordered[0]?.underlay_required === true
 );
 
-const renamed = matchExistingWorkAreaInstance(
-  { type: "flooring", name: "Flooring" },
+const renamed = planWorkAreaInstanceActions(
+  [{ type: "flooring", name: "Flooring" }],
   [{ id: "floor-1", type: "flooring", name: "Upstairs floors" }]
 );
-const distinct = matchExistingWorkAreaInstance(
-  { type: "bathroom", name: "Main Bathroom" },
-  [{ id: "bath-1", type: "bathroom", name: "Master Ensuite" }]
+const specificRename = planWorkAreaInstanceActions(
+  [{ type: "bathroom", name: "Master Ensuite" }],
+  [{ id: "bath-1", type: "bathroom", name: "Main Bathroom" }]
 );
-const ambiguous = matchExistingWorkAreaInstance(
-  { type: "flooring", name: "Flooring" },
+const addedRoom = planWorkAreaInstanceActions(
+  [
+    { type: "bathroom", name: "Main Bathroom" },
+    { type: "bathroom", name: "Powder room" },
+  ],
+  [{ id: "bath-1", type: "bathroom", name: "Main Bathroom" }]
+);
+const ambiguous = planWorkAreaInstanceActions(
+  [{ type: "flooring", name: "Flooring" }],
   [
     { id: "floor-1", type: "flooring", name: "Upstairs floors" },
     { id: "floor-2", type: "flooring", name: "Garage floor" },
   ]
 );
 check(
-  "a renamed sole work area is reused and a different name still inserts",
-  renamed.action === "reuse" &&
-    renamed.id === "floor-1" &&
-    distinct.action === "insert"
+  "a renamed work area is reused and an additional named room still inserts",
+  renamed[0]?.action === "reuse" &&
+    renamed[0]?.id === "floor-1" &&
+    specificRename[0]?.action === "reuse" &&
+    specificRename[0]?.id === "bath-1" &&
+    addedRoom[0]?.action === "reuse" &&
+    addedRoom[1]?.action === "insert"
 );
 check(
-  "an unmatched default name among several work areas is not merged",
-  ambiguous.action === "unresolved"
+  "an unmatched name among several work areas is not merged",
+  ambiguous[0]?.action === "unresolved"
 );
 
 const kept = reanalysisFactWrite({
@@ -366,6 +399,230 @@ const legacy = parseFlooringPortions([
 check(
   "an older flooring portion still parses without regeneration",
   legacy.length === 1 && legacy[0]?.id === "fa_legacy" && legacy[0]?.area_m2 === 15
+);
+
+const twinPersisted = [
+  { ...rooms[0]!, id: "bed-a", label: "Bedroom A", underlay_required: true },
+  { ...rooms[0]!, id: "bed-b", label: "Bedroom B", underlay_required: false },
+];
+const twinExtracted = [
+  { ...rooms[0]!, id: "new-b", label: "Bedroom B" },
+  { ...rooms[0]!, id: "new-a", label: "Bedroom A" },
+];
+const twins = mergePersistedFlooringPortionsOnReanalyse({
+  extracted: twinExtracted,
+  persisted: twinPersisted,
+});
+check(
+  "two similar rooms do not swap or merge",
+  twins.length === 2 &&
+    twins[0]?.id === "bed-a" &&
+    twins[1]?.id === "bed-b" &&
+    twins[0]?.underlay_required === true &&
+    twins[1]?.underlay_required === false &&
+    flooringReanalysisIdentityUnresolved({
+      extracted: twinExtracted,
+      persisted: twinPersisted,
+    })
+);
+const addedFloor = mergePersistedFlooringPortionsOnReanalyse({
+  extracted: [
+    ...rooms,
+    { ...rooms[1]!, id: "living", label: "Living", area_m2: 20 },
+  ],
+  persisted: answeredPortions,
+});
+check(
+  "adding a flooring room keeps the saved rooms",
+  addedFloor.length === 4 &&
+    addedFloor[0]?.id === rooms[0]?.id &&
+    addedFloor[1]?.id === rooms[1]?.id &&
+    addedFloor[2]?.id === rooms[2]?.id &&
+    addedFloor[3]?.area_m2 === 20 &&
+    !flooringReanalysisIdentityUnresolved({
+      extracted: [
+        ...rooms,
+        { ...rooms[1]!, id: "living", label: "Living", area_m2: 20 },
+      ],
+      persisted: answeredPortions,
+    })
+);
+
+const bothSides = extractInternalWallsTypesFromBrief(
+  "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, skirting both sides and painting both sides."
+);
+check(
+  "explicit both-sides wording is stored for skirting and painting",
+  bothSides[0]?.skirting === "both" && bothSides[0]?.painting === "both"
+);
+
+const conflictFacts: EstimateFact[] = [
+  ...wallFacts,
+  {
+    work_area_id: "walls",
+    key: "internal_walls.skirtings_included",
+    value: true,
+    source: "ai_extracted",
+  },
+  {
+    work_area_id: "walls",
+    key: "internal_walls.painting_included",
+    value: true,
+    source: "ai_extracted",
+  },
+];
+const conflictEstimate = calculateInternalWalls(
+  {
+    project: { id: "p", qualityLevel: null },
+    confirmedWorkAreas: [
+      { id: "walls", type: "internal_walls", name: "Internal walls", sort_order: 1 },
+    ],
+    facts: conflictFacts,
+    constraints: [],
+    organisationSettings: null,
+    materialWastageSettings: null,
+    rates: [],
+  },
+  { id: "walls", type: "internal_walls", name: "Internal walls", sort_order: 1 }
+);
+const legacyOnly = calculateInternalWalls(
+  {
+    project: { id: "p", qualityLevel: null },
+    confirmedWorkAreas: [
+      { id: "walls", type: "internal_walls", name: "Internal walls", sort_order: 1 },
+    ],
+    facts: [
+      {
+        work_area_id: "walls",
+        key: "internal_walls.length_lm",
+        value: 6,
+        source: "user",
+      },
+      {
+        work_area_id: "walls",
+        key: "internal_walls.height_m",
+        value: 2.4,
+        source: "user",
+      },
+      {
+        work_area_id: "walls",
+        key: "internal_walls.skirtings_included",
+        value: true,
+        source: "user",
+      },
+    ],
+    constraints: [],
+    organisationSettings: null,
+    materialWastageSettings: null,
+    rates: [],
+  },
+  { id: "walls", type: "internal_walls", name: "Internal walls", sort_order: 1 }
+);
+const exclusionQuote = buildWorkAreaQuoteDescriptionDraft({
+  type: "internal_walls",
+  name: "Internal walls",
+  facts: [
+    {
+      key: "internal_walls.wall_types",
+      label: "Walls",
+      value: JSON.stringify(resolveInternalWallsWallTypes({
+        facts: conflictFacts,
+        workAreaId: "walls",
+      }).types),
+    },
+    {
+      key: "internal_walls.skirtings_included",
+      label: "Skirtings",
+      value: "Yes",
+    },
+  ],
+});
+check(
+  "an explicit exclusion beats a conflicting legacy inclusion",
+  !conflictEstimate.lineItems.some((row) => /skirting/i.test(row.label)) &&
+    !conflictEstimate.lineItems.some((row) => /painting/i.test(row.label)) &&
+    exclusionQuote.includes("Skirting is excluded.") &&
+    exclusionQuote.includes("Painting is excluded.") &&
+    !exclusionQuote.includes("Skirting is included") &&
+    legacyOnly.lineItems.some((row) => row.label === "Skirting")
+);
+check(
+  "a conflicting legacy flag does not ask for skirting length",
+  shouldHideConditionalQuestion(
+    {
+      key: "internal_walls.skirting_length_lm",
+      label: "Skirting length",
+      questionText: "Skirting length",
+      inputType: "number",
+      required: false,
+      priority: 1,
+      factKey: "internal_walls.skirting_length_lm",
+      workAreaType: "internal_walls",
+    },
+    "walls",
+    new Map([
+      [
+        "walls:internal_walls.wall_types",
+        {
+          key: "internal_walls.wall_types",
+          work_area_id: "walls",
+          value: resolveInternalWallsWallTypes({
+            facts: conflictFacts,
+            workAreaId: "walls",
+          }).types,
+        },
+      ],
+      [
+        "walls:internal_walls.skirtings_included",
+        {
+          key: "internal_walls.skirtings_included",
+          work_area_id: "walls",
+          value: true,
+        },
+      ],
+    ])
+  )
+);
+
+const tileLines = officeCommercial.lineItems.filter(
+  (row) => row.componentKey === FLOORING_SPECIALIST_COMPONENT
+);
+const tileQuote = buildNestedFlooringQuoteDraft(
+  [{ key: FLOORING_PORTIONS_FACT_KEY, value: JSON.stringify(officeFloor) }],
+  tileLines.map((line) => ({
+    label: line.label,
+    component_key: line.componentKey,
+    nested_item_id: officeFloor[0]?.id ?? null,
+    total_cost: line.recommendedCost,
+    total_sell: line.recommendedSell,
+  }))
+);
+check(
+  "unsupported carpet tiles stay visible as unpriced supply and installation",
+  tileLines.length === 2 &&
+    tileLines.every(
+      (row) =>
+        (row.recommendedSell ?? 0) === 0 && flooringLineIsManualPricingEligible(row)
+    ) &&
+    officeCommercial.requirements.some(
+      (row) => row.kind === "material" && row.priced === false
+    ) &&
+    officeCommercial.requirements.some(
+      (row) => row.kind === "labour" && row.priced === false
+    ) &&
+    officeCommercial.missingInfo.includes(FLOORING_SPECIALIST_RECIPE_MESSAGE) &&
+    tileQuote.includes("18 m²") &&
+    tileQuote.includes("No recipe rate is applied.")
+);
+
+const derived = reanalysisFactWrite({
+  existingSource: "derived",
+  existingValue: 12,
+  extractedValue: 20,
+});
+check(
+  "a derived value is replaced when its inputs disagree",
+  derived.action === "replace"
 );
 
 if (failed > 0) {

@@ -349,6 +349,30 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
   };
 }
 
+function explicitFinishBothSides(
+  briefText: string,
+  topic: "skirting" | "painting"
+): boolean {
+  const token = topic === "painting" ? "paint(?:ing)?" : "skirting";
+  const pattern = new RegExp(
+    `\\b${token}\\b(?:\\s+\\w+){0,3}\\s+both sides|both sides(?:\\s+\\w+){0,3}\\s+\\b${token}\\b`,
+    "i"
+  );
+  return pattern.test(normalise(briefText));
+}
+
+function finishSideFromBrief(
+  briefText: string,
+  topic: "skirting" | "painting",
+  stance: "included" | "excluded" | null
+): "none" | "both" | null {
+  if (stance === "excluded") return "none";
+  if (stance === "included" && explicitFinishBothSides(briefText, topic)) {
+    return "both";
+  }
+  return null;
+}
+
 function withBriefFinish(
   type: ExtractedInternalWallsType,
   briefText: string
@@ -359,7 +383,6 @@ function withBriefFinish(
   const skirting = internalWallsTopicStance(briefText, "skirting");
   const stopping = internalWallsTopicStance(briefText, "stopping");
   const brief = normalise(briefText);
-  const bothSides = type.sameLiningBothSides === true ? "both" : null;
   return {
     ...type,
     hasOpenings: type.hasOpenings ?? openings.hasOpenings,
@@ -372,10 +395,8 @@ function withBriefFinish(
           ? "fire_acoustic"
           : "acoustic"
         : null,
-    skirting:
-      skirting === "excluded" ? "none" : skirting === "included" ? bothSides : null,
-    painting:
-      painting === "excluded" ? "none" : painting === "included" ? bothSides : null,
+    skirting: finishSideFromBrief(briefText, "skirting", skirting),
+    painting: finishSideFromBrief(briefText, "painting", painting),
     stoppingRequested:
       stopping === "included" ? true : stopping === "excluded" ? false : null,
   };
@@ -1190,6 +1211,12 @@ export function stripInventedInternalWallsFacts(
         const skirtingStance = internalWallsTopicStance(briefText, "skirting");
         if (skirtingStance === "excluded") next.skirting = "none";
         else if (skirtingStance == null) next.skirting = null;
+        else if (
+          next.skirting === "both" &&
+          !explicitFinishBothSides(briefText, "skirting")
+        ) {
+          next.skirting = null;
+        }
         if (!includesAny(normalise(briefText), ["cornice", "cove", "scotia"])) {
           next.cornice_included = null;
           next.cornice = null;
@@ -1224,9 +1251,25 @@ export function stripInventedInternalWallsFacts(
         const paintingStance = internalWallsTopicStance(briefText, "painting");
         if (paintingStance === "excluded") next.painting = "none";
         else if (paintingStance == null) next.painting = null;
+        else if (
+          next.painting === "both" &&
+          !explicitFinishBothSides(briefText, "painting")
+        ) {
+          next.painting = null;
+        }
         return next;
       });
       return true;
+    }
+    if (fact.key === "internal_walls.skirtings_included") {
+      const stance = internalWallsTopicStance(briefText, "skirting");
+      if (stance === "excluded") fact.value = false;
+      if (stance == null) return false;
+    }
+    if (fact.key === "internal_walls.painting_included") {
+      const stance = internalWallsTopicStance(briefText, "painting");
+      if (stance === "excluded") fact.value = false;
+      if (stance == null) return false;
     }
     return !optionalInternalWallsFactIsInvented(fact.key, briefText);
   });

@@ -998,40 +998,54 @@ function removalRequirements(params: {
   return rows;
 }
 
-function specialistRequirement(params: {
+function specialistRequirements(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type">;
   portion: FlooringPortion;
-  areaM2: number | null;
-}): MaterialRequirement {
+  areaM2: number;
+}): EstimateRequirement[] {
   const { workArea, portion, areaM2 } = params;
-  const quantity = areaM2 != null ? areaM2 : 1;
-  const componentKey = portion.specialist_kind
+  const phrase = specialistPhrase(portion);
+  const specialist = portion.specialist_kind != null;
+  const componentKey = specialist
     ? FLOORING_SPECIALIST_COMPONENT
     : FLOORING_CUSTOM_FINISH_COMPONENT;
-  return materialCountRow({
+  const assumption = {
+    key: specialist ? "unsupported_specialist" : "custom_ordinary_finish",
+    text: specialist
+      ? `${phrase} has no supported recipe. Supply and installation stay separate and unpriced. Ordinary finish packages do not apply. This is not a missing material price.`
+      : "Custom ordinary flooring. No ordinary carpet, vinyl, tile, or hardwood package key. Independently confirmed substrate, framing, or removal may remain visible.",
+    source: "calculator_default" as const,
+  };
+  const material = materialCountRow({
     workArea,
     portion,
     componentKey,
     materialKey: null,
     category: "SPECIALIST",
-    description: summariseFlooringPhysicalPortion(portion),
-    specification: specialistPhrase(portion),
-    quantity,
-    unit: areaM2 != null ? "m2" : "each",
-    areaM2: areaM2 ?? 1,
-    extraAssumptions: [
-      {
-        key: params.portion.specialist_kind
-          ? "unsupported_specialist"
-          : "custom_ordinary_finish",
-        text: params.portion.specialist_kind
-          ? "Specialist flooring supply and installation. Ordinary finish packages, underlay, preparation, and sheet takeoff do not apply."
-          : "Custom ordinary flooring. No ordinary carpet, vinyl, tile, or hardwood package key. Independently confirmed substrate, framing, or removal may remain visible.",
-        source: "calculator_default",
-      },
-    ],
+    description: specialist ? `${phrase} supply` : summariseFlooringPhysicalPortion(portion),
+    specification: phrase,
+    quantity: areaM2,
+    unit: "m2",
+    areaM2,
+    extraAssumptions: [assumption],
     confidence: "low",
   });
+  if (!specialist) return [material];
+  return [
+    material,
+    labourRow({
+      workArea,
+      portion,
+      componentKey,
+      hoursKey: "flooring.specialist.unsupported",
+      unit: "m2",
+      description: `${phrase} installation`,
+      quantity: areaM2,
+      areaM2,
+      trade: "labourer",
+      extraAssumptions: [assumption],
+    }),
+  ];
 }
 
 function emptyPortionPhysical(
@@ -1079,7 +1093,7 @@ export function calculateFlooringPortionPhysical(params: {
     const area = physicalNetAreaM2(portion);
     const requirements: EstimateRequirement[] =
       area != null
-        ? [specialistRequirement({ workArea, portion, areaM2: area })]
+        ? specialistRequirements({ workArea, portion, areaM2: area })
         : [];
     return {
       portion: emptyPortionPhysical(
@@ -1114,7 +1128,7 @@ export function calculateFlooringPortionPhysical(params: {
       owner,
     });
     const requirements: EstimateRequirement[] = [
-      specialistRequirement({ workArea, portion, areaM2 }),
+      ...specialistRequirements({ workArea, portion, areaM2 }),
       ...substrate.requirements,
       ...framingRequirements({ workArea, portion, areaM2, owner }),
       ...removalRequirements({ workArea, portion, areaM2, owner }),

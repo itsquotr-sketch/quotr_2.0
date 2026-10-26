@@ -907,11 +907,13 @@ const specialist = physical([
   },
 ]);
 check(
-  "I3. Specialist is UNSUPPORTED_SPECIALIST with one specialist requirement",
+  "I3. Specialist is UNSUPPORTED_SPECIALIST with separate supply and installation",
   specialist.portions[0]?.completeness ===
     FLOORING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST &&
-    byComponent(specialist.requirements, FLOORING_SPECIALIST_COMPONENT).length === 1 &&
-    specialist.requirements.length === 1
+    byComponent(specialist.requirements, FLOORING_SPECIALIST_COMPONENT).length === 2 &&
+    specialist.requirements.some((row) => row.kind === "material") &&
+    specialist.requirements.some((row) => row.kind === "labour") &&
+    specialist.requirements.every((row) => row.priced === false)
 );
 check(
   "I4. Specialist has no ordinary finish package",

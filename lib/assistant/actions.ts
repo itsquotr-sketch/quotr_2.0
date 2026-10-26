@@ -36,8 +36,9 @@ import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/qualit
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import {
+  WORK_AREA_IDENTITY_UNRESOLVED_MESSAGE,
   existingWorkAreaInstanceKeys,
-  matchExistingWorkAreaInstance,
+  planWorkAreaInstanceActions,
   shouldInsertWorkAreaInstance,
 } from "@/lib/work-areas/instances";
 import { staleSuggestedOwnedWorkAreasToDrop } from "@/lib/work-areas/ownership";
@@ -85,8 +86,10 @@ import {
   mergePersistedDoorsPortionsOnReanalyse,
 } from "@/lib/estimate/doors-portions";
 import {
+  FLOORING_IDENTITY_UNRESOLVED_MESSAGE,
   FLOORING_PORTIONS_FACT_KEY,
   flooringPortionHasUserAuthority,
+  flooringReanalysisIdentityUnresolved,
   mergePersistedFlooringPortionsOnReanalyse,
 } from "@/lib/estimate/flooring-portions";
 import {
@@ -483,21 +486,48 @@ export async function saveBriefAndSeedWorkAreas(
     }))
   );
 
-  const workAreaRows = aiWorkAreasToRows({
+  const candidateWorkAreas = aiWorkAreasToRows({
     output: extraction,
     orgId,
     projectId,
     catalogueByType: CATALOGUE_BY_TYPE,
-  }).filter((row) => {
-    const decision = matchExistingWorkAreaInstance(
-      { type: row.type, name: row.name },
-      remainingExisting.map((item) => ({
-        id: item.id,
-        type: item.type,
-        name: item.name,
-      }))
-    );
-    if (decision.action !== "insert") return false;
+  });
+  const instancePlan = planWorkAreaInstanceActions(
+    candidateWorkAreas.map((row) => ({ type: row.type, name: row.name })),
+    remainingExisting.map((item) => ({
+      id: item.id,
+      type: item.type,
+      name: item.name,
+    }))
+  );
+  const reusedIds = new Set(
+    instancePlan.flatMap((decision) =>
+      decision.action === "reuse" ? [decision.id] : []
+    )
+  );
+  const unresolvedTypes = new Set(
+    candidateWorkAreas
+      .filter((row, index) => instancePlan[index]?.action === "unresolved")
+      .map((row) => row.type)
+  );
+  const unresolvedWorkAreaIds = remainingExisting
+    .filter((row) => unresolvedTypes.has(row.type) && !reusedIds.has(row.id))
+    .map((row) => row.id);
+  if (unresolvedWorkAreaIds.length > 0) {
+    const { error: identityError } = await supabase
+      .from("project_facts")
+      .update({ conflict_warning: WORK_AREA_IDENTITY_UNRESOLVED_MESSAGE })
+      .eq("project_id", projectId)
+      .in("work_area_id", unresolvedWorkAreaIds);
+    if (identityError) {
+      return failPersist(
+        "persist_facts",
+        `work area identity note failed: ${identityError.message}`
+      );
+    }
+  }
+  const workAreaRows = candidateWorkAreas.filter((row, index) => {
+    if (instancePlan[index]?.action !== "insert") return false;
     return shouldInsertWorkAreaInstance(
       { type: row.type, name: row.name },
       existingInstanceKeys
@@ -684,6 +714,10 @@ export async function saveBriefAndSeedWorkAreas(
           extracted: row.value,
           persisted: existing.value,
         });
+        const identityUnresolved = flooringReanalysisIdentityUnresolved({
+          extracted: row.value,
+          persisted: existing.value,
+        });
         const keepsUserSource = merged.some(flooringPortionHasUserAuthority);
         const { error: mergeError } = await supabase
           .from("project_facts")
@@ -696,6 +730,9 @@ export async function saveBriefAndSeedWorkAreas(
                 ? "user"
                 : "ai_extracted",
             confidence: row.confidence,
+            conflict_warning: identityUnresolved
+              ? FLOORING_IDENTITY_UNRESOLVED_MESSAGE
+              : null,
           })
           .eq("id", existing.id)
           .eq("project_id", projectId);

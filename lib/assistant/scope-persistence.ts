@@ -138,6 +138,7 @@ export async function upsertScopedFact(
     unit: input.unit ?? null,
     source,
     confidence: input.confidence ?? 1,
+    ...(source === "user" ? { conflict_warning: null } : {}),
   };
 
   if (existingFact) {
@@ -249,6 +250,7 @@ async function persistInternalWallsCollectionWrite(
           value: nextEnvelope,
           source: "user",
           confidence: 1,
+          conflict_warning: null,
         })
         .eq("id", typesRow.id)
         .eq("project_id", params.projectId);
@@ -692,6 +694,7 @@ async function persistFlooringPortionsCollectionWrite(
           value: nextEnvelope,
           source: portionsSource,
           confidence: 1,
+          ...(portionsSource === "user" ? { conflict_warning: null } : {}),
         })
         .eq("id", portionsRow.id)
         .eq("project_id", params.projectId);

@@ -42,14 +42,15 @@ Flooring. Bedroom 1, 12 m2 carpet. Bedroom 2, 10 m2 carpet. Hallway 8 m2 vinyl p
 
 - A work-area UUID is reused when the extracted name matches, and when a catalogue default name is the only instance of that type. A rename of that sole instance does not insert another row.
 - A different specific name still inserts. Several existing instances and an unmatched default name are left unresolved: no insert and no rewrite.
-- Flooring reanalysis matches a portion by id, then clause, then label. It does not copy ids by array position.
+- Flooring reanalysis matches a portion by its saved id, then by a unique measured signature. Labels, clause text, and array position are not identity. Identical measurements stay unresolved.
 - One door opening keeps its saved id. A second analysis does not add another opening for the same count.
-- `user`, `assumption`, and `derived` facts keep their value and source. A different extracted value sets `conflict_warning` and does not become a confirmed answer.
+- A `user` answer or an `assumption` keeps its value and source. A different extracted value sets `conflict_warning`. A `derived` value is replaced when extraction disagrees. A user save clears the warning.
 - Older flooring JSON that already has a portion id still parses.
 
 ## Still open
 
-- Carpet tiles have no priced recipe and no `flooring.carpet_tile.m2` catalogue row.
+- The eight owner briefs are not in the repository. See [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md). The supplementary sentences are not those briefs.
+- Carpet tiles have no priced recipe and no `flooring.carpet_tile.m2` catalogue row. Supply and installation stay visible and unpriced, with a manual allowance. A zero sell is not complete coverage.
 - Stopping level, opening size, door width, and insulation type (when the brief says only “insulation”) stay as follow-up questions.
 - Fascia length is still absent from the live deck question list. A 4.8 m × 3.6 m deck with no length fact is still 16.8 lm from the exposed perimeter.
 - Live model recognition was not run. These checks use the deterministic parsers only.

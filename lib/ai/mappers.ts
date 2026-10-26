@@ -118,11 +118,25 @@ export function aiFactsToRows(params: {
 export const CONFIRMED_ANSWER_CONFLICT =
   "New analysis disagrees with the saved answer. The saved answer was kept." as const;
 
-const PROTECTED_FACT_SOURCES = new Set(["user", "assumption", "derived"]);
+const PROTECTED_FACT_SOURCES = new Set(["user", "assumption"]);
+
+function stableValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableValue).join(",")}]`;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${key}:${stableValue(record[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
 
 /**
- * Confirmed, assumed, and derived facts stay as stored.
- * A different extracted value is a review warning, not a new source.
+ * A user answer or an assumption stays stored. A different extracted value
+ * is a review warning and does not change the source.
+ * A derived value is replaced when extraction disagrees, because it is
+ * not a confirmed answer.
  */
 export function reanalysisFactWrite(params: {
   existingSource: string | null | undefined;
@@ -131,11 +145,15 @@ export function reanalysisFactWrite(params: {
 }):
   | { readonly action: "replace" }
   | { readonly action: "keep"; readonly conflictWarning: string | null } {
+  const disagrees = stableValue(params.existingValue) !== stableValue(params.extractedValue);
+  if (params.existingSource === "derived") {
+    return disagrees
+      ? { action: "replace" }
+      : { action: "keep", conflictWarning: null };
+  }
   if (!PROTECTED_FACT_SOURCES.has(params.existingSource ?? "")) {
     return { action: "replace" };
   }
-  const disagrees =
-    JSON.stringify(params.existingValue) !== JSON.stringify(params.extractedValue);
   return {
     action: "keep",
     conflictWarning: disagrees ? CONFIRMED_ANSWER_CONFLICT : null,

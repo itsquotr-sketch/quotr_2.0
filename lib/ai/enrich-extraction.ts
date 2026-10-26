@@ -24,6 +24,7 @@ import {
   applyExtractedInternalWallsToFacts,
   classifyInternalWallsJobScopeFromBrief,
   extractInternalWallsTypesFromBrief,
+  internalWallsTopicStance,
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
 import { discoverWorkAreaInstances, snippetForDiscoveredInstance } from "@/lib/work-areas/discovery-instances";
@@ -560,7 +561,7 @@ function inferInternalWalls(
       workAreaType: "internal_walls",
       key: "internal_walls.skirtings_included",
       label: "Skirtings",
-      value: true,
+      value: internalWallsTopicStance(brief, "skirting") !== "excluded",
     });
   }
 

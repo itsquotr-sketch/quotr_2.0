@@ -1166,6 +1166,33 @@ export function summariseWallType(
   };
 }
 
+/**
+ * Canonical side selection wins over the legacy included boolean.
+ * `none` is an exclusion. A chosen side is an inclusion.
+ * Absent or unanswered does not rewrite a historical boolean.
+ */
+export function canonicalInternalWallsFinishStance(
+  types: readonly { skirting: string | null; painting: string | null }[],
+  field: "skirting" | "painting"
+): "included" | "excluded" | "unanswered" | "absent" {
+  if (types.length === 0) return "absent";
+  const values = types.map((row) => row[field]);
+  if (values.some((value) => value != null && value !== "none")) return "included";
+  if (values.every((value) => value === "none")) return "excluded";
+  return "unanswered";
+}
+
+export function legacyInternalWallsFinishApplies(params: {
+  types: readonly { skirting: string | null; painting: string | null }[];
+  field: "skirting" | "painting";
+  legacyIncluded: boolean | null;
+}): boolean {
+  const stance = canonicalInternalWallsFinishStance(params.types, params.field);
+  if (stance === "excluded") return false;
+  if (stance === "included") return true;
+  return params.legacyIncluded === true;
+}
+
 export function summariseInternalWallsWorkArea(
   types: readonly InternalWallsWallType[]
 ): string | null {

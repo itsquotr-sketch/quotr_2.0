@@ -65,6 +65,7 @@ import {
 import {
   FLOORING_NESTED_NOT_CALCULATED_MESSAGE,
   FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE,
+  FLOORING_SPECIALIST_RECIPE_MESSAGE,
 } from "@/lib/estimate/flooring-portions";
 import {
   isFlooringProductivityKey,
@@ -640,7 +641,7 @@ function materialOrAllowanceLine(params: {
       : params.requirement.componentKey === FLOORING_CUSTOM_FINISH_COMPONENT
         ? "Custom ordinary flooring"
         : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
-          ? "Specialist flooring supply and installation"
+          ? params.requirement.description
           : params.requirement.componentKey === FLOORING_CUSTOM_REMOVAL_COMPONENT
             ? "Custom existing-finish removal"
             : params.requirement.description;
@@ -676,7 +677,10 @@ function materialOrAllowanceLine(params: {
         ? params.requirement.componentKey
         : params.requirement.materialKey ?? undefined,
       pricingOwner,
-      notes: `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
+      notes:
+        params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
+          ? FLOORING_SPECIALIST_RECIPE_MESSAGE
+          : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
       identitySummary: params.requirement.specification,
     });
   }
@@ -772,7 +776,10 @@ function labourLine(params: {
       category: "labour",
       itemKey: params.requirement.productivityBasis.key ?? undefined,
       pricingOwner: "in_house_labour",
-      notes: `Pricing Required productivity. Installed ${qty} ${unit}.`,
+      notes:
+        params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
+          ? FLOORING_SPECIALIST_RECIPE_MESSAGE
+          : `Pricing Required productivity. Installed ${qty} ${unit}.`,
     });
   }
   const productivitySourceType =
@@ -995,7 +1002,7 @@ export function commercializeFlooring(params: {
       if (requirement.priced) continue;
       const human =
         requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
-          ? FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE
+          ? FLOORING_SPECIALIST_RECIPE_MESSAGE
           : `Pricing required: ${requirement.description}`;
       if (
         /canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST|unsupported specialist/i.test(
@@ -1004,7 +1011,7 @@ export function commercializeFlooring(params: {
       ) {
         continue;
       }
-      missingInfo.push(human);
+      if (!missingInfo.includes(human)) missingInfo.push(human);
     }
   }
 

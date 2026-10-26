@@ -66,6 +66,9 @@ export const FLOORING_NESTED_NOT_CALCULATED_MESSAGE =
 export const FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE =
   "Specialist flooring pricing is required." as const;
 
+export const FLOORING_SPECIALIST_RECIPE_MESSAGE =
+  "This finish has no supported recipe. The requested area stays in scope. Supply and installation are unpriced. Enter a manual allowance. This is not a missing material price." as const;
+
 export const FLOORING_FINISH_TYPE_VALUES = [
   "carpet",
   "vinyl_plank",
@@ -1106,22 +1109,6 @@ export function flooringPortionFieldsCompatible(
   return true;
 }
 
-function isConsistentProductSubset(
-  persisted: readonly FlooringPortion[],
-  extracted: readonly FlooringPortion[]
-): boolean {
-  const used = new Set<number>();
-  for (const row of persisted) {
-    const idx = extracted.findIndex(
-      (candidate, i) =>
-        !used.has(i) && flooringPortionFieldsCompatible(row, candidate)
-    );
-    if (idx < 0) return false;
-    used.add(idx);
-  }
-  return persisted.length > 0;
-}
-
 export function overlayUserAuthoritativeFlooringPortion(
   extracted: FlooringPortion,
   persisted: FlooringPortion
@@ -1226,59 +1213,88 @@ export function overlayUserAuthoritativeFlooringPortion(
   return sanitizeFlooringPortionInapplicableFields(next);
 }
 
-function takeExtractedMatch(
-  extracted: readonly FlooringPortion[],
-  used: Set<number>,
-  predicate: (row: FlooringPortion, index: number) => boolean
-): FlooringPortion | null {
-  const index = extracted.findIndex(
-    (row, i) => !used.has(i) && predicate(row, i)
-  );
-  if (index < 0) return null;
-  used.add(index);
-  return extracted[index] ?? null;
+export const FLOORING_IDENTITY_UNRESOLVED_MESSAGE =
+  "Reanalysis could not match these flooring areas safely. Saved areas were kept and nothing was merged." as const;
+
+function flooringMeasuredSignature(row: FlooringPortion): string | null {
+  if (
+    row.finish_type == null &&
+    row.specialist_kind == null &&
+    row.area_m2 == null &&
+    row.length_m == null &&
+    row.width_m == null
+  ) {
+    return null;
+  }
+  return [
+    row.finish_type ?? "",
+    row.specialist_kind ?? "",
+    row.area_input_method ?? "",
+    row.area_m2 ?? "",
+    row.length_m ?? "",
+    row.width_m ?? "",
+  ].join("|");
 }
 
-function matchReanalysePortion(
-  extracted: readonly FlooringPortion[],
-  persisted: FlooringPortion,
-  _index: number,
-  used: Set<number>
-): FlooringPortion | null {
-  const byId = takeExtractedMatch(
-    extracted,
-    used,
-    (row) => row.id === persisted.id
-  );
-  if (byId) return byId;
-  if (persisted.clause_ordinal != null) {
-    const byOrdinal = takeExtractedMatch(
-      extracted,
-      used,
-      (row) =>
-        row.clause_ordinal === persisted.clause_ordinal &&
-        flooringPortionFieldsCompatible(row, persisted)
+function signatureIndexes(
+  rows: readonly FlooringPortion[],
+  signature: string
+): number[] {
+  const hits: number[] = [];
+  rows.forEach((row, index) => {
+    if (flooringMeasuredSignature(row) === signature) hits.push(index);
+  });
+  return hits;
+}
+
+function alignFlooringPortionsOnReanalyse(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+}): { readonly portions: FlooringPortion[]; readonly unresolved: boolean } {
+  const extracted = parseFlooringPortions(params.extracted);
+  const persisted = parseFlooringPortions(params.persisted);
+  if (persisted.length === 0) {
+    return { portions: extracted.map(cloneFlooringPortion), unresolved: false };
+  }
+  if (extracted.length === 0) {
+    return { portions: persisted.map(cloneFlooringPortion), unresolved: false };
+  }
+  const used = new Set<number>();
+  let unresolved = false;
+  const portions = persisted.map((portion) => {
+    const byId = extracted.findIndex(
+      (row, index) => !used.has(index) && row.id === portion.id
     );
-    if (byOrdinal) return byOrdinal;
-  }
-  const label = persisted.label?.trim().toLowerCase();
-  if (label) {
-    const byLabel = takeExtractedMatch(
-      extracted,
-      used,
-      (row) =>
-        row.label?.trim().toLowerCase() === label &&
-        flooringPortionFieldsCompatible(row, persisted)
-    );
-    if (byLabel) return byLabel;
-  }
-  if (!label && extracted.length === 1 && persisted.label == null) {
-    const sole = takeExtractedMatch(extracted, used, () => true);
-    if (sole) return sole;
-  }
-  return takeExtractedMatch(extracted, used, (row) =>
-    flooringPortionFieldsCompatible(row, persisted)
-  );
+    if (byId >= 0) {
+      used.add(byId);
+      return overlayUserAuthoritativeFlooringPortion(extracted[byId]!, portion);
+    }
+    const signature = flooringMeasuredSignature(portion);
+    const extractedHits = signature
+      ? signatureIndexes(extracted, signature).filter((index) => !used.has(index))
+      : [];
+    const persistedHits = signature ? signatureIndexes(persisted, signature) : [];
+    if (signature && extractedHits.length === 1 && persistedHits.length === 1) {
+      const index = extractedHits[0]!;
+      used.add(index);
+      return overlayUserAuthoritativeFlooringPortion(extracted[index]!, portion);
+    }
+    unresolved = true;
+    return cloneFlooringPortion(portion);
+  });
+  extracted.forEach((row, index) => {
+    if (used.has(index)) return;
+    const signature = flooringMeasuredSignature(row);
+    const persistedHits = signature ? signatureIndexes(persisted, signature) : [];
+    const extractedHits = signature ? signatureIndexes(extracted, signature) : [];
+    if (signature && persistedHits.length === 0 && extractedHits.length === 1) {
+      portions.push(cloneFlooringPortion(row));
+      used.add(index);
+      return;
+    }
+    unresolved = true;
+  });
+  return { portions, unresolved };
 }
 
 /**
@@ -1291,45 +1307,14 @@ export function mergePersistedFlooringPortionsOnReanalyse(params: {
   readonly extracted: unknown;
   readonly persisted: unknown;
 }): FlooringPortion[] {
-  const extracted = parseFlooringPortions(params.extracted);
-  const persisted = parseFlooringPortions(params.persisted);
-  if (persisted.length === 0) return extracted.map(cloneFlooringPortion);
-  if (extracted.length === 0) return persisted.map(cloneFlooringPortion);
-  const hasUser = persisted.some(flooringPortionHasUserAuthority);
-  const consistentSubset = isConsistentProductSubset(persisted, extracted);
-  if (!hasUser && extracted.length > persisted.length && !consistentSubset) {
-    const usedPersisted = new Set<number>();
-    return extracted.map((row) => {
-      const next = cloneFlooringPortion(row);
-      const label = row.label?.trim().toLowerCase() ?? "";
-      const matchIndex = label
-        ? persisted.findIndex(
-            (previous, index) =>
-              !usedPersisted.has(index) &&
-              previous.label?.trim().toLowerCase() === label &&
-              flooringPortionFieldsCompatible(previous, row)
-          )
-        : -1;
-      if (matchIndex >= 0) {
-        usedPersisted.add(matchIndex);
-        next.id = persisted[matchIndex]!.id;
-      }
-      return next;
-    });
-  }
-  const used = new Set<number>();
-  const merged = persisted.map((portion, index) => {
-    const match = matchReanalysePortion(extracted, portion, index, used);
-    return match
-      ? overlayUserAuthoritativeFlooringPortion(match, portion)
-      : cloneFlooringPortion(portion);
-  });
-  if (!hasUser && !consistentSubset) {
-    extracted.forEach((row, index) => {
-      if (!used.has(index)) merged.push(cloneFlooringPortion(row));
-    });
-  }
-  return merged;
+  return alignFlooringPortionsOnReanalyse(params).portions;
+}
+
+export function flooringReanalysisIdentityUnresolved(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+}): boolean {
+  return alignFlooringPortionsOnReanalyse(params).unresolved;
 }
 
 function applyPortionField(

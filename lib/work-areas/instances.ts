@@ -225,6 +225,65 @@ function isCatalogueDefaultWorkAreaName(type: string, name: string): boolean {
   );
 }
 
+export const WORK_AREA_IDENTITY_UNRESOLVED_MESSAGE =
+  "Reanalysis could not match this work area safely. The saved area was kept and nothing was added or merged." as const;
+
+/**
+ * Durable identity is the existing UUID.
+ * A unique exact name reuses that row. One saved row and one extracted row
+ * reuse the UUID when the name changed. Extra extracted rows insert only
+ * after every saved row of that type is already matched. Anything left over
+ * on both sides stays unresolved: no insert and no merge.
+ */
+export function planWorkAreaInstanceActions(
+  extracted: readonly { type: string; name: string }[],
+  existing: readonly { id: string; type: string; name: string }[]
+): WorkAreaInstanceMatch[] {
+  const decisions: WorkAreaInstanceMatch[] = extracted.map(() => ({
+    action: "unresolved",
+  }));
+  const used = new Set<string>();
+  extracted.forEach((row, index) => {
+    const wanted = workAreaInstanceKey(row.type, row.name);
+    const exact = existing.filter(
+      (item) =>
+        !used.has(item.id) &&
+        item.type === row.type &&
+        workAreaInstanceKey(item.type, item.name) === wanted
+    );
+    if (exact.length === 1) {
+      used.add(exact[0]!.id);
+      decisions[index] = { action: "reuse", id: exact[0]!.id };
+    }
+  });
+  const remainingExtracted = extracted
+    .map((row, index) => ({ row, index }))
+    .filter((entry) => decisions[entry.index]?.action === "unresolved");
+  const remainingExisting = existing.filter((item) => !used.has(item.id));
+  const byType = new Map<string, { extracted: number[]; existing: { id: string }[] }>();
+  for (const entry of remainingExtracted) {
+    const bucket = byType.get(entry.row.type) ?? { extracted: [], existing: [] };
+    bucket.extracted.push(entry.index);
+    byType.set(entry.row.type, bucket);
+  }
+  for (const item of remainingExisting) {
+    const bucket = byType.get(item.type) ?? { extracted: [], existing: [] };
+    bucket.existing.push(item);
+    byType.set(item.type, bucket);
+  }
+  for (const bucket of byType.values()) {
+    if (bucket.extracted.length === 1 && bucket.existing.length === 1) {
+      const id = bucket.existing[0]!.id;
+      decisions[bucket.extracted[0]!] = { action: "reuse", id };
+      continue;
+    }
+    if (bucket.existing.length === 0) {
+      for (const index of bucket.extracted) decisions[index] = { action: "insert" };
+    }
+  }
+  return decisions;
+}
+
 /**
  * Exact name reuses that UUID. A catalogue default name reuses the only
  * instance of that type, so a rename does not insert a second row.
