@@ -33,7 +33,7 @@ Flooring. Bedroom 1, 12 m2 carpet. Bedroom 2, 10 m2 carpet. Hallway 8 m2 vinyl p
 | Partition length and door | Height and timber only. Length and the door were dropped. | Length 4.2 m, both-side plasterboard, insulation included, one door opening with no invented size. |
 | Painting and skirting | Not mapped from an exclusion sentence. | Stored as excluded. |
 | Stopping | Not a level unless the brief named Level 4 or 5. | Still asked. No level is invented. |
-| Door assembly | Not a door set. | One prehung door set, quantity 1, width still unanswered. |
+| Door assembly | Not a door set. | One prehung door set, quantity 1, width still unanswered. “Door assembly” now counts as door work. A bare door opening still does not. |
 | Office finishes | Acoustic insulation, skirting, and painting were not canonical wall facts. | Acoustic insulation, skirting both sides, and painting both sides are on the wall type. |
 | Carpet tiles | Ordinary carpet. | Specialist `other_unsupported`, description carpet tiles, sell 0. Not complete. |
 | Three rooms | A second room was omitted unless its sentence started with a finish verb. | Bedroom 1 carpet 12, Bedroom 2 carpet 10, Hallway vinyl plank 8. Separate portion ids. |

@@ -273,6 +273,7 @@ export function briefRequestsDoorWork(briefText: string): boolean {
   }
   if (/\bdoor leaves?\b/.test(brief) || /\bdoor leaf\b/.test(brief)) return true;
   if (/\bprehung\b|\bpre-hung\b/.test(brief)) return true;
+  if (/\bdoor assembly\b/.test(brief)) return true;
   if (/\bhollow[-\s]?core\b/.test(brief) || /\bsolid[-\s]?core\b/.test(brief)) {
     return true;
   }

@@ -12,6 +12,7 @@ import { reanalysisFactWrite } from "../lib/ai/mappers";
 import { deckExposedPerimeterM } from "../lib/estimate/deck-fascia";
 import { listDeckClarifyDescriptors } from "../lib/estimate/deck-question-descriptors";
 import { extractDoorPortionsFromBrief } from "../lib/estimate/doors-brief";
+import { briefHasIndependentDoors } from "../lib/work-areas/ownership";
 import {
   applyExtractedInternalWallsToFacts,
   extractInternalWallsTypesFromBrief,
@@ -94,6 +95,13 @@ check(
 check(
   "stopping is not given an invented level",
   wall?.stopping_side_a == null && wall.stopping_side_b == null
+);
+check(
+  "door assembly is independent door work, a bare opening is not",
+  briefHasIndependentDoors(PARTITION_BRIEF) &&
+    !briefHasIndependentDoors(
+      "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, one door opening."
+    )
 );
 check(
   "door assembly is a door set and the opening is not a second set",
