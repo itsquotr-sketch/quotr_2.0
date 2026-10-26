@@ -121,6 +121,23 @@ export type TrialBannerNotice = {
   endsOn: string;
 };
 
+/**
+ * Promotional trial chrome (countdown and subscribe prompts) belongs on the
+ * Dashboard. Expired-access copy stays on every working route. Billing keeps
+ * its own trial detail and does not repeat the card.
+ */
+export function trialNoticeVisibleOnPath(
+  pathname: string | null,
+  notice: TrialBannerNotice
+): boolean {
+  const path = (pathname ?? "").split("?")[0] ?? "";
+  if (path === "/app/settings/billing" || path.startsWith("/app/settings/billing/")) {
+    return false;
+  }
+  if (notice.tone === "expired") return true;
+  return path === "/app/dashboard";
+}
+
 /** Android trial status. Names the real end date and does not offer a purchase. */
 export function playSurfaceTrialMessage(notice: TrialBannerNotice): string {
   if (notice.tone === "expired") {

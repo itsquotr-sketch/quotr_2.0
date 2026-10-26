@@ -52,8 +52,8 @@ check(
 );
 check(
   "2 stages share one equal-height structure",
-  header.includes("function Stage(") &&
-    header.includes("flex h-full min-w-0 flex-col") &&
+    header.includes("function Stage(") &&
+    header.includes("flex h-11 min-h-11 w-full min-w-0 items-center") &&
     rail.includes('data-project-section-columns="four"')
 );
 check(
@@ -96,7 +96,7 @@ check(
   "7 Captured details uses the shared information card",
   information.includes("Captured details and Work Areas") &&
     information.includes("data-project-information-card") &&
-    information.includes('const informationCardClass = "min-w-0 rounded-xl border border-border bg-card px-4 py-3"') &&
+    information.includes('const informationCardClass = "min-w-0 rounded-xl border border-border bg-card px-3 py-2.5"') &&
     !information.includes('tone="quiet"') &&
     !information.includes("bg-muted/30 px-4 py-3") &&
     captured.includes('data-captured-disclosure="neutral"') &&
@@ -105,14 +105,14 @@ check(
 );
 check(
   "8 Project Information and Estimate share one header gap",
-  workspacePage.includes("pt-4 pb-6 lg:pt-6") &&
+  workspacePage.includes("pt-3 pb-4 lg:pt-3") &&
     workspacePage.includes('data-workspace-content-gap="progression"') &&
     !workspacePage.includes("lg:pt-8") &&
     !workspacePage.includes("-mt-") &&
-    information.includes('className="mt-4 grid gap-3"') &&
+    information.includes('className="mt-2 grid gap-2"') &&
     shell.includes('data-estimate-content-gap="12-16"') &&
     shell.includes('className="min-w-0 space-y-3 overflow-x-hidden"') &&
-    shell.includes('"grid min-w-0 gap-5 lg:items-start"') &&
+    shell.includes('"grid min-w-0 gap-3 lg:items-start"') &&
     !shell.includes('"mt-1 grid min-w-0 gap-5 lg:mt-4')
 );
 check(

@@ -127,58 +127,58 @@ export function ProjectSectionHeader({
       className="overflow-x-hidden"
     >
       <div className="hidden lg:block" data-project-progression="rail">
-        <div
-          className="grid grid-cols-4 gap-1 rounded-lg border border-border bg-muted/30 p-1 lg:grid-cols-4"
-          data-project-section-columns="four"
-        >
-          <Stage
-            step="1"
-            title="Project information"
-            status={projectContext}
-            href={informationCurrent ? null : informationHref}
-            current={informationCurrent}
-            column="information"
-          />
-          <Stage
-            step="2"
-            title="Estimate"
-            status={estimateLabel}
-            reason={null}
-            href={estimate.viewing ? null : estimate.href}
-            current={estimate.viewing}
-            column="estimate"
-          />
-          <Stage
-            step="3"
-            title="Pricing"
-            status={pricingLabel}
-            reason={conflictStatus ? null : pricingLockReason(pricing)}
-            href={pricing.viewing ? null : pricing.href}
-            current={pricing.viewing}
-            column="pricing"
-            onCreate={
-              productivityReview
-                ? openProductivityReview
-                : pricingNeedsUpdate || pricingCanCreate
-                  ? () => setCreatePricingOpen(true)
-                  : undefined
-            }
-          />
-          <Stage
-            step="4"
-            title="Quote"
-            status={stageStatusText(quote)}
-            href={quote.viewing ? null : quote.href}
-            current={quote.viewing}
-            column="quote"
-          />
-        </div>
-        <div
-          className="mt-1.5 flex min-w-0 items-center justify-between gap-3"
-          data-project-variations-row
-        >
-          <p className="text-xs leading-4 text-foreground/70">Separate from Quote</p>
-          <span className="inline-flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-stretch gap-1">
+          <div
+            className="grid min-w-[16rem] flex-1 grid-cols-4 gap-1 lg:grid-cols-4"
+            data-project-section-columns="four"
+          >
+            <Stage
+              step="1"
+              title="Project information"
+              status={projectContext}
+              href={informationCurrent ? null : informationHref}
+              current={informationCurrent}
+              column="information"
+            />
+            <Stage
+              step="2"
+              title="Estimate"
+              status={estimateLabel}
+              reason={null}
+              href={estimate.viewing ? null : estimate.href}
+              current={estimate.viewing}
+              column="estimate"
+            />
+            <Stage
+              step="3"
+              title="Pricing"
+              status={pricingLabel}
+              reason={conflictStatus ? null : pricingLockReason(pricing)}
+              href={pricing.viewing ? null : pricing.href}
+              current={pricing.viewing}
+              column="pricing"
+              onCreate={
+                productivityReview
+                  ? openProductivityReview
+                  : pricingNeedsUpdate || pricingCanCreate
+                    ? () => setCreatePricingOpen(true)
+                    : undefined
+              }
+            />
+            <Stage
+              step="4"
+              title="Quote"
+              status={stageStatusText(quote)}
+              href={quote.viewing ? null : quote.href}
+              current={quote.viewing}
+              column="quote"
+            />
+          </div>
+          <div
+            className="flex min-w-0 items-stretch gap-1"
+            data-project-variations-row
+            aria-label="Separate from Quote"
+          >
             <Destination
               title="Requests"
               status="Subcontractor prices"
@@ -196,7 +196,7 @@ export function ProjectSectionHeader({
               column="variations"
               compact
             />
-          </span>
+          </div>
         </div>
       </div>
 
@@ -395,35 +395,39 @@ function Destination({
   const accessibleName = [title, statusDetail(detail)].filter(Boolean).join(", ");
   const body = compact ? (
     <>
-      <span className="text-xs font-semibold leading-4">{title}</span>
-      <span className="min-w-0 truncate text-xs leading-4 text-foreground/75">{detail}</span>
-      {current ? <span className="text-xs font-medium leading-4">Current</span> : null}
+      <span className="truncate text-sm font-semibold leading-4">{title}</span>
+      <span className="sr-only">{detail}</span>
+      {current ? <span className="shrink-0 text-xs font-medium leading-4">Current</span> : null}
     </>
   ) : (
     <>
-      <span className="flex items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex size-5 items-center justify-center rounded-full border text-xs font-medium leading-4",
-            current
-              ? "border-[var(--brand-orange)] text-[var(--brand-orange)]"
-              : "border-border text-foreground/60",
-            locked && "border-border/70 text-foreground/45"
-          )}
-        >
-          {step}
-        </span>
-        {current ? <span className="text-xs font-medium leading-4">Current</span> : null}
+      <span
+        className={cn(
+          "inline-flex size-5 shrink-0 items-center justify-center rounded-full border text-xs font-medium leading-4",
+          current
+            ? "border-[var(--brand-orange)] text-[var(--brand-orange)]"
+            : "border-border text-foreground/60",
+          locked && "border-border/70 text-foreground/45"
+        )}
+      >
+        {step}
       </span>
-      <span className="block text-sm font-semibold leading-5">{title}</span>
-      <span className="line-clamp-2 block text-xs leading-4 text-foreground/75">{status}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="truncate text-sm font-semibold leading-4">{title}</span>
+          {current ? <span className="shrink-0 text-xs font-medium leading-4">Current</span> : null}
+        </span>
+        <span className="block truncate text-xs leading-4 text-foreground/75" title={status}>
+          {status}
+        </span>
+      </span>
     </>
   );
   const className = cn(
     focusClass,
     compact
-      ? "inline-flex max-w-full min-w-0 items-center gap-2 rounded-md border px-2.5 py-1 text-left"
-      : "flex h-full min-w-0 flex-col gap-0.5 rounded-md border px-3 py-2 text-left",
+      ? "inline-flex h-11 min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-md border px-2.5 text-left"
+      : "flex h-11 min-h-11 w-full min-w-0 items-center gap-1.5 rounded-md border px-2 text-left",
     current && "border-foreground/70 bg-muted/60 text-foreground",
     !current && !locked && "border-border/80 bg-card hover:border-foreground/25 hover:bg-muted/40",
     locked && "border-border/70 bg-muted/40 text-foreground/55 hover:border-border/70 hover:bg-muted/40"
@@ -433,6 +437,7 @@ function Destination({
       <button
         type="button"
         className={cn(className, compact ? undefined : "w-full")}
+        title={detail || undefined}
         data-project-column={column}
         data-project-stage={step}
         aria-label={accessibleName}
@@ -448,6 +453,7 @@ function Destination({
         href={href}
         prefetch
         className={className}
+        title={detail || undefined}
         data-project-column={column}
         data-project-stage={step}
         data-variations-nav={column === "variations" ? "true" : undefined}
@@ -463,6 +469,8 @@ function Destination({
   return (
     <p
       className={className}
+      title={detail || undefined}
+      tabIndex={locked ? 0 : undefined}
       aria-current={current ? "page" : undefined}
       data-project-column={column}
       data-project-stage={step}

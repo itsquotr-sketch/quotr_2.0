@@ -129,8 +129,9 @@ check(
   QUICK_ESTIMATE_STICKY_BREAKPOINT === "lg"
 );
 check(
-  "safe header offset top-6",
-  QUICK_ESTIMATE_STICKY_CLASS.includes("top-6")
+  "sticky offset sits on the workspace scroller",
+  QUICK_ESTIMATE_STICKY_CLASS.includes("lg:top-0") &&
+    !QUICK_ESTIMATE_STICKY_CLASS.includes("top-6")
 );
 check(
   "no JS scroll listener for sticky rail",

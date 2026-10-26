@@ -6,6 +6,7 @@ import {
   Archive,
   Copy,
   MoreHorizontal,
+  Pencil,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -50,6 +51,7 @@ export function ProjectActionsMenu({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isArchived = Boolean(project.archived_at);
@@ -95,8 +97,15 @@ export function ProjectActionsMenu({
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        {showEdit ? <EditProjectDialog project={project} /> : null}
+      <div className="flex items-center gap-1">
+        {showEdit ? (
+          <EditProjectDialog
+            project={project}
+            compactTrigger
+            open={editOpen}
+            onOpenChange={setEditOpen}
+          />
+        ) : null}
         <DropdownMenu>
           {variant === "card" ? (
             <DropdownMenuTrigger
@@ -117,13 +126,23 @@ export function ProjectActionsMenu({
             </DropdownMenuTrigger>
           )}
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onClick={handleDuplicate} disabled={isPending}>
+            {showEdit ? (
+              <DropdownMenuItem
+                className="min-h-11 md:hidden"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="size-4" />
+                Edit project
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem className="min-h-11" onClick={handleDuplicate} disabled={isPending}>
               <Copy className="size-4" />
               Duplicate project
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {isArchived ? (
               <DropdownMenuItem
+                className="min-h-11"
                 onClick={() => runAction(() => restoreProject(project.id))}
                 disabled={isPending}
               >
@@ -132,6 +151,7 @@ export function ProjectActionsMenu({
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
+                className="min-h-11"
                 onClick={() => setConfirmAction("archive")}
                 disabled={isPending}
               >
@@ -140,6 +160,7 @@ export function ProjectActionsMenu({
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
+              className="min-h-11"
               variant="destructive"
               onClick={() => setConfirmAction("delete")}
               disabled={isPending}

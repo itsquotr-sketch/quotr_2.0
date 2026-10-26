@@ -545,7 +545,7 @@ export function PricingWorkspace({
 
   return (
     <SupplierPriceProvider value={supplierReview}>
-    <div className={`min-w-0 space-y-4 overflow-x-hidden ${mobileWorkflowContentPadClass}`}>
+    <div className={`min-w-0 space-y-3 overflow-x-hidden ${mobileWorkflowContentPadClass}`}>
       <PricingHeader
         document={document}
         isSaving={isSaving}

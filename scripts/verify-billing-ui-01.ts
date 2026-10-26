@@ -14,6 +14,7 @@ import {
   deriveTrialCountdown,
   resolveTrialBannerNotice,
   trialBannerNotice,
+  trialNoticeVisibleOnPath,
 } from "../lib/billing/trial-countdown";
 import type {
   OrgBillingOverride,
@@ -316,6 +317,25 @@ assert(
 );
 
 assert("empty uninitialized has no banner", noticeFor(emptyState(ORG_A)) === null);
+
+const shellSrc = readFileSync("components/layout/app-shell.tsx", "utf8");
+assert(
+  "promotional trial card is limited to the Dashboard",
+  noticeC != null &&
+    trialNoticeVisibleOnPath("/app/dashboard", noticeC) === true &&
+    trialNoticeVisibleOnPath("/app/projects", noticeC) === false &&
+    trialNoticeVisibleOnPath("/app/projects/project-1", noticeC) === false &&
+    trialNoticeVisibleOnPath("/app/projects/project-1/information", noticeC) === false &&
+    trialNoticeVisibleOnPath("/app/settings/billing", noticeC) === false &&
+    shellSrc.includes("trialNoticeVisibleOnPath(pathname, billingNotice)")
+);
+assert(
+  "expired-access trial notice stays outside Billing",
+  noticeD != null &&
+    trialNoticeVisibleOnPath("/app/projects/project-1", noticeD) === true &&
+    trialNoticeVisibleOnPath("/app/dashboard", noticeD) === true &&
+    trialNoticeVisibleOnPath("/app/settings/billing", noticeD) === false
+);
 
 if (process.exitCode) {
   console.log("\nBILLING-UI-01 FAILED");

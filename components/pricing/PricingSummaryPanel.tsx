@@ -112,7 +112,7 @@ export function PricingSummaryPanel({
   return (
     <Card
       className={cn(
-        "h-auto rounded-xl border-border/60 shadow-none ring-0 [--card-spacing:--spacing(3)] lg:sticky lg:top-4 lg:self-start",
+        "h-auto rounded-xl border-border/60 shadow-none ring-0 [--card-spacing:--spacing(3)] lg:sticky lg:top-0 lg:self-start",
         className
       )}
       data-pricing-commercial-summary="true"

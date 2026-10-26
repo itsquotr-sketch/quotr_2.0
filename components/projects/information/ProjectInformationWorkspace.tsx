@@ -31,15 +31,15 @@ export function ProjectInformationWorkspace({
       data-project-information="true"
       data-project-documents-owner={PROJECT_DOCUMENT_OWNERSHIP}
     >
-      <h2 className="text-lg font-semibold leading-6" data-project-information-title>
+      <h2 className="text-base font-semibold leading-5" data-project-information-title>
         Project information
       </h2>
-      <div className="mt-4 grid gap-3" data-project-information-cards>
+      <div className="mt-2 grid gap-2" data-project-information-cards>
         <InfoCard title="Overview">
           <FieldList fields={model.overview} columns="three" />
           <div
             id="project-client-site"
-            className="mt-4 scroll-mt-24 border-t border-border/70 pt-4"
+            className="mt-3 scroll-mt-24 border-t border-border/70 pt-3"
           >
             <h4 className="text-sm font-semibold">Client and site</h4>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -83,7 +83,7 @@ export function ProjectInformationWorkspace({
   );
 }
 
-const informationCardClass = "min-w-0 rounded-xl border border-border bg-card px-4 py-3";
+const informationCardClass = "min-w-0 rounded-xl border border-border bg-card px-3 py-2.5";
 const informationTitleClass = "text-base font-semibold leading-snug";
 
 function InfoCard({

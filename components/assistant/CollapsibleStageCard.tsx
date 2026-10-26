@@ -148,7 +148,7 @@ export function CollapsibleStageCard({
       <div
         className={cn(
           "flex items-start gap-2 px-3 sm:px-3.5",
-          isActive && isExpanded ? "py-3" : "py-1.5",
+          isActive && isExpanded ? "py-2" : "py-1.5",
           isExpanded && "border-b border-border/50",
           !isActive && !isExpanded && "py-1"
         )}
@@ -159,7 +159,7 @@ export function CollapsibleStageCard({
           aria-expanded={isExpanded}
           disabled={!canCollapse}
           className={cn(
-            "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-12",
+            "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             !canCollapse && "cursor-default"
           )}
         >

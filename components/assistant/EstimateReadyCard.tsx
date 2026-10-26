@@ -99,7 +99,7 @@ export function EstimateReadyCard({
   return (
     <section
       className={cn(
-        "rounded-xl border bg-card px-4 py-3.5 sm:px-5 sm:py-4",
+        "rounded-xl border bg-card px-3 py-3 sm:px-4",
         isStale
           ? "border-amber-300/80 ring-1 ring-amber-400/20 dark:border-amber-800/60"
           : "border-[var(--brand-orange-muted)]/70 ring-1 ring-[var(--brand-orange)]/10",
