@@ -42,6 +42,8 @@ import {
   SPECIFIC_MATERIAL_RATE_CATALOGUE,
 } from "../lib/rates/specific-material-catalogue";
 import { SCOPE_CATALOGUE } from "../lib/scopes/catalogue";
+import { hasCalculatorConsumedFactContract } from "../lib/estimate/consumed-facts";
+import { getScopeQuestions } from "../lib/scopes/registry";
 
 const BOARD_WIDTH_KEY = "flooring.portion.hardwood_board_width_mm";
 const TILE_WIDTH_KEY = "flooring.portion.tile_width_mm";
@@ -445,6 +447,24 @@ check(
     preliminaryFiles[0] === "lib/commercial-engine/contract/codes.ts",
   preliminaryFiles.join(", ")
 );
+
+const doorKeys = getScopeQuestions("doors").map((row) => row.factKey ?? row.key);
+check(
+  "door customer-supply questions do not use the calculator's client-supplied key",
+  doorKeys.includes("doors.hardware_client_supplied") &&
+    doorKeys.includes("doors.supply_scope") &&
+    !doorKeys.includes("doors.client_supplied")
+);
+check(
+  "cladding has a calculator consumed-fact contract and no scope template",
+  hasCalculatorConsumedFactContract("cladding") && getScopeQuestions("cladding").length === 0
+);
+for (const type of ["pergola", "demolition", "external_stairs", "plastering"] as const) {
+  check(
+    `${type} has questions and no consumed-fact contract`,
+    getScopeQuestions(type).length > 0 && !hasCalculatorConsumedFactContract(type)
+  );
+}
 
 console.log("\nCatalogue work areas:");
 for (const row of SCOPE_CATALOGUE) {

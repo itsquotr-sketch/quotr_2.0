@@ -4,6 +4,8 @@ Catalogue source: `lib/scopes/catalogue.ts` on `40d98384`. “Calculator” in t
 
 ## Rate and productivity precedence
 
+`resolveRate` and `resolveMaterialRate` are different functions.
+
 From `resolveRate`, `resolveLabourRate`, and `classifyResolvedSell`:
 
 1. Active company row with the same `item_key` and `rate_type`, including an approved alias. Its cost is used. If that row also has a sell, the sell is `legacy_paired_rate` and gross margin is not applied. If it has cost only, sell is derived from the organisation gross margin.
@@ -21,7 +23,7 @@ Labour, when no company labour row matches the trade order:
 
 Company labour cost and a paired company sell stay above those benchmarks. Units on the rate row must match the lookup unit after `m²` / `m2` normalisation. A `$/lm` row does not satisfy a `$/m²` lookup.
 
-Deck decking has an extra material rule in `resolve-material-rate.ts`: a company `$/m²` for the same boards may convert to `$/lm` by `board_width_mm / 1000` when width is known. Waste already in the purchase quantity is not applied again. That conversion is specific to that rule. It is not a general unit converter.
+`resolveMaterialRate` does not use that work-area fallback. It ignores `workAreaType` and ignores a category benchmark argument. Its order is company exact material key, company category key, company scope key, then an approved material cost whose sell is re-derived, then the caller’s benchmark cost. Deck decking still has the extra rule in that file: a company `$/m²` for the same boards may convert to `$/lm` by `board_width_mm / 1000` when width is known. Waste already in the purchase quantity is not applied again. That conversion is specific to that rule. It is not a general unit converter.
 
 Productivity keys follow the same company-over-benchmark idea inside each recipe (`user_rate` or `calibrated_productivity` before the Quotr hours). This pass did not re-read every productivity key.
 
@@ -45,7 +47,8 @@ The bathroom case in the fixture:
 | --- | --- | --- |
 | Deck post count and hole count | Different facts. The posts gap reads one and the focused field writes the other. | Not a double charge. An unanswered post count beside a saved hole count. |
 | Deck hole excavation, post install, concrete place | Separate hour keys in the deck recipe. | Separate when each key is priced once. Not re-totalled in this pass. |
-| Bathroom floor and Flooring | `clauseIsBathroomOwnedFloor` and `clauseIsKitchenOwnedFloor` skip those snippets inside `extractFlooringPortionsFromBrief`. | The skip exists. A combined brief was not priced in this pass, so no dollar double count is claimed. |
+| Bathroom floor and Flooring | Extraction can skip a bathroom-owned or kitchen-owned floor snippet. Priced lines use different overlap groups: `bathroom_floor_finish` and `flooring.area:{portionId}`. | If both work areas remain, the deduper does not collapse them. No combined total was calculated in this pass. |
+| Deck post install and hole excavation | `deck.posts.install.hours_per_ea` is documented as 1 h/post including excavation. Setting is `deck.posts.set.hours_per_post` at 0.5 h. Holes are a separate operation. | A calibrated install rate is held for review until the job confirms it excludes excavation. |
 | Carpet tiles and broadloom carpet | Carpet tiles take the carpet finish and the carpet subcontract identity. | One recipe, the wrong product. Not two charges. |
 | Laminate benchmark and laminate specialist line | The 110/165 pair is unused. The nested line is unpriced. | No double charge. The priced total stays 0. |
 | Internal walls, plastering, ceilings | Separate catalogue types. Internal-wall extraction owns frame and lining on the partition brief. | No combined estimate was run. Do not assume they deduct each other. |
@@ -58,19 +61,19 @@ The bathroom case in the fixture:
 | --- | --- | --- | --- | --- |
 | `deck` | Brief enrichment and deck facts | Clarify for non-REFINE deck facts. Post holes editor for hole facts. Generic hole questions are hidden. | `calculators/deck.ts`. Labour and material precedence as above. Subcontract is not the deck surface path. Customer-supplied boards are a supply fact, not re-audited here. | Post-count gap versus hole-count write. Excavation and concrete share one unfinished count. |
 | `retaining_wall` | Catalogue calculator | Retaining information contract | `calculators/retaining-wall.ts` and the sleeper/timber/masonry modules | Not re-run. Spoil and excavation are a different contract from deck holes. |
-| `bathroom` | Mature `bathroom.job_scope` path | Bathroom hard-minimum geometry and scope inside Clarify | `calculators/bathroom.ts`. Waterproofing and several trades are subcontractor allowances. Tiling uses `resolveRate`. Customer fixtures are PC sums in the fixture catalogue. | Live tiling sell is margin. Stored 280 sell is not the fallback. Floor ownership versus Flooring was not priced together. |
+| `bathroom` | Mature `bathroom.job_scope` path | Bathroom hard-minimum geometry and scope inside Clarify | `calculators/bathroom.ts`. Waterproofing and several trades are subcontractor allowances. Tiling uses `resolveRate`. Customer fixtures are PC sums in the fixture catalogue. | Live tiling sell is margin. Stored 280 sell is not the fallback. Floor lines use `bathroom_floor_finish`, which does not match Flooring’s `flooring.area:{portionId}`. A combined total was not calculated. |
 | `kitchen` | Catalogue calculator | Kitchen questions in the older template path | `calculators/kitchen.ts` | Not re-run. Kitchen-owned floor snippets are removed from Flooring extraction. |
 | `fence` | Catalogue calculator | Fence extras in Clarify when length, height, and system are supported | `calculators/fence.ts` | Not re-run. |
-| `pergola` | Catalogue calculator | Template questions | `calculators/pergola.ts` | Not re-run. |
-| `external_stairs` | Catalogue calculator | Template questions | `calculators/external-stairs.ts` | Not re-run. |
-| `demolition` | Catalogue calculator | Scope-item questions | `calculators/demolition.ts` | Not re-run. |
+| `pergola` | Catalogue calculator | Template questions | `calculators/pergola.ts` | Questions exist. Absent from `consumed-facts.ts`. Not re-run. |
+| `external_stairs` | Catalogue calculator | Template questions | `calculators/external-stairs.ts` | Questions exist. Absent from `consumed-facts.ts`. Not re-run. |
+| `demolition` | Catalogue calculator | Scope-item questions | `calculators/demolition.ts` | Questions exist. Absent from `consumed-facts.ts`. Not re-run. |
 | `internal_walls` | `extractInternalWallsTypesFromBrief` | Nested wall-type fields | Calculator support is declared. Frame, lining, openings, and length are separate facts. | The 4.2 m partition brief stored height and timber frame only. Length and the door stayed null. |
 | `ceilings` | Portion collection | Nested ceiling portion questions | Portion physical module | Not re-run. Same collection-write pattern as flooring. |
-| `doors` | Portion collection | Nested door-set questions | Fitout/doors commercial module | Not re-run. |
+| `doors` | Portion collection | Nested door-set questions | Fitout/doors commercial module | Template customer supply is `doors.hardware_client_supplied`. The legacy calculator reads `doors.client_supplied` and `doors.supply_scope`. Nested door portions were not priced in this pass. |
 | `flooring` | `extractFlooringPortionsFromBrief` | One candidate per missing portion field | Ordinary carpet, vinyl plank, tile, and hardwood can price. Specialist kinds do not. | Laminate unpriced. Carpet tiles become carpet. Second room dropped unless the next sentence starts with a finish verb. Board width and tile size cannot be saved from their option labels. |
 | `painting` | Catalogue calculator | Template questions | Painting rates inside fitout | Not re-run. |
-| `cladding` | Portion collection | Nested cladding questions | `calculators/cladding.ts`. Custom portions stay Pricing Required by the catalogue description. | Not re-run. |
-| `plastering` | Catalogue calculator | Template questions | Fitout/plastering allowances | Not re-run. Overlap with internal-wall lining is unverified. |
+| `cladding` | Portion collection | No file under `lib/scopes/templates`. Questions come from the portion contract. | `calculators/cladding.ts`. The consumed-fact contract exists. Custom portions stay Pricing Required by the catalogue description. | Not re-run. |
+| `plastering` | Catalogue calculator | Template questions | Fitout/plastering allowances | Questions exist. Absent from `consumed-facts.ts`. Overlap with internal-wall lining is unverified. |
 
 Customer-supplied handling that is in the flooring model: `specialist_kind: client_supplied` and the logical key `flooring.client_supplied`. A client-supplied brief was not executed in the fixture. Do not describe its price from this pass.
 
