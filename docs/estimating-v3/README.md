@@ -12,7 +12,8 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_0_IMPLEMENTATION_PLAN.md](./STAGE_0_IMPLEMENTATION_PLAN.md) | Incremental design and later stages |
 | [STAGE_1_BLOCKER_SCOPE.md](./STAGE_1_BLOCKER_SCOPE.md) | The four blockers Stage 1 was allowed to change |
 | [STAGE_1_CORRECTION.md](./STAGE_1_CORRECTION.md) | What Stage 1 changed, and what it left untouched |
-| [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and unpushed release branches |
+| [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and release branches |
+| [V3_INTEGRATION_BASELINE.md](./V3_INTEGRATION_BASELINE.md) | Integration branch, Preview identities, and Stage 2A scope |
 
 Runnable evidence: `scripts/verify-estimating-v3-stage0.ts` and `scripts/verify-estimating-v3-stage1.ts`.
 
