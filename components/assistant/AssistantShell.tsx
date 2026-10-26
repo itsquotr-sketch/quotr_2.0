@@ -3067,6 +3067,7 @@ export function AssistantShell({
     pendingWrites: savingDetails ? 1 : 0,
     requiredClarifyCount: clarifyView.remainingRequiredCount,
     postHoleCount,
+    postHoleGaps: estimate ? [] : deckDetailGaps,
     optionalRefineCount: refineView.highValue.length,
   });
   const detailsPhase = detailsReadinessPhase({

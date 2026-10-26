@@ -10,8 +10,9 @@ Audit and plan only. No estimator rewrite, no Production deploy, and no customer
 | [STAGE_0_CAPABILITY_MATRIX.md](./STAGE_0_CAPABILITY_MATRIX.md) | Work areas, rate precedence, margin, and double-count checks |
 | [STAGE_0_ACCEPTANCE_FIXTURES.md](./STAGE_0_ACCEPTANCE_FIXTURES.md) | Deterministic briefs and the current versus desired results |
 | [STAGE_0_IMPLEMENTATION_PLAN.md](./STAGE_0_IMPLEMENTATION_PLAN.md) | Incremental design and later stages |
-| [STAGE_1_BLOCKER_SCOPE.md](./STAGE_1_BLOCKER_SCOPE.md) | The only code changes proposed next |
+| [STAGE_1_BLOCKER_SCOPE.md](./STAGE_1_BLOCKER_SCOPE.md) | The four blockers Stage 1 was allowed to change |
+| [STAGE_1_CORRECTION.md](./STAGE_1_CORRECTION.md) | What Stage 1 changed, and what it left untouched |
 
-Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`.
+Runnable evidence: `scripts/verify-estimating-v3-stage0.ts` and `scripts/verify-estimating-v3-stage1.ts`.
 
 A follow-up pass added the contract gaps that the first write-up had not yet checked: door customer-supply keys, the split between `resolveRate` and `resolveMaterialRate`, cladding’s missing template, the four calculators with no consumed-fact contract, legacy flooring stairs, and the bathroom-floor overlap group. Those notes are in the architecture, defect register, and capability matrix. The fixture locks the template and consumed-fact cases.

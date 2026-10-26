@@ -1,4 +1,5 @@
 import type { ClarifyAskClass, ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import { PROJECT_CONDITION_LIBRARY } from "@/lib/project-conditions/library";
 import {
   CLARIFY_MULTI_WA_BUDGET,
   CLARIFY_SINGLE_WA_BUDGET,
@@ -24,17 +25,55 @@ function askRank(askClass: ClarifyAskClass): number {
   }
 }
 
+const PROJECT_CONDITION_LIBRARY_ORDER = new Map<string, number>(
+  PROJECT_CONDITION_LIBRARY.map((row, index) => [row.key, index])
+);
+
+function isProjectConditionCandidate(candidate: ClarifyCandidate): boolean {
+  return (
+    candidate.source === "project_condition" || candidate.writeTarget === "CONSTRAINT"
+  );
+}
+
+function compareWorkAreaCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
+  const cls = askRank(a.askClass) - askRank(b.askClass);
+  if (cls !== 0) return cls;
+  if (b.rankScore !== a.rankScore) return b.rankScore - a.rankScore;
+  const wa = (a.workAreaName ?? "").localeCompare(b.workAreaName ?? "");
+  if (wa !== 0) return wa;
+  return a.questionKey.localeCompare(b.questionKey);
+}
+
+function compareProjectConditions(a: ClarifyCandidate, b: ClarifyCandidate): number {
+  const aOrder =
+    a.constraintKey != null
+      ? PROJECT_CONDITION_LIBRARY_ORDER.get(a.constraintKey)
+      : undefined;
+  const bOrder =
+    b.constraintKey != null
+      ? PROJECT_CONDITION_LIBRARY_ORDER.get(b.constraintKey)
+      : undefined;
+  if (aOrder != null && bOrder != null && aOrder !== bOrder) return aOrder - bOrder;
+  return a.questionKey.localeCompare(b.questionKey);
+}
+
+/**
+ * Project conditions stay in library order, ahead of work-area questions.
+ * Adding or answering a condition does not reshuffle them among deck
+ * questions. Work-area order, including a follow-up's rank, is unchanged.
+ */
 export function sortClarifyCandidates(
   candidates: readonly ClarifyCandidate[]
 ): ClarifyCandidate[] {
-  return [...candidates].sort((a, b) => {
-    const cls = askRank(a.askClass) - askRank(b.askClass);
-    if (cls !== 0) return cls;
-    if (b.rankScore !== a.rankScore) return b.rankScore - a.rankScore;
-    const wa = (a.workAreaName ?? "").localeCompare(b.workAreaName ?? "");
-    if (wa !== 0) return wa;
-    return a.questionKey.localeCompare(b.questionKey);
-  });
+  const conditions: ClarifyCandidate[] = [];
+  const workAreaQuestions: ClarifyCandidate[] = [];
+  for (const candidate of candidates) {
+    if (isProjectConditionCandidate(candidate)) conditions.push(candidate);
+    else workAreaQuestions.push(candidate);
+  }
+  conditions.sort(compareProjectConditions);
+  workAreaQuestions.sort(compareWorkAreaCandidates);
+  return [...conditions, ...workAreaQuestions];
 }
 
 /** Soft UX target. Not a hard ceiling. */
