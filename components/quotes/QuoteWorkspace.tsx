@@ -558,7 +558,7 @@ export function QuoteWorkspace({
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] print:block"
         data-quote-view={showReview ? (isEditable ? "finalise" : "details") : "preview"}
       >
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0 space-y-3">
           <div
             className={cn(
               "divide-y divide-border/60 rounded-xl border border-border/60 bg-card shadow-none print:hidden",
@@ -929,7 +929,7 @@ export function QuoteWorkspace({
         >
           <div
             data-quote-sidebar-stack="true"
-            className="space-y-3 xl:sticky xl:top-[4.5rem] xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto"
+            className="space-y-3 xl:sticky xl:top-0 xl:self-start"
           >
             {actionPanel}
           </div>

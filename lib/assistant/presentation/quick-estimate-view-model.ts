@@ -649,6 +649,6 @@ export function buildQuickEstimateScopeSummaryLines(params: {
 /** CSS sticky applies from this Tailwind breakpoint upward (1024px). */
 export const QUICK_ESTIMATE_STICKY_BREAKPOINT = "lg" as const;
 
-/** Shared sticky offset class — clears app chrome without overlapping nav. */
+/** Sticky inside the workspace scroller. Project chrome sits outside that scroller. */
 export const QUICK_ESTIMATE_STICKY_CLASS =
-  "lg:sticky lg:top-6 lg:self-start" as const;
+  "lg:sticky lg:top-0 lg:self-start" as const;

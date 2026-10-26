@@ -180,13 +180,13 @@ export function EstimateOverview({
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-4 overflow-x-hidden",
+        "flex min-w-0 flex-col gap-3 overflow-x-hidden",
         showPrimaryAction && "max-md:pb-28"
       )}
       data-estimate-overview
     >
       <header className="min-w-0">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">Estimate</h2>
+        <h2 className="text-base font-semibold leading-5 tracking-tight text-foreground">Estimate</h2>
         <p
           className="mt-1 text-sm font-medium text-foreground"
           data-estimate-overview-status={model.status}
@@ -204,7 +204,7 @@ export function EstimateOverview({
         ) : null}
       </header>
       {showCommercial ? (
-      <section className="order-1 rounded-xl border border-border/60 shadow-none bg-card px-4 py-4" data-estimate-overview-commercial data-mobile-commercial-overview="true">
+      <section className="order-1 rounded-xl border border-border/60 shadow-none bg-card px-3 py-3" data-estimate-overview-commercial data-mobile-commercial-overview="true">
         <Stat label={sell.presentation === "unresolved" ? "Recommended client sell" : sell.label} emphasize>
           {sell.presentation === "unresolved" ? (
             <p className="text-lg font-medium" data-estimate-overview-sell="unresolved">

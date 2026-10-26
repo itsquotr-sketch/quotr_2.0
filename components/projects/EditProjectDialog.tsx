@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { updateProject } from "@/lib/projects/actions";
 import { getCustomerOption, listSelectableCustomers } from "@/lib/customers/actions";
 import type { CustomerOption } from "@/lib/customers/types";
@@ -38,6 +38,10 @@ type EditProjectDialogProps = {
   project: Project;
   triggerLabel?: string;
   triggerClassName?: string;
+  hideTrigger?: boolean;
+  compactTrigger?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 function projectToFormState(project: Project) {
@@ -59,9 +63,15 @@ export function EditProjectDialog({
   project,
   triggerLabel = "Edit project",
   triggerClassName,
+  hideTrigger = false,
+  compactTrigger = false,
+  open: openProp,
+  onOpenChange,
 }: EditProjectDialogProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const wasOpen = useRef(false);
   const [title, setTitle] = useState(project.title);
   const [clientName, setClientName] = useState(project.client_name ?? "");
   const [clientEmail, setClientEmail] = useState(project.client_email ?? "");
@@ -97,6 +107,11 @@ export function EditProjectDialog({
     setFieldErrors({});
   }
 
+  if (open && !wasOpen.current) {
+    resetFormFromProject();
+  }
+  wasOpen.current = open;
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -121,7 +136,8 @@ export function EditProjectDialog({
     if (nextOpen) {
       resetFormFromProject();
     }
-    setOpen(nextOpen);
+    setUncontrolledOpen(nextOpen);
+    onOpenChange?.(nextOpen);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -159,21 +175,27 @@ export function EditProjectDialog({
       return;
     }
 
-    setOpen(false);
+    setUncontrolledOpen(false);
+    onOpenChange?.(false);
     router.refresh();
   }
 
   return (
     <>
+      {hideTrigger ? null : (
       <Button
         type="button"
         variant="outline"
-        size="touch"
-        className={cn("min-h-11 px-2.5 md:px-3", triggerClassName)}
+        size={compactTrigger ? "default" : "touch"}
+        className={cn(
+          compactTrigger ? "hidden h-8 min-h-8 px-2.5 md:inline-flex" : "min-h-11 px-2.5 md:px-3",
+          triggerClassName
+        )}
         onClick={() => handleOpenChange(true)}
       >
         {triggerLabel}
       </Button>
+      )}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
@@ -404,7 +426,7 @@ export function EditProjectDialog({
                 type="button"
                 variant="outline"
                 size="touch"
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
                 disabled={pending}
               >
                 Cancel
