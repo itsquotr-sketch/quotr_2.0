@@ -23,6 +23,26 @@ export function deckPostsInScope(
   return newSubstructureIncluded([...facts], workAreaId);
 }
 
+export function statedDeckPostCount(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): number | null {
+  return postCount(facts, workAreaId);
+}
+
+/**
+ * The posts gap writes the post count. Once that count exists, the same
+ * field is the hole-count override and does not replace the post count.
+ */
+export function deckCountWriteKey(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): "deck.pile_or_post_count" | "deck.hole_count" {
+  return postCount(facts, workAreaId) == null
+    ? "deck.pile_or_post_count"
+    : "deck.hole_count";
+}
+
 function postCount(facts: readonly EstimateFact[], workAreaId: string): number | null {
   const rows = getNumberFact([...facts], workAreaId, "deck.bearer_row_count");
   const per = getNumberFact([...facts], workAreaId, "deck.supports_per_bearer");
@@ -217,6 +237,53 @@ export function settledPostHoleAnswerCount(input: {
 }): number {
   if (!input.workConfirmed || input.workSavePending) return 0;
   return input.gaps.length;
+}
+
+const EXCAVATION_GAP_IDS = new Set([
+  "dimensions",
+  "ground",
+  "method",
+  "spoil",
+  "excavate",
+  "haulage",
+  "tip",
+]);
+const CONCRETE_GAP_IDS = new Set(["fill", "post", "embedment"]);
+
+export function deckDetailGapFamily(
+  gapId: string
+): "excavation" | "concrete" | "post" {
+  if (EXCAVATION_GAP_IDS.has(gapId)) return "excavation";
+  if (CONCRETE_GAP_IDS.has(gapId)) return "concrete";
+  return "post";
+}
+
+function answerPhrase(count: number, noun: string): string {
+  return count === 1 ? `1 ${noun} answer` : `${count} ${noun} answers`;
+}
+
+/**
+ * Excavation and concrete stay in separate counts. A finished excavation
+ * answer is not described as an unfinished post-hole answer.
+ */
+export function deckDetailQueuePrompt(gaps: readonly DeckDetailGap[]): string {
+  let excavation = 0;
+  let concrete = 0;
+  let post = 0;
+  for (const gap of gaps) {
+    const family = deckDetailGapFamily(gap.id);
+    if (family === "excavation") excavation += 1;
+    else if (family === "concrete") concrete += 1;
+    else post += 1;
+  }
+  const parts = [
+    excavation > 0 ? answerPhrase(excavation, "excavation") : null,
+    concrete > 0 ? answerPhrase(concrete, "concrete") : null,
+    post > 0 ? answerPhrase(post, "post") : null,
+  ].filter((part): part is string => part != null);
+  if (parts.length === 0) return "Complete the Deck details.";
+  if (parts.length === 1) return `Finish ${parts[0]}`;
+  return `Finish ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
 /** Right-hand Estimate panel. The Post holes card already lists each answer. */

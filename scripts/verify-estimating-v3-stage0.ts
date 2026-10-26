@@ -4,9 +4,9 @@
  * Run: npx --yes tsx scripts/verify-estimating-v3-stage0.ts
  *
  * No network, no model, no database, no customer records.
- * Assertions lock the behaviour reproduced on production website SHA 40d98384.
- * They are not the desired Stage 1 outcomes. Those are named in
- * docs/estimating-v3/STAGE_1_BLOCKER_SCOPE.md.
+ * The four completion checks below record the Stage 1 correction.
+ * Coverage checks still lock the known gaps from production website SHA 40d98384.
+ * Those gaps are named in docs/estimating-v3/STAGE_1_BLOCKER_SCOPE.md.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -14,12 +14,17 @@ import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { persistClarifyValueType } from "../lib/assistant/clarify/interaction";
 import { groupDetailsCandidates } from "../lib/assistant/clarify/details-groups";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
-import { normalizeAnswerForStorage } from "../lib/scopes/fact-values";
+import {
+  factUpdateError,
+  normalizeAnswerForStorage,
+} from "../lib/scopes/fact-values";
 import { WARNING_CODES } from "../lib/commercial-engine/contract/codes";
 import { classifyResolvedSell } from "../lib/commercial-engine/core/cost-first-authority";
 import { FITOUT_BENCHMARKS, BATHROOM_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import {
+  deckCountWriteKey,
   deckDetailGaps,
+  deckDetailQueuePrompt,
   deckPostHoleControlId,
 } from "../lib/estimate/deck-detail-completeness";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
@@ -75,15 +80,15 @@ function fact(
   };
 }
 
-function optionStringIsRejectedAsNumber(factKey: string, option: string): boolean {
+function optionStringStoresMillimetres(factKey: string, option: string, millimetres: number): boolean {
   const inputType = flooringQuestionInputType(factKey);
   const valueType = persistClarifyValueType({ inputType }, option);
-  const stored = normalizeAnswerForStorage(option, valueType);
+  const stored = normalizeAnswerForStorage(option, valueType, factKey);
   return (
     inputType === "number" &&
     valueType === "number" &&
-    typeof stored === "number" &&
-    !Number.isFinite(stored)
+    stored === millimetres &&
+    factUpdateError({ key: factKey, value: option, valueType }) == null
   );
 }
 
@@ -95,14 +100,21 @@ check(
     boardOptions.includes("145 mm")
 );
 check(
-  "selecting 145 mm is stored as a non-finite number",
-  optionStringIsRejectedAsNumber(BOARD_WIDTH_KEY, "145 mm"),
-  "commitUserFactEdit then returns Invalid fact update."
+  "selecting 145 mm is stored as 145 millimetres",
+  optionStringStoresMillimetres(BOARD_WIDTH_KEY, "145 mm", 145)
 );
 check(
-  "tile width has the same option/number collision",
+  "an invalid board width names the field and does not become a number",
+  factUpdateError({
+    key: BOARD_WIDTH_KEY,
+    value: "wide",
+    valueType: "number",
+  }) === "Enter a board width in millimetres, such as 145."
+);
+check(
+  "tile width uses the same millimetre option",
   tileOptions.includes("600 mm") &&
-    optionStringIsRejectedAsNumber(TILE_WIDTH_KEY, "600 mm")
+    optionStringStoresMillimetres(TILE_WIDTH_KEY, "600 mm", 600)
 );
 check(
   "a plain millimetre number stays finite",
@@ -115,9 +127,19 @@ const holeOnly = [
 ];
 const postGaps = deckDetailGaps(holeOnly, WA);
 check(
-  "saved hole count does not answer the post-count gap",
-  postGaps.some((gap) => gap.id === "posts"),
+  "a saved hole count does not replace the post count",
+  postGaps.some((gap) => gap.id === "posts") &&
+    deckCountWriteKey(holeOnly, WA) === "deck.pile_or_post_count",
   postGaps.map((gap) => gap.id).join(",")
+);
+const postsWritten = [
+  fact("deck.substructure_included", true),
+  fact("deck.pile_or_post_count", 16),
+];
+check(
+  "the post-count write clears the posts gap",
+  !deckDetailGaps(postsWritten, WA).some((gap) => gap.id === "posts") &&
+    deckCountWriteKey(postsWritten, WA) === "deck.hole_count"
 );
 check(
   "the posts gap focuses the hole-count control",
@@ -147,15 +169,17 @@ const concreteStillOpen = [
   fact("deck.concrete_to_supports", true),
 ];
 const concreteGaps = deckDetailGaps(concreteStillOpen, WA).map((gap) => gap.id);
+const concretePrompt = deckDetailQueuePrompt(deckDetailGaps(concreteStillOpen, WA));
 check(
-  "completed excavation stays active while concrete fill, post size, and embedment are open",
+  "completed excavation leaves the queue while concrete answers stay open",
   concreteGaps.includes("fill") &&
     concreteGaps.includes("post") &&
     concreteGaps.includes("embedment") &&
     !concreteGaps.includes("ground") &&
     !concreteGaps.includes("method") &&
-    !concreteGaps.includes("spoil"),
-  concreteGaps.join(",")
+    !concreteGaps.includes("spoil") &&
+    concretePrompt === "Finish 3 concrete answers",
+  `${concreteGaps.join(",")} ${concretePrompt}`
 );
 
 function pcOrder(types: readonly { id: string; type: string; name: string }[]): string[] {
@@ -192,9 +216,12 @@ const deckAndBath = pcOrder([
     name: "Bathroom",
   },
 ]);
+const deckKeys = deckOnly.map((row) => row.split(":")[1]);
+const bathroomKeys = deckAndBath.map((row) => row.split(":")[1]);
 check(
-  "adding a bathroom changes the project-condition queue",
-  deckOnly.join("|") !== deckAndBath.join("|"),
+  "deck project conditions stay in order when a bathroom is added",
+  deckKeys.length > 0 &&
+    deckKeys.every((key, index) => bathroomKeys[index] === key),
   `deck [${deckOnly.join(", ")}] bathroom [${deckAndBath.join(", ")}]`
 );
 

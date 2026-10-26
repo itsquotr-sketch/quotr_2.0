@@ -16,7 +16,7 @@ import {
   findQuestionAnswersNeedingFactHeal,
 } from "@/lib/scopes/scope-value-resolution";
 import { shouldWriteDerivedFact } from "@/lib/scopes/domain-ownership";
-import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { factUpdateError, normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
@@ -1122,7 +1122,8 @@ export function resolveCommittedFactWrite(params: {
   const storedValue = params.valueType
     ? normalizeAnswerForStorage(
         params.value as string | number | boolean | string[],
-        params.valueType
+        params.valueType,
+        params.key
       )
     : params.value;
 
@@ -1186,6 +1187,15 @@ export async function commitUserFactEdit(
       error: "Calculated values cannot be edited directly.",
       blockedDerived: true,
     };
+  }
+
+  const updateError = factUpdateError({
+    key: params.key,
+    value: params.value,
+    valueType: params.valueType,
+  });
+  if (updateError) {
+    return { ok: false, error: updateError };
   }
 
   const resolved = resolveCommittedFactWrite({

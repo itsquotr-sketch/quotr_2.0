@@ -13,11 +13,11 @@ import type { ClarifyAskClass, ClarifyCandidate } from "@/lib/assistant/clarify/
 import { getDeckQuestionDescriptor } from "@/lib/estimate/deck-question-descriptors";
 import type { DeckQuestionSection } from "@/lib/estimate/deck-question-descriptors";
 import { listDeckQuestionDescriptors } from "@/lib/estimate/deck-question-descriptors";
+import { CONSUMED_PROJECT_CONDITION_KEYS } from "@/lib/project-conditions/consumed-authority";
 import {
-  CONSUMED_PROJECT_CONDITION_KEYS,
-  listConsumedProjectConditionDefs,
-} from "@/lib/project-conditions/consumed-authority";
-import { projectConditionDetailsGroupLabel } from "@/lib/project-conditions/library";
+  PROJECT_CONDITION_LIBRARY,
+  projectConditionDetailsGroupLabel,
+} from "@/lib/project-conditions/library";
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 import { DOORS_CONTRACT_FACT_ORDER } from "@/lib/estimate/doors-information-contract";
@@ -91,7 +91,7 @@ const DECK_FACT_ORDER = new Map(
   listDeckQuestionDescriptors().map((row, index) => [row.factKey, index])
 );
 const PC_KEY_ORDER = new Map<string, number>(
-  listConsumedProjectConditionDefs().map((row, index) => [row.key, index])
+  PROJECT_CONDITION_LIBRARY.map((row, index) => [row.key, index])
 );
 
 function isProjectConditionCandidate(candidate: ClarifyCandidate): boolean {
@@ -137,6 +137,9 @@ function nestedItemLabel(candidate: ClarifyCandidate): string | null {
 }
 
 function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
+  const aPc = a.constraintKey ? PC_KEY_ORDER.get(a.constraintKey) : undefined;
+  const bPc = b.constraintKey ? PC_KEY_ORDER.get(b.constraintKey) : undefined;
+  if (aPc != null && bPc != null && aPc !== bPc) return aPc - bPc;
   const ask = ASK_ORDER[a.askClass] - ASK_ORDER[b.askClass];
   if (ask !== 0) return ask;
   const aDeck = a.factKey ? DECK_FACT_ORDER.get(a.factKey) : undefined;
@@ -150,9 +153,6 @@ function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
   if (aCladding != null && bCladding != null && aCladding !== bCladding) {
     return aCladding - bCladding;
   }
-  const aPc = a.constraintKey ? PC_KEY_ORDER.get(a.constraintKey) : undefined;
-  const bPc = b.constraintKey ? PC_KEY_ORDER.get(b.constraintKey) : undefined;
-  if (aPc != null && bPc != null && aPc !== bPc) return aPc - bPc;
   return a.questionKey.localeCompare(b.questionKey);
 }
 
@@ -235,33 +235,34 @@ export function groupDetailsCandidates(params: {
 
   const groups: DetailsWorkAreaGroup[] = [];
   if (pcs.length > 0) {
-    const byGroup = new Map<string, ClarifyCandidate[]>();
-    const order: string[] = [];
+    const sections: DetailsSection[] = [];
     for (const candidate of [...pcs].sort(compareCandidates)) {
       const label = candidate.constraintKey
         ? projectConditionDetailsGroupLabel(candidate.constraintKey)
         : "Project Conditions";
-      const existing = byGroup.get(label);
-      if (existing) {
-        existing.push(candidate);
+      const previous = sections[sections.length - 1];
+      if (previous && previous.label === label) {
+        sections[sections.length - 1] = {
+          ...previous,
+          candidates: [...previous.candidates, candidate],
+        };
         continue;
       }
-      order.push(label);
-      byGroup.set(label, [candidate]);
-    }
-    groups.push({
-      workAreaId: null,
-      workAreaName: "Project Conditions",
-      workAreaType: null,
-      sections: order.map((label) => ({
-        id: "project_conditions" as const,
+      sections.push({
+        id: "project_conditions",
         label,
         wallTypeId: null,
         wallTypeLabel: null,
         nestedItemId: null,
         nestedItemLabel: null,
-        candidates: byGroup.get(label)!,
-      })),
+        candidates: [candidate],
+      });
+    }
+    groups.push({
+      workAreaId: null,
+      workAreaName: "Project Conditions",
+      workAreaType: null,
+      sections,
     });
   }
   const seen = new Set<string>();
