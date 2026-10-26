@@ -271,6 +271,27 @@ if (facts.ok) {
   );
   assert("body does not use a catalogue price", !email.text.includes("NZ$65.00") && !email.text.includes("65.00"));
   assert("wordmark is present", email.html.includes("alt=\"Quotr\""));
+  assert(
+    "heading is the activation line",
+    email.html.includes("font-size:26px") &&
+      email.html.includes("Your Quotr Builder plan is active.") &&
+      !email.html.includes("Plan:")
+  );
+  assert(
+    "summary shows the stripe total and one user line",
+    email.html.includes("NZ$11.50") &&
+      email.html.includes("NZ$10.00 + NZ$1.50 GST") &&
+      email.text.split("Includes 1 user.").length === 2 &&
+      email.html.split("Includes 1 user.").length === 2
+  );
+  assert(
+    "preview identification and the open button are present",
+    email.html.includes("Preview test of the paid plan confirmation") &&
+      email.html.includes("max-width:600px") &&
+      email.html.includes(">Open Quotr<") &&
+      email.html.includes(">Manage billing<") &&
+      email.html.includes("First invoice")
+  );
   assert("same account covers website and android", email.text.includes("Android app") && email.text.includes("same Quotr account"));
   assert("support mailbox is present", email.text.includes("hello@get-quotr.com"));
   assert("billing link is present", email.text.includes("https://quotr.example/app/settings/billing"));
@@ -327,7 +348,9 @@ if (unpaid.ok) {
   assert(
     "unpaid invoice email has no charge sentence",
     !unpaidEmail.text.includes("The first invoice was") &&
-      unpaidEmail.text.includes("The ongoing subscription price is")
+      unpaidEmail.text.includes("The ongoing subscription price is") &&
+      !unpaidEmail.html.includes("First invoice") &&
+      !unpaidEmail.html.includes("Preview test")
   );
 }
 
@@ -369,6 +392,8 @@ if (discounted.ok) {
     "zero discount is described as no payment",
     discountEmail.text.includes("because a discount covered it") &&
       discountEmail.text.includes("No payment was taken") &&
+      discountEmail.html.includes("No payment was taken") &&
+      discountEmail.html.includes("NZ$0.00") &&
       !discountEmail.text.includes("Today's charge")
   );
   assert(
