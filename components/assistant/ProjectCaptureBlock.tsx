@@ -116,7 +116,7 @@ export function ProjectCaptureBlock({
     <div className="space-y-4">
       <section
         aria-labelledby="project-brief-heading"
-        className="space-y-3 rounded-xl border border-border/60 bg-card px-3 py-3.5 sm:px-4"
+        className="space-y-3 rounded-xl border border-border/60 bg-card px-4 py-4"
       >
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -146,16 +146,16 @@ export function ProjectCaptureBlock({
             onBriefPersist?.(event.target.value);
           }}
           placeholder="e.g. Replace existing 6 × 3m deck. About 1m high. Kwila decking. Access down side of house."
-          rows={4}
+          rows={6}
           disabled={disabled || submitted}
           readOnly={submitted}
-          className="min-h-24 bg-background text-base md:text-sm"
+          className="min-h-36 w-full bg-background text-base leading-6"
         />
       </section>
 
       <section
         aria-labelledby="site-notes-heading"
-        className="space-y-2 sm:space-y-3 sm:rounded-lg sm:border sm:border-border/60 sm:bg-background sm:px-4 sm:py-3"
+        className="space-y-3 rounded-xl border border-border/60 bg-card px-4 py-4"
         data-site-notes-section
       >
         <div className="space-y-1">
@@ -170,7 +170,7 @@ export function ProjectCaptureBlock({
           </p>
         </div>
         <div
-          className="sm:rounded-md sm:border sm:border-dashed sm:border-border/70 sm:bg-muted/10 sm:px-3 sm:py-2.5"
+          className="rounded-md border border-dashed border-border/70 bg-background px-3 py-2.5"
           data-site-notes-nesting="responsive"
         >
           <SiteNotesCaptureCard
@@ -183,20 +183,26 @@ export function ProjectCaptureBlock({
         </div>
       </section>
 
-      {documents ? (
-        <ProjectDocumentsSection
-          projectId={projectId}
-          centre={documents}
-          variant="capture"
-          canUpload={canUploadFiles}
-        />
-      ) : null}
-
-      {submitted ? (
-        <AnalyseNotesSection
-          projectId={projectId}
-          pendingAnalysisCount={pendingAnalysisCount}
-        />
+      {documents || submitted ? (
+        <section aria-labelledby="supporting-inputs-heading" className="space-y-3">
+          <h4 id="supporting-inputs-heading" className="text-sm font-semibold text-foreground">
+            Supporting information
+          </h4>
+          {documents ? (
+            <ProjectDocumentsSection
+              projectId={projectId}
+              centre={documents}
+              variant="capture"
+              canUpload={canUploadFiles}
+            />
+          ) : null}
+          {submitted ? (
+            <AnalyseNotesSection
+              projectId={projectId}
+              pendingAnalysisCount={pendingAnalysisCount}
+            />
+          ) : null}
+        </section>
       ) : null}
 
       {!submitted && onAnalyse ? (

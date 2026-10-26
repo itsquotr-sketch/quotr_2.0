@@ -497,7 +497,8 @@ assert(
 console.log("\n--- Sidebar / terms / mobile ---");
 assert(
   "desktop quote sidebar remains one sticky stack",
-  workspaceSrc.includes("xl:sticky xl:top-0 xl:self-start") &&
+  workspaceSrc.includes("lg:sticky lg:top-0 lg:self-start") &&
+    workspaceSrc.includes("xl:sticky") &&
     !workspaceSrc.includes("xl:overflow-y-auto")
 );
 assert(

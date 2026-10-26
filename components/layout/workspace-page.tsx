@@ -25,7 +25,7 @@ export function WorkspacePage({
       ) : null}
       {nav}
       <WorkspaceContainer
-        innerClassName={cn("pt-3 pb-4 lg:pt-3", contentClassName)}
+        innerClassName={cn("pt-4 pb-6 lg:pt-5", contentClassName)}
       >
         <SectionPendingContent>
         <div data-workspace-content-gap="progression" className="min-w-0">
@@ -49,7 +49,7 @@ export function WorkspaceHeaderBar({
   return (
     <div
       className={cn(
-          "mx-auto flex w-full items-center justify-between gap-2 px-4 py-1 sm:px-6 lg:px-8",
+          "mx-auto flex w-full items-start justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8 lg:py-3",
         LAYOUT_MAX_WIDTH.workspace
       )}
     >

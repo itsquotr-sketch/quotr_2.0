@@ -30,7 +30,7 @@ export function PricingHeader({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold leading-5 tracking-tight sm:text-lg">
+            <h2 className="text-lg font-semibold leading-6 tracking-tight">
               Pricing
             </h2>
             <StatusBadge variant={statusDef.variant}>{statusDef.label}</StatusBadge>
