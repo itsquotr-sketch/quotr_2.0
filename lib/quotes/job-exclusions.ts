@@ -44,6 +44,14 @@ function isExplicitFalse(value: unknown): boolean {
   return normalised === "false" || normalised === "no" || normalised === "none";
 }
 
+/** Explicit deck exclusions only. A missing fact is not an exclusion. */
+const DECK_CLIENT_EXCLUSIONS: Record<string, string> = {
+  "deck.existing_deck_removal": "Demolition",
+  "deck.steps_included": "Stairs",
+  "deck.balustrade_required": "Balustrade",
+  "deck.painting_included": "Painting",
+};
+
 export function explicitJobExclusionLines(
   facts: readonly { key: string; value: unknown }[]
 ): string[] {
@@ -61,6 +69,8 @@ export function explicitJobExclusionLines(
     if (fact.key === "internal_walls.skirtings_included" && isExplicitFalse(fact.value)) {
       addLine(lines, "Skirting");
     }
+    const deckLabel = DECK_CLIENT_EXCLUSIONS[fact.key];
+    if (deckLabel && isExplicitFalse(fact.value)) addLine(lines, deckLabel);
     if (fact.key.endsWith(".coverage_note") && typeof fact.value === "string") {
       const match = fact.value.match(/Excluded trades:\s*([^.]+)/i);
       if (!match?.[1]) continue;

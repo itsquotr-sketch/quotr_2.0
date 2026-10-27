@@ -24,6 +24,11 @@ import {
   shouldAskPileReplacement,
 } from "../lib/estimate/deck-scope-2c";
 import { scopeTopicPolarity } from "../lib/estimate/scope-intent";
+import {
+  explicitJobExclusionLines,
+  jobExclusionLine,
+  seedPricingClientExclusions,
+} from "../lib/quotes/job-exclusions";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import {
   STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF,
@@ -187,6 +192,21 @@ check("generated deck has no stair task", !/stair|step-down|step down/i.test(low
 check("generated deck has no demolition task", !lowLabels.includes("Existing deck removal"));
 check("generated deck has no balustrade task", !/balustrade/i.test(lowLabels));
 check("generated exclusions stay reviewable", ["Stairs", "Demolition", "Balustrade", "Painting"].every((item) => lowEstimate.exclusions.includes(item)));
+const lowClientLines = explicitJobExclusionLines(lowFacts);
+check(
+  "client draft names the four explicit exclusions",
+  ["Stairs", "Demolition", "Balustrade", "Painting"].every((label) =>
+    lowClientLines.includes(jobExclusionLine(label))
+  )
+);
+check(
+  "a saved draft is not rewritten with job exclusions",
+  seedPricingClientExclusions({
+    templateLines: [],
+    jobLines: lowClientLines,
+    existingDraftLines: ["Kept by the builder."],
+  }).lines.join("|") === "Kept by the builder."
+);
 
 const exclusionVariant = run(
   "Build a 4m x 2m deck, 300mm above the ground. Stairs, balustrades, demolition and painting are not included. Include the framing."
@@ -201,6 +221,16 @@ const silentMap = deckFacts(silent);
 check("a missing stair mention is not an exclusion", !silentMap.has("deck.steps_included"));
 check("a missing painting mention is not an exclusion", !silentMap.has("deck.painting_included"));
 check("a missing demolition mention is not an exclusion", silentMap.get("deck.existing_deck_removal") !== false);
+check(
+  "a missing mention does not seed a client exclusion",
+  explicitJobExclusionLines(asFacts(silent, "deck-silent", "deck")).length === 0
+);
+check(
+  "fascia declined in details is not a client exclusion",
+  !explicitJobExclusionLines([
+    { key: "deck.vertical_face_boards_required", value: false },
+  ]).some((line) => /fascia|face board/i.test(line))
+);
 
 const prep = run(
   "Build a 4m x 2m deck, 300mm above the ground. No demolition. Prepare the ground before the new frame goes down."
