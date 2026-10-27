@@ -1781,19 +1781,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         if (shouldSuppressKnownSpec(key, wa.id, input)) continue;
         if (factHas(input, key, wa.id)) continue;
         const template = getQuestionTemplateByKey(key);
-        const askPileCount =
-          key === "deck.pile_or_post_count" &&
-          pileRetentionPending({
-            facts: input.facts as EstimateFact[],
-            workAreaId: wa.id,
-          }) &&
-          shouldAskPileCount({
-            facts: input.facts as EstimateFact[],
-            workAreaId: wa.id,
-          });
-        const askClass = askPileCount
-          ? "ASK_NOW"
-          : mapDeckAskClassToClarify(descriptor.askClass);
+        const askClass = mapDeckAskClassToClarify(descriptor.askClass);
         const economicClass = deckEconomicClass(key);
         const inputType =
           template != null
@@ -1824,6 +1812,40 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankReason: `${descriptor.askClass} · ${descriptor.section}`,
           assumptionStatement: deckClarifyAssumptionStatement(key),
           economicClass,
+        });
+      }
+      const pileFacts = input.facts as EstimateFact[];
+      if (
+        pileRetentionPending({ facts: pileFacts, workAreaId: wa.id }) &&
+        shouldAskPileCount({ facts: pileFacts, workAreaId: wa.id }) &&
+        !factHas(input, "deck.pile_or_post_count", wa.id)
+      ) {
+        const countTemplate = getQuestionTemplateByKey("deck.pile_or_post_count");
+        out.push({
+          id: `fact:${wa.id}:deck.pile_or_post_count`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "deck.pile_or_post_count",
+          constraintKey: null,
+          questionKey: "deck.pile_or_post_count",
+          label: countTemplate?.label ?? "Piles/posts to replace",
+          question:
+            countTemplate?.questionText ??
+            "Approximate number of piles or posts to replace?",
+          askClass: "ASSUME_IF_SKIPPED",
+          inputType: "number",
+          unit: countTemplate?.unit,
+          options: countTemplate?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: false,
+          rankScore: CHECK_SCORES["deck.pile_or_post_count"] ?? 67,
+          rankReason: "Pending inspection · replacement count",
+          assumptionStatement: null,
+          economicClass: deckEconomicClass("deck.pile_or_post_count"),
         });
       }
       continue;
