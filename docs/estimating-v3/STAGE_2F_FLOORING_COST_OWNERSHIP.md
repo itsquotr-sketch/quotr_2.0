@@ -51,3 +51,35 @@ Stored estimates, company rates and issued snapshots are not rewritten.
 ## Earlier preview
 
 `9fef22a857fd` stopped the second finish-supply charge. It still treated a disclosed 10.56 m² as commercially complete. That is not acceptance of the waste contract. The correction above keeps requested waste unresolved until an explicit treatment is chosen.
+
+## Preview acceptance
+
+Application tree `5f789c976315`. Ready Preview `dpl_8WDYgwMBDH6tZkDGqSENZbCJs5sN`, target preview, alias `https://quotr-2-0-git-estimating-v3-stage-2f-quotr1.vercel.app`. Production was not deployed.
+
+Hallway used for every fresh job: 8 m × 1.2 m = 9.6 m² vinyl plank, remove existing vinyl, 10% waste where the brief asks for it. No organisation rates were changed. The live company has no finish material rate, no install productivity, and no adhesive rate, so those lines stay unpriced. The 0.25 h/m² figure is only the verifier fixture for `flooring.finish.install.hours_per_m2`. It does not appear on these jobs.
+
+Independent expected money, 20% margin, sell = cost / 0.8:
+
+| Piece | Quantity | Cost | Client sell |
+| --- | --- | --- | --- |
+| Vinyl package on net area | 9.6 m² × $95.00 | $912.00 | $1,140.00 |
+| Removal | 9.6 m² × 0.1 h/m² × $60/h | $57.60 | $72.00 |
+| Known total when the package is the finish price | | $969.60 | $1,212.00 |
+| GST 15% / incl GST on that sell | | | $181.80 / $1,393.80 |
+| Extra waste quantity | 10.56 − 9.6 = 0.96 m² | not priced | not priced |
+
+10% of the $912.00 package would be $91.20. That amount is not charged. 10.56 m² is not charged at $95.00.
+
+Fresh Preview jobs, saved and reloaded. Quotes were not created and pricing was not marked reviewed.
+
+- Unanswered waste, project `9f2936cf-6a16-44f6-aa6c-51b9e9bc7241`, pricing `75d4f967-4110-4259-b3e2-7dde975aa4ac`. Estimate incomplete. Package note: 9.6 m², $95.00, $912.00, $1,140.00, and the 10.56 m² is not inside the rate. Pricing: package sell $1,140.00, waste 0.96 m² Pricing required and not in the total, removal $72.00. Known cost $969.60. Client sell $1,212.00. Quote creation stays blocked.
+- Explicit combined, waste left unanswered, project `9702c02c-117a-446f-8b58-1ec4ad73e405`, pricing `5a2a978f-eba5-4891-8f4d-cdb2ebc3207d`. Same dollars. The package note says choosing the combined package does not include the requested waste. The waste line stays Pricing required and not in the total.
+- Package rate confirmed to cover the requested waste, project `e70cfa05-cd29-478c-b98e-a10e6b85e789`, pricing `71a75a05-aa51-4d33-aba7-213bb11c9658`. No waste line. Package stays $912.00 / $1,140.00. The note says the rate was explicitly confirmed, was not increased, and was not split. Persisted pricing is 2 items, direct cost $969.60, client sell $1,212.00, margin 20%, incl GST $1,393.80. All priced.
+- Separate supply and installation, project `829d28c1-3575-48b6-b886-2c93510656af`, pricing `b453905d-3fc2-482c-ad8f-e2e0cbd21c3a`. No package. Supply 10.56 m², adhesive 9.6 m², and finish installation 9.6 m² are Pricing required and not in the total. No 0.25 h/m². Removal only: known cost $57.60, client sell $72.00, incl GST $82.80. Three lines block the quote.
+- Customer-supplied vinyl, project `f84d68fc-223f-4526-8a49-6a545430bce6`, pricing `f5288fdb-17d2-4735-932b-b7a52dfdaafe`. No package and no finish purchase. Adhesive 9.6 m² and finish installation 9.6 m² stay Pricing required and not in the total. Removal only, same $57.60 / $72.00.
+
+The priced separate and incremental cases stay in the verifier, because writing them would change company rates. With a fixture material rate of $40/m², only the extra 0.96 m² is $38.40. With fixture adhesive of $5/m², ancillary cost is 9.6 × $5 = $48.00 once. With fixture productivity 0.25 h/m² and labour $60/h, installation is 9.6 × 0.25 × $60 = $144.00, and the note names that saved productivity. Without the fixture, installation is unpriced and the note does not contain 0.25.
+
+## Limitations
+
+Carpet roll waste still has no extra purchase quantity, so incremental waste cannot price it. Adhesive, grout, fixings and accessories have no catalogue rate; on a separate or customer-supplied path they stay unpriced until a saved rate exists. A manual Pricing edit can still type a cost onto an unresolved line. That is not a waste treatment and was not used here. Quote creation stays blocked while the line is unpriced. Stored estimates, company rates and issued snapshots were not rewritten. Flooring checks 76–79 stay the pre-existing failures. No laminate, carpet-tile, preliminary-and-general, or calibration work. Production was not deployed.
