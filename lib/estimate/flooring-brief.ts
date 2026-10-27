@@ -20,6 +20,7 @@ import {
   applyFlooringFactWrite,
   cloneFlooringPortion,
   createEmptyFlooringPortion,
+  flooringAreaMeasuresDisagree,
   flooringPortionFieldsCompatible,
   FLOORING_PORTIONS_FACT_KEY,
   normalizeExtractedFlooringPortions,
@@ -191,18 +192,29 @@ function directAreaFromSnippet(text: string): number | null {
   return parseFlooringPositiveMeasure(match[1]);
 }
 
+function measureTokenToMetres(value: string, unit: string): number | null {
+  const numeric = Number(value.replace(/,/g, ""));
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  if (unit.toLowerCase() === "mm") {
+    if (numeric < 300 || numeric > 100_000) return null;
+    return numeric / 1000;
+  }
+  if (numeric > 100) return null;
+  return numeric;
+}
+
 function roomDimensionsFromSnippet(text: string): {
   length_m: number | null;
   width_m: number | null;
 } {
   const stripped = stripProductMillimetres(text);
   const match = stripped.match(
-    /(\d+(?:\.\d+)?)\s*m\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)\s*m\b/i
+    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m)\b/i
   );
   if (!match) return { length_m: null, width_m: null };
   return {
-    length_m: parseFlooringPositiveMeasure(match[1]),
-    width_m: parseFlooringPositiveMeasure(match[2]),
+    length_m: measureTokenToMetres(match[1]!, match[2]!),
+    width_m: measureTokenToMetres(match[3]!, match[4]!),
   };
 }
 
@@ -617,8 +629,11 @@ function applyClauseLocalRemoval(
   }
 }
 
-function snippetHasFlooringSignal(text: string): boolean {
-  return clauseHasFlooringOperation(text) || specialistKindFromSnippet(text) != null;
+function snippetHasFlooringSignal(text: string, briefText?: string): boolean {
+  return (
+    clauseHasFlooringOperation(text, briefText) ||
+    specialistKindFromSnippet(text) != null
+  );
 }
 
 function snippetOwnsFlooringPortion(snippet: string): boolean {
@@ -638,7 +653,7 @@ function splitFlooringSnippets(briefText: string): string[] {
   const sentences = briefText
     .split(/(?<=[.!?])\s+/)
     .map((row) => row.trim())
-    .filter(snippetOwnsFlooringPortion);
+    .filter((sentence) => snippetOwnsFlooringPortion(sentence));
   if (sentences.length >= 2) return sentences;
   return primary;
 }
@@ -652,10 +667,16 @@ function splitFlooringSeparators(briefText: string): string[] {
     )
     .map((row) => row.replace(/^(?:also|plus)\s+/i, "").trim())
     .filter(Boolean);
-  const withSignal = parts.filter(snippetHasFlooringSignal);
+  const withSignal = parts.filter((part) =>
+    snippetHasFlooringSignal(part, trimmed)
+  );
   if (withSignal.length >= 2) return withSignal;
   if (withSignal.length === 1 && parts.length > 1) return withSignal;
-  return snippetHasFlooringSignal(trimmed) ? [trimmed] : parts.length > 0 ? parts : [trimmed];
+  return snippetHasFlooringSignal(trimmed, trimmed)
+    ? [trimmed]
+    : parts.length > 0
+      ? parts
+      : [trimmed];
 }
 
 function applyGlobalConstraints(
@@ -752,6 +773,10 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.area_input_method = "length_width";
     portion.area_method_authority = "extracted";
   }
+  if (flooringAreaMeasuresDisagree(portion)) {
+    portion.area_input_method = null;
+    portion.area_method_authority = undefined;
+  }
 
   const underlay = underlayFromSnippet(snippet);
   if (underlay != null) {
@@ -846,7 +871,7 @@ export function extractFlooringPortionsFromBrief(briefText: string): FlooringPor
     if (clauseIsBathroomOwnedFloor(snippet)) continue;
     if (clauseIsBathroomSubstrateRebuild(snippet, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(snippet)) continue;
-    if (!snippetHasFlooringSignal(snippet) && snippets.length > 1) continue;
+    if (!snippetHasFlooringSignal(snippet, briefText) && snippets.length > 1) continue;
     const portion = createEmptyFlooringPortion({
       label: locationFromSnippet(snippet),
     });
@@ -926,6 +951,13 @@ function fillMissingFlooringPortion(
   // explicit extracted No that the regex already owns via firstPresent(false).
   if (out.finish_removal_required == null && secondary.finish_removal_required === false) {
     out.finish_removal_required = false;
+  }
+  if (
+    flooringAreaMeasuresDisagree(out) &&
+    out.area_method_authority !== "user"
+  ) {
+    out.area_input_method = null;
+    out.area_method_authority = undefined;
   }
   if (out.finish_removal_required === true) {
     out.existing_finish_type = firstPresent(

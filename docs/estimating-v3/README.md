@@ -17,7 +17,8 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_2A_HANDOFF.md](./STAGE_2A_HANDOFF.md) | Analysis-to-Details handoff, compatibility, and what is still open |
 | [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) | The eight original acceptance briefs, stored verbatim |
 | [STAGE_2A_INSTANCE_IDENTITY.md](./STAGE_2A_INSTANCE_IDENTITY.md) | UUID and measurement matching, and the unapplied identity column |
+| [STAGE_2B_ANALYSIS.md](./STAGE_2B_ANALYSIS.md) | Flooring interpretation: deck boards stay off Flooring, and disagreeing areas stay unresolved |
 
-Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, and `scripts/verify-estimating-v3-stage-2a.ts`.
+Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, `scripts/verify-estimating-v3-stage-2a.ts`, and `scripts/verify-estimating-v3-stage-2b.ts`.
 
 A follow-up pass added the contract gaps that the first write-up had not yet checked: door customer-supply keys, the split between `resolveRate` and `resolveMaterialRate`, cladding’s missing template, the four calculators with no consumed-fact contract, legacy flooring stairs, and the bathroom-floor overlap group. Those notes are in the architecture, defect register, and capability matrix. The fixture locks the template and consumed-fact cases.

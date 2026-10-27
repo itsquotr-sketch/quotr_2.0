@@ -36,6 +36,7 @@ import {
 } from "@/lib/estimate/flooring-information-contract";
 import {
   FLOORING_PORTIONS_FACT_KEY,
+  flooringAreaMeasuresDisagree,
   hasFlooringPortionsFact,
   resolveFlooringPortions,
   type FlooringExistingFinishType,
@@ -163,6 +164,7 @@ function isPositiveFinite(value: number | null | undefined): value is number {
  * defaults, product dimensions, or stale inactive-method values.
  */
 export function physicalNetAreaM2(portion: FlooringPortion): number | null {
+  if (flooringAreaMeasuresDisagree(portion)) return null;
   if (portion.area_input_method === "length_width") {
     if (isPositiveFinite(portion.length_m) && isPositiveFinite(portion.width_m)) {
       return portion.length_m * portion.width_m;

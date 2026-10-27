@@ -9,6 +9,7 @@ import type { ClarifyAskClass } from "@/lib/assistant/clarify/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
   findFlooringPortion,
+  flooringAreaMeasuresDisagree,
   flooringFinishUsesHardwoodWidth,
   flooringFinishUsesOtherDescription,
   flooringFinishUsesPreparation,
@@ -178,6 +179,7 @@ export function flooringPortionIsSpecialist(
 
 function areaMethodOf(portion: FlooringPortion | null | undefined): string | null {
   if (!portion) return null;
+  if (flooringAreaMeasuresDisagree(portion)) return null;
   if (portion.area_input_method) return portion.area_input_method;
   if (portion.area_m2 != null) return "direct_m2";
   if (portion.length_m != null && portion.width_m != null) return "length_width";

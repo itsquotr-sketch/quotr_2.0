@@ -656,6 +656,62 @@ export function sanitizeFlooringPortionInapplicableFields(
   return portion;
 }
 
+export function flooringMeasuredAreaM2(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+}): number | null {
+  if (
+    portion.length_m == null ||
+    portion.width_m == null ||
+    !Number.isFinite(portion.length_m) ||
+    !Number.isFinite(portion.width_m) ||
+    portion.length_m <= 0 ||
+    portion.width_m <= 0
+  ) {
+    return null;
+  }
+  return portion.length_m * portion.width_m;
+}
+
+export function formatFlooringM2(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded} m²`;
+}
+
+/**
+ * Length × width and a separately stated area name different quantities.
+ * A user-chosen method is a resolution. An extracted method is not.
+ */
+export function flooringAreaMeasuresDisagree(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+  readonly area_m2: number | null;
+  readonly area_method_authority?: string;
+}): boolean {
+  if (portion.area_method_authority === "user") return false;
+  const measured = flooringMeasuredAreaM2(portion);
+  if (
+    measured == null ||
+    portion.area_m2 == null ||
+    !Number.isFinite(portion.area_m2) ||
+    portion.area_m2 <= 0
+  ) {
+    return false;
+  }
+  const tolerance = Math.max(0.05, measured * 0.005);
+  return Math.abs(measured - portion.area_m2) > tolerance;
+}
+
+export function flooringAreaConflictCopy(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+  readonly area_m2: number | null;
+}): string | null {
+  const measured = flooringMeasuredAreaM2(portion);
+  if (measured == null || portion.area_m2 == null) return null;
+  return `${portion.length_m} × ${portion.width_m} m measures ${formatFlooringM2(measured)}; stated area is ${formatFlooringM2(portion.area_m2)}`;
+}
+
 export function createEmptyFlooringPortion(params?: {
   id?: string;
   label?: string | null;
