@@ -49,7 +49,7 @@ Flooring. Bedroom 1, 12 m2 carpet. Bedroom 2, 10 m2 carpet. Hallway 8 m2 vinyl p
 
 ## Still open
 
-- The three supplied acceptance briefs are stored verbatim in [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) and `scripts/fixtures/stage-2a-original-briefs.ts`. The other five of the eight Stage 0 prompts were not supplied. The supplementary sentences are not those briefs.
+- The eight original acceptance briefs are stored verbatim in [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) and `scripts/fixtures/stage-2a-original-briefs.ts`. The supplementary sentences are not those briefs.
 - Carpet tiles have no priced recipe and no `flooring.carpet_tile.m2` catalogue row. Supply and installation stay visible and unpriced, with a manual allowance. A zero sell is not complete coverage.
 - Stopping level, opening size, door width, and insulation type (when the brief says only “insulation”) stay as follow-up questions.
 - Fascia length is still absent from the live deck question list. A 4.8 m × 3.6 m deck with no length fact is still 16.8 lm from the exposed perimeter.
