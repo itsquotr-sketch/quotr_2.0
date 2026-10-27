@@ -290,6 +290,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "flooring.portion.area_m2": "Floor area",
   "flooring.portion.underlay_required": "Carpet underlay",
   "flooring.portion.floor_preparation_required": "Floor preparation",
+  "flooring.portion.finish_pricing": "Finish price owner",
   "flooring.portion.tile_width_mm": "Tile width",
   "flooring.portion.tile_length_mm": "Tile length",
   "flooring.portion.hardwood_board_width_mm": "Board width",

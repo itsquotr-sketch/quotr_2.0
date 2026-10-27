@@ -161,32 +161,40 @@ const missingMaterial = price(basePortion({}), [labour(60), productivity(0.2), p
 
 const supply = (result: ReturnType<typeof price>) =>
   line(result.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT);
+const purchasing = (result: ReturnType<typeof price>) =>
+  result.physical.portions[0]?.purchasing;
 const removal = (result: ReturnType<typeof price>) =>
   result.commercial.lineItems.find((item) => item.label.includes("finish removal"));
 const installPackage = (result: ReturnType<typeof price>) =>
   line(result.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2);
 
-check("vinyl supply quantity includes 10% once", supply(low)?.quantity === 22, supply(low));
+check(
+  "vinyl supply quantity includes 10% once",
+  purchasing(low)?.kind === "area" && purchasing(low)?.supplyM2 === 22,
+  purchasing(low)
+);
 check("vinyl package stays net area", installPackage(low)?.quantity === 20, installPackage(low));
 check("removal stays net area", removal(low)?.quantity === 20, removal(low));
 check(
-  "material rate changes supply cost only",
-  supply(low)?.recommendedCost === 880 &&
-    supply(highMaterial)?.recommendedCost === 1210 &&
-    supply(highMaterial)?.quantity === 22 &&
+  "material rate is not added on top of the package",
+  supply(low) == null &&
+    supply(highMaterial) == null &&
+    installPackage(low)?.recommendedCost === 1600 &&
+    installPackage(highMaterial)?.recommendedCost === 1600 &&
     installPackage(highMaterial)?.quantity === 20,
-  { low: supply(low)?.recommendedCost, high: supply(highMaterial)?.recommendedCost }
+  { low: installPackage(low)?.recommendedCost, high: installPackage(highMaterial)?.recommendedCost }
 );
 check(
-  "package rate does not change supply quantity",
-  installPackage(low)?.recommendedCost === 1600 && supply(low)?.quantity === 22,
+  "package rate does not change the supply quantity",
+  installPackage(low)?.recommendedCost === 1600 && purchasing(low)?.kind === "area" && purchasing(low)?.supplyM2 === 22,
   installPackage(low)
 );
 check(
   "productivity changes removal hours, not supply quantity",
   removal(low)?.productivityRate === 0.2 &&
     removal(highProductivity)?.productivityRate === 0.4 &&
-    supply(highProductivity)?.quantity === 22 &&
+    purchasing(highProductivity)?.kind === "area" &&
+    purchasing(highProductivity)?.supplyM2 === 22 &&
     removal(highProductivity)?.quantity === 20,
   { low: removal(low), high: removal(highProductivity) }
 );
@@ -199,26 +207,32 @@ check(
 );
 check(
   "explicit waste changes supply quantity only",
-  supply(moreWaste)?.quantity === 23 &&
+  purchasing(moreWaste)?.kind === "area" &&
+    purchasing(moreWaste)?.supplyM2 === 23 &&
     installPackage(moreWaste)?.quantity === 20 &&
     removal(moreWaste)?.quantity === 20,
-  supply(moreWaste)
+  purchasing(moreWaste)
 );
-check("no stated waste adds no supply line", supply(noWaste) == null && installPackage(noWaste)?.quantity === 20);
 check(
-  "missing material rate leaves supply unresolved",
-  supply(missingMaterial)?.quantity === 22 &&
-    supply(missingMaterial)?.rateSourceType === "missing" &&
-    (supply(missingMaterial)?.recommendedCost ?? 0) === 0,
-  supply(missingMaterial)
+  "no stated waste adds no supply line",
+  supply(noWaste) == null &&
+    purchasing(noWaste)?.kind === "none" &&
+    installPackage(noWaste)?.quantity === 20
+);
+check(
+  "missing material rate does not invent a second supply charge",
+  supply(missingMaterial) == null &&
+    installPackage(missingMaterial)?.quantity === 20 &&
+    /not inside this rate/i.test(installPackage(missingMaterial)?.notes ?? ""),
+  installPackage(missingMaterial)?.notes
 );
 check(
   "supply formula names net and waste",
-  typeof supply(low)?.notes === "string" &&
-    supply(low)!.notes!.includes("20.00") &&
-    supply(low)!.notes!.includes("10%") &&
-    supply(low)!.notes!.includes("22.00"),
-  supply(low)?.notes
+  typeof installPackage(low)?.notes === "string" &&
+    installPackage(low)!.notes!.includes("20.00") &&
+    installPackage(low)!.notes!.includes("10%") &&
+    installPackage(low)!.notes!.includes("22.00"),
+  installPackage(low)?.notes
 );
 
 const customer = price(
@@ -266,7 +280,8 @@ check(
   "preparation and substrate stay on the net area",
   qty(prep.commercial.lineItems, FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2) === 8 &&
     qty(prep.commercial.lineItems, FLOORING_SUBSTRATE_MATERIAL_COMPONENT) === 3 &&
-    supply(prep)?.quantity === 8.8,
+    prep.physical.portions[0]?.purchasing?.kind === "area" &&
+    prep.physical.portions[0]?.purchasing?.supplyM2 === 8.8,
   prep.commercial.lineItems.map((item) => [item.componentKey, item.quantity, item.label])
 );
 
@@ -287,10 +302,14 @@ const tile = price(
 const tileSupply = line(tile.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT);
 check(
   "tile waste rounds whole tiles and leaves the package on net area",
-  tileSupply?.quantity === 31 &&
-    tileSupply?.unit === "each" &&
-    qty(tile.commercial.lineItems, "flooring.tile.supply_install.m2") === 10,
-  tileSupply
+  tileSupply == null &&
+    tile.physical.portions[0]?.purchasing?.kind === "tiles" &&
+    tile.physical.portions[0]?.purchasing?.supplyTiles === 31 &&
+    qty(tile.commercial.lineItems, "flooring.tile.supply_install.m2") === 10 &&
+    /31 whole tiles/.test(
+      line(tile.commercial.lineItems, "flooring.tile.supply_install.m2")?.notes ?? ""
+    ),
+  tile.physical.portions[0]?.purchasing
 );
 
 const timber = price(
@@ -309,13 +328,14 @@ const timber = price(
 const timberSupply = line(timber.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT);
 check(
   "hardwood waste is lineal and does not invent a box count",
-  timberSupply?.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT &&
-    timberSupply?.itemKey === FLOORING_HARDWOOD_SUPPLY_LM &&
-    timberSupply?.quantity === 91.03 &&
-    timberSupply?.unit === "lm" &&
-    /no pack count is invented/i.test(timberSupply?.notes ?? "") &&
+  timberSupply == null &&
+    timber.physical.portions[0]?.purchasing?.kind === "lineal" &&
+    timber.physical.portions[0]?.purchasing?.supplyLinealM === 91.03 &&
+    /no pack count is invented|Box coverage is unknown/i.test(
+      line(timber.commercial.lineItems, "flooring.hardwood.supply_install.m2")?.notes ?? ""
+    ) &&
     qty(timber.commercial.lineItems, "flooring.hardwood.supply_install.m2") === 12,
-  timberSupply
+  timber.physical.portions[0]?.purchasing
 );
 
 const carpet = price(
@@ -336,9 +356,10 @@ const carpet = price(
 const carpetSupply = supply(carpet);
 check(
   "carpet percentage does not become a priced supply quantity",
-    near(carpetSupply?.quantity, 11.52) &&
-    carpetSupply?.rateSourceType === "missing" &&
-    /cannot be calculated/i.test(carpetSupply?.notes ?? "") &&
+  carpetSupply == null &&
+    /cannot be calculated/i.test(
+      line(carpet.commercial.lineItems, FLOORING_CARPET_SUPPLY_INSTALL_M2)?.notes ?? ""
+    ) &&
     near(qty(carpet.commercial.lineItems, FLOORING_CARPET_SUPPLY_INSTALL_M2), 11.52) &&
     near(qty(carpet.commercial.lineItems, FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2), 11.52) &&
     !carpet.commercial.lineItems.some((item) => item.quantity === 12.67),
@@ -394,16 +415,17 @@ check(
     "Bedroom 1,carpet,10,true,false|Bedroom 2,carpet,10,true,false|Hallway,vinyl_plank,10,true,false",
   extracted.map((row) => row.label)
 );
-const hallwaySupply = threeCommercial.lineItems.find(
-  (item) => item.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT && item.unit === "m2" && item.quantity === 10.56
+const hallwayPackage = threeCommercial.lineItems.find(
+  (item) => item.componentKey === "flooring.vinyl_plank.supply_install.m2"
 );
 check(
   "hallway supply is 10.56 m² once",
-  hallwaySupply != null &&
-    threeCommercial.lineItems.filter((item) => item.quantity === 10.56).length === 1 &&
-    /10%/.test(hallwaySupply?.notes ?? "") &&
-    /9\.6/.test(hallwaySupply?.notes ?? ""),
-  hallwaySupply
+  hallwayPackage != null &&
+    threeCommercial.lineItems.filter((item) => item.quantity === 10.56).length === 0 &&
+    threeCommercial.lineItems.filter((item) => /10\.56/.test(item.notes ?? "")).length === 1 &&
+    /10%/.test(hallwayPackage?.notes ?? "") &&
+    /9\.6/.test(hallwayPackage?.notes ?? ""),
+  hallwayPackage?.notes
 );
 check(
   "carpet rooms do not price a waste-adjusted area",

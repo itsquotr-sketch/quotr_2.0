@@ -58,6 +58,7 @@ import {
   FLOORING_TILE_SUPPLY_EACH,
   FLOORING_VINYL_SUPPLY_M2,
   flooringCustomerSupplied,
+  flooringSeparateSupplyMeasure,
   resolveFlooringSupply,
   type FlooringSupplyMeasure,
 } from "@/lib/estimate/flooring-purchasing";
@@ -143,6 +144,8 @@ export type FlooringPortionPhysical = {
   readonly substrate_removal_required: boolean | null;
   readonly other_description: string | null;
   readonly specialist_kind: FlooringSpecialistKind | null;
+  readonly finish_pricing: FlooringPortion["finish_pricing"];
+  readonly finish_supplied_by: FlooringPortion["finish_supplied_by"];
   readonly purchasing: FlooringSupplyMeasure | null;
   readonly completeness: FlooringPhysicalCompleteness;
   readonly missingFields: readonly string[];
@@ -695,6 +698,12 @@ function preparationRequirements(params: {
   ];
 }
 
+function finishOmitsCombinedPackage(portion: FlooringPortion): boolean {
+  return (
+    flooringCustomerSupplied(portion) || portion.finish_pricing === "separate_supply"
+  );
+}
+
 function appendCustomerInstall(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type">;
   portion: FlooringPortion;
@@ -702,7 +711,7 @@ function appendCustomerInstall(params: {
   owner: string;
   requirements: EstimateRequirement[];
 }): boolean {
-  if (!flooringCustomerSupplied(params.portion)) return false;
+  if (!finishOmitsCombinedPackage(params.portion)) return false;
   params.requirements.push(
     labourRow({
       workArea: params.workArea,
@@ -725,9 +734,20 @@ function appendFinishSupply(params: {
   areaM2: number;
   owner: string;
   purchasing: FlooringSupplyMeasure;
+  tile: { tileAreaM2: number; wholeTileCount: number } | null;
+  hardwood: { linealM: number; boardWidthMm: number } | null;
   requirements: EstimateRequirement[];
 }): void {
-  const { purchasing } = params;
+  if (!finishOmitsCombinedPackage(params.portion)) return;
+  const purchasing =
+    params.portion.finish_pricing === "separate_supply"
+      ? flooringSeparateSupplyMeasure({
+          purchasing: params.purchasing,
+          netM2: params.areaM2,
+          tile: params.tile,
+          hardwood: params.hardwood,
+        })
+      : params.purchasing;
   if (purchasing.kind === "none") return;
   const customer = flooringCustomerSupplied(params.portion);
   const category = customer ? "CLIENT_SUPPLIED" : "FLOORING_SUPPLY";
@@ -846,7 +866,7 @@ function finishPackageRequirements(params: {
           componentKey: packageKey,
           description: `${owner} · carpet physical finish ${presentFlooringAreaM2(areaM2)}`,
           specification:
-            "Carpet installation quantity is the net area. A waste percentage does not set the roll purchase.",
+            "Combined carpet supply and installation on the net area. A waste percentage does not set the roll purchase.",
           areaM2,
         })
       );
@@ -877,6 +897,8 @@ function finishPackageRequirements(params: {
       areaM2,
       owner,
       purchasing,
+      tile: null,
+      hardwood: null,
       requirements,
     });
     return { requirements, tile, hardwood, purchasing };
@@ -913,7 +935,7 @@ function finishPackageRequirements(params: {
           componentKey: packageKey,
           description: `${owner} · vinyl plank/LVT physical finish ${presentFlooringAreaM2(areaM2)}`,
           specification:
-            "Vinyl plank installation quantity is the net area. Waste is not in this package. No carton size is known.",
+            "Combined vinyl plank supply, installation and ordinary adhesive on the net area. Stated waste is not in this quantity. No carton size is known.",
           areaM2,
         })
       );
@@ -929,6 +951,8 @@ function finishPackageRequirements(params: {
       areaM2,
       owner,
       purchasing,
+      tile: null,
+      hardwood: null,
       requirements,
     });
     return { requirements, tile, hardwood, purchasing };
@@ -1006,6 +1030,8 @@ function finishPackageRequirements(params: {
       areaM2,
       owner,
       purchasing,
+      tile,
+      hardwood: null,
       requirements,
     });
     return { requirements, tile, hardwood, purchasing };
@@ -1068,6 +1094,8 @@ function finishPackageRequirements(params: {
       areaM2,
       owner,
       purchasing,
+      tile: null,
+      hardwood,
       requirements,
     });
     return { requirements, tile, hardwood, purchasing };
@@ -1306,6 +1334,8 @@ function emptyPortionPhysical(
     substrate_removal_required: portion.substrate_removal_required,
     other_description: portion.other_description,
     specialist_kind: portion.specialist_kind,
+    finish_pricing: portion.finish_pricing ?? null,
+    finish_supplied_by: portion.finish_supplied_by ?? null,
     purchasing: null,
     completeness,
     missingFields,
@@ -1387,6 +1417,8 @@ export function calculateFlooringPortionPhysical(params: {
         substrate_removal_required: portion.substrate_removal_required,
         other_description: portion.other_description,
         specialist_kind: portion.specialist_kind,
+        finish_pricing: portion.finish_pricing ?? null,
+        finish_supplied_by: portion.finish_supplied_by ?? null,
         purchasing: null,
         completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
         missingFields: [],
@@ -1450,6 +1482,8 @@ export function calculateFlooringPortionPhysical(params: {
       substrate_removal_required: portion.substrate_removal_required,
       other_description: portion.other_description,
       specialist_kind: portion.specialist_kind,
+      finish_pricing: portion.finish_pricing ?? null,
+      finish_supplied_by: portion.finish_supplied_by ?? null,
       purchasing: finish.purchasing,
       completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
       missingFields: [],

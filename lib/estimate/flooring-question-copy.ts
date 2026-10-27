@@ -123,6 +123,8 @@ const QUESTIONS: Record<string, string> = {
   "flooring.portion.underlay_required": "Is carpet underlay included?",
   "flooring.portion.floor_preparation_required":
     "Is floor preparation required?",
+  "flooring.portion.finish_pricing":
+    "How should the finish be priced?",
   "flooring.portion.tile_width_mm": "What is the tile width?",
   "flooring.portion.tile_length_mm": "What is the tile length?",
   "flooring.portion.hardwood_board_width_mm": "What is the board width?",
@@ -150,6 +152,7 @@ const LABELS: Record<string, string> = {
   "flooring.portion.width_m": "Width",
   "flooring.portion.underlay_required": "Underlay",
   "flooring.portion.floor_preparation_required": "Floor preparation",
+  "flooring.portion.finish_pricing": "Finish price owner",
   "flooring.portion.tile_width_mm": "Tile width",
   "flooring.portion.tile_length_mm": "Tile length",
   "flooring.portion.hardwood_board_width_mm": "Board width",
@@ -252,6 +255,12 @@ export function flooringQuestionOptions(
   factKey: string,
   portion?: FlooringPortion | null
 ): readonly string[] | undefined {
+  if (factKey === "flooring.portion.finish_pricing") {
+    return [
+      "Combined supply and installation package",
+      "Separate finish supply and installation",
+    ];
+  }
   if (factKey === "flooring.portion.finish_type") return FLOORING_FINISH_OPTIONS;
   if (factKey === "flooring.portion.area_input_method") {
     return FLOORING_AREA_METHOD_OPTIONS;

@@ -3,8 +3,9 @@
  *
  * Owner-stated waste changes the finish supply quantity only.
  * Installation packages, removal, preparation, underlay, substrate sheets
- * and framing stay on the net area. Package benchmarks do not already
- * include a waste factor, so this is the single application.
+ * and framing stay on the net area. The combined package rate has no
+ * waste percentage in its catalogue text, so waste is not assumed to be
+ * inside that rate and is not priced a second time on top of it.
  *
  * Reviewed quantities, before any line is priced:
  * - vinyl 9.60 m² at 10% → supply 10.56 m², no carton
@@ -136,4 +137,43 @@ export function resolveFlooringSupply(params: {
   }
 
   return { kind: "none", netM2 };
+}
+
+/** Separate pricing still needs a supply quantity when no waste was stated. */
+export function flooringSeparateSupplyMeasure(params: {
+  purchasing: FlooringSupplyMeasure;
+  netM2: number;
+  tile: { tileAreaM2: number; wholeTileCount: number } | null;
+  hardwood: { linealM: number; boardWidthMm: number } | null;
+}): FlooringSupplyMeasure {
+  if (params.purchasing.kind !== "none") return params.purchasing;
+  if (params.tile) {
+    return {
+      kind: "tiles",
+      netM2: params.netM2,
+      wastePercent: 0,
+      netTiles: params.tile.wholeTileCount,
+      supplyTiles: params.tile.wholeTileCount,
+      formula: `No waste is stated. Supply is ${params.tile.wholeTileCount} whole tiles. Installation stays ${presentM2(params.netM2)} m².`,
+    };
+  }
+  if (params.hardwood) {
+    const lineal = round2(params.hardwood.linealM);
+    return {
+      kind: "lineal",
+      netM2: params.netM2,
+      wastePercent: 0,
+      netLinealM: lineal,
+      supplyLinealM: lineal,
+      formula: `No waste is stated. Supply is ${lineal} lineal m. Installation stays ${presentM2(params.netM2)} m².`,
+    };
+  }
+  const net = round2(params.netM2);
+  return {
+    kind: "area",
+    netM2: params.netM2,
+    wastePercent: 0,
+    supplyM2: net,
+    formula: `No waste is stated. Supply quantity is the net ${presentM2(params.netM2)} m².`,
+  };
 }

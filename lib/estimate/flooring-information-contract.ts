@@ -84,6 +84,13 @@ export const FLOORING_INFORMATION_CONTRACT: readonly FlooringInformationContract
       reason: "Vinyl/tile floor preparation Yes/No is required.",
     },
     {
+      factKey: "flooring.portion.finish_pricing",
+      askClass: "ASSUME_IF_SKIPPED",
+      calculatorConsumed: true,
+      reason:
+        "Chooses the combined supply-and-install package or separate finish supply. Unanswered uses the combined package and does not add a material rate on top.",
+    },
+    {
       factKey: "flooring.portion.tile_width_mm",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: true,
@@ -224,6 +231,14 @@ export function flooringFactIsRelevant(
   }
   if (factKey === "flooring.portion.floor_preparation_required") {
     return flooringFinishUsesPreparation(finish);
+  }
+  if (factKey === "flooring.portion.finish_pricing") {
+    return (
+      finish === "carpet" ||
+      finish === "vinyl_plank" ||
+      finish === "tile" ||
+      finish === "hardwood"
+    );
   }
   if (
     factKey === "flooring.portion.tile_width_mm" ||

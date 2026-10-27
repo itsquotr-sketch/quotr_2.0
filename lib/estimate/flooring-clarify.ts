@@ -99,6 +99,15 @@ export function flooringPortionFieldCurrentValue(
   if (field === "floor_preparation_required") {
     return yesNo(portion.floor_preparation_required);
   }
+  if (field === "finish_pricing") {
+    if (portion.finish_pricing === "combined_package") {
+      return "Combined supply and installation package";
+    }
+    if (portion.finish_pricing === "separate_supply") {
+      return "Separate finish supply and installation";
+    }
+    return null;
+  }
   if (field === "tile_width_mm") {
     return portion.tile_width_mm != null ? `${portion.tile_width_mm} mm` : null;
   }

@@ -1045,6 +1045,7 @@ function fillMissingFlooringPortion(
     out.finish_supplied_by,
     secondary.finish_supplied_by
   );
+  out.finish_pricing = firstPresent(out.finish_pricing, secondary.finish_pricing);
   if (
     primary.finish_type === "other" &&
     secondary.finish_type != null &&

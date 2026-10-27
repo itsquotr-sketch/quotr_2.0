@@ -186,6 +186,12 @@ export type FlooringPortion = {
   waste_percent?: number | null;
   /** Customer-supplied finish: no contractor purchasing cost. */
   finish_supplied_by?: "customer" | "contractor" | null;
+  /**
+   * Combined package keeps the supply-and-install rate.
+   * Separate supply prices a finish material rate and installation hours
+   * and does not also charge the package.
+   */
+  finish_pricing?: "combined_package" | "separate_supply" | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
@@ -276,6 +282,17 @@ export function isClientFlooringPortionId(value: unknown): value is string {
 
 function normalisedText(value: string): string {
   return value.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+}
+
+export function parseFlooringFinishPricing(
+  value: unknown
+): "combined_package" | "separate_supply" | null {
+  if (value === "combined_package" || value === "separate_supply") return value;
+  if (typeof value !== "string") return null;
+  const normalised = normalisedText(value);
+  if (normalised.includes("separate")) return "separate_supply";
+  if (normalised.includes("combined")) return "combined_package";
+  return null;
 }
 
 export function parseFlooringFinishType(
@@ -810,6 +827,7 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       value.finish_supplied_by === "contractor"
         ? value.finish_supplied_by
         : null,
+    finish_pricing: parseFlooringFinishPricing(value.finish_pricing),
     transitions_required: parseTriBool(value.transitions_required),
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
@@ -955,6 +973,7 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.finish_removal_required",
   "flooring.portion.existing_finish_type",
   "flooring.portion.substrate_removal_required",
+  "flooring.portion.finish_pricing",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1211,6 +1230,7 @@ export function overlayUserAuthoritativeFlooringPortion(
     "floor_preparation_required",
     "preparation_authority"
   );
+  if (persisted.finish_pricing != null) next.finish_pricing = persisted.finish_pricing;
   overlayUserField(next, persisted, "tile_width_mm", "tile_width_authority");
   overlayUserField(next, persisted, "tile_length_mm", "tile_length_authority");
   overlayUserField(
@@ -1440,6 +1460,10 @@ function applyPortionField(
   if (field === "floor_preparation_required") {
     portion.floor_preparation_required = parseTriBool(value);
     portion.preparation_authority = "user";
+    return;
+  }
+  if (field === "finish_pricing") {
+    portion.finish_pricing = parseFlooringFinishPricing(value);
     return;
   }
   if (field === "tile_width_mm") {

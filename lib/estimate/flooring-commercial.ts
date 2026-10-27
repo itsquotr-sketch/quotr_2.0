@@ -17,6 +17,12 @@ import {
   FLOORING_FINISH_SUPPLY_COMPONENT,
 } from "@/lib/estimate/flooring-purchasing";
 import {
+  findFinishMaterialRate,
+  flooringCostOwnerMode,
+  flooringFinishSupplyKey,
+  flooringPackageOwnershipNote,
+} from "@/lib/estimate/flooring-cost-ownership";
+import {
   findCompanyProductivityRate,
   isTrustedProductivityHours,
 } from "@/lib/estimate/productivity";
@@ -245,7 +251,7 @@ function mapMoneySource(source: "company" | "quotr" | "missing" | RequirementRat
   rateSource: string;
   rateSourceType: "user_rate" | "benchmark" | "missing";
 } {
-  if (source === "company") {
+  if (source === "company" || source === "project_override") {
     return {
       rateSource: getRateSourceLabel("user_rate"),
       rateSourceType: "user_rate",
@@ -377,14 +383,10 @@ export function priceFlooringMaterial(params: {
         rateSource: "missing",
       };
     }
-    const named = params.rates.find(
-      (rate) =>
-        rate.active &&
-        rate.item_key === requirement.materialKey &&
-        rate.rate_type === "material" &&
-        rate.cost_rate != null &&
-        rate.cost_rate > 0
-    );
+    const named =
+      requirement.materialKey == null
+        ? undefined
+        : findFinishMaterialRate(params.rates, requirement.materialKey);
     if (!named || named.cost_rate == null) {
       return {
         ...requirement,
@@ -399,7 +401,7 @@ export function priceFlooringMaterial(params: {
       priced: true,
       unitCost: named.cost_rate,
       totalCost: round2(requirement.purchaseQuantity * named.cost_rate),
-      rateSource: "company",
+      rateSource: named.rate_type === "project_material" ? "project_override" : "company",
     };
   }
   if (
@@ -628,7 +630,55 @@ function subcontractLine(params: {
     rates: params.rates,
     organisationSettings: params.organisationSettings,
   });
-  const notes = finishTakeoffNotes(params.portion);
+  const marginPercent = applicableGrossMarginPercent(params.organisationSettings);
+  const namedForSell = params.rates.find(
+    (rate) =>
+      rate.active &&
+      rate.item_key === params.requirement.componentKey &&
+      rate.rate_type === "subcontractor" &&
+      rate.cost_rate != null
+  );
+  const classifiedPreview =
+    params.requirement.allowanceCost != null
+      ? classifyResolvedSell({
+          costRate: params.requirement.allowanceCost,
+          sellRate: namedForSell?.sell_rate,
+          applicableGrossMarginPercent: marginPercent,
+        })
+      : null;
+  const mode = params.portion
+    ? flooringCostOwnerMode({
+        finish: params.portion.finish_type,
+        finishPricing: params.portion.finish_pricing ?? null,
+        customerSupplied: params.portion.finish_supplied_by === "customer",
+        rates: params.rates,
+      })
+    : "combined";
+  const supplyKey = params.portion
+    ? flooringFinishSupplyKey(params.portion.finish_type)
+    : null;
+  const materialRate = supplyKey
+    ? findFinishMaterialRate(params.rates, supplyKey)
+    : undefined;
+  const ownership = classifiedPreview
+    ? flooringPackageOwnershipNote({
+        itemKey: params.requirement.componentKey,
+        netQuantity: params.quantity,
+        unit: "m²",
+        unitCost: params.requirement.allowanceCost ?? classifiedPreview.sellRate,
+        directCost: round2(params.quantity * (params.requirement.allowanceCost ?? 0)),
+        clientSell: round2(params.quantity * classifiedPreview.sellRate),
+        marginPercent: classifiedPreview.grossMarginPercent,
+        sellAuthority: classifiedPreview.sellAuthority,
+        purchasing: params.portion?.purchasing ?? null,
+        unusedMaterialRate:
+          mode === "combined" || mode === "decision_required"
+            ? materialRate?.cost_rate ?? null
+            : null,
+        decisionRequired: mode === "decision_required",
+      })
+    : null;
+  const notes = ownership ?? finishTakeoffNotes(params.portion);
   if (
     !params.requirement.priced ||
     params.requirement.allowanceCost == null ||
@@ -948,7 +998,8 @@ function labourLine(params: {
 
 function rollupCompleteness(
   physical: FlooringPhysicalResult,
-  requirements: readonly EstimateRequirement[]
+  requirements: readonly EstimateRequirement[],
+  decisionPending: boolean
 ): FlooringCommercialCompleteness | "empty" {
   if (physical.completeness === "empty" || physical.portions.length === 0) {
     return "empty";
@@ -968,6 +1019,9 @@ function rollupCompleteness(
     )
   ) {
     return FLOORING_COMMERCIAL_COMPLETENESS.UNSUPPORTED_SPECIALIST;
+  }
+  if (decisionPending) {
+    return FLOORING_COMMERCIAL_COMPLETENESS.INFORMATION_REQUIRED;
   }
   if (requirements.some((row) => !row.priced)) {
     return FLOORING_COMMERCIAL_COMPLETENESS.PRICING_REQUIRED;
@@ -1101,8 +1155,28 @@ export function commercializeFlooring(params: {
     );
   }
 
-  const completeness = rollupCompleteness(params.physical, requirements);
-  const missingInfo = [...params.physical.missingInfo].filter(
+  const decisionMessages: string[] = [];
+  for (const portion of params.physical.portions) {
+    const mode = flooringCostOwnerMode({
+      finish: portion.finish_type,
+      finishPricing: portion.finish_pricing ?? null,
+      customerSupplied: portion.finish_supplied_by === "customer",
+      rates: params.rates,
+    });
+    if (mode !== "decision_required") continue;
+    const key = flooringFinishSupplyKey(portion.finish_type);
+    const saved = key ? findFinishMaterialRate(params.rates, key) : undefined;
+    const where = portion.label?.trim() || "This flooring area";
+    decisionMessages.push(
+      `${where} has a saved finish material rate${saved?.cost_rate != null ? ` of $${saved.cost_rate}` : ""} and a combined supply-and-install package. Choose the combined package or separate finish supply. The package cannot be split, so the material rate is not added on top.`
+    );
+  }
+  const completeness = rollupCompleteness(
+    params.physical,
+    requirements,
+    decisionMessages.length > 0
+  );
+  const missingInfo = [...params.physical.missingInfo, ...decisionMessages].filter(
     (row) =>
       row !== FLOORING_NESTED_NOT_CALCULATED_MESSAGE &&
       !/canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST/i.test(
