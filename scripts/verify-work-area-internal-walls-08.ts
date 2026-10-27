@@ -10,6 +10,11 @@ import { join } from "node:path";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
 import type { EstimateLineItem } from "../components/assistant/types";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import {
+  assertNoDuplicateActiveComponents,
+  DuplicateActiveComponentError,
+} from "../lib/estimate/component-commercial-selection";
 import { dedupePricedItemsByScopeOwnership } from "../lib/estimate/pricing-ownership";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
@@ -44,6 +49,7 @@ import {
   INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
   INTERNAL_WALLS_STOPPING_COMPONENT,
   internalWallsLiningMaterialComponent,
+  internalWallsStoppingOverlapGroup,
   isInternalWallsLiningComponentKey,
   internalWallsStoppingItemKey,
   looksLikeDoorProductMoney,
@@ -787,6 +793,264 @@ check("lining sheets unchanged vs finish", (() => {
   );
   return lining != null && lining.purchaseQuantity > 0;
 })());
+
+console.log("\n--- calculateEstimate keeps both stopping faces ---\n");
+const partitionEstimate = calculateEstimate(ctx([walls], partitionFacts));
+const estimateStopping = partitionEstimate.lineItems.filter(
+  (row) =>
+    row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+    row.includedInTotal !== false
+);
+const estimateStoppingQty = estimateStopping.reduce(
+  (sum, row) => sum + (row.quantity ?? 0),
+  0
+);
+check(
+  "calculateEstimate emits both Level 4 faces",
+  estimateStopping.length === 2 &&
+    estimateStopping.some((row) => (row.overlapGroup ?? "").endsWith(":side_a")) &&
+    estimateStopping.some((row) => (row.overlapGroup ?? "").endsWith(":side_b"))
+);
+check(
+  "calculateEstimate combined stopping is 25.5924 m²",
+  near(estimateStoppingQty, 25.5924, 0.0001)
+);
+const level4Cost = FITOUT_BENCHMARKS.stoppingPerM2.cost;
+check(
+  "each stopping face is costed once at the Level 4 rate",
+  estimateStopping.length === 2 &&
+    estimateStopping.every((row) =>
+      near(
+        row.recommendedCost ?? 0,
+        (Math.round((row.quantity ?? 0) * 100) / 100) * level4Cost,
+        0.02
+      )
+    )
+);
+const estimateLining = partitionEstimate.lineItems.filter(
+  (row) => liningMaterial(row) && row.includedInTotal !== false
+);
+const estimateLiningLabour = partitionEstimate.lineItems.filter(
+  (row) =>
+    isInternalWallsLiningComponentKey(row.componentKey) &&
+    (row.componentKey ?? "").endsWith(".install") &&
+    row.includedInTotal !== false
+);
+check(
+  "lining purchase is the sum of the two faces, once",
+  estimateLining.length === 1 && estimateLining[0]?.quantity === 12
+);
+check(
+  "lining labour is the sum of the two faces, once",
+  estimateLiningLabour.length === 1 &&
+    near(estimateLiningLabour[0]?.labourHours ?? estimateLiningLabour[0]?.quantity ?? 0, 5)
+);
+const oneSideEstimate = calculateEstimate(ctx([walls], osFacts));
+const oneSideStopping = oneSideEstimate.lineItems.filter(
+  (row) =>
+    row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+    row.includedInTotal !== false
+);
+check(
+  "one-sided stopping remains one face through calculateEstimate",
+  oneSideStopping.length === 1 &&
+    (oneSideStopping[0]?.overlapGroup ?? "").endsWith(":side_a") &&
+    near(oneSideStopping[0]?.quantity ?? 0, 5 * 2.7)
+);
+const doubleEstimate = calculateEstimate(ctx([walls], dlFacts));
+const doubleQty = doubleEstimate.lineItems
+  .filter(
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+      row.includedInTotal !== false
+  )
+  .reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+check(
+  "layers do not multiply stopping through calculateEstimate",
+  near(doubleQty, 48) && !near(doubleQty, 96)
+);
+const sideALine = estimateStopping.find((row) =>
+  (row.overlapGroup ?? "").endsWith(":side_a")
+)!;
+let duplicateRejected = false;
+try {
+  assertNoDuplicateActiveComponents([
+    ...estimateStopping,
+    { ...sideALine, scopeKey: `${sideALine.scopeKey}:duplicate` },
+  ]);
+} catch (error) {
+  duplicateRejected = error instanceof DuplicateActiveComponentError;
+}
+check(
+  "a second stopping line for the same face is rejected",
+  duplicateRejected
+);
+const dedupedSameFace = dedupePricedItemsByScopeOwnership([
+  ...estimateStopping,
+  { ...sideALine },
+]);
+let sameScopeKept = true;
+try {
+  assertNoDuplicateActiveComponents(dedupedSameFace);
+} catch {
+  sameScopeKept = false;
+}
+check(
+  "the same stopping scope key is deduplicated before the commercial guard",
+  sameScopeKept &&
+    dedupedSameFace.filter(
+      (row) =>
+        row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+        row.includedInTotal !== false &&
+        (row.overlapGroup ?? "").endsWith(":side_a")
+    ).length === 1
+);
+let twoTypes = writeWall("w1", [
+  { key: INTERNAL_WALLS_ADD_WALL_TYPE_KEY, value: true },
+  { key: "internal_walls.wall_type.label", value: "Type A" },
+  { key: "internal_walls.wall_type.frame_system", value: "Timber framing" },
+  { key: "internal_walls.wall_type.frame_size", value: "90 mm timber framing — 90×45" },
+  { key: "internal_walls.wall_type.length_lm", value: 4 },
+  { key: "internal_walls.wall_type.height_m", value: 2.4 },
+  { key: "internal_walls.wall_type.stud_centres_mm", value: "600 mm" },
+  { key: "internal_walls.wall_type.side_a_product", value: "Standard GIB" },
+  { key: "internal_walls.wall_type.same_lining_both_sides", value: true },
+  { key: INTERNAL_WALLS_HAS_OPENINGS_KEY, value: "No" },
+]);
+const firstType = resolveInternalWallsWallTypes({ facts: twoTypes, workAreaId: "w1" }).types[0]!;
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: INTERNAL_WALLS_ADD_WALL_TYPE_KEY,
+  value: true,
+});
+const secondType = resolveInternalWallsWallTypes({ facts: twoTypes, workAreaId: "w1" }).types[1]!;
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.length_lm",
+  value: 3,
+  wallTypeId: secondType.id,
+});
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.height_m",
+  value: 2.4,
+  wallTypeId: secondType.id,
+});
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.side_a_product",
+  value: "Standard GIB",
+  wallTypeId: secondType.id,
+});
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.same_lining_both_sides",
+  value: true,
+  wallTypeId: secondType.id,
+});
+twoTypes = applyInternalWallsFactWrite({
+  facts: twoTypes,
+  workAreaId: "w1",
+  key: INTERNAL_WALLS_HAS_OPENINGS_KEY,
+  value: "No",
+  wallTypeId: secondType.id,
+});
+for (const wallTypeId of [firstType.id, secondType.id]) {
+  for (const row of finishExtras({
+    insulation: false,
+    skirting: false,
+    stopping: "Level 4",
+    painting: "No",
+  })) {
+    twoTypes = applyInternalWallsFactWrite({
+      facts: twoTypes,
+      workAreaId: "w1",
+      key: row.key,
+      value: row.value,
+      wallTypeId,
+    });
+  }
+}
+twoTypes = [
+  fact(INTERNAL_WALLS_JOB_SCOPE_FACT_KEY, "w1", "new_partition"),
+  ...twoTypes.filter((row) => row.key !== INTERNAL_WALLS_JOB_SCOPE_FACT_KEY),
+];
+const twoTypeEstimate = calculateEstimate(ctx([walls], twoTypes));
+const twoTypeStopping = twoTypeEstimate.lineItems.filter(
+  (row) =>
+    row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+    row.includedInTotal !== false
+);
+const qtyForType = (wallTypeId: string) =>
+  twoTypeStopping
+    .filter((row) => (row.overlapGroup ?? "").includes(wallTypeId))
+    .reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+check(
+  "separate wall types keep independent stopping identities",
+  twoTypeStopping.length === 4 &&
+    new Set(twoTypeStopping.map((row) => row.overlapGroup)).size === 4 &&
+    near(qtyForType(firstType.id), 4 * 2.4 * 2) &&
+    near(qtyForType(secondType.id), 3 * 2.4 * 2) &&
+    twoTypeStopping.every((row) =>
+      row.overlapGroup ===
+      internalWallsStoppingOverlapGroup(
+        (row.overlapGroup ?? "").split(":")[1] ?? "",
+        (row.overlapGroup ?? "").endsWith(":side_b") ? "side_b" : "side_a"
+      )
+    )
+);
+const statedEstimate = calculateEstimate(ctx([walls], statedSkirtFacts));
+const statedLine = statedEstimate.lineItems.find(
+  (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT
+);
+check(
+  "stated skirting length still survives calculateEstimate",
+  statedLine?.quantity === 45 && statedLine.unit === "lm"
+);
+let paintingGenerated = false;
+let paintingFaces = 0;
+try {
+  const painted = calculateEstimate(
+    ctx(
+      [walls],
+      fixtureBase(
+        finishExtras({
+          insulation: false,
+          skirting: false,
+          stopping: "No",
+          painting: "Both sides",
+        }),
+        { length: 6, height: 2.4, openings: false }
+      )
+    )
+  );
+  paintingGenerated = true;
+  paintingFaces = painted.lineItems.filter(
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_PAINTING_COMPONENT &&
+      row.includedInTotal !== false
+  ).length;
+} catch {
+  paintingGenerated = false;
+}
+check(
+  "both-side painting still generates as two faces",
+  paintingGenerated && paintingFaces === 2
+);
+check(
+  "calculateEstimate reaches the duplicate commercial guard",
+  read("lib/estimate/component-commercial-selection.ts").includes(
+    "assertNoDuplicateActiveComponents(lineItems)"
+  ) &&
+    read("lib/estimate/calculate-estimate.ts").includes(
+      "applyRegisteredComponentCommercialAuthority"
+    )
+);
 
 console.log("\n--- Hosted policy / migrations ---\n");
 check(

@@ -898,7 +898,6 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         } else {
           assumptions.push(INTERNAL_WALLS_STOPPING_AREA_RULE);
-          const overlap = internalWallsStoppingOverlapGroup(type.id);
           const faces: Array<{
             side: "side_a" | "side_b";
             level: "level_4" | "level_5" | "custom";
@@ -927,7 +926,7 @@ export function buildInternalWallsFinishEnvelope(params: {
               context,
               wallTypeId: type.id,
               variantKey: `${type.id}:${face.side}:${face.level}`,
-              overlapGroup: overlap,
+              overlapGroup: internalWallsStoppingOverlapGroup(type.id, face.side),
               componentKey: INTERNAL_WALLS_STOPPING_COMPONENT,
               itemKey: internalWallsStoppingItemKey(face.level),
               label: `${displayName} — stopping`,
@@ -954,7 +953,6 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         } else {
           assumptions.push(INTERNAL_WALLS_PAINTING_AREA_RULE);
-          const overlap = internalWallsPaintingOverlapGroup(type.id);
           const faces: Array<{ side: "side_a" | "side_b"; areaM2: number }> = [];
           if (painting.sideAM2 != null && painting.sideAM2 > 0) {
             faces.push({ side: "side_a", areaM2: painting.sideAM2 });
@@ -970,7 +968,7 @@ export function buildInternalWallsFinishEnvelope(params: {
               context,
               wallTypeId: type.id,
               variantKey: `${type.id}:${face.side}`,
-              overlapGroup: overlap,
+              overlapGroup: internalWallsPaintingOverlapGroup(type.id, face.side),
               componentKey: INTERNAL_WALLS_PAINTING_COMPONENT,
               itemKey: INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
               label: `${displayName} — painting`,

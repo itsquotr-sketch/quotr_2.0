@@ -366,12 +366,29 @@ export function internalWallsElectricalOverlapGroup(wallTypeId: string): string 
   return `internal_walls.electrical:${wallTypeId}`;
 }
 
-export function internalWallsStoppingOverlapGroup(wallTypeId: string): string {
-  return `internal_walls.stopping:${wallTypeId}`;
+/**
+ * One stopping surface per lined face. Side A and Side B share the component
+ * and the wall type, and they are not the same commercial line. The face is
+ * part of the overlap identity that assertNoDuplicateActiveComponents uses.
+ * A second line for the same face still shares this group and is rejected.
+ */
+export function internalWallsStoppingOverlapGroup(
+  wallTypeId: string,
+  face: "side_a" | "side_b"
+): string {
+  return `internal_walls.stopping:${wallTypeId}:${face}`;
 }
 
-export function internalWallsPaintingOverlapGroup(wallTypeId: string): string {
-  return `internal_walls.painting:${wallTypeId}`;
+/**
+ * Same face rule as stopping. Both painted faces are separate surfaces.
+ * The shared component stays painting; the face keeps the commercial check
+ * from treating Side B as a duplicate of Side A.
+ */
+export function internalWallsPaintingOverlapGroup(
+  wallTypeId: string,
+  face: "side_a" | "side_b"
+): string {
+  return `internal_walls.painting:${wallTypeId}:${face}`;
 }
 
 export const INTERNAL_WALLS_FINISH_COMPONENT_KEYS = [
