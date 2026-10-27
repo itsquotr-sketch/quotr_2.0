@@ -9,6 +9,22 @@
  * fascia fallback are not treated as fixed.
  */
 import { reanalysisFactWrite } from "../lib/ai/mappers";
+import {
+  explicitUnknownLeavesQuestionOpen,
+  localAnswersCompleteForGenerate,
+  optimisticResolvedCandidateIds,
+} from "../lib/assistant/clarify/interaction";
+import { constraintIsKnown } from "../lib/assistant/clarify/suppress";
+import {
+  evaluateEstimateGenerationSuccess,
+  hasPricingRequiredRepresentation,
+} from "../lib/estimate/estimate-generation-success";
+import { buildEstimateRequirementSnapshotV1 } from "../lib/estimate/requirement-snapshot";
+import { createMemoryRequirementSnapshotStore } from "../lib/estimate/requirement-snapshot-store";
+import {
+  assertQuoteSnapshotMutable,
+  assertQuoteStatusTransition,
+} from "../lib/quotes/transaction";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
 import { deckExposedPerimeterM } from "../lib/estimate/deck-fascia";
 import { listDeckClarifyDescriptors } from "../lib/estimate/deck-question-descriptors";
@@ -20,7 +36,12 @@ import {
   mergePersistedInternalWallTypesOnReanalyse,
 } from "../lib/estimate/internal-walls-brief";
 import { nextInternalWallsFinishField } from "../lib/estimate/internal-walls-finish";
-import { resolveInternalWallsWallTypes } from "../lib/estimate/internal-walls-wall-types";
+import {
+  applyInternalWallsFactWrite,
+  nextInternalWallsWallTypeField,
+  resolveInternalWallsWallTypes,
+  wallTypeFieldCurrentValue,
+} from "../lib/estimate/internal-walls-wall-types";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import {
   commercializeFlooring,
@@ -625,8 +646,177 @@ check(
   derived.action === "replace"
 );
 
-if (failed > 0) {
-  console.log(`\n${passed} passed, ${failed} failed`);
-  process.exit(1);
-}
-console.log(`\n${passed} passed`);
+const unresolvedFacts = wall
+  ? applyInternalWallsFactWrite({
+      facts: wallFacts,
+      workAreaId: "walls",
+      key: "internal_walls.wall_type.frame_system",
+      value: "Not sure",
+      wallTypeId: wall.id,
+    })
+  : [];
+const unresolvedType = resolveInternalWallsWallTypes({
+  facts: unresolvedFacts,
+  workAreaId: "walls",
+}).types[0];
+check(
+  "framing Not sure persists as an explicit unknown",
+  unresolvedType?.frame_system == null &&
+    unresolvedType?.frame_unresolved === true &&
+    wallTypeFieldCurrentValue(
+      unresolvedType ?? null,
+      "internal_walls.wall_type.frame_system"
+    ) === "Not sure" &&
+    nextInternalWallsWallTypeField({
+      type: unresolvedType ?? null,
+      jobScope: "new_partition",
+    }) === "internal_walls.wall_type.frame_system"
+);
+const confirmedFrameFacts = wall
+  ? applyInternalWallsFactWrite({
+      facts: unresolvedFacts,
+      workAreaId: "walls",
+      key: "internal_walls.wall_type.frame_system",
+      value: "Timber framing",
+      wallTypeId: wall.id,
+    })
+  : [];
+const confirmedFrame = resolveInternalWallsWallTypes({
+  facts: confirmedFrameFacts,
+  workAreaId: "walls",
+}).types[0];
+check(
+  "a stated framing system replaces the explicit unknown",
+  confirmedFrame?.frame_system === "timber" &&
+    confirmedFrame.frame_unresolved !== true
+);
+check(
+  "carry distance Not sure stays unresolved",
+  constraintIsKnown(
+    [{ key: "material_carry_distance", value: "Not sure" }],
+    "material_carry_distance"
+  ) === false &&
+    explicitUnknownLeavesQuestionOpen({
+      value: "Not sure",
+      constraintKey: "material_carry_distance",
+    }) &&
+    explicitUnknownLeavesQuestionOpen({
+      value: "Not sure",
+      constraintKey: "occupied_site",
+    }) === false
+);
+check(
+  "Not sure does not make Create estimate eligible",
+  optimisticResolvedCandidateIds({
+    resolvedIds: new Set(),
+    heldPendingId: "pc:material_carry_distance",
+    heldValue: "Not sure",
+  }).size === 0 &&
+    localAnswersCompleteForGenerate({
+      remainingRequiredCount: 1,
+      candidates: [],
+      resolvedIds: new Set(),
+      heldPendingId: "pc:material_carry_distance",
+      heldValue: "Not sure",
+      blocksEstimate: true,
+    }) === false
+);
+const partial = evaluateEstimateGenerationSuccess({
+  confirmedWorkAreas: [
+    { id: "walls", type: "internal_walls" },
+    { id: "floor", type: "flooring" },
+  ],
+  facts: wallFacts,
+  result: {
+    lineItems: [
+      {
+        includedInTotal: true,
+        recommendedSell: 100,
+        rateSourceType: "benchmark",
+      },
+      {
+        includedInTotal: true,
+        recommendedSell: 0,
+        rateSourceType: "missing",
+        label: "Carpet tiles supply",
+      },
+    ],
+    missingInfo: [
+      "This finish has no supported recipe. The requested area stays in scope. Supply and installation are unpriced.",
+    ],
+    requirements: [],
+  },
+});
+check(
+  "unpriced carpet tiles do not reject the rest of the estimate",
+  partial.ok === true &&
+    hasPricingRequiredRepresentation({
+      lineItems: [
+        {
+          includedInTotal: true,
+          recommendedSell: 0,
+          rateSourceType: "missing",
+        },
+      ],
+    })
+);
+check(
+  "a sent quote snapshot cannot be edited",
+  assertQuoteSnapshotMutable({
+    status: "sent",
+    superseded_by_quote_id: null,
+    send_lock_delivery_id: null,
+  }) != null &&
+    assertQuoteSnapshotMutable({
+      status: "draft",
+      superseded_by_quote_id: null,
+      send_lock_delivery_id: null,
+    }) == null &&
+    assertQuoteStatusTransition("sent", "draft").ok === false
+);
+
+void (async () => {
+  const generationId = "55555555-5555-4555-8555-555555555555";
+  const payload = buildEstimateRequirementSnapshotV1({
+    generationId,
+    requirements: [],
+  });
+  const store = createMemoryRequirementSnapshotStore();
+  const saved = await store.insert({
+    orgId: "org-synthetic",
+    projectId: "project-synthetic",
+    estimateId: "estimate-synthetic",
+    generationId,
+    payload,
+  });
+  const reloaded = await store.getByGenerationId(generationId);
+  let duplicateRejected = false;
+  try {
+    await store.insert({
+      orgId: "org-synthetic",
+      projectId: "project-synthetic",
+      estimateId: "estimate-synthetic",
+      generationId,
+      payload: buildEstimateRequirementSnapshotV1({
+        generationId,
+        requirements: [],
+        estimateSellAuthority: "project_target_margin",
+      }),
+    });
+  } catch {
+    duplicateRejected = true;
+  }
+  check(
+    "a saved estimate snapshot cannot be replaced",
+    reloaded?.generationId === saved.generationId &&
+      reloaded.payload.estimateSellAuthority == null &&
+      duplicateRejected &&
+      !("update" in store)
+  );
+
+  if (failed > 0) {
+    console.log(`\n${passed} passed, ${failed} failed`);
+    process.exit(1);
+  }
+  console.log(`\n${passed} passed`);
+})();

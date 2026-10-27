@@ -34,6 +34,7 @@ import {
   createEstimateActionLabel,
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
+  explicitUnknownLeavesQuestionOpen,
   localAnswersCompleteForGenerate,
   shouldHoldClarifyQuestionUntilPersist,
   shouldIgnoreDuplicateClarifyActivation,
@@ -425,13 +426,18 @@ export function ClarifyPanel({
     }
     if (!beginPending(candidate.id)) return;
     setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
+    const unknownStaysOpen = explicitUnknownLeavesQuestionOpen({
+      value,
+      constraintKey: candidate.constraintKey,
+      factKey: candidate.factKey,
+    });
     const hold = shouldHoldClarifyQuestionUntilPersist({
       remainingRequiredBeforeAnswer: remaining,
       visibleCandidateCount,
     });
     if (hold) {
       setHeldPendingId(candidate.id);
-    } else {
+    } else if (!unknownStaysOpen) {
       advance(candidate);
     }
     let failed = false;
@@ -441,7 +447,7 @@ export function ClarifyPanel({
         if (failed) {
           lastFailedAnswerRef.current = { mode: "value", candidate, value };
           rollbackFailedClarifyPersist(candidate);
-        } else if (hold) {
+        } else if (hold && !unknownStaysOpen) {
           lastFailedAnswerRef.current = null;
           advance(candidate);
         } else {
@@ -490,10 +496,10 @@ export function ClarifyPanel({
     deckAreas.length > 0 && visibleCandidateCount === 0 && postHoleGaps === 0;
   const showCreateEstimate =
     Boolean(onEstimateNow) &&
+    !persistError &&
     (localAnswersComplete ||
       visibleFormComplete ||
-      (allowCreateEstimate && (authoritativeGenerate || holdCreateEstimate)) ||
-      Boolean(persistError && detailsSaveFailed));
+      (allowCreateEstimate && (authoritativeGenerate || holdCreateEstimate)));
   const retryFailedDetails = Boolean(
     detailsSaveFailed && persistError && !isGenerating
   );

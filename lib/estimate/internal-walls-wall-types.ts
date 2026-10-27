@@ -281,6 +281,8 @@ export type InternalWallsWallType = {
   height_m: number | null;
   height_source: "known" | "assumed_disclosed" | null;
   frame_system: InternalWallsFrameSystem | null;
+  /** The builder recorded that the framing system is unknown. It is not a system. */
+  frame_unresolved?: boolean;
   frame_size: InternalWallsTimberSize | null;
   steel: InternalWallsSteelMeta | null;
   stud_centres_mm: number | null;
@@ -802,6 +804,9 @@ export function parseInternalWallsWallType(
           ? "known"
           : null,
     frame_system: frameSystem,
+    ...(value.frame_unresolved === true && frameSystem == null
+      ? { frame_unresolved: true as const }
+      : {}),
     frame_size:
       frameSystem === "timber"
         ? parseInternalWallsTimberSize(value.frame_size)
@@ -1105,6 +1110,9 @@ export function summariseWallType(
     type.frame_system === "steel" ? "Steel framing" : null,
     type.frame_system === "existing_frame" ? "Existing frame" : null,
     type.frame_system === "other" ? "Other framing" : null,
+    type.frame_unresolved && type.frame_system == null
+      ? "Framing not confirmed"
+      : null,
   ].filter(Boolean);
   const geometry =
     type.length_lm != null && type.height_m != null
@@ -1700,7 +1708,14 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
       if (field === "frame_system") {
+        if (isNotSureValue(params.value)) {
+          type.frame_system = null;
+          type.frame_size = null;
+          type.frame_unresolved = true;
+          return;
+        }
         type.frame_system = parseInternalWallsFrameSystem(params.value);
+        type.frame_unresolved = false;
         if (type.frame_system === "existing_frame") {
           type.frame_size = null;
         }
@@ -2238,6 +2253,7 @@ export function wallTypeFieldCurrentValue(
     case "internal_walls.wall_type.wall_count":
       return type.wall_count;
     case "internal_walls.wall_type.frame_system":
+      if (type.frame_unresolved && type.frame_system == null) return "Not sure";
       return frameSystemDisplay(type.frame_system);
     case "internal_walls.wall_type.frame_size":
       if (type.frame_size === "90x45") return INTERNAL_WALLS_TIMBER_SIZE_OPTIONS[0];

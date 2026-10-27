@@ -19,6 +19,7 @@ import {
   resolveConstraintEvidence,
 } from "@/lib/builder-interview/authority";
 import { isReservedConstraintKey } from "@/lib/scopes/domain-ownership";
+import { isNotSureValue } from "@/lib/scopes/fact-labels";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { disclosedProjectConditionForNotSure, disclosedProjectConditionValue } from "@/lib/project-conditions/consumed-authority";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
@@ -196,9 +197,31 @@ export async function saveBuilderInterviewProjectAnswers(input: {
     if (answer.kind === "not_sure" || answer.kind === "assume") {
       const disclosed = disclosedProjectConditionValue(def.targetKey);
       if (!disclosed) {
+        if (answer.kind === "not_sure") {
+          const unknown = await upsertProjectConstraintRecord(supabase, {
+            orgId,
+            projectId,
+            key: def.targetKey,
+            label: def.question,
+            value: "Not sure",
+            source: "user",
+          });
+          if (!unknown.ok) {
+            items.push({
+              questionKey: answer.questionKey,
+              status: "error",
+              message: "Could not save this answer.",
+            });
+            failedCount += 1;
+            continue;
+          }
+          items.push({ questionKey: answer.questionKey, status: "saved" });
+          savedCount += 1;
+          continue;
+        }
         items.push({
           questionKey: answer.questionKey,
-          status: answer.kind === "assume" ? "assumption_deferred" : "not_sure",
+          status: "assumption_deferred",
         });
         continue;
       }
@@ -229,6 +252,28 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       def.targetKey,
       answer.value
     );
+    if (!remapped && isNotSureValue(answer.value)) {
+      const unknown = await upsertProjectConstraintRecord(supabase, {
+        orgId,
+        projectId,
+        key: def.targetKey,
+        label: def.question,
+        value: "Not sure",
+        source: "user",
+      });
+      if (!unknown.ok) {
+        items.push({
+          questionKey: answer.questionKey,
+          status: "error",
+          message: "Could not save this answer.",
+        });
+        failedCount += 1;
+        continue;
+      }
+      items.push({ questionKey: answer.questionKey, status: "saved" });
+      savedCount += 1;
+      continue;
+    }
     const incomingValue = remapped?.value ?? answer.value;
     if (incomingValue === undefined || !isMeaningfulKnownValue(incomingValue)) {
       items.push({
@@ -413,7 +458,13 @@ export async function saveBuilderInterviewProjectAnswers(input: {
     success: allOk,
     error:
       failedCount > 0
-        ? "Some answers could not be saved."
+        ? `Some answers could not be saved. ${items
+            .flatMap((item) =>
+              item.status === "error"
+                ? [`${item.questionKey}: ${item.message}`]
+                : []
+            )
+            .join("; ")}`
         : conflictCount > 0
           ? "Confirm changes before saving."
           : undefined,

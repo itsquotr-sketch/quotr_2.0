@@ -34,6 +34,7 @@ import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-pro
 import {
   blockingClassForKey,
   constraintIsKnown,
+  explicitUnknownConstraintValue,
   isAdvancedStructuralKey,
   isKnownValue,
   shouldAskBalustrade,
@@ -2102,6 +2103,10 @@ function fallbackProjectCondition(
     write: null,
     blocksEstimate: false,
     assumable: !required,
+    currentValue: explicitUnknownConstraintValue(
+      input.constraints,
+      params.targetKey
+    ),
     rankScore: params.score,
     rankReason: `Project Condition · ${params.targetKey}`,
     assumptionStatement: params.assumption,
@@ -2189,6 +2194,10 @@ function projectConditionCandidates(
         write: null,
         blocksEstimate: false,
         assumable: !required,
+        currentValue: explicitUnknownConstraintValue(
+          input.constraints,
+          c.targetKey
+        ),
         rankScore: score,
         rankReason: `Project Condition · ${c.targetKey}`,
         assumptionStatement:

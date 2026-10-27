@@ -12,11 +12,13 @@ import {
   type ClarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
+import { isNotSureValue } from "@/lib/estimate/facts";
+import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 import {
   ASSISTANT_ACTION_LABELS,
   ASSISTANT_LOADING_COPY,
 } from "@/lib/assistant/presentation/action-labels";
-import { isNotSureValue } from "@/lib/estimate/facts";
 
 export function shouldPersistOnOptionToggle(control: ClarifyControlType): boolean {
   return control !== "MULTI_SELECT";
@@ -195,10 +197,37 @@ export function optimisticResolvedCandidateIds(params: {
   readonly heldValue?: string | number | boolean | string[] | null;
 }): Set<string> {
   const ids = new Set(params.resolvedIds);
-  if (params.heldPendingId && params.heldValue != null && params.heldValue !== "") {
+  if (
+    params.heldPendingId &&
+    params.heldValue != null &&
+    params.heldValue !== "" &&
+    !explicitUnknownLeavesQuestionOpen({ value: params.heldValue })
+  ) {
     ids.add(params.heldPendingId);
   }
   return ids;
+}
+
+/**
+ * "Not sure" is a saved unknown. It does not finish a required question
+ * unless that question already has a disclosed assumption.
+ */
+export function explicitUnknownLeavesQuestionOpen(params: {
+  readonly value: string | number | boolean | string[] | null | undefined;
+  readonly constraintKey?: string | null;
+  readonly factKey?: string | null;
+}): boolean {
+  if (Array.isArray(params.value) || !isNotSureValue(params.value)) return false;
+  if (
+    params.constraintKey &&
+    disclosedProjectConditionForNotSure(params.constraintKey, params.value)
+  ) {
+    return false;
+  }
+  if (params.factKey && disclosedAssumptionForNotSure(params.factKey, params.value)) {
+    return false;
+  }
+  return true;
 }
 
 export function localAnswersCompleteForGenerate(params: {
