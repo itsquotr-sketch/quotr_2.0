@@ -192,6 +192,15 @@ export type FlooringPortion = {
    * and does not also charge the package.
    */
   finish_pricing?: "combined_package" | "separate_supply" | null;
+  /**
+   * Explicit waste treatment. A combined package selection does not set this.
+   * package_covers_requested_waste is a confirmation, not a rate change.
+   * incremental_material charges only the extra quantity at a known material rate.
+   */
+  waste_treatment?:
+    | "package_covers_requested_waste"
+    | "incremental_material"
+    | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
@@ -292,6 +301,22 @@ export function parseFlooringFinishPricing(
   const normalised = normalisedText(value);
   if (normalised.includes("separate")) return "separate_supply";
   if (normalised.includes("combined")) return "combined_package";
+  return null;
+}
+
+export function parseFlooringWasteTreatment(
+  value: unknown
+): "package_covers_requested_waste" | "incremental_material" | null {
+  if (
+    value === "package_covers_requested_waste" ||
+    value === "incremental_material"
+  ) {
+    return value;
+  }
+  if (typeof value !== "string") return null;
+  const normalised = normalisedText(value);
+  if (normalised.includes("extra")) return "incremental_material";
+  if (normalised.includes("covers")) return "package_covers_requested_waste";
   return null;
 }
 
@@ -828,6 +853,7 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
         ? value.finish_supplied_by
         : null,
     finish_pricing: parseFlooringFinishPricing(value.finish_pricing),
+    waste_treatment: parseFlooringWasteTreatment(value.waste_treatment),
     transitions_required: parseTriBool(value.transitions_required),
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
@@ -974,6 +1000,7 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.existing_finish_type",
   "flooring.portion.substrate_removal_required",
   "flooring.portion.finish_pricing",
+  "flooring.portion.waste_treatment",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1231,6 +1258,7 @@ export function overlayUserAuthoritativeFlooringPortion(
     "preparation_authority"
   );
   if (persisted.finish_pricing != null) next.finish_pricing = persisted.finish_pricing;
+  if (persisted.waste_treatment != null) next.waste_treatment = persisted.waste_treatment;
   overlayUserField(next, persisted, "tile_width_mm", "tile_width_authority");
   overlayUserField(next, persisted, "tile_length_mm", "tile_length_authority");
   overlayUserField(
@@ -1464,6 +1492,10 @@ function applyPortionField(
   }
   if (field === "finish_pricing") {
     portion.finish_pricing = parseFlooringFinishPricing(value);
+    return;
+  }
+  if (field === "waste_treatment") {
+    portion.waste_treatment = parseFlooringWasteTreatment(value);
     return;
   }
   if (field === "tile_width_mm") {

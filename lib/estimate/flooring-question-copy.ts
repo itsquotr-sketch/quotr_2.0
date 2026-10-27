@@ -125,6 +125,8 @@ const QUESTIONS: Record<string, string> = {
     "Is floor preparation required?",
   "flooring.portion.finish_pricing":
     "How should the finish be priced?",
+  "flooring.portion.waste_treatment":
+    "How should the requested waste be covered?",
   "flooring.portion.tile_width_mm": "What is the tile width?",
   "flooring.portion.tile_length_mm": "What is the tile length?",
   "flooring.portion.hardwood_board_width_mm": "What is the board width?",
@@ -153,6 +155,7 @@ const LABELS: Record<string, string> = {
   "flooring.portion.underlay_required": "Underlay",
   "flooring.portion.floor_preparation_required": "Floor preparation",
   "flooring.portion.finish_pricing": "Finish price owner",
+  "flooring.portion.waste_treatment": "Requested waste",
   "flooring.portion.tile_width_mm": "Tile width",
   "flooring.portion.tile_length_mm": "Tile length",
   "flooring.portion.hardwood_board_width_mm": "Board width",
@@ -259,6 +262,12 @@ export function flooringQuestionOptions(
     return [
       "Combined supply and installation package",
       "Separate finish supply and installation",
+    ];
+  }
+  if (factKey === "flooring.portion.waste_treatment") {
+    return [
+      "Package rate covers the requested waste",
+      "Charge only the extra waste quantity",
     ];
   }
   if (factKey === "flooring.portion.finish_type") return FLOORING_FINISH_OPTIONS;

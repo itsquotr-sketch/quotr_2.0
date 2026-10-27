@@ -88,7 +88,14 @@ export const FLOORING_INFORMATION_CONTRACT: readonly FlooringInformationContract
       askClass: "ASSUME_IF_SKIPPED",
       calculatorConsumed: true,
       reason:
-        "Chooses the combined supply-and-install package or separate finish supply. Unanswered uses the combined package and does not add a material rate on top.",
+        "Chooses the combined supply-and-install package or separate finish supply. Unanswered uses the combined package and does not add a material rate on top. It does not mean requested waste is included.",
+    },
+    {
+      factKey: "flooring.portion.waste_treatment",
+      askClass: "ASSUME_IF_SKIPPED",
+      calculatorConsumed: true,
+      reason:
+        "Requested waste stays unresolved on a combined package until the package is confirmed to cover it or only the extra quantity is charged at a known material rate.",
     },
     {
       factKey: "flooring.portion.tile_width_mm",
@@ -238,6 +245,18 @@ export function flooringFactIsRelevant(
       finish === "vinyl_plank" ||
       finish === "tile" ||
       finish === "hardwood"
+    );
+  }
+  if (factKey === "flooring.portion.waste_treatment") {
+    return (
+      (finish === "carpet" ||
+        finish === "vinyl_plank" ||
+        finish === "tile" ||
+        finish === "hardwood") &&
+      portion?.waste_percent != null &&
+      portion.waste_percent > 0 &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.finish_pricing !== "separate_supply"
     );
   }
   if (

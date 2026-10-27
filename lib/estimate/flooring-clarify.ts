@@ -108,6 +108,15 @@ export function flooringPortionFieldCurrentValue(
     }
     return null;
   }
+  if (field === "waste_treatment") {
+    if (portion.waste_treatment === "package_covers_requested_waste") {
+      return "Package rate covers the requested waste";
+    }
+    if (portion.waste_treatment === "incremental_material") {
+      return "Charge only the extra waste quantity";
+    }
+    return null;
+  }
   if (field === "tile_width_mm") {
     return portion.tile_width_mm != null ? `${portion.tile_width_mm} mm` : null;
   }

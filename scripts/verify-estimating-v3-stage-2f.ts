@@ -12,9 +12,12 @@ import {
 } from "../lib/estimate/flooring-identities";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import {
+  FLOORING_FINISH_ANCILLARY_COMPONENT,
   FLOORING_FINISH_INSTALL_COMPONENT,
   FLOORING_FINISH_INSTALL_HOURS_PER_M2,
   FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_FINISH_WASTE_COMPONENT,
+  FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2,
   FLOORING_VINYL_SUPPLY_M2,
 } from "../lib/estimate/flooring-purchasing";
 import {
@@ -146,9 +149,21 @@ check(
     /Direct cost \$912\.00/.test(packageLine?.notes ?? "") &&
     /Client sell \$1140\.00/.test(packageLine?.notes ?? "") &&
     /10\.56/.test(packageLine?.notes ?? "") &&
+    /does not include the requested waste/.test(packageLine?.notes ?? "") &&
     /not split into material and labour/.test(packageLine?.notes ?? "") &&
     /supply allowance/.test(packageLine?.notes ?? ""),
   packageLine?.notes
+);
+const wasteLine = findLine(benchmark.commercial.lineItems, FLOORING_FINISH_WASTE_COMPONENT);
+check(
+  "requested waste stays unresolved and is not a percentage of the package",
+  wasteLine?.quantity === 0.96 &&
+    wasteLine?.includedInTotal === false &&
+    (wasteLine?.recommendedCost ?? 0) === 0 &&
+    benchmark.commercial.completeness === "INFORMATION_REQUIRED" &&
+    benchmark.commercial.missingInfo.some((row) => /does not include it/i.test(row)) &&
+    packageLine?.recommendedCost === 912,
+  { waste: wasteLine, completeness: benchmark.commercial.completeness, missing: benchmark.commercial.missingInfo }
 );
 check(
   "benchmark does not add a supply line",
@@ -217,8 +232,59 @@ check(
   separateInstall?.quantity === 9.6 &&
     separateInstall?.recommendedCost === 144 &&
     separateInstallHigh?.quantity === 9.6 &&
-    separateInstallHigh?.recommendedCost === 144,
-  { low: separateInstall, high: separateInstallHigh }
+    separateInstallHigh?.recommendedCost === 144 &&
+    /0\.25 h\/m2/.test(separateInstall?.notes ?? "") &&
+    /No Quotr hours default/.test(separateInstall?.notes ?? ""),
+  { low: separateInstall, high: separateInstallHigh, notes: separateInstall?.notes }
+);
+const separateAncillary = findLine(separateLow.commercial.lineItems, FLOORING_FINISH_ANCILLARY_COMPONENT);
+check(
+  "separate path keeps adhesive visible and unpriced without a rate",
+  separateAncillary?.quantity === 9.6 &&
+    separateAncillary?.includedInTotal === false &&
+    (separateAncillary?.recommendedCost ?? 0) === 0 &&
+    separateLow.commercial.completeness === "INFORMATION_REQUIRED" &&
+    separateLow.commercial.missingInfo.some((row) => /adhesive and accessories/i.test(row)),
+  separateAncillary
+);
+const separateNoHours = price(portion({ finish_pricing: "separate_supply" }), [
+  labour,
+  removalHours,
+  material40,
+]);
+const missingInstall = findLine(separateNoHours.commercial.lineItems, FLOORING_FINISH_INSTALL_COMPONENT);
+check(
+  "installation hours are not defaulted to 0.25",
+  (missingInstall?.recommendedCost ?? 0) === 0 &&
+    missingInstall?.includedInTotal === false &&
+    /No Quotr hours default/.test(missingInstall?.notes ?? "") &&
+    !/0\.25/.test(missingInstall?.notes ?? ""),
+  missingInstall
+);
+const adhesive = rate({
+  item_key: FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2,
+  rate_type: "material",
+  unit: "m2",
+  cost_rate: 5,
+});
+const separateAncillaryPriced = price(portion({ finish_pricing: "separate_supply" }), [
+  labour,
+  removalHours,
+  installHours,
+  material40,
+  adhesive,
+]);
+const pricedAncillary = findLine(
+  separateAncillaryPriced.commercial.lineItems,
+  FLOORING_FINISH_ANCILLARY_COMPONENT
+);
+check(
+  "a saved adhesive rate is charged once on the net area",
+  pricedAncillary?.quantity === 9.6 &&
+    pricedAncillary?.recommendedCost === 48 &&
+    findLine(separateAncillaryPriced.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2) == null &&
+    separateAncillaryPriced.commercial.lineItems.filter((item) => item.recommendedCost === 48).length === 1,
+  pricedAncillary
 );
 
 const customer = price(
@@ -231,7 +297,11 @@ check(
     findLine(customer.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT)?.includedInTotal === false &&
     findLine(customer.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT)?.recommendedCost === 0 &&
     !customer.commercial.lineItems.some((item) => item.recommendedCost === 768 || item.recommendedCost === 912) &&
-    findLine(customer.commercial.lineItems, FLOORING_FINISH_INSTALL_COMPONENT)?.quantity === 9.6,
+    findLine(customer.commercial.lineItems, FLOORING_FINISH_INSTALL_COMPONENT)?.quantity === 9.6 &&
+    findLine(customer.commercial.lineItems, FLOORING_FINISH_INSTALL_COMPONENT)?.recommendedCost === 144 &&
+    findLine(customer.commercial.lineItems, FLOORING_FINISH_ANCILLARY_COMPONENT)?.quantity === 9.6 &&
+    findLine(customer.commercial.lineItems, FLOORING_FINISH_ANCILLARY_COMPONENT)?.includedInTotal === false &&
+    customer.commercial.completeness === "INFORMATION_REQUIRED",
   customer.commercial.lineItems.map((item) => [item.label, item.recommendedCost, item.includedInTotal])
 );
 
@@ -252,8 +322,59 @@ check(
   findLine(project.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT)
 );
 
-const explicitSell = price(
+const explicitCombined = price(
   portion({ finish_pricing: "combined_package" }),
+  [labour, removalHours, material40, package80]
+);
+check(
+  "combined selection alone leaves the waste gap open",
+  explicitCombined.commercial.completeness === "INFORMATION_REQUIRED" &&
+    findLine(explicitCombined.commercial.lineItems, FLOORING_FINISH_WASTE_COMPONENT)?.quantity === 0.96 &&
+    findLine(explicitCombined.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2)?.recommendedCost === 768 &&
+    explicitCombined.commercial.missingInfo.some((row) => /does not include it/i.test(row)),
+  explicitCombined.commercial.missingInfo
+);
+const confirmed = price(
+  portion({
+    finish_pricing: "combined_package",
+    waste_treatment: "package_covers_requested_waste",
+  }),
+  [labour, removalHours, material40, package80]
+);
+check(
+  "an explicit package confirmation covers waste without changing the rate",
+  findLine(confirmed.commercial.lineItems, FLOORING_FINISH_WASTE_COMPONENT) == null &&
+    findLine(confirmed.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2)?.recommendedCost === 768 &&
+    /explicitly confirmed to cover/.test(
+      findLine(confirmed.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2)?.notes ?? ""
+    ) &&
+    confirmed.commercial.completeness === "COMPLETE_COMMERCIAL",
+  confirmed.commercial
+);
+const incremental = price(
+  portion({
+    finish_pricing: "combined_package",
+    waste_treatment: "incremental_material",
+  }),
+  [labour, removalHours, material40, package80]
+);
+const incrementalLine = findLine(incremental.commercial.lineItems, FLOORING_FINISH_WASTE_COMPONENT);
+check(
+  "incremental waste charges only the extra quantity",
+  incrementalLine?.quantity === 0.96 &&
+    incrementalLine?.recommendedCost === 38.4 &&
+    incrementalLine?.includedInTotal !== false &&
+    findLine(incremental.commercial.lineItems, FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2)?.recommendedCost === 768 &&
+    findLine(incremental.commercial.lineItems, FLOORING_FINISH_SUPPLY_COMPONENT) == null &&
+    incremental.commercial.completeness === "COMPLETE_COMMERCIAL",
+  incrementalLine
+);
+
+const explicitSell = price(
+  portion({
+    finish_pricing: "combined_package",
+    waste_treatment: "package_covers_requested_waste",
+  }),
   [
     labour,
     material40,

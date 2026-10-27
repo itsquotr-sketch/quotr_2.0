@@ -19,14 +19,22 @@ import {
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
 } from "@/lib/estimate/flooring-identities";
 import {
+  FLOORING_CARPET_ACCESSORIES_M2,
+  FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2,
   FLOORING_HARDWOOD_SUPPLY_LM,
+  FLOORING_TILE_ADHESIVE_GROUT_M2,
   FLOORING_TILE_SUPPLY_EACH,
+  FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2,
   FLOORING_VINYL_SUPPLY_M2,
+  flooringWasteExtra,
   type FlooringSupplyMeasure,
 } from "@/lib/estimate/flooring-purchasing";
 import type { FlooringPortion } from "@/lib/estimate/flooring-portions";
 
 export type FlooringFinishPricing = "combined_package" | "separate_supply";
+export type FlooringWasteTreatment =
+  | "package_covers_requested_waste"
+  | "incremental_material";
 
 export type FlooringCostOwnerMode =
   | "customer"
@@ -86,6 +94,128 @@ export function flooringFinishSupplyKey(
   return null;
 }
 
+export function flooringAncillaryMaterialKey(
+  finish: FlooringPortion["finish_type"]
+): string | null {
+  if (finish === "vinyl_plank") return FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2;
+  if (finish === "tile") return FLOORING_TILE_ADHESIVE_GROUT_M2;
+  if (finish === "hardwood") return FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2;
+  if (finish === "carpet") return FLOORING_CARPET_ACCESSORIES_M2;
+  return null;
+}
+
+export function flooringAncillaryLabel(
+  finish: FlooringPortion["finish_type"]
+): string | null {
+  if (finish === "vinyl_plank") return "Vinyl adhesive and accessories";
+  if (finish === "tile") return "Tile adhesive and grout";
+  if (finish === "hardwood") return "Hardwood adhesive and fixings";
+  if (finish === "carpet") return "Carpet installation accessories";
+  return null;
+}
+
+const ANCILLARY_SPECIFICATION =
+  "Included in the combined supply-and-install package. Installation hours do not include these consumables. No separate rate is invented.";
+
+export function flooringAncillarySpecification(): string {
+  return ANCILLARY_SPECIFICATION;
+}
+
+function supportedFinish(finish: FlooringPortion["finish_type"]): boolean {
+  return (
+    finish === "carpet" ||
+    finish === "vinyl_plank" ||
+    finish === "tile" ||
+    finish === "hardwood"
+  );
+}
+
+export type FlooringWasteResolution =
+  | { readonly kind: "none" }
+  | { readonly kind: "confirmed" }
+  | {
+      readonly kind: "incremental";
+      readonly quantity: number;
+      readonly unit: string;
+      readonly materialKey: string;
+    }
+  | {
+      readonly kind: "open";
+      readonly quantity: number;
+      readonly unit: string;
+      readonly message: string;
+    };
+
+export function flooringWasteResolution(params: {
+  portion: Pick<
+    FlooringPortion,
+    | "finish_type"
+    | "finish_pricing"
+    | "finish_supplied_by"
+    | "waste_percent"
+    | "waste_treatment"
+    | "label"
+  >;
+  purchasing: FlooringSupplyMeasure | null;
+  rates: readonly OrganisationRate[];
+}): FlooringWasteResolution {
+  const { portion } = params;
+  const purchasingWaste =
+    params.purchasing && params.purchasing.kind !== "none"
+      ? params.purchasing.wastePercent
+      : null;
+  const waste = portion.waste_percent ?? purchasingWaste;
+  if (
+    portion.finish_supplied_by === "customer" ||
+    portion.finish_pricing === "separate_supply" ||
+    !supportedFinish(portion.finish_type) ||
+    waste == null ||
+    waste <= 0
+  ) {
+    return { kind: "none" };
+  }
+  if (portion.waste_treatment === "package_covers_requested_waste") {
+    return { kind: "confirmed" };
+  }
+  const where = portion.label?.trim() || "This flooring area";
+  const extra = params.purchasing ? flooringWasteExtra(params.purchasing) : null;
+  const materialKey = flooringFinishSupplyKey(portion.finish_type);
+  if (portion.waste_treatment === "incremental_material") {
+    if (!extra || !materialKey) {
+      return {
+        kind: "open",
+        quantity: 1,
+        unit: "item",
+        message: `${where} asks for ${waste}% waste. Only the extra quantity can be charged, and no extra purchase quantity is known. The combined package is not increased by ${waste}%.`,
+      };
+    }
+    const named = findFinishMaterialRate(params.rates, materialKey);
+    if (!named) {
+      return {
+        kind: "open",
+        quantity: extra.quantity,
+        unit: extra.unit,
+        message: `${where} asks to charge only the extra ${extra.quantity} ${extra.unit} of finish waste. No finish material rate is saved, so that extra is not priced and no rate is invented.`,
+      };
+    }
+    return {
+      kind: "incremental",
+      quantity: extra.quantity,
+      unit: extra.unit,
+      materialKey,
+    };
+  }
+  const extraText = extra
+    ? ` The extra quantity is ${extra.quantity} ${extra.unit} and is not priced.`
+    : " No extra purchase quantity is known, so none is priced.";
+  return {
+    kind: "open",
+    quantity: extra?.quantity ?? 1,
+    unit: extra?.unit ?? "item",
+    message: `${where} requests ${waste}% waste. The combined package excludes that waste.${extraText} Choosing the combined package does not include it. Confirm that this package rate covers the requested waste, charge only the extra quantity at a known finish material rate, or price supply and installation separately.`,
+  };
+}
+
 export function findFinishMaterialRate(
   rates: readonly OrganisationRate[],
   itemKey: string
@@ -128,20 +258,35 @@ function quantityText(value: number, unit: string): string {
   return `${shown} ${unit}`;
 }
 
-function wasteSentence(purchasing: FlooringSupplyMeasure | null): string {
-  if (!purchasing || purchasing.kind === "none") {
+function wasteSentence(
+  purchasing: FlooringSupplyMeasure | null,
+  coverage: "open" | "confirmed" | "absent"
+): string {
+  if (!purchasing || purchasing.kind === "none" || coverage === "absent") {
     return "No waste percentage is stated.";
   }
+  if (coverage === "confirmed") {
+    if (purchasing.kind === "carpet_unresolved") {
+      return `${purchasing.limitation} This package rate was explicitly confirmed to cover that requested waste. The rate was not increased and was not split.`;
+    }
+    const stated =
+      purchasing.kind === "area"
+        ? `supply quantity ${quantityText(purchasing.supplyM2, "m²")}`
+        : purchasing.kind === "tiles"
+          ? `${purchasing.supplyTiles} whole tiles`
+          : quantityText(purchasing.supplyLinealM, "lineal m");
+    return `The requested waste is ${purchasing.wastePercent}% (${stated}). This package rate was explicitly confirmed to cover that waste. The rate was not increased and was not split.`;
+  }
   if (purchasing.kind === "area") {
-    return `Stated waste is ${purchasing.wastePercent}% (supply quantity ${quantityText(purchasing.supplyM2, "m²")}). That quantity is not a second charge and is not inside this rate.`;
+    return `Stated waste is ${purchasing.wastePercent}% (supply quantity ${quantityText(purchasing.supplyM2, "m²")}). That quantity is not inside this rate and is not priced. Choosing this combined package does not include the requested waste.`;
   }
   if (purchasing.kind === "tiles") {
-    return `Stated waste is ${purchasing.wastePercent}% (${purchasing.supplyTiles} whole tiles). That count is not a second charge. The package stays on the net area.`;
+    return `Stated waste is ${purchasing.wastePercent}% (${purchasing.supplyTiles} whole tiles). That count is not inside this rate and is not priced. Choosing this combined package does not include the requested waste.`;
   }
   if (purchasing.kind === "lineal") {
-    return `Stated waste is ${purchasing.wastePercent}% (${quantityText(purchasing.supplyLinealM, "lineal m")}). Box coverage is unknown, so no pack count is invented. That length is not a second charge. The package stays on the net area.`;
+    return `Stated waste is ${purchasing.wastePercent}% (${quantityText(purchasing.supplyLinealM, "lineal m")}). Box coverage is unknown, so no pack count is invented. That length is not inside this rate and is not priced.`;
   }
-  return `${purchasing.limitation} The package already includes an ordinary carpet supply allowance on the net area, so this is not an extra priced supply line.`;
+  return `${purchasing.limitation} Choosing this combined package does not include the requested waste, and no roll quantity is priced.`;
 }
 
 function sellSentence(params: {
@@ -167,6 +312,7 @@ export function flooringPackageOwnershipNote(params: {
   marginPercent: number | null;
   sellAuthority: SellAuthority;
   purchasing: FlooringSupplyMeasure | null;
+  wasteCoverage: "open" | "confirmed" | "absent";
   unusedMaterialRate: number | null;
   decisionRequired: boolean;
 }): string | null {
@@ -179,7 +325,9 @@ export function flooringPackageOwnershipNote(params: {
     : `Quantity basis: ${quantityText(params.netQuantity, params.unit)} net area.`;
   const moneySentence = `Internal unit cost ${money(params.unitCost)}/${params.unit}. Direct cost ${money(params.directCost)}. Client sell ${money(params.clientSell)}.`;
   const owner = `This combined rate includes ${coverage.includes}. It excludes ${coverage.excludes}.`;
-  const waste = finish ? wasteSentence(params.purchasing) : "Finish waste is not applied to this line.";
+  const waste = finish
+    ? wasteSentence(params.purchasing, params.wasteCoverage)
+    : "Finish waste is not applied to this line.";
   const unused =
     params.unusedMaterialRate != null && !params.decisionRequired
       ? ` The saved finish material rate of ${money(params.unusedMaterialRate)} is not applied.`

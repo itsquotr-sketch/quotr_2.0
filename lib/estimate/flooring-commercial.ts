@@ -12,15 +12,21 @@ import { BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY } from "@/lib/estimate/bathroom-id
 import { hasTrustedPhysicalQuantity } from "@/lib/estimate/component-commercial-authority";
 import {
   FLOORING_CARPET_PURCHASING_UNRESOLVED,
+  FLOORING_FINISH_ANCILLARY_COMPONENT,
   FLOORING_FINISH_INSTALL_COMPONENT,
   FLOORING_FINISH_INSTALL_HOURS_PER_M2,
   FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_FINISH_WASTE_COMPONENT,
+  FLOORING_WASTE_INCREMENT_CATEGORY,
 } from "@/lib/estimate/flooring-purchasing";
 import {
   findFinishMaterialRate,
+  flooringAncillaryLabel,
+  flooringAncillaryMaterialKey,
   flooringCostOwnerMode,
   flooringFinishSupplyKey,
   flooringPackageOwnershipNote,
+  flooringWasteResolution,
 } from "@/lib/estimate/flooring-cost-ownership";
 import {
   findCompanyProductivityRate,
@@ -405,6 +411,41 @@ export function priceFlooringMaterial(params: {
     };
   }
   if (
+    requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT ||
+    requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT
+  ) {
+    const chargeWaste =
+      requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT &&
+      requirement.category === FLOORING_WASTE_INCREMENT_CATEGORY;
+    const chargeAncillary =
+      requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT;
+    const named =
+      (chargeWaste || chargeAncillary) && requirement.materialKey
+        ? findFinishMaterialRate(params.rates, requirement.materialKey)
+        : undefined;
+    if (
+      !params.allowPricing ||
+      !named ||
+      named.cost_rate == null ||
+      !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
+    ) {
+      return {
+        ...requirement,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      };
+    }
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: named.cost_rate,
+      totalCost: round2(requirement.purchaseQuantity * named.cost_rate),
+      rateSource: named.rate_type === "project_material" ? "project_override" : "company",
+    };
+  }
+  if (
     !params.allowPricing ||
     !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
   ) {
@@ -671,6 +712,16 @@ function subcontractLine(params: {
         marginPercent: classifiedPreview.grossMarginPercent,
         sellAuthority: classifiedPreview.sellAuthority,
         purchasing: params.portion?.purchasing ?? null,
+        wasteCoverage:
+          !params.portion ||
+          params.portion.finish_supplied_by === "customer" ||
+          params.portion.finish_pricing === "separate_supply" ||
+          params.portion.purchasing == null ||
+          params.portion.purchasing.kind === "none"
+            ? "absent"
+            : params.portion.waste_treatment === "package_covers_requested_waste"
+              ? "confirmed"
+              : "open",
         unusedMaterialRate:
           mode === "combined" || mode === "decision_required"
             ? materialRate?.cost_rate ?? null
@@ -783,9 +834,11 @@ function materialOrAllowanceLine(params: {
   const source = mapMoneySource(
     params.requirement.rateSource === "company"
       ? "company"
-      : params.requirement.rateSource === "missing"
-        ? "missing"
-        : "quotr"
+      : params.requirement.rateSource === "project_override"
+        ? "project_override"
+        : params.requirement.rateSource === "missing"
+          ? "missing"
+          : "quotr"
   );
   const unit = framing
     ? "m2"
@@ -848,7 +901,9 @@ function materialOrAllowanceLine(params: {
       notes:
         params.requirement.materialKey === FLOORING_CARPET_PURCHASING_UNRESOLVED
           ? params.requirement.specification || "Carpet roll purchasing is unresolved."
-          : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT
+          : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT ||
+              params.requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT ||
+              params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT
             ? params.requirement.specification ||
               `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`
             : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
@@ -895,7 +950,9 @@ function materialOrAllowanceLine(params: {
     organisationSettings: params.organisationSettings,
     notes: framing
       ? `Combined allowance ${params.requirement.purchaseQuantity} m². Not timber materials and not labour hours.`
-      : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT
+      : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT ||
+          params.requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT ||
+          params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT
         ? params.requirement.specification
         : `Purchase ${params.requirement.purchaseQuantity} ${unit}`,
   });
@@ -954,7 +1011,9 @@ function labourLine(params: {
       notes:
         params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
           ? FLOORING_SPECIALIST_RECIPE_MESSAGE
-          : `Pricing Required productivity. Installed ${qty} ${unit}.`,
+          : params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
+            ? `Installation hours need the company productivity rate ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. Installed ${qty} ${unit}. These hours do not include adhesive, grout, fixings or accessories.`
+            : `Pricing Required productivity. Installed ${qty} ${unit}.`,
     });
   }
   const productivitySourceType =
@@ -987,6 +1046,10 @@ function labourLine(params: {
     {
       ...line,
       nestedItemId,
+      notes:
+        params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
+          ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. These hours do not include adhesive, grout, fixings or accessories.`
+          : line.notes,
     },
     {
       pricingOwner: "in_house_labour",
@@ -1163,6 +1226,27 @@ export function commercializeFlooring(params: {
       customerSupplied: portion.finish_supplied_by === "customer",
       rates: params.rates,
     });
+    const waste = flooringWasteResolution({
+      portion,
+      purchasing: portion.purchasing,
+      rates: params.rates,
+    });
+    if (waste.kind === "open") decisionMessages.push(waste.message);
+    if (
+      (portion.finish_supplied_by === "customer" ||
+        portion.finish_pricing === "separate_supply") &&
+      flooringAncillaryMaterialKey(portion.finish_type) &&
+      !findFinishMaterialRate(
+        params.rates,
+        flooringAncillaryMaterialKey(portion.finish_type) ?? ""
+      )
+    ) {
+      const label = flooringAncillaryLabel(portion.finish_type);
+      const where = portion.label?.trim() || "This flooring area";
+      decisionMessages.push(
+        `${where}: ${label} stays with the contractor. It is included in the combined package and has no separate rate, so it is not priced and no rate is invented. Installation hours do not include it.`
+      );
+    }
     if (mode !== "decision_required") continue;
     const key = flooringFinishSupplyKey(portion.finish_type);
     const saved = key ? findFinishMaterialRate(params.rates, key) : undefined;

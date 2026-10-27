@@ -50,15 +50,25 @@ import {
   flooringQuestionLabel,
 } from "@/lib/estimate/flooring-question-copy";
 import {
+  flooringAncillaryLabel,
+  flooringAncillaryMaterialKey,
+  flooringAncillarySpecification,
+} from "@/lib/estimate/flooring-cost-ownership";
+import {
   FLOORING_CARPET_PURCHASING_UNRESOLVED,
+  FLOORING_FINISH_ANCILLARY_COMPONENT,
   FLOORING_FINISH_INSTALL_COMPONENT,
   FLOORING_FINISH_INSTALL_HOURS_PER_M2,
   FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_FINISH_WASTE_COMPONENT,
   FLOORING_HARDWOOD_SUPPLY_LM,
   FLOORING_TILE_SUPPLY_EACH,
   FLOORING_VINYL_SUPPLY_M2,
+  FLOORING_WASTE_INCREMENT_CATEGORY,
+  FLOORING_WASTE_UNRESOLVED_CATEGORY,
   flooringCustomerSupplied,
   flooringSeparateSupplyMeasure,
+  flooringWasteExtra,
   resolveFlooringSupply,
   type FlooringSupplyMeasure,
 } from "@/lib/estimate/flooring-purchasing";
@@ -146,6 +156,7 @@ export type FlooringPortionPhysical = {
   readonly specialist_kind: FlooringSpecialistKind | null;
   readonly finish_pricing: FlooringPortion["finish_pricing"];
   readonly finish_supplied_by: FlooringPortion["finish_supplied_by"];
+  readonly waste_treatment: FlooringPortion["waste_treatment"];
   readonly purchasing: FlooringSupplyMeasure | null;
   readonly completeness: FlooringPhysicalCompleteness;
   readonly missingFields: readonly string[];
@@ -725,7 +736,70 @@ function appendCustomerInstall(params: {
       trade: "carpenter",
     })
   );
+  const ancillaryKey = flooringAncillaryMaterialKey(params.portion.finish_type);
+  const ancillaryLabel = flooringAncillaryLabel(params.portion.finish_type);
+  if (ancillaryKey && ancillaryLabel) {
+    params.requirements.push(
+      materialCountRow({
+        workArea: params.workArea,
+        portion: params.portion,
+        componentKey: FLOORING_FINISH_ANCILLARY_COMPONENT,
+        materialKey: ancillaryKey,
+        category: "FLOORING_ANCILLARY",
+        description: `${params.owner} · ${ancillaryLabel}`,
+        specification: flooringAncillarySpecification(),
+        quantity: params.areaM2,
+        unit: "m2",
+        areaM2: params.areaM2,
+      })
+    );
+  }
   return true;
+}
+
+function appendWasteGap(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type">;
+  portion: FlooringPortion;
+  owner: string;
+  purchasing: FlooringSupplyMeasure;
+  areaM2: number;
+  requirements: EstimateRequirement[];
+}): void {
+  if (finishOmitsCombinedPackage(params.portion)) return;
+  const waste = params.portion.waste_percent;
+  if (waste == null || waste <= 0) return;
+  if (params.portion.waste_treatment === "package_covers_requested_waste") return;
+  const extra = flooringWasteExtra(params.purchasing);
+  const incremental =
+    params.portion.waste_treatment === "incremental_material" && extra != null;
+  const quantity = extra?.quantity ?? 1;
+  const unit = extra?.unit ?? "item";
+  params.requirements.push(
+    materialCountRow({
+      workArea: params.workArea,
+      portion: params.portion,
+      componentKey: FLOORING_FINISH_WASTE_COMPONENT,
+      materialKey: incremental
+        ? params.portion.finish_type === "vinyl_plank"
+          ? FLOORING_VINYL_SUPPLY_M2
+          : params.portion.finish_type === "tile"
+            ? FLOORING_TILE_SUPPLY_EACH
+            : params.portion.finish_type === "hardwood"
+              ? FLOORING_HARDWOOD_SUPPLY_LM
+              : null
+        : null,
+      category: incremental
+        ? FLOORING_WASTE_INCREMENT_CATEGORY
+        : FLOORING_WASTE_UNRESOLVED_CATEGORY,
+      description: `${params.owner} · requested finish waste`,
+      specification: extra
+        ? `Extra finish quantity ${quantity} ${unit} only. The combined package excludes this waste and is not increased by ${waste}%.`
+        : `Requested ${waste}% waste has no extra purchase quantity. The combined package is not increased by ${waste}%.`,
+      quantity,
+      unit,
+      areaM2: params.areaM2,
+    })
+  );
 }
 
 function appendFinishSupply(params: {
@@ -738,7 +812,17 @@ function appendFinishSupply(params: {
   hardwood: { linealM: number; boardWidthMm: number } | null;
   requirements: EstimateRequirement[];
 }): void {
-  if (!finishOmitsCombinedPackage(params.portion)) return;
+  if (!finishOmitsCombinedPackage(params.portion)) {
+    appendWasteGap({
+      workArea: params.workArea,
+      portion: params.portion,
+      owner: params.owner,
+      purchasing: params.purchasing,
+      areaM2: params.areaM2,
+      requirements: params.requirements,
+    });
+    return;
+  }
   const purchasing =
     params.portion.finish_pricing === "separate_supply"
       ? flooringSeparateSupplyMeasure({
@@ -1336,6 +1420,7 @@ function emptyPortionPhysical(
     specialist_kind: portion.specialist_kind,
     finish_pricing: portion.finish_pricing ?? null,
     finish_supplied_by: portion.finish_supplied_by ?? null,
+    waste_treatment: portion.waste_treatment ?? null,
     purchasing: null,
     completeness,
     missingFields,
@@ -1419,6 +1504,7 @@ export function calculateFlooringPortionPhysical(params: {
         specialist_kind: portion.specialist_kind,
         finish_pricing: portion.finish_pricing ?? null,
         finish_supplied_by: portion.finish_supplied_by ?? null,
+        waste_treatment: portion.waste_treatment ?? null,
         purchasing: null,
         completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
         missingFields: [],
@@ -1484,6 +1570,7 @@ export function calculateFlooringPortionPhysical(params: {
       specialist_kind: portion.specialist_kind,
       finish_pricing: portion.finish_pricing ?? null,
       finish_supplied_by: portion.finish_supplied_by ?? null,
+      waste_treatment: portion.waste_treatment ?? null,
       purchasing: finish.purchasing,
       completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
       missingFields: [],

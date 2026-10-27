@@ -19,6 +19,16 @@ Company subcontract rate on the same key replaces the benchmark. A saved sell ra
 
 The package text does not include a waste percentage, and it does not publish a material/labour split. Stated waste is still calculated. It is not treated as already inside the package, and it is not added as a second priced supply line.
 
+A combined-package choice does not cover requested waste. Until an explicit treatment is chosen, Estimate, Pricing and commercial readiness stay information-required. The extra quantity is shown and is not priced. The package dollars are not increased by the waste percentage.
+
+The explicit treatments are:
+
+- Confirm that this package rate already covers the requested waste. The saved rate is unchanged.
+- Charge only the extra quantity at a saved finish material rate. The net package stays. Carpet roll waste has no extra quantity, so this treatment cannot price it.
+- Price finish supply and installation separately. The package is omitted. Supply uses the waste-adjusted quantity. Installation hours use only a saved company productivity rate. There is no 0.25 h/m² default.
+
+Adhesive, grout, fixings and accessories are inside the combined package. Installation hours do not include them. On the separate and customer-supplied paths they stay visible. They are priced only when a saved rate exists for that exact key. No rate is invented. Customer-supplied finish still keeps installation labour and those ancillary materials, and removes the finish purchase.
+
 ## Ownership
 
 - Unanswered finish price owner, and no separate finish material rate: the combined package is the only owner.
@@ -38,16 +48,6 @@ After, the known package cost and sell are unchanged. The 10.56 m² supply quant
 
 Stored estimates, company rates and issued snapshots are not rewritten.
 
-## Preview acceptance
+## Earlier preview
 
-Ready Preview deployment `dpl_3FQqn3M5tfSMDXyyvyZ9Uf6t22mj`, target preview, SHA `9fef22a857fd`, alias `https://quotr-2-0-git-estimating-v3-stage-2f-quotr1.vercel.app`. Production was not deployed.
-
-Fresh project `3e2e680e-c0f4-4119-813b-c63fa4c9a6d7`, pricing `df1969b2-a2d4-4238-bd2d-7a76d12719f7`. The original three-room brief was used. Finish price owner was left unanswered, so each finish stayed on the combined package. Substrate and preparation were answered no. Pricing was not marked reviewed and no quote was created.
-
-Estimate and Pricing agree:
-
-- Hallway vinyl package quantity 9.6 m², internal unit cost $95.00/m², direct cost $912.00, client sell $1,140.00 at 20% gross margin.
-- The note states 10% waste and supply quantity 10.56 m², and that this quantity is not a second charge and is not inside the rate.
-- Carpet packages stay on 11.52 m² and 14.7 m². The roll-waste limitation is disclosed and is not a second price.
-- Underlay and removal stay on the net area.
-- Persisted Pricing is 8 priced lines, direct cost $3,415.20, client sell $4,269.01. That matches the Stage 2E known total. The previous unpriced finish-supply lines are absent, so a later material rate cannot be entered on top of the package.
+`9fef22a857fd` stopped the second finish-supply charge. It still treated a disclosed 10.56 m² as commercially complete. That is not acceptance of the waste contract. The correction above keeps requested waste unresolved until an explicit treatment is chosen.

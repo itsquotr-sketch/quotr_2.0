@@ -27,6 +27,18 @@ export const FLOORING_CARPET_PURCHASING_UNRESOLVED =
 export const FLOORING_VINYL_SUPPLY_M2 = "flooring.vinyl_plank.supply.m2" as const;
 export const FLOORING_TILE_SUPPLY_EACH = "flooring.tile.supply.each" as const;
 export const FLOORING_HARDWOOD_SUPPLY_LM = "flooring.hardwood.supply.lm" as const;
+export const FLOORING_FINISH_WASTE_COMPONENT = "flooring.finish.waste_increment" as const;
+export const FLOORING_FINISH_ANCILLARY_COMPONENT = "flooring.finish.ancillary" as const;
+export const FLOORING_WASTE_INCREMENT_CATEGORY = "FLOORING_WASTE_INCREMENT" as const;
+export const FLOORING_WASTE_UNRESOLVED_CATEGORY = "FLOORING_WASTE_UNRESOLVED" as const;
+export const FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2 =
+  "flooring.vinyl_plank.adhesive_accessories.m2" as const;
+export const FLOORING_TILE_ADHESIVE_GROUT_M2 =
+  "flooring.tile.adhesive_grout.m2" as const;
+export const FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2 =
+  "flooring.hardwood.adhesive_fixings.m2" as const;
+export const FLOORING_CARPET_ACCESSORIES_M2 =
+  "flooring.carpet.accessories.m2" as const;
 
 const TILE_COUNT_EPSILON = 1e-12;
 
@@ -137,6 +149,25 @@ export function resolveFlooringSupply(params: {
   }
 
   return { kind: "none", netM2 };
+}
+
+/** Extra purchase only. The net quantity stays with the package or installation. */
+export function flooringWasteExtra(
+  purchasing: FlooringSupplyMeasure
+): { quantity: number; unit: string } | null {
+  if (purchasing.kind === "area") {
+    const quantity = round2(purchasing.supplyM2 - purchasing.netM2);
+    return quantity > 0 ? { quantity, unit: "m2" } : null;
+  }
+  if (purchasing.kind === "tiles") {
+    const quantity = purchasing.supplyTiles - purchasing.netTiles;
+    return quantity > 0 ? { quantity, unit: "each" } : null;
+  }
+  if (purchasing.kind === "lineal") {
+    const quantity = round2(purchasing.supplyLinealM - purchasing.netLinealM);
+    return quantity > 0 ? { quantity, unit: "lm" } : null;
+  }
+  return null;
 }
 
 /** Separate pricing still needs a supply quantity when no waste was stated. */
