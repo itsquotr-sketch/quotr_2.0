@@ -697,6 +697,9 @@ function applyGlobalConstraints(
     portion.framing_required = false;
     portion.framing_required_authority = "extracted";
   }
+  if (/\b(?:exclud\w*|no|without)\b[^.]{0,40}\bskirting replacement\b/.test(raw)) {
+    portion.skirting_replacement_excluded = true;
+  }
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {

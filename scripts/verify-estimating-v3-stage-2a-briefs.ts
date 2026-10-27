@@ -82,11 +82,20 @@ check("partition has one doors area", partitionTypes.filter((type) => type === "
 check("partition length 6", partitionWall?.length_lm === 6, partitionWall);
 check("partition height 2.4", partitionWall?.height_m === 2.4, partitionWall);
 check("partition lining both sides", partitionWall?.same_lining_both_sides === true, partitionWall);
-const partitionSide = partitionWall?.side_a as { product?: string } | undefined;
+const partitionSide = partitionWall?.side_a as {
+  product?: string;
+  thickness_mm?: number;
+  thickness_source?: string;
+} | undefined;
 check(
   "partition plasterboard",
   partitionSide?.product === "standard_gib",
   partitionWall
+);
+check(
+  "partition 13 mm is an assumed default",
+  partitionSide?.thickness_mm === 13 && partitionSide?.thickness_source === "assumed_disclosed",
+  partitionSide
 );
 check("partition insulation included", partitionWall?.insulation_included === true, partitionWall);
 check(
@@ -154,6 +163,11 @@ check("flooring removal on every room", rooms.every((row) => row.finish_removal_
 check("underlay on carpet only", byLabel("Bedroom 1")?.underlay_required === true && byLabel("Bedroom 2")?.underlay_required === true && byLabel("Hallway")?.underlay_required !== true, rooms);
 check("transitions and waste retained", rooms.every((row) => row.transitions_required === true && row.waste_percent === 10), rooms);
 check("major repairs excluded", rooms.every((row) => row.framing_required === false), rooms);
+check(
+  "skirting replacement exclusion is stored",
+  rooms.every((row) => row.skirting_replacement_excluded === true),
+  rooms.map((row) => row.skirting_replacement_excluded)
+);
 check("flooring has no bathroom", !flooringTypes.includes("bathroom"), flooringTypes);
 
 const flooringPhysical = calculateFlooringPhysical({
@@ -177,8 +191,9 @@ const commercial = commercializeFlooring({
 check(
   "waste and transitions stay visible and unpriced",
   commercial.missingInfo.some((row) => row.includes("10% waste")) &&
-    commercial.missingInfo.some((row) => row.includes("Transition strips")),
-  commercial.missingInfo
+    commercial.missingInfo.some((row) => row.includes("Transition strips")) &&
+    commercial.completeness !== "COMPLETE_COMMERCIAL",
+  { missing: commercial.missingInfo, completeness: commercial.completeness }
 );
 
 const officePhysical = calculateFlooringPhysical({

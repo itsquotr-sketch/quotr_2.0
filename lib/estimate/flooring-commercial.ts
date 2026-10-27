@@ -847,6 +847,9 @@ function rollupCompleteness(
   if (requirements.some((row) => !row.priced)) {
     return FLOORING_COMMERCIAL_COMPLETENESS.PRICING_REQUIRED;
   }
+  if (physical.missingInfo.some((row) => /waste is recorded/i.test(row))) {
+    return FLOORING_COMMERCIAL_COMPLETENESS.INFORMATION_REQUIRED;
+  }
   return FLOORING_COMMERCIAL_COMPLETENESS.COMPLETE_COMMERCIAL;
 }
 

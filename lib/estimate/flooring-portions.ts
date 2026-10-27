@@ -186,6 +186,8 @@ export type FlooringPortion = {
   waste_percent?: number | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
+  /** Explicit exclusion. Absence of a skirting work area is not this record. */
+  skirting_replacement_excluded?: boolean | null;
   other_description: string | null;
   specialist_kind: FlooringSpecialistKind | null;
   finish_authority?: FlooringFieldAuthority;
@@ -746,6 +748,8 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
         ? value.waste_percent
         : null,
     transitions_required: parseTriBool(value.transitions_required),
+    skirting_replacement_excluded:
+      value.skirting_replacement_excluded === true ? true : null,
     other_description: parseFlooringOtherDescription(value.other_description),
     specialist_kind: parseFlooringSpecialistKind(value.specialist_kind),
     finish_authority: parseFieldAuthority(value.finish_authority),

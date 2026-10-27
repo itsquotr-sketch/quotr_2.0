@@ -385,6 +385,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       const thicknessOptions = liningThicknessOptionsForProduct(sideAProduct);
       const lengthOptions = liningSheetLengthOptionsForProduct(sideAProduct);
       if (thicknessOptions.length > 0) {
+        const assumedA =
+          active?.side_a.thickness_source === "assumed_disclosed" &&
+          active.side_a.thickness_mm != null
+            ? `${active.side_a.thickness_mm} mm (assumed default)`
+            : null;
         out.push(
           candidate({
             workAreaId,
@@ -393,7 +398,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             label: "Side A thickness",
             question: "What lining thickness is on Side A?",
             inputType: "select",
-            options: thicknessOptions,
+            options: assumedA
+              ? thicknessOptions.map((option) =>
+                  option === `${active?.side_a.thickness_mm} mm` ? assumedA : option
+                )
+              : thicknessOptions,
             currentValue: wallTypeFieldCurrentValue(
               active,
               "internal_walls.wall_type.side_a_thickness_mm"
@@ -485,6 +494,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         const thicknessOptionsB = liningThicknessOptionsForProduct(sideBProduct);
         const lengthOptionsB = liningSheetLengthOptionsForProduct(sideBProduct);
         if (thicknessOptionsB.length > 0) {
+          const assumedB =
+            active.side_b.thickness_source === "assumed_disclosed" &&
+            active.side_b.thickness_mm != null
+              ? `${active.side_b.thickness_mm} mm (assumed default)`
+              : null;
           out.push(
             candidate({
               workAreaId,
@@ -493,7 +507,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
               label: "Side B thickness",
               question: "What lining thickness is on Side B?",
               inputType: "select",
-              options: thicknessOptionsB,
+              options: assumedB
+                ? thicknessOptionsB.map((option) =>
+                    option === `${active.side_b.thickness_mm} mm` ? assumedB : option
+                  )
+                : thicknessOptionsB,
               currentValue: wallTypeFieldCurrentValue(
                 active,
                 "internal_walls.wall_type.side_b_thickness_mm"

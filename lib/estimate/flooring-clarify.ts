@@ -319,6 +319,9 @@ export function summariseFlooringPortion(
   if (portion.transitions_required === true) {
     extras.push("Transition strips requested, unpriced");
   }
+  if (portion.skirting_replacement_excluded === true) {
+    extras.push("Skirting replacement excluded");
+  }
   if (portion.framing_required === false) {
     extras.push("Major subfloor repairs excluded");
   }

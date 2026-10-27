@@ -260,6 +260,8 @@ export type InternalWallsFace = {
   material_family: InternalWallsMaterialFamily | null;
   product: InternalWallsLiningProduct | null;
   thickness_mm: number | null;
+  /** Known when the brief or the user stated millimetres. Assumed when the product default was applied. */
+  thickness_source?: "known" | "assumed_disclosed" | null;
   sheet_length_mm: number | null;
   sheet_length_source?: "recommended" | "override" | null;
   layers: number | null;
@@ -395,6 +397,7 @@ function emptyFace(): InternalWallsFace {
     material_family: null,
     product: null,
     thickness_mm: null,
+    thickness_source: null,
     sheet_length_mm: null,
     sheet_length_source: null,
     layers: null,
@@ -732,6 +735,10 @@ function parseFace(value: unknown): InternalWallsFace {
       materialFamilyForProduct(product),
     product,
     thickness_mm: parsePositiveNumber(value.thickness_mm),
+    thickness_source:
+      value.thickness_source === "known" || value.thickness_source === "assumed_disclosed"
+        ? value.thickness_source
+        : null,
     sheet_length_mm: parsePositiveNumber(value.sheet_length_mm),
     sheet_length_source:
       value.sheet_length_source === "override" ||
@@ -959,6 +966,7 @@ function applyLiningDefaults(
     face.material_family = materialFamilyForProduct(face.product);
     if (face.thickness_mm == null) {
       face.thickness_mm = defaultThicknessMmForProduct(face.product);
+      face.thickness_source = face.thickness_mm != null ? "assumed_disclosed" : null;
     }
     if (face.sheet_length_mm == null && face.material_family === "plasterboard") {
       const recommended = recommendedSheetLengthMmForProduct(face.product, heightM);
@@ -1118,7 +1126,11 @@ export function summariseWallType(
   ) {
     const product = liningProductDisplay(type.side_a.product) ?? "Lined";
     const thickness =
-      type.side_a.thickness_mm != null ? `${type.side_a.thickness_mm} mm ` : "";
+      type.side_a.thickness_mm == null
+        ? ""
+        : type.side_a.thickness_source === "assumed_disclosed"
+          ? `${type.side_a.thickness_mm} mm (assumed default) `
+          : `${type.side_a.thickness_mm} mm `;
     const layers =
       type.side_a.layers != null && type.side_a.layers > 1
         ? ` · ${type.side_a.layers} layers`
@@ -1747,12 +1759,20 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_a.product = product;
         type.side_a.lined = product != null;
-        type.side_a.thickness_mm = isLiningThicknessSupported(
+        const keptThickness = isLiningThicknessSupported(
           product,
           previous.thickness_mm
         )
           ? previous.thickness_mm
-          : defaultThicknessMmForProduct(product);
+          : null;
+        type.side_a.thickness_mm =
+          keptThickness ?? defaultThicknessMmForProduct(product);
+        type.side_a.thickness_source =
+          keptThickness != null
+            ? previous.thickness_source ?? "known"
+            : type.side_a.thickness_mm != null
+              ? "assumed_disclosed"
+              : null;
         if (
           previous.sheet_length_source === "override" &&
           previous.sheet_length_mm != null &&
@@ -1770,6 +1790,15 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_a_thickness_mm") {
         type.side_a.thickness_mm = parseMillimetreOption(params.value);
+        type.side_a.thickness_source =
+          type.side_a.thickness_mm == null
+            ? null
+            : String(params.value).toLowerCase().includes("assumed")
+              ? "assumed_disclosed"
+              : "known";
+        if (type.same_lining_both_sides === true) {
+          type.side_b = cloneFace(type.side_a);
+        }
         return;
       }
       if (field === "side_a_sheet_length_mm") {
@@ -1796,12 +1825,20 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
-        type.side_b.thickness_mm = isLiningThicknessSupported(
+        const keptThicknessB = isLiningThicknessSupported(
           product,
           previous.thickness_mm
         )
           ? previous.thickness_mm
-          : defaultThicknessMmForProduct(product);
+          : null;
+        type.side_b.thickness_mm =
+          keptThicknessB ?? defaultThicknessMmForProduct(product);
+        type.side_b.thickness_source =
+          keptThicknessB != null
+            ? previous.thickness_source ?? "known"
+            : type.side_b.thickness_mm != null
+              ? "assumed_disclosed"
+              : null;
         if (
           previous.sheet_length_source === "override" &&
           previous.sheet_length_mm != null &&
@@ -1820,6 +1857,12 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_b_thickness_mm") {
         type.side_b.thickness_mm = parseMillimetreOption(params.value);
+        type.side_b.thickness_source =
+          type.side_b.thickness_mm == null
+            ? null
+            : String(params.value).toLowerCase().includes("assumed")
+              ? "assumed_disclosed"
+              : "known";
         type.same_lining_both_sides = false;
         return;
       }
@@ -2211,7 +2254,9 @@ export function wallTypeFieldCurrentValue(
       return liningProductDisplay(type.side_a.product);
     case "internal_walls.wall_type.side_a_thickness_mm":
       return type.side_a.thickness_mm != null
-        ? `${type.side_a.thickness_mm} mm`
+        ? type.side_a.thickness_source === "assumed_disclosed"
+          ? `${type.side_a.thickness_mm} mm (assumed default)`
+          : `${type.side_a.thickness_mm} mm`
         : null;
     case "internal_walls.wall_type.side_a_sheet_length_mm":
       return type.side_a.sheet_length_mm != null
@@ -2227,7 +2272,9 @@ export function wallTypeFieldCurrentValue(
       return liningProductDisplay(type.side_b.product);
     case "internal_walls.wall_type.side_b_thickness_mm":
       return type.side_b.thickness_mm != null
-        ? `${type.side_b.thickness_mm} mm`
+        ? type.side_b.thickness_source === "assumed_disclosed"
+          ? `${type.side_b.thickness_mm} mm (assumed default)`
+          : `${type.side_b.thickness_mm} mm`
         : null;
     case "internal_walls.wall_type.side_b_sheet_length_mm":
       return type.side_b.sheet_length_mm != null

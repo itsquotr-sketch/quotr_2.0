@@ -518,7 +518,7 @@ export function JobPlanWorkAreaCardView({
         </section>
       ) : null}
 
-      {editOpen && card.notIncluded.length > 0 ? (
+      {card.notIncluded.length > 0 ? (
         <section
           className="mt-3"
           data-job-plan-excluded

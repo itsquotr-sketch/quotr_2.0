@@ -96,7 +96,12 @@ function liningPhrase(type: InternalWallsWallType): string | null {
       ? "fibre-cement"
       : liningProductDisplay(face.product);
   const product = named ?? "lining";
-  const thickness = face.thickness_mm != null ? `${face.thickness_mm} mm ` : "";
+  const thickness =
+    face.thickness_mm == null
+      ? ""
+      : face.thickness_source === "assumed_disclosed"
+        ? `${face.thickness_mm} mm (assumed default) `
+        : `${face.thickness_mm} mm `;
   const sides = same && linedA && linedB ? "to both sides" : linedA && linedB ? "to both faces" : "to one side";
   return `${thickness}${product} ${sides}`;
 }
