@@ -43,6 +43,16 @@ The four reserved variants, one live call each: both deck wordings stored Deck o
 
 Deterministic checks: `verify-estimating-v3-stage-2b.ts` 25 passed, including a Preview persist and delete of the unresolved 20 / 32 portion. `verify-estimating-v3-stage-2a-briefs.ts` 45 passed. `verify-analyse-job-flow.ts` 51 passed. `verify-bathroom-ceiling-lining-01.ts` passed. `verify-flooring-02-extraction-details.ts` is 91 passed and 4 failed, the same four reanalysis checks that already fail on `f45eaedf`. Check 24 now expects the disagreeing 24 m² and 5 × 4 m to stay unresolved.
 
+## Acceptance
+
+The first live sample is incomplete. Credits stopped it after the partition (3), the office (3), one three-room run, and one elevated-deck smoke. That is not a paired before/after for all eight briefs. The 24 runs below were taken after the correction.
+
+Choosing length × width on the isolated Preview conflict project stored `area_input_method: length_width` with `area_method_authority: user`, and kept 5 m, 4 m, and 32 m². Details became Ready. The generated Flooring line is `20 m² × $95/m²`. Choosing the stated area on a separate persisted project reloads at 32 m². Waste stays off the priced quantity (`wasteFactor` 0). Finish, label, and the unused measurement stay as they were.
+
+A mixed brief with external hardwood decking and lounge hardwood flooring keeps both Deck and Flooring. The lounge portion stays hardwood at 18 m². A deck-only brief still does not open Flooring.
+
+The work card follows the chosen basis. Length × width reads “5 × 4 m measures 20 m²; stated 32 m² kept”. The stated choice reads “32 m² stated; 5 × 4 m measures 20 m² kept”.
+
 ## Still open
 
 These were graded and left for a later slice. They are not described here as missing recognition when the fact was stored.

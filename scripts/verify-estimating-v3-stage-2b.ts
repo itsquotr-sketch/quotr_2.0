@@ -12,13 +12,20 @@ import { createClient } from "@supabase/supabase-js";
 
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { summariseFlooringPortion } from "../lib/estimate/flooring-clarify";
 import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
-import { physicalNetAreaM2 } from "../lib/estimate/flooring-physical";
 import {
+  calculateFlooringPortionPhysical,
+  physicalNetAreaM2,
+} from "../lib/estimate/flooring-physical";
+import {
+  applyFlooringFactWrite,
   flooringAreaMeasuresDisagree,
   parseFlooringPortions,
 } from "../lib/estimate/flooring-portions";
+import { filterTopLevelWorkAreas } from "../lib/work-areas/ownership";
+import type { EstimateFact } from "../lib/estimate/types";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
 import {
   STAGE_2A_CONFLICTING_FLOORING_AREA_BRIEF,
@@ -211,6 +218,175 @@ check(
     !flooringAreaMeasuresDisagree(hardwoodPortion)
 );
 
+const mixedJob = analyse(
+  "Replace the external hardwood decking on a 4 m by 2.5 m rear deck, 800 mm above ground. No balustrade. Supply and lay hardwood flooring in the lounge, 18 m². The lounge is 4.5 m by 4 m. No floor removal."
+);
+const mixedFiltered = filterTopLevelWorkAreas({
+  briefText:
+    "Replace the external hardwood decking on a 4 m by 2.5 m rear deck, 800 mm above ground. No balustrade. Supply and lay hardwood flooring in the lounge, 18 m². The lounge is 4.5 m by 4 m. No floor removal.",
+  workAreas: [
+    { type: "deck" },
+    { type: "flooring" },
+  ],
+});
+const mixedFloor = portionsOf(mixedJob)[0];
+check(
+  "mixed deck and lounge floor keeps both",
+  typesOf(mixedJob).includes("deck") && typesOf(mixedJob).includes("flooring"),
+  typesOf(mixedJob)
+);
+check(
+  "decking in the brief does not remove the lounge floor",
+  mixedFiltered.workAreas.some((row) => row.type === "flooring") &&
+    mixedFiltered.workAreas.some((row) => row.type === "deck")
+);
+check(
+  "lounge hardwood stays a floor beside the deck",
+  mixedFloor?.label === "Lounge" &&
+    mixedFloor.finish_type === "hardwood" &&
+    mixedFloor.area_m2 === 18 &&
+    mixedFloor.area_input_method === "direct_m2" &&
+    !flooringAreaMeasuresDisagree(mixedFloor)
+);
+
+function asFacts(
+  facts: ReturnType<typeof analyse>["facts"]
+): EstimateFact[] {
+  return facts.map((row) => ({
+    key: row.key,
+    value: row.value,
+    work_area_id: row.work_area_id,
+    source: "ai_extracted",
+  }));
+}
+
+function chooseArea(
+  result: ReturnType<typeof analyse>,
+  method: "length_width" | "direct_m2"
+) {
+  const workAreaId = result.workAreas[0]!.id;
+  const portionId = portionsOf(result)[0]!.id;
+  let facts = asFacts(result.facts);
+  const writes: Array<[string, unknown]> = [
+    ["flooring.portion.area_input_method", method],
+    ["flooring.portion.floor_preparation_required", false],
+    ["flooring.portion.substrate_required", false],
+    ["flooring.portion.framing_required", false],
+    ["flooring.portion.finish_removal_required", false],
+  ];
+  for (const [key, value] of writes) {
+    facts = applyFlooringFactWrite({
+      facts,
+      workAreaId,
+      key,
+      value,
+      nestedItemId: portionId,
+      factSource: "user",
+    });
+  }
+  return { facts, workAreaId, portionId };
+}
+
+function generatedNet(facts: EstimateFact[], workAreaId: string) {
+  const portion = parseFlooringPortions(
+    facts.find((row) => row.key === "flooring.portions")?.value
+  )[0]!;
+  const calculated = calculateFlooringPortionPhysical({
+    workArea: { id: workAreaId, type: "flooring", name: "Flooring" },
+    portion,
+  });
+  const quantities = calculated.requirements.flatMap((row) => {
+    if ("purchaseQuantity" in row && typeof row.purchaseQuantity === "number") {
+      return [row.purchaseQuantity];
+    }
+    if ("baseQuantity" in row && typeof row.baseQuantity === "number") {
+      return [row.baseQuantity];
+    }
+    return [];
+  });
+  return { portion, calculated, quantities };
+}
+
+const measured = chooseArea(conflict, "length_width");
+const measuredResult = generatedNet(measured.facts, measured.workAreaId);
+check(
+  "dimension choice is ready at 20 m²",
+  measuredResult.calculated.portion.completeness === "COMPLETE_PHYSICAL" &&
+    measuredResult.calculated.portion.physicalNetAreaM2 === 20 &&
+    measuredResult.quantities.length > 0 &&
+    measuredResult.quantities.every((qty) => qty === 20),
+  {
+    completeness: measuredResult.calculated.portion.completeness,
+    net: measuredResult.calculated.portion.physicalNetAreaM2,
+    quantities: measuredResult.quantities,
+  }
+);
+check(
+  "dimension choice keeps both original measures",
+  measuredResult.portion.area_m2 === 32 &&
+    measuredResult.portion.length_m === 5 &&
+    measuredResult.portion.width_m === 4 &&
+    measuredResult.portion.area_input_method === "length_width" &&
+    measuredResult.portion.area_method_authority === "user" &&
+    measuredResult.portion.finish_type === conflictPortion?.finish_type &&
+    measuredResult.portion.waste_percent === conflictPortion?.waste_percent &&
+    measuredResult.portion.label === conflictPortion?.label,
+  {
+    finish: measuredResult.portion.finish_type,
+    waste: measuredResult.portion.waste_percent,
+    label: measuredResult.portion.label,
+    area: measuredResult.portion.area_m2,
+    beforeWaste: conflictPortion?.waste_percent,
+  }
+);
+
+const stated = chooseArea(conflict, "direct_m2");
+const statedResult = generatedNet(stated.facts, stated.workAreaId);
+check(
+  "stated-area choice is ready at 32 m²",
+  statedResult.calculated.portion.completeness === "COMPLETE_PHYSICAL" &&
+    statedResult.calculated.portion.physicalNetAreaM2 === 32 &&
+    statedResult.quantities.length > 0 &&
+    statedResult.quantities.every((qty) => qty === 32),
+  {
+    net: statedResult.calculated.portion.physicalNetAreaM2,
+    quantities: statedResult.quantities,
+  }
+);
+check(
+  "stated-area choice keeps the room dimensions",
+  statedResult.portion.length_m === 5 &&
+    statedResult.portion.width_m === 4 &&
+    statedResult.portion.area_m2 === 32 &&
+    statedResult.portion.area_method_authority === "user" &&
+    statedResult.portion.waste_percent === conflictPortion?.waste_percent &&
+    statedResult.portion.finish_type === conflictPortion?.finish_type
+);
+check(
+  "dimension choice is what the card shows",
+  /5 × 4 m measures 20 m²/.test(
+    summariseFlooringPortion(measuredResult.portion, 0).summary
+  ) &&
+    /stated 32 m² kept/.test(
+      summariseFlooringPortion(measuredResult.portion, 0).summary
+    )
+);
+check(
+  "stated choice is what the card shows",
+  /32 m² stated/.test(summariseFlooringPortion(statedResult.portion, 0).summary) &&
+    /5 × 4 m measures 20 m² kept/.test(
+      summariseFlooringPortion(statedResult.portion, 0).summary
+    )
+);
+check(
+  "waste does not change the selected net",
+  measuredResult.quantities.every((qty) => qty === 20) &&
+    statedResult.quantities.every((qty) => qty === 32) &&
+    !measuredResult.calculated.requirements.some(
+      (row) => "wasteFactor" in row && row.wasteFactor !== 0
+    )
+);
+
 function loadEnv(filePath: string) {
   const text = readFileSync(filePath, "utf8");
   const env: Record<string, string> = {};
@@ -358,6 +534,105 @@ async function persistRoundTrip() {
       "reloaded details still ask the conflict",
       required.some((row) => /which area should the quote use/i.test(row.question))
     );
+
+    for (const method of ["length_width", "direct_m2"] as const) {
+      const expected = method === "length_width" ? 20 : 32;
+      const chosenId = randomUUID();
+      await admin.from("projects").insert({
+        id: chosenId,
+        org_id: orgId,
+        created_by: userId,
+        title: `Stage 2B conflict ${method}`,
+        brief_text: STAGE_2A_CONFLICTING_FLOORING_AREA_BRIEF,
+        stage: "work_area_questions",
+      });
+      const chosenArea = randomUUID();
+      const chosenAreaInsert = await admin.from("work_areas").insert({
+        id: chosenArea,
+        org_id: orgId,
+        project_id: chosenId,
+        type: "flooring",
+        name: "Flooring",
+        status: "suggested",
+        sort_order: 1,
+      });
+      check(
+        `${method} work area persists`,
+        !chosenAreaInsert.error,
+        chosenAreaInsert.error?.message
+      );
+      const baseFacts: EstimateFact[] = [
+        {
+          key: "flooring.portions",
+          value: read.data?.value,
+          work_area_id: chosenArea,
+          source: "ai_extracted",
+        },
+      ];
+      const portionId = parseFlooringPortions(read.data?.value)[0]!.id;
+      let next = baseFacts;
+      for (const [key, value] of [
+        ["flooring.portion.area_input_method", method],
+        ["flooring.portion.floor_preparation_required", false],
+        ["flooring.portion.substrate_required", false],
+        ["flooring.portion.framing_required", false],
+        ["flooring.portion.finish_removal_required", false],
+      ] as const) {
+        next = applyFlooringFactWrite({
+          facts: next,
+          workAreaId: chosenArea,
+          key,
+          value,
+          nestedItemId: portionId,
+          factSource: "user",
+        });
+      }
+      const saved = await admin.from("project_facts").insert({
+        org_id: orgId,
+        project_id: chosenId,
+        work_area_id: chosenArea,
+        key: "flooring.portions",
+        label: "Flooring areas",
+        value: next.find((row) => row.key === "flooring.portions")?.value,
+        source: "user",
+        confidence: 1,
+      });
+      check(`${method} resolution persists`, !saved.error, saved.error?.message);
+      const reloadedChoice = await admin
+        .from("project_facts")
+        .select("value")
+        .eq("project_id", chosenId)
+        .eq("key", "flooring.portions")
+        .single();
+      const generated = generatedNet(
+        [
+          {
+            key: "flooring.portions",
+            value: reloadedChoice.data?.value,
+            work_area_id: chosenArea,
+            source: "user",
+          },
+        ],
+        chosenArea
+      );
+      check(
+        `${method} reload uses ${expected} m²`,
+        generated.portion.area_m2 === 32 &&
+          generated.portion.length_m === 5 &&
+          generated.portion.width_m === 4 &&
+          generated.portion.waste_percent === stored[0]?.waste_percent &&
+          generated.portion.finish_type === stored[0]?.finish_type &&
+          generated.portion.label === stored[0]?.label &&
+          generated.portion.area_method_authority === "user" &&
+          generated.calculated.portion.physicalNetAreaM2 === expected &&
+          generated.quantities.every((qty) => qty === expected),
+        {
+          net: generated.calculated.portion.physicalNetAreaM2,
+          quantities: generated.quantities,
+          waste: generated.portion.waste_percent,
+        }
+      );
+    }
   } finally {
     await admin.from("project_facts").delete().eq("org_id", orgId);
     await admin.from("work_areas").delete().eq("org_id", orgId);
