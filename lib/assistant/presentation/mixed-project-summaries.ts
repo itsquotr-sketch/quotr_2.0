@@ -91,10 +91,11 @@ function liningPhrase(type: InternalWallsWallType): string | null {
       type.side_a.product === type.side_b.product &&
       type.side_a.thickness_mm === type.side_b.thickness_mm);
   const face = same || linedA ? type.side_a : type.side_b;
-  const product =
+  const named =
     face.product === "fibre_cement"
       ? "fibre-cement"
-      : liningProductDisplay(face.product) ?? "plasterboard";
+      : liningProductDisplay(face.product);
+  const product = named ?? "lining";
   const thickness = face.thickness_mm != null ? `${face.thickness_mm} mm ` : "";
   const sides = same && linedA && linedB ? "to both sides" : linedA && linedB ? "to both faces" : "to one side";
   return `${thickness}${product} ${sides}`;
@@ -102,7 +103,17 @@ function liningPhrase(type: InternalWallsWallType): string | null {
 
 function selectedExtras(type: InternalWallsWallType): string[] {
   const extras: string[] = [];
-  if (type.insulation_included === true) extras.push("insulation");
+  if (type.insulation_included === true) {
+    extras.push(
+      type.insulation_type === "acoustic"
+        ? "acoustic insulation"
+        : type.insulation_type === "thermal"
+          ? "thermal insulation"
+          : type.insulation_type === "fire_acoustic"
+            ? "fire and acoustic insulation"
+            : "insulation"
+    );
+  }
   if (type.skirting != null && type.skirting !== "none") extras.push("skirting");
   return extras;
 }
@@ -133,8 +144,16 @@ export function internalWallsKnownSentence(
   const fibreCement =
     type.side_a.product === "fibre_cement" || type.side_b.product === "fibre_cement";
   const extras = selectedExtras(type);
+  const unnamedLining =
+    type.side_a.product == null && type.side_b.product == null;
   const included = [
-    lined ? (fibreCement ? "fibre-cement lining" : "plasterboard lining") : null,
+    lined
+      ? fibreCement
+        ? "fibre-cement lining"
+        : unnamedLining
+          ? "lining"
+          : "plasterboard lining"
+      : null,
     ...extras,
   ].filter((part): part is string => Boolean(part));
   const including = joinIncluding(included);

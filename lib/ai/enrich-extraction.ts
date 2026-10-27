@@ -556,6 +556,16 @@ function inferInternalWalls(
     });
   }
 
+  const paintingStance = internalWallsTopicStance(brief, "painting");
+  if (paintingStance) {
+    upsertFact(extraction, {
+      workAreaType: "internal_walls",
+      key: "internal_walls.painting_included",
+      label: "Painting",
+      value: paintingStance === "included",
+    });
+  }
+
   if (includesAny(brief, ["skirting"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -631,7 +641,7 @@ function inferInternalWalls(
         value: proposedHeight,
       });
     }
-    if (includesAny(brief, ["gib", "plasterboard", "both sides"])) {
+    if (includesAny(brief, ["gib", "plasterboard"])) {
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId,
@@ -646,6 +656,19 @@ function inferInternalWalls(
           value: true,
         });
       }
+    } else if (includesAny(brief, ["both sides", "line both sides"])) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.side_a_lined",
+        value: "Lined",
+      });
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.same_lining_both_sides",
+        value: true,
+      });
     }
     const wallTypes = facts.find((row) => row.key === "internal_walls.wall_types")?.value;
     if (Array.isArray(wallTypes) && wallTypes.length > 0) {

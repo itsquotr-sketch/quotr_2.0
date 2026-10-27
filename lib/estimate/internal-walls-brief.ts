@@ -957,6 +957,15 @@ export function applyExtractedInternalWallsToFacts(params: {
       face: spec.sideA,
     });
     if (spec.sameLiningBothSides === true) {
+      if (!spec.sideA.product) {
+        facts = applyInternalWallsFactWrite({
+          facts,
+          workAreaId: params.workAreaId,
+          wallTypeId,
+          key: "internal_walls.wall_type.side_a_lined",
+          value: "Lined",
+        });
+      }
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId: params.workAreaId,

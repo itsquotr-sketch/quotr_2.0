@@ -110,7 +110,7 @@ const officeNote = String(fact(office, "internal_walls.coverage_note")?.value ??
 
 check("office walls 24lm", officeWall?.length_lm === 24, officeWall);
 check("office walls 2.7m", officeWall?.height_m === 2.7, officeWall);
-check("office lining both sides", officeWall?.same_lining_both_sides === true, officeWall);
+check("office lining both sides", officeWall?.same_lining_both_sides === true && officeWall?.side_a.lined === true && officeWall?.side_a.product == null, officeWall);
 check("office acoustic insulation", officeWall?.insulation_included === true && officeWall?.insulation_type === "acoustic", officeWall);
 check("office six door sets", officeDoors.length === 1 && officeDoors[0]?.quantity === 6, officeDoors);
 check(
@@ -122,7 +122,11 @@ check("office carpet tile area 120", officeFloors[0]?.area_m2 === 120, officeFlo
 check("office no flooring removal", officeFloors[0]?.finish_removal_required === false, officeFloors);
 check("office skirting included without a side", officeWall?.skirting == null, officeWall);
 check("office skirting length 45", fact(office, "internal_walls.skirting_length_lm")?.value === 45, fact(office, "internal_walls.skirting_length_lm"));
-check("office painting included without a side", officeWall?.painting == null, officeWall);
+check(
+  "office painting included without a side",
+  officeWall?.painting == null && fact(office, "internal_walls.painting_included")?.value === true,
+  fact(office, "internal_walls.painting_included")
+);
 check("office electrical excluded", officeWall?.electrical === "none", officeWall);
 check("office occupied", office.constraints.some((row) => row.key === "occupied_site" && row.value === "Yes"), office.constraints);
 check("office protection", office.constraints.some((row) => row.key === "protection_dust_control" && row.value === "Yes"), office.constraints);

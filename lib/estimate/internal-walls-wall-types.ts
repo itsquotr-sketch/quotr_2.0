@@ -1726,11 +1726,19 @@ export function applyInternalWallsFactWrite(params: {
           normalised === "not_included" ||
           normalised === "not included";
         type.same_lining_both_sides = yes ? true : no ? false : null;
+        if (type.same_lining_both_sides === true) {
+          type.side_b = cloneFace(type.side_a);
+        }
         return;
       }
       if (field === "side_a_lined") {
         const lined = parseLinedFlag(params.value);
-        if (lined != null) type.side_a.lined = lined;
+        if (lined != null) {
+          type.side_a.lined = lined;
+          if (type.same_lining_both_sides === true) {
+            type.side_b = cloneFace(type.side_a);
+          }
+        }
         return;
       }
       if (field === "side_a_product") {
