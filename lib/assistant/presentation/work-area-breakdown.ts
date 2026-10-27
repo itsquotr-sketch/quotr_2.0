@@ -17,6 +17,7 @@ import {
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
 import { scopeReviewDisplay, parseScopeReview, deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 
 export const WORK_AREA_PRICING_EXPLANATION =
@@ -174,6 +175,11 @@ function presentLine(
   const pricingRequired = lineIsPricingRequired(line, group);
   const hideCost = pricingRequired || Boolean(group?.costHidden) || line.recommendedCost <= 0;
   const review = parseScopeReview(line.sourceLine.notes);
+  const parsedNotes = parseLineItemNotes(line.sourceLine.notes);
+  const ownership =
+    parsedNotes.metadata.identitySummary ?? parsedNotes.displayNotes ?? null;
+  const ownershipNote =
+    ownership && ownership.includes("Quantity basis:") ? ownership : null;
   const labour = line.sourceLine.category === "labour";
   const hourlyCost =
     labour && line.costRate != null && line.costRate > 0
@@ -210,7 +216,7 @@ function presentLine(
     total: hideCost ? null : formatCurrency(line.recommendedCost),
     source: sourceLabel(line, pricingRequired),
     pricingRequired,
-    reviewNote: scopeReviewDisplay(line.sourceLine.notes),
+    reviewNote: scopeReviewDisplay(line.sourceLine.notes) ?? ownershipNote,
     reviewFactKey: review?.factKey ?? null,
     reviewValue: review?.value ?? null,
     reviewJobFactKey: review?.jobFactKey ?? null,

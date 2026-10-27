@@ -271,6 +271,9 @@ function PricingItemRowComponent({
       {line.supporting ? (
         <p className="truncate text-xs text-muted-foreground">{line.supporting}</p>
       ) : null}
+      {line.specification?.includes("Quantity basis:") ? (
+        <p className="text-sm leading-5">{line.specification}</p>
+      ) : null}
       {supplierPrice?.replaces && supplierPrice.replaces.length > 0 ? (
         <details className="mt-1">
           <summary className="cursor-pointer text-xs">Replaces {supplierPrice.replaces.map((item) => item.label).join(", ")}</summary>

@@ -173,8 +173,8 @@ function LineRows({
         <span>Description</span>
         <span className="text-right">Quantity</span>
         <span className="text-right">Unit</span>
-        <span className="text-right">Rate</span>
-        <span className="text-right">Total</span>
+        <span className="text-right">Internal unit cost</span>
+        <span className="text-right">Direct cost</span>
         <span>Source</span>
       </div>
       <ul>
@@ -191,7 +191,7 @@ function LineRows({
             {line.hourlyCost ? (
               <Field label="Hourly cost" value={line.hourlyCost} />
             ) : (
-              <Field label="Rate" value={line.rate ?? "—"} />
+              <Field label="Internal unit cost" value={line.rate ?? "—"} />
             )}
             {line.productivity ? (
               <Field label="Productivity" value={line.productivity} />
@@ -199,7 +199,7 @@ function LineRows({
             {line.projectedHours ? (
               <Field label="Projected hours" value={line.projectedHours} />
             ) : null}
-            <Field label="Total" value={line.total ?? "—"} />
+            <Field label="Direct cost" value={line.total ?? "—"} />
             {line.source ? (
               <div className="min-w-0 lg:text-left">
                 <p className="text-sm text-foreground/70 lg:sr-only">Source</p>

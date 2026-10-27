@@ -107,7 +107,13 @@ function formatHours(hours: number): string {
 
 export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   const view = pricingItemViewModel(item);
-  const { metadata } = parseLineItemNotes(item.notes_internal);
+  const parsedNotes = parseLineItemNotes(item.notes_internal);
+  const { metadata } = parsedNotes;
+  const identitySummary =
+    metadata.identitySummary ??
+    (parsedNotes.displayNotes?.includes("Quantity basis:")
+      ? parsedNotes.displayNotes
+      : null);
   const manual = item.source_estimate_line_item_id == null;
   const labour =
     item.item_type === "labour" || item.calculation_mode === "productivity_labour";
@@ -124,7 +130,7 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
     : null;
   const identity = labour
     ? null
-    : splitStoredIdentity(item.client_label, metadata.identitySummary ?? null);
+    : splitStoredIdentity(item.client_label, identitySummary);
   const labourIdentity = labour ? labourRateIdentity(metadata.itemKey) : null;
   const generic =
     identity != null &&
@@ -175,7 +181,7 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   return {
     title,
     supporting,
-    specification: identity?.specification ?? metadata.identitySummary ?? null,
+    specification: identity?.specification ?? identitySummary,
     category,
     quantityLabel: hours != null ? formatHours(hours) : quantityLabel,
     costLabel: view.pricingRequired ? "—" : view.totalCostFormatted,
