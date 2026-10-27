@@ -63,3 +63,22 @@ Out of scope: a second estimator, a new answer store, a schema migration, Produc
 The shared Preview service-role value was not a `service_role` JWT, so project creation failed closed. A branch-scoped Preview service role, taken from the existing local Preview credential for `shhpjsoldmqtkdbgrbtm`, was added for `estimating/v3` and `estimating/v3-stage-2a` only. Production keys were not copied. The billing page on that Preview loaded plan choices, which the hosted Preview guard allows only when billing is test. No quote or customer email was sent.
 
 The isolated partition job stored length 4.2 m, height 2.4 m, both-side plasterboard, insulation included with the type still open, painting and skirting excluded, and one door opening. Details asked for the unstated framing size. Reload kept the same work-area id. Carpet-tile pricing and the fascia-length fallback remain open. Live model recognition was checked on this one brief only; the other two briefs are covered by the deterministic script.
+
+## Stage 2A acceptance
+
+Accepted on Preview only. Production was not deployed. The verified product tree is `f4f947f787b0988044d9a531660167fbe00fa58e` on `estimating/v3-stage-2a`. This acceptance section is the integration commit; its parent is that tree.
+
+Stopping and painting keep one commercial identity per lined face. The overlap group is `internal_walls.stopping:<wallTypeId>:<side_a|side_b>` and the same shape for painting. The component key is unchanged. `assertNoDuplicateActiveComponents` still rejects a second active line for the same face. An identical scope key is still removed by ownership before that check. Lining stays one aggregated commercial line.
+
+| Check | Result |
+| --- | --- |
+| Ready Preview | `dpl_3aRnTLKox2bMC9oLq7sjhqhWPbHM`, alias `https://quotr-2-0-git-estimating-v3-stage-2a-quotr1.vercel.app`, git `f4f947f787b0988044d9a531660167fbe00fa58e`, Preview target |
+| Partition generation | Project `59d4e9b7-39bd-4ccd-b5e1-e07b0b1e037c` saved one estimate. Reload kept Side A and Side B stopping, each 12.8 m² on screen (12.7962 m² unrounded, combined 25.5924 m²). Each face costs once at the existing rounded $28/m². |
+| Lining | 12 sheets including waste, one 5 h labour line. One layer. Stopping was not multiplied by layers. |
+| Pricing | Draft `4a83e170-ecd3-44f7-bdf2-9389a400dcec`, title “Final pricing — Stage 2A partition fresh”, status Draft. Side A and Side B each 12.8 m², sell $448.00. Create quote stayed disabled. No quote was sent. |
+| New draft exclusions | Template line plus “Excluded from this job: Painting”, “Skirting”, and “Electrical”. |
+| Office, retained | On `79fc4143`, project `76ffe948-9450-4dce-a777-3e252e0624e3` kept stated skirting 45 lm, labour 5.18 h, and a new unsent draft whose job exclusions are structural, plumbing, fire-system, and electrical. That saved estimate was not regenerated. |
+| Older documents | Office draft `52ba0302-2c78-4f44-8b2d-1442f9af674e` and partition draft `a8b4470f-e05f-425d-943d-8adf391aefba` were not opened. Issued snapshots were not written. |
+| Regressions on `f4f947f` | `verify-work-area-internal-walls-08.ts` 100 passed. `verify-estimating-v3-stage-2a.ts` 41 passed. `npx next build --webpack` exited 0. `npm run build:safe` passed its environment guards, then Turbopack stopped on the worktree `node_modules` junction. |
+
+Deferred, and not part of this acceptance: a lining product for the face, carpet-tile recipes, preliminaries pricing, purchasing rules, analysis-quality runs across the eight briefs, and the fascia-length gap. Pre-existing flooring, doors, and presentation golden differences were not changed. The partition opening-labour line still has no price, so quote creation stays closed.
