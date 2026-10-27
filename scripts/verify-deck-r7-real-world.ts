@@ -162,6 +162,7 @@ function ownerFacts(overrides: EstimateFact[] = []): EstimateFact[] {
     fact("deck.board_width_mm", OWNER_ID, 140),
     fact("deck.substructure_included", OWNER_ID, true),
     fact("deck.vertical_face_boards_required", OWNER_ID, true),
+    fact("deck.fascia_length_basis", OWNER_ID, "Use the full rectangular perimeter"),
     fact("deck.existing_deck_removal", OWNER_ID, true),
     fact("deck.concrete_to_supports", OWNER_ID, true),
     fact("deck.access_type", OWNER_ID, "Stair set"),

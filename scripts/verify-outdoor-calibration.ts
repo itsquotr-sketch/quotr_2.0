@@ -86,6 +86,7 @@ const deck2Facts = [
   fact("deck.height_m", "d2", 0.15),
   fact("deck.level", "d2", "Ground-level"),
   fact("deck.vertical_face_boards_required", "d2", true),
+  fact("deck.vertical_face_board_length_lm", "d2", 18),
 ];
 const deck2 = calculateDeck(
   { ...baseContext, facts: deck2Facts } as EstimateContext,

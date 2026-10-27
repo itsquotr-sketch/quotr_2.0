@@ -181,6 +181,7 @@ const exemplarAssumedView = composeFor(
     ...exemplarFacts,
     fact("deck.step_width_m", DECK, 1),
     fact("deck.step_going_m", DECK, 0.28),
+    fact("deck.fascia_length_basis", DECK, "Use the full rectangular perimeter"),
   ],
   exemplar.sourceBrief,
   {

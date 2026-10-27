@@ -94,6 +94,7 @@ import {
   calculateDeckFasciaQuantities,
   calculateDeckSkirtingQuantities,
   deckSkirtingIncluded,
+  resolveDeckFasciaEdgeLength,
 } from "@/lib/estimate/deck-fascia";
 import {
   DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
@@ -1384,6 +1385,17 @@ export function calculateDeck(
   }
 
   if (fasciaFact === true) {
+    const fasciaEdge = resolveDeckFasciaEdgeLength({
+      facts,
+      workAreaId: workArea.id,
+      lengthM: length,
+      widthM: width,
+    });
+    if (fasciaEdge.status === "needs_length") {
+      missingInfo.push(
+        "Fascia is included. No exposed length was stated, and the full rectangular perimeter was not chosen, so fascia materials and labour are not priced."
+      );
+    } else {
     const fasciaQty = calculateDeckFasciaQuantities({
       facts,
       workAreaId: workArea.id,
@@ -1395,7 +1407,12 @@ export function calculateDeck(
       wastePercent: wastagePercent,
     });
     assumptions.push(
-      `Fascia / edge boards use exposed perimeter × ${fasciaQty.courses} course${fasciaQty.courses === 1 ? "" : "s"} (${formatLm(fasciaQty.fasciaNetLm)} lm required). Not height-driven.`
+      fasciaEdge.status === "stated"
+        ? `Fascia length is the stated ${formatLm(fasciaEdge.lengthM)} m, including when that is only part of the edge. It is not assumed to be the full perimeter.`
+        : `Fascia length is the explicit rectangular perimeter ${formatLm(fasciaEdge.lengthM)} m. Inclusion alone did not choose the full perimeter.`
+    );
+    assumptions.push(
+      `Fascia / edge boards use that length × ${fasciaQty.courses} course${fasciaQty.courses === 1 ? "" : "s"} (${formatLm(fasciaQty.fasciaNetLm)} lm required). Not height-driven.`
     );
     const fasciaProductivity = resolveProductivity({
       productivityKey: DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
@@ -1486,6 +1503,7 @@ export function calculateDeck(
           qualityFactor,
         })
       );
+    }
     }
   }
 

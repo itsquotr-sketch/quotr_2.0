@@ -36,6 +36,7 @@ import {
   pileRetentionPending,
   shouldAskPileCount,
 } from "@/lib/estimate/deck-scope-2c";
+import { fasciaLengthDetailCandidates } from "@/lib/estimate/deck-fascia";
 import {
   blockingClassForKey,
   constraintIsKnown,
@@ -1846,6 +1847,37 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankReason: "Pending inspection · replacement count",
           assumptionStatement: null,
           economicClass: deckEconomicClass("deck.pile_or_post_count"),
+        });
+      }
+      for (const fasciaCandidate of fasciaLengthDetailCandidates({
+        facts: pileFacts,
+        workAreaId: wa.id,
+        lengthM: getNumberFact(pileFacts, wa.id, "deck.length_m"),
+        widthM: getNumberFact(pileFacts, wa.id, "deck.width_m"),
+      })) {
+        out.push({
+          id: `fact:${wa.id}:${fasciaCandidate.factKey}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: fasciaCandidate.factKey,
+          constraintKey: null,
+          questionKey: fasciaCandidate.factKey,
+          label: fasciaCandidate.label,
+          question: fasciaCandidate.question,
+          askClass: "ASK_NOW",
+          inputType: fasciaCandidate.inputType,
+          unit: fasciaCandidate.unit,
+          options: fasciaCandidate.options ? [...fasciaCandidate.options] : undefined,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: fasciaCandidate.blocksEstimate,
+          assumable: false,
+          rankScore: 70,
+          rankReason: "Fascia length",
+          assumptionStatement: null,
+          economicClass: deckEconomicClass("deck.vertical_face_boards_required"),
         });
       }
       continue;

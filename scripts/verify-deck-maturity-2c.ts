@@ -705,13 +705,21 @@ check(
 
 const fasciaBoost = calculateDeck(
   ctx(
-    [...kwilaFacts, fact("deck.vertical_face_boards_required", kwilaId, true)],
+    [
+      ...kwilaFacts,
+      fact("deck.vertical_face_boards_required", kwilaId, true),
+      fact("deck.fascia_length_basis", kwilaId, "Use the full rectangular perimeter"),
+    ],
     [productivityOrgRate("deck.fascia.install.hours_per_lm", "lm", 0.9)]
   ),
   wa(kwilaId)
 );
 const fasciaBase = calculateDeck(
-  ctx([...kwilaFacts, fact("deck.vertical_face_boards_required", kwilaId, true)]),
+  ctx([
+    ...kwilaFacts,
+    fact("deck.vertical_face_boards_required", kwilaId, true),
+    fact("deck.fascia_length_basis", kwilaId, "Use the full rectangular perimeter"),
+  ]),
   wa(kwilaId)
 );
 check(

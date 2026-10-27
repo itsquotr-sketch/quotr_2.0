@@ -903,6 +903,7 @@ const fasciaDeck = calculateDeck(
   ctx([
     ...kwilaFacts,
     fact("deck.vertical_face_boards_required", kwilaId, true),
+    fact("deck.fascia_length_basis", kwilaId, "Use the full rectangular perimeter"),
   ]),
   wa(kwilaId)
 );

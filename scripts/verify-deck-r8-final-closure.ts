@@ -155,6 +155,7 @@ function liveFacts(overrides: EstimateFact[] = []): EstimateFact[] {
     fact("deck.board_width_mm", LIVE_ID, 140),
     fact("deck.substructure_included", LIVE_ID, true),
     fact("deck.vertical_face_boards_required", LIVE_ID, true),
+    fact("deck.fascia_length_basis", LIVE_ID, "Use the full rectangular perimeter"),
     fact("deck.concrete_to_supports", LIVE_ID, true),
     fact("deck.concrete_bags_per_hole", LIVE_ID, 3),
     fact(DECK_STEPS_INCLUDED_FACT_KEY, LIVE_ID, true),
