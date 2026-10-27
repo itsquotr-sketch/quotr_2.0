@@ -20,7 +20,7 @@ Also re-run: `verify-doors-02-extraction-details.ts` (53), `verify-deck-journey-
 
 ## Preview acceptance
 
-Accepted on Preview at `d7d9fdc009d5fbd040032410f46798b205b9f138` (`estimating/v3-stage-2c`). Ready deployment `dpl_Dj4nEE61W3JbrviRfy6GX238WFDL`. Production was not deployed and remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` (`bc0a7667422927d87368bc151a4e442e61562d5c`, `release/website-estimating-stage-1`).
+Accepted on Preview at `d7d9fdc009d5fbd040032410f46798b205b9f138` (`estimating/v3-stage-2c`). Ready deployment `dpl_Dj4nEE61W3JbrviRfy6GX238WFDL`. Integrated into `estimating/v3` by merge `c4049d14953d8bfb2c05ce5b89f1f18726d9591c`. Production was not deployed and remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` (`bc0a7667422927d87368bc151a4e442e61562d5c`, `release/website-estimating-stage-1`).
 
 Conditional piles: the inspection sentence stays visible, with Leave until inspection, Assume replaced, and Assume retained. Leave until inspection persists and is neither replacement nor retention. Assume replaced persists. A replacement without a count stays an open count question; entering 4 uses the existing each-rate allowance ($180 × 4 = $720) inside the partial total. That line is a provisional allowance, not a complete pile-replacement price. New framing and the other included substructure stay priced. The existing flat $1,200 allowance (notes "Count subject to confirmation") is the calculator path when replacement is assumed and no count is stored. Details does not show that lump, because a new substructure still requires a post or pile count before the estimate is created.
 
