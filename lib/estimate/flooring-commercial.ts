@@ -11,6 +11,16 @@ import type { OrganisationRate, OrganisationSettings } from "@/components/setup/
 import { BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY } from "@/lib/estimate/bathroom-identities";
 import { hasTrustedPhysicalQuantity } from "@/lib/estimate/component-commercial-authority";
 import {
+  FLOORING_CARPET_PURCHASING_UNRESOLVED,
+  FLOORING_FINISH_INSTALL_COMPONENT,
+  FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+  FLOORING_FINISH_SUPPLY_COMPONENT,
+} from "@/lib/estimate/flooring-purchasing";
+import {
+  findCompanyProductivityRate,
+  isTrustedProductivityHours,
+} from "@/lib/estimate/productivity";
+import {
   FLOORING_CARPENTER_LABOUR_RATE_KEY,
   FLOORING_CARPET_REMOVE_HOURS_LABEL,
   FLOORING_CARPET_REMOVE_LABOUR,
@@ -148,6 +158,7 @@ const LABOUR_LABELS: Record<string, string> = {
   [FLOORING_VINYL_PLANK_REMOVE_LABOUR]: FLOORING_VINYL_PLANK_REMOVE_HOURS_LABEL,
   [FLOORING_TILE_REMOVE_LABOUR]: FLOORING_TILE_REMOVE_HOURS_LABEL,
   [FLOORING_HARDWOOD_REMOVE_LABOUR]: FLOORING_HARDWOOD_REMOVE_HOURS_LABEL,
+  [FLOORING_FINISH_INSTALL_COMPONENT]: "Finish installation",
 };
 
 function applicableGrossMarginPercent(
@@ -270,13 +281,23 @@ function packageQuantity(
 
 function finishTakeoffNotes(portion: FlooringPortionPhysical | undefined): string | undefined {
   if (!portion) return undefined;
+  const supply = portionNote(portion);
   if (portion.tile) {
-    return `Package basis ${presentFlooringAreaM2(portion.physicalNetAreaM2 ?? 0)}. Informational ${portion.tile.wholeTileCount} whole tiles (${portion.tile.tileWidthMm} × ${portion.tile.tileLengthMm} mm). Tile count does not multiply the subcontract COST.`;
+    const net = `Package basis ${presentFlooringAreaM2(portion.physicalNetAreaM2 ?? 0)}. Informational ${portion.tile.wholeTileCount} whole tiles (${portion.tile.tileWidthMm} × ${portion.tile.tileLengthMm} mm). Tile count does not multiply the subcontract COST.`;
+    return supply ? `${net} ${supply}` : net;
   }
   if (portion.hardwood) {
-    return `Package basis ${presentFlooringAreaM2(portion.physicalNetAreaM2 ?? 0)}. Informational ${round2(portion.hardwood.linealM)} lm at ${portion.hardwood.boardWidthMm} mm board width. The lineal-metre takeoff does not multiply the subcontract COST.`;
+    const net = `Package basis ${presentFlooringAreaM2(portion.physicalNetAreaM2 ?? 0)}. Informational ${round2(portion.hardwood.linealM)} lm at ${portion.hardwood.boardWidthMm} mm board width. The lineal-metre takeoff does not multiply the subcontract COST.`;
+    return supply ? `${net} ${supply}` : net;
   }
-  return undefined;
+  return supply;
+}
+
+function portionNote(portion: FlooringPortionPhysical | undefined): string | undefined {
+  const purchasing = portion?.purchasing;
+  if (!purchasing || purchasing.kind === "none") return undefined;
+  if (purchasing.kind === "carpet_unresolved") return purchasing.limitation;
+  return purchasing.formula;
 }
 
 export function priceFlooringSubcontract(params: {
@@ -332,6 +353,54 @@ export function priceFlooringMaterial(params: {
   const { requirement } = params;
   if (isFinishPackageMirror(requirement)) {
     return requirement;
+  }
+  if (requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT) {
+    if (requirement.category === "CLIENT_SUPPLIED") {
+      return {
+        ...requirement,
+        priced: true,
+        unitCost: 0,
+        totalCost: 0,
+        rateSource: "company",
+      };
+    }
+    if (
+      !params.allowPricing ||
+      requirement.materialKey === FLOORING_CARPET_PURCHASING_UNRESOLVED ||
+      !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
+    ) {
+      return {
+        ...requirement,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      };
+    }
+    const named = params.rates.find(
+      (rate) =>
+        rate.active &&
+        rate.item_key === requirement.materialKey &&
+        rate.rate_type === "material" &&
+        rate.cost_rate != null &&
+        rate.cost_rate > 0
+    );
+    if (!named || named.cost_rate == null) {
+      return {
+        ...requirement,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      };
+    }
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: named.cost_rate,
+      totalCost: round2(requirement.purchaseQuantity * named.cost_rate),
+      rateSource: "company",
+    };
   }
   if (
     !params.allowPricing ||
@@ -432,17 +501,29 @@ export function priceFlooringLabour(params: {
     unit,
     rates: params.rates,
   });
-  const hoursTrusted =
-    resolved.hoursPerUnit != null &&
-    resolved.hours != null &&
-    resolved.hoursPerUnit > 0;
+  const installOnly =
+    requirement.productivityBasis.key === FLOORING_FINISH_INSTALL_HOURS_PER_M2;
+  const companyInstall = installOnly
+    ? findCompanyProductivityRate(
+        params.rates,
+        FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+        "m2"
+      )
+    : undefined;
+  const installHours =
+    companyInstall?.cost_rate != null &&
+    isTrustedProductivityHours(Number(companyInstall.cost_rate))
+      ? Number(companyInstall.cost_rate)
+      : null;
+  const hoursPerUnit = installOnly ? installHours : resolved.hoursPerUnit;
+  const hoursTrusted = hoursPerUnit != null && hoursPerUnit > 0;
   const priced =
     params.allowPricing &&
     hoursTrusted &&
     params.hourlyCost > 0 &&
     hasTrustedPhysicalQuantity(quantity) &&
-    isFlooringProductivityKey(requirement.productivityBasis.key);
-  const baseHours = priced ? round2(quantity * (resolved.hoursPerUnit ?? 0)) : 0;
+    (installOnly || isFlooringProductivityKey(requirement.productivityBasis.key));
+  const baseHours = priced ? round2(quantity * (hoursPerUnit ?? 0)) : 0;
   const adjustedHours = priced ? round2(baseHours * params.accessFactor) : 0;
   const totalCost = priced
     ? labourRequirementTotalCost({
@@ -463,7 +544,7 @@ export function priceFlooringLabour(params: {
     rateProvenance: priced ? params.labourSource : "missing",
     productivityBasis: {
       ...requirement.productivityBasis,
-      hoursPerUnit: resolved.hoursPerUnit ?? 0,
+      hoursPerUnit: hoursPerUnit ?? 0,
     },
   };
 }
@@ -659,6 +740,43 @@ function materialOrAllowanceLine(params: {
   const unit = framing
     ? "m2"
     : params.requirement.purchaseUnit;
+  if (params.requirement.category === "CLIENT_SUPPLIED") {
+    const line = createRateLineItem({
+      workAreaId: params.requirement.workAreaId,
+      workAreaName: params.workAreaName,
+      label,
+      category: "materials",
+      quantity: params.requirement.purchaseQuantity,
+      unit,
+      costRate: 0,
+      sellRate: 0,
+      rateSource: "Client supplied",
+      rateSourceType: "user_rate",
+      itemKey: params.requirement.materialKey ?? undefined,
+      componentKey: params.requirement.componentKey,
+      sellDerivedFromMargin: false,
+      sellAuthority: "explicit_sell_override",
+      sortOrder: params.sortOrder,
+      organisationSettings: params.organisationSettings,
+      notes: `Customer supplied the finish. Contractor purchasing cost is 0. ${params.requirement.specification}`,
+    });
+    return withPricingOwnership(
+      {
+        ...line,
+        nestedItemId,
+        identitySummary: params.requirement.specification,
+        recommendedCost: 0,
+        recommendedSell: 0,
+        includedInTotal: false,
+      },
+      {
+        pricingOwner: "client_supplied",
+        scopeKey,
+        overlapGroup: `flooring.area:${nestedItemId}`,
+        includedInTotal: false,
+      }
+    );
+  }
   if (
     !params.requirement.priced ||
     params.requirement.unitCost == null ||
@@ -678,9 +796,14 @@ function materialOrAllowanceLine(params: {
         : params.requirement.materialKey ?? undefined,
       pricingOwner,
       notes:
-        params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
-          ? FLOORING_SPECIALIST_RECIPE_MESSAGE
-          : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
+        params.requirement.materialKey === FLOORING_CARPET_PURCHASING_UNRESOLVED
+          ? params.requirement.specification || "Carpet roll purchasing is unresolved."
+          : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT
+            ? params.requirement.specification ||
+              `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`
+            : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
+              ? FLOORING_SPECIALIST_RECIPE_MESSAGE
+              : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
       identitySummary: params.requirement.specification,
     });
   }
@@ -722,7 +845,9 @@ function materialOrAllowanceLine(params: {
     organisationSettings: params.organisationSettings,
     notes: framing
       ? `Combined allowance ${params.requirement.purchaseQuantity} m². Not timber materials and not labour hours.`
-      : `Purchase ${params.requirement.purchaseQuantity} ${unit}`,
+      : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT
+        ? params.requirement.specification
+        : `Purchase ${params.requirement.purchaseQuantity} ${unit}`,
   });
   return withPricingOwnership(
     {
@@ -846,9 +971,6 @@ function rollupCompleteness(
   }
   if (requirements.some((row) => !row.priced)) {
     return FLOORING_COMMERCIAL_COMPLETENESS.PRICING_REQUIRED;
-  }
-  if (physical.missingInfo.some((row) => /waste is recorded/i.test(row))) {
-    return FLOORING_COMMERCIAL_COMPLETENESS.INFORMATION_REQUIRED;
   }
   return FLOORING_COMMERCIAL_COMPLETENESS.COMPLETE_COMMERCIAL;
 }

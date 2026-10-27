@@ -3,7 +3,7 @@
  *
  * Consumes canonical `flooring.portions`. Emits per-Area packages, add-ons,
  * substrate sheets, framing allowances, and labour-operation bases.
- * No COST rates, productivity hours, waste, or sell.
+ * No COST rates or sell. Finish waste is a supply quantity only.
  * Nested collections never call the legacy Flooring lump calculator.
  */
 
@@ -49,6 +49,18 @@ import {
   FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY,
   flooringQuestionLabel,
 } from "@/lib/estimate/flooring-question-copy";
+import {
+  FLOORING_CARPET_PURCHASING_UNRESOLVED,
+  FLOORING_FINISH_INSTALL_COMPONENT,
+  FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+  FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_HARDWOOD_SUPPLY_LM,
+  FLOORING_TILE_SUPPLY_EACH,
+  FLOORING_VINYL_SUPPLY_M2,
+  flooringCustomerSupplied,
+  resolveFlooringSupply,
+  type FlooringSupplyMeasure,
+} from "@/lib/estimate/flooring-purchasing";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { buildSubcontractRequirement } from "@/lib/estimate/subcontract-requirement";
@@ -131,6 +143,7 @@ export type FlooringPortionPhysical = {
   readonly substrate_removal_required: boolean | null;
   readonly other_description: string | null;
   readonly specialist_kind: FlooringSpecialistKind | null;
+  readonly purchasing: FlooringSupplyMeasure | null;
   readonly completeness: FlooringPhysicalCompleteness;
   readonly missingFields: readonly string[];
   readonly summary: string;
@@ -256,7 +269,7 @@ function finishPhrase(finish: FlooringFinishType | null): string {
 function statedFlooringExtras(portion: FlooringPortion): string {
   const notes: string[] = [];
   if (portion.waste_percent != null && portion.waste_percent > 0) {
-    notes.push(`${portion.waste_percent}% waste recorded`);
+    notes.push(`${portion.waste_percent}% waste on finish supply`);
   }
   if (portion.transitions_required === true) {
     notes.push("transition strips requested, unpriced");
@@ -682,6 +695,109 @@ function preparationRequirements(params: {
   ];
 }
 
+function appendCustomerInstall(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type">;
+  portion: FlooringPortion;
+  areaM2: number;
+  owner: string;
+  requirements: EstimateRequirement[];
+}): boolean {
+  if (!flooringCustomerSupplied(params.portion)) return false;
+  params.requirements.push(
+    labourRow({
+      workArea: params.workArea,
+      portion: params.portion,
+      componentKey: FLOORING_FINISH_INSTALL_COMPONENT,
+      hoursKey: FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+      unit: "m2",
+      description: `${params.owner} · finish installation`,
+      quantity: params.areaM2,
+      areaM2: params.areaM2,
+      trade: "carpenter",
+    })
+  );
+  return true;
+}
+
+function appendFinishSupply(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type">;
+  portion: FlooringPortion;
+  areaM2: number;
+  owner: string;
+  purchasing: FlooringSupplyMeasure;
+  requirements: EstimateRequirement[];
+}): void {
+  const { purchasing } = params;
+  if (purchasing.kind === "none") return;
+  const customer = flooringCustomerSupplied(params.portion);
+  const category = customer ? "CLIENT_SUPPLIED" : "FLOORING_SUPPLY";
+  if (purchasing.kind === "carpet_unresolved") {
+    params.requirements.push(
+      materialCountRow({
+        workArea: params.workArea,
+        portion: params.portion,
+        componentKey: FLOORING_FINISH_SUPPLY_COMPONENT,
+        materialKey: FLOORING_CARPET_PURCHASING_UNRESOLVED,
+        category: "FLOORING_SUPPLY",
+        description: `${params.owner} · carpet roll purchasing`,
+        specification: purchasing.limitation,
+        quantity: purchasing.netM2,
+        unit: "m2",
+        areaM2: params.areaM2,
+      })
+    );
+    return;
+  }
+  if (purchasing.kind === "area") {
+    params.requirements.push(
+      materialCountRow({
+        workArea: params.workArea,
+        portion: params.portion,
+        componentKey: FLOORING_FINISH_SUPPLY_COMPONENT,
+        materialKey: FLOORING_VINYL_SUPPLY_M2,
+        category,
+        description: `${params.owner} · vinyl plank supply ${purchasing.supplyM2} m²`,
+        specification: purchasing.formula,
+        quantity: purchasing.supplyM2,
+        unit: "m2",
+        areaM2: params.areaM2,
+      })
+    );
+    return;
+  }
+  if (purchasing.kind === "tiles") {
+    params.requirements.push(
+      materialCountRow({
+        workArea: params.workArea,
+        portion: params.portion,
+        componentKey: FLOORING_FINISH_SUPPLY_COMPONENT,
+        materialKey: FLOORING_TILE_SUPPLY_EACH,
+        category,
+        description: `${params.owner} · floor tile supply ${purchasing.supplyTiles} tiles`,
+        specification: purchasing.formula,
+        quantity: purchasing.supplyTiles,
+        unit: "each",
+        areaM2: params.areaM2,
+      })
+    );
+    return;
+  }
+  params.requirements.push(
+    materialCountRow({
+      workArea: params.workArea,
+      portion: params.portion,
+      componentKey: FLOORING_FINISH_SUPPLY_COMPONENT,
+      materialKey: FLOORING_HARDWOOD_SUPPLY_LM,
+      category,
+      description: `${params.owner} · hardwood supply ${purchasing.supplyLinealM} lm`,
+      specification: purchasing.formula,
+      quantity: purchasing.supplyLinealM,
+      unit: "lm",
+      areaM2: params.areaM2,
+    })
+  );
+}
+
 function finishPackageRequirements(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type">;
   portion: FlooringPortion;
@@ -691,6 +807,7 @@ function finishPackageRequirements(params: {
   requirements: EstimateRequirement[];
   tile: FlooringTileTakeoff | null;
   hardwood: FlooringHardwoodTakeoff | null;
+  purchasing: FlooringSupplyMeasure;
 } {
   const { workArea, portion, areaM2, owner } = params;
   const finish = portion.finish_type;
@@ -699,25 +816,41 @@ function finishPackageRequirements(params: {
   let hardwood: FlooringHardwoodTakeoff | null = null;
 
   if (finish === "carpet") {
+    const purchasing = resolveFlooringSupply({
+      portion,
+      netM2: areaM2,
+      tile: null,
+      hardwood: null,
+    });
     const packageKey = FLOORING_CARPET_SUPPLY_INSTALL_M2;
-    requirements.push(
-      subcontractRow({
+    if (
+      !appendCustomerInstall({
         workArea,
         portion,
-        componentKey: packageKey,
-        description: `${owner} · carpet supply and install ${presentFlooringAreaM2(areaM2)}`,
         areaM2,
-      }),
-      packageRow({
-        workArea,
-        portion,
-        componentKey: packageKey,
-        description: `${owner} · carpet physical finish ${presentFlooringAreaM2(areaM2)}`,
-        specification:
-          "Carpet supply-and-install package. No roll width, seams, or waste.",
-        areaM2,
+        owner,
+        requirements,
       })
-    );
+    ) {
+      requirements.push(
+        subcontractRow({
+          workArea,
+          portion,
+          componentKey: packageKey,
+          description: `${owner} · carpet supply and install ${presentFlooringAreaM2(areaM2)}`,
+          areaM2,
+        }),
+        packageRow({
+          workArea,
+          portion,
+          componentKey: packageKey,
+          description: `${owner} · carpet physical finish ${presentFlooringAreaM2(areaM2)}`,
+          specification:
+            "Carpet installation quantity is the net area. A waste percentage does not set the roll purchase.",
+          areaM2,
+        })
+      );
+    }
     if (portion.underlay_required === true) {
       requirements.push(
         subcontractRow({
@@ -732,40 +865,73 @@ function finishPackageRequirements(params: {
           portion,
           componentKey: FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
           description: `${owner} · carpet underlay ${presentFlooringAreaM2(areaM2)}`,
-          specification: "Carpet underlay supply-and-install add-on.",
+          specification:
+            "Carpet underlay on the net area. Finish waste is not applied.",
           areaM2,
         })
       );
     }
-    return { requirements, tile, hardwood };
+    appendFinishSupply({
+      workArea,
+      portion,
+      areaM2,
+      owner,
+      purchasing,
+      requirements,
+    });
+    return { requirements, tile, hardwood, purchasing };
   }
 
   if (finish === "vinyl_plank") {
+    const purchasing = resolveFlooringSupply({
+      portion,
+      netM2: areaM2,
+      tile: null,
+      hardwood: null,
+    });
     const packageKey = FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2;
-    requirements.push(
-      subcontractRow({
+    if (
+      !appendCustomerInstall({
         workArea,
         portion,
-        componentKey: packageKey,
-        description: `${owner} · vinyl plank/LVT supply and install ${presentFlooringAreaM2(areaM2)}`,
         areaM2,
-      }),
-      packageRow({
-        workArea,
-        portion,
-        componentKey: packageKey,
-        description: `${owner} · vinyl plank/LVT physical finish ${presentFlooringAreaM2(areaM2)}`,
-        specification:
-          "Vinyl plank/LVT supply-and-install package. No cartons, plank counts, adhesive, or waste.",
-        areaM2,
+        owner,
+        requirements,
       })
-    );
+    ) {
+      requirements.push(
+        subcontractRow({
+          workArea,
+          portion,
+          componentKey: packageKey,
+          description: `${owner} · vinyl plank/LVT supply and install ${presentFlooringAreaM2(areaM2)}`,
+          areaM2,
+        }),
+        packageRow({
+          workArea,
+          portion,
+          componentKey: packageKey,
+          description: `${owner} · vinyl plank/LVT physical finish ${presentFlooringAreaM2(areaM2)}`,
+          specification:
+            "Vinyl plank installation quantity is the net area. Waste is not in this package. No carton size is known.",
+          areaM2,
+        })
+      );
+    }
     if (portion.floor_preparation_required === true) {
       requirements.push(
         ...preparationRequirements({ workArea, portion, areaM2, owner })
       );
     }
-    return { requirements, tile, hardwood };
+    appendFinishSupply({
+      workArea,
+      portion,
+      areaM2,
+      owner,
+      purchasing,
+      requirements,
+    });
+    return { requirements, tile, hardwood, purchasing };
   }
 
   if (finish === "tile") {
@@ -775,10 +941,25 @@ function finishPackageRequirements(params: {
       portion.tile_length_mm as number
     );
     const packageKey = FLOORING_TILE_SUPPLY_INSTALL_M2;
+    const purchasing = resolveFlooringSupply({
+      portion,
+      netM2: areaM2,
+      tile,
+      hardwood: null,
+    });
     const tileNote = tile
-      ? `${tile.tileWidthMm} × ${tile.tileLengthMm} mm. Raw ${tile.rawTileCount} tiles; ${tile.wholeTileCount} whole tiles. No waste factor.`
+      ? `${tile.tileWidthMm} × ${tile.tileLengthMm} mm. Net ${tile.wholeTileCount} whole tiles. Waste is not in this count.`
       : "Tile supply-and-install package.";
-    requirements.push(
+    if (
+      !appendCustomerInstall({
+        workArea,
+        portion,
+        areaM2,
+        owner,
+        requirements,
+      })
+    ) {
+      requirements.push(
       subcontractRow({
         workArea,
         portion,
@@ -813,12 +994,21 @@ function finishPackageRequirements(params: {
           : [],
       })
     );
+    }
     if (portion.floor_preparation_required === true) {
       requirements.push(
         ...preparationRequirements({ workArea, portion, areaM2, owner })
       );
     }
-    return { requirements, tile, hardwood };
+    appendFinishSupply({
+      workArea,
+      portion,
+      areaM2,
+      owner,
+      purchasing,
+      requirements,
+    });
+    return { requirements, tile, hardwood, purchasing };
   }
 
   if (finish === "hardwood") {
@@ -827,10 +1017,25 @@ function finishPackageRequirements(params: {
       portion.hardwood_board_width_mm as number
     );
     const packageKey = FLOORING_HARDWOOD_SUPPLY_INSTALL_M2;
+    const purchasing = resolveFlooringSupply({
+      portion,
+      netM2: areaM2,
+      tile: null,
+      hardwood,
+    });
     const timberNote = hardwood
-      ? `${hardwood.boardWidthMm} mm boards. ${hardwood.linealM} lineal m. No waste or box counts.`
+      ? `${hardwood.boardWidthMm} mm boards. Net ${round2(hardwood.linealM)} lineal m. Waste is not in this length.`
       : "Hardwood supply-and-install package.";
-    requirements.push(
+    if (
+      !appendCustomerInstall({
+        workArea,
+        portion,
+        areaM2,
+        owner,
+        requirements,
+      })
+    ) {
+      requirements.push(
       subcontractRow({
         workArea,
         portion,
@@ -856,10 +1061,24 @@ function finishPackageRequirements(params: {
         areaM2,
       })
     );
-    return { requirements, tile, hardwood };
+    }
+    appendFinishSupply({
+      workArea,
+      portion,
+      areaM2,
+      owner,
+      purchasing,
+      requirements,
+    });
+    return { requirements, tile, hardwood, purchasing };
   }
 
-  return { requirements, tile, hardwood };
+  return {
+    requirements,
+    tile,
+    hardwood,
+    purchasing: { kind: "none", netM2: areaM2 },
+  };
 }
 
 function substrateRequirements(params: {
@@ -1087,6 +1306,7 @@ function emptyPortionPhysical(
     substrate_removal_required: portion.substrate_removal_required,
     other_description: portion.other_description,
     specialist_kind: portion.specialist_kind,
+    purchasing: null,
     completeness,
     missingFields,
     summary: summariseFlooringPhysicalPortion(portion),
@@ -1167,6 +1387,7 @@ export function calculateFlooringPortionPhysical(params: {
         substrate_removal_required: portion.substrate_removal_required,
         other_description: portion.other_description,
         specialist_kind: portion.specialist_kind,
+        purchasing: null,
         completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
         missingFields: [],
         summary: summariseFlooringPhysicalPortion(portion),
@@ -1229,6 +1450,7 @@ export function calculateFlooringPortionPhysical(params: {
       substrate_removal_required: portion.substrate_removal_required,
       other_description: portion.other_description,
       specialist_kind: portion.specialist_kind,
+      purchasing: finish.purchasing,
       completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
       missingFields: [],
       summary: summariseFlooringPhysicalPortion(portion),
@@ -1312,9 +1534,18 @@ export function calculateFlooringPhysical(params: {
     if (portion.transitions_required === true) {
       missingInfo.push("Transition strips are requested and have no priced rate.");
     }
-    if (portion.waste_percent != null && portion.waste_percent > 0) {
+    const purchasing = calculated.portion.purchasing;
+    if (purchasing?.kind === "carpet_unresolved") {
+      missingInfo.push(purchasing.limitation);
+    } else if (
+      portion.waste_percent != null &&
+      portion.waste_percent > 0 &&
+      purchasing?.kind !== "area" &&
+      purchasing?.kind !== "tiles" &&
+      purchasing?.kind !== "lineal"
+    ) {
       missingInfo.push(
-        `${portion.waste_percent}% waste is recorded on the new floor coverings and is not in the priced quantity.`
+        `${portion.waste_percent}% waste is stated for the new floor covering and applies to finish supply once this area can be priced.`
       );
     }
   }

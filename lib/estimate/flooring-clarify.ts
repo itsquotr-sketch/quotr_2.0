@@ -349,7 +349,7 @@ export function summariseFlooringPortion(
     );
   }
   if (portion.waste_percent != null && portion.waste_percent > 0) {
-    extras.push(`${portion.waste_percent}% waste recorded, not in the priced quantity`);
+    extras.push(`${portion.waste_percent}% waste on finish supply`);
   }
   if (portion.transitions_required === true) {
     extras.push("Transition strips requested, unpriced");

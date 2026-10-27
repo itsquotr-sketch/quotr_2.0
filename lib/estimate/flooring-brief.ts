@@ -708,6 +708,14 @@ function applyGlobalConstraints(
   if (waste && portion.waste_percent == null) {
     portion.waste_percent = Number(waste[1]);
   }
+  if (
+    /\b(?:customer|client)[-\s]supplied\b/.test(raw) &&
+    portion.finish_type != null &&
+    portion.finish_type !== "other" &&
+    portion.finish_supplied_by == null
+  ) {
+    portion.finish_supplied_by = "customer";
+  }
   if (/\btransition strips?\b|\btransitions\b/.test(raw)) {
     portion.transitions_required = true;
   }
@@ -1032,6 +1040,11 @@ function fillMissingFlooringPortion(
     out.other_description_authority ?? secondary.other_description_authority;
   out.specialist_authority =
     out.specialist_authority ?? secondary.specialist_authority;
+  out.waste_percent = firstPresent(out.waste_percent, secondary.waste_percent);
+  out.finish_supplied_by = firstPresent(
+    out.finish_supplied_by,
+    secondary.finish_supplied_by
+  );
   if (
     primary.finish_type === "other" &&
     secondary.finish_type != null &&

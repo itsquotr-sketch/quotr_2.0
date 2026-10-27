@@ -182,8 +182,10 @@ export type FlooringPortion = {
   finish_removal_required: boolean | null;
   existing_finish_type: FlooringExistingFinishType | null;
   substrate_removal_required: boolean | null;
-  /** Stated purchase waste. Absent means the priced quantity stays net. */
+  /** Stated purchase waste. Absent means finish supply stays the net area. */
   waste_percent?: number | null;
+  /** Customer-supplied finish: no contractor purchasing cost. */
+  finish_supplied_by?: "customer" | "contractor" | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
@@ -802,6 +804,11 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       Number.isFinite(value.waste_percent) &&
       value.waste_percent > 0
         ? value.waste_percent
+        : null,
+    finish_supplied_by:
+      value.finish_supplied_by === "customer" ||
+      value.finish_supplied_by === "contractor"
+        ? value.finish_supplied_by
         : null,
     transitions_required: parseTriBool(value.transitions_required),
     skirting_replacement_excluded:
