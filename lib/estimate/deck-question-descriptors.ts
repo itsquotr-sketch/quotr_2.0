@@ -22,6 +22,7 @@ import {
   deckStepsCommerciallyIncluded,
   newSubstructureIncluded,
   pileRetentionPending,
+  shouldAskPileCount,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -189,7 +190,7 @@ export function deckFactIsRelevant(
     case "deck.substructure_condition":
       return !newSubstructureIncluded(asEstimateFacts(ctx.facts), ctx.workAreaId);
     case "deck.pile_or_post_count":
-      return shouldAskPileReplacement({
+      return shouldAskPileCount({
         facts: asEstimateFacts(ctx.facts),
         workAreaId: ctx.workAreaId,
       });

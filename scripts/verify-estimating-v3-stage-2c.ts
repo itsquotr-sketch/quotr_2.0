@@ -15,7 +15,14 @@ import {
   confirmedDoorLeafConflicts,
   mergePersistedDoorsPortionsOnReanalyse,
 } from "../lib/estimate/doors-portions";
-import { shouldAskPileReplacement } from "../lib/estimate/deck-scope-2c";
+import { resolveCommittedFactWrite } from "../lib/assistant/scope-persistence";
+import {
+  PILE_INSPECTION_CONDITION_LABEL,
+  PILE_LEFT_UNTIL_INSPECTION_LABEL,
+  pileTreatmentChoiceValue,
+  shouldAskPileCount,
+  shouldAskPileReplacement,
+} from "../lib/estimate/deck-scope-2c";
 import { scopeTopicPolarity } from "../lib/estimate/scope-intent";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import {
@@ -258,9 +265,18 @@ const elevatedPlan = deckJobPlanAdapter.project(
     qualityLevel: null,
   }
 );
+const unresolvedPiles = elevatedPlan.notConfirmed.find(
+  (item) => item.sourceFactKey === "deck.pile_or_post_replacement_required"
+);
 check(
   "conditional piles stay visible as unresolved",
-  elevatedPlan.notConfirmed.some((item) => item.label === "Replace existing piles")
+  unresolvedPiles?.label === PILE_INSPECTION_CONDITION_LABEL &&
+    unresolvedPiles.togglable === false &&
+    unresolvedPiles.presentation === "NOT_CONFIRMED"
+);
+check(
+  "conditional piles do not drop framing",
+  elevatedPlan.included.some((item) => /framing|substructure/i.test(item.label))
 );
 const elevatedEstimate = calculateDeck(
   deckContext(elevatedFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
@@ -273,6 +289,112 @@ check(
 check(
   "unresolved piles do not add a replacement allowance",
   !elevatedEstimate.lineItems.some((item) => /pile\/post replacement/i.test(item.label))
+);
+check(
+  "conditional piles do not drop decking",
+  elevatedEstimate.lineItems.some((item) => /decking/i.test(item.label))
+);
+check(
+  "leave until inspection is not replacement or retention",
+  pileTreatmentChoiceValue("Leave until inspection") === "Not sure" &&
+    resolveCommittedFactWrite({
+      key: "deck.pile_or_post_replacement_required",
+      value: "Leave until inspection",
+      valueType: "select",
+    }).value === "Not sure"
+);
+check(
+  "assume replaced stores replacement",
+  resolveCommittedFactWrite({
+    key: "deck.pile_or_post_replacement_required",
+    value: "Assume replaced",
+    valueType: "select",
+  }).value === true
+);
+check(
+  "assume retained stores retention",
+  resolveCommittedFactWrite({
+    key: "deck.pile_or_post_replacement_required",
+    value: "Assume retained",
+    valueType: "select",
+  }).value === false
+);
+const leftFacts: EstimateFact[] = [
+  ...elevatedFacts,
+  {
+    key: "deck.pile_or_post_replacement_required",
+    work_area_id: "deck-1",
+    value: "Not sure",
+    source: "user",
+  },
+];
+const leftPlan = deckJobPlanAdapter.project(
+  { id: "deck-1", type: "deck", name: "Deck", status: "confirmed" },
+  {
+    facts: leftFacts,
+    briefText: STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF,
+    constraints: [],
+    qualityLevel: null,
+  }
+);
+check(
+  "a saved inspection choice stays unresolved",
+  leftPlan.notConfirmed.some((item) => item.label === PILE_LEFT_UNTIL_INSPECTION_LABEL) &&
+    !leftPlan.included.some((item) => item.sourceFactKey === "deck.pile_or_post_replacement_required") &&
+    !leftPlan.notIncluded.some((item) => item.sourceFactKey === "deck.pile_or_post_replacement_required")
+);
+const assumedFacts: EstimateFact[] = [
+  ...elevatedFacts,
+  {
+    key: "deck.pile_or_post_replacement_required",
+    work_area_id: "deck-1",
+    value: true,
+    source: "user",
+  },
+];
+check(
+  "replacement without a count asks for one",
+  shouldAskPileCount({ facts: assumedFacts, workAreaId: "deck-1" })
+);
+const assumedEstimate = calculateDeck(
+  deckContext(assumedFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
+  { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+const openAllowance = assumedEstimate.lineItems.find((item) =>
+  /pile\/post replacement/i.test(item.label)
+);
+check(
+  "replacement without a count stays an incomplete allowance",
+  openAllowance?.notes === "Count subject to confirmation" &&
+    openAllowance.recommendedCost === 1200 &&
+    openAllowance.includedInTotal !== false &&
+    assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
+);
+const countedFacts: EstimateFact[] = [
+  ...assumedFacts,
+  {
+    key: "deck.pile_or_post_count",
+    work_area_id: "deck-1",
+    value: 4,
+    source: "user",
+  },
+];
+check(
+  "a stated count closes the pile question",
+  !shouldAskPileCount({ facts: countedFacts, workAreaId: "deck-1" })
+);
+const countedEstimate = calculateDeck(
+  deckContext(countedFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
+  { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+const countedAllowance = countedEstimate.lineItems.find((item) =>
+  /pile\/post replacement/i.test(item.label)
+);
+check(
+  "an explicit count uses the existing each rate",
+  countedAllowance?.notes === "4 piles/posts" &&
+    countedAllowance.recommendedCost === 720 &&
+    !countedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
 );
 
 const retainVariant = run(

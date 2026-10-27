@@ -1,5 +1,5 @@
 import type { EstimateFact } from "@/lib/estimate/types";
-import { getFact } from "@/lib/estimate/facts";
+import { getFact, isNotSureValue } from "@/lib/estimate/facts";
 import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
@@ -9,6 +9,8 @@ import {
 } from "@/lib/assistant/job-plan/facts";
 import {
   deckStepsCommerciallyIncluded,
+  PILE_INSPECTION_CONDITION_LABEL,
+  PILE_LEFT_UNTIL_INSPECTION_LABEL,
   pileRetentionPending,
 } from "@/lib/estimate/deck-scope-2c";
 import {
@@ -357,16 +359,39 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       surfaceReason: "Explicit painting exclusion stays reviewable",
     });
     const pilesPending = pileRetentionPending({ facts, workAreaId: id });
-    const piles = booleanItem({
-      id: "pile-retention",
-      workAreaId: id,
-      label: "Replace existing piles",
-      factKey: "deck.pile_or_post_replacement_required",
+    const pileFact = getFact([...facts], id, "deck.pile_or_post_replacement_required");
+    const pileValue = effectiveJobPlanBoolean(
       facts,
-      briefText: context.briefText,
-      surfaceReason:
-        "Retention depends on inspection until a pricing treatment is chosen",
-    });
+      id,
+      "deck.pile_or_post_replacement_required",
+      context.briefText
+    );
+    const piles: JobPlanScopeItem =
+      pilesPending && pileValue == null
+        ? {
+            id: "pile-retention",
+            workAreaId: id,
+            label: isNotSureValue(pileFact?.value)
+              ? PILE_LEFT_UNTIL_INSPECTION_LABEL
+              : PILE_INSPECTION_CONDITION_LABEL,
+            presentation: "NOT_CONFIRMED",
+            kind: "user_scope",
+            togglable: false,
+            write: null,
+            sourceFactKey: "deck.pile_or_post_replacement_required",
+            surfaceReason:
+              "Inspection condition stays unresolved until a pricing treatment is chosen",
+          }
+        : booleanItem({
+            id: "pile-retention",
+            workAreaId: id,
+            label: "Replace existing piles",
+            factKey: "deck.pile_or_post_replacement_required",
+            facts,
+            briefText: context.briefText,
+            surfaceReason:
+              "Retention depends on inspection until a pricing treatment is chosen",
+          });
 
     const items = [
       decking,

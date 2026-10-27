@@ -21,6 +21,7 @@ import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
+import { pileTreatmentChoiceValue } from "@/lib/estimate/deck-scope-2c";
 import { isNotSureValue } from "@/lib/estimate/facts";
 import {
   INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
@@ -1114,6 +1115,13 @@ export function resolveCommittedFactWrite(params: {
   value: unknown;
   valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
 }): { value: unknown; source: "user" | "assumption" } {
+  if (params.key === "deck.pile_or_post_replacement_required") {
+    const treatment = pileTreatmentChoiceValue(params.value);
+    if (treatment != null) {
+      return { value: treatment, source: "user" };
+    }
+  }
+
   if (isNotSureValue(params.value)) {
     const disclosed = disclosedAssumptionForNotSure(params.key, params.value);
     if (disclosed) {

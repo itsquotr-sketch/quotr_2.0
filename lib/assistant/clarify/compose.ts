@@ -31,7 +31,11 @@ import {
   projectConsumesConsumedCondition,
 } from "@/lib/project-conditions/consumed-authority";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
-import { pileRetentionPending } from "@/lib/estimate/deck-scope-2c";
+import {
+  PILE_TREATMENT_OPTIONS,
+  pileRetentionPending,
+  shouldAskPileCount,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   blockingClassForKey,
   constraintIsKnown,
@@ -483,10 +487,14 @@ function candidateFromJobPlanCheck(
       : (template?.questionText ??
         `Should ${item.label.toLowerCase()} be included?`),
     askClass,
-    inputType: item.write?.valueType === "select" ? "select" : "boolean",
-    options: template?.options,
+    inputType: pilePending
+      ? "select"
+      : item.write?.valueType === "select"
+        ? "select"
+        : "boolean",
+    options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
-    write: item.write,
+    write: pilePending ? null : item.write,
     blocksEstimate: askClass === "HARD_MINIMUM" || pilePending,
     assumable: askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
@@ -1773,7 +1781,19 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         if (shouldSuppressKnownSpec(key, wa.id, input)) continue;
         if (factHas(input, key, wa.id)) continue;
         const template = getQuestionTemplateByKey(key);
-        const askClass = mapDeckAskClassToClarify(descriptor.askClass);
+        const askPileCount =
+          key === "deck.pile_or_post_count" &&
+          pileRetentionPending({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+          }) &&
+          shouldAskPileCount({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+          });
+        const askClass = askPileCount
+          ? "ASK_NOW"
+          : mapDeckAskClassToClarify(descriptor.askClass);
         const economicClass = deckEconomicClass(key);
         const inputType =
           template != null

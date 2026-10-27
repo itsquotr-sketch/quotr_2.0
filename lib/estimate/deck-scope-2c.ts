@@ -111,6 +111,28 @@ export function pileRetentionPending(params: {
   );
 }
 
+export const PILE_INSPECTION_CONDITION_LABEL =
+  "Existing piles may be retained if sound after inspection";
+export const PILE_LEFT_UNTIL_INSPECTION_LABEL =
+  "Existing piles left until inspection";
+export const PILE_TREATMENT_OPTIONS = [
+  "Leave until inspection",
+  "Assume replaced",
+  "Assume retained",
+] as const;
+
+/** Details treatment labels for a pending inspection. Not a new fact. */
+export function pileTreatmentChoiceValue(
+  choice: unknown
+): boolean | "Not sure" | null {
+  if (typeof choice !== "string") return null;
+  const trimmed = choice.trim();
+  if (trimmed === "Assume replaced") return true;
+  if (trimmed === "Assume retained") return false;
+  if (trimmed === "Leave until inspection") return "Not sure";
+  return null;
+}
+
 export function shouldAskPileReplacement(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -124,6 +146,29 @@ export function shouldAskPileReplacement(params: {
   if (pileRetentionPending(params)) return true;
   if (!pileReplacementApplicable(params)) return false;
   return true;
+}
+
+/** Ask for a count only after replacement is an explicit assumption. */
+export function shouldAskPileCount(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  const facts = factRows(params.facts);
+  if (
+    getBooleanFact(
+      facts,
+      params.workAreaId,
+      "deck.pile_or_post_replacement_required"
+    ) !== true
+  ) {
+    return false;
+  }
+  const count = getNumberFact(
+    facts,
+    params.workAreaId,
+    "deck.pile_or_post_count"
+  );
+  return count == null || !(count > 0);
 }
 
 /**
