@@ -136,6 +136,7 @@ import {
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
   pileReplacementApplicable,
+  pileRetentionPending,
 } from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_FIXINGS_RESIDUAL_ITEM_KEY,
@@ -1109,8 +1110,23 @@ export function calculateDeck(
     "deck.existing_deck_removal",
     "deck.demolition_required",
   ]);
-  if (existingDeckRemoval == null) {
+  if (existingDeckRemoval === false) {
+    exclusions.push("Demolition");
+  } else if (existingDeckRemoval == null) {
     assumptions.push("No demolition assumed.");
+  }
+  if (
+    getBooleanFact(facts, workArea.id, "deck.steps_included") === false
+  ) {
+    exclusions.push("Stairs");
+  }
+  if (
+    getBooleanFact(facts, workArea.id, "deck.balustrade_required") === false
+  ) {
+    exclusions.push("Balustrade");
+  }
+  if (getBooleanFact(facts, workArea.id, "deck.painting_included") === false) {
+    exclusions.push("Painting");
   }
 
   if (existingDeckRemoval) {
@@ -1230,7 +1246,26 @@ export function calculateDeck(
     facts,
     workAreaId: workArea.id,
   });
-  const pileReplacement = replacementApplicable ? pileReplacementFact : false;
+  const pilePending = pileRetentionPending({ facts, workAreaId: workArea.id });
+  if (pilePending && pileReplacementFact == null) {
+    missingInfo.push(
+      "Existing piles may be retained if sound after inspection. This price does not assume they are replaced or kept."
+    );
+  }
+  if (
+    pilePending &&
+    pileReplacementFact === true &&
+    getNumberFact(facts, workArea.id, "deck.pile_or_post_count") == null
+  ) {
+    missingInfo.push(
+      "Pile replacement is an assumption. No pile count was stated, so this is not a complete pile price."
+    );
+  }
+  const pileReplacement = pilePending
+    ? pileReplacementFact
+    : replacementApplicable
+      ? pileReplacementFact
+      : false;
   const substructureCondition = getStringFact(
     facts,
     workArea.id,

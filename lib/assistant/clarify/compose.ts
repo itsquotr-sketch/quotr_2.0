@@ -32,6 +32,11 @@ import {
 } from "@/lib/project-conditions/consumed-authority";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
+  PILE_TREATMENT_OPTIONS,
+  pileRetentionPending,
+  shouldAskPileCount,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   blockingClassForKey,
   constraintIsKnown,
   explicitUnknownConstraintValue,
@@ -460,6 +465,12 @@ function candidateFromJobPlanCheck(
   if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
     return null;
   }
+  const pilePending =
+    key === "deck.pile_or_post_replacement_required" &&
+    pileRetentionPending({
+      facts: input.facts as EstimateFact[],
+      workAreaId: card.workAreaId,
+    });
 
   return {
     id: `check:${card.workAreaId}:${item.id}`,
@@ -471,16 +482,21 @@ function candidateFromJobPlanCheck(
     constraintKey: null,
     questionKey: key,
     label: item.label,
-    question:
-      template?.questionText ??
-      `Should ${item.label.toLowerCase()} be included?`,
+    question: pilePending
+      ? "Existing piles may be retained if sound after inspection. Should this quote assume they are replaced, or leave that decision until inspection?"
+      : (template?.questionText ??
+        `Should ${item.label.toLowerCase()} be included?`),
     askClass,
-    inputType: item.write?.valueType === "select" ? "select" : "boolean",
-    options: template?.options,
+    inputType: pilePending
+      ? "select"
+      : item.write?.valueType === "select"
+        ? "select"
+        : "boolean",
+    options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
-    write: item.write,
-    blocksEstimate: askClass === "HARD_MINIMUM",
-    assumable: askClass !== "HARD_MINIMUM",
+    write: pilePending ? null : item.write,
+    blocksEstimate: askClass === "HARD_MINIMUM" || pilePending,
+    assumable: askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:
@@ -1796,6 +1812,40 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankReason: `${descriptor.askClass} · ${descriptor.section}`,
           assumptionStatement: deckClarifyAssumptionStatement(key),
           economicClass,
+        });
+      }
+      const pileFacts = input.facts as EstimateFact[];
+      if (
+        pileRetentionPending({ facts: pileFacts, workAreaId: wa.id }) &&
+        shouldAskPileCount({ facts: pileFacts, workAreaId: wa.id }) &&
+        !factHas(input, "deck.pile_or_post_count", wa.id)
+      ) {
+        const countTemplate = getQuestionTemplateByKey("deck.pile_or_post_count");
+        out.push({
+          id: `fact:${wa.id}:deck.pile_or_post_count`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "deck.pile_or_post_count",
+          constraintKey: null,
+          questionKey: "deck.pile_or_post_count",
+          label: countTemplate?.label ?? "Piles/posts to replace",
+          question:
+            countTemplate?.questionText ??
+            "Approximate number of piles or posts to replace?",
+          askClass: "ASSUME_IF_SKIPPED",
+          inputType: "number",
+          unit: countTemplate?.unit,
+          options: countTemplate?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: false,
+          rankScore: CHECK_SCORES["deck.pile_or_post_count"] ?? 67,
+          rankReason: "Pending inspection · replacement count",
+          assumptionStatement: null,
+          economicClass: deckEconomicClass("deck.pile_or_post_count"),
         });
       }
       continue;

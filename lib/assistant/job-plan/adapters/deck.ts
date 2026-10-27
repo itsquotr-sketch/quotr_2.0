@@ -1,5 +1,5 @@
 import type { EstimateFact } from "@/lib/estimate/types";
-import { getFact } from "@/lib/estimate/facts";
+import { getFact, isNotSureValue } from "@/lib/estimate/facts";
 import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
@@ -7,7 +7,12 @@ import {
   jobPlanString,
   presentationFromBoolean,
 } from "@/lib/assistant/job-plan/facts";
-import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
+import {
+  deckStepsCommerciallyIncluded,
+  PILE_INSPECTION_CONDITION_LABEL,
+  PILE_LEFT_UNTIL_INSPECTION_LABEL,
+  pileRetentionPending,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
@@ -341,6 +346,53 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
         : "Explicit balustrade fact",
     });
 
+    const paintingKnown = facts.some(
+      (fact) => fact.work_area_id === id && fact.key === "deck.painting_included"
+    );
+    const painting = booleanItem({
+      id: "painting",
+      workAreaId: id,
+      label: "Painting",
+      factKey: "deck.painting_included",
+      facts,
+      briefText: context.briefText,
+      surfaceReason: "Explicit painting exclusion stays reviewable",
+    });
+    const pilesPending = pileRetentionPending({ facts, workAreaId: id });
+    const pileFact = getFact([...facts], id, "deck.pile_or_post_replacement_required");
+    const pileValue = effectiveJobPlanBoolean(
+      facts,
+      id,
+      "deck.pile_or_post_replacement_required",
+      context.briefText
+    );
+    const piles: JobPlanScopeItem =
+      pilesPending && pileValue == null
+        ? {
+            id: "pile-retention",
+            workAreaId: id,
+            label: isNotSureValue(pileFact?.value)
+              ? PILE_LEFT_UNTIL_INSPECTION_LABEL
+              : PILE_INSPECTION_CONDITION_LABEL,
+            presentation: "NOT_CONFIRMED",
+            kind: "user_scope",
+            togglable: false,
+            write: null,
+            sourceFactKey: "deck.pile_or_post_replacement_required",
+            surfaceReason:
+              "Inspection condition stays unresolved until a pricing treatment is chosen",
+          }
+        : booleanItem({
+            id: "pile-retention",
+            workAreaId: id,
+            label: "Replace existing piles",
+            factKey: "deck.pile_or_post_replacement_required",
+            facts,
+            briefText: context.briefText,
+            surfaceReason:
+              "Retention depends on inspection until a pricing treatment is chosen",
+          });
+
     const items = [
       decking,
       substructure,
@@ -350,6 +402,8 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       steps,
       ...(showConcrete ? [concrete] : []),
       ...(showBalustrade ? [balustrade] : []),
+      ...(paintingKnown ? [painting] : []),
+      ...(pilesPending ? [piles] : []),
     ];
 
     const included = items.filter((i) => i.presentation === "INCLUDED");

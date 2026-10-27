@@ -173,6 +173,7 @@ import {
   settledPostHoleAnswerCount,
 } from "@/lib/estimate/deck-detail-completeness";
 import { spoilAccessAllowsAllowance } from "@/lib/estimate/deck-hole-excavation";
+import { pileTreatmentChoiceValue } from "@/lib/estimate/deck-scope-2c";
 import {
   detailsReadinessPhase,
   detailsStageStatusLabel,
@@ -2412,11 +2413,18 @@ export function AssistantShell({
         }
         if (!candidate.factKey) return { error: "Invalid fact update." };
         const disclosed = disclosedAssumptionForNotSure(candidate.factKey, value);
+        const pileTreatment =
+          candidate.factKey === "deck.pile_or_post_replacement_required"
+            ? pileTreatmentChoiceValue(value)
+            : null;
+        const storedValue = pileTreatment ?? (disclosed ? disclosed.value : value);
         const overlayRow = {
           key: candidate.factKey,
           work_area_id: candidate.workAreaId,
-          value: disclosed ? disclosed.value : value,
-          source: (disclosed ? disclosed.source : "user") as "user" | "assumption",
+          value: storedValue,
+          source: (disclosed && pileTreatment == null ? disclosed.source : "user") as
+            | "user"
+            | "assumption",
           wallTypeId: candidate.wallTypeId ?? undefined,
           openingId: candidate.openingId ?? undefined,
           nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
@@ -2447,8 +2455,11 @@ export function AssistantShell({
             workAreaId: candidate.workAreaId,
             key: candidate.factKey!,
             label: candidate.label,
-            value,
-            valueType,
+            value: storedValue,
+            valueType:
+              pileTreatment === true || pileTreatment === false
+                ? "boolean"
+                : valueType,
             wallTypeId: candidate.wallTypeId ?? undefined,
             openingId: candidate.openingId ?? undefined,
             nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,

@@ -12,6 +12,8 @@ const OPTIONAL_NEGATIVE_KEYS = new Set([
   "deck.balustrade_required",
   "deck.handrail_required",
   "deck.access_type",
+  "deck.steps_included",
+  "deck.painting_included",
   "bathroom.demolition_required",
   "bathroom.tiling_included",
 ]);

@@ -1,0 +1,262 @@
+/**
+ * Shared scope polarity for a brief.
+ * Included, excluded, conditional, and unknown stay distinct.
+ * A missing mention is unknown, not an exclusion.
+ * "No demolition" is not "no preparation".
+ */
+
+export type ScopeTopic =
+  | "stairs"
+  | "balustrade"
+  | "demolition"
+  | "painting"
+  | "preparation"
+  | "substructure";
+
+export type ScopePolarity = "included" | "excluded" | "contradiction" | null;
+
+export type PileRetentionStance =
+  | "conditional"
+  | "replace"
+  | "retain"
+  | "contradiction"
+  | null;
+
+export const PILE_RETENTION_CONDITION =
+  "Existing piles may be retained if sound after inspection";
+
+const TOPIC_PATTERN: Record<ScopeTopic, RegExp> = {
+  stairs: /\b(stairs?|steps?)\b/i,
+  balustrade: /\b(balustrades?|railings?)\b/i,
+  demolition: /\b(demolition|demolish\w*|rip(?:ping)? out|strip(?:ping)? out|remov(?:e|ing|ed|al))\b/i,
+  painting: /\bpaint(?:ing|ed)?\b/i,
+  preparation: /\b(prepar(?:e|ation|ing)|prep)\b/i,
+  substructure: /\b(substructure|framing)\b/i,
+};
+
+const EXCLUSION_LEAD =
+  /\b(do not include|don't include|do not|don't|not including|excluding|exclude|excluded|without|no)\b/i
+
+const PILE_MENTION = /\b(piles?|posts?)\b/i;
+const PILE_CONDITIONAL =
+  /\b(if sound|after inspection|subject to inspection|pending inspection|if the inspection|if inspection|may be retained|might be retained|can be retained|could be retained|can stay|may stay|retained if|keep if sound|reuse if sound)\b/i;
+const PILE_REPLACE =
+  /\b(replace(?:d|ment|ing)?|redo(?:ing|ne)|new piles|new posts)\b/i;
+const PILE_RETAIN = /\b(retain|keep|reuse|remain)\b/i;
+
+function normalise(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function sentences(text: string): string[] {
+  const parts = normalise(text)
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [normalise(text)];
+}
+
+function sentenceForTopic(sentence: string): string {
+  return sentence
+    .replace(/\bready for painting\b/g, " ")
+    .replace(/\bdemolition waste\b/g, " waste");
+}
+
+export function scopeTopicPolarity(
+  briefText: string,
+  topic: ScopeTopic
+): ScopePolarity {
+  const pattern = TOPIC_PATTERN[topic];
+  let included = false;
+  let excluded = false;
+  for (const raw of sentences(briefText)) {
+    const sentence = sentenceForTopic(raw);
+    if (!pattern.test(sentence)) continue;
+    const lead = sentence.match(EXCLUSION_LEAD);
+    if (lead?.index != null) {
+      const word = lead[1]?.toLowerCase() ?? "";
+      const head = sentence.slice(0, lead.index);
+      const tail = sentence.slice(lead.index + word.length);
+      if (word === "excluded") {
+        if (pattern.test(head)) excluded = true;
+      } else if (pattern.test(tail)) {
+        excluded = true;
+      }
+      if (word !== "excluded" && pattern.test(head)) included = true;
+      continue;
+    }
+    if (/\b(not included|not part of|by others)\b/.test(sentence)) {
+      excluded = true;
+      continue;
+    }
+    included = true;
+  }
+  if (included && excluded) return "contradiction";
+  if (excluded) return "excluded";
+  if (included) return "included";
+  return null;
+}
+
+export function pileRetentionStance(briefText: string): PileRetentionStance {
+  let conditional = false;
+  let replace = false;
+  let retain = false;
+  for (const raw of sentences(briefText)) {
+    const sentence = sentenceForTopic(raw);
+    if (!PILE_MENTION.test(sentence)) continue;
+    if (PILE_CONDITIONAL.test(sentence)) {
+      conditional = true;
+      continue;
+    }
+    if (PILE_REPLACE.test(sentence)) {
+      replace = true;
+      continue;
+    }
+    if (PILE_RETAIN.test(sentence)) retain = true;
+  }
+  if (conditional && replace) return "contradiction";
+  if (conditional) return "conditional";
+  if (replace) return "replace";
+  if (retain) return "retain";
+  return null;
+}
+
+export function pileConditionTextIsPending(
+  value: string | null | undefined
+): boolean {
+  return PILE_CONDITIONAL.test(value ?? "");
+}
+
+export type DeckScopeFactUpdate = {
+  readonly key: string;
+  readonly label: string;
+  readonly value: string | boolean | number;
+};
+
+export type DeckScopeIntent = {
+  readonly upserts: readonly DeckScopeFactUpdate[];
+  readonly dropKeys: readonly string[];
+  readonly dropPaintingWorkArea: boolean;
+  readonly warnings: readonly string[];
+};
+
+export function deckScopeIntent(
+  briefText: string,
+  statedPileCount: number | null
+): DeckScopeIntent {
+  const upserts: DeckScopeFactUpdate[] = [];
+  const dropKeys: string[] = [];
+  const warnings: string[] = [];
+
+  const demolition = scopeTopicPolarity(briefText, "demolition");
+  const stairs = scopeTopicPolarity(briefText, "stairs");
+  const balustrade = scopeTopicPolarity(briefText, "balustrade");
+  const painting = scopeTopicPolarity(briefText, "painting");
+  const substructure = scopeTopicPolarity(briefText, "substructure");
+  const piles = pileRetentionStance(briefText);
+
+  if (demolition === "contradiction") {
+    warnings.push(
+      "The brief both includes and excludes demolition. That conflict is left for review."
+    );
+  } else if (demolition === "excluded") {
+    upserts.push({
+      key: "deck.existing_deck_removal",
+      label: "Existing deck removal",
+      value: false,
+    });
+  } else if (demolition === "included") {
+    upserts.push({
+      key: "deck.existing_deck_removal",
+      label: "Existing deck removal",
+      value: true,
+    });
+  }
+
+  if (stairs === "contradiction") {
+    warnings.push(
+      "The brief both includes and excludes stairs. That conflict is left for review."
+    );
+  } else if (stairs === "excluded") {
+    upserts.push({
+      key: "deck.steps_included",
+      label: "Steps",
+      value: false,
+    });
+    upserts.push({
+      key: "deck.access_type",
+      label: "Access type",
+      value: "None",
+    });
+  }
+
+  if (balustrade === "contradiction") {
+    warnings.push(
+      "The brief both includes and excludes balustrades. That conflict is left for review."
+    );
+  } else if (balustrade === "excluded") {
+    upserts.push({
+      key: "deck.balustrade_required",
+      label: "Balustrade required",
+      value: false,
+    });
+  }
+
+  if (painting === "excluded") {
+    upserts.push({
+      key: "deck.painting_included",
+      label: "Painting",
+      value: false,
+    });
+  }
+
+  if (substructure === "included") {
+    upserts.push({
+      key: "deck.substructure_included",
+      label: "New framing / substructure",
+      value: true,
+    });
+  }
+
+  if (piles === "contradiction") {
+    dropKeys.push("deck.pile_or_post_replacement_required");
+    warnings.push(
+      "The brief both replaces piles and keeps them subject to inspection. Neither was stored as decided."
+    );
+  } else if (piles === "conditional") {
+    dropKeys.push("deck.pile_or_post_replacement_required");
+    if (statedPileCount == null) dropKeys.push("deck.pile_or_post_count");
+    upserts.push({
+      key: "deck.substructure_condition",
+      label: "Substructure condition",
+      value: PILE_RETENTION_CONDITION,
+    });
+  } else if (piles === "replace") {
+    upserts.push({
+      key: "deck.pile_or_post_replacement_required",
+      label: "Pile/post replacement",
+      value: true,
+    });
+  } else if (piles === "retain") {
+    upserts.push({
+      key: "deck.pile_or_post_replacement_required",
+      label: "Pile/post replacement",
+      value: false,
+    });
+  }
+
+  if (statedPileCount != null && piles !== "conditional" && piles !== "contradiction") {
+    upserts.push({
+      key: "deck.pile_or_post_count",
+      label: "Piles/posts count",
+      value: statedPileCount,
+    });
+  }
+
+  return {
+    upserts,
+    dropKeys,
+    dropPaintingWorkArea: painting === "excluded",
+    warnings,
+  };
+}

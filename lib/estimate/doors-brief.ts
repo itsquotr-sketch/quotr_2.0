@@ -679,10 +679,11 @@ function fillMissingDoorPortion(
     out.installation_type,
     secondary.installation_type
   );
-  out.leaf_construction = firstPresent(
-    out.leaf_construction,
-    secondary.leaf_construction
-  );
+  if (out.leaf_authority === "extracted" || out.leaf_authority === "user") {
+    // The brief or a saved answer already named the leaf. Model output cannot fill it.
+  } else if (out.leaf_construction == null) {
+    out.leaf_construction = null;
+  }
   out.height_mm = firstPresent(out.height_mm, secondary.height_mm);
   out.width_mm = firstPresent(out.width_mm, secondary.width_mm);
   out.quantity = firstPresent(out.quantity, secondary.quantity);
@@ -700,7 +701,9 @@ function fillMissingDoorPortion(
   );
   out.installation_authority =
     out.installation_authority ?? secondary.installation_authority;
-  out.leaf_authority = out.leaf_authority ?? secondary.leaf_authority;
+  if (out.leaf_authority == null && out.leaf_construction != null) {
+    out.leaf_authority = "extracted";
+  }
   out.height_authority = out.height_authority ?? secondary.height_authority;
   out.width_authority = out.width_authority ?? secondary.width_authority;
   out.quantity_authority =
@@ -805,6 +808,44 @@ export function mergeDoorPortionsPreferringDeterministic(
     });
   }
   return ai.map(cloneDoorPortion);
+}
+
+/**
+ * A leaf the brief does not name stays unresolved.
+ * Parser-extracted and saved answers stay. A model leaf is kept only when
+ * the brief, or that portion's own text, names the same construction.
+ */
+export function reconcileDoorLeavesWithBrief(
+  portions: readonly DoorPortion[],
+  briefText: string
+): DoorPortion[] {
+  return portions.map((portion) => {
+    if (
+      portion.leaf_authority === "user" ||
+      portion.leaf_authority === "extracted"
+    ) {
+      return portion;
+    }
+    if (portion.leaf_construction == null) return cloneDoorPortion(portion);
+    const local = leafConstructionFromSnippet(
+      `${portion.label ?? ""} ${portion.other_description ?? ""}`
+    );
+    const briefLeaf = leafConstructionFromSnippet(briefText);
+    const supported =
+      local === portion.leaf_construction ||
+      (portions.length === 1 && briefLeaf === portion.leaf_construction);
+    if (!supported) {
+      return {
+        ...cloneDoorPortion(portion),
+        leaf_construction: null,
+        leaf_authority: undefined,
+      };
+    }
+    return {
+      ...cloneDoorPortion(portion),
+      leaf_authority: "extracted",
+    };
+  });
 }
 
 function doorsPortionsFactNameMatches(

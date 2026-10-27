@@ -638,6 +638,30 @@ const DOOR_USER_AUTHORITY_FIELDS = [
   "other_description_authority",
 ] as const;
 
+export function confirmedDoorLeafConflicts(params: {
+  readonly persisted: unknown;
+  readonly extracted: unknown;
+}): boolean {
+  const saved = parseDoorsPortions(params.persisted);
+  const next = parseDoorsPortions(params.extracted);
+  return saved.some((row) => {
+    if (row.leaf_authority !== "user" || row.leaf_construction == null) {
+      return false;
+    }
+    const match =
+      next.find((candidate) => candidate.id === row.id) ??
+      next.find(
+        (candidate) =>
+          row.clause_ordinal != null &&
+          candidate.clause_ordinal === row.clause_ordinal
+      );
+    return (
+      match?.leaf_construction != null &&
+      match.leaf_construction !== row.leaf_construction
+    );
+  });
+}
+
 export function doorPortionHasUserAuthority(portion: DoorPortion): boolean {
   return DOOR_USER_AUTHORITY_FIELDS.some((field) => portion[field] === "user");
 }

@@ -11,8 +11,10 @@ import {
 } from "@/lib/project-conditions/brief-logistics";
 import {
   explicitDeckBriefFacts,
+  explicitDeckPostCount,
   explicitDeckStepWidthM,
 } from "@/lib/estimate/deck-brief-facts";
+import { deckScopeIntent } from "@/lib/estimate/scope-intent";
 import {
   briefHasIntegralDeckStepLanguage,
   filterIntegralDeckExternalStairsWorkAreas,
@@ -52,6 +54,7 @@ import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
   extractDoorPortionsFromBrief,
   mergeDoorPortionsPreferringDeterministic,
+  reconcileDoorLeavesWithBrief,
   readAiDoorPortionsFromExtraction,
   seedExtractedDoorsFact,
   stripLegacyDoorFactsFromExtraction,
@@ -701,7 +704,29 @@ function inferDoors(
 
   const parsed = extractDoorPortionsFromBrief(brief);
   const ai = readAiDoorPortionsFromExtraction(extraction);
-  const portions = mergeDoorPortionsPreferringDeterministic(ai, parsed);
+  const portions = reconcileDoorLeavesWithBrief(
+    mergeDoorPortionsPreferringDeterministic(ai, parsed),
+    brief
+  );
+  const modelLeaf = ai.find((row) => row.leaf_construction != null);
+  const keptLeaf = portions.find((row) => row.leaf_authority === "extracted");
+  if (
+    modelLeaf?.leaf_construction &&
+    keptLeaf?.leaf_construction &&
+    modelLeaf.leaf_construction !== keptLeaf.leaf_construction
+  ) {
+    extraction.warnings.push(
+      "The analysis named a different door leaf from the brief. The brief was kept."
+    );
+  } else if (
+    modelLeaf?.leaf_construction &&
+    portions.every((row) => row.leaf_construction == null) &&
+    !portions.some((row) => row.leaf_authority === "user")
+  ) {
+    extraction.warnings.push(
+      "Door leaf construction was not in the brief, so it was left unresolved."
+    );
+  }
   if (portions.length > 0) {
     seedExtractedDoorsFact(extraction, { portions });
     stripLegacyDoorFactsFromExtraction(extraction);
@@ -2379,6 +2404,52 @@ export function enrichExtractionFromBrief(params: {
   applyDiscoveredWorkAreaInstances(params.briefText, extraction, params.allowedTypes);
   applyConstraintFactsToWorkAreas(brief, extraction);
   stripInventedInternalWallsFacts(extraction, params.briefText);
+  const deckIntent = /\bdeck(?:ing)?\b/i.test(params.briefText)
+    ? deckScopeIntent(params.briefText, explicitDeckPostCount(params.briefText))
+    : null;
+  if (
+    deckIntent &&
+    deckIntent.upserts.length > 0 &&
+    !hasWorkAreaType(extraction, "deck")
+  ) {
+    addWorkAreaIfMissing(
+      extraction,
+      "deck",
+      0.9,
+      "Deck mentioned in brief",
+      params.allowedTypes
+    );
+  }
+  if (deckIntent && hasWorkAreaType(extraction, "deck")) {
+    const intent = deckIntent;
+    for (const key of intent.dropKeys) {
+      extraction.facts = extraction.facts.filter(
+        (fact) => !(fact.work_area_type === "deck" && fact.key === key)
+      );
+    }
+    for (const fact of intent.upserts) {
+      upsertFact(extraction, {
+        workAreaType: "deck",
+        key: fact.key,
+        label: fact.label,
+        value: fact.value,
+        confidence: 0.95,
+      });
+    }
+    if (intent.dropPaintingWorkArea) {
+      extraction.workAreas = extraction.workAreas.filter(
+        (row) => row.type !== "painting"
+      );
+      extraction.facts = extraction.facts.filter(
+        (fact) => fact.work_area_type !== "painting"
+      );
+    }
+    for (const warning of intent.warnings) {
+      if (!extraction.warnings.includes(warning)) {
+        extraction.warnings.push(warning);
+      }
+    }
+  }
   const owned = filterTopLevelWorkAreas({
     briefText: params.briefText,
     workAreas: extraction.workAreas,
