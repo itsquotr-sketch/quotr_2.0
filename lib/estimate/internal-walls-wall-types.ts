@@ -721,6 +721,18 @@ function parseMillimetreOption(value: unknown): number | null {
   return parsePositiveNumber(value);
 }
 
+function parseThicknessSource(
+  raw: unknown,
+  product: InternalWallsLiningProduct | null,
+  thicknessMm: number | null
+): "known" | "assumed_disclosed" | null {
+  if (raw === "known" || raw === "assumed_disclosed") return raw;
+  if (thicknessMm == null) return null;
+  return thicknessMm === defaultThicknessMmForProduct(product)
+    ? "assumed_disclosed"
+    : "known";
+}
+
 function parseFace(value: unknown): InternalWallsFace {
   if (!isRecord(value)) return emptyFace();
   const product = parseInternalWallsLiningProduct(value.product);
@@ -735,10 +747,7 @@ function parseFace(value: unknown): InternalWallsFace {
       materialFamilyForProduct(product),
     product,
     thickness_mm: parsePositiveNumber(value.thickness_mm),
-    thickness_source:
-      value.thickness_source === "known" || value.thickness_source === "assumed_disclosed"
-        ? value.thickness_source
-        : null,
+    thickness_source: parseThicknessSource(value.thickness_source, product, parsePositiveNumber(value.thickness_mm)),
     sheet_length_mm: parsePositiveNumber(value.sheet_length_mm),
     sheet_length_source:
       value.sheet_length_source === "override" ||
