@@ -306,6 +306,22 @@ export function summariseFlooringPortion(
   if (portion.finish_type === "carpet" && portion.underlay_required === false) {
     extras.push("No underlay");
   }
+  if (portion.finish_removal_required === true) {
+    extras.push(
+      portion.existing_finish_type
+        ? `Remove existing ${portion.existing_finish_type.replace(/_/g, " ")}`
+        : "Remove existing flooring"
+    );
+  }
+  if (portion.waste_percent != null && portion.waste_percent > 0) {
+    extras.push(`${portion.waste_percent}% waste recorded, not in the priced quantity`);
+  }
+  if (portion.transitions_required === true) {
+    extras.push("Transition strips requested, unpriced");
+  }
+  if (portion.framing_required === false) {
+    extras.push("Major subfloor repairs excluded");
+  }
   if (
     (portion.finish_type === "vinyl_plank" || portion.finish_type === "tile") &&
     portion.floor_preparation_required === true
