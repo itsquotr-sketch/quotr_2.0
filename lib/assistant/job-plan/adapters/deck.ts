@@ -7,7 +7,10 @@ import {
   jobPlanString,
   presentationFromBoolean,
 } from "@/lib/assistant/job-plan/facts";
-import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
+import {
+  deckStepsCommerciallyIncluded,
+  pileRetentionPending,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
@@ -341,6 +344,30 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
         : "Explicit balustrade fact",
     });
 
+    const paintingKnown = facts.some(
+      (fact) => fact.work_area_id === id && fact.key === "deck.painting_included"
+    );
+    const painting = booleanItem({
+      id: "painting",
+      workAreaId: id,
+      label: "Painting",
+      factKey: "deck.painting_included",
+      facts,
+      briefText: context.briefText,
+      surfaceReason: "Explicit painting exclusion stays reviewable",
+    });
+    const pilesPending = pileRetentionPending({ facts, workAreaId: id });
+    const piles = booleanItem({
+      id: "pile-retention",
+      workAreaId: id,
+      label: "Replace existing piles",
+      factKey: "deck.pile_or_post_replacement_required",
+      facts,
+      briefText: context.briefText,
+      surfaceReason:
+        "Retention depends on inspection until a pricing treatment is chosen",
+    });
+
     const items = [
       decking,
       substructure,
@@ -350,6 +377,8 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       steps,
       ...(showConcrete ? [concrete] : []),
       ...(showBalustrade ? [balustrade] : []),
+      ...(paintingKnown ? [painting] : []),
+      ...(pilesPending ? [piles] : []),
     ];
 
     const included = items.filter((i) => i.presentation === "INCLUDED");

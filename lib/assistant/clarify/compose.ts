@@ -31,6 +31,7 @@ import {
   projectConsumesConsumedCondition,
 } from "@/lib/project-conditions/consumed-authority";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
+import { pileRetentionPending } from "@/lib/estimate/deck-scope-2c";
 import {
   blockingClassForKey,
   constraintIsKnown,
@@ -460,6 +461,12 @@ function candidateFromJobPlanCheck(
   if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
     return null;
   }
+  const pilePending =
+    key === "deck.pile_or_post_replacement_required" &&
+    pileRetentionPending({
+      facts: input.facts as EstimateFact[],
+      workAreaId: card.workAreaId,
+    });
 
   return {
     id: `check:${card.workAreaId}:${item.id}`,
@@ -471,16 +478,17 @@ function candidateFromJobPlanCheck(
     constraintKey: null,
     questionKey: key,
     label: item.label,
-    question:
-      template?.questionText ??
-      `Should ${item.label.toLowerCase()} be included?`,
+    question: pilePending
+      ? "Existing piles may be retained if sound after inspection. Should this quote assume they are replaced, or leave that decision until inspection?"
+      : (template?.questionText ??
+        `Should ${item.label.toLowerCase()} be included?`),
     askClass,
     inputType: item.write?.valueType === "select" ? "select" : "boolean",
     options: template?.options,
     writeTarget: "FACT",
     write: item.write,
-    blocksEstimate: askClass === "HARD_MINIMUM",
-    assumable: askClass !== "HARD_MINIMUM",
+    blocksEstimate: askClass === "HARD_MINIMUM" || pilePending,
+    assumable: askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:

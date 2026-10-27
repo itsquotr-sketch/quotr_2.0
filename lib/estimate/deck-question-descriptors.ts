@@ -21,7 +21,7 @@ import { deckSkirtingIncluded } from "@/lib/estimate/deck-fascia";
 import {
   deckStepsCommerciallyIncluded,
   newSubstructureIncluded,
-  pileReplacementApplicable,
+  pileRetentionPending,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -176,10 +176,16 @@ export function deckFactIsRelevant(
     case "deck.spoil_destination":
       return showConcrete(ctx);
     case "deck.pile_or_post_replacement_required":
-      return pileReplacementApplicable({
-        facts: asEstimateFacts(ctx.facts),
-        workAreaId: ctx.workAreaId,
-      });
+      return (
+        shouldAskPileReplacement({
+          facts: asEstimateFacts(ctx.facts),
+          workAreaId: ctx.workAreaId,
+        }) ||
+        pileRetentionPending({
+          facts: asEstimateFacts(ctx.facts),
+          workAreaId: ctx.workAreaId,
+        })
+      );
     case "deck.substructure_condition":
       return !newSubstructureIncluded(asEstimateFacts(ctx.facts), ctx.workAreaId);
     case "deck.pile_or_post_count":

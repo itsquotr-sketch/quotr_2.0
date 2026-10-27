@@ -10,6 +10,7 @@
  * Do not inflate productivity and also apply access for the same issue.
  */
 import { getBooleanFact, getNumberFact, getStringFact, round2 } from "@/lib/estimate/facts";
+import { pileConditionTextIsPending } from "@/lib/estimate/scope-intent";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 function factRows(facts: readonly EstimateFact[]): EstimateFact[] {
@@ -77,14 +78,14 @@ export function pileReplacementApplicable(params: {
     params.workAreaId,
     "deck.substructure_included"
   );
-  const newLayout = substructure ?? true;
-  if (newLayout) return false;
-
   const explicit = getBooleanFact(
     facts,
     params.workAreaId,
     "deck.pile_or_post_replacement_required"
   );
+  if (explicit === true && substructure !== true) return true;
+  const newLayout = substructure ?? true;
+  if (newLayout) return false;
   if (explicit === true) return true;
 
   const removal = getBooleanFact(
@@ -97,17 +98,32 @@ export function pileReplacementApplicable(params: {
   return true;
 }
 
+export function pileRetentionPending(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  return pileConditionTextIsPending(
+    getStringFact(
+      factRows(params.facts),
+      params.workAreaId,
+      "deck.substructure_condition"
+    )
+  );
+}
+
 export function shouldAskPileReplacement(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
 }): boolean {
-  if (!pileReplacementApplicable(params)) return false;
   const known = getBooleanFact(
     factRows(params.facts),
     params.workAreaId,
     "deck.pile_or_post_replacement_required"
   );
-  return known == null;
+  if (known != null) return false;
+  if (pileRetentionPending(params)) return true;
+  if (!pileReplacementApplicable(params)) return false;
+  return true;
 }
 
 /**

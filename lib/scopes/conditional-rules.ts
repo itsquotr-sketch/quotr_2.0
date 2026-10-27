@@ -259,6 +259,18 @@ export function shouldHideConditionalQuestion(
   }
 
   if (key === "deck.pile_or_post_replacement_required") {
+    const condition = strFact(lookup, workAreaId, "deck.substructure_condition");
+    const pending =
+      typeof condition === "string" &&
+      /if sound|after inspection|subject to inspection|may be retained|pending inspection/i.test(
+        condition
+      );
+    const known = boolFact(
+      lookup,
+      workAreaId,
+      "deck.pile_or_post_replacement_required"
+    );
+    if (pending) return known != null;
     const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
     const newLayout = substructure ?? true;
     if (newLayout) return true;

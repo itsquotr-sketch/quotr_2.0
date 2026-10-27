@@ -22,6 +22,7 @@ import {
   aiWorkAreasToRows,
   factDedupeKey,
   dedupePendingFactRows,
+  CONFIRMED_ANSWER_CONFLICT,
   reanalysisFactWrite,
 } from "@/lib/ai/mappers";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
@@ -82,6 +83,7 @@ import { INTERNAL_WALLS_WALL_TYPES_FACT_KEY } from "@/lib/estimate/internal-wall
 import { mergePersistedCeilingPortionsOnReanalyse } from "@/lib/estimate/ceilings-brief";
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
+  confirmedDoorLeafConflicts,
   DOORS_PORTIONS_FACT_KEY,
   mergePersistedDoorsPortionsOnReanalyse,
 } from "@/lib/estimate/doors-portions";
@@ -656,6 +658,10 @@ export async function saveBriefAndSeedWorkAreas(
             portion.label_authority === "user" ||
             portion.other_description_authority === "user"
         );
+        const leafConflict = confirmedDoorLeafConflicts({
+          persisted: existing.value,
+          extracted: row.value,
+        });
         const { error: mergeError } = await supabase
           .from("project_facts")
           .update({
@@ -667,6 +673,7 @@ export async function saveBriefAndSeedWorkAreas(
                 ? "user"
                 : "ai_extracted",
             confidence: row.confidence,
+            conflict_warning: leafConflict ? CONFIRMED_ANSWER_CONFLICT : null,
           })
           .eq("id", existing.id)
           .eq("project_id", projectId);
