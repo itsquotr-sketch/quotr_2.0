@@ -14,6 +14,10 @@ import {
 import { safeFactPresentationLabel } from "@/lib/assistant/presentation/fact-key-labels";
 import {
   findFlooringPortion,
+  flooringAreaConflictCopy,
+  flooringAreaMeasuresDisagree,
+  flooringMeasuredAreaM2,
+  formatFlooringM2,
   FLOORING_ADD_PORTION_KEY,
   FLOORING_DELETE_PORTION_KEY,
   FLOORING_DUPLICATE_PORTION_KEY,
@@ -267,6 +271,27 @@ function missingDetailLanguage(portion: FlooringPortion): string[] {
   return missing;
 }
 
+function chosenAreaCopy(portion: FlooringPortion): string | null {
+  const measured = flooringMeasuredAreaM2(portion);
+  const stated = portion.area_m2;
+  const differs =
+    measured != null &&
+    stated != null &&
+    stated > 0 &&
+    Math.abs(measured - stated) > Math.max(0.05, measured * 0.005);
+  if (portion.area_input_method === "length_width" && measured != null) {
+    const chosen = `${portion.length_m} × ${portion.width_m} m measures ${formatFlooringM2(measured)}`;
+    return differs ? `${chosen}; stated ${formatFlooringM2(stated!)} kept` : chosen;
+  }
+  if (portion.area_input_method === "direct_m2" && stated != null) {
+    const chosen = formatFlooringM2(stated);
+    return differs && portion.length_m != null && portion.width_m != null
+      ? `${chosen} stated; ${portion.length_m} × ${portion.width_m} m measures ${formatFlooringM2(measured!)} kept`
+      : chosen;
+  }
+  return null;
+}
+
 export function summariseFlooringPortion(
   portion: FlooringPortion,
   index: number
@@ -282,8 +307,13 @@ export function summariseFlooringPortion(
   const complete = flooringPortionIsInformationComplete(portion);
   if (specialist) {
     const desc = portion.other_description?.trim() || "Specialist flooring";
+    const conflict = flooringAreaMeasuresDisagree(portion)
+      ? flooringAreaConflictCopy(portion)
+      : null;
     const area =
-      portion.area_m2 != null ? `${portion.area_m2} m²` : "area unanswered";
+      conflict ??
+      chosenAreaCopy(portion) ??
+      (portion.area_m2 != null ? `${portion.area_m2} m²` : "area unanswered");
     return {
       id: portion.id,
       displayName,
@@ -293,12 +323,17 @@ export function summariseFlooringPortion(
     };
   }
   const finish = finishDisplay(portion.finish_type) ?? "finish unanswered";
+  const conflict = flooringAreaMeasuresDisagree(portion)
+    ? flooringAreaConflictCopy(portion)
+    : null;
   const area =
-    portion.area_m2 != null
+    conflict ??
+    chosenAreaCopy(portion) ??
+    (portion.area_m2 != null
       ? `${portion.area_m2} m²`
       : portion.length_m != null && portion.width_m != null
         ? `${portion.length_m} × ${portion.width_m} m`
-        : null;
+        : null);
   const extras: string[] = [];
   if (portion.finish_type === "carpet" && portion.underlay_required === true) {
     extras.push("Underlay included");
@@ -402,7 +437,7 @@ function buildCandidate(params: {
       ? `${displayName} · ${flooringQuestionLabel(params.factKey) ?? safeFactPresentationLabel(params.factKey)}`
       : flooringQuestionLabel(params.factKey) ??
         safeFactPresentationLabel(params.factKey),
-    question: flooringQuestionCopy(params.factKey),
+    question: flooringQuestionCopy(params.factKey, params.portion),
     askClass: params.askClass,
     inputType: flooringQuestionInputType(params.factKey, params.portion),
     unit: flooringQuestionUnit(params.factKey),

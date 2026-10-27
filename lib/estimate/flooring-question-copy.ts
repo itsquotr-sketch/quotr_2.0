@@ -10,7 +10,12 @@ import {
   BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
   BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
 } from "@/lib/estimate/bathroom-identities";
-import type { FlooringPortion, FlooringSubstrateFamily } from "@/lib/estimate/flooring-portions";
+import {
+  flooringAreaConflictCopy,
+  flooringAreaMeasuresDisagree,
+  type FlooringPortion,
+  type FlooringSubstrateFamily,
+} from "@/lib/estimate/flooring-portions";
 
 export const FLOORING_FINISH_OPTIONS = [
   "Carpet",
@@ -159,7 +164,25 @@ const LABELS: Record<string, string> = {
   "flooring.portion.substrate_removal_required": "Substrate removal",
 };
 
-export function flooringQuestionCopy(factKey: string): string {
+export function flooringQuestionCopy(
+  factKey: string,
+  portion?: { 
+    readonly length_m: number | null;
+    readonly width_m: number | null;
+    readonly area_m2: number | null;
+    readonly area_method_authority?: string;
+  } | null
+): string {
+  if (
+    factKey === "flooring.portion.area_input_method" &&
+    portion &&
+    flooringAreaMeasuresDisagree(portion)
+  ) {
+    const detail = flooringAreaConflictCopy(portion);
+    if (detail) {
+      return `${detail}. Which area should the quote use?`;
+    }
+  }
   return QUESTIONS[factKey] ?? LABELS[factKey] ?? factKey;
 }
 

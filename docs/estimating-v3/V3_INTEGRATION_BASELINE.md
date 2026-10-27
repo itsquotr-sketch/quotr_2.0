@@ -82,3 +82,5 @@ Stopping and painting keep one commercial identity per lined face. The overlap g
 | Regressions on `f4f947f` | `verify-work-area-internal-walls-08.ts` 100 passed. `verify-estimating-v3-stage-2a.ts` 41 passed. `npx next build --webpack` exited 0. `npm run build:safe` passed its environment guards, then Turbopack stopped on the worktree `node_modules` junction. |
 
 Deferred, and not part of this acceptance: a lining product for the face, carpet-tile recipes, preliminaries pricing, purchasing rules, analysis-quality runs across the eight briefs, and the fascia-length gap. Pre-existing flooring, doors, and presentation golden differences were not changed. The partition opening-labour line still has no price, so quote creation stays closed.
+
+Stage 2B continues from this baseline on `estimating/v3-stage-2b`. Its flooring-interpretation record is [STAGE_2B_ANALYSIS.md](./STAGE_2B_ANALYSIS.md). That slice does not change the acceptance above.

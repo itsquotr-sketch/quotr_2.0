@@ -373,18 +373,69 @@ function kitchenTokenIsDoorLocation(clause: string): boolean {
 const FLOORING_FINISH_TOKEN =
   "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring)";
 
-export function clauseHasFlooringOperation(clause: string): boolean {
+function mentionsFloor(text: string): boolean {
+  return /\b(?:floors?|flooring|floorboards?)\b/.test(text);
+}
+
+function mentionsFloorRoom(text: string): boolean {
+  return /\b(?:bedrooms?|living(?:\s+rooms?)?|lounges?|hall(?:way)?s?|kitchens?|dining(?:\s+rooms?)?|rumpus|offices?|entr(?:y|ance)|laundr(?:y|ies))\b/.test(
+    text
+  );
+}
+
+function mentionsDeckAssembly(text: string): boolean {
+  return /\b(?:decks?|decking|joists?|bearers?|balustrades?|fascia|face boards?|platforms?)\b/.test(
+    text
+  );
+}
+
+/**
+ * "Hardwood" names a floor finish only when the clause is about a floor.
+ * The same word on a deck, joist line, or platform is the deck board.
+ */
+function hardwoodBelongsToDeckAssembly(
+  clause: string,
+  briefText?: string
+): boolean {
+  const raw = clause.toLowerCase();
+  if (!/\bhardwood\b/.test(raw)) return false;
+  if (mentionsFloor(raw) || mentionsFloorRoom(raw)) return false;
+  if (mentionsDeckAssembly(raw)) return true;
+  if (
+    /\bboards?\b/.test(raw) &&
+    /\b(?:above ground|off the ground|high)\b/.test(raw)
+  ) {
+    return true;
+  }
+  const brief = (briefText ?? "").toLowerCase();
+  if (!brief || brief === raw) return false;
+  if (mentionsFloorRoom(brief)) return false;
+  if (mentionsFloor(brief) && !mentionsDeckAssembly(brief)) return false;
+  return mentionsDeckAssembly(brief);
+}
+
+function finishTokenIsFlooring(raw: string, briefText?: string): boolean {
+  const token = new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`);
+  if (!token.test(raw)) return false;
+  if (!hardwoodBelongsToDeckAssembly(raw, briefText)) return true;
+  return token.test(raw.replace(/\bhardwood\b/g, " "));
+}
+
+export function clauseHasFlooringOperation(
+  clause: string,
+  briefText?: string
+): boolean {
   const raw = clause.toLowerCase();
   if (/\bsheet\s+vinyl\b/.test(raw) && !/\b(?:vinyl\s+plank|lvt|slat\s+vinyl)\b/.test(raw)) {
     return true;
   }
   if (
     /\b(?:install|lay|replace|supply and install|carpet|tile)\b/.test(raw) &&
-    new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)
+    finishTokenIsFlooring(raw, briefText)
   ) {
     return true;
   }
-  if (new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)) return true;
+  if (finishTokenIsFlooring(raw, briefText)) return true;
   if (/\b(?:floor tiles?|tile the (?:ensuite |bathroom )?floor)\b/.test(raw)) {
     return true;
   }
@@ -524,7 +575,7 @@ export function briefHasIndependentFlooring(briefText: string): boolean {
   }
   const clauses = ownershipClauses(brief);
   for (const clause of clauses) {
-    if (!clauseHasFlooringOperation(clause)) continue;
+    if (!clauseHasFlooringOperation(clause, briefText)) continue;
     if (clauseIsBathroomOwnedFloor(clause)) continue;
     if (clauseIsBathroomSubstrateRebuild(clause, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(clause)) continue;
