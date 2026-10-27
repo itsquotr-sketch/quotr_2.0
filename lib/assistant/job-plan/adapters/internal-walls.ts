@@ -93,13 +93,14 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
     if (
       skirtingLength != null &&
       skirtingLength > 0 &&
-      !skirtingKnown &&
       jobPlanBoolean(context.facts, id, "internal_walls.skirtings_included") !== false
     ) {
       included.push({
         id: `${id}-skirting-length`,
         workAreaId: id,
-        label: `${skirtingLength} lm skirting; edges not allocated`,
+        label: skirtingKnown
+          ? `${skirtingLength} lm skirting`
+          : `${skirtingLength} lm skirting; edges not allocated`,
         presentation: "INCLUDED",
         kind: "specification",
         togglable: false,

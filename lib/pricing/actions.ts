@@ -121,6 +121,10 @@ import {
   resolveClientQuoteExclusions,
 } from "@/lib/quotes/client-fields";
 import {
+  explicitJobExclusionLines,
+  seedPricingClientExclusions,
+} from "@/lib/quotes/job-exclusions";
+import {
   resolveTermsForSnapshot,
 } from "@/lib/settings/snapshot";
 import {
@@ -634,10 +638,15 @@ export async function createPricingFromEstimate(input: {
     pricingClientAssumptions: [],
     orgDefaults,
   });
-  const exclusions = resolveClientQuoteExclusions({
-    pricingClientExclusions: [],
-    orgDefaults,
-  });
+  const exclusions = seedPricingClientExclusions({
+    templateLines: resolveClientQuoteExclusions({
+      pricingClientExclusions: [],
+      orgDefaults,
+    }),
+    jobLines: explicitJobExclusionLines(
+      factsResult.error ? [] : (factsResult.data ?? [])
+    ),
+  }).lines;
   const terms = resolveTermsForSnapshot(null, orgDefaults);
   const internalNotes = formatEstimateNarrativeForInternalNotes({
     assumptions: parseStringArray(estimate.assumptions),

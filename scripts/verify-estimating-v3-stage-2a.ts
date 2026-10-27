@@ -25,6 +25,12 @@ import {
   assertQuoteSnapshotMutable,
   assertQuoteStatusTransition,
 } from "../lib/quotes/transaction";
+import { resolveClientQuoteExclusions } from "../lib/quotes/client-fields";
+import {
+  explicitJobExclusionLines,
+  seedPricingClientExclusions,
+} from "../lib/quotes/job-exclusions";
+import { DEFAULT_QUOTE_EXCLUSIONS } from "../lib/settings/defaults";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
 import { deckExposedPerimeterM } from "../lib/estimate/deck-fascia";
 import { listDeckClarifyDescriptors } from "../lib/estimate/deck-question-descriptors";
@@ -35,7 +41,11 @@ import {
   extractInternalWallsTypesFromBrief,
   mergePersistedInternalWallTypesOnReanalyse,
 } from "../lib/estimate/internal-walls-brief";
-import { nextInternalWallsFinishField } from "../lib/estimate/internal-walls-finish";
+import {
+  nextInternalWallsFinishField,
+  resolveSkirtingCommercialQuantity,
+} from "../lib/estimate/internal-walls-finish";
+import { internalWallsLiningFaceTakeoff } from "../lib/estimate/internal-walls-lining";
 import {
   applyInternalWallsFactWrite,
   nextInternalWallsWallTypeField,
@@ -773,6 +783,119 @@ check(
       send_lock_delivery_id: null,
     }) == null &&
     assertQuoteStatusTransition("sent", "draft").ok === false
+);
+
+const statedSkirting = resolveSkirtingCommercialQuantity({
+  statedLm: 45,
+  derivedLm: 48,
+  skirtingTypeCount: 1,
+});
+const derivedSkirting = resolveSkirtingCommercialQuantity({
+  statedLm: null,
+  derivedLm: 20,
+  skirtingTypeCount: 1,
+});
+check(
+  "a stated skirting length stays authoritative when the faces derive another length",
+  statedSkirting.usedStated &&
+    statedSkirting.quantityLm === 45 &&
+    statedSkirting.review != null &&
+    derivedSkirting.usedStated === false &&
+    derivedSkirting.quantityLm === 20 &&
+    derivedSkirting.review == null
+);
+const unlined = internalWallsLiningFaceTakeoff({
+  type: { length_lm: 24, height_m: 2.7 },
+  face: {
+    lined: true,
+    material_family: null,
+    product: null,
+    thickness_mm: null,
+    sheet_length_mm: null,
+    layers: 1,
+    thickness_source: null,
+  },
+  side: "side_a",
+  wasteFactor: 0,
+  hoursPerSheet: null,
+});
+check(
+  "a missing lining product stays unresolved",
+  unlined.ok === false &&
+    unlined.kind === "incomplete" &&
+    unlined.message === "Add a lining product for this face."
+);
+const orgDefaults = {
+  defaultGstRate: 15,
+  defaultQuoteValidityDays: 30,
+  defaultPaymentTerms: null,
+  defaultQuoteTerms: null,
+  defaultQuoteExclusions: null,
+  defaultQuoteAssumptions: null,
+};
+const partitionJobLines = explicitJobExclusionLines([
+  {
+    key: "internal_walls.wall_types",
+    value: [{ id: "wt-partition", painting: "none", skirting: "none", electrical: "none" }],
+  },
+  { key: "internal_walls.painting_included", value: false },
+  { key: "internal_walls.skirtings_included", value: false },
+]);
+const officeJobLines = explicitJobExclusionLines([
+  {
+    key: "internal_walls.coverage_note",
+    value:
+      "Requested and not priced: site establishment. Excluded trades: structural, plumbing, fire, electrical.",
+  },
+  {
+    key: "internal_walls.wall_types",
+    value: [{ id: "wt-office", painting: "both", skirting: "both", electrical: "none" }],
+  },
+]);
+const templateLines = resolveClientQuoteExclusions({
+  pricingClientExclusions: [],
+  orgDefaults,
+});
+const seeded = seedPricingClientExclusions({
+  templateLines,
+  jobLines: partitionJobLines,
+});
+const edited = seedPricingClientExclusions({
+  templateLines,
+  jobLines: partitionJobLines,
+  existingDraftLines: ["Client removed the template and kept one exclusion."],
+});
+const officeSeed = seedPricingClientExclusions({
+  templateLines,
+  jobLines: officeJobLines,
+});
+const quoteFromSeed = resolveClientQuoteExclusions({
+  pricingClientExclusions: seeded.lines,
+  orgDefaults,
+});
+check(
+  "partition job exclusions travel with the template into a new draft and quote",
+  seeded.preservedEdit === false &&
+    seeded.lines.some((line) => line.includes(DEFAULT_QUOTE_EXCLUSIONS)) &&
+    quoteFromSeed.some((line) => line.includes("Painting")) &&
+    quoteFromSeed.some((line) => line.includes("Electrical")) &&
+    quoteFromSeed.some((line) => line.includes("Skirting")) &&
+    quoteFromSeed.filter((line) => line.includes("Painting")).length === 1
+);
+check(
+  "office trade exclusions stay explicit and requested work is not recast as an exclusion",
+  officeSeed.lines.some((line) => line.includes("Structural work")) &&
+    officeSeed.lines.some((line) => line.includes("Plumbing")) &&
+    officeSeed.lines.some((line) => line.includes("Fire-system work")) &&
+    officeSeed.lines.some((line) => line.includes("Electrical")) &&
+    !officeSeed.lines.some((line) => line.includes("site establishment")) &&
+    !officeSeed.lines.some((line) => line.includes("Painting"))
+);
+check(
+  "an edited pricing draft is not reseeded",
+  edited.preservedEdit &&
+    edited.lines.length === 1 &&
+    edited.lines[0]?.includes("Client removed")
 );
 
 void (async () => {

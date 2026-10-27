@@ -103,8 +103,10 @@ import {
   internalWallsNestedFinishOmit,
   paintingTakeoff,
   presentFinishQty,
+  resolveSkirtingCommercialQuantity,
   sideSelectionDisplay,
   skirtingTakeoff,
+  statedSkirtingLengthLm,
   stoppingLevelDisplay,
   stoppingTakeoff,
   type InternalWallsElectricalTier,
@@ -628,6 +630,10 @@ export function buildInternalWallsFinishEnvelope(params: {
   const omit = internalWallsNestedFinishOmit({
     confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
   });
+  const statedSkirtingLm = statedSkirtingLengthLm(context.facts, workArea.id);
+  const skirtingTypeCount = types.filter(
+    (row) => row.skirting != null && row.skirting !== "none"
+  ).length;
 
   types.forEach((type, index) => {
     const displayName = wallTypeDisplayName(type, index);
@@ -708,13 +714,23 @@ export function buildInternalWallsFinishEnvelope(params: {
       type.skirting !== "none"
     ) {
       const overlap = internalWallsSkirtingOverlapGroup(type.id);
-      assumptions.push(INTERNAL_WALLS_SKIRTING_OPENING_RULE);
-      // One commercial line per wall type: net face length × side count.
-      // Per-face emit shared overlapGroup|scopeKey and exclusive-winner
-      // dedupe discarded Side B (same CORRECT-01B lining collapse).
+      // One commercial line per wall type. Face length is summed only when
+      // no measured length was stated. A stated length is not multiplied by
+      // the number of faces, and a different derived length stays a review.
       const sideLabel = sideSelectionDisplay(type.skirting) ?? "Skirting";
-      const quantity = round2(skirting.totalLm);
-      const specification = `${sideLabel} · ${presentFinishQty(quantity)} lm`;
+      const resolved = resolveSkirtingCommercialQuantity({
+        statedLm: statedSkirtingLm,
+        derivedLm: skirting.totalLm,
+        skirtingTypeCount,
+      });
+      if (resolved.review) assumptions.push(resolved.review);
+      if (!resolved.usedStated) {
+        assumptions.push(INTERNAL_WALLS_SKIRTING_OPENING_RULE);
+      }
+      const quantity = round2(resolved.quantityLm);
+      const specification = resolved.usedStated
+        ? `${sideLabel} · ${presentFinishQty(quantity)} lm stated length`
+        : `${sideLabel} · ${presentFinishQty(quantity)} lm`;
       const variantKey = `${type.id}:${type.skirting}`;
       sortOrder = emitQtyMaterial({
         workArea,
@@ -1236,7 +1252,7 @@ function emitServiceM2(params: {
         },
         {
           pricingOwner: "subcontractor_allowance",
-          scopeKey: params.componentKey,
+          scopeKey: `${params.componentKey}:${params.variantKey}`,
           overlapGroup: params.overlapGroup,
         }
       )
@@ -1262,7 +1278,7 @@ function emitServiceM2(params: {
         },
         {
           pricingOwner: "subcontractor_allowance",
-          scopeKey: params.componentKey,
+          scopeKey: `${params.componentKey}:${params.variantKey}`,
           overlapGroup: params.overlapGroup,
         }
       )

@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
 import type { EstimateLineItem } from "../components/assistant/types";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import { dedupePricedItemsByScopeOwnership } from "../lib/estimate/pricing-ownership";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
@@ -40,8 +41,10 @@ import {
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_PAINTING_COMPONENT,
   INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
+  INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
   INTERNAL_WALLS_STOPPING_COMPONENT,
   internalWallsLiningMaterialComponent,
+  isInternalWallsLiningComponentKey,
   internalWallsStoppingItemKey,
   looksLikeDoorProductMoney,
 } from "../lib/estimate/internal-walls-identities";
@@ -357,6 +360,87 @@ check(
 check("Fixture A no layers multiplier in notes", aCalc.lineItems.every((row) => !/×\s*2 layers/i.test(row.notes ?? "")));
 check("Fixture A no legacy package", !isLegacyPackage(aCalc));
 check("Fixture A no door money", !aCalc.lineItems.some((row) => looksLikeDoorProductMoney(row)));
+
+console.log("\n--- 6 m × 2.4 m both-side stopping survives commercial ownership ---\n");
+const partitionFaceM2 = 6 * 2.4 - 0.81 * 1.98;
+const partitionFacts = fixtureBase(
+  finishExtras({ insulation: false, skirting: false, stopping: "Level 4", painting: "No" }),
+  { length: 6, height: 2.4, openings: true }
+);
+const partitionCalc = calculateInternalWalls(ctx([walls], partitionFacts), walls);
+const partitionOwned = dedupePricedItemsByScopeOwnership(partitionCalc.lineItems);
+const partitionStopping = partitionOwned.filter(
+  (row) =>
+    row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT &&
+    row.includedInTotal !== false
+);
+const partitionStoppingQty = partitionStopping.reduce(
+  (sum, row) => sum + (row.quantity ?? 0),
+  0
+);
+check(
+  "partition gross face is 14.4 m² and one opening deducts 1.6038 m² once per face",
+  near(partitionFaceM2, 12.7962)
+);
+check(
+  "partition stopping keeps both faces after ownership",
+  partitionStopping.length === 2 && near(partitionStoppingQty, partitionFaceM2 * 2, 0.02)
+);
+const liningMaterial = (row: { componentKey?: string | null }) =>
+  isInternalWallsLiningComponentKey(row.componentKey) &&
+  (row.componentKey ?? "").endsWith(".material");
+const partitionLiningBefore = partitionCalc.lineItems.filter(liningMaterial);
+const partitionLiningAfter = partitionOwned.filter(
+  (row) => liningMaterial(row) && row.includedInTotal !== false
+);
+check(
+  "partition lining emits each face once and the commercial quantity is their sum",
+  partitionLiningBefore.length === 2 &&
+    partitionLiningBefore[0]?.quantity === partitionLiningBefore[1]?.quantity &&
+    partitionLiningAfter.length === 1 &&
+    near(
+      partitionLiningAfter[0]?.quantity ?? 0,
+      (partitionLiningBefore[0]?.quantity ?? 0) +
+        (partitionLiningBefore[1]?.quantity ?? 0)
+    )
+);
+
+console.log("\n--- stated skirting length is not replaced by both faces ---\n");
+const statedSkirtFacts = [
+  ...fixtureBase(
+    finishExtras({ insulation: false, skirting: true, stopping: "No", painting: "No" }),
+    { length: 24, height: 2.7, openings: false, bothSides: true }
+  ),
+  fact("internal_walls.skirting_length_lm", "w1", 45),
+];
+const statedSkirt = calculateInternalWalls(ctx([walls], statedSkirtFacts), walls);
+const statedSkirtLines = statedSkirt.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT
+);
+check(
+  "stated 45 lm skirting stays 45 lm when both faces would derive 48 lm",
+  statedSkirtLines.length === 1 &&
+    statedSkirtLines[0]?.unit === "lm" &&
+    statedSkirtLines[0]?.quantity === 45 &&
+    statedSkirt.assumptions.some((row) => row.includes("derive 48"))
+);
+const derivedSkirt = calculateInternalWalls(
+  ctx(
+    [walls],
+    fixtureBase(
+      finishExtras({ insulation: false, skirting: true, stopping: "No", painting: "No" }),
+      { length: 10, height: 2.4, openings: false, bothSides: true }
+    )
+  ),
+  walls
+);
+const derivedSkirtLine = derivedSkirt.lineItems.find(
+  (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT
+);
+check(
+  "skirting with no stated length uses both face lengths",
+  derivedSkirtLine?.quantity === 20 && derivedSkirtLine.unit === "lm"
+);
 
 console.log("\n--- Double-layer stopping ---\n");
 let dlFacts = writeWall("w1", [
