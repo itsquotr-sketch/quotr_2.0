@@ -822,7 +822,6 @@ export function reconcileDoorLeavesWithBrief(
   return portions.map((portion) => {
     if (
       portion.leaf_authority === "user" ||
-      portion.leaf_authority === "assumption" ||
       portion.leaf_authority === "extracted"
     ) {
       return portion;

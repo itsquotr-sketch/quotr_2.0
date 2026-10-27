@@ -112,7 +112,7 @@ export function briefSupportsExplicitNegative(
   if (phrases?.some((phrase) => brief.includes(phrase))) return true;
   const topic = TOPIC_FOR_FACT[factKey];
   if (!topic) return false;
-  return scopeTopicPolarity(briefText, topic) === "excluded";
+  return scopeTopicPolarity(brief, topic) === "excluded";
 }
 
 export function isUserSourcedFact(source: string | null | undefined): boolean {
