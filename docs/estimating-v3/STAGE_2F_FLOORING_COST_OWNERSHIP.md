@@ -37,3 +37,17 @@ Before, the vinyl package was 9.6 m² × $95.00 and a separate supply line asked
 After, the known package cost and sell are unchanged. The 10.56 m² supply quantity is shown in the package explanation and is not a second charge. The three-room known direct cost does not gain those lines.
 
 Stored estimates, company rates and issued snapshots are not rewritten.
+
+## Preview acceptance
+
+Ready Preview deployment `dpl_3FQqn3M5tfSMDXyyvyZ9Uf6t22mj`, target preview, SHA `9fef22a857fd`, alias `https://quotr-2-0-git-estimating-v3-stage-2f-quotr1.vercel.app`. Production was not deployed.
+
+Fresh project `3e2e680e-c0f4-4119-813b-c63fa4c9a6d7`, pricing `df1969b2-a2d4-4238-bd2d-7a76d12719f7`. The original three-room brief was used. Finish price owner was left unanswered, so each finish stayed on the combined package. Substrate and preparation were answered no. Pricing was not marked reviewed and no quote was created.
+
+Estimate and Pricing agree:
+
+- Hallway vinyl package quantity 9.6 m², internal unit cost $95.00/m², direct cost $912.00, client sell $1,140.00 at 20% gross margin.
+- The note states 10% waste and supply quantity 10.56 m², and that this quantity is not a second charge and is not inside the rate.
+- Carpet packages stay on 11.52 m² and 14.7 m². The roll-waste limitation is disclosed and is not a second price.
+- Underlay and removal stay on the net area.
+- Persisted Pricing is 8 priced lines, direct cost $3,415.20, client sell $4,269.01. That matches the Stage 2E known total. The previous unpriced finish-supply lines are absent, so a later material rate cannot be entered on top of the package.
