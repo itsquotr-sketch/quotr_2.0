@@ -1,3 +1,4 @@
+import { INTERNAL_WALLS_OPENINGS_QUESTION } from "@/lib/estimate/requested-task-coverage";
 import type { ScopeDefinition } from "@/lib/scopes/types";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
@@ -295,7 +296,7 @@ export const internalWallsScope: ScopeDefinition = {
     {
       key: "internal_walls.wall_type.has_openings",
       label: "Openings",
-      questionText: "Does this wall have any openings?",
+      questionText: INTERNAL_WALLS_OPENINGS_QUESTION,
       inputType: "select",
       options: ["No", "Yes"],
       required: false,

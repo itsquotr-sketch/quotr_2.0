@@ -123,6 +123,11 @@ check("office lining both sides", officeWall?.same_lining_both_sides === true &&
 check("office acoustic insulation", officeWall?.insulation_included === true && officeWall?.insulation_type === "acoustic", officeWall);
 check("office six door sets", officeDoors.length === 1 && officeDoors[0]?.quantity === 6, officeDoors);
 check(
+  "office door sets are not openings in the new walls",
+  !Array.isArray(officeWall?.openings) || officeWall.openings.length === 0,
+  officeWall?.openings
+);
+check(
   "office carpet tiles retained",
   officeFloors.length === 1 && officeFloors[0]?.other_description === "carpet tiles",
   officeFloors
@@ -288,6 +293,141 @@ check(
   !labels.some((label) => /skirting/i.test(label)) &&
     !labels.some((label) => /painting/i.test(label)),
   labels
+);
+
+function wallsResult(result: ReturnType<typeof enrich>) {
+  const area = result.extraction.workAreas.find((row) => row.type === "internal_walls");
+  if (!area) return null;
+  const workArea: EstimateWorkArea = {
+    id: "walls",
+    type: "internal_walls",
+    name: area.name ?? "Internal walls",
+    sort_order: 1,
+  };
+  const facts = result.extraction.facts
+    .filter(
+      (row) =>
+        row.work_area_type === "internal_walls" ||
+        row.key.startsWith("internal_walls.")
+    )
+    .map(
+      (row, index) =>
+        ({
+          ...row,
+          id: `fact-${index}`,
+          project_id: "project",
+          work_area_id: "walls",
+          source: "ai_extracted",
+        }) as EstimateFact
+    );
+  return calculateInternalWalls(
+    {
+      project: { id: "project", qualityLevel: null },
+      confirmedWorkAreas: [workArea],
+      facts,
+      constraints: [],
+      organisationSettings: null,
+      materialWastageSettings: null,
+      rates: [],
+    },
+    workArea
+  );
+}
+
+const officeEstimate = wallsResult(office);
+const officeKeys = officeEstimate?.lineItems.map((row) => row.componentKey) ?? [];
+check(
+  "office lining stays unspecified on both faces",
+  officeKeys.filter((key) => key === "internal_walls.lining.unspecified.side_a").length === 1 &&
+    officeKeys.filter((key) => key === "internal_walls.lining.unspecified.side_b").length === 1 &&
+    !officeKeys.some((key) => key?.includes("standard_gib")),
+  officeKeys
+);
+const partitionEstimate = wallsResult(partition);
+const partitionKeys = partitionEstimate?.lineItems.map((row) => row.componentKey) ?? [];
+check(
+  "partition plasterboard still uses the lining recipe and does not add a painting rate",
+  partitionKeys.filter((key) => key === "internal_walls.lining.standard_gib.material").length === 2 &&
+    !partitionKeys.some((key) => key?.includes("unspecified") || key?.includes("coverage_unresolved")),
+  partitionKeys.filter((key) => key?.includes("lining") || key?.includes("paint"))
+);
+
+if (office) {
+  const source = office.extraction.facts.find((row) => row.key === "internal_walls.wall_types");
+  const types = Array.isArray(source?.value) ? structuredClone(source.value) : [];
+  const first = types[0] as {
+    id?: string;
+    side_a?: Record<string, unknown>;
+    side_b?: Record<string, unknown>;
+  };
+  if (first?.side_a && first.side_b) {
+    first.side_a.product = "standard_gib";
+    first.side_a.thickness_mm = 13;
+    first.side_a.sheet_length_mm = 2700;
+    first.side_a.layers = 1;
+    first.side_b.product = "standard_gib";
+    first.side_b.thickness_mm = 13;
+    first.side_b.sheet_length_mm = 2700;
+    first.side_b.layers = 1;
+  }
+  const answeredFacts = office.extraction.facts.map((row) =>
+    row.key === "internal_walls.wall_types" ? { ...row, value: types } : row
+  );
+  const answered = wallsResult({
+    ...office,
+    extraction: { ...office.extraction, facts: answeredFacts },
+  });
+  const answeredKeys = answered?.lineItems.map((row) => row.componentKey) ?? [];
+  check(
+    "an answered lining product uses the existing recipe once per face",
+    answeredKeys.filter((key) => key === "internal_walls.lining.standard_gib.material").length === 2 &&
+      !answeredKeys.some((key) => key?.startsWith("internal_walls.lining.unspecified")),
+    answeredKeys.filter((key) => key?.includes("lining"))
+  );
+}
+
+check(
+  "office painting is an explicit coverage gap",
+  officeKeys.includes("internal_walls.painting.coverage_unresolved") &&
+    officeKeys.includes("internal_walls.skirting.painting.coverage_unresolved") &&
+    officeEstimate?.lineItems.find(
+      (row) => row.componentKey === "internal_walls.skirting.painting.coverage_unresolved"
+    )?.quantity === 45 &&
+    !officeEstimate?.lineItems.some(
+      (row) => row.componentKey === "internal_walls.painting" && (row.recommendedSell ?? 0) > 0
+    ),
+  officeEstimate?.lineItems
+    .filter((row) => row.componentKey?.includes("paint"))
+    .map((row) => ({ key: row.componentKey, qty: row.quantity, sell: row.recommendedSell }))
+);
+
+const paraphrase = enrich(
+  "Install 24 linear metres of new partition walls at 2.7m high and line both sides. Include six door sets, 45 linear metres of skirting, and painting for the new walls and skirting."
+);
+const paraphraseWall = wallType(paraphrase);
+const paraphraseDoors = portions(paraphrase, DOORS_PORTIONS_FACT_KEY) as Array<Record<string, unknown>>;
+const paraphraseEstimate = wallsResult(paraphrase);
+check(
+  "a paraphrased office brief keeps lining, 45 lm and six door sets unresolved as openings",
+  paraphraseWall?.length_lm === 24 &&
+    paraphraseWall?.height_m === 2.7 &&
+    paraphraseWall?.same_lining_both_sides === true &&
+    (paraphraseWall?.side_a as { product?: string } | undefined)?.product == null &&
+    (!Array.isArray(paraphraseWall?.openings) || paraphraseWall.openings.length === 0) &&
+    paraphraseDoors.length === 1 &&
+    paraphraseDoors[0]?.quantity === 6 &&
+    fact(paraphrase, "internal_walls.skirting_length_lm")?.value === 45 &&
+    paraphraseEstimate?.lineItems.some(
+      (row) => row.componentKey === "internal_walls.lining.unspecified.side_a"
+    ) === true &&
+    paraphraseEstimate?.lineItems.some(
+      (row) => row.componentKey === "internal_walls.skirting.painting.coverage_unresolved" && row.quantity === 45
+    ) === true,
+  {
+    wall: paraphraseWall,
+    doors: paraphraseDoors,
+    keys: paraphraseEstimate?.lineItems.map((row) => row.componentKey),
+  }
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

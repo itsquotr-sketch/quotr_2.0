@@ -351,4 +351,92 @@ check(
     pricingDraftReconciliationBlocked("draft") == null
 );
 
+const liningSideA = "internal_walls.lining.unspecified.side_a:wt";
+const liningSideB = "internal_walls.lining.unspecified.side_b:wt";
+const liningMaterial = "internal_walls.lining.standard_gib.material:wt";
+const paintingScope = "internal_walls.painting.coverage_unresolved:wt";
+const preparationScope = "flooring:wa:portion:flooring.carpet_tile.preparation_unresolved";
+const installScope = "flooring:wa:portion:flooring.carpet_tile.straight.install";
+const beforeLines = [
+  line({ id: "line-a", label: "Side A lining", scope: liningSideA, component: "internal_walls.lining.unspecified.side_a", quantity: 64.8, cost: 0, sell: 0, specification: "Choose the lining product." }),
+  line({ id: "line-b", label: "Side B lining", scope: liningSideB, component: "internal_walls.lining.unspecified.side_b", quantity: 64.8, cost: 0, sell: 0, specification: "Choose the lining product." }),
+  line({ id: "paint", label: "Wall painting", scope: paintingScope, component: "internal_walls.painting.coverage_unresolved", quantity: 1, cost: 0, sell: 0, specification: "No painting rate is applied." }),
+  line({ id: "prep", label: "Floor preparation", scope: preparationScope, component: "flooring.carpet_tile.preparation_unresolved", quantity: 120, cost: 0, sell: 0, specification: "Floor preparation is not priced." }),
+  line({ id: "install", label: "Carpet tile installation", scope: installScope, component: "flooring.carpet_tile.straight.install", quantity: 120, cost: 1350, sell: 1687.5, specification: "Installation uses the net area." }),
+];
+const beforeRows = beforeLines.map((row) =>
+  item({
+    id: `price-${row.id}`,
+    label: row.label,
+    scope: requirementScopeOf(row.notes),
+    component: row.component_key ?? null,
+    quantity: 1,
+    cost: row.recommended_cost ?? 0,
+    sell: row.recommended_sell ?? 0,
+    specification: row.label,
+    source: row.id,
+  })
+);
+const afterLines = [
+  line({ id: "mat-a", label: "Side A lining", scope: liningMaterial, component: "internal_walls.lining.standard_gib.material", quantity: 22, cost: 400, sell: 500, specification: "13 mm standard plasterboard." }),
+  line({ id: "mat-b", label: "Side B lining", scope: "internal_walls.lining.standard_gib.material:wt:b", component: "internal_walls.lining.standard_gib.material", quantity: 22, cost: 400, sell: 500, specification: "13 mm standard plasterboard." }),
+  line({ id: "paint", label: "Wall painting", scope: paintingScope, component: "internal_walls.painting.coverage_unresolved", quantity: 1, cost: 0, sell: 0, specification: "No painting rate is applied." }),
+  line({ id: "prep", label: "Floor preparation", scope: preparationScope, component: "flooring.carpet_tile.preparation_unresolved", quantity: 120, cost: 0, sell: 0, specification: "Floor preparation is not priced." }),
+  line({ id: "install", label: "Carpet tile installation", scope: installScope, component: "flooring.carpet_tile.straight.install", quantity: 120, cost: 1350, sell: 1687.5, specification: "Installation uses the net area." }),
+];
+const editedPreparation = {
+  ...beforeRows.find((row) => row.id === "price-prep")!,
+  manually_edited: true,
+  total_cost: 80,
+  total_sell: 100,
+};
+const manualCoverage = item({
+  id: "manual-coverage",
+  label: "Protection",
+  scope: null,
+  component: null,
+  quantity: 1,
+  cost: 40,
+  sell: 40,
+  specification: "Added in Pricing.",
+  source: null,
+  pricingSource: "user_override",
+});
+const coveragePreview = buildRecalibrationPreviewData(
+  afterLines,
+  [...beforeRows.filter((row) => row.id !== "price-prep"), editedPreparation, manualCoverage],
+  0,
+  0
+);
+const coverageMatched = matchPricingToEstimateLines(afterLines, [
+  ...beforeRows.filter((row) => row.id !== "price-prep"),
+  editedPreparation,
+  manualCoverage,
+]);
+const coverageMatchedIds = new Set([...coverageMatched.values()].map((row) => row.id));
+const coverageEstimateIds = new Set(afterLines.map((row) => row.id));
+const coverageScopes = estimateRequirementScopes(afterLines);
+const coverageRetired = pricingRowsToRetire(
+  beforeRows,
+  coverageMatchedIds,
+  coverageEstimateIds,
+  coverageScopes
+);
+check(
+  "new coverage rows keep their identities and drop only the replaced lining requirements",
+  coverageRetired.sort().join() === "price-line-a,price-line-b" &&
+    coveragePreview.items.some(
+      (row) => row.pricingItemId === "price-prep" && row.classification === "manually_protected"
+    ) &&
+    coveragePreview.items.some(
+      (row) => row.pricingItemId === "manual-coverage" && row.classification === "needs_review"
+    ) &&
+    coveragePreview.summary.newItems === 2
+);
+
+function requirementScopeOf(notes: string | null): string {
+  const match = notes?.match(/"scopeKey":"([^"]+)"/);
+  return match?.[1] ?? "";
+}
+
 console.log("pricing draft reconciliation verifier passed");

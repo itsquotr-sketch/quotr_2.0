@@ -12,7 +12,7 @@
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
-import { round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, round2 } from "@/lib/estimate/facts";
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
 import {
   buildAmounts,
@@ -29,6 +29,11 @@ import { buildSubcontractRequirement } from "@/lib/estimate/subcontract-requirem
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  SKIRTING_PAINTING_COVERAGE_COMPONENT,
+  WALL_PAINTING_COVERAGE_COMPONENT,
+  requestedTaskCoverageText,
+} from "@/lib/estimate/requested-task-coverage";
 import {
   WALL_INSULATION_HOURS_DERIVATION,
   wallInsulationResolvesWithQuotr,
@@ -631,6 +636,9 @@ export function buildInternalWallsFinishEnvelope(params: {
     confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
   });
   const statedSkirtingLm = statedSkirtingLengthLm(context.facts, workArea.id);
+  const paintingIncluded =
+    getBooleanFact(context.facts, workArea.id, "internal_walls.painting_included") ===
+    true;
   const skirtingTypeCount = types.filter(
     (row) => row.skirting != null && row.skirting !== "none"
   ).length;
@@ -945,6 +953,7 @@ export function buildInternalWallsFinishEnvelope(params: {
 
     if (!omit.omitPainting) {
       const painting = paintingTakeoff({ type, jobScope });
+      let emittedWallPainting = false;
       if (type.painting && type.painting !== "none") {
         if (!painting) {
           const area = insulationAreaForWallType({ type, jobScope });
@@ -963,6 +972,7 @@ export function buildInternalWallsFinishEnvelope(params: {
           for (const face of faces) {
             const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
             const specification = `${sideLabel} · ${face.areaM2} m² wall face`;
+            emittedWallPainting = true;
             sortOrder = emitServiceM2({
               workArea,
               context,
@@ -983,8 +993,68 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         }
       }
+      const paintingRequested =
+        type.painting === "none" ? false : type.painting != null || paintingIncluded;
+      if (paintingRequested && !emittedWallPainting) {
+        const coverage = requestedTaskCoverageText({
+          task: "Wall painting is requested.",
+          kind: "unsupported",
+          recovery:
+            "Choose the painted faces. No painting rate is applied, and skirting painting stays a separate task.",
+        });
+        sortOrder = emitUnresolvedTask({
+          workArea,
+          context,
+          wallTypeId: type.id,
+          componentKey: WALL_PAINTING_COVERAGE_COMPONENT,
+          label: `${displayName} — wall painting`,
+          notes: coverage,
+          quantity: 1,
+          unit: "task",
+          overlapGroup: `internal_walls.painting.coverage:${type.id}`,
+          requirements,
+          lineItems,
+          sortOrder,
+        });
+      }
     }
   });
+
+  const paintingAsked =
+    paintingIncluded ||
+    types.some((type) => type.painting != null && type.painting !== "none");
+  const skirtingAsked =
+    (statedSkirtingLm != null && statedSkirtingLm > 0) ||
+    types.some((type) => type.skirting != null && type.skirting !== "none");
+  const skirtingExcluded =
+    types.length > 0 && types.every((type) => type.skirting === "none");
+  if (!omit.omitPainting && paintingAsked && skirtingAsked && !skirtingExcluded) {
+    const skirtingPaintLm =
+      statedSkirtingLm != null && statedSkirtingLm > 0 ? statedSkirtingLm : null;
+    const coverage = requestedTaskCoverageText({
+      task:
+        skirtingPaintLm != null
+          ? `Skirting painting is requested for ${skirtingPaintLm} lm.`
+          : "Skirting painting is requested.",
+      kind: "unsupported",
+      recovery:
+        "Skirting supply and installation stay separate. No skirting paint rate is applied.",
+    });
+    sortOrder = emitUnresolvedTask({
+      workArea,
+      context,
+      wallTypeId: types[0]?.id ?? workArea.id,
+      componentKey: SKIRTING_PAINTING_COVERAGE_COMPONENT,
+      label: "Skirting painting",
+      notes: coverage,
+      quantity: skirtingPaintLm ?? 1,
+      unit: skirtingPaintLm != null ? "lm" : "task",
+      overlapGroup: "internal_walls.skirting.painting.coverage",
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+  }
 
   return {
     requirements,
@@ -1172,6 +1242,70 @@ function resolveExactServiceM2Rate(params: {
     sourceLabel: getRateSourceLabel("missing"),
     sourceType: "missing",
   };
+}
+
+function emitUnresolvedTask(params: {
+  workArea: EstimateWorkArea;
+  context: EstimateContext;
+  wallTypeId: string;
+  componentKey: string;
+  label: string;
+  notes: string;
+  quantity: number;
+  unit: string;
+  overlapGroup: string;
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  sortOrder: number;
+}): number {
+  params.requirements.push(
+    buildSubcontractRequirement({
+      workAreaId: params.workArea.id,
+      workAreaType: "internal_walls",
+      componentKey: params.componentKey,
+      variantKey: params.wallTypeId,
+      description: params.label,
+      confidence: "low",
+      assumptions: [],
+      provenance: {
+        calculatorSource: "internal-walls-finish",
+        factKeys: ["internal_walls.wall_types"],
+        constraintKeys: [],
+      },
+      priced: false,
+      trade: "painting",
+      allowanceCost: null,
+      quotedCost: null,
+      totalCost: null,
+    })
+  );
+  params.lineItems.push(
+    withPricingOwnership(
+      {
+        workAreaId: params.workArea.id,
+        workAreaName: params.workArea.name,
+        label: params.label,
+        category: "subcontractor",
+        quantity: params.quantity,
+        unit: params.unit,
+        componentKey: params.componentKey,
+        identitySummary: params.notes,
+        notes: params.notes,
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+        sortOrder: params.sortOrder,
+        ...buildAmounts(0, 0, null),
+      },
+      {
+        pricingOwner: "subcontractor_allowance",
+        scopeKey: `${params.componentKey}:${params.wallTypeId}`,
+        overlapGroup: params.overlapGroup,
+        includedInTotal: false,
+      }
+    )
+  );
+  void params.context;
+  return params.sortOrder + 1;
 }
 
 function emitServiceM2(params: {

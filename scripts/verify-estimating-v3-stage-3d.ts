@@ -415,25 +415,24 @@ const preparationPricing = needsPreparation.lineItems.map((item) =>
     notes: buildLineItemNotes(item),
   })
 );
+const preparationLine = needsPreparation.lineItems.find((item) =>
+  item.label.includes("floor preparation")
+);
 check(
-  "needs preparation keeps the finish and the preparation as separate unpriced gaps",
-  needsPreparation.lineItems.some((item) => item.label.includes("carpet tiles")) &&
-    needsPreparation.lineItems.some((item) => item.label.includes("floor preparation")) &&
-    !needsPreparation.lineItems.some(
-      (item) => item.componentKey === "flooring.carpet_tile.straight.supply"
-    ) &&
-    !needsPreparation.lineItems.some(
-      (item) => item.componentKey === "flooring.carpet_tile.fixing"
-    ) &&
-    !needsPreparation.lineItems.some(
-      (item) => item.componentKey === "flooring.carpet_tile.straight.install"
-    ) &&
-    money(needsPreparation.lineItems, "recommendedSell") === 0 &&
-    needsPreparation.missingInfo.some((row) => row.includes("carpet tiles")) &&
+  "needs preparation keeps calculated finish work and an unresolved preparation line",
+  line(needsPreparation.lineItems, "flooring.carpet_tile.straight.supply")?.quantity === 126 &&
+    line(needsPreparation.lineItems, "flooring.carpet_tile.fixing")?.quantity === 120 &&
+    line(needsPreparation.lineItems, "flooring.carpet_tile.straight.install")?.quantity === 120 &&
+    (line(needsPreparation.lineItems, "flooring.carpet_tile.straight.install")?.recommendedSell ?? 0) > 0 &&
+    preparationLine?.componentKey === "flooring.carpet_tile.preparation_unresolved" &&
+    (preparationLine.recommendedSell ?? 0) === 0 &&
+    preparationLine.includedInTotal === false &&
     needsPreparation.missingInfo.some((row) => row.includes("floor preparation")) &&
-    preparationPricing.every(
-      (row) => !row.ok || (row.fields.totalSell ?? 0) === 0
-    ),
+    !needsPreparation.missingInfo.some((row) =>
+      row.includes("They are not priced while the substrate")
+    ) &&
+    preparationPricing.some((row) => row.ok && (row.fields.totalSell ?? 0) > 0) &&
+    preparationPricing.some((row) => !row.ok || (row.fields.totalSell ?? 0) === 0),
   needsPreparation.lineItems.map((item) => ({
     label: item.label,
     key: item.componentKey,

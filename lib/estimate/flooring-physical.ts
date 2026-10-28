@@ -14,10 +14,12 @@ import {
   planLaminateAssembly,
 } from "@/lib/estimate/flooring-laminate";
 import {
+  CARPET_TILE_PREPARATION_GAP,
   FLOORING_CARPET_TILE_FIXING_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
   FLOORING_CARPET_TILE_PACKAGE_M2,
+  FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT,
   FLOORING_CARPET_TILE_SUPPLY_COMPONENT,
   planCarpetTileAssembly,
 } from "@/lib/estimate/flooring-carpet-tile";
@@ -1672,7 +1674,7 @@ function carpetTilePortionPhysical(params: {
           category: FLOORING_WASTE_UNRESOLVED_CATEGORY,
           description: `${owner} · carpet tile supply`,
           specification:
-            "Carpet tiles are recognised. The supply quantity is not confirmed until the laying pattern, ready substrate, waste allowance, tile size and box coverage are answered. 120 m² is not given a silent waste allowance.",
+            "Carpet tiles are recognised. The supply quantity is not confirmed until the laying pattern, substrate, waste allowance, tile size and box coverage are answered. 120 m² is not given a silent waste allowance.",
           quantity: area,
           unit: "m2",
           areaM2: area,
@@ -1689,6 +1691,23 @@ function carpetTilePortionPhysical(params: {
           areaM2: area,
           trade: "carpenter",
         }),
+        ...(portion.carpet_tile_substrate === "preparation"
+          ? [
+              materialCountRow({
+                workArea,
+                portion,
+                componentKey: FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT,
+                materialKey: null,
+                category: "SPECIALIST",
+                description: `${owner} · floor preparation`,
+                specification: CARPET_TILE_PREPARATION_GAP,
+                quantity: area,
+                unit: "m2",
+                areaM2: area,
+                confidence: "low",
+              }),
+            ]
+          : []),
       ],
     };
   }

@@ -18,7 +18,9 @@
  *   is known. No box size is invented.
  * - Adhesive or tackifier uses the net area, or whole units only when that
  *   product's coverage is known. Carpet underlay is not added.
- * - Preparation, removal and disposal stay separate and are not invented.
+ * - Preparation stays a separate unpriced requirement. A missing preparation
+ *   recipe does not remove carpet-tile supply, fixing, or installation that
+ *   can already be calculated, and it does not invent a preparation rate.
  * - There is no carpet-tile benchmark. The broadloom carpet package is not used.
  */
 
@@ -56,9 +58,6 @@ export const FLOORING_CARPET_TILE_GAP_COMPONENT =
   "flooring.carpet_tile.unresolved" as const;
 export const FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT =
   "flooring.carpet_tile.preparation_unresolved" as const;
-
-export const CARPET_TILE_FINISH_WITHHELD_FOR_PREPARATION =
-  "Straight-lay carpet tiles are requested. They are not priced while the substrate still needs preparation. Existing flooring removal is not a ready substrate." as const;
 
 export const CARPET_TILE_PREPARATION_GAP =
   "Floor preparation is requested and is not priced. This recipe does not turn removal of the existing floor into substrate readiness, and it does not invent a preparation rate." as const;
@@ -448,21 +447,6 @@ export function planCarpetTileAssembly(params: {
       ],
     };
   }
-  if (portion.carpet_tile_substrate === "preparation") {
-    return {
-      status: "unsupported",
-      lines: [
-        gapLine(owner, netM2, CARPET_TILE_FINISH_WITHHELD_FOR_PREPARATION),
-        gapLine(
-          owner,
-          netM2,
-          CARPET_TILE_PREPARATION_GAP,
-          `${owner} · floor preparation`,
-          FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT
-        ),
-      ],
-    };
-  }
   if (portion.carpet_tile_substrate === "other") {
     return {
       status: "unsupported",
@@ -667,6 +651,19 @@ export function planCarpetTileAssembly(params: {
         "Disposal was requested separately and is not priced by the carpet-tile recipe."
       )
     );
+  }
+  if (portion.carpet_tile_substrate === "preparation") {
+    lines.push({
+      role: "gap",
+      componentKey: FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT,
+      materialKey: null,
+      quantity: netM2,
+      unit: "m2",
+      description: `${owner} · floor preparation`,
+      specification: CARPET_TILE_PREPARATION_GAP,
+      customerSupplied: false,
+      wasteUnresolved: false,
+    });
   }
   return { status: "ready", lines };
 }

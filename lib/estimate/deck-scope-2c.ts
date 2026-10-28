@@ -118,13 +118,13 @@ export const PILE_SUPPORTS_UNRESOLVED_PENDING =
   "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";
 
 export const PILE_SUPPORTS_RETAINED =
-  "Existing piles are retained. New support material, installation, excavation and concrete are not included. New framing is priced separately.";
+  "Existing piles are retained as a scope decision. That is not proof they are structurally adequate. New support material, installation, excavation and concrete are not included. New framing is priced separately.";
 
 export const PILE_CONFIRMED_NEW_WHILE_PENDING =
   "The confirmed support layout is priced as new supports. Existing piles are not deducted and are not assumed to be replaced.";
 
 export const PILE_CONFIRMED_NEW_WHILE_RETAINED =
-  "Existing piles are retained. The confirmed support layout is new supports and is not a replacement of those piles.";
+  "Existing piles are retained as a scope decision, which is not proof they are structurally adequate. The confirmed support layout is new supports and is not a replacement of those piles.";
 
 export type DeckSupportPriceTreatment =
   | "confirmed_new"

@@ -1,4 +1,5 @@
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import { INTERNAL_WALLS_OPENINGS_QUESTION } from "@/lib/estimate/requested-task-coverage";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_JOB_SCOPE_OPTIONS,
@@ -568,7 +569,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           workAreaName,
           factKey: INTERNAL_WALLS_HAS_OPENINGS_KEY,
           label: "Openings",
-          question: "Does this wall have any openings?",
+          question: INTERNAL_WALLS_OPENINGS_QUESTION,
           inputType: "select",
           options: INTERNAL_WALLS_HAS_OPENINGS_OPTIONS,
           currentValue: wallTypeFieldCurrentValue(
