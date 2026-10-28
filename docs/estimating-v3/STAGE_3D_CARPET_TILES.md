@@ -53,3 +53,22 @@ Customer-supplied tiles stay visible at a contractor purchasing cost of 0. Selec
 - Invented tile sizes, box sizes, waste percentages, or product coverage.
 - P&G, painting, partitions, doors and skirting. Pricing carpet tiles does not make the office job complete.
 - Production deployment.
+
+## Hosted office result
+
+Preview project “Stage 3D carpet tiles” on the isolated Preview organisation. The original brief stayed 120 m² of carpet tiles, with existing flooring already removed, so there is no removal line. Straight lay, a ready substrate, the proposed 5% supply allowance, unknown tile size, unknown box coverage, pressure-sensitive adhesive, and separate company supply were answered in Details. No underlay was added.
+
+Before those company rates existed, supply was 126 m² unpriced, adhesive was 120 m² unpriced, and installation stayed on 120 m² with no hours. The known sell on the rest of the job was not a carpet price and was labelled as priced work only.
+
+After the named rate actions and an explicit regenerate:
+
+| Line | Quantity | Direct cost | Client sell |
+| --- | --- | --- | --- |
+| Carpet tile supply | 126 m² at the company $40/m² | $5,040 | $6,300 |
+| Adhesive | 120 m² at the company $2.50/m² | $300 | $375.60 |
+| Installation | 19.80 h at the company carpenter $75/h | $1,485 | $1,856.25 |
+| Flooring total | | $6,825 | $8,531.85 |
+
+The recipe hours are 120 × 0.15 = 18.0 h, and the no-condition direct cost is $6,690. This occupied office, with booked delivery windows, applies the existing +10% labour condition. Access was Easy and carry was under 10 m, so those two addends are zero. The takeoff labels the 10% as access/carry. Productivity and the hourly cost are company rates, not a carpet-tile benchmark.
+
+Pricing reconciliation updated the three flooring charges and left the wall, door, skirting, and exclusion lines unchanged. The priced-work recommendation became $12,685.39. Custom framing, insulation labour, and the custom door leaf stay Pricing Required. P&G stays an unpriced gap. GST was not decided, pricing was not marked reviewed, and no quote was created. The office job is not complete.
