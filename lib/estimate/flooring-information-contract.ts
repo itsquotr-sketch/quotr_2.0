@@ -142,6 +142,20 @@ export const FLOORING_INFORMATION_CONTRACT: readonly FlooringInformationContract
         "On concrete, moisture control is asked. An underlay is not assumed to include it, and it is not added twice.",
     },
     {
+      factKey: "flooring.portion.laminate_package_covers_underlay",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason:
+        "A combined laminate package covers the underlay only when that is confirmed. The subcontract rate itself is not that confirmation.",
+    },
+    {
+      factKey: "flooring.portion.laminate_package_covers_moisture",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason:
+        "A combined laminate package covers a separate moisture barrier only when that is confirmed. The subcontract rate itself is not that confirmation.",
+    },
+    {
       factKey: "flooring.portion.substrate_required",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: true,
@@ -273,6 +287,25 @@ export function flooringFactIsRelevant(
       portion?.specialist_kind === "laminate" &&
       portion.laminate_method === "floating_click_lock" &&
       portion.laminate_substrate === "concrete"
+    );
+  }
+  if (factKey === "flooring.portion.laminate_package_covers_underlay") {
+    return (
+      portion?.specialist_kind === "laminate" &&
+      portion.laminate_method === "floating_click_lock" &&
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.underlay_required === true
+    );
+  }
+  if (factKey === "flooring.portion.laminate_package_covers_moisture") {
+    return (
+      portion?.specialist_kind === "laminate" &&
+      portion.laminate_method === "floating_click_lock" &&
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.laminate_substrate === "concrete" &&
+      portion.laminate_moisture === "separate"
     );
   }
   if (factKey === "flooring.portion.finish_pricing") {

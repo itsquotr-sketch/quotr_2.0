@@ -1465,6 +1465,23 @@ function laminateBlockingFields(portion: FlooringPortion): string[] {
   ) {
     missing.push("flooring.portion.waste_treatment");
   }
+  if (
+    portion.finish_pricing === "combined_package" &&
+    portion.finish_supplied_by !== "customer" &&
+    portion.underlay_required === true &&
+    portion.laminate_package_covers_underlay == null
+  ) {
+    missing.push("flooring.portion.laminate_package_covers_underlay");
+  }
+  if (
+    portion.finish_pricing === "combined_package" &&
+    portion.finish_supplied_by !== "customer" &&
+    portion.laminate_substrate === "concrete" &&
+    portion.laminate_moisture === "separate" &&
+    portion.laminate_package_covers_moisture == null
+  ) {
+    missing.push("flooring.portion.laminate_package_covers_moisture");
+  }
   return missing;
 }
 

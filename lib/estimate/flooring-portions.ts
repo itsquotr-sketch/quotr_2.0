@@ -37,6 +37,7 @@ import { getFact } from "@/lib/estimate/facts";
 import {
   parseLaminateMethod,
   parseLaminateMoisture,
+  parseLaminatePackageCoverage,
   parseLaminateSubstrate,
 } from "@/lib/estimate/flooring-laminate";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -216,6 +217,13 @@ export type FlooringPortion = {
   laminate_substrate_authority?: FlooringFieldAuthority;
   laminate_moisture?: "integrated" | "separate" | "excluded" | null;
   laminate_moisture_authority?: FlooringFieldAuthority;
+  /**
+   * Explicit combined-package coverage. A saved subcontract rate does not
+   * set these. "included" means that component is inside the package and
+   * is not charged again. "separate" charges it once beside the package.
+   */
+  laminate_package_covers_underlay?: "included" | "separate" | null;
+  laminate_package_covers_moisture?: "included" | "separate" | null;
   laminate_pack_coverage_m2?: number | null;
   laminate_underlay_coverage_m2?: number | null;
   laminate_moisture_coverage_m2?: number | null;
@@ -881,6 +889,12 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
     laminate_substrate_authority: parseFieldAuthority(value.laminate_substrate_authority),
     laminate_moisture: parseLaminateMoisture(value.laminate_moisture),
     laminate_moisture_authority: parseFieldAuthority(value.laminate_moisture_authority),
+    laminate_package_covers_underlay: parseLaminatePackageCoverage(
+      value.laminate_package_covers_underlay
+    ),
+    laminate_package_covers_moisture: parseLaminatePackageCoverage(
+      value.laminate_package_covers_moisture
+    ),
     laminate_pack_coverage_m2:
       typeof value.laminate_pack_coverage_m2 === "number" &&
       value.laminate_pack_coverage_m2 > 0
@@ -1046,6 +1060,8 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.laminate_method",
   "flooring.portion.laminate_substrate",
   "flooring.portion.laminate_moisture",
+  "flooring.portion.laminate_package_covers_underlay",
+  "flooring.portion.laminate_package_covers_moisture",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1307,6 +1323,12 @@ export function overlayUserAuthoritativeFlooringPortion(
   );
   if (persisted.finish_pricing != null) next.finish_pricing = persisted.finish_pricing;
   if (persisted.waste_treatment != null) next.waste_treatment = persisted.waste_treatment;
+  if (persisted.laminate_package_covers_underlay != null) {
+    next.laminate_package_covers_underlay = persisted.laminate_package_covers_underlay;
+  }
+  if (persisted.laminate_package_covers_moisture != null) {
+    next.laminate_package_covers_moisture = persisted.laminate_package_covers_moisture;
+  }
   overlayUserField(next, persisted, "laminate_method", "laminate_method_authority");
   overlayUserField(next, persisted, "laminate_substrate", "laminate_substrate_authority");
   overlayUserField(next, persisted, "laminate_moisture", "laminate_moisture_authority");
@@ -1575,6 +1597,14 @@ function applyPortionField(
   if (field === "laminate_moisture") {
     portion.laminate_moisture = parseLaminateMoisture(value);
     portion.laminate_moisture_authority = "user";
+    return;
+  }
+  if (field === "laminate_package_covers_underlay") {
+    portion.laminate_package_covers_underlay = parseLaminatePackageCoverage(value);
+    return;
+  }
+  if (field === "laminate_package_covers_moisture") {
+    portion.laminate_package_covers_moisture = parseLaminatePackageCoverage(value);
     return;
   }
   if (field === "tile_width_mm") {

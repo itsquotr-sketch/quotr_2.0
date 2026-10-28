@@ -140,6 +140,10 @@ const QUESTIONS: Record<string, string> = {
   "flooring.portion.laminate_substrate":
     "What is the existing floor substrate?",
   "flooring.portion.laminate_moisture": LAMINATE_MOISTURE_QUESTION,
+  "flooring.portion.laminate_package_covers_underlay":
+    "Does the saved package rate cover the underlay? The rate itself does not answer this.",
+  "flooring.portion.laminate_package_covers_moisture":
+    "Does the saved package rate cover the separate moisture barrier? The rate itself does not answer this.",
   "flooring.portion.substrate_required": "Is new floor substrate required?",
   "flooring.portion.substrate_family": "What substrate material is required?",
   "flooring.portion.substrate_item_key": "Which substrate product is required?",
@@ -171,6 +175,8 @@ const LABELS: Record<string, string> = {
   "flooring.portion.laminate_method": "Laminate installation method",
   "flooring.portion.laminate_substrate": "Existing substrate",
   "flooring.portion.laminate_moisture": "Moisture control",
+  "flooring.portion.laminate_package_covers_underlay": "Package underlay",
+  "flooring.portion.laminate_package_covers_moisture": "Package moisture barrier",
   "flooring.portion.substrate_required": "New substrate",
   "flooring.portion.substrate_family": "Substrate material",
   "flooring.portion.substrate_item_key": "Substrate product",
@@ -280,6 +286,15 @@ export function flooringQuestionOptions(
       "Underlay includes moisture control",
       "Separate moisture barrier",
       "Moisture control excluded",
+    ];
+  }
+  if (factKey === "flooring.portion.laminate_package_covers_underlay") {
+    return ["Package rate covers the underlay", "Charge the underlay separately"];
+  }
+  if (factKey === "flooring.portion.laminate_package_covers_moisture") {
+    return [
+      "Package rate covers the moisture barrier",
+      "Charge the moisture barrier separately",
     ];
   }
   if (factKey === "flooring.portion.finish_pricing") {

@@ -547,25 +547,76 @@ combinedFacts = writeFact(
   "flooring.portion.waste_treatment",
   "Charge only the extra waste quantity"
 );
-const combined = currentPortion(combinedFacts) as FlooringPortion;
-const combinedPrice = price(combined, [
-  ...companyRates,
-  rate({
-    item_key: FLOORING_LAMINATE_PACKAGE_M2,
-    rate_type: "subcontractor",
-    unit: "m2",
-    cost_rate: 90,
-  }),
-]);
+const unanswered = currentPortion(combinedFacts) as FlooringPortion;
+const packageRate = rate({
+  item_key: FLOORING_LAMINATE_PACKAGE_M2,
+  rate_type: "subcontractor",
+  unit: "m2",
+  cost_rate: 90,
+});
+const unansweredPrice = price(unanswered, [...companyRates, packageRate]);
 check(
-  "a company package rate prices the net area and does not add the material rate",
+  "a saved package rate does not decide underlay, moisture or waste coverage",
+  unanswered.laminate_package_covers_underlay == null &&
+    unanswered.laminate_package_covers_moisture == null &&
+    findLine(unansweredPrice.lineItems, FLOORING_LAMINATE_PACKAGE_M2) == null &&
+    findLine(unansweredPrice.lineItems, FLOORING_LAMINATE_UNDERLAY_COMPONENT) == null &&
+    findLine(unansweredPrice.lineItems, FLOORING_LAMINATE_MOISTURE_COMPONENT) == null,
+  unansweredPrice.lineItems.map((item) => item.componentKey)
+);
+combinedFacts = writeFact(
+  combinedFacts,
+  "flooring.portion.laminate_package_covers_underlay",
+  "Charge the underlay separately"
+);
+combinedFacts = writeFact(
+  combinedFacts,
+  "flooring.portion.laminate_package_covers_moisture",
+  "Charge the moisture barrier separately"
+);
+const combined = currentPortion(combinedFacts) as FlooringPortion;
+const combinedPrice = price(combined, [...companyRates, packageRate]);
+check(
+  "a confirmed separate package charges underlay, moisture and waste once each",
   findLine(combinedPrice.lineItems, FLOORING_LAMINATE_PACKAGE_M2)?.quantity === 30 &&
     findLine(combinedPrice.lineItems, FLOORING_LAMINATE_PACKAGE_M2)?.recommendedCost === 2700 &&
     findLine(combinedPrice.lineItems, FLOORING_LAMINATE_SUPPLY_COMPONENT) == null &&
     findLine(combinedPrice.lineItems, FLOORING_LAMINATE_INSTALL_COMPONENT) == null &&
+    findLine(combinedPrice.lineItems, FLOORING_LAMINATE_UNDERLAY_COMPONENT)?.quantity === 30 &&
+    findLine(combinedPrice.lineItems, FLOORING_LAMINATE_UNDERLAY_COMPONENT)?.recommendedCost === 240 &&
+    findLine(combinedPrice.lineItems, FLOORING_LAMINATE_MOISTURE_COMPONENT)?.quantity === 30 &&
+    findLine(combinedPrice.lineItems, FLOORING_LAMINATE_MOISTURE_COMPONENT)?.recommendedCost === 90 &&
     findLine(combinedPrice.lineItems, "flooring.finish.waste_increment")?.quantity === 3 &&
     findLine(combinedPrice.lineItems, "flooring.finish.waste_increment")?.recommendedCost === 120,
   combinedPrice.lineItems.map((item) => [item.componentKey, item.quantity, item.recommendedCost])
+);
+let coveredFacts = writeFact(
+  combinedFacts,
+  "flooring.portion.laminate_package_covers_underlay",
+  "Package rate covers the underlay"
+);
+coveredFacts = writeFact(
+  coveredFacts,
+  "flooring.portion.laminate_package_covers_moisture",
+  "Package rate covers the moisture barrier"
+);
+coveredFacts = writeFact(
+  coveredFacts,
+  "flooring.portion.waste_treatment",
+  "Package rate covers the requested waste"
+);
+const coveredPrice = price(currentPortion(coveredFacts) as FlooringPortion, [
+  ...companyRates,
+  packageRate,
+]);
+check(
+  "a confirmed inclusive package does not charge underlay, moisture or waste again",
+  findLine(coveredPrice.lineItems, FLOORING_LAMINATE_PACKAGE_M2)?.recommendedCost === 2700 &&
+    findLine(coveredPrice.lineItems, FLOORING_LAMINATE_UNDERLAY_COMPONENT) == null &&
+    findLine(coveredPrice.lineItems, FLOORING_LAMINATE_MOISTURE_COMPONENT) == null &&
+    findLine(coveredPrice.lineItems, "flooring.finish.waste_increment") == null &&
+    findLine(coveredPrice.lineItems, FLOORING_LAMINATE_SUPPLY_COMPONENT) == null,
+  coveredPrice.lineItems.map((item) => [item.componentKey, item.recommendedCost])
 );
 const noPackage = price(combined, companyRates);
 check(

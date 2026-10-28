@@ -18,7 +18,7 @@ Net area is the agreed room area. For the original brief, 6 m × 5 m and the sta
 | Underlay | Net area, or whole rolls when that roll's coverage is known. Laminate waste is not copied onto it. | 30 m² |
 | Moisture barrier | Concrete only, and only when moisture control is confirmed as a separate product. Not added when the underlay includes that function. Timber gets no moisture line. | 30 m² when separate |
 | Installation | Net area × company hours per m² × company carpenter hourly cost | 30 m² |
-| Combined package | Net area at a company subcontract rate. The material rate is not added on top. | 30 m² |
+| Combined package | Net area at a company subcontract rate, only after the job says whether that rate covers underlay, a separate moisture barrier, and requested waste. Each confirmed item is charged once. The rate's existence is not that answer. | 30 m² |
 | Preparation, removal, disposal, skirting | Not priced when the brief excludes them | No lines |
 
 ## Cost ownership
@@ -27,7 +27,9 @@ Separate supply uses the company material rate, the underlay rate, a moisture ra
 
 A project material override in the same purchasing unit beats the company material rate. A mismatched unit is not converted and does not fall through.
 
-The combined package is a company subcontract rate per net m². There is no Quotr laminate benchmark. The vinyl package is not reused. The unused `laminateFlooringPerM2` pair stays unused. The $60 carpenter benchmark does not price this installation.
+The combined package is a company subcontract rate per net m². It prices only this floating click-lock job. There is no Quotr laminate benchmark. The vinyl package is not reused. The unused `laminateFlooringPerM2` pair stays unused. The $60 carpenter benchmark does not price this installation.
+
+Saving the package rate does not mean it covers the underlay, moisture control, or the requested waste. Those three answers are asked. Included means that item stays inside the package. Separate means it is charged once beside the package. Until the answer exists, the package is not priced.
 
 Customer-supplied laminate keeps the supply quantity visible at a contractor purchasing cost of 0. Underlay is still charged when included. Installation stays on the net area. The combined package is not also charged.
 

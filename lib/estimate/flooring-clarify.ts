@@ -128,6 +128,24 @@ export function flooringPortionFieldCurrentValue(
     if (portion.laminate_moisture === "excluded") return "Moisture control excluded";
     return null;
   }
+  if (field === "laminate_package_covers_underlay") {
+    if (portion.laminate_package_covers_underlay === "included") {
+      return "Package rate covers the underlay";
+    }
+    if (portion.laminate_package_covers_underlay === "separate") {
+      return "Charge the underlay separately";
+    }
+    return null;
+  }
+  if (field === "laminate_package_covers_moisture") {
+    if (portion.laminate_package_covers_moisture === "included") {
+      return "Package rate covers the moisture barrier";
+    }
+    if (portion.laminate_package_covers_moisture === "separate") {
+      return "Charge the moisture barrier separately";
+    }
+    return null;
+  }
   if (field === "waste_treatment") {
     if (portion.waste_treatment === "package_covers_requested_waste") {
       return "Package rate covers the requested waste";
@@ -226,6 +244,23 @@ export function flooringPortionIsInformationComplete(
       portion.waste_percent != null &&
       portion.waste_percent > 0 &&
       portion.waste_treatment == null
+    ) {
+      return false;
+    }
+    if (
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.underlay_required === true &&
+      portion.laminate_package_covers_underlay == null
+    ) {
+      return false;
+    }
+    if (
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.laminate_substrate === "concrete" &&
+      portion.laminate_moisture === "separate" &&
+      portion.laminate_package_covers_moisture == null
     ) {
       return false;
     }
@@ -567,7 +602,9 @@ export function listFlooringClarifyCandidates(
       const laminateChoice =
         portion?.specialist_kind === "laminate" &&
         (row.factKey === "flooring.portion.finish_pricing" ||
-          row.factKey === "flooring.portion.waste_treatment");
+          row.factKey === "flooring.portion.waste_treatment" ||
+          row.factKey === "flooring.portion.laminate_package_covers_underlay" ||
+          row.factKey === "flooring.portion.laminate_package_covers_moisture");
       out.push(
         buildCandidate({
           input,

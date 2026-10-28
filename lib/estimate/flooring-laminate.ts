@@ -192,6 +192,26 @@ export function parseLaminateMoisture(value: unknown): LaminateMoisture | null {
   return null;
 }
 
+export type LaminatePackageCoverage = "included" | "separate";
+
+/** A saved subcontract rate is not evidence. Only an explicit answer counts. */
+export function parseLaminatePackageCoverage(
+  value: unknown
+): LaminatePackageCoverage | null {
+  if (value === "included" || value === "separate") return value;
+  if (typeof value !== "string") return null;
+  const text = normalise(value);
+  if (
+    text.includes("does not") ||
+    text.includes("charge") ||
+    text.includes("separately")
+  ) {
+    return "separate";
+  }
+  if (text.includes("covers") || text.includes("included")) return "included";
+  return null;
+}
+
 export function parseLaminateSubstrate(value: unknown): LaminateSubstrate | null {
   if (value === "concrete" || value === "timber" || value === "other") return value;
   if (typeof value !== "string") return null;
@@ -374,6 +394,7 @@ export type LaminateAssemblyPlan =
   | { readonly status: "needs_substrate" }
   | { readonly status: "needs_moisture" }
   | { readonly status: "needs_ownership" }
+  | { readonly status: "needs_package_coverage" }
   | { readonly status: "unsupported"; readonly lines: readonly LaminateLinePlan[] }
   | { readonly status: "ready"; readonly lines: readonly LaminateLinePlan[] };
 
@@ -418,12 +439,42 @@ export function planLaminateAssembly(params: {
 
   const lines: LaminateLinePlan[] = [];
   const customer = portion.finish_supplied_by === "customer";
+  const packageActive = portion.finish_pricing === "combined_package" && !customer;
+  const packageCoversUnderlay =
+    packageActive && portion.laminate_package_covers_underlay === "included";
+  const packageCoversMoisture =
+    packageActive && portion.laminate_package_covers_moisture === "included";
+  if (
+    packageActive &&
+    ((portion.underlay_required === true &&
+      portion.laminate_package_covers_underlay == null) ||
+      (moistureApplies &&
+        portion.laminate_moisture === "separate" &&
+        portion.laminate_package_covers_moisture == null))
+  ) {
+    return { status: "needs_package_coverage" };
+  }
   const supply = laminateFinishPurchase({
     netM2,
     wastePercent: portion.waste_percent,
     packCoverageM2: portion.laminate_pack_coverage_m2,
   });
-  if (portion.finish_pricing === "combined_package" && !customer) {
+  const packageCoverage =
+    portion.underlay_required === true
+      ? packageCoversUnderlay
+        ? "The confirmed package rate covers the underlay, so it is not charged again."
+        : "The underlay is charged once beside the package. The saved rate was not treated as covering it."
+      : "Underlay is not part of this job.";
+  const moistureCoverage = !moistureApplies
+    ? "This substrate does not add a moisture line."
+    : portion.laminate_moisture === "integrated"
+      ? "Moisture control is inside the underlay, so no separate barrier is added."
+      : portion.laminate_moisture === "excluded"
+        ? "Moisture control is excluded."
+        : packageCoversMoisture
+          ? "The confirmed package rate covers the separate moisture barrier, so it is not charged again."
+          : "The moisture barrier is charged once beside the package. The saved rate was not treated as covering it.";
+  if (packageActive) {
     lines.push({
       role: "package",
       componentKey: FLOORING_LAMINATE_PACKAGE_M2,
@@ -431,7 +482,7 @@ export function planLaminateAssembly(params: {
       quantity: netM2,
       unit: "m2",
       description: `${owner} · floating click-lock laminate supply and installation`,
-      specification: `Combined package on the net ${presentM2(netM2)} m². No Quotr laminate benchmark. The vinyl package is not used. ${supply.formula}`,
+      specification: `Combined package on the net ${presentM2(netM2)} m² for this floating click-lock job only. ${packageCoverage} ${moistureCoverage} Requested waste is included only when that treatment is confirmed. A saved subcontract rate does not decide coverage. No Quotr laminate benchmark. The vinyl package is not used. ${supply.formula}`,
       customerSupplied: false,
       wasteUnresolved: false,
     });
@@ -489,7 +540,7 @@ export function planLaminateAssembly(params: {
     });
   }
 
-  if (portion.underlay_required === true) {
+  if (portion.underlay_required === true && !packageCoversUnderlay) {
     const underlay = laminateAncillaryPurchase({
       netM2,
       coverageM2: portion.laminate_underlay_coverage_m2,
@@ -511,7 +562,11 @@ export function planLaminateAssembly(params: {
     });
   }
 
-  if (moistureApplies && portion.laminate_moisture === "separate") {
+  if (
+    moistureApplies &&
+    portion.laminate_moisture === "separate" &&
+    !packageCoversMoisture
+  ) {
     const barrier = laminateAncillaryPurchase({
       netM2,
       coverageM2: portion.laminate_moisture_coverage_m2,
