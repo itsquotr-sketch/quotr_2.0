@@ -43,3 +43,55 @@ Hallway 9.60 m², 10% waste, separate finish supply, controlled rates only:
 | Included total | | | $672.00 |
 
 The combined package stays off this path. On the combined path the package remains 9.60 m² × $95.00 = $912.00 direct cost and $1,140.00 client sell. The extra 0.96 m² stays unresolved until an explicit waste treatment is chosen, and it is not a percentage of the package.
+
+## Preview acceptance
+
+Browser acceptance ran on Preview deployment `dpl_77HFoMMjcggx2Qxrdmc4DXfU25n9`, commit `81f5f680769484907dfd5b5f860d57250839f91d`, target preview. Production was not deployed.
+
+Isolated organisation only. Two jobs, no customer, no quote, and neither pricing draft was marked reviewed.
+
+### Separate supply
+
+Project `9cec79f4-e30f-4156-99b7-0dabf6c6679f`, work area `f3d7f041-1230-41aa-8738-966f3aeb1372`, estimate `4e9db1f6-e585-49bb-ac9c-b9102aa93489`, pricing draft `18b29410-ab5d-47ff-a1d6-00d25290064a`.
+
+Hallway 8 m × 1.2 m = 9.60 m², vinyl plank, 10% waste, separate finish supply, removal of existing vinyl. Company rates saved from the named recovery links: vinyl supply $40.00/m², adhesive $5.00/m², installation 0.25 labour-hours per m². Carpenter hourly cost stayed the Quotr benchmark $60.00/h. Margin 20%. The organisation is not GST registered.
+
+| Line | Expected | Actual |
+| --- | --- | --- |
+| Vinyl supply | 10.56 m² × $40.00 = $422.40 cost, $528.00 sell | 10.56 m², $422.40, $528.00, company rate |
+| Adhesive | 9.60 m² × $5.00 = $48.00 cost, $60.00 sell, once | 9.60 m², $48.00, $60.00, company rate |
+| Installation | 9.60 × 0.25 h = 2.40 h × $60.00 = $144.00 cost, $180.00 sell | 2.40 h, productivity 0.25 h/m², $144.00, $180.00 |
+| Removal | 9.60 × 0.10 h = 0.96 h × $60.00 = $57.60 cost, $72.00 sell | 0.96 h, $57.60, $72.00, independent of the finish |
+| Total | $672.00 cost, $840.00 sell, 3.36 h | $672.00, $840.00, 3.36 h |
+
+Saving each rate returned to this work area and left the previous estimate unchanged until Regenerate estimate. Reload kept the same totals. Pricing lists the same four lines. The draft status is draft.
+
+### Combined package
+
+Project `2d0802ae-c363-457c-ae8e-2af58f3bdbb9`, work area `df9ca0c1-c161-4f43-9b09-0fed5fbe271d`, estimate `a1e768e3-4006-4834-b12d-6636b49b496d`, pricing draft `f0e2bc48-9391-41ca-8af2-f1312f5377f0`.
+
+The same hallway, with combined supply and installation chosen and waste left open. The saved $40.00/m² finish rate was not applied.
+
+| Line | Expected while waste is open | Actual |
+| --- | --- | --- |
+| Package | 9.60 m² × $95.00 = $912.00 cost, $1,140.00 sell | 9.60 m², $912.00, $1,140.00, benchmark |
+| Extra waste | 0.96 m², not in the total | 0.96 m², cost $0, not in the total |
+| Removal | $57.60 cost, $72.00 sell | $57.60, $72.00 |
+| Included total | $969.60 cost, $1,212.00 sell | Known cost $969.60, shown as $970, sell $1,212.00 |
+
+Readiness stayed Partial. The attention named Hallway and the waste choice, and said a typed amount does not answer it. Pricing hid Add price on that line and kept Create quote disabled.
+
+On a phone-width viewport the same choice was saved. The estimate stayed at the previous $970 until Regenerate estimate. After that explicit update the package still costs $912.00, the note says the package was confirmed to cover the 10% waste, and the waste line is gone from the estimate. Removal stays $57.60. Readiness becomes All priced because the scope choice is answered.
+
+The pricing draft was not rewritten by that regenerate. It stayed on the earlier estimate and offered Preview changes. That preview showed the package and removal unchanged, difference $0, and no manual edits. Update final pricing left the draft unreviewed. The earlier waste row remains on the draft with no source estimate line, so Pricing still says one line needs a price and the quote stays locked. A typed amount was not entered.
+
+### Mobile
+
+At 390 × 844 the combined waste choice, the save notice, Regenerate estimate, and a reload all kept the totals above. The vinyl supply editor opened on `flooring.vinyl_plank.supply.m2`, saved the existing $40.00/m² company rate, and returned to the hallway work area. The notice said the estimate had not changed. The previous direct cost stayed $672.00 until Regenerate estimate, which produced the same $672.00, $840.00, and 3.36 h.
+
+## Remaining limitations
+
+- Carpenter labour on these jobs is the Quotr benchmark $60.00/h. The saved figure is the installation productivity, not a company carpenter rate.
+- An unpriced waste row created on a pricing draft with no source estimate line is not removed when a later estimate drops that line. Recalibration leaves it, and Pricing continues to say a price is required. That does not turn the row into a resolved scope answer.
+- The second regenerate flagged the separate-supply pricing draft as needing recalibration. It was not rewritten and was not marked reviewed.
+- No quote was created. Production was not deployed. No new flooring recipe, P&G change, or calibration change.
