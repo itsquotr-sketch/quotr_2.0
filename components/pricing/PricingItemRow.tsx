@@ -46,6 +46,9 @@ import {
 } from "@/components/ui/sheet";
 import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { FlooringRecoveryActions } from "@/components/estimate/FlooringRecoveryActions";
+import { flooringPricingRecovery } from "@/lib/estimate/flooring-pricing-recovery";
+import { updateProjectFact } from "@/lib/assistant/fact-actions";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { formatPricingMoney } from "@/lib/pricing/format";
 import { presentPricingLine } from "@/lib/pricing/line-presentation";
@@ -113,6 +116,20 @@ function PricingItemRowComponent({
 
   const supplierPrice = useSupplierPriceLine(item.id);
   const moneyView = useMemo(() => pricingItemViewModel(item), [item]);
+  const flooringRecovery = useMemo(() => {
+    if (!moneyView.pricingRequired) return null;
+    const notes = parseLineItemNotes(item.notes_internal);
+    const room = item.internal_label.split("·")[0]?.trim() || "This flooring area";
+    return flooringPricingRecovery({
+      componentKey: item.component_key,
+      itemKey: notes.metadata.itemKey ?? null,
+      notes: item.notes_internal,
+      label: item.internal_label,
+      roomName: room,
+      unit: item.unit,
+    });
+  }, [item, moneyView.pricingRequired]);
+  const blockFlooringManual = Boolean(flooringRecovery?.blocksManualAmount);
   const line = useMemo(() => presentPricingLine(item), [item]);
   const { metadata: pricingMetadata } = useMemo(
     () => parseLineItemNotes(item.notes_internal),
@@ -121,9 +138,28 @@ function PricingItemRowComponent({
   const readOnlyNote = statusNote(documentStatus);
 
   const openEditor = () => {
+    if (blockFlooringManual) return;
     setForm(itemToForm(item));
     setError(null);
     setEditorOpen(true);
+  };
+  const decideFlooring = async (input: {
+    workAreaId: string;
+    factKey: string;
+    label: string;
+    value: string;
+    nestedItemId?: string | null;
+  }) => {
+    const result = await updateProjectFact({
+      projectId: item.project_id,
+      workAreaId: input.workAreaId,
+      key: input.factKey,
+      label: input.label,
+      value: input.value,
+      valueType: "select",
+      nestedItemId: input.nestedItemId ?? undefined,
+    });
+    if (result.error) throw new Error(result.error);
   };
 
   const closeEditor = () => {
@@ -234,8 +270,17 @@ function PricingItemRowComponent({
         Actions
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
-        <DropdownMenuItem className="min-h-11" onClick={openEditor}>
-          {supplierPrice ? "Supplier price" : moneyView.pricingRequired ? "Add price" : "Edit line"}
+        <DropdownMenuItem
+          className="min-h-11"
+          onClick={blockFlooringManual ? toggleDetails : openEditor}
+        >
+          {supplierPrice
+            ? "Supplier price"
+            : blockFlooringManual
+              ? "Resolve this choice"
+              : moneyView.pricingRequired
+                ? "Add price"
+                : "Edit line"}
         </DropdownMenuItem>
         {supplierPrice ? null : (
         <DropdownMenuItem
@@ -360,11 +405,24 @@ function PricingItemRowComponent({
             <dd className="text-right tabular-nums">{moneyView.marginLabel}</dd>
           </div>
         ) : (
-          <div className="col-span-2">
+          <div className="col-span-2 space-y-2">
+            {flooringRecovery ? (
+              <FlooringRecoveryActions
+                recovery={flooringRecovery}
+                projectId={item.project_id}
+                workAreaId={item.work_area_id}
+                nestedItemId={parseLineItemNotes(item.notes_internal).metadata.nestedItemId}
+                onDecide={decideFlooring}
+              />
+            ) : null}
             <p className="text-xs text-amber-950">
-              {canEdit
-                ? "A cost or client sell still needs to be entered. Use Add price."
-                : "A cost or client sell still needs to be entered."}
+              {blockFlooringManual
+                ? "A typed amount does not answer this choice. All priced does not mean this scope question is resolved."
+                : flooringRecovery
+                  ? "Add price records a manual amount on this pricing draft only. It does not save a company rate, and it does not answer an open scope question."
+                  : canEdit
+                    ? "A cost or client sell still needs to be entered. Use Add price."
+                    : "A cost or client sell still needs to be entered."}
             </p>
           </div>
         )}
@@ -395,7 +453,7 @@ function PricingItemRowComponent({
           {error}
         </p>
       ) : null}
-      {canEdit ? (
+      {canEdit && !blockFlooringManual ? (
         <Button type="button" variant="outline" className="min-h-11" onClick={openEditor}>
           {moneyView.pricingRequired ? "Add price" : "Edit line"}
         </Button>

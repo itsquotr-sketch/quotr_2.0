@@ -30,6 +30,10 @@ import {
   type FlooringSupplyMeasure,
 } from "@/lib/estimate/flooring-purchasing";
 import type { FlooringPortion } from "@/lib/estimate/flooring-portions";
+import {
+  canonicalFinishMaterialUnit,
+  flooringPurchasingUnitsMatch,
+} from "@/lib/estimate/flooring-pricing-recovery";
 
 export type FlooringFinishPricing = "combined_package" | "separate_supply";
 export type FlooringWasteTreatment =
@@ -220,6 +224,15 @@ export function findFinishMaterialRate(
   rates: readonly OrganisationRate[],
   itemKey: string
 ): OrganisationRate | undefined {
+  const chosen = finishMaterialRateChoice(rates, itemKey);
+  if (!chosen || finishMaterialUnitProblem(rates, itemKey)) return undefined;
+  return chosen;
+}
+
+function finishMaterialRateChoice(
+  rates: readonly OrganisationRate[],
+  itemKey: string
+): OrganisationRate | undefined {
   const matches = rates.filter(
     (rate) =>
       rate.active &&
@@ -232,6 +245,20 @@ export function findFinishMaterialRate(
     matches.find((rate) => rate.rate_type === "project_material") ??
     matches.find((rate) => rate.rate_type === "material")
   );
+}
+
+export function finishMaterialUnitProblem(
+  rates: readonly OrganisationRate[],
+  itemKey: string
+): string | null {
+  const chosen = finishMaterialRateChoice(rates, itemKey);
+  const expected = canonicalFinishMaterialUnit(itemKey);
+  if (!chosen || !expected) return null;
+  const match = flooringPurchasingUnitsMatch(chosen.unit, expected);
+  if (match.ok) return null;
+  const scope =
+    chosen.rate_type === "project_material" ? "project override" : "company rate";
+  return `The saved ${scope} is not applied. ${match.reason}`;
 }
 
 export function flooringCostOwnerMode(params: {

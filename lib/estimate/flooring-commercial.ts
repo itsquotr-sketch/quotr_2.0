@@ -21,6 +21,7 @@ import {
 } from "@/lib/estimate/flooring-purchasing";
 import {
   findFinishMaterialRate,
+  finishMaterialUnitProblem,
   flooringAncillaryLabel,
   flooringAncillaryMaterialKey,
   flooringCostOwnerMode,
@@ -31,6 +32,7 @@ import {
 import {
   findCompanyProductivityRate,
   isTrustedProductivityHours,
+  productivityUnitsCompatible,
 } from "@/lib/estimate/productivity";
 import {
   FLOORING_CARPENTER_LABOUR_RATE_KEY,
@@ -394,13 +396,7 @@ export function priceFlooringMaterial(params: {
         ? undefined
         : findFinishMaterialRate(params.rates, requirement.materialKey);
     if (!named || named.cost_rate == null) {
-      return {
-        ...requirement,
-        priced: false,
-        unitCost: null,
-        totalCost: null,
-        rateSource: "missing",
-      };
+      return unpricedFinishMaterial(requirement, params.rates);
     }
     return {
       ...requirement,
@@ -429,13 +425,7 @@ export function priceFlooringMaterial(params: {
       named.cost_rate == null ||
       !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
     ) {
-      return {
-        ...requirement,
-        priced: false,
-        unitCost: null,
-        totalCost: null,
-        rateSource: "missing",
-      };
+      return unpricedFinishMaterial(requirement, params.rates);
     }
     return {
       ...requirement,
@@ -560,6 +550,22 @@ export function priceFlooringLabour(params: {
       : null;
   const hoursPerUnit = installOnly ? installHours : resolved.hoursPerUnit;
   const hoursTrusted = hoursPerUnit != null && hoursPerUnit > 0;
+  let unresolvedReason: string | null = null;
+  if (installOnly && !hoursTrusted) {
+    const saved = params.rates.find(
+      (rate) =>
+        rate.active &&
+        rate.item_key === FLOORING_FINISH_INSTALL_HOURS_PER_M2 &&
+        rate.rate_type === "productivity" &&
+        rate.cost_rate != null &&
+        rate.cost_rate > 0
+    );
+    if (saved && !productivityUnitsCompatible(saved.unit, "m2")) {
+      unresolvedReason = `A productivity rate is saved per ${saved.unit || "an unstated unit"}. Installation uses hours per m2. Those units are not converted, so the hours stay unresolved.`;
+    }
+  } else if (installOnly && hoursTrusted && !(params.hourlyCost > 0)) {
+    unresolvedReason = `Installation productivity is saved. The carpenter hourly cost ${FLOORING_CARPENTER_LABOUR_RATE_KEY} is missing, so the labour cost is not calculated.`;
+  }
   const priced =
     params.allowPricing &&
     hoursTrusted &&
@@ -585,10 +591,33 @@ export function priceFlooringLabour(params: {
     rateKey: FLOORING_CARPENTER_LABOUR_RATE_KEY,
     trade: "carpenter",
     rateProvenance: priced ? params.labourSource : "missing",
+    unresolvedReason,
     productivityBasis: {
       ...requirement.productivityBasis,
       hoursPerUnit: hoursPerUnit ?? 0,
     },
+  };
+}
+
+function unpricedFinishMaterial(
+  requirement: MaterialRequirement,
+  rates: readonly OrganisationRate[]
+): MaterialRequirement {
+  const problem = requirement.materialKey
+    ? finishMaterialUnitProblem(rates, requirement.materialKey)
+    : null;
+  const currentSpecification = requirement.specification ?? "";
+  const specification =
+    problem && !currentSpecification.includes(problem)
+      ? `${currentSpecification} ${problem}`.trim()
+      : currentSpecification;
+  return {
+    ...requirement,
+    specification,
+    priced: false,
+    unitCost: null,
+    totalCost: null,
+    rateSource: "missing",
   };
 }
 
@@ -1012,7 +1041,7 @@ function labourLine(params: {
         params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
           ? FLOORING_SPECIALIST_RECIPE_MESSAGE
           : params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
-            ? `Installation hours need the company productivity rate ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. Installed ${qty} ${unit}. These hours do not include adhesive, grout, fixings or accessories.`
+            ? `${params.requirement.unresolvedReason ? `${params.requirement.unresolvedReason} ` : ""}Installation hours need the company productivity rate ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. Installed ${qty} ${unit}. These hours do not include adhesive, grout, fixings or accessories.`
             : `Pricing Required productivity. Installed ${qty} ${unit}.`,
     });
   }

@@ -1,6 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  COMPANY_RATE_SAVED_NOTICE,
+  RateSavedNotice,
+} from "@/components/rates/RateSavedNotice";
 import Link from "next/link";
 import { ChevronDown, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +72,8 @@ type ProductivityByWorkAreaProps = {
   companyGrossMarginPercent?: number;
   onRatesChange: (rates: RatesPageRate[]) => void;
   onChanged?: () => void;
+  focusItemKey?: string | null;
+  returnHref?: string | null;
 };
 
 const STATUS_OPTIONS: { value: ProductivityStatusFilter; label: string }[] = [
@@ -104,11 +110,13 @@ export function ProductivityByWorkArea({
   companyGrossMarginPercent = DEFAULT_MARGIN_PERCENT,
   onRatesChange,
   onChanged,
+  focusItemKey = null,
+  returnHref = null,
 }: ProductivityByWorkAreaProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(focusItemKey ?? "");
   const [status, setStatus] = useState<ProductivityStatusFilter>("all");
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>({});
-  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(focusItemKey);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [resetting, setResetting] = useState<string | null>(null);
@@ -191,7 +199,11 @@ export function ProductivityByWorkArea({
           )
         : [...rates, result.rate];
       onRatesChange(nextRates);
-      setNotice("Regenerate an estimate to apply updated rates.");
+      setNotice(
+        returnHref
+          ? COMPANY_RATE_SAVED_NOTICE
+          : "Regenerate an estimate to apply updated rates."
+      );
       setOpenAreas((prev) => ({
         ...prev,
         [editingItem.workAreaType]: true,
@@ -293,11 +305,7 @@ export function ProductivityByWorkArea({
         Show technical keys
       </label>
 
-      {notice ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      ) : null}
+      <RateSavedNotice notice={notice} returnHref={returnHref} />
 
       {filteredGroups.length === 0 ? (
         <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">

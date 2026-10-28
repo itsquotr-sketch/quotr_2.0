@@ -6,9 +6,10 @@ import { measureServerLoad } from "@/lib/perf/timing";
 import { getRatesPageState } from "@/lib/rates/actions";
 import { getCompanySettings } from "@/lib/settings/company-actions";
 import { parseRatesSection } from "@/lib/setup/recommendation-destinations";
+import { safeFlooringReturnPath } from "@/lib/estimate/flooring-pricing-recovery";
 
 type RatesPageProps = {
-  searchParams: Promise<{ section?: string }>;
+  searchParams: Promise<{ section?: string; item?: string; returnTo?: string }>;
 };
 
 export default async function RatesPage({ searchParams }: RatesPageProps) {
@@ -33,6 +34,8 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
           initialState={state}
           initialSection={initialSection}
           companySettings={companySettings}
+          focusItemKey={params.item?.trim() || null}
+          returnHref={safeFlooringReturnPath(params.returnTo)}
         />
       </PageContainer>
     </div>

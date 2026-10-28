@@ -19,6 +19,7 @@ import {
   formatProfitabilityDisplay,
   inferDisplayCostKnown,
 } from "@/lib/financial-presentation/format";
+import { flooringScopeDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
 
 /** Visible estimate boundary. This is not a client document. */
 export const ESTIMATE_OVERVIEW_BOUNDARY_COPY =
@@ -674,6 +675,19 @@ export function projectEstimateOverview(
   if (productivityReview) {
     for (const name of names) missingNames.add(name);
   }
+  const scopeDecisionOpen = (input.review?.checks ?? []).some((check) =>
+    flooringScopeDecisionOpen(check.label)
+  );
+  if (scopeDecisionOpen) {
+    for (const check of input.review?.checks ?? []) {
+      if (!flooringScopeDecisionOpen(check.label)) continue;
+      const named = names.find((name) =>
+        check.label.toLowerCase().includes(name.toLowerCase())
+      );
+      if (named) missingNames.add(named);
+      else if (names.length === 1 && names[0]) missingNames.add(names[0]);
+    }
+  }
 
   const hasPricingRequired = pricingRequired.length > 0;
   const estimate = input.estimate;
@@ -701,6 +715,7 @@ export function projectEstimateOverview(
   else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
   else if (
     hasPricingRequired ||
+    scopeDecisionOpen ||
     input.review?.overview.recommendedSellIsPartial ||
     productivityReview
   ) {
@@ -725,9 +740,11 @@ export function projectEstimateOverview(
           ? "This estimate needs updating."
           : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
-          ? pricingRequired.length > 0
-            ? productivityReview ?? estimateMissingPriceNotice(pricingRequired.length)
-            : productivityReview ?? "Some items still need prices. Complete these in Pricing."
+          ? scopeDecisionOpen && pricingRequired.length === 0
+            ? "A flooring scope or waste choice is still open. A typed amount does not answer it."
+            : pricingRequired.length > 0
+              ? productivityReview ?? estimateMissingPriceNotice(pricingRequired.length)
+              : productivityReview ?? "Some items still need prices. Complete these in Pricing."
           : "Estimate ready";
 
   const primary: EstimateOverviewPrimary = !input.hasEstimate

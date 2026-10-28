@@ -22,6 +22,8 @@ type RatesNonDefaultSectionsProps = {
   onRatesChange: (rates: RatesPageRate[]) => void;
   onChanged: () => void;
   companyGrossMarginPercent: number;
+  focusItemKey?: string | null;
+  returnHref?: string | null;
 };
 
 export function RatesNonDefaultSections({
@@ -31,6 +33,8 @@ export function RatesNonDefaultSections({
   onRatesChange,
   onChanged,
   companyGrossMarginPercent,
+  focusItemKey = null,
+  returnHref = null,
 }: RatesNonDefaultSectionsProps) {
   const preferred = state.preferredWorkAreaTypes ?? [];
 
@@ -57,6 +61,8 @@ export function RatesNonDefaultSections({
           variant="labour"
           showEngineColumn
           readOnly={!state.canManageRates}
+          focusItemKey={focusItemKey}
+          returnHref={returnHref}
         />
       </div>
     );
@@ -73,6 +79,8 @@ export function RatesNonDefaultSections({
           companyGrossMarginPercent={companyGrossMarginPercent}
           onRatesChange={onRatesChange}
           onChanged={onChanged}
+          focusItemKey={focusItemKey}
+          returnHref={returnHref}
         />
       </div>
     );
@@ -89,6 +97,8 @@ export function RatesNonDefaultSections({
           readOnly={!state.canManageRates}
           companyGrossMarginPercent={companyGrossMarginPercent}
           onRatesChange={onRatesChange}
+          focusItemKey={focusItemKey}
+          returnHref={returnHref}
         />
       </div>
     );

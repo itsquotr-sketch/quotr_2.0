@@ -201,6 +201,16 @@ import {
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_LABEL,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
 } from "@/lib/estimate/flooring-identities";
+import {
+  FLOORING_CARPET_ACCESSORIES_M2,
+  FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+  FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2,
+  FLOORING_HARDWOOD_SUPPLY_LM,
+  FLOORING_TILE_ADHESIVE_GROUT_M2,
+  FLOORING_TILE_SUPPLY_EACH,
+  FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2,
+  FLOORING_VINYL_SUPPLY_M2,
+} from "@/lib/estimate/flooring-purchasing";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 
@@ -1525,6 +1535,90 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.carpetPerM2.cost,
     calculatorSupport: "planned",
+  }),
+  entry({
+    item_key: FLOORING_VINYL_SUPPLY_M2,
+    label: "Vinyl plank supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per purchased square metre of vinyl plank. No Quotr benchmark. Not the combined supply-and-install package.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_TILE_SUPPLY_EACH,
+    label: "Tile supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "each",
+    description:
+      "Company cost per whole tile. No Quotr benchmark. A sheet, pack or square metre is not converted into each.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_HARDWOOD_SUPPLY_LM,
+    label: "Hardwood supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "lm",
+    description:
+      "Company cost per lineal metre of hardwood. No Quotr benchmark. Square metres are not converted into lineal metres here.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_VINYL_ADHESIVE_ACCESSORIES_M2,
+    label: "Vinyl adhesive and accessories",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre. Charged once on a separate or customer-supplied finish. No Quotr benchmark.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_TILE_ADHESIVE_GROUT_M2,
+    label: "Tile adhesive and grout",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre. Charged once on a separate or customer-supplied finish. No Quotr benchmark.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2,
+    label: "Hardwood adhesive and fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre. Charged once on a separate or customer-supplied finish. No Quotr benchmark.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: FLOORING_CARPET_ACCESSORIES_M2,
+    label: "Carpet installation accessories",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre. Charged once on a separate or customer-supplied finish. No Quotr benchmark. Not a carpet roll rate.",
+    calculatorSupport: "used_now",
   }),
 ];
 
@@ -3644,6 +3738,19 @@ export const FLOORING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description: FLOORING_SUBSTRATE_REMOVE_HOURS_DESCRIPTION,
     defaultCostRate: FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2_VALUE,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+    label: "Finish installation",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring productivity",
+    unit: "m2",
+    description:
+      "Hours per net square metre to install the finish. No Quotr hours default. Hours per sheet, each or lineal metre are not converted. Adhesive, grout, fixings and removal stay separate.",
     calculatorSupport: "used_now",
     recommended: true,
   }),

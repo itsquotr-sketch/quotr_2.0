@@ -19,6 +19,7 @@ import {
 import { scopeReviewDisplay, parseScopeReview, deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
+import { flooringOwnershipDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
 
 export const WORK_AREA_PRICING_EXPLANATION =
   "This price is completed in Pricing.";
@@ -73,6 +74,10 @@ export type WorkAreaBreakdownLine = {
   readonly reviewFactKey: string | null;
   readonly reviewValue: string | null;
   readonly reviewJobFactKey: string | null;
+  readonly componentKey: string | null;
+  readonly itemKey: string | null;
+  readonly detailNotes: string | null;
+  readonly nestedItemId: string | null;
 };
 
 export type WorkAreaBreakdownGroup = {
@@ -220,6 +225,10 @@ function presentLine(
     reviewFactKey: review?.factKey ?? null,
     reviewValue: review?.value ?? null,
     reviewJobFactKey: review?.jobFactKey ?? null,
+    componentKey: line.componentKey,
+    itemKey: line.itemKey,
+    detailNotes: line.sourceLine.notes ?? line.specification,
+    nestedItemId: line.sourceLine.nestedItemId ?? null,
   };
 }
 
@@ -354,6 +363,12 @@ function presentCard(
     readiness = "Pricing Required";
   } else if (needsPrice || partial) readiness = "Partial";
   else if (!costLabel) readiness = "Pricing Required";
+  if (
+    readiness === "All priced" &&
+    checks.some((check) => flooringOwnershipDecisionOpen(check))
+  ) {
+    readiness = "Partial";
+  }
 
   const portionAssumptions = (area.portionGroups ?? []).flatMap((portion) => [
     ...portion.assumptions,

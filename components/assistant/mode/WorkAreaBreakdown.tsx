@@ -16,6 +16,12 @@ import {
 } from "@/lib/assistant/presentation/work-area-breakdown";
 import type { BuilderReviewView } from "@/lib/assistant/builder-review";
 import { cn } from "@/lib/utils";
+import { FlooringRecoveryActions } from "@/components/estimate/FlooringRecoveryActions";
+import {
+  flooringOwnershipDecisionOpen,
+  flooringOwnershipRecovery,
+  flooringPricingRecovery,
+} from "@/lib/estimate/flooring-pricing-recovery";
 
 const actionClassName = "h-11 min-h-11 w-full text-sm lg:w-auto";
 const pricingClassName =
@@ -44,6 +50,14 @@ type WorkAreaBreakdownProps = {
   focusWorkAreaId?: string | null;
   onFocusApplied?: () => void;
   onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
+  projectId?: string | null;
+  onFlooringDecision?: (input: {
+    workAreaId: string;
+    factKey: string;
+    label: string;
+    value: string;
+    nestedItemId?: string | null;
+  }) => void | Promise<void>;
 };
 
 export function EstimateViewControl({
@@ -160,11 +174,23 @@ function Field({
 function LineRows({
   lines,
   workAreaId,
+  workAreaName,
+  projectId,
   onConfirmProductivity,
+  onFlooringDecision,
 }: {
   lines: readonly WorkAreaBreakdownLine[];
   workAreaId: string;
+  workAreaName: string;
+  projectId?: string | null;
   onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
+  onFlooringDecision?: (input: {
+    workAreaId: string;
+    factKey: string;
+    label: string;
+    value: string;
+    nestedItemId?: string | null;
+  }) => void | Promise<void>;
 }) {
   if (lines.length === 0) return null;
   return (
@@ -236,9 +262,13 @@ function LineRows({
                 ) : null}
               </div>
             ) : line.pricingRequired ? (
-              <p className="text-sm text-foreground/75 lg:col-span-6">
-                This price is completed in Pricing.
-              </p>
+              <FlooringLineRecovery
+                line={line}
+                workAreaId={workAreaId}
+                workAreaName={workAreaName}
+                projectId={projectId}
+                onFlooringDecision={onFlooringDecision}
+              />
             ) : null}
           </li>
         ))}
@@ -275,14 +305,71 @@ function RevisedHoursField({ onSave }: { onSave: (hours: string) => void }) {
   );
 }
 
+function FlooringLineRecovery({
+  line,
+  workAreaId,
+  workAreaName,
+  projectId,
+  onFlooringDecision,
+}: {
+  line: WorkAreaBreakdownLine;
+  workAreaId: string;
+  workAreaName: string;
+  projectId?: string | null;
+  onFlooringDecision?: (input: {
+    workAreaId: string;
+    factKey: string;
+    label: string;
+    value: string;
+    nestedItemId?: string | null;
+  }) => void | Promise<void>;
+}) {
+  const recovery = flooringPricingRecovery({
+    componentKey: line.componentKey,
+    itemKey: line.itemKey,
+    notes: line.detailNotes,
+    label: line.description,
+    roomName: workAreaName,
+    unit: line.unit,
+  });
+  if (!recovery) {
+    return (
+      <p className="text-sm text-foreground/75 lg:col-span-6">
+        This price is completed in Pricing.
+      </p>
+    );
+  }
+  return (
+    <FlooringRecoveryActions
+      recovery={recovery}
+      projectId={projectId}
+      workAreaId={workAreaId}
+      nestedItemId={line.nestedItemId}
+      onDecide={onFlooringDecision}
+    />
+  );
+}
+
 function GroupBlock({
   group,
   workAreaId,
+  workAreaName,
+  projectId,
   onConfirmProductivity,
+  onFlooringDecision,
 }: {
   group: WorkAreaBreakdownGroup;
   workAreaId: string;
+  workAreaName: string;
+  projectId?: string | null;
   onConfirmProductivity?: (workAreaId: string, key: string, value: string) => void;
+  onFlooringDecision?: (input: {
+    workAreaId: string;
+    factKey: string;
+    label: string;
+    value: string;
+    nestedItemId?: string | null;
+  }) => void | Promise<void>;
 }) {
   if (group.lines.length === 0) return null;
   return (
@@ -291,7 +378,10 @@ function GroupBlock({
       <LineRows
         lines={group.lines}
         workAreaId={workAreaId}
+        workAreaName={workAreaName}
+        projectId={projectId}
         onConfirmProductivity={onConfirmProductivity}
+        onFlooringDecision={onFlooringDecision}
       />
     </section>
   );
@@ -335,6 +425,8 @@ export function WorkAreaBreakdown({
   focusWorkAreaId = null,
   onFocusApplied,
   onConfirmProductivity,
+  projectId = null,
+  onFlooringDecision,
 }: WorkAreaBreakdownProps) {
   const model: WorkAreaBreakdownModel = projectWorkAreaBreakdown(view, scope);
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -560,7 +652,15 @@ export function WorkAreaBreakdown({
                         <p className="mt-1 text-sm break-words text-foreground/75">{portion.summary}</p>
                       ) : null}
                       {portion.groups.map((group) => (
-                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
+                        <GroupBlock
+                          key={group.id}
+                          group={group}
+                          workAreaId={card.id}
+                          workAreaName={card.name}
+                          projectId={projectId}
+                          onConfirmProductivity={onConfirmProductivity}
+                          onFlooringDecision={onFlooringDecision}
+                        />
                       ))}
                       <CollapsedList
                         title={
@@ -578,7 +678,15 @@ export function WorkAreaBreakdown({
                     <section data-work-area-shared>
                       <h4 className="text-sm font-semibold">Shared across portions</h4>
                       {card.sharedGroups.map((group) => (
-                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
+                        <GroupBlock
+                          key={group.id}
+                          group={group}
+                          workAreaId={card.id}
+                          workAreaName={card.name}
+                          projectId={projectId}
+                          onConfirmProductivity={onConfirmProductivity}
+                          onFlooringDecision={onFlooringDecision}
+                        />
                       ))}
                     </section>
                   ) : null}
@@ -587,7 +695,15 @@ export function WorkAreaBreakdown({
                     <section data-work-area-cost>
                       <h4 className="text-sm font-semibold">Cost build-up</h4>
                       {card.costGroups.map((group) => (
-                        <GroupBlock key={group.id} group={group} workAreaId={card.id} onConfirmProductivity={onConfirmProductivity} />
+                        <GroupBlock
+                          key={group.id}
+                          group={group}
+                          workAreaId={card.id}
+                          workAreaName={card.name}
+                          projectId={projectId}
+                          onConfirmProductivity={onConfirmProductivity}
+                          onFlooringDecision={onFlooringDecision}
+                        />
                       ))}
                     </section>
                   ) : null}
@@ -601,6 +717,14 @@ export function WorkAreaBreakdown({
                     items={card.assumptions}
                     marker="assumptions"
                   />
+                  {card.checks.some((check) => flooringOwnershipDecisionOpen(check)) ? (
+                    <FlooringRecoveryActions
+                      recovery={flooringOwnershipRecovery(card.name)}
+                      projectId={projectId}
+                      workAreaId={card.id}
+                      onDecide={onFlooringDecision}
+                    />
+                  ) : null}
                   <CollapsedList
                     title={
                       card.checks.length === 1

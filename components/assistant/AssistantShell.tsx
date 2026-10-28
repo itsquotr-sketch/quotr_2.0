@@ -696,6 +696,7 @@ export function AssistantShell({
   // Never clear this from a fresh (isStale=false) server render — that older RSC
   // payload can arrive after a newer write. Clear only after successful regenerate.
   const [localEstimateStale, setLocalEstimateStale] = useState(false);
+  const [rateRecoveryNotice, setRateRecoveryNotice] = useState(false);
   const [generationProjection, setGenerationProjection] = useState<
     EstimateGenerationResult | undefined
   >(undefined);
@@ -787,6 +788,16 @@ export function AssistantShell({
   const questionsSubmitted = isStageAtOrBeyond(stage, "constraints");
   const constraintsSubmitted = isStageAtOrBeyond(stage, "ready_to_estimate");
   const estimateReady = stage === "estimate_ready";
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("recovery") !== "saved") return;
+    setRateRecoveryNotice(true);
+    setLocalEstimateStale(true);
+    setEstimateView("work_areas");
+    const area = url.searchParams.get("workArea");
+    if (area) setFocusWorkAreaId(area);
+  }, [project.id, setEstimateView]);
 
   const bridgeEstimateStaleAfterCanonicalWrite = useCallback(() => {
     if (!estimateReady) return;
@@ -1101,6 +1112,17 @@ export function AssistantShell({
               setEditJobOpen(false);
               setEditJobSection(null);
               setJobPlanEditFocus(null);
+              setRateRecoveryNotice(false);
+              const url = new URL(window.location.href);
+              if (url.searchParams.has("recovery")) {
+                url.searchParams.delete("recovery");
+                url.searchParams.delete("workArea");
+                window.history.replaceState(
+                  window.history.state,
+                  "",
+                  `${url.pathname}${url.search}`
+                );
+              }
             }
             shouldRefresh = false;
             estimateApplied = true;
@@ -3916,9 +3938,34 @@ export function AssistantShell({
                     onChange={setEstimateView}
                   />
                   {estimateView === "work_areas" && builderReviewView ? (
+                    <>
+                    {rateRecoveryNotice ? (
+                      <p
+                        className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                        data-flooring-rate-saved="true"
+                      >
+                        The company rate is saved. This estimate has not changed yet.
+                        Update the estimate to apply it. Saved answers and manual
+                        pricing amounts stay as they are.
+                      </p>
+                    ) : null}
                     <WorkAreaBreakdown
                       view={builderReviewView}
                       scope={estimateScope}
+                      projectId={project.id}
+                      onFlooringDecision={
+                        canRunEstimates
+                          ? (input) =>
+                              handleFactSave({
+                                workAreaId: input.workAreaId,
+                                key: input.factKey,
+                                label: input.label,
+                                value: input.value,
+                                inputType: "select",
+                                nestedItemId: input.nestedItemId,
+                              })
+                          : undefined
+                      }
                       focusWorkAreaId={focusWorkAreaId}
                       onFocusApplied={() => setFocusWorkAreaId(null)}
                       isRegenerating={updatingEstimate}
@@ -3946,6 +3993,7 @@ export function AssistantShell({
                           : undefined
                       }
                     />
+                    </>
                   ) : estimateView === "materials" && builderReviewView ? (
                     <MaterialsTakeoff
                       view={builderReviewView}

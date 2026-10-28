@@ -34,6 +34,8 @@ type RatesPageContentProps = {
   initialState: RatesPageState;
   initialSection?: RatesSectionId;
   companySettings?: CompanySettings | null;
+  focusItemKey?: string | null;
+  returnHref?: string | null;
 };
 
 /** Primary Rates navigation. */
@@ -83,6 +85,8 @@ export function RatesPageContent({
   initialState,
   initialSection = "overview",
   companySettings = null,
+  focusItemKey = null,
+  returnHref = null,
 }: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
   const [activeSection, setActiveSection] = useState<RatesSectionId>(
@@ -158,6 +162,19 @@ export function RatesPageContent({
 
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-rates-compact>
+      {returnHref ? (
+        <p
+          className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+          data-rate-editor-scope="company"
+        >
+          {focusItemKey
+            ? `Editing ${focusItemKey}. `
+            : "Editing one company rate. "}
+          Saving it does not change the estimate you came from. A project-only
+          material override is not available in this editor. A manual amount
+          stays on the pricing draft.
+        </p>
+      ) : null}
       <label className="grid gap-1.5 md:hidden" htmlFor="rates-section">
         <span className="text-xs font-medium text-muted-foreground">
           Rates section
@@ -240,6 +257,8 @@ export function RatesPageContent({
               void refresh();
             }}
             companyGrossMarginPercent={companyGrossMarginPercent}
+            focusItemKey={focusItemKey}
+            returnHref={returnHref}
           />
         ) : null}
       </div>

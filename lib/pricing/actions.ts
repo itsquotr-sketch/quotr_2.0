@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { flooringManualAmountBlocked } from "@/lib/estimate/flooring-pricing-recovery";
 import {
   deckStatedCountConflictFromPersisted,
   deckStatedCountPricingBlock,
@@ -1367,6 +1368,18 @@ export async function updatePricingItem(
   });
   if (!commercial.ok) {
     return { error: commercial.error };
+  }
+  if (
+    flooringManualAmountBlocked({
+      componentKey: existing.component_key,
+      notes: existing.notes_internal,
+    }) &&
+    (totals.totalCost > 0 || totals.totalSell > 0)
+  ) {
+    return {
+      error:
+        "A typed amount does not answer this flooring choice. Choose the waste treatment or package ownership first.",
+    };
   }
 
   const { error } = await supabase

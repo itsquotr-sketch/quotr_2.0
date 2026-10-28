@@ -186,6 +186,7 @@ export type LabourRequirement = EstimateRequirementBase & {
   hourlyCost: number | null;
   totalCost: number | null;
   rateProvenance: RequirementRateSource;
+  unresolvedReason?: string | null;
 };
 
 export type PlantRequirement = EstimateRequirementBase & {

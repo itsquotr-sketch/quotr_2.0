@@ -1280,6 +1280,34 @@ export function classifyMaterialPresentation(
     });
   }
 
+  if (
+    key === "flooring.vinyl_plank.supply.m2" ||
+    key === "flooring.tile.supply.each" ||
+    key === "flooring.hardwood.supply.lm" ||
+    key === "flooring.vinyl_plank.adhesive_accessories.m2" ||
+    key === "flooring.tile.adhesive_grout.m2" ||
+    key === "flooring.hardwood.adhesive_fixings.m2" ||
+    key === "flooring.carpet.accessories.m2"
+  ) {
+    return base({
+      categoryId: "flooring",
+      familyId: "flooring-separate-supply",
+      familyName: "Separate finish supply",
+      familyDescription:
+        "Company costs for separate finish supply and ancillaries. No Quotr benchmark. The combined package is a different rate and is not split.",
+      variantLayout: "generic",
+      thickness: null,
+      sheetSize: null,
+      section: null,
+      gradeTreatment: null,
+      colourType: entry.label,
+      usedInWorkAreaTypes: ["flooring"],
+      ordinary: true,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
   if (key.startsWith("flooring.")) {
     return base({
       categoryId: "flooring",
