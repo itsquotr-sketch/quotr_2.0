@@ -2111,6 +2111,27 @@ export function wallTypeIsBuildOrReline(
   );
 }
 
+/**
+ * A face the brief already included, with no product yet.
+ * Same lining on both sides stays one Side A answer; Side B is asked only
+ * when the faces are explicitly different.
+ */
+function nextIncludedUnspecifiedLiningField(
+  type: InternalWallsWallType
+): string | null {
+  if (type.side_a.lined && type.side_a.product == null) {
+    return "internal_walls.wall_type.side_a_product";
+  }
+  if (
+    type.same_lining_both_sides === false &&
+    type.side_b.lined &&
+    type.side_b.product == null
+  ) {
+    return "internal_walls.wall_type.side_b_product";
+  }
+  return null;
+}
+
 function nextOpeningField(type: InternalWallsWallType): string | null {
   const active =
     type.openings.find((row) => row.id === type.active_opening_id) ??
@@ -2166,6 +2187,8 @@ export function nextInternalWallsWallTypeField(params: {
     }
     const openingNext = nextOpeningField(type);
     if (openingNext) return openingNext;
+    const includedLining = nextIncludedUnspecifiedLiningField(type);
+    if (includedLining) return includedLining;
     if (!type.side_a.lined && type.side_a.product == null) {
       return "internal_walls.wall_type.side_a_product";
     }
@@ -2191,6 +2214,8 @@ export function nextInternalWallsWallTypeField(params: {
     if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
     if (type.length_lm == null) return "internal_walls.wall_type.length_lm";
     if (type.height_m == null) return "internal_walls.wall_type.height_m";
+    const includedLining = nextIncludedUnspecifiedLiningField(type);
+    if (includedLining) return includedLining;
     if (!type.side_a.lined && !type.side_b.lined) {
       return "internal_walls.wall_type.side_a_product";
     }
@@ -2216,6 +2241,8 @@ export function nextInternalWallsWallTypeField(params: {
   if (type.stud_centres_mm == null && type.frame_system !== "existing_frame") {
     return "internal_walls.wall_type.stud_centres_mm";
   }
+  const includedLining = nextIncludedUnspecifiedLiningField(type);
+  if (includedLining) return includedLining;
   if (!type.side_a.lined && type.side_a.product == null) {
     return "internal_walls.wall_type.side_a_product";
   }

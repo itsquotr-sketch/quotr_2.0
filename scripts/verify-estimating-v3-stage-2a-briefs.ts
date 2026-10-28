@@ -5,6 +5,11 @@
  */
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import {
+  applyInternalWallsFactWrite,
+  nextInternalWallsWallTypeField,
+  resolveInternalWallsWallTypes,
+} from "../lib/estimate/internal-walls-wall-types";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { FLOORING_PORTIONS_FACT_KEY } from "../lib/estimate/flooring-portions";
@@ -343,6 +348,123 @@ check(
     !officeKeys.some((key) => key?.includes("standard_gib")),
   officeKeys
 );
+
+function internalWallFacts(result: ReturnType<typeof enrich>): EstimateFact[] {
+  return result.extraction.facts
+    .filter(
+      (row) =>
+        row.work_area_type === "internal_walls" ||
+        row.key.startsWith("internal_walls.")
+    )
+    .map(
+      (row, index) =>
+        ({
+          ...row,
+          id: `fact-${index}`,
+          project_id: "project",
+          work_area_id: "walls",
+          source: "ai_extracted",
+        }) as EstimateFact
+    );
+}
+
+function withWallAnswers(result: ReturnType<typeof enrich>, product: string | null) {
+  let facts = internalWallFacts(result);
+  const wallTypeId = resolveInternalWallsWallTypes({
+    facts,
+    workAreaId: "walls",
+  }).types[0]?.id;
+  const writes: Array<[string, unknown]> = [
+    ["internal_walls.wall_type.frame_system", "Timber framing"],
+    ["internal_walls.wall_type.frame_size", "90 mm timber framing — 90×45"],
+    ["internal_walls.wall_type.length_lm", 24],
+    ["internal_walls.wall_type.height_m", 2.7],
+    ["internal_walls.wall_type.stud_centres_mm", "400 mm"],
+    ["internal_walls.wall_type.has_openings", "No"],
+  ];
+  if (product) {
+    writes.push(["internal_walls.wall_type.side_a_product", product]);
+  }
+  for (const [key, value] of writes) {
+    facts = applyInternalWallsFactWrite({
+      facts,
+      workAreaId: "walls",
+      wallTypeId,
+      key,
+      value,
+    });
+  }
+  const type = resolveInternalWallsWallTypes({ facts, workAreaId: "walls" }).types[0] ?? null;
+  return { facts, type };
+}
+
+const officeBeforeProduct = withWallAnswers(office, null);
+check(
+  "included lining asks for one product before either face is assumed",
+  officeBeforeProduct.type?.side_a.lined === true &&
+    officeBeforeProduct.type.side_a.product == null &&
+    officeBeforeProduct.type.side_b.lined === true &&
+    officeBeforeProduct.type.side_b.product == null &&
+    officeBeforeProduct.type.same_lining_both_sides === true &&
+    nextInternalWallsWallTypeField({
+      type: officeBeforeProduct.type,
+      jobScope: "new_partition",
+    }) === "internal_walls.wall_type.side_a_product",
+  officeBeforeProduct.type
+);
+const officeAfterProduct = withWallAnswers(office, "Standard GIB");
+check(
+  "one Side A product answer covers both faces",
+  officeAfterProduct.type?.side_a.product === "standard_gib" &&
+    officeAfterProduct.type.side_b.product === "standard_gib" &&
+    officeAfterProduct.type.side_a.thickness_mm === 13 &&
+    officeAfterProduct.type.side_a.sheet_length_mm === 2700 &&
+    officeAfterProduct.type.side_b.sheet_length_mm === 2700 &&
+    nextInternalWallsWallTypeField({
+      type: officeAfterProduct.type,
+      jobScope: "new_partition",
+    }) !== "internal_walls.wall_type.side_b_product",
+  officeAfterProduct.type
+);
+const officeAnsweredEstimate = wallsResult({
+  ...office,
+  extraction: {
+    ...office.extraction,
+    facts: office.extraction.facts.map((row) => {
+      const answered = officeAfterProduct.facts.find((fact) => fact.key === row.key);
+      return answered ? { ...row, value: answered.value } : row;
+    }),
+  },
+});
+const officeAnsweredKeys = officeAnsweredEstimate?.lineItems.map((row) => row.componentKey) ?? [];
+check(
+  "a saved lining product replaces both unspecified faces",
+  officeAnsweredKeys.filter((key) => key === "internal_walls.lining.standard_gib.material").length === 2 &&
+    !officeAnsweredKeys.some((key) => key?.startsWith("internal_walls.lining.unspecified")),
+  officeAnsweredKeys.filter((key) => key?.includes("lining"))
+);
+const officeOther = withWallAnswers(office, "Other");
+const officeOtherEstimate = wallsResult({
+  ...office,
+  extraction: {
+    ...office.extraction,
+    facts: office.extraction.facts.map((row) => {
+      const answered = officeOther.facts.find((fact) => fact.key === row.key);
+      return answered ? { ...row, value: answered.value } : row;
+    }),
+  },
+});
+const officeOtherKeys = officeOtherEstimate?.lineItems.map((row) => row.componentKey) ?? [];
+check(
+  "an unsupported lining choice stays a scope gap",
+  officeOther.type?.side_a.product === "other" &&
+    officeOther.type.side_b.product === "other" &&
+    officeOtherKeys.filter((key) => key === "internal_walls.lining.other.material").length === 2 &&
+    !officeOtherKeys.some(
+      (key) => key?.includes("standard_gib") || key?.startsWith("internal_walls.lining.unspecified")
+    ),
+  officeOtherKeys.filter((key) => key?.includes("lining"))
+);
 const partitionEstimate = wallsResult(partition);
 const partitionKeys = partitionEstimate?.lineItems.map((row) => row.componentKey) ?? [];
 check(
@@ -428,6 +550,17 @@ check(
     doors: paraphraseDoors,
     keys: paraphraseEstimate?.lineItems.map((row) => row.componentKey),
   }
+);
+const paraphraseBeforeProduct = withWallAnswers(paraphrase, null);
+check(
+  "a paraphrased lining request asks for the same product",
+  paraphraseBeforeProduct.type?.same_lining_both_sides === true &&
+    paraphraseBeforeProduct.type.side_a.product == null &&
+    nextInternalWallsWallTypeField({
+      type: paraphraseBeforeProduct.type,
+      jobScope: "new_partition",
+    }) === "internal_walls.wall_type.side_a_product",
+  paraphraseBeforeProduct.type
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

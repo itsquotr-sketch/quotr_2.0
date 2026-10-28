@@ -83,6 +83,7 @@ import type {
 } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
+import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { QuotrLoader } from "@/components/brand/QuotrLoader";
@@ -2975,6 +2976,15 @@ export function AssistantShell({
       stage,
     ]
   );
+  const liningProductClarifications = useMemo(
+    () =>
+      clarifyView.candidates.filter(
+        (candidate) =>
+          candidate.factKey === "internal_walls.wall_type.side_a_product" ||
+          candidate.factKey === "internal_walls.wall_type.side_b_product"
+      ),
+    [clarifyView.candidates]
+  );
 
   const deckDetailGaps = useMemo(
     () =>
@@ -3961,6 +3971,29 @@ export function AssistantShell({
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
+                  {liningProductClarifications.length > 0 ? (
+                    <section
+                      className="rounded-xl border border-border/60 bg-card px-4 py-4"
+                      data-lining-clarification
+                    >
+                      {liningProductClarifications.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="space-y-2"
+                          data-clarify-fact-key={candidate.factKey ?? undefined}
+                        >
+                          <p className="text-sm font-medium leading-snug">{candidate.question}</p>
+                          <ClarifyAnswerControl
+                            candidate={candidate}
+                            value={candidate.currentValue}
+                            pending={pendingReadinessWrites > 0 || updatingEstimate}
+                            disabled={pendingReadinessWrites > 0 || updatingEstimate}
+                            onAnswerValue={handleClarifyValue}
+                          />
+                        </div>
+                      ))}
+                    </section>
+                  ) : null}
                   {productivityProgress && estimateView !== "overview" ? (
                     <p
                       className="text-sm font-medium text-foreground"
