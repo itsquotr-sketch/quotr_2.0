@@ -6,7 +6,13 @@
 import { readFileSync } from "node:fs";
 import type { OrganisationRate } from "../components/setup/types";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
-import { getLabourAdjustmentFactor } from "../lib/estimate/adjustments";
+import {
+  getCombinedLabourAccessFactor,
+  getLabourAdjustmentFactor,
+  parseCarryDistanceCategory,
+} from "../lib/estimate/adjustments";
+import type { EstimateConstraint } from "../lib/estimate/types";
+import { pricingTaxBasisDecision } from "../lib/pricing/gst-source";
 import {
   commercialConditionMessages,
   explicitAssumptionFor,
@@ -429,16 +435,109 @@ check(
     notRegisteredGst.inclGst === 2625
 );
 
+function labourConstraint(key: string, value: string): EstimateConstraint {
+  return { key, label: key, value };
+}
+
+const difficultLong = getCombinedLabourAccessFactor({
+  constraints: [
+    labourConstraint("site_access", "Difficult"),
+    labourConstraint("material_carry_distance", "> 30m"),
+  ],
+});
+const easyLong = getCombinedLabourAccessFactor({
+  constraints: [
+    labourConstraint("site_access", "Easy"),
+    labourConstraint("material_carry_distance", "> 30m"),
+  ],
+});
+check(
+  "access and carry add, and unknown carry is not a confirmed short answer",
+  parseCarryDistanceCategory(null) === "short" &&
+    parseCarryDistanceCategory("Not sure") === "unknown" &&
+    parseCarryDistanceCategory("< 10m") === "short" &&
+    Math.round(difficultLong * 100) / 100 === 1.2 &&
+    Math.round(easyLong * 100) / 100 === 1.1 &&
+    Math.round(30 * 0.2 * difficultLong * 100) / 100 === 7.2 &&
+    Math.round(30 * 0.2 * easyLong * 100) / 100 === 6.6
+);
+
+const staleRegistered = pricingTaxBasisDecision({
+  gstRegistered: true,
+  defaultGstRate: 15,
+  documentGstRate: 0,
+  taxBasis: null,
+  status: "draft",
+});
+const keptZero = pricingTaxBasisDecision({
+  gstRegistered: true,
+  defaultGstRate: 15,
+  documentGstRate: 0,
+  taxBasis: staleRegistered.overrideMarker,
+  status: "reviewed",
+});
+const alignedUnregistered = pricingTaxBasisDecision({
+  gstRegistered: false,
+  defaultGstRate: 15,
+  documentGstRate: 0,
+  taxBasis: null,
+  status: "draft",
+});
+const unknownTax = pricingTaxBasisDecision({
+  gstRegistered: null,
+  defaultGstRate: 15,
+  documentGstRate: 15,
+  taxBasis: null,
+  status: "reviewed",
+});
+const issuedTax = pricingTaxBasisDecision({
+  gstRegistered: true,
+  defaultGstRate: 15,
+  documentGstRate: 0,
+  taxBasis: null,
+  status: "converted_to_quote",
+});
+check(
+  "a registration change leaves a different draft rate unfinalisable until review",
+  staleRegistered.mismatch &&
+    staleRegistered.actionable &&
+    staleRegistered.quoteBlock != null &&
+    !staleRegistered.useDocumentRate &&
+    keptZero.override &&
+    !keptZero.mismatch &&
+    keptZero.quoteBlock == null &&
+    keptZero.useDocumentRate &&
+    keptZero.detail?.includes("Document tax override") === true &&
+    !alignedUnregistered.mismatch &&
+    alignedUnregistered.quoteBlock == null &&
+    unknownTax.registration === "unset" &&
+    unknownTax.quoteBlock != null &&
+    !unknownTax.actionable &&
+    issuedTax.mismatch &&
+    !issuedTax.actionable
+);
+
 const shell = readFileSync("components/assistant/AssistantShell.tsx", "utf8");
 const quote = readFileSync("lib/quotes/build-from-pricing.ts", "utf8");
 const review = readFileSync("lib/pricing/actions.ts", "utf8");
 const gate = readFileSync("lib/estimate/condition-commercial-gate.ts", "utf8");
+const setup = readFileSync("lib/setup/actions.ts", "utf8");
+const saveGst = setup.slice(setup.indexOf("export async function saveGstRegistration"));
 check(
   "regenerate stays tied to a stale estimate and a price-affecting answer",
   shell.includes("canRunEstimates && displayEstimateStale ? handleRegenerateEstimate") &&
     shell.includes("conditionAnswerAffectsLabour(input.key)") &&
     shell.includes("setLocalEstimateStale(true)") &&
     shell.includes("ConditionDecisions")
+);
+check(
+  "registration does not rewrite drafts, and review blocks a stale tax basis",
+  saveGst.includes("organisation_settings") &&
+    !saveGst.includes("pricing_documents") &&
+    review.includes("pricingTaxBasisDecision") &&
+    review.includes("applyRegistrationGstToPricing") &&
+    review.includes("keepPricingDocumentGstRate") &&
+    review.includes("Issued pricing keeps its tax snapshot.")
 );
 check(
   "pricing review and quote creation read conditions and do not write them",

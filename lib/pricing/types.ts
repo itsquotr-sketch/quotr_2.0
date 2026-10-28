@@ -1,4 +1,5 @@
 import type { CeilingProvisionalConfirmation } from "@/lib/estimate/ceilings-provisional-package";
+import type { PricingTaxBasisMarker } from "@/lib/pricing/gst-source";
 
 export type CalculationMode =
   | "quantity_rate"
@@ -67,6 +68,8 @@ export type PricingDocument = {
   recalibrated_at: string | null;
   /** Draft-only decision for the legacy flat ceiling package. Absent on older rows. */
   provisional_ceiling_confirmation?: CeilingProvisionalConfirmation | null;
+  /** Explicit document tax override. Null until a rate is kept against registration. */
+  gst_tax_basis?: PricingTaxBasisMarker | null;
 };
 
 export type PricingItem = {

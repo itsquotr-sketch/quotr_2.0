@@ -35,6 +35,7 @@ import {
   updatePricingItem,
 } from "@/lib/pricing/actions";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
@@ -77,6 +78,7 @@ type PricingWorkspaceProps = {
   scopeReview?: ScheduleScopeReview | null;
   estimateUpdateRequired?: string | null;
   gstRegistered?: boolean | null;
+  defaultGstRate?: number | null;
 };
 
 export function PricingWorkspace({
@@ -88,6 +90,7 @@ export function PricingWorkspace({
   scopeReview = null,
   estimateUpdateRequired = null,
   gstRegistered,
+  defaultGstRate = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -185,6 +188,13 @@ export function PricingWorkspace({
       }).block,
     [document.org_id, document.provisional_ceiling_confirmation, items]
   );
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
 
   const activeItems = useMemo(
     () => items.filter((item) => !isReplacedSubcontractPlaceholder(item)),
@@ -587,6 +597,8 @@ export function PricingWorkspace({
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}
+        defaultGstRate={defaultGstRate}
+        onTaxBasisUpdated={setDocument}
       />
 
       {quoteSummary != null ? (
@@ -806,6 +818,7 @@ export function PricingWorkspace({
                 pendingLabel={reviewLabel}
                 blockedReason={
                   estimateUpdateRequired?.trim() ||
+                  taxBasisBlock ||
                   provisionalQuoteBlock ||
                   manualQuoteBlock ||
                   (unresolvedPriceCount > 0 ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK : null)
@@ -826,6 +839,8 @@ export function PricingWorkspace({
           scopeQuoteBlock={scopeReview?.blocking ?? null}
           estimateUpdateRequired={estimateUpdateRequired}
           gstRegistered={gstRegistered}
+          defaultGstRate={defaultGstRate}
+          onTaxBasisUpdated={setDocument}
         />
       </div>
 
@@ -841,6 +856,7 @@ export function PricingWorkspace({
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}
+        defaultGstRate={defaultGstRate}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

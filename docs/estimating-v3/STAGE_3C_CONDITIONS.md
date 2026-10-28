@@ -6,6 +6,16 @@ Baseline `estimating/v3` at `97dc7c35e27ccf004823ff6a6ecc85f2a2158c8e`. Producti
 
 Regenerate is shown on the estimate views only when the estimate is stale. The priced laminate estimate is current, so the control is absent. The earlier regeneration appeared after a change, including a rate save, had marked it stale. Answering site access or carry did not do that for a flooring-only job: flooring labour used the adjustment, but flooring was not treated as a consumer, and “Use assumption” did not save a value. An unrelated edit was the way to expose regenerate. A price-affecting answer now marks the estimate stale and shows the existing regenerate control.
 
+## How access and carry combine
+
+The labour factor is a sum of addends, capped at 1.35. The addends are not multiplied by each other.
+
+Site access: Difficult, restricted or very poor adds 0.10. Moderate adds 0.05. Easy, an unanswered value, and Not sure add 0. Carry: a confirmed distance of 10 m or less adds 0, 10–30 m adds 0.05, and over 30 m adds 0.10. Slope, an occupied site, and restricted working hours each add 0.05 when confirmed. The factor is `min(1 + access + carry + slope + occupied + hours, 1.35)`.
+
+An empty carry value is parsed as the short category and adds 0. That is not a confirmed distance under 10 m. Not sure, unknown, unsure and n/a are the unknown category. They add 0 and stay unresolved. Unknown is not the same decision as Easy or the standard-carry assumption, even when both add nothing.
+
+Flooring uses that combined factor once. When a project site-access value is stored, including Easy or Not sure, work-area access is not applied again. Installation hours are base hours times the factor. For 30 m² at 0.2 h/m², Difficult access plus a carry over 30 m is `1 + 0.10 + 0.10 = 1.20`, and `30 × 0.2 × 1.20 = 7.20` hours. Easy or standard access plus only that long carry is `1.10`, and `30 × 0.2 × 1.10 = 6.60` hours. These modifier values are unchanged.
+
 ## Calculation basis for the laminate job
 
 Unanswered site access adds no labour modifier. That is the same hours as Easy, and it is not an Easy answer. Unanswered carry distance is parsed as short and also adds nothing. It is not a confirmed distance under 10 m. “Not sure” on either stays unresolved and adds nothing. It is not converted to No, and it is not given the old +5% carry allowance.
@@ -32,4 +42,4 @@ Pricing was created at the 6-hour basis: 33 m² laminate, 30 m² underlay, 30 m�
 
 Hazardous-materials Not sure did not regenerate the estimate or add an allowance. Marking pricing reviewed was refused with “It is not treated as No, and no allowance has been added.” The estimate overview then showed Incomplete and “Known sell, not the complete price.” The new assumptions list shows the 10% laminate supply formula and does not show the obsolete unpriced-waste warning.
 
-GST was left at the existing rules. Unknown showed “GST registration is not decided. No GST is added” and blocked a quote. Registered removed that block and did not rewrite the draft’s stored zero rate. Not registered showed “Not GST registered. No GST is added.” The isolated organisation was returned to unknown afterwards. Desktop and a 390 px layout both kept the condition questions usable.
+GST registration still does not rewrite an existing draft. Unknown shows “GST registration is not decided. No GST is added” and blocks a quote whatever rate is stored. A later registration answer does not by itself make a different stored rate finalisable. The draft stays blocked until the registration rate is applied, which returns the document to draft and recalculates GST, or the stored rate is kept as a visible document tax override. Not registered with a stored 0% rate is already aligned. Issued and archived pricing are not rewritten. No quote was sent. Desktop and a 390 px layout both kept the condition questions usable.

@@ -12,7 +12,7 @@ import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
-import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
+import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -43,6 +43,7 @@ type PricingMobileActionBarProps = {
   scopeQuoteBlock?: string | null;
   estimateUpdateRequired?: string | null;
   gstRegistered?: boolean | null;
+  defaultGstRate?: number | null;
 };
 
 export function PricingMobileActionBar({
@@ -62,6 +63,7 @@ export function PricingMobileActionBar({
   scopeQuoteBlock = null,
   estimateUpdateRequired = null,
   gstRegistered,
+  defaultGstRate = null,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
@@ -73,14 +75,22 @@ export function PricingMobileActionBar({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
   const reviewBlock =
     estimateUpdateRequired?.trim() ||
+    taxBasisBlock ||
     provisionalBlock ||
     manualQuoteBlock ||
     unknownCostBlock;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
-    || (gstRegistered === null ? GST_REGISTRATION_UNSET_QUOTE_BLOCK : null)
+    || taxBasisBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : reviewBlock);

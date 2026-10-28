@@ -196,6 +196,7 @@ export type OnboardingAccessState = {
   noticeReviewPath: string | null;
   /** Null means registration has not been answered. */
   gstRegistered: boolean | null;
+  defaultGstRate: number | null;
   role: MembershipRole | null;
 };
 
@@ -263,6 +264,7 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
       noticeCategories: [],
       noticeReviewPath: null,
       gstRegistered: null,
+      defaultGstRate: null,
       role: null,
     };
   }
@@ -308,6 +310,7 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
       : [],
     noticeReviewPath: incompleteSetupNotice ? firstRunForcedPath(reviewStage) : null,
     gstRegistered: authority.gstRegistered,
+    defaultGstRate: authority.defaultGstRate,
     role,
   };
 }

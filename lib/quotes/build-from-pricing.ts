@@ -18,9 +18,12 @@ import {
 } from "@/lib/work-areas/manual-pricing-route";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
+import {
+  pricingTaxBasisDecision,
+  resolveQuoteGstFromRegistration,
+} from "@/lib/pricing/gst-source";
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
-import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
 import { filterInternalLinesFromBlock } from "@/lib/quotes/client-narrative";
@@ -151,6 +154,15 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     return { error: GST_REGISTRATION_UNSET_QUOTE_BLOCK };
   }
 
+  const taxBasis = pricingTaxBasisDecision({
+    gstRegistered: orgDefaults.gstRegistered,
+    defaultGstRate: orgDefaults.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (taxBasis.quoteBlock) return { error: taxBasis.quoteBlock };
+
   const conditionBlock = await materialConditionQuoteBlock(supabase, orgId, projectId);
   if (conditionBlock) return { error: conditionBlock };
 
@@ -231,10 +243,12 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   );
 
   onStage?.("validation", Date.now() - validationStarted);
-  const quoteGstRate =
-    orgDefaults.gstRegistered === false
-      ? 0
-      : (document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE);
+  const quoteGstRate = taxBasis.useDocumentRate
+    ? taxBasis.documentRate
+    : resolveQuoteGstFromRegistration({
+        gstRegistered: orgDefaults.gstRegistered ?? null,
+        defaultGstRate: orgDefaults.defaultGstRate,
+      }).rate;
   const quoteTerms = resolveClientQuoteTerms({
     pricingClientTerms: document.terms,
     orgDefaults,

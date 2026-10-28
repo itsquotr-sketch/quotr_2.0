@@ -15,7 +15,8 @@ import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
-import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
+import { PricingTaxBasisNotice } from "@/components/pricing/PricingTaxBasisNotice";
+import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
@@ -40,7 +41,9 @@ type PricingSummaryPanelProps = {
   canEdit?: boolean;
   scopeQuoteBlock?: string | null;
   gstRegistered?: boolean | null;
+  defaultGstRate?: number | null;
   estimateUpdateRequired?: string | null;
+  onTaxBasisUpdated?: (document: PricingDocument) => void;
 };
 
 function SummaryRow({
@@ -80,6 +83,8 @@ export function PricingSummaryPanel({
   scopeQuoteBlock = null,
   estimateUpdateRequired = null,
   gstRegistered,
+  defaultGstRate = null,
+  onTaxBasisUpdated,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document, items, gstRegistered);
@@ -104,10 +109,17 @@ export function PricingSummaryPanel({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
     || provisionalBlock
-    || (gstRegistered === null ? GST_REGISTRATION_UNSET_QUOTE_BLOCK : null)
+    || taxBasisBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : unresolvedManualPricingQuoteBlock(items) ??
@@ -138,6 +150,13 @@ export function PricingSummaryPanel({
               Not GST registered. No GST is added.
             </p>
           ) : null}
+          <PricingTaxBasisNotice
+            document={document}
+            gstRegistered={gstRegistered}
+            defaultGstRate={defaultGstRate}
+            canEdit={canEdit}
+            onUpdated={onTaxBasisUpdated}
+          />
           <SummaryRow
             label={view.showGst ? "Client sell ex GST" : "Client sell"}
             value={clientSellValue}

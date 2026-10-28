@@ -1,4 +1,5 @@
 import { parseCeilingProvisionalConfirmation } from "@/lib/estimate/ceilings-provisional-package";
+import { parsePricingTaxBasis } from "@/lib/pricing/gst-source";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { parseStringArray } from "@/lib/pricing/calculations";
 import { derivePersistedPricingCostKnown } from "@/lib/pricing/authoritative-document-totals";
@@ -52,6 +53,7 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
     provisional_ceiling_confirmation: parseCeilingProvisionalConfirmation(
       row.provisional_ceiling_confirmation
     ),
+    gst_tax_basis: parsePricingTaxBasis(row.gst_tax_basis),
   };
 }
 

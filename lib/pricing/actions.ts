@@ -112,6 +112,8 @@ import {
 } from "@/lib/pricing/mappers";
 import {
   coercePersistedGstRate,
+  pricingDocumentTaxBasisForRate,
+  pricingTaxBasisDecision,
   resolveNewPricingDocumentGst,
   resolvePricingGstForUpdate,
   resolveStoredPricingDocumentGstRate,
@@ -1135,8 +1137,16 @@ export async function updatePricingDocument(
   if (documentInput.internal_notes !== undefined) {
     update.internal_notes = documentInput.internal_notes;
   }
-  if (documentInput.gst_rate !== undefined) {
+  const issuedTaxSnapshot =
+    document.status === "converted_to_quote" || document.status === "archived";
+  if (documentInput.gst_rate !== undefined && !issuedTaxSnapshot) {
     update.gst_rate = documentInput.gst_rate;
+    const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+    update.gst_tax_basis = pricingDocumentTaxBasisForRate({
+      gstRegistered: registration.gstRegistered ?? null,
+      defaultGstRate: registration.defaultGstRate,
+      documentGstRate: gstRate,
+    });
   }
 
   const { error } = await supabase
@@ -1183,7 +1193,7 @@ export async function updatePricingDocument(
   // Product intent: updatePricingDocument accepts metadata + optional GST only.
   // There is no document-level margin field; GST-only changes do not recalculate
   // GST-exclusive line cost/sell — only document GST amount / inclusive total.
-  if (documentInput.gst_rate !== undefined) {
+  if (documentInput.gst_rate !== undefined && !issuedTaxSnapshot) {
     await recalculateAndPersistDocumentTotals(
       supabase,
       orgId,
@@ -2132,6 +2142,15 @@ export async function markPricingReviewed(
     document.project_id as string
   );
   if (conditionBlock) return { error: conditionBlock };
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
+  if (taxBasisBlock) return { error: taxBasisBlock };
 
   const { error } = await supabase
     .from("pricing_documents")
@@ -2153,6 +2172,120 @@ export async function markPricingReviewed(
     parsed.data.pricingDocumentId
   );
   return { success: true };
+}
+
+export async function applyRegistrationGstToPricing(
+  pricingDocumentId: string
+): Promise<PricingActionState> {
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+  if (document.status === "converted_to_quote" || document.status === "archived") {
+    return { error: "Issued pricing keeps its tax snapshot." };
+  }
+
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const decision = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (decision.quoteBlock && decision.registration === "unset") {
+    return { error: decision.quoteBlock };
+  }
+  if (!decision.mismatch) return { success: true, document };
+
+  const { error } = await supabase
+    .from("pricing_documents")
+    .update({
+      gst_rate: decision.registrationRate,
+      gst_tax_basis: null,
+      status: "draft",
+      reviewed_at: null,
+    })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-apply-registration-gst", PRICING_SAVE_FAILED),
+    };
+  }
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId,
+    decision.registrationRate,
+    true
+  );
+  const updated = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updated) return { error: "Failed to load updated pricing document." };
+  revalidatePricingDashboard(document.project_id, parsed.data.pricingDocumentId);
+  return { success: true, document: updated };
+}
+
+export async function keepPricingDocumentGstRate(
+  pricingDocumentId: string
+): Promise<PricingActionState> {
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+  if (document.status === "converted_to_quote" || document.status === "archived") {
+    return { error: "Issued pricing keeps its tax snapshot." };
+  }
+
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const decision = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (decision.quoteBlock && decision.registration === "unset") {
+    return { error: decision.quoteBlock };
+  }
+  if (!decision.mismatch || !decision.overrideMarker) {
+    return { success: true, document };
+  }
+
+  const { error } = await supabase
+    .from("pricing_documents")
+    .update({ gst_tax_basis: decision.overrideMarker })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-keep-document-gst", PRICING_SAVE_FAILED),
+    };
+  }
+  const updated = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updated) return { error: "Failed to load updated pricing document." };
+  revalidatePricingDashboard(document.project_id, parsed.data.pricingDocumentId);
+  return { success: true, document: updated };
 }
 
 export async function confirmCeilingProvisionalPackage(
