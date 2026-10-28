@@ -62,6 +62,26 @@ Selecting “Needs preparation” did not keep the carpet-tile recipe and add an
 - Waste wording that disagrees with the selected pricing path.
 - `verify-ux-01d` check 7 and the Turbopack junction panic.
 
+## Scope-coverage slice accepted
+
+Accepted on `estimating/v3`. This is not a Production release. No new recipe, P&G model, calibration, domain change, or Production deployment is included.
+
+The estimate behavior under test is `129734bcf496562ec1636b92a1dda5b5a0563a24` (`687829c9` asks for a lining product when included faces are still unspecified; `129734bc` keeps the next wall question on the estimate page). Preview deployment of that behavior: `dpl_HHQ21Su4VK6NokKiLoC4RzE9bR8Q` at https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. The guarded webpack build of that commit exited 0 (compiled, TypeScript, 50 static pages). `npm run build:safe` still panics on the `node_modules` junction.
+
+Included lining with no product now asks for Side A. When the same lining is already on both sides, that one answer is copied to Side B. Side B is asked only when the faces are not the same. Supported choices stay the existing list. Other, plywood, and fibre cement stay explicit gaps. Plasterboard is not assumed.
+
+Hosted checks on the isolated Stage 3C organisation:
+
+- Office job `1ae69339-1e47-4d09-8a77-a8a652edabc6`: one Standard GIB answer, save and reload, regenerate. Materials has one 13 mm Standard GIB line for both faces (44 sheets, 129.6 m²). The unspecified Side A and Side B lining rows are not active costs. Skirting stays 45 lm. Six door sets stay separate. Preparation stays unpriced. The reviewed carpet-tile supply stays $6,930 and the manual allowance stays $15.
+- Partition `4eb889e9-603d-48aa-8af1-33e9e7ead412`: both faces are Standard GIB (28.8 m² gross, one line) and Level 4 stopping is 12.8 m² on each face. One hollow-core door set is a separate assembly. Opening size 0.81 × 1.98 m and Level 4 were session answers; the brief says a standard door and stopping ready for painting, not those figures. Electrical and painting are not priced. Opening labour remains Pricing Required.
+- Paraphrase `7390f622-5f5a-4a3f-aaf1-50d3d814d12f` uses “new partition walls” and “line both sides”, not the original office sentence. Details asks “What lining is on Side A?”. One Standard GIB answer is stored on both sides. Desktop 1440×900 and mobile 390×844 show that question without horizontal overflow. The mobile assistant button overlaps the right edge of the choices.
+- Retention `7a6fe263-70d9-460c-953c-4db01d2d41bc`: Assume retained. Materials have no pile, excavation, or concrete cost. The assumption says existing piles are retained as a scope decision, not structural proof, and that new support material, installation, excavation, and concrete are not included. A supports schedule still shows an unpriced 12-pile layout note.
+- Replacement `719b6c47-71da-4c85-80dd-c154b809a7bc`: Assume replaced. The count stayed required. The session entered 8; the brief does not state a count. The estimate uses that stated 8 and does not use the 12-post spacing layout. The pile/post replacement allowance is $1,440 and says its coverage is unresolved, so this is not a complete price. Known sell $10,152 is labelled not the complete price. Spoil disposal stays Pricing Required.
+
+Pending inspection `b1a1263e-73ec-4016-b0ed-4a3421ddc767` is unchanged by the lining fix and is not re-run. Issued-snapshot protection stays the local `scripts/verify-pricing-draft-reconciliation.ts` fixture. No quote was sent.
+
+Explicitly deferred: bathroom card visibility; typical-setup footing copy; Low-level chip beside elevated labour; modifier text on pile and hole formulas; floating-point area headings; waste wording versus the pricing path; `verify-ux-01d` check 7; `verify-ux-01b` check 13; the Turbopack junction panic; preparation with no recipe and no price; insulation labour Pricing Required; skirting painting with no rate; the work-area “All priced” chip beside an Incomplete overview. `get-quotr.com` remains marketing HTML. The app stays on `app.get-quotr.com`. Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged.
+
 ## Original briefs
 
 Test answers below were supplied in the session. They are not facts extracted from the brief unless the note says the brief stated them. Company carpenter cost on this organisation was already $75/h. Laminate underlay $8/m² and laminate waste $40/m² were already company rates. No new benchmark was invented.
