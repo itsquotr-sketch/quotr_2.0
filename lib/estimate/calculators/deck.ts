@@ -136,6 +136,13 @@ import {
   formatDeckIdentityLine,
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
+  PILE_ALLOWANCE_COVERAGE_GAP,
+  PILE_CONFIRMED_NEW_WHILE_PENDING,
+  PILE_CONFIRMED_NEW_WHILE_RETAINED,
+  PILE_SUPPORTS_RETAINED,
+  PILE_SUPPORTS_UNRESOLVED_PENDING,
+  deckSupportPriceTreatment,
+  deckSupportsArePriced,
   pileReplacementApplicable,
   pileRetentionPending,
 } from "@/lib/estimate/deck-scope-2c";
@@ -565,7 +572,16 @@ export function calculateDeck(
         ? postsScope.hoursPerUnit
         : 0,
   };
-  const supportCount = structural.quantities?.supportCount ?? 0;
+  const derivedSupportCount = structural.quantities?.supportCount ?? 0;
+  const supportTreatment = deckSupportPriceTreatment({
+    facts,
+    workAreaId: workArea.id,
+    supportCountSource: structural.quantities?.supportCountSource ?? "spacing_layout",
+    statedSupportCount: structural.quantities?.statedSupportCount ?? null,
+  });
+  const supportCount = deckSupportsArePriced(supportTreatment)
+    ? derivedSupportCount
+    : 0;
   const requiredDeckingLm = deckingBoardResult?.baseLm ?? 0;
   const requiredFramingLm = structural.quantities
     ? requiredInstalledFramingLm({
@@ -763,6 +779,7 @@ export function calculateDeck(
           includedInTotal: false,
         });
       }
+      if (supportCount > 0) {
       const holePlan = planDeckHoleExcavation({
         facts,
         workAreaId: workArea.id,
@@ -907,6 +924,7 @@ export function calculateDeck(
         baseHours: round2(postHours.baseHours + excavationHours.baseHours),
         adjustedHours: round2(postHours.adjustedHours + excavationHours.adjustedHours),
       };
+      }
     }
     let elevatedHours = shapeLabourHours({
       quantity: 0,
@@ -995,7 +1013,7 @@ export function calculateDeck(
         { req: joistReq, label: "Joists" },
         { req: bearerReq, label: "Bearers" },
         { req: rimReq, label: "Rim framing" },
-        { req: supportReq, label: "Piles / posts" },
+        { req: supportCount > 0 ? supportReq : null, label: "Piles / posts" },
       ];
       for (const row of structuralLines) {
         const authority = resolveComponentCommercialAuthority({
@@ -1253,6 +1271,18 @@ export function calculateDeck(
       "Existing piles may be retained if sound after inspection. This price does not assume they are replaced or kept."
     );
   }
+  if (supportTreatment === "withheld_pending") {
+    missingInfo.push(PILE_SUPPORTS_UNRESOLVED_PENDING);
+  }
+  if (supportTreatment === "withheld_retained") {
+    assumptions.push(PILE_SUPPORTS_RETAINED);
+  }
+  if (supportTreatment === "confirmed_new" && pilePending && pileReplacementFact == null) {
+    missingInfo.push(PILE_CONFIRMED_NEW_WHILE_PENDING);
+  }
+  if (supportTreatment === "confirmed_new" && pileReplacementFact === false) {
+    assumptions.push(PILE_CONFIRMED_NEW_WHILE_RETAINED);
+  }
   if (
     pilePending &&
     pileReplacementFact === true &&
@@ -1303,6 +1333,7 @@ export function calculateDeck(
           qualityFactor,
         })
       );
+      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
     } else {
       lineItems.push(
         createAllowanceLineItem({
@@ -1327,6 +1358,7 @@ export function calculateDeck(
       assumptions.push(
         "Pile/post replacement count is subject to confirmation."
       );
+      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
     }
   } else if (pileReplacement === null && replacementApplicable) {
     assumptions.push(

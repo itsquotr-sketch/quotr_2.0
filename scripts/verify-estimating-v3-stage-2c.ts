@@ -17,8 +17,11 @@ import {
 } from "../lib/estimate/doors-portions";
 import { resolveCommittedFactWrite } from "../lib/assistant/scope-persistence";
 import {
+  PILE_ALLOWANCE_COVERAGE_GAP,
+  PILE_CONFIRMED_NEW_WHILE_RETAINED,
   PILE_INSPECTION_CONDITION_LABEL,
   PILE_LEFT_UNTIL_INSPECTION_LABEL,
+  PILE_SUPPORTS_UNRESOLVED_PENDING,
   pileTreatmentChoiceValue,
   shouldAskPileCount,
   shouldAskPileReplacement,
@@ -425,6 +428,85 @@ check(
   countedAllowance?.notes === "4 piles/posts" &&
     countedAllowance.recommendedCost === 720 &&
     !countedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
+);
+check(
+  "an explicit replacement prices the stated supports and keeps the allowance unresolved",
+  countedEstimate.lineItems.some((item) => item.label === "Piles / posts") &&
+    countedEstimate.lineItems.some((item) => item.label === "Pile/post installation") &&
+    countedEstimate.lineItems.some((item) => item.label === "Hole excavation") &&
+    countedEstimate.missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP)
+);
+const supportPriced = (estimate: { lineItems: { label: string }[] }) =>
+  estimate.lineItems.some((item) =>
+    item.label === "Piles / posts" ||
+    item.label === "Pile/post installation" ||
+    item.label === "Hole excavation"
+  );
+check(
+  "pending inspection does not price new piles while framing stays",
+  !supportPriced(elevatedEstimate) &&
+    elevatedEstimate.lineItems.some((item) => /joist|bearer|framing/i.test(item.label)) &&
+    elevatedEstimate.missingInfo.includes(PILE_SUPPORTS_UNRESOLVED_PENDING)
+);
+const leftEstimate = calculateDeck(
+  deckContext(leftFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
+  { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+check(
+  "leave until inspection does not price new piles, installation or holes",
+  !supportPriced(leftEstimate) &&
+    !leftEstimate.lineItems.some((item) => /pile\/post replacement/i.test(item.label)) &&
+    leftEstimate.missingInfo.some((row) =>
+      row.includes("does not assume they are replaced or kept")
+    ) &&
+    leftEstimate.missingInfo.includes(PILE_SUPPORTS_UNRESOLVED_PENDING) &&
+    leftEstimate.lineItems.some((item) => /joist|bearer|framing/i.test(item.label))
+);
+const retainedFacts: EstimateFact[] = [
+  ...elevatedFacts,
+  {
+    key: "deck.pile_or_post_replacement_required",
+    work_area_id: "deck-1",
+    value: false,
+    source: "user",
+  },
+];
+const retainedEstimate = calculateDeck(
+  deckContext(retainedFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
+  { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+check(
+  "explicit retention does not price replacement supports",
+  !supportPriced(retainedEstimate) &&
+    !retainedEstimate.lineItems.some((item) => /pile\/post replacement/i.test(item.label)) &&
+    retainedEstimate.assumptions.some((row) => row.includes("Existing piles are retained")) &&
+    retainedEstimate.lineItems.some((item) => /joist|bearer|framing/i.test(item.label))
+);
+const mixedSupportFacts: EstimateFact[] = [
+  ...retainedFacts,
+  {
+    key: "deck.bearer_row_count",
+    work_area_id: "deck-1",
+    value: 3,
+    source: "user",
+  },
+  {
+    key: "deck.supports_per_bearer",
+    work_area_id: "deck-1",
+    value: 2,
+    source: "user",
+  },
+];
+const mixedSupportEstimate = calculateDeck(
+  deckContext(mixedSupportFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
+  { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+check(
+  "retained existing piles still price a confirmed new support layout",
+  mixedSupportEstimate.lineItems.some((item) => item.label === "Piles / posts") &&
+    mixedSupportEstimate.lineItems.some((item) => item.label === "Pile/post installation") &&
+    !mixedSupportEstimate.lineItems.some((item) => /pile\/post replacement/i.test(item.label)) &&
+    mixedSupportEstimate.assumptions.includes(PILE_CONFIRMED_NEW_WHILE_RETAINED)
 );
 
 const retainVariant = run(

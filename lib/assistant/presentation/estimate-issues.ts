@@ -125,7 +125,7 @@ export function classifyReviewNotice(
   if (!text) return null;
   if (/pricing required|rate required/i.test(text)) return "missing_price";
   if (
-    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope/i.test(
+    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope|coverage is unresolved|not a complete pile price|stay unresolved while existing piles|does not assume they are replaced/i.test(
       text
     )
   ) {

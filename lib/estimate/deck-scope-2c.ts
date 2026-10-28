@@ -111,6 +111,66 @@ export function pileRetentionPending(params: {
   );
 }
 
+export const PILE_ALLOWANCE_COVERAGE_GAP =
+  "The pile/post replacement allowance does not name work outside new support material, installation, excavation, concrete, or existing-deck removal. Its coverage is unresolved, so this is not a complete price.";
+
+export const PILE_SUPPORTS_UNRESOLVED_PENDING =
+  "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";
+
+export const PILE_SUPPORTS_RETAINED =
+  "Existing piles are retained. New support material, installation, excavation and concrete are not included. New framing is priced separately.";
+
+export const PILE_CONFIRMED_NEW_WHILE_PENDING =
+  "The confirmed support layout is priced as new supports. Existing piles are not deducted and are not assumed to be replaced.";
+
+export const PILE_CONFIRMED_NEW_WHILE_RETAINED =
+  "Existing piles are retained. The confirmed support layout is new supports and is not a replacement of those piles.";
+
+export type DeckSupportPriceTreatment =
+  | "confirmed_new"
+  | "explicit_replacement"
+  | "replacement_unquantified"
+  | "withheld_pending"
+  | "withheld_retained"
+  | "derived_new";
+
+/**
+ * Confirmed bearer layout is a new support quantity.
+ * A stated pile count is replacement quantity only.
+ * Spacing is not a decision about existing piles.
+ */
+export function deckSupportPriceTreatment(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  supportCountSource: "stated" | "spacing_layout" | "confirmed_layout";
+  statedSupportCount: number | null;
+}): DeckSupportPriceTreatment {
+  if (params.supportCountSource === "confirmed_layout") return "confirmed_new";
+  const replacement = getBooleanFact(
+    factRows(params.facts),
+    params.workAreaId,
+    "deck.pile_or_post_replacement_required"
+  );
+  if (replacement === true) {
+    return params.statedSupportCount != null && params.statedSupportCount > 0
+      ? "explicit_replacement"
+      : "replacement_unquantified";
+  }
+  if (replacement === false) return "withheld_retained";
+  if (pileRetentionPending(params)) return "withheld_pending";
+  return "derived_new";
+}
+
+export function deckSupportsArePriced(
+  treatment: DeckSupportPriceTreatment
+): boolean {
+  return (
+    treatment === "confirmed_new" ||
+    treatment === "explicit_replacement" ||
+    treatment === "derived_new"
+  );
+}
+
 export const PILE_INSPECTION_CONDITION_LABEL =
   "Existing piles may be retained if sound after inspection";
 export const PILE_LEFT_UNTIL_INSPECTION_LABEL =

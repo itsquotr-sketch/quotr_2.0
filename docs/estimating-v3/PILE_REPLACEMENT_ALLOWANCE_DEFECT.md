@@ -24,4 +24,8 @@ The allowance notes do not name a physical task that the material, installation,
 
 ## Status
 
-Unexplained additional cost. Left in place. No speculative removal in the flooring slice.
+The allowance is still not a distinct scope. It is kept, and it is not treated as proof of extra work.
+
+Leave until inspection, and explicit retention, do not price new pile material, installation, excavation, or concrete from a spacing layout or from the replacement count. New framing stays, because it does not decide the existing piles. A confirmed bearer layout is a separate new-support quantity and is still priced when existing piles are retained.
+
+Explicit replacement still prices the stated supports and still adds the allowance. The allowance's coverage is an unresolved costing defect, so that result is not a complete price. The line is not removed because it has its own component.
