@@ -2980,8 +2980,8 @@ export function AssistantShell({
     () =>
       clarifyView.candidates.filter(
         (candidate) =>
-          candidate.factKey === "internal_walls.wall_type.side_a_product" ||
-          candidate.factKey === "internal_walls.wall_type.side_b_product"
+          candidate.rankReason === "HARD_MINIMUM internal walls core" ||
+          candidate.rankReason === "Progressive wall type configuration"
       ),
     [clarifyView.candidates]
   );
