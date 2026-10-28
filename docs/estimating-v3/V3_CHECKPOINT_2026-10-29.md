@@ -66,7 +66,9 @@ Selecting “Needs preparation” did not keep the carpet-tile recipe and add an
 
 Accepted on `estimating/v3`. This is not a Production release. No new recipe, P&G model, calibration, domain change, or Production deployment is included.
 
-The estimate behavior under test is `129734bcf496562ec1636b92a1dda5b5a0563a24` (`687829c9` asks for a lining product when included faces are still unspecified; `129734bc` keeps the next wall question on the estimate page). Preview deployment of that behavior: `dpl_HHQ21Su4VK6NokKiLoC4RzE9bR8Q` at https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. The guarded webpack build of that commit exited 0 (compiled, TypeScript, 50 static pages). `npm run build:safe` still panics on the `node_modules` junction.
+The estimate behavior under test is `129734bcf496562ec1636b92a1dda5b5a0563a24` (`687829c9` asks for a lining product when included faces are still unspecified; `129734bc` keeps the next wall question on the estimate page). Preview deployment of that behavior: `dpl_HHQ21Su4VK6NokKiLoC4RzE9bR8Q`. The guarded webpack build of that commit exited 0 (compiled, TypeScript, 50 static pages). `npm run build:safe` still panics on the `node_modules` junction.
+
+The acceptance record is `108ed8b8c34561727ecaeb3f089a5b9948581f17`. Preview served that commit as `dpl_2QsmGmMxAGzzZfe8h4QsoKvmZzbZ` (Ready, alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app). That deployment changes this note only.
 
 Included lining with no product now asks for Side A. When the same lining is already on both sides, that one answer is copied to Side B. Side B is asked only when the faces are not the same. Supported choices stay the existing list. Other, plywood, and fibre cement stay explicit gaps. Plasterboard is not assumed.
 
