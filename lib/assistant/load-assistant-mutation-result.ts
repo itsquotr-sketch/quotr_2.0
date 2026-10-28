@@ -12,6 +12,7 @@ import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { traceOp } from "@/lib/perf/confirm-trace";
+import { appliedOrganisationGstRate } from "@/lib/pricing/gst-source";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
 export type LoadAssistantMutationError = { error: string };
@@ -129,7 +130,7 @@ export async function loadAssistantMutationResult(
     defaultMarginPercent:
       (organisationSettings?.default_margin_percent as number | null | undefined) ??
       DEFAULT_MARGIN_PERCENT,
-    defaultGstRate: Number(organisationSettings?.default_gst_rate ?? 15),
+    defaultGstRate: appliedOrganisationGstRate(organisationSettings),
   });
 
   return buildAssistantMutationResult({

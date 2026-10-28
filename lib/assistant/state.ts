@@ -15,6 +15,7 @@ import {
   type AuthOrgContext,
 } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
+import { appliedOrganisationGstRate } from "@/lib/pricing/gst-source";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
 export {
@@ -161,7 +162,7 @@ export async function getAssistantStateWithContext(
       organisationSettings?.default_margin_percent != null
         ? Number(organisationSettings.default_margin_percent)
         : DEFAULT_MARGIN_PERCENT,
-    defaultGstRate: Number(organisationSettings?.default_gst_rate ?? 15),
+    defaultGstRate: appliedOrganisationGstRate(organisationSettings),
     requirementSnapshotRequirements,
   });
 }

@@ -14,6 +14,7 @@ import {
   resolveInitialPricingGstRate,
   resolveNewPricingDocumentGst,
   resolvePricingGstForUpdate,
+  appliedOrganisationGstRate,
   resolveQuoteGstFromRegistration,
   resolveStoredPricingDocumentGstRate,
 } from "../lib/pricing/gst-source";
@@ -326,6 +327,14 @@ function main(): void {
       unknown.applied === false &&
         unknown.rate === 0 &&
         unknown.source === "registration_unset"
+    )
+  );
+  checks.push(
+    assert(
+      "estimate display uses 0 while registration is unknown and the saved rate when it is decided",
+      appliedOrganisationGstRate({ gst_registered: null, default_gst_rate: 15 }) === 0 &&
+        appliedOrganisationGstRate({ gst_registered: true, default_gst_rate: 15 }) === 15 &&
+        appliedOrganisationGstRate({ gst_registered: false, default_gst_rate: 15 }) === 0
     )
   );
   const newUnknown = resolveNewPricingDocumentGst({

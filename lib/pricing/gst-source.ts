@@ -151,6 +151,22 @@ export function resolveQuoteGstFromRegistration(input: {
  * Simulate createPricingFromEstimate GST wiring (pure).
  * After Batch 2B.5, insert and post-insert recalc must use the same rate.
  */
+export function appliedOrganisationGstRate(settings: {
+  readonly gst_registered?: boolean | null;
+  readonly default_gst_rate?: number | string | null;
+} | null | undefined): number {
+  const registered =
+    settings?.gst_registered === true || settings?.gst_registered === false
+      ? settings.gst_registered
+      : null;
+  const raw = settings?.default_gst_rate;
+  const rate = raw == null || raw === "" ? null : Number(raw);
+  return resolveQuoteGstFromRegistration({
+    gstRegistered: registered,
+    defaultGstRate: rate != null && Number.isFinite(rate) ? rate : null,
+  }).rate;
+}
+
 export function resolveNewPricingDocumentGst(input: {
   readonly gstRegistered: boolean | null | undefined;
   readonly defaultGstRate: number | null | undefined;
