@@ -3,7 +3,7 @@
  * Copies Builder Review line fields. Does not apply rates or recompute hours.
  */
 
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatUnitRate } from "@/components/assistant/format";
 import type {
   BuilderReviewLineGroup,
   BuilderReviewPricedLine,
@@ -257,7 +257,7 @@ function storedProductivityBasis(line: BuilderReviewPricedLine): string | null {
     return deckProductivityPhrase(rate, component, unit);
   }
   const summary = line.sourceLine.identitySummary?.trim() ?? "";
-  if (summary && /\bh\//.test(summary)) return summary;
+  if (summary && (/\bh\//.test(summary) || /person-hours\//.test(summary))) return summary;
   return null;
 }
 
@@ -292,12 +292,12 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     line.labourHours != null && line.labourHours > 0 ? line.labourHours : null;
   const unitCost =
     cost != null && line.costRate != null && line.costRate > 0
-      ? formatCurrency(line.costRate)
+      ? formatUnitRate(line.costRate)
       : null;
   const labour = isLabourLine(line);
   const hourly =
     labour && line.costRate != null && line.costRate > 0
-      ? `${formatCurrency(line.costRate)}/h`
+      ? `${formatUnitRate(line.costRate)}/h`
       : null;
   const spoilCopy = labour ? null : spoilTakeoffCopy(line);
   const identity = labour

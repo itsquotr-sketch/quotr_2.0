@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EstimateCategoryHeader } from "@/components/ui/estimate-category-header";
 import { StatusPill } from "@/components/ui/status-pill";
-import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
+import { formatCurrency, formatCurrencyCents, formatUnitRate } from "@/components/assistant/format";
 import { formatLabourHours } from "@/lib/estimate/builder-presentation-format";
 import { deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
 import type {
@@ -605,7 +605,7 @@ export function BuilderReviewSurface({
                                           {child.sourceLine.category === "labour" &&
                                           child.costRate != null ? (
                                             <>
-                                              {` · ${formatCurrency(child.costRate)}/h`}
+                                              {` · ${formatUnitRate(child.costRate)}/h`}
                                               {child.sourceLine.productivityRate != null
                                                 ? ` · ${deckProductivityPhrase(
                                                     child.sourceLine.productivityRate,
@@ -616,7 +616,7 @@ export function BuilderReviewSurface({
                                               {` · ${child.rateLabel}`}
                                             </>
                                           ) : child.costRate != null ? (
-                                            ` · ${formatCurrency(child.costRate)}${
+                                            ` · ${formatUnitRate(child.costRate)}${
                                               child.unit ? `/${child.unit}` : ""
                                             } · ${child.rateLabel}`
                                           ) : (

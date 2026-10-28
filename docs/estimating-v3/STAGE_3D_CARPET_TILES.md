@@ -69,6 +69,18 @@ After the named rate actions and an explicit regenerate:
 | Installation | 19.80 h at the company carpenter $75/h | $1,485 | $1,856.25 |
 | Flooring total | | $6,825 | $8,531.85 |
 
-The recipe hours are 120 × 0.15 = 18.0 h, and the no-condition direct cost is $6,690. This occupied office, with booked delivery windows, applies the existing +10% labour condition. Access was Easy and carry was under 10 m, so those two addends are zero. The takeoff labels the 10% as access/carry. Productivity and the hourly cost are company rates, not a carpet-tile benchmark.
+The recipe hours are 120 m² × 0.15 person-hours/m² = 18 h, and the no-condition direct cost is $6,690. This occupied office applies the existing modifiers once: occupied site +5% and restricted hours/delivery windows +5%. Access was Easy and carry was under 10 m, so those addends stay zero. The adjusted hours are 19.8 h, and 19.8 h × $75/h = $1,485 cost. The takeoff names those two contributors. Productivity and the hourly cost are company rates, not a carpet-tile benchmark. The modifier values are unchanged.
+
+Adhesive sell follows the quantity-rate convention. The unit sell is rounded first: $2.50 ÷ 0.80 = 3.125, which rounds half up to $3.13. The extended sell is then 120 × $3.13 = $375.60. The extended cost is 120 × $2.50 = $300.00. Starting from the line cost instead, $300 ÷ 0.80 = $375.00, is a different form and is not used for a quantity rate. A quantity of 3 m² separates the two: the unit-first sell is $9.39, while rounding the $7.50 line cost would be $9.38. Pricing keeps the estimate totals and shows the unit as that total divided by the stored quantity, so the displayed adhesive unit sell is $3.13. A saved company sell rate is extended as entered. A $4.00/m² sell on 120 m² stays $480 and is not replaced by the margin. Extended totals still use whole-dollar display. Unit rates keep cents, so the materials takeoff shows the company cost as $2.50/m².
+
+Straight lay and the 5% supply allowance stay reviewable. Confirming either proposal records it as a disclosed assumption. A later extraction keeps that authority and does not turn it into a statement from the brief. An unanswered pattern or allowance stays unanswered and unpriced. A brief that actually says straight lay remains an extracted fact.
 
 Pricing reconciliation updated the three flooring charges and left the wall, door, skirting, and exclusion lines unchanged. The priced-work recommendation became $12,685.39. Custom framing, insulation labour, and the custom door leaf stay Pricing Required. P&G stays an unpriced gap. GST was not decided, pricing was not marked reviewed, and no quote was created. The office job is not complete.
+
+## Acceptance
+
+Accepted for ordinary modular carpet tiles, straight lay, on a ready substrate, using the company rates above and the existing labour modifiers.
+
+The adhesive charge of $375.60 is the documented unit-first sell: $3.13/m² × 120 m². It is not an early-rounding error, and the money engine is unchanged. The materials takeoff shows the $2.50/m² company cost separately from the $300 extended cost and the $375.60 client sell. The installation explanation is 120 m² × 0.15 person-hours/m² = 18 h, then occupied site and restricted hours/delivery windows once, then 19.8 h × $75/h = $1,485.
+
+Limitations that remain: other laying patterns, an unconfirmed substrate, invented tile or box sizes, underlay, preparation, P&G, painting, partitions, doors and skirting. An unanswered pattern or waste allowance is not a confirmed specification. Production is not deployed. The office job is not complete.

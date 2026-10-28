@@ -5,7 +5,14 @@
  * Hosted path: calculateFlooring → physical → this module → line items.
  * Legacy flat Flooring stays on the existing FITOUT path.
  */
-import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
+import {
+  getCombinedLabourAccessFactor,
+  getLabourAdjustmentParts,
+} from "@/lib/estimate/adjustments";
+import {
+  formatLabourAdjustmentPrimary,
+  formatProductivity,
+} from "@/lib/estimate/builder-presentation-format";
 import { labourBasisNote } from "@/lib/estimate/condition-basis";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
@@ -1086,6 +1093,28 @@ function materialOrAllowanceLine(params: {
   );
 }
 
+function presentHours(hours: number): string {
+  const rounded = round2(hours);
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
+
+function presentHoursQuantity(quantity: number): string {
+  return `${presentHours(quantity)} m²`;
+}
+
+function presentRate(value: number): string {
+  const rounded = round2(value);
+  return Number.isInteger(rounded) ? `$${rounded}` : `$${rounded.toFixed(2)}`;
+}
+
+function presentDollars(value: number): string {
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+    maximumFractionDigits: Number.isInteger(round2(value)) ? 0 : 2,
+  }).format(value);
+}
+
 function labourLine(params: {
   requirement: LabourRequirement;
   workAreaName: string;
@@ -1137,6 +1166,18 @@ function labourLine(params: {
   }
   const productivitySourceType =
     params.requirement.rateProvenance === "company" ? "user_rate" : "productivity";
+  const conditionParts = getLabourAdjustmentParts(
+    (params.constraints ?? []).map((row) => ({
+      key: row.key,
+      label: row.key,
+      value: row.value,
+      source: row.source,
+    }))
+  );
+  const conditionSummary = formatLabourAdjustmentPrimary(
+    params.accessFactor,
+    conditionParts
+  );
   const line = createLabourLineItem({
     workAreaId: params.requirement.workAreaId,
     workAreaName: params.workAreaName,
@@ -1147,6 +1188,7 @@ function labourLine(params: {
     labourCostRate: params.requirement.hourlyCost,
     labourSellRate: params.labourSellRate,
     adjustmentFactor: params.accessFactor,
+    adjustmentLabel: conditionSummary || undefined,
     rateSource:
       params.requirement.rateProvenance === "company"
         ? getRateSourceLabel("user_rate")
@@ -1161,16 +1203,31 @@ function labourLine(params: {
     organisationSettings: params.organisationSettings,
     productivitySourceType,
   });
+  const carpetTileInstall =
+    params.requirement.componentKey === FLOORING_CARPET_TILE_INSTALL_COMPONENT;
+  const baseHours = round2(qty * params.requirement.productivityBasis.hoursPerUnit);
+  const carpetExplanation = carpetTileInstall
+    ? [
+        `${presentHoursQuantity(qty)} × ${formatProductivity(params.requirement.productivityBasis.hoursPerUnit)} person-hours/m² = ${presentHours(baseHours)} h`,
+        conditionSummary,
+        `${presentHours(line.labourHours ?? 0)} h × ${presentRate(params.requirement.hourlyCost)}/h = ${presentDollars(line.recommendedCost ?? 0)}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
   return withPricingOwnership(
     {
       ...line,
       nestedItemId,
+      identitySummary: carpetExplanation ?? line.identitySummary,
       notes:
         params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
           ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. These hours do not include adhesive, grout, fixings or accessories.`
           : params.requirement.componentKey === FLOORING_LAMINATE_INSTALL_COMPONENT
             ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_LAMINATE_INSTALL_HOURS_PER_M2} on the net area. Carpenter cost uses the company hourly rate. The $60 benchmark is not used. ${labourBasisNote(params.constraints ?? [])}`
-            : line.notes,
+            : carpetExplanation
+              ? `${carpetExplanation}. ${line.notes ?? ""}`.trim()
+              : line.notes,
     },
     {
       pricingOwner: "in_house_labour",

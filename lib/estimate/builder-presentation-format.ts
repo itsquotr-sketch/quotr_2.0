@@ -62,10 +62,12 @@ export function formatLabourAdjustmentPrimary(
       bits.push(`+${Math.round(parts.slopeAddend * 100)}% slope`);
     }
     if (parts.occupiedAddend > 0) {
-      bits.push(`+${Math.round(parts.occupiedAddend * 100)}% occupied`);
+      bits.push(`+${Math.round(parts.occupiedAddend * 100)}% occupied site`);
     }
     if (parts.hoursAddend > 0) {
-      bits.push(`+${Math.round(parts.hoursAddend * 100)}% hours`);
+      bits.push(
+        `+${Math.round(parts.hoursAddend * 100)}% restricted hours/delivery windows`
+      );
     }
     if (bits.length > 0) return bits.join(" · ");
   }

@@ -3,9 +3,11 @@
  *
  * Run: npx tsx scripts/verify-estimating-v3-stage-3d.ts
  */
+import { formatUnitRate } from "../components/assistant/format";
 import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationRate } from "../components/setup/types";
 import { toPricedLine } from "../lib/assistant/builder-review/compose";
+import { calculateQuantityRate } from "../lib/commercial-engine/calculations/quantity-rate";
 import { applyFlooringReviewGroups } from "../lib/assistant/builder-review/flooring-review-groups";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import {
@@ -17,19 +19,27 @@ import {
   planCarpetTilePurchase,
 } from "../lib/estimate/flooring-carpet-tile";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
-import { listFlooringClarifyCandidates } from "../lib/estimate/flooring-clarify";
+import {
+  listFlooringClarifyCandidates,
+  summariseFlooringPortion,
+} from "../lib/estimate/flooring-clarify";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { flooringPricingRecovery } from "../lib/estimate/flooring-pricing-recovery";
+import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   FLOORING_PORTIONS_FACT_KEY,
   applyFlooringFactWrite,
   normalizeExtractedFlooringPortions,
+  overlayUserAuthoritativeFlooringPortion,
   parseFlooringFinishType,
   resolveFlooringPortions,
   type FlooringPortion,
 } from "../lib/estimate/flooring-portions";
-import type { EstimateFact, EstimateLineItemInput, EstimateWorkArea } from "../lib/estimate/types";
+import type { EstimateConstraint, EstimateFact, EstimateLineItemInput, EstimateWorkArea } from "../lib/estimate/types";
+import { calculateAuthoritativeFieldsFromEstimateLine } from "../lib/pricing/estimate-to-pricing-adapter";
+import type { PricingItem } from "../lib/pricing/types";
+import { resolveQuoteUnitPrice } from "../lib/quotes/from-pricing";
 import { getCatalogueEntry } from "../lib/rates/catalogue";
 import { assertQuoteSnapshotMutable } from "../lib/quotes/transaction";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
@@ -76,7 +86,11 @@ const companyRates = [
   rate({ item_key: "flooring.carpet_tile.straight.supply_install.m2", rate_type: "subcontractor", cost_rate: 55, unit: "m2" }),
 ];
 
-function pricePortion(row: FlooringPortion, rates: OrganisationRate[]) {
+function pricePortion(
+  row: FlooringPortion,
+  rates: OrganisationRate[],
+  constraints: EstimateConstraint[] = []
+) {
   const workArea = { id: "flooring", type: "flooring", name: "Flooring" } as EstimateWorkArea;
   const physical = calculateFlooringPhysical({
     facts: [
@@ -96,7 +110,7 @@ function pricePortion(row: FlooringPortion, rates: OrganisationRate[]) {
     workArea,
     rates,
     organisationSettings: null,
-    constraints: [],
+    constraints,
   });
 }
 
@@ -216,8 +230,101 @@ check(
   paraphrased?.specialist_kind === "carpet_tile" &&
     paraphrased.area_m2 === 120 &&
     paraphrased.carpet_tile_pattern == null &&
-    paraphrased.carpet_tile_waste == null,
+    paraphrased.carpet_tile_waste == null &&
+    paraphrased.carpet_tile_pattern_authority == null &&
+    paraphrased.carpet_tile_waste_authority == null,
   paraphrased
+);
+check(
+  "an unanswered pattern and waste allowance stay unpriced",
+  paraphrased != null &&
+    pricePortion(paraphrased, companyRates).requirements.every((row) => row.priced === false) &&
+    paraphrased.carpet_tile_pattern_authority !== "extracted" &&
+    paraphrased.carpet_tile_waste_authority !== "extracted"
+);
+const assumptionFacts = [
+  applyFlooringFactWrite({
+    facts: [
+      {
+        id: "assumption",
+        project_id: "project",
+        work_area_id: "flooring",
+        key: FLOORING_PORTIONS_FACT_KEY,
+        value: [paraphrased],
+        source: "user",
+      },
+    ],
+    workAreaId: "flooring",
+    key: "flooring.portion.carpet_tile_pattern",
+    value: "Straight lay",
+    nestedItemId: paraphrased?.id,
+  }),
+].flatMap((facts) => facts);
+const confirmedFacts = applyFlooringFactWrite({
+  facts: assumptionFacts,
+  workAreaId: "flooring",
+  key: "flooring.portion.carpet_tile_waste",
+  value: "Use proposed 5% supply allowance",
+  nestedItemId: paraphrased?.id,
+});
+const confirmed = resolveFlooringPortions({
+  facts: confirmedFacts,
+  workAreaId: "flooring",
+}).portions[0];
+const confirmedAgain = resolveFlooringPortions({
+  facts: confirmedFacts,
+  workAreaId: "flooring",
+}).portions[0];
+const reextracted = confirmed
+  ? overlayUserAuthoritativeFlooringPortion(
+      extractFlooringPortionsFromBrief(PARAPHRASE)[0]!,
+      confirmed
+    )
+  : null;
+const confirmedSummary = confirmed ? summariseFlooringPortion(confirmed, 0).summary : "";
+const reaffirmed = resolveFlooringPortions({
+  facts: applyFlooringFactWrite({
+    facts: [
+      {
+        id: "extracted-pattern",
+        project_id: "project",
+        work_area_id: "flooring",
+        key: FLOORING_PORTIONS_FACT_KEY,
+        value: [focused],
+        source: "user",
+      },
+    ],
+    workAreaId: "flooring",
+    key: "flooring.portion.carpet_tile_pattern",
+    value: "Straight lay",
+    nestedItemId: focused?.id,
+  }),
+  workAreaId: "flooring",
+}).portions[0];
+check(
+  "restating an extracted straight lay does not turn it into an assumption",
+  reaffirmed?.carpet_tile_pattern === "straight" &&
+    reaffirmed.carpet_tile_pattern_authority === "extracted",
+  reaffirmed
+);
+check(
+  "confirming the proposals keeps them reviewable assumptions",
+  confirmed?.carpet_tile_pattern === "straight" &&
+    confirmed.carpet_tile_pattern_authority === "assumed_disclosed" &&
+    confirmed.carpet_tile_waste === "proposed" &&
+    confirmed.carpet_tile_waste_authority === "assumed_disclosed" &&
+    confirmed.waste_percent === 5 &&
+    confirmedAgain?.carpet_tile_pattern_authority === "assumed_disclosed" &&
+    confirmedAgain.carpet_tile_waste_authority === "assumed_disclosed" &&
+    reextracted?.carpet_tile_pattern === "straight" &&
+    reextracted.carpet_tile_pattern_authority === "assumed_disclosed" &&
+    reextracted.carpet_tile_waste === "proposed" &&
+    reextracted.carpet_tile_waste_authority === "assumed_disclosed" &&
+    reextracted.waste_percent === 5 &&
+    confirmedSummary.includes("straight lay assumption") &&
+    confirmedSummary.includes("5% supply allowance assumption") &&
+    confirmed.carpet_tile_pattern_authority !== "extracted",
+  { confirmed, reextracted, confirmedSummary }
 );
 const mixed = extractFlooringPortionsFromBrief(MIXED)[0];
 check(
@@ -302,10 +409,131 @@ const fixing = line(priced.lineItems, "flooring.carpet_tile.fixing");
 const install = line(priced.lineItems, "flooring.carpet_tile.straight.install");
 check("supply is 126 m2 at the company $40 rate", supply?.quantity === 126 && supply.recommendedCost === 5040 && supply.rateSourceType === "user_rate", supply);
 check("adhesive stays on the net 120 m2", fixing?.quantity === 120 && fixing.recommendedCost === 300, fixing);
+const adhesiveRate = calculateQuantityRate({
+  mode: "quantity_rate",
+  quantity: 120,
+  unit: "m2",
+  unit_cost: 2.5,
+  unit_sell: null,
+  target_gross_margin_percent: 20,
+});
+const smallAdhesiveRate = calculateQuantityRate({
+  mode: "quantity_rate",
+  quantity: 3,
+  unit: "m2",
+  unit_cost: 2.5,
+  unit_sell: null,
+  target_gross_margin_percent: 20,
+});
+const explicitAdhesiveRate = calculateQuantityRate({
+  mode: "quantity_rate",
+  quantity: 120,
+  unit: "m2",
+  unit_cost: 2.5,
+  unit_sell: 4,
+  target_gross_margin_percent: 20,
+});
+check(
+  "a 20% margin rounds the $2.50 unit sell to $3.13 before extending 120 m2",
+  adhesiveRate.outputs.unit_sell === 3.13 &&
+    adhesiveRate.outputs.total_cost === 300 &&
+    adhesiveRate.outputs.total_sell === 375.6 &&
+    fixing?.recommendedSell === 375.6,
+  { engine: adhesiveRate.outputs, estimateSell: fixing?.recommendedSell }
+);
+check(
+  "three square metres distinguish unit-first sell from rounding the line cost",
+  smallAdhesiveRate.outputs.total_cost === 7.5 && smallAdhesiveRate.outputs.total_sell === 9.39,
+  smallAdhesiveRate.outputs
+);
+check(
+  "a saved company sell rate is extended and is not replaced by the margin",
+  explicitAdhesiveRate.outputs.unit_sell === 4 && explicitAdhesiveRate.outputs.total_sell === 480,
+  explicitAdhesiveRate.outputs
+);
+const savedSell = pricePortion(answered!, [
+  ...companyRates.filter((row) => row.item_key !== "flooring.carpet_tile.adhesive.m2"),
+  rate({
+    item_key: "flooring.carpet_tile.adhesive.m2",
+    rate_type: "material",
+    cost_rate: 2.5,
+    sell_rate: 4,
+    unit: "m2",
+  }),
+]);
+const savedFixing = line(savedSell.lineItems, "flooring.carpet_tile.fixing");
+check(
+  "the estimate keeps an explicit adhesive sell rate",
+  savedFixing?.recommendedCost === 300 && savedFixing.recommendedSell === 480,
+  savedFixing
+);
+const smallArea = pricePortion(
+  { ...answered!, area_m2: 3, carpet_tile_waste: "zero", waste_percent: null },
+  companyRates
+);
+const smallFixing = line(smallArea.lineItems, "flooring.carpet_tile.fixing");
+check(
+  "the estimate extends the rounded unit sell on a small adhesive quantity",
+  smallFixing?.quantity === 3 &&
+    smallFixing.recommendedCost === 7.5 &&
+    smallFixing.recommendedSell === 9.39,
+  smallFixing
+);
+const pricingAdhesive = calculateAuthoritativeFieldsFromEstimateLine({
+  category: "materials",
+  recommended_cost: fixing?.recommendedCost ?? null,
+  recommended_sell: fixing?.recommendedSell ?? null,
+  notes: fixing ? buildLineItemNotes(fixing) : null,
+});
+const quoteUnit =
+  pricingAdhesive.ok
+    ? resolveQuoteUnitPrice({
+        calculation_mode: pricingAdhesive.fields.calculationMode,
+        quantity: 120,
+        unit_cost: pricingAdhesive.fields.unitCost,
+        unit_sell: pricingAdhesive.fields.unitSell,
+        total_cost: pricingAdhesive.fields.totalCost,
+        total_sell: pricingAdhesive.fields.totalSell,
+        item_type: "material",
+      } as PricingItem)
+    : null;
+check(
+  "pricing and quote rendering keep the unit-first adhesive sell",
+  pricingAdhesive.ok &&
+    pricingAdhesive.fields.totalCost === 300 &&
+    pricingAdhesive.fields.totalSell === 375.6 &&
+    pricingAdhesive.fields.unitCost === 2.5 &&
+    pricingAdhesive.fields.unitSell === 3.13 &&
+    quoteUnit === 3.13,
+  pricingAdhesive.ok ? { fields: pricingAdhesive.fields, quoteUnit } : pricingAdhesive
+);
 check(
   "installation is 18 hours and does not absorb the supply allowance",
-  install?.quantity === 120 && install.recommendedCost === 1350,
-  install
+  install?.quantity === 120 &&
+    install.recommendedCost === 1350 &&
+    install.identitySummary?.includes("120 m² × 0.15 person-hours/m² = 18 h") === true &&
+    install.identitySummary.includes("$1,350") &&
+    !install.identitySummary.includes("access/carry"),
+  install?.identitySummary
+);
+const occupiedInstall = line(
+  pricePortion(answered!, companyRates, [
+    { key: "site_access", label: "Site access", value: "Easy" },
+    { key: "material_carry_distance", label: "Carry", value: "Under 10 m" },
+    { key: "occupied_site", label: "Occupied site", value: "Yes" },
+    { key: "working_hours", label: "Working hours", value: "Yes" },
+  ]).lineItems,
+  "flooring.carpet_tile.straight.install"
+);
+check(
+  "occupied site and restricted hours apply once to the 18 hour base",
+  occupiedInstall?.labourHours === 19.8 &&
+    occupiedInstall.recommendedCost === 1485 &&
+    occupiedInstall.identitySummary?.includes("+5% occupied site") === true &&
+    occupiedInstall.identitySummary.includes("+5% restricted hours/delivery windows") &&
+    occupiedInstall.identitySummary.includes("19.8 h × $75/h = $1,485") &&
+    !occupiedInstall.identitySummary.includes("access/carry"),
+  occupiedInstall
 );
 check(
   "separate company rates total 6690 direct cost",
@@ -463,10 +691,33 @@ const takeoff = (() => {
   } as unknown as Parameters<typeof projectMaterialsTakeoff>[0];
   return { materials: projectMaterialsTakeoff(view), labour: projectLabourTakeoff(view) };
 })();
+const materialRows = takeoff.materials.groups.flatMap((group) => group.rows);
+const labourRows = takeoff.labour.groups.flatMap((group) => group.rows);
+const adhesiveTakeoff = materialRows.find((row) => /adhesive/i.test(row.description));
 check(
   "materials and labour takeoffs keep supply, adhesive and installation",
   takeoff.materials.lineCount >= 2 && takeoff.labour.lineCount === 1,
   { materials: takeoff.materials.lineCount, labour: takeoff.labour.lineCount }
+);
+check(
+  "the materials takeoff shows the $2.50 adhesive unit cost",
+  formatUnitRate(2.5).includes("2.50") &&
+    formatUnitRate(40).includes("40") &&
+    !formatUnitRate(40).includes("40.00") &&
+    adhesiveTakeoff?.unitCost?.includes("2.50") === true &&
+    adhesiveTakeoff.quantity?.startsWith("120") === true &&
+    adhesiveTakeoff.total?.includes("300") === true &&
+    adhesiveTakeoff.unitCost !== adhesiveTakeoff.total,
+  adhesiveTakeoff
+);
+check(
+  "the labour takeoff shows the unadjusted person-hour formula",
+  labourRows.some(
+    (row) =>
+      row.productivityBasis?.includes("120 m² × 0.15 person-hours/m² = 18 h") &&
+      row.hourlyCost?.includes("75")
+  ),
+  labourRows.map((row) => ({ basis: row.productivityBasis, hourly: row.hourlyCost }))
 );
 check(
   "an issued quote snapshot stays immutable",

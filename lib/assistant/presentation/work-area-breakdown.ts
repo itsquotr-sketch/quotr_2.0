@@ -3,7 +3,7 @@
  * Reads Builder Review fields already on the page. Does not recalculate money.
  */
 
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatUnitRate } from "@/components/assistant/format";
 import type {
   BuilderReviewCategoryId,
   BuilderReviewLineGroup,
@@ -213,7 +213,7 @@ function presentLine(
   const labour = line.sourceLine.category === "labour";
   const hourlyCost =
     labour && line.costRate != null && line.costRate > 0
-      ? `${formatCurrency(line.costRate)}/h`
+      ? `${formatUnitRate(line.costRate)}/h`
       : null;
   const productivity =
     labour && line.sourceLine.productivityRate != null && line.sourceLine.productivityRate > 0
@@ -231,8 +231,8 @@ function presentLine(
     ? null
     : !pricingRequired && line.costRate != null && line.costRate > 0
       ? line.unit
-        ? `${formatCurrency(line.costRate)} / ${line.unit}`
-        : formatCurrency(line.costRate)
+        ? `${formatUnitRate(line.costRate)} / ${line.unit}`
+        : formatUnitRate(line.costRate)
       : null;
   return {
     id: line.id,

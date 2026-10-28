@@ -467,10 +467,22 @@ export function summariseFlooringPortion(
       conflict ??
       chosenAreaCopy(portion) ??
       (portion.area_m2 != null ? `${portion.area_m2} m²` : "area unanswered");
+    const disclosedAssumptions =
+      portion.specialist_kind === "carpet_tile"
+        ? [
+            portion.carpet_tile_pattern_authority === "assumed_disclosed"
+              ? "straight lay assumption"
+              : null,
+            portion.carpet_tile_waste_authority === "assumed_disclosed" &&
+            portion.waste_percent != null
+              ? `${portion.waste_percent}% supply allowance assumption`
+              : null,
+          ].filter((row): row is string => row != null)
+        : [];
     return {
       id: portion.id,
       displayName,
-      summary: [displayName, area, desc].join(" · "),
+      summary: [displayName, area, desc, ...disclosedAssumptions].join(" · "),
       complete,
       specialistRequired: true,
     };

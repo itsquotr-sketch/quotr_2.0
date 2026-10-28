@@ -1315,6 +1315,17 @@ function overlayUserField<K extends keyof FlooringPortion>(
   }
 }
 
+function overlayDisclosedAssumption<K extends keyof FlooringPortion>(
+  next: FlooringPortion,
+  persisted: FlooringPortion,
+  field: K,
+  authorityField: keyof FlooringPortion
+): void {
+  if (persisted[authorityField] !== "assumed_disclosed") return;
+  next[field] = persisted[field];
+  (next as FlooringPortion)[authorityField] = "assumed_disclosed" as never;
+}
+
 const FLOORING_USER_AUTHORITY_FIELDS = [
   "finish_authority",
   "area_method_authority",
@@ -1424,14 +1435,22 @@ export function overlayUserAuthoritativeFlooringPortion(
     next.laminate_moisture_coverage_m2 = persisted.laminate_moisture_coverage_m2;
   }
   overlayUserField(next, persisted, "carpet_tile_pattern", "carpet_tile_pattern_authority");
+  overlayDisclosedAssumption(next, persisted, "carpet_tile_pattern", "carpet_tile_pattern_authority");
   overlayUserField(next, persisted, "carpet_tile_substrate", "carpet_tile_substrate_authority");
   overlayUserField(next, persisted, "carpet_tile_fixing", "carpet_tile_fixing_authority");
   overlayUserField(next, persisted, "carpet_tile_waste", "carpet_tile_waste_authority");
+  overlayDisclosedAssumption(next, persisted, "carpet_tile_waste", "carpet_tile_waste_authority");
   if (persisted.carpet_tile_pattern_authority === "extracted" && persisted.carpet_tile_pattern) {
     next.carpet_tile_pattern = persisted.carpet_tile_pattern;
     next.carpet_tile_pattern_authority = "extracted";
   }
   if (persisted.carpet_tile_waste != null) next.carpet_tile_waste = persisted.carpet_tile_waste;
+  if (
+    persisted.carpet_tile_waste_authority === "user" ||
+    persisted.carpet_tile_waste_authority === "assumed_disclosed"
+  ) {
+    next.waste_percent = persisted.waste_percent ?? null;
+  }
   if (persisted.carpet_tile_size != null) next.carpet_tile_size = persisted.carpet_tile_size;
   if (persisted.carpet_tile_box != null) next.carpet_tile_box = persisted.carpet_tile_box;
   if (persisted.carpet_tile_box_coverage_m2 != null) {
@@ -1709,8 +1728,14 @@ function applyPortionField(
     return;
   }
   if (field === "carpet_tile_pattern") {
+    const previousAuthority = portion.carpet_tile_pattern_authority;
     portion.carpet_tile_pattern = parseCarpetTilePattern(value);
-    portion.carpet_tile_pattern_authority = "user";
+    if (previousAuthority === "extracted" && portion.carpet_tile_pattern === "straight") {
+      portion.carpet_tile_pattern_authority = "extracted";
+      return;
+    }
+    portion.carpet_tile_pattern_authority =
+      portion.carpet_tile_pattern === "straight" ? "assumed_disclosed" : "user";
     return;
   }
   if (field === "carpet_tile_substrate") {
