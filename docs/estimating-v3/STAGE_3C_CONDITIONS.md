@@ -23,3 +23,13 @@ Answering access, carry, occupancy, working hours or slope marks the estimate st
 ## Saved waste wording
 
 `10% waste is stated … once this area can be priced` on an estimate that already has priced laminate supply is historical output. It stays visible and is not treated as a missing price. A newly generated laminate estimate uses the supply formula and does not emit that warning. Stored historical text is not rewritten just to change the wording.
+
+## Verified journey
+
+On the isolated Preview organisation, the generated laminate estimate started at Difficult access and a carry over 30 m: 7.20 hours and $540, using 30 m² × 0.2 h/m² × 1.20. Accepting standard access and standard carry, then regenerating explicitly, changed that to 6.00 hours and $450 with no access/carry adjustment. Changing carry to over 30 m and regenerating again produced 6.60 hours and $495 (+10%).
+
+Pricing was created at the 6-hour basis: 33 m² laminate, 30 m² underlay, 30 m² moisture barrier, 6 h installation, direct cost $2,100, sell $2,625. After the later regenerate, that draft stayed unchanged until Preview changes showed one labour update ($563 to $619, subtotal $2,625 to $2,681) and three unchanged material lines. Applying it, then reloading, showed 6.6 h at $618.75, direct cost $2,145 and sell $2,681.25. No quote was created or sent. The pricing document stayed a draft.
+
+Hazardous-materials Not sure did not regenerate the estimate or add an allowance. Marking pricing reviewed was refused with “It is not treated as No, and no allowance has been added.” The estimate overview then showed Incomplete and “Known sell, not the complete price.” The new assumptions list shows the 10% laminate supply formula and does not show the obsolete unpriced-waste warning.
+
+GST was left at the existing rules. Unknown showed “GST registration is not decided. No GST is added” and blocked a quote. Registered removed that block and did not rewrite the draft’s stored zero rate. Not registered showed “Not GST registered. No GST is added.” The isolated organisation was returned to unknown afterwards. Desktop and a 390 px layout both kept the condition questions usable.
