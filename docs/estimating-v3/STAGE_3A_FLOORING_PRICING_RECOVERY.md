@@ -83,7 +83,7 @@ Readiness stayed Partial. The attention named Hallway and the waste choice, and 
 
 On a phone-width viewport the same choice was saved. The estimate stayed at the previous $970 until Regenerate estimate. After that explicit update the package still costs $912.00, the note says the package was confirmed to cover the 10% waste, and the waste line is gone from the estimate. Removal stays $57.60. Readiness becomes All priced because the scope choice is answered.
 
-The pricing draft was not rewritten by that regenerate. It stayed on the earlier estimate and offered Preview changes. That preview showed the package and removal unchanged, difference $0, and no manual edits. Update final pricing left the draft unreviewed. The earlier waste row remains on the draft with no source estimate line, so Pricing still says one line needs a price and the quote stays locked. A typed amount was not entered.
+The pricing draft was not rewritten by that regenerate. Regenerating deletes the estimate lines, and the pricing source link is cleared by the database. The waste row stayed because its sell was $0 and its label no longer matched a line, so the money difference was $0. Preview changes on the corrected Preview (`ed5f583d`, deployment `dpl_3bAFMpzJpBo5aVabEz5BUZt8nTeu`) showed the package and removal unchanged, one removed item, and a $0 difference. Update final pricing removed the waste row. Pricing then showed two items, direct cost $969.60 and client sell $1,212.00, and stopped asking for a price. The draft stayed unreviewed and Create quote stayed locked. A reload kept that result on desktop and at 390 × 844. A typed amount was not entered and no quote was sent.
 
 ### Mobile
 
@@ -92,6 +92,5 @@ At 390 × 844 the combined waste choice, the save notice, Regenerate estimate, a
 ## Remaining limitations
 
 - Carpenter labour on these jobs is the Quotr benchmark $60.00/h. The saved figure is the installation productivity, not a company carpenter rate.
-- An unpriced waste row created on a pricing draft with no source estimate line is not removed when a later estimate drops that line. Recalibration leaves it, and Pricing continues to say a price is required. That does not turn the row into a resolved scope answer.
-- The second regenerate flagged the separate-supply pricing draft as needing recalibration. It was not rewritten and was not marked reviewed.
+- The second regenerate flagged the separate-supply pricing draft as needing recalibration. It was not rewritten and was not marked reviewed. Its totals remain $672.00 cost and $840.00 sell.
 - No quote was created. Production was not deployed. No new flooring recipe, P&G change, or calibration change.
