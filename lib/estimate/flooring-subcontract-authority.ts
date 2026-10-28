@@ -74,6 +74,29 @@ export function resolveFlooringSubcontractRate(params: {
   organisationSettings?: OrganisationSettings | null;
 }): FlooringSubcontractRateResolution {
   const { itemKey } = params;
+  if (itemKey === "flooring.laminate.click_lock.supply_install.m2") {
+    const exactCompany = (params.rates ?? []).find(
+      (rate) =>
+        rate.active &&
+        rate.item_key === itemKey &&
+        rate.rate_type === FLOORING_SUBCONTRACT_RATE_TYPE &&
+        isPositiveCost(rate.cost_rate)
+    );
+    if (exactCompany && isPositiveCost(exactCompany.cost_rate)) {
+      return {
+        itemKey,
+        costRate: exactCompany.cost_rate,
+        source: "company",
+        sourceLabel: "Company",
+      };
+    }
+    return {
+      itemKey,
+      costRate: null,
+      source: "missing",
+      sourceLabel: "Pricing Required",
+    };
+  }
   if (!isFlooringSubcontractRateKey(itemKey)) {
     return {
       itemKey,

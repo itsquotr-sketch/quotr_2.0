@@ -9,6 +9,11 @@
 
 import { formatMissing, round2 } from "@/lib/estimate/facts";
 import {
+  FLOORING_LAMINATE_INSTALL_HOURS_PER_M2,
+  FLOORING_LAMINATE_PACKAGE_M2,
+  planLaminateAssembly,
+} from "@/lib/estimate/flooring-laminate";
+import {
   FLOORING_CARPET_SUPPLY_INSTALL_M2,
   FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
   FLOORING_CARPENTER_LABOUR_RATE_KEY,
@@ -1428,6 +1433,177 @@ function emptyPortionPhysical(
   };
 }
 
+function laminateBlockingFields(portion: FlooringPortion): string[] {
+  const missing = specialistMissingFields(portion).filter(
+    (field) => field !== "flooring.portion.other_description"
+  );
+  if (portion.laminate_method == null) {
+    missing.push("flooring.portion.laminate_method");
+    return missing;
+  }
+  if (portion.laminate_method !== "floating_click_lock") return missing;
+  if (portion.laminate_substrate == null) {
+    missing.push("flooring.portion.laminate_substrate");
+    return missing;
+  }
+  if (
+    portion.laminate_substrate === "concrete" &&
+    portion.laminate_moisture == null
+  ) {
+    missing.push("flooring.portion.laminate_moisture");
+    return missing;
+  }
+  if (portion.finish_pricing == null) {
+    missing.push("flooring.portion.finish_pricing");
+  }
+  if (
+    portion.finish_pricing === "combined_package" &&
+    portion.finish_supplied_by !== "customer" &&
+    portion.waste_percent != null &&
+    portion.waste_percent > 0 &&
+    portion.waste_treatment == null
+  ) {
+    missing.push("flooring.portion.waste_treatment");
+  }
+  return missing;
+}
+
+function laminatePortionPhysical(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: FlooringPortion;
+}): {
+  readonly portion: FlooringPortionPhysical;
+  readonly requirements: readonly EstimateRequirement[];
+} {
+  const { workArea, portion } = params;
+  const missingFields = laminateBlockingFields(portion);
+  const area = physicalNetAreaM2(portion);
+  if (missingFields.length > 0 || area == null) {
+    return {
+      portion: emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+        missingFields
+      ),
+      requirements: [],
+    };
+  }
+  const owner = portionDisplayName(portion);
+  const plan = planLaminateAssembly({ portion, netM2: area, owner });
+  if (plan.status === "unsupported") {
+    const requirements = plan.lines.map((line) =>
+      materialCountRow({
+        workArea,
+        portion,
+        componentKey: line.componentKey,
+        materialKey: line.materialKey,
+        category: "SPECIALIST",
+        description: line.description,
+        specification: line.specification,
+        quantity: line.quantity,
+        unit: line.unit,
+        areaM2: area,
+        confidence: "low",
+      })
+    );
+    return {
+      portion: emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST,
+        []
+      ),
+      requirements,
+    };
+  }
+  if (plan.status !== "ready") {
+    return {
+      portion: emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+        missingFields
+      ),
+      requirements: [],
+    };
+  }
+  const requirements: EstimateRequirement[] = [];
+  for (const line of plan.lines) {
+    if (line.role === "package") {
+      requirements.push(
+        subcontractRow({
+          workArea,
+          portion,
+          componentKey: FLOORING_LAMINATE_PACKAGE_M2,
+          description: line.description,
+          areaM2: area,
+        })
+      );
+      continue;
+    }
+    if (line.role === "install") {
+      requirements.push(
+        labourRow({
+          workArea,
+          portion,
+          componentKey: line.componentKey,
+          hoursKey: FLOORING_LAMINATE_INSTALL_HOURS_PER_M2,
+          unit: "m2",
+          description: line.description,
+          quantity: line.quantity,
+          areaM2: area,
+          trade: "carpenter",
+        })
+      );
+      continue;
+    }
+    requirements.push(
+      materialCountRow({
+        workArea,
+        portion,
+        componentKey: line.componentKey,
+        materialKey: line.materialKey,
+        category: line.customerSupplied
+          ? "CLIENT_SUPPLIED"
+          : line.wasteUnresolved
+            ? FLOORING_WASTE_UNRESOLVED_CATEGORY
+            : line.role === "waste"
+              ? FLOORING_WASTE_INCREMENT_CATEGORY
+              : "LAMINATE",
+        description: line.description,
+        specification: line.specification,
+        quantity: line.quantity,
+        unit: line.unit,
+        areaM2: area,
+      })
+    );
+  }
+  if (portion.finish_removal_required === true) {
+    requirements.push(
+      ...removalRequirements({ workArea, portion, areaM2: area, owner })
+    );
+  }
+  if (portion.floor_preparation_required === true) {
+    requirements.push(
+      ...preparationRequirements({ workArea, portion, areaM2: area, owner })
+    );
+  }
+  return {
+    portion: {
+      ...emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        []
+      ),
+      physicalNetAreaM2: area,
+      purchasing: null,
+    },
+    requirements,
+  };
+}
+
 export function calculateFlooringPortionPhysical(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   portion: FlooringPortion;
@@ -1436,6 +1612,10 @@ export function calculateFlooringPortionPhysical(params: {
   readonly requirements: readonly EstimateRequirement[];
 } {
   const { workArea, portion } = params;
+
+  if (portion.specialist_kind === "laminate") {
+    return laminatePortionPhysical({ workArea, portion });
+  }
 
   if (flooringPortionIsSpecialist(portion)) {
     const missingFields = specialistMissingFields(portion);

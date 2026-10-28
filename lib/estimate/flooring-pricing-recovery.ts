@@ -72,7 +72,7 @@ export type FlooringPricingRecovery = {
   readonly unitExplanation: string;
   readonly scopeExplanation: string;
   readonly itemKey: string | null;
-  readonly ratesSection: "materials" | "productivity" | "labour" | null;
+  readonly ratesSection: "materials" | "productivity" | "labour" | "subcontract" | null;
   readonly blocksManualAmount: boolean;
   readonly factKey: string | null;
   readonly decisions: readonly FlooringRecoveryDecision[];
@@ -86,6 +86,12 @@ const CANONICAL_UNITS: Record<string, string> = {
   [FLOORING_TILE_ADHESIVE_GROUT_M2]: "m2",
   [FLOORING_HARDWOOD_ADHESIVE_FIXINGS_M2]: "m2",
   [FLOORING_CARPET_ACCESSORIES_M2]: "m2",
+  "flooring.laminate.click_lock.supply.m2": "m2",
+  "flooring.laminate.click_lock.supply.pack": "pack",
+  "flooring.laminate.underlay.m2": "m2",
+  "flooring.laminate.underlay.roll": "roll",
+  "flooring.laminate.moisture_barrier.m2": "m2",
+  "flooring.laminate.moisture_barrier.roll": "roll",
 };
 
 export function canonicalFinishMaterialUnit(itemKey: string): string | null {
@@ -112,6 +118,7 @@ export function normalizeFlooringPurchasingUnit(unit: string): string | null {
     return "l";
   }
   if (compact === "pack" || compact === "packs") return "pack";
+  if (compact === "roll" || compact === "rolls") return "roll";
   return null;
 }
 
@@ -152,7 +159,7 @@ export function safeFlooringReturnPath(value: string | null | undefined): string
 }
 
 export function flooringRateEditorHref(params: {
-  section: "materials" | "productivity" | "labour";
+  section: "materials" | "productivity" | "labour" | "subcontract";
   itemKey: string;
   projectId?: string | null;
   workAreaId?: string | null;
@@ -319,6 +326,74 @@ export function flooringPricingRecovery(input: {
         ? notes
         : `${roomName} is missing the adhesive or ancillary rate ${itemKey}. It is charged once on the net area, and only when that exact rate exists.`,
     });
+  }
+
+  if (
+    (key === "flooring.laminate.click_lock.supply" ||
+      key === "flooring.laminate.underlay" ||
+      key === "flooring.laminate.moisture_barrier" ||
+      key === FLOORING_FINISH_WASTE_COMPONENT) &&
+    itemKey &&
+    canonicalFinishMaterialUnit(itemKey) &&
+    itemKey.startsWith("flooring.laminate.")
+  ) {
+    return materialRecovery({
+      roomName,
+      itemLabel,
+      itemKey,
+      missing: /not converted|has no unit/i.test(notes)
+        ? notes
+        : `${roomName} is missing the laminate rate ${itemKey}. No vinyl rate and no laminate benchmark are used.`,
+    });
+  }
+
+  if (key === "flooring.laminate.click_lock.install") {
+    if (/carpenter hourly cost/i.test(notes)) {
+      return {
+        kind: "company_labour",
+        roomName,
+        itemLabel,
+        missing: `${roomName} has laminate installation productivity saved. The carpenter hourly cost is missing. The $60 benchmark is not used.`,
+        unitExplanation: "The labour cost is dollars per hour. It is not converted from a material unit.",
+        scopeExplanation: COMPANY_SCOPE,
+        itemKey: FLOORING_CARPENTER_HOUR_KEY,
+        ratesSection: "labour",
+        blocksManualAmount: false,
+        factKey: null,
+        decisions: [],
+      };
+    }
+    return {
+      kind: "company_productivity",
+      roomName,
+      itemLabel,
+      missing: /not converted|has no unit/i.test(notes)
+        ? notes
+        : `${roomName} is missing laminate installation productivity flooring.laminate.click_lock.install.hours_per_m2. The vinyl installation rate is not reused.`,
+      unitExplanation: "Productivity is hours per net square metre. Hours per sheet, each or lineal metre are not converted.",
+      scopeExplanation: COMPANY_SCOPE,
+      itemKey: "flooring.laminate.click_lock.install.hours_per_m2",
+      ratesSection: "productivity",
+      blocksManualAmount: false,
+      factKey: null,
+      decisions: [],
+    };
+  }
+
+  if (key === "flooring.laminate.click_lock.supply_install.m2") {
+    return {
+      kind: "company_material",
+      roomName,
+      itemLabel,
+      missing: `${roomName} has no company click-lock laminate package rate. No laminate benchmark is applied and the vinyl package is not reused.`,
+      unitExplanation: "The package cost is dollars per net square metre. It is not split into material and labour.",
+      scopeExplanation: COMPANY_SCOPE,
+      itemKey: "flooring.laminate.click_lock.supply_install.m2",
+      ratesSection: "subcontract",
+      blocksManualAmount: false,
+      factKey: null,
+      decisions: [],
+    };
   }
 
   if (key === FLOORING_FINISH_INSTALL_COMPONENT) {

@@ -141,6 +141,8 @@ export function RatesNonDefaultSections({
         showEngineColumn
         showAddButton
         readOnly={!state.canManageRates}
+        focusItemKey={focusItemKey}
+        returnHref={returnHref}
       />
     );
   }

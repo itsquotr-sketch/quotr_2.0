@@ -11,6 +11,10 @@ import {
   BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
 } from "@/lib/estimate/bathroom-identities";
 import {
+  LAMINATE_METHOD_PROPOSAL,
+  LAMINATE_MOISTURE_QUESTION,
+} from "@/lib/estimate/flooring-laminate";
+import {
   flooringAreaConflictCopy,
   flooringAreaMeasuresDisagree,
   type FlooringPortion,
@@ -132,6 +136,10 @@ const QUESTIONS: Record<string, string> = {
   "flooring.portion.hardwood_board_width_mm": "What is the board width?",
   "flooring.portion.other_description":
     "What flooring system or finish is required?",
+  "flooring.portion.laminate_method": LAMINATE_METHOD_PROPOSAL,
+  "flooring.portion.laminate_substrate":
+    "What is the existing floor substrate?",
+  "flooring.portion.laminate_moisture": LAMINATE_MOISTURE_QUESTION,
   "flooring.portion.substrate_required": "Is new floor substrate required?",
   "flooring.portion.substrate_family": "What substrate material is required?",
   "flooring.portion.substrate_item_key": "Which substrate product is required?",
@@ -160,6 +168,9 @@ const LABELS: Record<string, string> = {
   "flooring.portion.tile_length_mm": "Tile length",
   "flooring.portion.hardwood_board_width_mm": "Board width",
   "flooring.portion.other_description": "Description",
+  "flooring.portion.laminate_method": "Laminate installation method",
+  "flooring.portion.laminate_substrate": "Existing substrate",
+  "flooring.portion.laminate_moisture": "Moisture control",
   "flooring.portion.substrate_required": "New substrate",
   "flooring.portion.substrate_family": "Substrate material",
   "flooring.portion.substrate_item_key": "Substrate product",
@@ -258,6 +269,19 @@ export function flooringQuestionOptions(
   factKey: string,
   portion?: FlooringPortion | null
 ): readonly string[] | undefined {
+  if (factKey === "flooring.portion.laminate_method") {
+    return ["Floating click-lock", "Glued down", "Nailed or stapled"];
+  }
+  if (factKey === "flooring.portion.laminate_substrate") {
+    return ["Concrete", "Timber", "Other substrate"];
+  }
+  if (factKey === "flooring.portion.laminate_moisture") {
+    return [
+      "Underlay includes moisture control",
+      "Separate moisture barrier",
+      "Moisture control excluded",
+    ];
+  }
   if (factKey === "flooring.portion.finish_pricing") {
     return [
       "Combined supply and installation package",

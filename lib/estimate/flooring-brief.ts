@@ -38,6 +38,7 @@ import {
   type FlooringSpecialistKind,
   type FlooringSubstrateFamily,
 } from "@/lib/estimate/flooring-portions";
+import { applyLaminateBriefFacts } from "@/lib/estimate/flooring-laminate";
 import {
   briefHasIndependentFlooring,
   clauseHasFlooringOperation,
@@ -729,6 +730,7 @@ function applyGlobalConstraints(
   if (/\b(?:exclud\w*|no|without)\b[^.]{0,40}\bskirting replacement\b/.test(raw)) {
     portion.skirting_replacement_excluded = true;
   }
+  applyLaminateBriefFacts(portion, briefText);
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {
@@ -796,6 +798,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.floor_preparation_required = prep;
     portion.preparation_authority = "extracted";
   }
+  applyLaminateBriefFacts(portion, snippet);
   if (tile.width_mm != null) {
     portion.tile_width_mm = tile.width_mm;
     portion.tile_width_authority = "extracted";

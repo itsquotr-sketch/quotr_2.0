@@ -20,6 +20,14 @@ import {
   FLOORING_WASTE_INCREMENT_CATEGORY,
 } from "@/lib/estimate/flooring-purchasing";
 import {
+  FLOORING_LAMINATE_INSTALL_COMPONENT,
+  FLOORING_LAMINATE_INSTALL_HOURS_PER_M2,
+  FLOORING_LAMINATE_MOISTURE_COMPONENT,
+  FLOORING_LAMINATE_PACKAGE_M2,
+  FLOORING_LAMINATE_SUPPLY_COMPONENT,
+  FLOORING_LAMINATE_UNDERLAY_COMPONENT,
+} from "@/lib/estimate/flooring-laminate";
+import {
   findFinishMaterialRate,
   finishMaterialUnitProblem,
   flooringAncillaryLabel,
@@ -324,7 +332,10 @@ export function priceFlooringSubcontract(params: {
   const { requirement } = params;
   if (
     !params.allowPricing ||
-    !isFlooringSubcontractRateKey(requirement.componentKey) ||
+    !(
+      isFlooringSubcontractRateKey(requirement.componentKey) ||
+      requirement.componentKey === FLOORING_LAMINATE_PACKAGE_M2
+    ) ||
     !hasTrustedPhysicalQuantity(params.quantity)
   ) {
     return {
@@ -367,6 +378,39 @@ export function priceFlooringMaterial(params: {
   const { requirement } = params;
   if (isFinishPackageMirror(requirement)) {
     return requirement;
+  }
+  if (
+    requirement.componentKey === FLOORING_LAMINATE_SUPPLY_COMPONENT ||
+    requirement.componentKey === FLOORING_LAMINATE_UNDERLAY_COMPONENT ||
+    requirement.componentKey === FLOORING_LAMINATE_MOISTURE_COMPONENT
+  ) {
+    if (requirement.category === "CLIENT_SUPPLIED") {
+      return {
+        ...requirement,
+        priced: true,
+        unitCost: 0,
+        totalCost: 0,
+        rateSource: "company",
+      };
+    }
+    const named = requirement.materialKey
+      ? findFinishMaterialRate(params.rates, requirement.materialKey)
+      : undefined;
+    if (
+      !params.allowPricing ||
+      !named ||
+      named.cost_rate == null ||
+      !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
+    ) {
+      return unpricedFinishMaterial(requirement, params.rates);
+    }
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: named.cost_rate,
+      totalCost: round2(requirement.purchaseQuantity * named.cost_rate),
+      rateSource: named.rate_type === "project_material" ? "project_override" : "company",
+    };
   }
   if (requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT) {
     if (requirement.category === "CLIENT_SUPPLIED") {
@@ -535,13 +579,13 @@ export function priceFlooringLabour(params: {
     rates: params.rates,
   });
   const installOnly =
-    requirement.productivityBasis.key === FLOORING_FINISH_INSTALL_HOURS_PER_M2;
+    requirement.productivityBasis.key === FLOORING_FINISH_INSTALL_HOURS_PER_M2 ||
+    requirement.productivityBasis.key === FLOORING_LAMINATE_INSTALL_HOURS_PER_M2;
+  const laminateInstall =
+    requirement.componentKey === FLOORING_LAMINATE_INSTALL_COMPONENT;
+  const installKey = requirement.productivityBasis.key ?? "";
   const companyInstall = installOnly
-    ? findCompanyProductivityRate(
-        params.rates,
-        FLOORING_FINISH_INSTALL_HOURS_PER_M2,
-        "m2"
-      )
+    ? findCompanyProductivityRate(params.rates, installKey, "m2")
     : undefined;
   const installHours =
     companyInstall?.cost_rate != null &&
@@ -555,7 +599,7 @@ export function priceFlooringLabour(params: {
     const saved = params.rates.find(
       (rate) =>
         rate.active &&
-        rate.item_key === FLOORING_FINISH_INSTALL_HOURS_PER_M2 &&
+        rate.item_key === installKey &&
         rate.rate_type === "productivity" &&
         rate.cost_rate != null &&
         rate.cost_rate > 0
@@ -565,11 +609,23 @@ export function priceFlooringLabour(params: {
     }
   } else if (installOnly && hoursTrusted && !(params.hourlyCost > 0)) {
     unresolvedReason = `Installation productivity is saved. The carpenter hourly cost ${FLOORING_CARPENTER_LABOUR_RATE_KEY} is missing, so the labour cost is not calculated.`;
+  } else if (
+    laminateInstall &&
+    hoursTrusted &&
+    params.labourSource !== "company" &&
+    params.labourSource !== "project_override"
+  ) {
+    unresolvedReason = `Installation productivity is saved. The carpenter hourly cost is missing. Laminate labour does not use the $60 carpenter benchmark. Save a company ${FLOORING_CARPENTER_LABOUR_RATE_KEY} cost.`;
   }
+  const carpenterKnown =
+    !laminateInstall ||
+    params.labourSource === "company" ||
+    params.labourSource === "project_override";
   const priced =
     params.allowPricing &&
     hoursTrusted &&
     params.hourlyCost > 0 &&
+    carpenterKnown &&
     hasTrustedPhysicalQuantity(quantity) &&
     (installOnly || isFlooringProductivityKey(requirement.productivityBasis.key));
   const baseHours = priced ? round2(quantity * (hoursPerUnit ?? 0)) : 0;
@@ -932,11 +988,16 @@ function materialOrAllowanceLine(params: {
           ? params.requirement.specification || "Carpet roll purchasing is unresolved."
           : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT ||
               params.requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT ||
-              params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT
+              params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT ||
+              params.requirement.componentKey === FLOORING_LAMINATE_SUPPLY_COMPONENT ||
+              params.requirement.componentKey === FLOORING_LAMINATE_UNDERLAY_COMPONENT ||
+              params.requirement.componentKey === FLOORING_LAMINATE_MOISTURE_COMPONENT
             ? params.requirement.specification ||
               `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`
             : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
-              ? FLOORING_SPECIALIST_RECIPE_MESSAGE
+              ? params.requirement.specification?.includes("floating click-lock")
+                ? params.requirement.specification
+                : FLOORING_SPECIALIST_RECIPE_MESSAGE
               : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
       identitySummary: params.requirement.specification,
     });
@@ -958,6 +1019,9 @@ function materialOrAllowanceLine(params: {
       params.organisationSettings
     ),
   });
+  const projectMaterial =
+    params.requirement.rateSource === "project_override" &&
+    (params.requirement.materialKey?.startsWith("flooring.laminate.") ?? false);
   const line = createRateLineItem({
     workAreaId: params.requirement.workAreaId,
     workAreaName: params.workAreaName,
@@ -967,8 +1031,10 @@ function materialOrAllowanceLine(params: {
     unit,
     costRate: params.requirement.unitCost,
     sellRate: classified.sellRate,
-    rateSource: source.rateSource,
-    rateSourceType: source.rateSourceType,
+    rateSource: projectMaterial
+      ? getRateSourceLabel("work_area_rate")
+      : source.rateSource,
+    rateSourceType: projectMaterial ? "work_area_rate" : source.rateSourceType,
     itemKey: framing
       ? params.requirement.componentKey
       : params.requirement.materialKey ?? undefined,
@@ -981,7 +1047,10 @@ function materialOrAllowanceLine(params: {
       ? `Combined allowance ${params.requirement.purchaseQuantity} m². Not timber materials and not labour hours.`
       : params.requirement.componentKey === FLOORING_FINISH_SUPPLY_COMPONENT ||
           params.requirement.componentKey === FLOORING_FINISH_WASTE_COMPONENT ||
-          params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT
+          params.requirement.componentKey === FLOORING_FINISH_ANCILLARY_COMPONENT ||
+          params.requirement.componentKey === FLOORING_LAMINATE_SUPPLY_COMPONENT ||
+          params.requirement.componentKey === FLOORING_LAMINATE_UNDERLAY_COMPONENT ||
+          params.requirement.componentKey === FLOORING_LAMINATE_MOISTURE_COMPONENT
         ? params.requirement.specification
         : `Purchase ${params.requirement.purchaseQuantity} ${unit}`,
   });
@@ -1042,7 +1111,9 @@ function labourLine(params: {
           ? FLOORING_SPECIALIST_RECIPE_MESSAGE
           : params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
             ? `${params.requirement.unresolvedReason ? `${params.requirement.unresolvedReason} ` : ""}Installation hours need the company productivity rate ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. Installed ${qty} ${unit}. These hours do not include adhesive, grout, fixings or accessories.`
-            : `Pricing Required productivity. Installed ${qty} ${unit}.`,
+            : params.requirement.componentKey === FLOORING_LAMINATE_INSTALL_COMPONENT
+              ? `${params.requirement.unresolvedReason ? `${params.requirement.unresolvedReason} ` : ""}Installation hours need the company productivity rate ${FLOORING_LAMINATE_INSTALL_HOURS_PER_M2}. The vinyl installation rate is not reused. Installed ${qty} ${unit}. The $60 carpenter benchmark is not used.`
+              : `Pricing Required productivity. Installed ${qty} ${unit}.`,
     });
   }
   const productivitySourceType =
@@ -1078,7 +1149,9 @@ function labourLine(params: {
       notes:
         params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
           ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. These hours do not include adhesive, grout, fixings or accessories.`
-          : line.notes,
+          : params.requirement.componentKey === FLOORING_LAMINATE_INSTALL_COMPONENT
+            ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_LAMINATE_INSTALL_HOURS_PER_M2} on the net area. Carpenter cost uses the company hourly rate. The $60 benchmark is not used.`
+            : line.notes,
     },
     {
       pricingOwner: "in_house_labour",
@@ -1162,7 +1235,10 @@ export function commercializeFlooring(params: {
     );
     const allowPricing = portionAllowsOrdinaryPricing(portion);
     if (requirement.kind === "subcontract") {
-      const quantity = packageQuantity(requirement, params.physical.requirements);
+      const quantity =
+        requirement.componentKey === FLOORING_LAMINATE_PACKAGE_M2
+          ? portion?.physicalNetAreaM2 ?? null
+          : packageQuantity(requirement, params.physical.requirements);
       subcontract.push({
         requirement: priceFlooringSubcontract({
           requirement,

@@ -1287,7 +1287,13 @@ export function classifyMaterialPresentation(
     key === "flooring.vinyl_plank.adhesive_accessories.m2" ||
     key === "flooring.tile.adhesive_grout.m2" ||
     key === "flooring.hardwood.adhesive_fixings.m2" ||
-    key === "flooring.carpet.accessories.m2"
+    key === "flooring.carpet.accessories.m2" ||
+    key === "flooring.laminate.click_lock.supply.m2" ||
+    key === "flooring.laminate.click_lock.supply.pack" ||
+    key === "flooring.laminate.underlay.m2" ||
+    key === "flooring.laminate.underlay.roll" ||
+    key === "flooring.laminate.moisture_barrier.m2" ||
+    key === "flooring.laminate.moisture_barrier.roll"
   ) {
     return base({
       categoryId: "flooring",

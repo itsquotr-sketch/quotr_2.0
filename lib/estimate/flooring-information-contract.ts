@@ -122,6 +122,26 @@ export const FLOORING_INFORMATION_CONTRACT: readonly FlooringInformationContract
       reason: "Other/custom and specialist floors keep a specification note.",
     },
     {
+      factKey: "flooring.portion.laminate_method",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason:
+        "Only floating click-lock laminate is priced. An unstated method is asked, not stored as an extracted fact.",
+    },
+    {
+      factKey: "flooring.portion.laminate_substrate",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Floating laminate needs the existing substrate before a moisture line can be decided.",
+    },
+    {
+      factKey: "flooring.portion.laminate_moisture",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason:
+        "On concrete, moisture control is asked. An underlay is not assumed to include it, and it is not added twice.",
+    },
+    {
       factKey: "flooring.portion.substrate_required",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: true,
@@ -239,20 +259,46 @@ export function flooringFactIsRelevant(
   if (factKey === "flooring.portion.floor_preparation_required") {
     return flooringFinishUsesPreparation(finish);
   }
+  if (factKey === "flooring.portion.laminate_method") {
+    return portion?.specialist_kind === "laminate";
+  }
+  if (factKey === "flooring.portion.laminate_substrate") {
+    return (
+      portion?.specialist_kind === "laminate" &&
+      portion.laminate_method === "floating_click_lock"
+    );
+  }
+  if (factKey === "flooring.portion.laminate_moisture") {
+    return (
+      portion?.specialist_kind === "laminate" &&
+      portion.laminate_method === "floating_click_lock" &&
+      portion.laminate_substrate === "concrete"
+    );
+  }
   if (factKey === "flooring.portion.finish_pricing") {
     return (
       finish === "carpet" ||
       finish === "vinyl_plank" ||
       finish === "tile" ||
-      finish === "hardwood"
+      finish === "hardwood" ||
+      (portion?.specialist_kind === "laminate" &&
+        portion.laminate_method === "floating_click_lock" &&
+        portion.laminate_substrate != null &&
+        (portion.laminate_substrate !== "concrete" ||
+          portion.laminate_moisture != null))
     );
   }
   if (factKey === "flooring.portion.waste_treatment") {
+    const ordinary =
+      finish === "carpet" ||
+      finish === "vinyl_plank" ||
+      finish === "tile" ||
+      finish === "hardwood";
+    const laminateCombined =
+      portion?.specialist_kind === "laminate" &&
+      portion.finish_pricing === "combined_package";
     return (
-      (finish === "carpet" ||
-        finish === "vinyl_plank" ||
-        finish === "tile" ||
-        finish === "hardwood") &&
+      (ordinary || laminateCombined) &&
       portion?.waste_percent != null &&
       portion.waste_percent > 0 &&
       portion.finish_supplied_by !== "customer" &&

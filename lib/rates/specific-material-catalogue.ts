@@ -1609,6 +1609,78 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
   }),
   entry({
+    item_key: "flooring.laminate.click_lock.supply.m2",
+    label: "Click-lock laminate supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per purchased square metre of floating click-lock laminate. No Quotr benchmark. Not the combined package and not a vinyl rate.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "flooring.laminate.click_lock.supply.pack",
+    label: "Click-lock laminate pack",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "pack",
+    description:
+      "Company cost per whole pack of floating click-lock laminate. Used only when pack coverage is known. No Quotr benchmark.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "flooring.laminate.underlay.m2",
+    label: "Laminate underlay",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre of laminate underlay. Laminate waste is not applied. Moisture control is not assumed.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "flooring.laminate.underlay.roll",
+    label: "Laminate underlay roll",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "roll",
+    description:
+      "Company cost per whole underlay roll. Used only when that roll's coverage is known. Not converted from a square-metre rate.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "flooring.laminate.moisture_barrier.m2",
+    label: "Laminate moisture barrier",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "m2",
+    description:
+      "Company cost per net square metre of a separate moisture barrier on concrete. Not added when the underlay already includes that function.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "flooring.laminate.moisture_barrier.roll",
+    label: "Laminate moisture barrier roll",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "roll",
+    description:
+      "Company cost per whole moisture-barrier roll. Used only when that roll's coverage is known.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
     item_key: FLOORING_CARPET_ACCESSORIES_M2,
     label: "Carpet installation accessories",
     rate_type: "material",
@@ -1700,6 +1772,18 @@ export const FLOORING_SUBCONTRACT_RATE_CATALOGUE: RateCatalogueEntry[] = [
     defaultCostRate: FLOORING_FLOOR_PREPARATION_ALLOWANCE_COST_EX_GST,
     calculatorSupport: "used_now",
     recommended: true,
+  }),
+  entry({
+    item_key: "flooring.laminate.click_lock.supply_install.m2",
+    label: "Click-lock laminate supply and installation",
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring finish packages",
+    unit: "m2",
+    description:
+      "Company subcontract cost per net square metre for floating click-lock laminate supply and installation. No Quotr benchmark. The vinyl package is not reused.",
+    calculatorSupport: "used_now",
   }),
 ];
 
@@ -3751,6 +3835,19 @@ export const FLOORING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     description:
       "Hours per net square metre to install the finish. No Quotr hours default. Hours per sheet, each or lineal metre are not converted. Adhesive, grout, fixings and removal stay separate.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "flooring.laminate.click_lock.install.hours_per_m2",
+    label: "Click-lock laminate installation",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring productivity",
+    unit: "m2",
+    description:
+      "Hours per net square metre to install floating click-lock laminate. No Quotr hours default. The vinyl installation rate is not reused. Labour cost uses a company carpenter hourly rate, not the $60 benchmark.",
     calculatorSupport: "used_now",
     recommended: true,
   }),

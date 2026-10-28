@@ -34,6 +34,11 @@
  */
 
 import { getFact } from "@/lib/estimate/facts";
+import {
+  parseLaminateMethod,
+  parseLaminateMoisture,
+  parseLaminateSubstrate,
+} from "@/lib/estimate/flooring-laminate";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
   BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY,
@@ -201,6 +206,19 @@ export type FlooringPortion = {
     | "package_covers_requested_waste"
     | "incremental_material"
     | null;
+  /**
+   * Laminate installation. User-confirmed, or extracted only when the brief
+   * names floating click-lock, glue-down, or nailing. Unstated stays null.
+   */
+  laminate_method?: "floating_click_lock" | "glued" | "fastened" | null;
+  laminate_method_authority?: FlooringFieldAuthority;
+  laminate_substrate?: "concrete" | "timber" | "other" | null;
+  laminate_substrate_authority?: FlooringFieldAuthority;
+  laminate_moisture?: "integrated" | "separate" | "excluded" | null;
+  laminate_moisture_authority?: FlooringFieldAuthority;
+  laminate_pack_coverage_m2?: number | null;
+  laminate_underlay_coverage_m2?: number | null;
+  laminate_moisture_coverage_m2?: number | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
@@ -668,10 +686,13 @@ export function sanitizeFlooringPortionInapplicableFields(
   }
   const finish = portion.finish_type;
   if (!finish) return portion;
-  if (!flooringFinishUsesUnderlay(finish)) {
+  if (
+    !flooringFinishUsesUnderlay(finish) &&
+    portion.specialist_kind !== "laminate"
+  ) {
     clearMachineOwnedField(portion, "underlay_required", "underlay_authority");
   }
-  if (!flooringFinishUsesPreparation(finish)) {
+  if (!flooringFinishUsesPreparation(finish) && portion.specialist_kind !== "laminate") {
     clearMachineOwnedField(
       portion,
       "floor_preparation_required",
@@ -854,6 +875,27 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
         : null,
     finish_pricing: parseFlooringFinishPricing(value.finish_pricing),
     waste_treatment: parseFlooringWasteTreatment(value.waste_treatment),
+    laminate_method: parseLaminateMethod(value.laminate_method),
+    laminate_method_authority: parseFieldAuthority(value.laminate_method_authority),
+    laminate_substrate: parseLaminateSubstrate(value.laminate_substrate),
+    laminate_substrate_authority: parseFieldAuthority(value.laminate_substrate_authority),
+    laminate_moisture: parseLaminateMoisture(value.laminate_moisture),
+    laminate_moisture_authority: parseFieldAuthority(value.laminate_moisture_authority),
+    laminate_pack_coverage_m2:
+      typeof value.laminate_pack_coverage_m2 === "number" &&
+      value.laminate_pack_coverage_m2 > 0
+        ? value.laminate_pack_coverage_m2
+        : null,
+    laminate_underlay_coverage_m2:
+      typeof value.laminate_underlay_coverage_m2 === "number" &&
+      value.laminate_underlay_coverage_m2 > 0
+        ? value.laminate_underlay_coverage_m2
+        : null,
+    laminate_moisture_coverage_m2:
+      typeof value.laminate_moisture_coverage_m2 === "number" &&
+      value.laminate_moisture_coverage_m2 > 0
+        ? value.laminate_moisture_coverage_m2
+        : null,
     transitions_required: parseTriBool(value.transitions_required),
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
@@ -1001,6 +1043,9 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.substrate_removal_required",
   "flooring.portion.finish_pricing",
   "flooring.portion.waste_treatment",
+  "flooring.portion.laminate_method",
+  "flooring.portion.laminate_substrate",
+  "flooring.portion.laminate_moisture",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1202,6 +1247,9 @@ const FLOORING_USER_AUTHORITY_FIELDS = [
   "label_authority",
   "other_description_authority",
   "specialist_authority",
+  "laminate_method_authority",
+  "laminate_substrate_authority",
+  "laminate_moisture_authority",
 ] as const;
 
 export function flooringPortionHasUserAuthority(
@@ -1259,6 +1307,22 @@ export function overlayUserAuthoritativeFlooringPortion(
   );
   if (persisted.finish_pricing != null) next.finish_pricing = persisted.finish_pricing;
   if (persisted.waste_treatment != null) next.waste_treatment = persisted.waste_treatment;
+  overlayUserField(next, persisted, "laminate_method", "laminate_method_authority");
+  overlayUserField(next, persisted, "laminate_substrate", "laminate_substrate_authority");
+  overlayUserField(next, persisted, "laminate_moisture", "laminate_moisture_authority");
+  if (persisted.laminate_method_authority === "extracted" && persisted.laminate_method) {
+    next.laminate_method = persisted.laminate_method;
+    next.laminate_method_authority = "extracted";
+  }
+  if (persisted.laminate_pack_coverage_m2 != null) {
+    next.laminate_pack_coverage_m2 = persisted.laminate_pack_coverage_m2;
+  }
+  if (persisted.laminate_underlay_coverage_m2 != null) {
+    next.laminate_underlay_coverage_m2 = persisted.laminate_underlay_coverage_m2;
+  }
+  if (persisted.laminate_moisture_coverage_m2 != null) {
+    next.laminate_moisture_coverage_m2 = persisted.laminate_moisture_coverage_m2;
+  }
   overlayUserField(next, persisted, "tile_width_mm", "tile_width_authority");
   overlayUserField(next, persisted, "tile_length_mm", "tile_length_authority");
   overlayUserField(
@@ -1496,6 +1560,21 @@ function applyPortionField(
   }
   if (field === "waste_treatment") {
     portion.waste_treatment = parseFlooringWasteTreatment(value);
+    return;
+  }
+  if (field === "laminate_method") {
+    portion.laminate_method = parseLaminateMethod(value);
+    portion.laminate_method_authority = "user";
+    return;
+  }
+  if (field === "laminate_substrate") {
+    portion.laminate_substrate = parseLaminateSubstrate(value);
+    portion.laminate_substrate_authority = "user";
+    return;
+  }
+  if (field === "laminate_moisture") {
+    portion.laminate_moisture = parseLaminateMoisture(value);
+    portion.laminate_moisture_authority = "user";
     return;
   }
   if (field === "tile_width_mm") {

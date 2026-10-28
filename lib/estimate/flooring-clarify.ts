@@ -108,6 +108,26 @@ export function flooringPortionFieldCurrentValue(
     }
     return null;
   }
+  if (field === "laminate_method") {
+    if (portion.laminate_method === "floating_click_lock") return "Floating click-lock";
+    if (portion.laminate_method === "glued") return "Glued down";
+    if (portion.laminate_method === "fastened") return "Nailed or stapled";
+    return null;
+  }
+  if (field === "laminate_substrate") {
+    if (portion.laminate_substrate === "concrete") return "Concrete";
+    if (portion.laminate_substrate === "timber") return "Timber";
+    if (portion.laminate_substrate === "other") return "Other substrate";
+    return null;
+  }
+  if (field === "laminate_moisture") {
+    if (portion.laminate_moisture === "integrated") {
+      return "Underlay includes moisture control";
+    }
+    if (portion.laminate_moisture === "separate") return "Separate moisture barrier";
+    if (portion.laminate_moisture === "excluded") return "Moisture control excluded";
+    return null;
+  }
   if (field === "waste_treatment") {
     if (portion.waste_treatment === "package_covers_requested_waste") {
       return "Package rate covers the requested waste";
@@ -188,6 +208,29 @@ export function flooringPortionIsInformationComplete(
   portion: FlooringPortion
 ): boolean {
   if (!knownArea(portion)) return false;
+  if (portion.specialist_kind === "laminate") {
+    if (!portion.other_description?.trim()) return false;
+    if (portion.laminate_method == null) return false;
+    if (portion.laminate_method !== "floating_click_lock") return true;
+    if (portion.laminate_substrate == null) return false;
+    if (
+      portion.laminate_substrate === "concrete" &&
+      portion.laminate_moisture == null
+    ) {
+      return false;
+    }
+    if (portion.finish_pricing == null) return false;
+    if (
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer" &&
+      portion.waste_percent != null &&
+      portion.waste_percent > 0 &&
+      portion.waste_treatment == null
+    ) {
+      return false;
+    }
+    return true;
+  }
   if (flooringPortionIsSpecialist(portion)) {
     return Boolean(portion.other_description?.trim());
   }
@@ -521,13 +564,17 @@ export function listFlooringClarifyCandidates(
       if (isResolved(flooringPortionFieldCurrentValue(portion, row.factKey))) {
         continue;
       }
+      const laminateChoice =
+        portion?.specialist_kind === "laminate" &&
+        (row.factKey === "flooring.portion.finish_pricing" ||
+          row.factKey === "flooring.portion.waste_treatment");
       out.push(
         buildCandidate({
           input,
           portion,
           portionIndex: index,
           factKey: row.factKey,
-          askClass: row.askClass,
+          askClass: laminateChoice ? "HARD_MINIMUM" : row.askClass,
         })
       );
     }
