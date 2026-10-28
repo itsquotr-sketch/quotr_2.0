@@ -10,6 +10,10 @@ import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
+import {
+  conditionAnswerAffectsLabour,
+  explicitAssumptionFor,
+} from "@/lib/estimate/condition-basis";
 
 const updateConstraintSchema = z.object({
   projectId: z.string().uuid(),
@@ -17,6 +21,7 @@ const updateConstraintSchema = z.object({
   label: z.string().min(1),
   value: z.union([z.string(), z.number(), z.boolean()]),
   inputType: z.enum(["select", "boolean"]).optional(),
+  acceptance: z.enum(["answer", "assumption"]).optional(),
 });
 
 function revalidateAssistantPaths(projectId: string) {
@@ -37,7 +42,7 @@ export async function updateProjectConstraint(
   }
 
   const { supabase, orgId } = context;
-  const { projectId, key, label, value, inputType } = parsed.data;
+  const { projectId, key, label, value, inputType, acceptance } = parsed.data;
 
   const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
@@ -58,7 +63,14 @@ export async function updateProjectConstraint(
   const storedValue = inputType
     ? normalizeAnswerForStorage(value, inputType)
     : value;
-  const disclosed = disclosedProjectConditionForNotSure(key, storedValue);
+  const explicit =
+    acceptance === "assumption" ? explicitAssumptionFor(key) : null;
+  if (acceptance === "assumption" && !explicit) {
+    return { error: "This condition has no supported assumption." };
+  }
+  const disclosed = explicit
+    ? null
+    : disclosedProjectConditionForNotSure(key, storedValue);
 
   // Stage 3.1D: constraints own project-level keys; reject scoped fact keys.
   const result = await upsertProjectConstraintRecord(supabase, {
@@ -66,15 +78,17 @@ export async function updateProjectConstraint(
     projectId,
     key,
     label,
-    value: disclosed ? disclosed.value : storedValue,
-    source: disclosed ? disclosed.source : "user",
+    value: explicit ? explicit.value : disclosed ? disclosed.value : storedValue,
+    source: explicit || disclosed ? "assumption" : "user",
   });
 
   if (!result.ok) {
     return { error: result.error };
   }
 
-  await markEstimateStaleWithContext(context, projectId);
+  if (conditionAnswerAffectsLabour(key)) {
+    await markEstimateStaleWithContext(context, projectId);
+  }
   const mutation = await completeAssistantMutation(context, projectId);
   revalidateAssistantPaths(projectId);
   return mutation;

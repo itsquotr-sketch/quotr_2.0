@@ -196,6 +196,8 @@ export type ProjectEstimateOverviewInput = {
   readonly statedCountConflictDetail?: string | null;
   /** Saved deck productivity still needs an explicit scope confirmation. */
   readonly productivityReviewDetail?: string | null;
+  /** Price-affecting conditions that are still unanswered or uncertain. */
+  readonly openCommercialConditions?: readonly string[];
 };
 
 const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
@@ -703,8 +705,11 @@ export function projectEstimateOverview(
     !hasPricingRequired &&
     inferDisplayCostKnown(estimate.recommendedCost, estimate.recommendedSell) &&
     !unresolvedSell;
+  const openCommercialConditions = (input.openCommercialConditions ?? [])
+    .map((row) => row.trim())
+    .filter(Boolean);
   const knownSellPartial =
-    hasPricingRequired &&
+    (hasPricingRequired || openCommercialConditions.length > 0) &&
     estimate != null &&
     Number.isFinite(estimate.recommendedSell) &&
     estimate.recommendedSell > 0;
@@ -715,6 +720,7 @@ export function projectEstimateOverview(
   else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
   else if (
     hasPricingRequired ||
+    openCommercialConditions.length > 0 ||
     scopeDecisionOpen ||
     input.review?.overview.recommendedSellIsPartial ||
     productivityReview
@@ -740,7 +746,9 @@ export function projectEstimateOverview(
           ? "This estimate needs updating."
           : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
-          ? scopeDecisionOpen && pricingRequired.length === 0
+          ? openCommercialConditions.length > 0 && pricingRequired.length === 0
+            ? openCommercialConditions.join(" ")
+            : scopeDecisionOpen && pricingRequired.length === 0
             ? "A flooring scope or waste choice is still open. A typed amount does not answer it."
             : pricingRequired.length > 0
               ? productivityReview ?? estimateMissingPriceNotice(pricingRequired.length)

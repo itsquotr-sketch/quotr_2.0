@@ -60,7 +60,7 @@ function extractFirstNumber(value: string): number | null {
  * - short (<=10 m): no carry adjustment
  * - moderate (>10 m and <=30 m): +0.05 labour factor
  * - long (>30 m): +0.10 labour factor
- * - unknown / not sure: conservative moderate (+0.05)
+ * - unknown / Not sure: no carry adjustment. Uncertainty is not a price.
  *
  * Expected inputs: "<10m", "10–30m", "10-30m", ">30m", "15–30m", "45m", "45 m",
  * "Not sure", "unknown", or free text containing a number.
@@ -68,7 +68,7 @@ function extractFirstNumber(value: string): number | null {
  * Regression cases:
  * - "10–30m" -> moderate (not long — old string match on "30" was wrong)
  * - ">30m" / "45m" -> long
- * - "Not sure" -> unknown (moderate allowance, no crash)
+ * - "Not sure" -> unknown (no carry adjustment, still unresolved)
  */
 export function parseCarryDistanceCategory(
   value: string | null | undefined
@@ -166,7 +166,7 @@ export function getLabourAdjustmentParts(
   const carryCategory = parseCarryDistanceCategory(carry);
   if (carryCategory === "long") {
     carryAddend = 0.1;
-  } else if (carryCategory === "moderate" || carryCategory === "unknown") {
+  } else if (carryCategory === "moderate") {
     carryAddend = 0.05;
   }
 

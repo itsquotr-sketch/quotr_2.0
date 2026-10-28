@@ -18,6 +18,7 @@ import {
 } from "@/lib/work-areas/manual-pricing-route";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
+import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
@@ -149,6 +150,9 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (orgDefaults.gstRegistered === null) {
     return { error: GST_REGISTRATION_UNSET_QUOTE_BLOCK };
   }
+
+  const conditionBlock = await materialConditionQuoteBlock(supabase, orgId, projectId);
+  if (conditionBlock) return { error: conditionBlock };
 
   const [{ data: pricingItems }, { data: workAreas }, { data: projectFacts }] =
     lineReads;

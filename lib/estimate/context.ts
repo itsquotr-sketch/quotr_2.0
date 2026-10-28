@@ -94,7 +94,7 @@ export async function getEstimateContextWithContext(
       .eq("project_id", projectId),
     supabase
       .from("constraints")
-      .select("key, label, value")
+      .select("key, label, value, source")
       .eq("project_id", projectId),
     loadOrganisationSettingsRow(orgId),
     supabase
@@ -146,6 +146,7 @@ export async function getEstimateContextWithContext(
       key: constraint.key,
       label: constraint.label,
       value: constraint.value,
+      source: constraint.source ?? null,
     })),
     organisationSettings:
       (organisationSettings as OrganisationSettings | null) ??

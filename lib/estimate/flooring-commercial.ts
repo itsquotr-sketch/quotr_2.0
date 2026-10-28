@@ -6,6 +6,7 @@
  * Legacy flat Flooring stays on the existing FITOUT path.
  */
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
+import { labourBasisNote } from "@/lib/estimate/condition-basis";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY } from "@/lib/estimate/bathroom-identities";
@@ -1077,6 +1078,7 @@ function labourLine(params: {
   labourSellAuthority: ReturnType<typeof classifyResolvedSell>["sellAuthority"];
   labourSellDerived: boolean;
   accessFactor: number;
+  constraints?: readonly { key: string; value: unknown; source?: string | null }[];
 }): EstimateLineItemInput {
   const nestedItemId = flooringRequirementNestedItemId(params.requirement);
   const scopeKey = flooringLineScopeKey({
@@ -1150,7 +1152,7 @@ function labourLine(params: {
         params.requirement.componentKey === FLOORING_FINISH_INSTALL_COMPONENT
           ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_FINISH_INSTALL_HOURS_PER_M2}. No Quotr hours default is applied. These hours do not include adhesive, grout, fixings or accessories.`
           : params.requirement.componentKey === FLOORING_LAMINATE_INSTALL_COMPONENT
-            ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_LAMINATE_INSTALL_HOURS_PER_M2} on the net area. Carpenter cost uses the company hourly rate. The $60 benchmark is not used.`
+            ? `Installation hours use the saved company productivity ${params.requirement.productivityBasis.hoursPerUnit} h/${unit} from ${FLOORING_LAMINATE_INSTALL_HOURS_PER_M2} on the net area. Carpenter cost uses the company hourly rate. The $60 benchmark is not used. ${labourBasisNote(params.constraints ?? [])}`
             : line.notes,
     },
     {
@@ -1319,6 +1321,7 @@ export function commercializeFlooring(params: {
         labourSellAuthority: labourSell.sellAuthority,
         labourSellDerived: labourSell.sellDerivedFromMargin,
         accessFactor,
+        constraints: params.constraints,
       })
     );
   }

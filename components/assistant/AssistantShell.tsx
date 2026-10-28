@@ -43,6 +43,12 @@ import {
   LabourTakeoff,
   MaterialsTakeoff,
 } from "@/components/assistant/mode/EstimateTakeoffViews";
+import { ConditionDecisions } from "@/components/assistant/mode/ConditionDecisions";
+import {
+  commercialConditionMessages,
+  conditionAnswerAffectsLabour,
+  listConditionDecisions,
+} from "@/lib/estimate/condition-basis";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -1893,6 +1899,7 @@ export function AssistantShell({
       label: string;
       value: string | number | boolean;
       inputType?: "select" | "boolean";
+      acceptance?: "answer" | "assumption";
     }) => {
       setSavingConstraintKey(input.key);
       setConstraintError(null);
@@ -1908,11 +1915,15 @@ export function AssistantShell({
               label: input.label,
               value: input.value,
               inputType: input.inputType,
+              acceptance: input.acceptance,
             })
           );
           if (result.error) {
             setConstraintError(result.error);
             return result;
+          }
+          if (conditionAnswerAffectsLabour(input.key)) {
+            setLocalEstimateStale(true);
           }
           setLiveConstraints((prev) => {
             const next = prev.filter((row) => row.key !== input.key);
@@ -1921,7 +1932,7 @@ export function AssistantShell({
               key: input.key,
               label: input.label,
               value: input.value,
-              source: "user",
+              source: input.acceptance === "assumption" ? "assumption" : "user",
             });
             return next;
           });
@@ -3629,6 +3640,32 @@ export function AssistantShell({
     productivityCoverId,
   ]);
 
+  const conditionWorkAreaTypes = displayWorkAreas
+    .filter((area) => area.status !== "excluded")
+    .map((area) => area.type);
+  const conditionDecisions = listConditionDecisions({
+    constraints: liveConstraints,
+    workAreaTypes: conditionWorkAreaTypes,
+  });
+  const openCommercialConditions = commercialConditionMessages({
+    constraints: liveConstraints,
+    workAreaTypes: conditionWorkAreaTypes,
+  });
+  const conditionDecisionPanel = (
+    <ConditionDecisions
+      decisions={conditionDecisions}
+      stale={displayEstimateStale}
+      savingKey={savingConstraintKey}
+      error={constraintError}
+      onAnswer={(input) => {
+        void handleConstraintSave({
+          ...input,
+          inputType: "select",
+        });
+      }}
+    />
+  );
+
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
         isStale: displayEstimateStale,
@@ -3661,6 +3698,7 @@ export function AssistantShell({
         workAreaNames: workAreaLists.included,
         statedCountConflictDetail: deckCountConflict?.summary ?? null,
         productivityReviewDetail,
+        openCommercialConditions,
       });
 
   const estimateReviewActionable =
@@ -4010,6 +4048,7 @@ export function AssistantShell({
                   ) : estimateView === "labour" && builderReviewView ? (
                     <LabourTakeoff
                       view={builderReviewView}
+                      decisions={conditionDecisionPanel}
                       onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
                       onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
@@ -4023,6 +4062,7 @@ export function AssistantShell({
                   ) : estimateView === "checks" && builderReviewView ? (
                     <AssumptionsChecks
                       view={builderReviewView}
+                      decisions={conditionDecisionPanel}
                       isRegenerating={updatingEstimate}
                       onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
                       onReviewWorkArea={

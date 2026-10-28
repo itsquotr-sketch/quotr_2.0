@@ -5,6 +5,7 @@
  */
 
 import { round2 } from "@/lib/estimate/facts";
+import { FLOORING_LAMINATE_SUPPLY_COMPONENT } from "@/lib/estimate/flooring-laminate";
 import {
   presentEstimateCategoryTotals,
   presentEstimateWorkAreaTotals,
@@ -1336,6 +1337,25 @@ function attachTakeoff(
   return categories;
 }
 
+const OBSOLETE_UNPRICED_WASTE =
+  /waste is stated for the new floor covering and applies to finish supply once this area can be priced/i;
+
+function savedWasteIsHistorical(input: ComposeBuilderReviewInput, row: string): boolean {
+  if (!OBSOLETE_UNPRICED_WASTE.test(row)) return false;
+  if (
+    input.estimate.assumptions.some((line) =>
+      /waste is included in the laminate supply quantity/i.test(line)
+    )
+  ) {
+    return true;
+  }
+  return input.estimate.lineItems.some(
+    (item) =>
+      item.componentKey === FLOORING_LAMINATE_SUPPLY_COMPONENT &&
+      (item.recommendedCost ?? 0) > 0
+  );
+}
+
 function normalizeIssueKey(text: string): string {
   return text
     .toLowerCase()
@@ -1487,6 +1507,18 @@ function buildIssues(
     }
     const key = normalizeIssueKey(row);
     if (!key || assumptionKeys.has(key) || checkKeys.has(key)) continue;
+    if (savedWasteIsHistorical(input, row)) {
+      assumptionKeys.add(key);
+      assumptions.push({
+        id: `historical-waste:${key}`,
+        kind: "assumption",
+        label: row,
+        detail:
+          "Saved wording from an earlier result. It is not a missing price. The laminate supply quantity already includes this waste.",
+        editSection: "details",
+      });
+      continue;
+    }
     checkKeys.add(key);
     checks.push({
       id: `missing:${key}`,

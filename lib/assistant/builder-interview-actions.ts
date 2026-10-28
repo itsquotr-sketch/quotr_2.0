@@ -22,6 +22,10 @@ import { isReservedConstraintKey } from "@/lib/scopes/domain-ownership";
 import { isNotSureValue } from "@/lib/scopes/fact-labels";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { disclosedProjectConditionForNotSure, disclosedProjectConditionValue } from "@/lib/project-conditions/consumed-authority";
+import {
+  conditionAnswerAffectsLabour,
+  explicitAssumptionFor,
+} from "@/lib/estimate/condition-basis";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
 import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
@@ -154,6 +158,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
   const projectId = parsed.data.projectId;
   const items: BuilderInterviewItemResult[] = [];
   let savedCount = 0;
+  let labourAffectingSaved = false;
   let failedCount = 0;
   let conflictCount = 0;
 
@@ -194,6 +199,33 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       continue;
     }
 
+    if (answer.kind === "assume") {
+      const explicit = explicitAssumptionFor(def.targetKey);
+      if (explicit) {
+        const assumed = await upsertProjectConstraintRecord(supabase, {
+          orgId,
+          projectId,
+          key: def.targetKey,
+          label: def.question,
+          value: explicit.value,
+          source: "assumption",
+        });
+        if (!assumed.ok) {
+          items.push({
+            questionKey: answer.questionKey,
+            status: "error",
+            message: "Could not save this answer.",
+          });
+          failedCount += 1;
+          continue;
+        }
+        items.push({ questionKey: answer.questionKey, status: "saved" });
+        savedCount += 1;
+        if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+        continue;
+      }
+    }
+
     if (answer.kind === "not_sure" || answer.kind === "assume") {
       const disclosed = disclosedProjectConditionValue(def.targetKey);
       if (!disclosed) {
@@ -217,8 +249,11 @@ export async function saveBuilderInterviewProjectAnswers(input: {
           }
           items.push({ questionKey: answer.questionKey, status: "saved" });
           savedCount += 1;
+          if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
           continue;
         }
+        // Keys without a supported explicit assumption stay unresolved.
+        // do not fake as user Constraint.
         items.push({
           questionKey: answer.questionKey,
           status: "assumption_deferred",
@@ -244,6 +279,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       }
       items.push({ questionKey: answer.questionKey, status: "saved" });
       savedCount += 1;
+      if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
       continue;
     }
 
@@ -272,6 +308,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       }
       items.push({ questionKey: answer.questionKey, status: "saved" });
       savedCount += 1;
+      if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
       continue;
     }
     const incomingValue = remapped?.value ?? answer.value;
@@ -362,6 +399,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
 
     items.push({ questionKey: answer.questionKey, status: "saved" });
     savedCount += 1;
+    if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
   }
 
   // Reload constraints + facts for one recompute
@@ -423,7 +461,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
     constraints,
   });
 
-  if (savedCount > 0) {
+  if (labourAffectingSaved) {
     await markEstimateStaleWithContext(auth, projectId);
     revalidateProjectPaths(projectId);
   }

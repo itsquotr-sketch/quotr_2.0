@@ -23,7 +23,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     condition: "material_carry_distance",
     operations: "In-house labour that moves incoming materials",
     existingRule:
-      "parseCarryDistanceCategory: short ≤10 m +0; moderate 10–30 m or unknown +0.05; long >30 m +0.10. getLabourAdjustmentParts.carryAddend.",
+      "parseCarryDistanceCategory: short ≤10 m +0; moderate 10–30 m +0.05; long >30 m +0.10. Unknown and Not sure add nothing and stay unresolved. getLabourAdjustmentParts.carryAddend.",
     ceilings: "applied via getCombinedLabourAccessFactor",
     internalWalls: "applied via getCombinedLabourAccessFactor (explains hosted hours > raw hours)",
     doors: "applied via getCombinedLabourAccessFactor",

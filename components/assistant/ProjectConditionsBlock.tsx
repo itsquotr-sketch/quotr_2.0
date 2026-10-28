@@ -21,6 +21,7 @@ import {
 import { startPreviewPerf } from "@/lib/assistant/preview-performance";
 import type { AssistantMutationResult, ConstraintRow } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
+import { explicitAssumptionFor } from "@/lib/estimate/condition-basis";
 
 export type ProjectConditionsLocalAnswer = {
   kind: "answer" | "not_sure" | "assume" | "skip";
@@ -445,7 +446,7 @@ export function ProjectConditionsBlock({
                 >
                   Not sure
                 </Button>
-                {candidate.priority !== "P0" ? (
+                {candidate.priority !== "P0" || explicitAssumptionFor(candidate.targetKey) ? (
                   <>
                     <span
                       className="hidden text-muted-foreground/50 sm:inline"
@@ -499,8 +500,9 @@ export function ProjectConditionsBlock({
               ) : null}
               {draft?.kind === "assume" ? (
                 <p className="text-xs text-muted-foreground">
-                  Using a reasonable assumption for later — not saved as a
-                  confirmed condition yet.
+                  {explicitAssumptionFor(candidate.targetKey)
+                    ? `${explicitAssumptionFor(candidate.targetKey)?.statement} will be saved as ${explicitAssumptionFor(candidate.targetKey)?.value}. ${explicitAssumptionFor(candidate.targetKey)?.effect} You can change it.`
+                    : "Using a reasonable assumption for later — not saved as a confirmed condition yet."}
                 </p>
               ) : null}
               {draft?.kind === "skip" ? (

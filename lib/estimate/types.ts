@@ -54,6 +54,7 @@ export type EstimateConstraint = {
   key: string;
   label: string;
   value: unknown;
+  source?: string | null;
 };
 
 export type EstimateContext = {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/estimate/ceilings-provisional-package";
 import { clearStaleCeilingProvisionalConfirmation } from "@/lib/pricing/ceiling-provisional-sync";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
+import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -2125,6 +2126,12 @@ export async function markPricingReviewed(
     documentOrgId: orgId,
   }).block;
   if (provisionalBlock) return { error: provisionalBlock };
+  const conditionBlock = await materialConditionQuoteBlock(
+    supabase,
+    orgId,
+    document.project_id as string
+  );
+  if (conditionBlock) return { error: conditionBlock };
 
   const { error } = await supabase
     .from("pricing_documents")
