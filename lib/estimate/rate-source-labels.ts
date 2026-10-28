@@ -66,7 +66,12 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "productivity";
   }
 
-  if (source.includes("missing rate") || source.includes("pricing required") || source === "rate missing") {
+  if (
+    source === "missing" ||
+    source.includes("missing rate") ||
+    source.includes("pricing required") ||
+    source === "rate missing"
+  ) {
     return "missing";
   }
 

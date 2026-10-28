@@ -61,6 +61,7 @@ export default async function ProjectInformationPage({
           hasEstimate={Boolean(assistant.estimate) || tabContext.hasEstimate}
           estimateIsStale={assistant.estimate?.isStale ?? tabContext.estimateIsStale}
           quantityConflictDetail={tabContext.quantityConflictDetail}
+          missingPriceLineCount={tabContext.missingPriceLineCount}
         />
       }
     >

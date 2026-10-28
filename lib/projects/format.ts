@@ -1,3 +1,7 @@
+import {
+  formatMissingPriceLines,
+  formatScopeCoverageGaps,
+} from "@/lib/assistant/presentation/estimate-issues";
 import type { ProjectPriority } from "@/lib/projects/types";
 
 export function formatProjectDate(iso: string): string {
@@ -43,9 +47,21 @@ export function formatEstimateStatus(input: {
   stage: string;
   hasEstimate: boolean;
   estimateIsStale: boolean;
+  missingPriceLineCount?: number | null;
+  scopeCoverageGapCount?: number | null;
 }): ProjectStatusDisplay {
   if (input.hasEstimate && input.estimateIsStale) {
     return { label: "Estimate outdated", variant: "warning" };
+  }
+
+  if (input.hasEstimate) {
+    const lineText =
+      (input.missingPriceLineCount ?? 0) > 0
+        ? formatMissingPriceLines(input.missingPriceLineCount ?? 0)
+        : null;
+    const gapText = formatScopeCoverageGaps(input.scopeCoverageGapCount ?? 0);
+    const label = [lineText, gapText].filter(Boolean).join(". ");
+    if (label) return { label, variant: "warning" };
   }
 
   if (input.stage === "estimate_ready" && input.hasEstimate) {

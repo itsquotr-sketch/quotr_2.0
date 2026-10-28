@@ -32,6 +32,10 @@ import {
   isBusinessStatus,
   isLifecycleArchiveFilter,
 } from "@/lib/projects/status";
+import {
+  aggregateMissingPriceLineCounts,
+  scopeGapCountFromNotices,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { getPricingSummariesForProjects } from "@/lib/pricing/actions";
 import { getQuoteSummariesForProjects } from "@/lib/quotes/actions";
 import type {
@@ -157,11 +161,19 @@ export async function listProjects(
   }
 
   const projectIds = projects.map((project) => project.id);
-  const [estimatesResult, pricingByProject, quoteByProject] = await Promise.all([
+  const [estimatesResult, missingPriceLinesResult, pricingByProject, quoteByProject] =
+    await Promise.all([
     context.supabase
       .from("estimates")
-      .select("project_id, is_stale")
+      .select("project_id, is_stale, missing_info")
       .in("project_id", projectIds),
+    context.supabase
+      .from("estimate_line_items")
+      .select("project_id, rate_source")
+      .in("project_id", projectIds)
+      .or(
+        "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
+      ),
     getPricingSummariesForProjects(projectIds),
     getQuoteSummariesForProjects(projectIds),
   ]);
@@ -169,13 +181,26 @@ export async function listProjects(
   if (estimatesResult.error) {
     console.error("[listProjects] estimates query failed:", estimatesResult.error.message);
   }
+  if (missingPriceLinesResult.error) {
+    console.error(
+      "[listProjects] missing price lines query failed:",
+      missingPriceLinesResult.error.message
+    );
+  }
 
   const estimateByProject = new Map(
     (estimatesResult.data ?? []).map((estimate) => [
       estimate.project_id,
-      { is_stale: estimate.is_stale ?? false },
+      {
+        is_stale: estimate.is_stale ?? false,
+        scope_coverage_gap_count: scopeGapCountFromNotices(estimate.missing_info),
+      },
     ])
   );
+
+  const missingPriceLineCounts = missingPriceLinesResult.error
+    ? null
+    : aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []);
 
   return projects.map((project) => {
     const estimate = estimateByProject.get(project.id);
@@ -185,6 +210,12 @@ export async function listProjects(
       estimate_is_stale: estimate?.is_stale ?? false,
       pricing_summary: pricingByProject.get(project.id) ?? null,
       quote_summary: quoteByProject.get(project.id) ?? null,
+      missing_price_line_count: missingPriceLineCounts
+        ? (missingPriceLineCounts.get(project.id) ?? 0)
+        : null,
+      scope_coverage_gap_count: estimatesResult.error
+        ? null
+        : (estimate?.scope_coverage_gap_count ?? 0),
     };
   });
 }

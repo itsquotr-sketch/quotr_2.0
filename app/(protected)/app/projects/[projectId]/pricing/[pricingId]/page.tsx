@@ -9,6 +9,7 @@ import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHe
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { measureServerLoad } from "@/lib/perf/timing";
+import { formatMissingPriceLines } from "@/lib/assistant/presentation/estimate-issues";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import {
   getPricingWorkspaceDataWithContext,
@@ -71,6 +72,10 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
   const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview } =
     pageData;
 
+  const missingPriceLineCount = data.items.filter(
+    (item) => pricingItemViewModel(item).pricingRequired
+  ).length;
+
   const pricingChangedAfterQuote =
     quoteSummaryForDoc != null &&
     new Date(data.document.updated_at).getTime() >
@@ -82,7 +87,14 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         <WorkspaceHeaderBar
           actions={<UserMenu className="hidden md:inline-flex" />}
         >
-          <ProjectWorkspaceHeader project={project} subtitle="Final pricing" />
+          <ProjectWorkspaceHeader
+            project={project}
+            subtitle={
+              missingPriceLineCount > 0
+                ? formatMissingPriceLines(missingPriceLineCount)
+                : "Final pricing"
+            }
+          />
         </WorkspaceHeaderBar>
       }
       nav={
@@ -98,9 +110,8 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
           quantityConflictDetail={tabContext.quantityConflictDetail}
-          pricingUnresolvedRequired={data.items.some(
-            (item) => pricingItemViewModel(item).pricingRequired
-          )}
+          missingPriceLineCount={missingPriceLineCount}
+          pricingUnresolvedRequired={missingPriceLineCount > 0}
         />
       }
       contentClassName="bg-muted/30"

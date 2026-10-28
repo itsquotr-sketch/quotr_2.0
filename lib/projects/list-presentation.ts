@@ -1,3 +1,7 @@
+import {
+  formatMissingPriceLines,
+  formatScopeCoverageGaps,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { formatStage } from "@/lib/projects/format";
 import type { ProjectListItem } from "@/lib/projects/types";
 
@@ -41,17 +45,43 @@ export function projectCurrentState(project: ProjectListItem): string {
     }
   }
 
+  const missingPrices = project.missing_price_line_count;
+  const scopeGaps = project.scope_coverage_gap_count;
+  const coverage = coverageState(missingPrices, scopeGaps);
   const pricing = project.pricing_summary;
   if (pricing) {
     if (pricing.needsRecalibration) return "Pricing needs another look";
-    if (pricing.status === "reviewed") return "Ready to quote";
+    if (pricing.status === "reviewed") {
+      if (coverage) return coverage;
+      if (missingPrices == null || scopeGaps == null) return "Pricing needs review";
+      return "Ready to quote";
+    }
     if (pricing.status === "converted_to_quote") return "Moved into a quote";
+    if (coverage) return `${coverage} · Pricing draft`;
     return "Pricing in draft";
   }
 
   if (project.has_estimate && project.estimate_is_stale) {
     return "Estimate out of date";
   }
+  if (project.has_estimate && coverage) return coverage;
+  if (project.has_estimate && (missingPrices == null || scopeGaps == null)) {
+    return "Estimate needs review";
+  }
   if (project.has_estimate) return "Ready to price";
   return formatStage(project.stage);
+}
+
+function coverageState(
+  missingPrices: number | null | undefined,
+  scopeGaps: number | null | undefined
+): string | null {
+  const lineText =
+    missingPrices != null && missingPrices > 0
+      ? formatMissingPriceLines(missingPrices)
+      : null;
+  const gapText =
+    scopeGaps != null && scopeGaps > 0 ? formatScopeCoverageGaps(scopeGaps) : null;
+  if (lineText && gapText) return `${lineText}. ${gapText}`;
+  return lineText ?? gapText;
 }

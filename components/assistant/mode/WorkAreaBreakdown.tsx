@@ -485,7 +485,7 @@ export function WorkAreaBreakdown({
           />
           {model.pricingRequiredCount > 0 ? (
             <Stat
-              label="Requiring prices"
+              label="Lines needing prices"
               value={String(model.pricingRequiredCount)}
             />
           ) : null}

@@ -7,6 +7,10 @@
  */
 import "server-only";
 
+import {
+  aggregateMissingPriceLineCounts,
+  scopeGapCountFromNotices,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { deriveDashboardAttention, type DashboardAttentionItem } from "@/lib/dashboard/attention";
 import {
   deriveRecentActivity,
@@ -156,6 +160,7 @@ export async function loadDashboardPageData(options: {
     schema,
     projectsResult,
     estimatesResult,
+    missingPriceLinesResult,
     pricingResult,
     quotesResult,
     readiness,
@@ -165,10 +170,17 @@ export async function loadDashboardPageData(options: {
     supabase
       .from("estimates")
       .select(
-        "id, project_id, is_stale, created_at, updated_at, generated_at"
+        "id, project_id, is_stale, missing_info, created_at, updated_at, generated_at"
       )
       .eq("org_id", orgId)
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("estimate_line_items")
+      .select("project_id, rate_source")
+      .eq("org_id", orgId)
+      .or(
+        "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
+      ),
     supabase
       .from("pricing_documents")
       .select("id, status, project_id, created_at, needs_recalibration")
@@ -194,6 +206,12 @@ export async function loadDashboardPageData(options: {
   }
   if (pricingResult.error) {
     console.error("[loadDashboardPageData] pricing", pricingResult.error.message);
+  }
+  if (missingPriceLinesResult.error) {
+    console.error(
+      "[loadDashboardPageData] missing price lines",
+      missingPriceLinesResult.error.message
+    );
   }
 
   let quoteRows = quotesResult.data;
@@ -241,7 +259,10 @@ export async function loadDashboardPageData(options: {
   const estimateByProject = new Map(
     (estimatesResult.data ?? []).map((estimate) => [
       String(estimate.project_id),
-      { is_stale: Boolean(estimate.is_stale) },
+      {
+        is_stale: Boolean(estimate.is_stale),
+        scope_coverage_gap_count: scopeGapCountFromNotices(estimate.missing_info),
+      },
     ])
   );
 
@@ -269,6 +290,10 @@ export async function loadDashboardPageData(options: {
     if (picked) quoteByProject.set(projectId, picked);
   }
 
+  const missingPriceLineCounts = missingPriceLinesResult.error
+    ? null
+    : aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []);
+
   const commercialProjects: ProjectListItem[] = allProjects.map((project) => {
     const estimate = estimateByProject.get(project.id);
     return {
@@ -277,6 +302,12 @@ export async function loadDashboardPageData(options: {
       estimate_is_stale: estimate?.is_stale ?? false,
       pricing_summary: pricingByProject.get(project.id) ?? null,
       quote_summary: quoteByProject.get(project.id) ?? null,
+      missing_price_line_count: missingPriceLineCounts
+        ? (missingPriceLineCounts.get(project.id) ?? 0)
+        : null,
+      scope_coverage_gap_count: estimatesResult.error
+        ? null
+        : (estimate?.scope_coverage_gap_count ?? 0),
     };
   });
 

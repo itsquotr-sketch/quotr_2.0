@@ -1,3 +1,7 @@
+import {
+  formatMissingPriceLines,
+  formatScopeCoverageGaps,
+} from "@/lib/assistant/presentation/estimate-issues";
 import type { ProjectListItem } from "@/lib/projects/types";
 import type { CompanySetupReadiness } from "@/lib/setup/readiness";
 
@@ -8,6 +12,15 @@ export type DashboardAttentionItem = {
   action: string;
   href: string;
 };
+
+function coverageAttention(project: ProjectListItem): string | null {
+  const lines = project.missing_price_line_count ?? 0;
+  const gaps = project.scope_coverage_gap_count ?? 0;
+  const lineText = lines > 0 ? formatMissingPriceLines(lines) : null;
+  const gapText = gaps > 0 ? formatScopeCoverageGaps(gaps) : null;
+  if (lineText && gapText) return `${lineText}. ${gapText}`;
+  return lineText ?? gapText;
+}
 
 function projectContext(project: ProjectListItem): string {
   const title = project.title?.trim() || "Project";
@@ -116,15 +129,21 @@ export function deriveDashboardAttention(input: {
   }
 
   for (const project of openProjects) {
+    const coverage = coverageAttention(project);
+    if (!coverage || project.pricing_summary || project.quote_summary) continue;
+    pushProject(project, coverage, "Prepare final pricing", `/app/projects/${project.id}`);
+  }
+
+  for (const project of openProjects) {
     const pricing = project.pricing_summary;
-    if (!pricing || pricing.status === "reviewed" || pricing.status === "converted_to_quote") {
-      continue;
-    }
+    if (!pricing || pricing.status === "converted_to_quote") continue;
+    const coverage = coverageAttention(project);
+    if (pricing.status === "reviewed" && !coverage) continue;
     pushProject(
       project,
       pricing.needsRecalibration
         ? "Pricing needs another look"
-        : "Pricing is still a draft",
+        : coverage ?? "Pricing is still a draft",
       "Review pricing",
       `/app/projects/${project.id}/pricing/${pricing.id}`
     );

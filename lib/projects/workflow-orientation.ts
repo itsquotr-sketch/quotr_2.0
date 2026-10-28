@@ -11,6 +11,10 @@
  * This module does not create Pricing, Quotes, or Variations.
  */
 
+import {
+  formatMissingPriceLines,
+  formatScopeCoverageGaps,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { PricingDocumentStatus, PricingSummary } from "@/lib/pricing/types";
 import type { QuoteStatus, QuoteSummary } from "@/lib/quotes/types";
@@ -45,6 +49,10 @@ export type ProjectWorkflowInput = {
    * still needs a price. Null when this page did not load lines.
    */
   pricingUnresolvedRequired?: boolean | null;
+  /** Missing-price lines. Not a work-area count and not a scope-coverage count. */
+  missingPriceLineCount?: number | null;
+  /** Requested tasks that have no priced or explicitly unpriced line. */
+  scopeCoverageGapCount?: number | null;
   quoteSummary: Pick<QuoteSummary, "id" | "status"> | null;
   /**
    * Eligibility already returned by the variations workspace.
@@ -176,6 +184,17 @@ function estimateStage(
       href,
     });
   }
+  const coverage = coverageDetail(input);
+  if (coverage) {
+    return stage({
+      id: "estimate",
+      viewing,
+      status: "Needs attention",
+      detail: coverage,
+      locked: false,
+      href,
+    });
+  }
   return stage({
     id: "estimate",
     viewing,
@@ -207,11 +226,12 @@ function pricingStage(
         href: null,
       });
     }
+    const coverage = coverageDetail(input);
     return stage({
       id: "pricing",
       viewing,
-      status: "Ready",
-      detail: PRICING_READY_DETAIL,
+      status: coverage ? "Needs attention" : "Ready",
+      detail: coverage ?? PRICING_READY_DETAIL,
       locked: false,
       href: null,
     });
@@ -242,9 +262,21 @@ function pricingStage(
   });
 }
 
+function coverageDetail(input: ProjectWorkflowInput): string | null {
+  const lines = input.missingPriceLineCount ?? 0;
+  const gaps = input.scopeCoverageGapCount ?? 0;
+  const lineText = lines > 0 ? `${formatMissingPriceLines(lines)}. This is not the complete job.` : null;
+  const gapText = formatScopeCoverageGaps(gaps);
+  if (lineText && gapText) return `${lineText} ${gapText}.`;
+  return lineText ?? (gapText ? `${gapText}.` : null);
+}
+
 function pricingAttention(input: ProjectWorkflowInput): string | null {
   if (input.estimateIsStale) return ESTIMATE_STALE_DETAIL;
   if (input.pricingSummary?.needsRecalibration) return PRICING_RECALIBRATE_DETAIL;
+  if ((input.missingPriceLineCount ?? 0) > 0) {
+    return `${formatMissingPriceLines(input.missingPriceLineCount ?? 0)}. Review them before creating the Quote.`;
+  }
   if (input.pricingUnresolvedRequired === true) return PRICING_UNRESOLVED_DETAIL;
   if (pricingNeedsReview(input.pricingSummary?.status)) return PRICING_REVIEW_DETAIL;
   return null;

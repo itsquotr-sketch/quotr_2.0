@@ -1,6 +1,7 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
+import { aggregateMissingPriceLineCounts } from "@/lib/assistant/presentation/estimate-issues";
 import {
   mapPricingDocument,
   mapPricingItem,
@@ -64,6 +65,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   estimateIsStale: boolean;
   quantityConflictDetail: string | null;
   pricingSummary: PricingSummary | null;
+  missingPriceLineCount: number | null;
 }> {
   const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
@@ -72,6 +74,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null,
+      missingPriceLineCount: null,
     };
   }
 
@@ -81,7 +84,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       ? Promise.resolve(options.pricingSummary ?? null)
       : getLatestPricingSummaryWithContext(auth, projectId));
 
-  const [pricingSummary, estimateResult] = await Promise.all([
+  const [pricingSummary, estimateResult, missingPriceLinesResult] = await Promise.all([
     pricingSummaryPromise,
     auth.supabase
       .from("estimates")
@@ -89,6 +92,14 @@ export async function getProjectWorkspaceTabContextWithContext(
       .eq("project_id", projectId)
       .eq("org_id", auth.orgId)
       .maybeSingle(),
+    auth.supabase
+      .from("estimate_line_items")
+      .select("project_id, rate_source")
+      .eq("project_id", projectId)
+      .eq("org_id", auth.orgId)
+      .or(
+        "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
+      ),
   ]);
 
   const quantityConflictDetail = estimateResult.data?.id
@@ -110,6 +121,10 @@ export async function getProjectWorkspaceTabContextWithContext(
     estimateIsStale: estimateResult.data?.is_stale ?? false,
     quantityConflictDetail,
     pricingSummary,
+    missingPriceLineCount: missingPriceLinesResult.error
+      ? null
+      : (aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []).get(projectId) ??
+        0),
   };
 }
 
@@ -263,6 +278,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null as PricingSummary | null,
+      missingPriceLineCount: null,
     };
   }
   return getProjectWorkspaceTabContextWithContext(auth, projectId);

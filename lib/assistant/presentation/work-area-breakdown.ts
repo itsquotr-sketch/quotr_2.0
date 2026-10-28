@@ -509,9 +509,10 @@ export function projectWorkAreaBreakdown(
   return {
     title: "Estimate by Work Area",
     workAreaCount: view.overview.workAreaCount,
-    pricingRequiredCount: cards.filter(
-      (card) => card.readiness === "Pricing Required" || card.readiness === "Partial"
-    ).length,
+    pricingRequiredCount: cards.reduce(
+      (sum, card) => sum + card.attention.length,
+      0
+    ),
     directCost: stale ? null : directKnown,
     previousDirectCost: stale ? directKnown : null,
     sell:

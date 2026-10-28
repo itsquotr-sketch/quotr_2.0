@@ -457,6 +457,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null,
+      missingPriceLineCount: null,
     };
   }
 

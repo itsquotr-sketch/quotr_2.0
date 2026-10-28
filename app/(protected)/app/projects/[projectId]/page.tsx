@@ -28,6 +28,11 @@ import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { memberCanEditProjects, memberCanRunEstimates } from "@/lib/team/permissions";
 import { parseEstimateSection } from "@/lib/assistant/presentation/estimate-section";
+import {
+  formatMissingPriceLines,
+  formatScopeCoverageGaps,
+  issuesFromEstimateRecord,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
@@ -111,6 +116,18 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
   const hasEstimate = Boolean(assistantState.estimate);
   const estimateIsStale =
     assistantState.estimate?.isStale ?? tabContext.estimateIsStale;
+  const estimateIssues = issuesFromEstimateRecord({
+    lineItems: assistantState.estimate?.lineItems,
+    notices: assistantState.estimate?.missingInfo,
+  });
+  const estimateIssueSubtitle = [
+    estimateIssues.missingPriceLineCount > 0
+      ? formatMissingPriceLines(estimateIssues.missingPriceLineCount)
+      : null,
+    formatScopeCoverageGaps(estimateIssues.scopeCoverageGapCount),
+  ]
+    .filter(Boolean)
+    .join(". ");
   const scopeDiscoveryEnabled = isScopeDiscoveryEnabled();
 
   let scopeDiscoveryInitialResults: SafeResultsRead | null = null;
@@ -134,7 +151,10 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
         <WorkspaceHeaderBar
           actions={<UserMenu className="hidden md:inline-flex" />}
         >
-          <ProjectWorkspaceHeader project={project} />
+          <ProjectWorkspaceHeader
+            project={project}
+            subtitle={estimateIssueSubtitle || null}
+          />
         </WorkspaceHeaderBar>
       }
       nav={
@@ -143,6 +163,8 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
           activeTab="assistant"
           projectContext={projectSectionContext(project)}
           quoteSummary={quoteSummary}
+          missingPriceLineCount={estimateIssues.missingPriceLineCount}
+          scopeCoverageGapCount={estimateIssues.scopeCoverageGapCount}
         />
       }
     >

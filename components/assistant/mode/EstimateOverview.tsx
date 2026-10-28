@@ -339,9 +339,21 @@ export function EstimateOverview({
       {showActionCentre ? (
       <section className="rounded-xl border border-border/60 bg-card px-4 py-4 shadow-none" data-estimate-overview-actions>
         <h2 className="text-base font-semibold leading-6 text-foreground">Review</h2>
-        {model.pricingAttentionCount > 0 ? (
-          <p className="mt-1 text-sm font-medium text-foreground">
-            {model.pricingAttentionCount} Pricing Required
+        {model.issues.missingPriceLineCount > 0 ? (
+          <p className="mt-1 text-sm font-medium text-foreground" data-estimate-issue="missing-price">
+            {model.issues.missingPriceLineCount === 1
+              ? "1 line needs a price"
+              : `${model.issues.missingPriceLineCount} lines need prices`}
+          </p>
+        ) : null}
+        {model.scopeGapSummary ? (
+          <p className="mt-1 text-sm font-medium text-foreground" data-estimate-issue="scope-gap">
+            {model.scopeGapSummary}
+          </p>
+        ) : null}
+        {model.specificationSummary ? (
+          <p className="mt-1 text-sm text-foreground/80" data-estimate-issue="specification">
+            {model.specificationSummary}
           </p>
         ) : null}
         {model.primary === "review_productivity" && productivityProgress == null ? (
@@ -352,7 +364,11 @@ export function EstimateOverview({
             </p>
           </div>
         ) : null}
-        {readyForPricing && model.pricingAttention.length === 0 && model.primary !== "review_productivity" ? (
+        {readyForPricing &&
+        model.issues.missingPriceLineCount === 0 &&
+        model.issues.scopeCoverageGapCount === 0 &&
+        model.pricingAttention.length === 0 &&
+        model.primary !== "review_productivity" ? (
           <div className="mt-3" data-estimate-overview-ready="true">
             <h3 className="text-sm font-semibold text-foreground">Estimate ready</h3>
             <p className="mt-1 text-sm leading-6 text-foreground/75">

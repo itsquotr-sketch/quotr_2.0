@@ -177,7 +177,90 @@ const pricingRequired = projectEstimateOverview(
 check("5 Pricing Required stays unresolved with no invented money", pricingRequired.status === "pricing_required" && pricingRequired.sell.presentation === "unresolved" && pricingRequired.sell.exGst == null && pricingRequired.composition.length === 0);
 check("5 Pricing Required needs attention and does not block Pricing", pricingRequired.requiredCount === 0 && pricingRequired.pricingAttentionCount === 1 && pricingRequired.pricingAttention[0]?.title === "Manufactured gate" && pricingRequired.pricingAttention[0]?.blocksPricing === false && pricingRequired.pricingAttention[0]?.money == null && pricingRequired.pricingAttention[0]?.group === "pricing_attention");
 check("5 Pricing Required does not add a new Pricing-creation block", !pricingRequired.pricingCreationBlocked && pricingRequired.pricingEntry === "create");
-check("5 missing prices stay Incomplete and name the count", pricingRequired.statusLabel === "Incomplete" && pricingRequired.statusDetail === "1 item still needs a price. Complete this in Pricing.");
+check("5 missing prices stay Incomplete and name the count", pricingRequired.statusLabel === "Incomplete" && pricingRequired.statusDetail === "1 line still needs a price. Complete this in Pricing.");
+
+const unpricedRateLabel = projectEstimateOverview(
+  input({
+    review: review({
+      overview: {
+        workAreaNames: ["Internal walls", "Doors"],
+        partialEstimateLabel: null,
+        recommendedSellIsPartial: true,
+      },
+      workAreas: [
+        {
+          workAreaName: "Internal walls",
+          partialEstimateLabel: null,
+          categories: [
+            {
+              id: "LABOUR",
+              lineGroups: [
+                {
+                  id: "opening",
+                  label: "Wall Type 1 — opening labour",
+                  children: [
+                    {
+                      id: "opening-labour",
+                      label: "Wall Type 1 — opening labour",
+                      rateLabel: "Pricing Required",
+                    },
+                  ],
+                },
+                {
+                  id: "insulation",
+                  label: "Wall Type 1 — insulation labour",
+                  children: [
+                    {
+                      id: "insulation-labour",
+                      label: "Wall Type 1 — insulation labour",
+                      rateLabel: "Pricing Required",
+                    },
+                  ],
+                },
+              ],
+              lines: [],
+            },
+          ],
+        },
+        {
+          workAreaName: "Doors",
+          partialEstimateLabel: null,
+          categories: [
+            {
+              id: "LABOUR",
+              lineGroups: [
+                {
+                  id: "door-install",
+                  label: "Door installation",
+                  children: [
+                    {
+                      id: "door-labour",
+                      label: "Door installation",
+                      rateLabel: "Company rate",
+                    },
+                  ],
+                },
+              ],
+              lines: [],
+            },
+          ],
+        },
+      ],
+    }),
+  })
+);
+check(
+  "5 a Pricing Required rate label is counted when the group flag is unset",
+  unpricedRateLabel.pricingAttentionCount === 2 &&
+    unpricedRateLabel.statusDetail === "2 lines still need prices. Complete these in Pricing." &&
+    unpricedRateLabel.workAreas.summaryLine === "2 Work Areas · 2 lines need prices in 1 Work Area" &&
+    unpricedRateLabel.issues.missingPriceLineCount === 2 &&
+    unpricedRateLabel.issues.workAreasWithMissingPrices === 1 &&
+    unpricedRateLabel.workAreas.rows.find((row) => row.name === "Internal walls")?.note === "Pricing Required" &&
+    unpricedRateLabel.workAreas.rows.find((row) => row.name === "Doors")?.note == null &&
+    unpricedRateLabel.sell.presentation === "partial" &&
+    unpricedRateLabel.primary === "continue_pricing"
+);
 
 const knownBesideMissing = projectEstimateOverview(
   input({
@@ -332,8 +415,62 @@ check("12 one primary action slot", (componentSource.match(/data-estimate-overvi
 check("13 no client-document impact", !/client_description|PublicQuote|quote-document|notes_to_client/.test(overviewSource + componentSource) && !shellSource.includes("sanitizeClientQuoteDescription"));
 
 const workAreas = projectEstimateOverview(input({}));
-check("work areas list names and do not invent a confidence score", workAreas.workAreas.count === 2 && workAreas.workAreas.names.join(",") === "Deck,Fence" && workAreas.workAreas.missingPricingCount === 0 && workAreas.workAreas.summaryLine === "2 Work Areas · All priced" && !/confidence/i.test(JSON.stringify(workAreas.workAreas)));
-check("Pricing Required work area is counted without a dollar amount", pricingRequired.workAreas.missingPricingCount === 1 && pricingRequired.workAreas.summaryLine === "1 Work Area · 1 needs a price" && pricingRequired.workAreas.rows[0]?.note === "Pricing Required");
+check("work areas list names and do not invent a confidence score", workAreas.workAreas.count === 2 && workAreas.workAreas.names.join(",") === "Deck,Fence" && workAreas.workAreas.missingPricingCount === 0 && workAreas.workAreas.summaryLine === "2 Work Areas · All priced lines" && !/confidence/i.test(JSON.stringify(workAreas.workAreas)));
+check("Pricing Required work area is counted without a dollar amount", pricingRequired.workAreas.missingPricingCount === 1 && pricingRequired.workAreas.summaryLine === "1 Work Area · 1 line needs a price" && pricingRequired.workAreas.rows[0]?.note === "Pricing Required");
+
+const groupedOnce = projectEstimateOverview(
+  input({
+    review: review({
+      overview: { workAreaNames: ["Internal walls"] },
+      workAreas: [
+        {
+          workAreaName: "Internal walls",
+          categories: [
+            {
+              id: "LABOUR",
+              lineGroups: [
+                {
+                  id: "opening",
+                  label: "Wall Type 1 — opening labour",
+                  pricingRequired: true,
+                  children: [
+                    {
+                      id: "opening-labour",
+                      label: "Wall Type 1 — opening labour",
+                      rateLabel: "Pricing Required",
+                    },
+                  ],
+                },
+              ],
+              lines: [],
+            },
+          ],
+        },
+      ],
+    }),
+  })
+);
+check(
+  "a flagged group is not counted again through its line",
+  groupedOnce.issues.missingPriceLineCount === 1 &&
+    groupedOnce.pricingAttentionCount === 1
+);
+
+const liningGap = projectEstimateOverview(
+  input({
+    review: review({
+      checks: [{ id: "lining", label: "Add a lining product for this face." }],
+    }),
+  })
+);
+check(
+  "a requested task with no line is not called a missing price",
+  liningGap.issues.scopeCoverageGapCount === 1 &&
+    liningGap.issues.missingPriceLineCount === 0 &&
+    liningGap.scopeGapSummary === "1 requested task has no line" &&
+    liningGap.statusLabel === "Incomplete" &&
+    liningGap.sell.presentation === "partial"
+);
 
 const linkSource = read("components/pricing/PrepareFinalPricingButton.tsx");
 check("R1 no duplicate commercial summary on the Estimate page", !componentSource.includes("Commercial Overview") && shellSource.includes('estimateReadySidebarPolicy(assistantMode).singleColumn && "grid-cols-1"') && !/estimate_ready"\s*&&\s*\n\s*"lg:grid-cols-\[minmax\(0,1fr\)_380px\]"/.test(shellSource) && shellSource.includes('assistantMode === "planning" ? (') && shellSource.includes("compactCommercialSidebar={false}"));

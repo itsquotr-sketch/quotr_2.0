@@ -18,7 +18,11 @@ export function getProjectNextAction(project: ProjectListItem): string {
   }
 
   if (project.pricing_summary) {
-    if (project.pricing_summary.status !== "reviewed") {
+    if (
+      (project.missing_price_line_count ?? 0) > 0 ||
+      (project.scope_coverage_gap_count ?? 0) > 0 ||
+      project.pricing_summary.status !== "reviewed"
+    ) {
       return "Review pricing";
     }
     return "Create quote";
