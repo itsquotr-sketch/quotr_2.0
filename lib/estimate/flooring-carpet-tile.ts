@@ -54,6 +54,14 @@ export const FLOORING_CARPET_TILE_INSTALL_COMPONENT =
   "flooring.carpet_tile.straight.install" as const;
 export const FLOORING_CARPET_TILE_GAP_COMPONENT =
   "flooring.carpet_tile.unresolved" as const;
+export const FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT =
+  "flooring.carpet_tile.preparation_unresolved" as const;
+
+export const CARPET_TILE_FINISH_WITHHELD_FOR_PREPARATION =
+  "Straight-lay carpet tiles are requested. They are not priced while the substrate still needs preparation. Existing flooring removal is not a ready substrate." as const;
+
+export const CARPET_TILE_PREPARATION_GAP =
+  "Floor preparation is requested and is not priced. This recipe does not turn removal of the existing floor into substrate readiness, and it does not invent a preparation rate." as const;
 
 export const CARPET_TILE_PATTERN_PROPOSAL =
   "The brief does not state the laying pattern. Proposed assumption: straight lay of ordinary modular carpet tiles. Confirm that assumption or record another pattern. This is not stored as something the brief said." as const;
@@ -405,15 +413,17 @@ export type CarpetTileAssemblyPlan =
 function gapLine(
   owner: string,
   netM2: number,
-  specification: string
+  specification: string,
+  description = `${owner} · carpet tiles`,
+  componentKey: string = FLOORING_CARPET_TILE_GAP_COMPONENT
 ): CarpetTileLinePlan {
   return {
     role: "gap",
-    componentKey: FLOORING_CARPET_TILE_GAP_COMPONENT,
+    componentKey,
     materialKey: null,
     quantity: netM2,
     unit: "m2",
-    description: `${owner} · carpet tiles`,
+    description,
     specification,
     customerSupplied: false,
     wasteUnresolved: true,
@@ -438,17 +448,29 @@ export function planCarpetTileAssembly(params: {
       ],
     };
   }
-  if (
-    portion.carpet_tile_substrate === "preparation" ||
-    portion.carpet_tile_substrate === "other"
-  ) {
+  if (portion.carpet_tile_substrate === "preparation") {
+    return {
+      status: "unsupported",
+      lines: [
+        gapLine(owner, netM2, CARPET_TILE_FINISH_WITHHELD_FOR_PREPARATION),
+        gapLine(
+          owner,
+          netM2,
+          CARPET_TILE_PREPARATION_GAP,
+          `${owner} · floor preparation`,
+          FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT
+        ),
+      ],
+    };
+  }
+  if (portion.carpet_tile_substrate === "other") {
     return {
       status: "unsupported",
       lines: [
         gapLine(
           owner,
           netM2,
-          "The substrate is not confirmed ready. Preparation outside this recipe stays visible and unpriced. Carpet tiles are not priced as if the substrate were ready."
+          "The substrate is outside a ready substrate or a requested preparation. Carpet tiles are not priced as if the substrate were ready."
         ),
       ],
     };

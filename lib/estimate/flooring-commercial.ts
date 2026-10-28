@@ -37,7 +37,9 @@ import {
 } from "@/lib/estimate/flooring-laminate";
 import {
   FLOORING_CARPET_TILE_FIXING_COMPONENT,
+  FLOORING_CARPET_TILE_GAP_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_COMPONENT,
+  FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
   FLOORING_CARPET_TILE_PACKAGE_M2,
   FLOORING_CARPET_TILE_SUPPLY_COMPONENT,
@@ -1013,7 +1015,9 @@ function materialOrAllowanceLine(params: {
               params.requirement.componentKey === FLOORING_LAMINATE_UNDERLAY_COMPONENT ||
               params.requirement.componentKey === FLOORING_LAMINATE_MOISTURE_COMPONENT ||
               params.requirement.componentKey === FLOORING_CARPET_TILE_SUPPLY_COMPONENT ||
-              params.requirement.componentKey === FLOORING_CARPET_TILE_FIXING_COMPONENT
+              params.requirement.componentKey === FLOORING_CARPET_TILE_FIXING_COMPONENT ||
+              params.requirement.componentKey === FLOORING_CARPET_TILE_GAP_COMPONENT ||
+              params.requirement.componentKey === FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT
             ? params.requirement.specification ||
               `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`
             : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT

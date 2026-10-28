@@ -403,6 +403,44 @@ check(
   unresolved.lineItems.map((row) => ({ key: row.componentKey, sell: row.recommendedSell }))
 );
 
+const needsPreparation = pricePortion(
+  { ...answered!, carpet_tile_substrate: "preparation" },
+  companyRates
+);
+const preparationPricing = needsPreparation.lineItems.map((item) =>
+  calculateAuthoritativeFieldsFromEstimateLine({
+    category: item.category,
+    recommended_cost: item.recommendedCost ?? null,
+    recommended_sell: item.recommendedSell ?? null,
+    notes: buildLineItemNotes(item),
+  })
+);
+check(
+  "needs preparation keeps the finish and the preparation as separate unpriced gaps",
+  needsPreparation.lineItems.some((item) => item.label.includes("carpet tiles")) &&
+    needsPreparation.lineItems.some((item) => item.label.includes("floor preparation")) &&
+    !needsPreparation.lineItems.some(
+      (item) => item.componentKey === "flooring.carpet_tile.straight.supply"
+    ) &&
+    !needsPreparation.lineItems.some(
+      (item) => item.componentKey === "flooring.carpet_tile.fixing"
+    ) &&
+    !needsPreparation.lineItems.some(
+      (item) => item.componentKey === "flooring.carpet_tile.straight.install"
+    ) &&
+    money(needsPreparation.lineItems, "recommendedSell") === 0 &&
+    needsPreparation.missingInfo.some((row) => row.includes("carpet tiles")) &&
+    needsPreparation.missingInfo.some((row) => row.includes("floor preparation")) &&
+    preparationPricing.every(
+      (row) => !row.ok || (row.fields.totalSell ?? 0) === 0
+    ),
+  needsPreparation.lineItems.map((item) => ({
+    label: item.label,
+    key: item.componentKey,
+    sell: item.recommendedSell,
+  }))
+);
+
 const priced = pricePortion(answered!, companyRates);
 const supply = line(priced.lineItems, "flooring.carpet_tile.straight.supply");
 const fixing = line(priced.lineItems, "flooring.carpet_tile.fixing");
