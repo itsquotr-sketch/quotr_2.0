@@ -74,7 +74,7 @@ export function resolveFlooringSubcontractRate(params: {
   organisationSettings?: OrganisationSettings | null;
 }): FlooringSubcontractRateResolution {
   const { itemKey } = params;
-  if (itemKey === "flooring.laminate.click_lock.supply_install.m2") {
+  if (itemKey === "flooring.laminate.click_lock.supply_install.m2" || itemKey === "flooring.carpet_tile.straight.supply_install.m2") {
     const exactCompany = (params.rates ?? []).find(
       (rate) =>
         rate.active &&

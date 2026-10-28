@@ -359,7 +359,7 @@ check(
     carpetTiles.portions.some(
       (row) =>
         row.finish === "other" &&
-        row.specialist === "other_unsupported" &&
+        row.specialist === "carpet_tile" &&
         row.area === 18 &&
         row.label === "Meeting room"
     ) &&
@@ -368,12 +368,13 @@ check(
   JSON.stringify(carpetTiles.portions)
 );
 check(
-  "the carpet catalogue row is broadloom supply and install, not carpet tiles",
+  "carpet tile rates have no benchmark and are not the broadloom package",
   FLOORING_SUBCONTRACT_RATE_CATALOGUE.some(
     (row) => row.item_key.includes("carpet") && !row.item_key.includes("tile")
   ) &&
-    !FLOORING_SPECIFIC_MATERIAL_CATALOGUE.some((row) =>
-      row.item_key.toLowerCase().includes("carpet_tile")
+    FLOORING_SPECIFIC_MATERIAL_CATALOGUE.some(
+      (row) =>
+        row.item_key.startsWith("flooring.carpet_tile.") && row.defaultCostRate == null
     ) &&
     !catalogueHas("flooring.carpet_tile.m2")
 );

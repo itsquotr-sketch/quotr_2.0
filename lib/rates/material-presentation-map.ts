@@ -1293,7 +1293,14 @@ export function classifyMaterialPresentation(
     key === "flooring.laminate.underlay.m2" ||
     key === "flooring.laminate.underlay.roll" ||
     key === "flooring.laminate.moisture_barrier.m2" ||
-    key === "flooring.laminate.moisture_barrier.roll"
+    key === "flooring.laminate.moisture_barrier.roll" ||
+    key === "flooring.carpet_tile.straight.supply.m2" ||
+    key === "flooring.carpet_tile.straight.supply.box" ||
+    key === "flooring.carpet_tile.straight.supply.tile" ||
+    key === "flooring.carpet_tile.adhesive.m2" ||
+    key === "flooring.carpet_tile.adhesive.unit" ||
+    key === "flooring.carpet_tile.tackifier.m2" ||
+    key === "flooring.carpet_tile.tackifier.unit"
   ) {
     return base({
       categoryId: "flooring",

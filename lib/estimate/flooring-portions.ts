@@ -35,6 +35,15 @@
 
 import { getFact } from "@/lib/estimate/facts";
 import {
+  parseCarpetTileCoverage,
+  parseCarpetTileFixing,
+  parseCarpetTileKnown,
+  parseCarpetTilePattern,
+  parseCarpetTileSubstrate,
+  parseCarpetTileWasteDecision,
+  CARPET_TILE_PROPOSED_WASTE_PERCENT,
+} from "@/lib/estimate/flooring-carpet-tile";
+import {
   parseLaminateMethod,
   parseLaminateMoisture,
   parseLaminatePackageCoverage,
@@ -162,6 +171,7 @@ export const FLOORING_SPECIALIST_KIND_VALUES = [
   "waterproofing",
   "structural",
   "other_unsupported",
+  "carpet_tile",
 ] as const;
 export type FlooringSpecialistKind =
   (typeof FLOORING_SPECIALIST_KIND_VALUES)[number];
@@ -227,6 +237,26 @@ export type FlooringPortion = {
   laminate_pack_coverage_m2?: number | null;
   laminate_underlay_coverage_m2?: number | null;
   laminate_moisture_coverage_m2?: number | null;
+  /**
+   * Carpet tiles. Straight lay on a ready substrate is the priced assembly.
+   * An unstated pattern or waste allowance stays unanswered. It is not stored
+   * as something the brief said, and unanswered waste is not zero.
+   */
+  carpet_tile_pattern?: "straight" | "other" | null;
+  carpet_tile_pattern_authority?: FlooringFieldAuthority;
+  carpet_tile_substrate?: "ready" | "preparation" | "other" | null;
+  carpet_tile_substrate_authority?: FlooringFieldAuthority;
+  carpet_tile_fixing?: "adhesive" | "tackifier" | "none" | "other" | null;
+  carpet_tile_fixing_authority?: FlooringFieldAuthority;
+  carpet_tile_waste?: "stated" | "zero" | "proposed" | "custom" | null;
+  carpet_tile_waste_authority?: FlooringFieldAuthority;
+  carpet_tile_size?: "known" | "unknown" | null;
+  carpet_tile_box?: "known" | "unknown" | null;
+  carpet_tile_box_coverage_m2?: number | null;
+  carpet_tile_tiles_per_box?: number | null;
+  carpet_tile_fixing_coverage_m2?: number | null;
+  carpet_tile_package_covers_fixing?: "included" | "separate" | null;
+  carpet_tile_disposal_requested?: boolean | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
@@ -564,6 +594,7 @@ export function parseFlooringSpecialistKind(
   if (direct) return direct;
   if (typeof value !== "string") return null;
   const normalised = normalisedText(value);
+  if (normalised.includes("carpet tile")) return "carpet_tile";
   if (normalised.includes("laminate")) return "laminate";
   if (normalised.includes("engineered")) return "engineered_timber";
   if (normalised.includes("sheet vinyl")) return "sheet_vinyl";
@@ -910,6 +941,39 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       value.laminate_moisture_coverage_m2 > 0
         ? value.laminate_moisture_coverage_m2
         : null,
+    carpet_tile_pattern: parseCarpetTilePattern(value.carpet_tile_pattern),
+    carpet_tile_pattern_authority: parseFieldAuthority(value.carpet_tile_pattern_authority),
+    carpet_tile_substrate: parseCarpetTileSubstrate(value.carpet_tile_substrate),
+    carpet_tile_substrate_authority: parseFieldAuthority(
+      value.carpet_tile_substrate_authority
+    ),
+    carpet_tile_fixing: parseCarpetTileFixing(value.carpet_tile_fixing),
+    carpet_tile_fixing_authority: parseFieldAuthority(value.carpet_tile_fixing_authority),
+    carpet_tile_waste: parseCarpetTileWasteDecision(value.carpet_tile_waste),
+    carpet_tile_waste_authority: parseFieldAuthority(value.carpet_tile_waste_authority),
+    carpet_tile_size: parseCarpetTileKnown(value.carpet_tile_size),
+    carpet_tile_box: parseCarpetTileKnown(value.carpet_tile_box),
+    carpet_tile_box_coverage_m2:
+      typeof value.carpet_tile_box_coverage_m2 === "number" &&
+      value.carpet_tile_box_coverage_m2 > 0
+        ? value.carpet_tile_box_coverage_m2
+        : null,
+    carpet_tile_tiles_per_box:
+      typeof value.carpet_tile_tiles_per_box === "number" &&
+      value.carpet_tile_tiles_per_box > 0
+        ? value.carpet_tile_tiles_per_box
+        : null,
+    carpet_tile_fixing_coverage_m2:
+      typeof value.carpet_tile_fixing_coverage_m2 === "number" &&
+      value.carpet_tile_fixing_coverage_m2 > 0
+        ? value.carpet_tile_fixing_coverage_m2
+        : null,
+    carpet_tile_package_covers_fixing: parseCarpetTileCoverage(
+      value.carpet_tile_package_covers_fixing
+    ),
+    ...(value.carpet_tile_disposal_requested === true
+      ? { carpet_tile_disposal_requested: true as const }
+      : {}),
     transitions_required: parseTriBool(value.transitions_required),
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
@@ -1062,6 +1126,16 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.laminate_moisture",
   "flooring.portion.laminate_package_covers_underlay",
   "flooring.portion.laminate_package_covers_moisture",
+  "flooring.portion.carpet_tile_pattern",
+  "flooring.portion.carpet_tile_substrate",
+  "flooring.portion.carpet_tile_waste",
+  "flooring.portion.carpet_tile_waste_percent",
+  "flooring.portion.carpet_tile_size",
+  "flooring.portion.carpet_tile_box",
+  "flooring.portion.carpet_tile_box_coverage_m2",
+  "flooring.portion.carpet_tile_fixing",
+  "flooring.portion.carpet_tile_supply",
+  "flooring.portion.carpet_tile_package_covers_fixing",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1266,6 +1340,10 @@ const FLOORING_USER_AUTHORITY_FIELDS = [
   "laminate_method_authority",
   "laminate_substrate_authority",
   "laminate_moisture_authority",
+  "carpet_tile_pattern_authority",
+  "carpet_tile_substrate_authority",
+  "carpet_tile_fixing_authority",
+  "carpet_tile_waste_authority",
 ] as const;
 
 export function flooringPortionHasUserAuthority(
@@ -1344,6 +1422,29 @@ export function overlayUserAuthoritativeFlooringPortion(
   }
   if (persisted.laminate_moisture_coverage_m2 != null) {
     next.laminate_moisture_coverage_m2 = persisted.laminate_moisture_coverage_m2;
+  }
+  overlayUserField(next, persisted, "carpet_tile_pattern", "carpet_tile_pattern_authority");
+  overlayUserField(next, persisted, "carpet_tile_substrate", "carpet_tile_substrate_authority");
+  overlayUserField(next, persisted, "carpet_tile_fixing", "carpet_tile_fixing_authority");
+  overlayUserField(next, persisted, "carpet_tile_waste", "carpet_tile_waste_authority");
+  if (persisted.carpet_tile_pattern_authority === "extracted" && persisted.carpet_tile_pattern) {
+    next.carpet_tile_pattern = persisted.carpet_tile_pattern;
+    next.carpet_tile_pattern_authority = "extracted";
+  }
+  if (persisted.carpet_tile_waste != null) next.carpet_tile_waste = persisted.carpet_tile_waste;
+  if (persisted.carpet_tile_size != null) next.carpet_tile_size = persisted.carpet_tile_size;
+  if (persisted.carpet_tile_box != null) next.carpet_tile_box = persisted.carpet_tile_box;
+  if (persisted.carpet_tile_box_coverage_m2 != null) {
+    next.carpet_tile_box_coverage_m2 = persisted.carpet_tile_box_coverage_m2;
+  }
+  if (persisted.carpet_tile_tiles_per_box != null) {
+    next.carpet_tile_tiles_per_box = persisted.carpet_tile_tiles_per_box;
+  }
+  if (persisted.carpet_tile_package_covers_fixing != null) {
+    next.carpet_tile_package_covers_fixing = persisted.carpet_tile_package_covers_fixing;
+  }
+  if (persisted.finish_supplied_by != null) {
+    next.finish_supplied_by = persisted.finish_supplied_by;
   }
   overlayUserField(next, persisted, "tile_width_mm", "tile_width_authority");
   overlayUserField(next, persisted, "tile_length_mm", "tile_length_authority");
@@ -1605,6 +1706,59 @@ function applyPortionField(
   }
   if (field === "laminate_package_covers_moisture") {
     portion.laminate_package_covers_moisture = parseLaminatePackageCoverage(value);
+    return;
+  }
+  if (field === "carpet_tile_pattern") {
+    portion.carpet_tile_pattern = parseCarpetTilePattern(value);
+    portion.carpet_tile_pattern_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_substrate") {
+    portion.carpet_tile_substrate = parseCarpetTileSubstrate(value);
+    portion.carpet_tile_substrate_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_fixing") {
+    portion.carpet_tile_fixing = parseCarpetTileFixing(value);
+    portion.carpet_tile_fixing_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_waste") {
+    const decision = parseCarpetTileWasteDecision(value);
+    portion.carpet_tile_waste = decision;
+    portion.carpet_tile_waste_authority =
+      decision === "proposed" ? "assumed_disclosed" : "user";
+    if (decision === "proposed") portion.waste_percent = CARPET_TILE_PROPOSED_WASTE_PERCENT;
+    if (decision === "zero") portion.waste_percent = null;
+    return;
+  }
+  if (field === "carpet_tile_waste_percent") {
+    portion.waste_percent = parseFlooringPositiveMeasure(value);
+    portion.carpet_tile_waste = "custom";
+    portion.carpet_tile_waste_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_size") {
+    portion.carpet_tile_size = parseCarpetTileKnown(value);
+    return;
+  }
+  if (field === "carpet_tile_box") {
+    portion.carpet_tile_box = parseCarpetTileKnown(value);
+    return;
+  }
+  if (field === "carpet_tile_box_coverage_m2") {
+    portion.carpet_tile_box_coverage_m2 = parseFlooringPositiveMeasure(value);
+    portion.carpet_tile_box = "known";
+    return;
+  }
+  if (field === "carpet_tile_supply") {
+    const text = typeof value === "string" ? value.toLowerCase() : "";
+    portion.finish_supplied_by = text.includes("customer") ? "customer" : "contractor";
+    if (portion.finish_supplied_by === "customer") portion.finish_pricing = "separate_supply";
+    return;
+  }
+  if (field === "carpet_tile_package_covers_fixing") {
+    portion.carpet_tile_package_covers_fixing = parseCarpetTileCoverage(value);
     return;
   }
   if (field === "tile_width_mm") {

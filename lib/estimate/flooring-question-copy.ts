@@ -15,6 +15,10 @@ import {
   LAMINATE_MOISTURE_QUESTION,
 } from "@/lib/estimate/flooring-laminate";
 import {
+  CARPET_TILE_PATTERN_PROPOSAL,
+  CARPET_TILE_WASTE_PROPOSAL,
+} from "@/lib/estimate/flooring-carpet-tile";
+import {
   flooringAreaConflictCopy,
   flooringAreaMeasuresDisagree,
   type FlooringPortion,
@@ -144,6 +148,24 @@ const QUESTIONS: Record<string, string> = {
     "Does the saved package rate cover the underlay? The rate itself does not answer this.",
   "flooring.portion.laminate_package_covers_moisture":
     "Does the saved package rate cover the separate moisture barrier? The rate itself does not answer this.",
+  "flooring.portion.carpet_tile_pattern": CARPET_TILE_PATTERN_PROPOSAL,
+  "flooring.portion.carpet_tile_substrate":
+    "Is the substrate ready for straight-lay carpet tiles? Existing flooring already being removed is not a ready answer.",
+  "flooring.portion.carpet_tile_waste": CARPET_TILE_WASTE_PROPOSAL,
+  "flooring.portion.carpet_tile_waste_percent":
+    "What supply allowance percentage should be used? It applies to carpet tile supply only, not to installation hours.",
+  "flooring.portion.carpet_tile_size":
+    "Are the carpet tile dimensions known? Unknown does not invent a tile count.",
+  "flooring.portion.carpet_tile_box":
+    "Is the box coverage or tile count per box known? Unknown does not invent a box quantity.",
+  "flooring.portion.carpet_tile_box_coverage_m2":
+    "What area does one box cover?",
+  "flooring.portion.carpet_tile_fixing":
+    "Which fixing system applies? Carpet underlay is not added.",
+  "flooring.portion.carpet_tile_supply":
+    "Who supplies the carpet tiles?",
+  "flooring.portion.carpet_tile_package_covers_fixing":
+    "Does the saved package rate cover the fixing material? The rate itself does not answer this.",
   "flooring.portion.substrate_required": "Is new floor substrate required?",
   "flooring.portion.substrate_family": "What substrate material is required?",
   "flooring.portion.substrate_item_key": "Which substrate product is required?",
@@ -177,6 +199,16 @@ const LABELS: Record<string, string> = {
   "flooring.portion.laminate_moisture": "Moisture control",
   "flooring.portion.laminate_package_covers_underlay": "Package underlay",
   "flooring.portion.laminate_package_covers_moisture": "Package moisture barrier",
+  "flooring.portion.carpet_tile_pattern": "Carpet tile pattern",
+  "flooring.portion.carpet_tile_substrate": "Carpet tile substrate",
+  "flooring.portion.carpet_tile_waste": "Carpet tile supply allowance",
+  "flooring.portion.carpet_tile_waste_percent": "Supply allowance percent",
+  "flooring.portion.carpet_tile_size": "Carpet tile size",
+  "flooring.portion.carpet_tile_box": "Carpet tile boxes",
+  "flooring.portion.carpet_tile_box_coverage_m2": "Box coverage",
+  "flooring.portion.carpet_tile_fixing": "Carpet tile fixing",
+  "flooring.portion.carpet_tile_supply": "Carpet tile supply",
+  "flooring.portion.carpet_tile_package_covers_fixing": "Package fixing",
   "flooring.portion.substrate_required": "New substrate",
   "flooring.portion.substrate_family": "Substrate material",
   "flooring.portion.substrate_item_key": "Substrate product",
@@ -297,6 +329,39 @@ export function flooringQuestionOptions(
       "Charge the moisture barrier separately",
     ];
   }
+  if (factKey === "flooring.portion.carpet_tile_pattern") {
+    return ["Straight lay", "Another pattern"];
+  }
+  if (factKey === "flooring.portion.carpet_tile_substrate") {
+    return ["Ready substrate", "Needs preparation", "Other substrate"];
+  }
+  if (factKey === "flooring.portion.carpet_tile_waste") {
+    return [
+      "Use proposed 5% supply allowance",
+      "No waste",
+      "Enter a percentage",
+    ];
+  }
+  if (factKey === "flooring.portion.carpet_tile_size") {
+    return ["Size unknown", "Size is known"];
+  }
+  if (factKey === "flooring.portion.carpet_tile_box") {
+    return ["Box coverage unknown", "Box coverage is known"];
+  }
+  if (factKey === "flooring.portion.carpet_tile_fixing") {
+    return [
+      "Pressure-sensitive adhesive",
+      "Tackifier",
+      "No fixing material",
+      "Another fixing system",
+    ];
+  }
+  if (factKey === "flooring.portion.carpet_tile_supply") {
+    return ["Company supplies the tiles", "Customer supplies the tiles"];
+  }
+  if (factKey === "flooring.portion.carpet_tile_package_covers_fixing") {
+    return ["Package rate covers the fixing", "Charge the fixing separately"];
+  }
   if (factKey === "flooring.portion.finish_pricing") {
     return [
       "Combined supply and installation package",
@@ -387,7 +452,9 @@ export function flooringQuestionInputType(
     factKey === "flooring.portion.width_m" ||
     factKey === "flooring.portion.tile_width_mm" ||
     factKey === "flooring.portion.tile_length_mm" ||
-    factKey === "flooring.portion.hardwood_board_width_mm"
+    factKey === "flooring.portion.hardwood_board_width_mm" ||
+    factKey === "flooring.portion.carpet_tile_waste_percent" ||
+    factKey === "flooring.portion.carpet_tile_box_coverage_m2"
   ) {
     return "number";
   }

@@ -53,11 +53,7 @@ import {
   wallTypeFieldCurrentValue,
 } from "../lib/estimate/internal-walls-wall-types";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
-import {
-  commercializeFlooring,
-  flooringLineIsManualPricingEligible,
-} from "../lib/estimate/flooring-commercial";
-import { FLOORING_SPECIALIST_COMPONENT } from "../lib/estimate/flooring-identities";
+import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { buildNestedFlooringQuoteDraft } from "../lib/estimate/flooring-quote";
 import {
@@ -219,12 +215,12 @@ check(
 check(
   "carpet tiles are recognised and not priced or marked complete",
   officeFloor.length === 1 &&
-    officeFloor[0]?.specialist_kind === "other_unsupported" &&
+    officeFloor[0]?.specialist_kind === "carpet_tile" &&
     officeFloor[0]?.other_description === "carpet tiles" &&
     officeFloor[0]?.finish_type === "other" &&
     officeFloor[0]?.label === "Meeting room" &&
     officeFloor[0]?.area_m2 === 18 &&
-    officePhysical.completeness === "UNSUPPORTED_SPECIALIST" &&
+    officePhysical.completeness === "INFORMATION_REQUIRED" &&
     officePriced === 0 &&
     officeSell === 0,
   JSON.stringify({
@@ -616,7 +612,9 @@ check(
 );
 
 const tileLines = officeCommercial.lineItems.filter(
-  (row) => row.componentKey === FLOORING_SPECIALIST_COMPONENT
+  (row) =>
+    row.componentKey === "flooring.carpet_tile.straight.supply" ||
+    row.componentKey === "flooring.carpet_tile.straight.install"
 );
 const tileQuote = buildNestedFlooringQuoteDraft(
   [{ key: FLOORING_PORTIONS_FACT_KEY, value: JSON.stringify(officeFloor) }],
@@ -629,21 +627,18 @@ const tileQuote = buildNestedFlooringQuoteDraft(
   }))
 );
 check(
-  "unsupported carpet tiles stay visible as unpriced supply and installation",
+  "unanswered carpet tiles stay visible as unpriced supply and installation",
   tileLines.length === 2 &&
-    tileLines.every(
-      (row) =>
-        (row.recommendedSell ?? 0) === 0 && flooringLineIsManualPricingEligible(row)
-    ) &&
+    tileLines.every((row) => (row.recommendedSell ?? 0) === 0) &&
     officeCommercial.requirements.some(
       (row) => row.kind === "material" && row.priced === false
     ) &&
     officeCommercial.requirements.some(
       (row) => row.kind === "labour" && row.priced === false
     ) &&
-    officeCommercial.missingInfo.includes(FLOORING_SPECIALIST_RECIPE_MESSAGE) &&
-    tileQuote.includes("18 m²") &&
-    tileQuote.includes("No recipe rate is applied.")
+    !officeCommercial.missingInfo.includes(FLOORING_SPECIALIST_RECIPE_MESSAGE) &&
+    officeCommercial.missingInfo.some((row) => /carpet tile/i.test(row)) &&
+    tileQuote.includes("18")
 );
 
 const derived = reanalysisFactWrite({

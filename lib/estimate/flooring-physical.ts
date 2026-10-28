@@ -14,6 +14,14 @@ import {
   planLaminateAssembly,
 } from "@/lib/estimate/flooring-laminate";
 import {
+  FLOORING_CARPET_TILE_FIXING_COMPONENT,
+  FLOORING_CARPET_TILE_INSTALL_COMPONENT,
+  FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
+  FLOORING_CARPET_TILE_PACKAGE_M2,
+  FLOORING_CARPET_TILE_SUPPLY_COMPONENT,
+  planCarpetTileAssembly,
+} from "@/lib/estimate/flooring-carpet-tile";
+import {
   FLOORING_CARPET_SUPPLY_INSTALL_M2,
   FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
   FLOORING_CARPENTER_LABOUR_RATE_KEY,
@@ -112,6 +120,7 @@ const SHEET_COUNT_EPSILON = 1e-12;
 
 const SPECIALIST_KIND_LABELS: Record<FlooringSpecialistKind, string> = {
   laminate: "laminate",
+  carpet_tile: "carpet tiles",
   engineered_timber: "engineered timber",
   sheet_vinyl: "sheet vinyl",
   client_supplied: "client-supplied flooring",
@@ -1621,6 +1630,166 @@ function laminatePortionPhysical(params: {
   };
 }
 
+function carpetTilePortionPhysical(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: FlooringPortion;
+}): {
+  readonly portion: FlooringPortionPhysical;
+  readonly requirements: readonly EstimateRequirement[];
+} {
+  const { workArea, portion } = params;
+  const area = physicalNetAreaM2(portion);
+  const owner = portionDisplayName(portion);
+  if (area == null) {
+    return {
+      portion: emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+        ["flooring.portion.area_m2"]
+      ),
+      requirements: [],
+    };
+  }
+  const plan = planCarpetTileAssembly({ portion, netM2: area, owner });
+  if (plan.status === "needs_answers") {
+    return {
+      portion: {
+        ...emptyPortionPhysical(
+          workArea.id,
+          portion,
+          FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+          [...plan.missing]
+        ),
+        physicalNetAreaM2: area,
+      },
+      requirements: [
+        materialCountRow({
+          workArea,
+          portion,
+          componentKey: FLOORING_CARPET_TILE_SUPPLY_COMPONENT,
+          materialKey: null,
+          category: FLOORING_WASTE_UNRESOLVED_CATEGORY,
+          description: `${owner} · carpet tile supply`,
+          specification:
+            "Carpet tiles are recognised. The supply quantity is not confirmed until the laying pattern, ready substrate, waste allowance, tile size and box coverage are answered. 120 m² is not given a silent waste allowance.",
+          quantity: area,
+          unit: "m2",
+          areaM2: area,
+          confidence: "low",
+        }),
+        labourRow({
+          workArea,
+          portion,
+          componentKey: FLOORING_CARPET_TILE_INSTALL_COMPONENT,
+          hoursKey: FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
+          unit: "m2",
+          description: `${owner} · carpet tile installation`,
+          quantity: area,
+          areaM2: area,
+          trade: "carpenter",
+        }),
+      ],
+    };
+  }
+  const lines = plan.lines;
+  if (plan.status === "unsupported") {
+    return {
+      portion: emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST,
+        []
+      ),
+      requirements: lines.map((line) =>
+        materialCountRow({
+          workArea,
+          portion,
+          componentKey: line.componentKey,
+          materialKey: null,
+          category: "SPECIALIST",
+          description: line.description,
+          specification: line.specification,
+          quantity: line.quantity,
+          unit: line.unit,
+          areaM2: area,
+          confidence: "low",
+        })
+      ),
+    };
+  }
+  const requirements: EstimateRequirement[] = [];
+  for (const line of lines) {
+    if (line.role === "package") {
+      requirements.push(
+        subcontractRow({
+          workArea,
+          portion,
+          componentKey: FLOORING_CARPET_TILE_PACKAGE_M2,
+          description: line.description,
+          areaM2: area,
+        })
+      );
+      continue;
+    }
+    if (line.role === "install") {
+      requirements.push(
+        labourRow({
+          workArea,
+          portion,
+          componentKey: line.componentKey,
+          hoursKey: FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
+          unit: "m2",
+          description: line.description,
+          quantity: line.quantity,
+          areaM2: area,
+          trade: "carpenter",
+        })
+      );
+      continue;
+    }
+    requirements.push(
+      materialCountRow({
+        workArea,
+        portion,
+        componentKey: line.componentKey,
+        materialKey: line.materialKey,
+        category: line.customerSupplied
+          ? "CLIENT_SUPPLIED"
+          : line.wasteUnresolved
+            ? FLOORING_WASTE_UNRESOLVED_CATEGORY
+            : line.role === "waste"
+              ? FLOORING_WASTE_INCREMENT_CATEGORY
+              : "CARPET_TILE",
+        description: line.description,
+        specification: line.specification,
+        quantity: line.quantity,
+        unit: line.unit,
+        areaM2: area,
+      })
+    );
+  }
+  if (portion.finish_removal_required === true) {
+    requirements.push(...removalRequirements({ workArea, portion, areaM2: area, owner }));
+  }
+  if (portion.floor_preparation_required === true && portion.carpet_tile_substrate === "ready") {
+    requirements.push(...preparationRequirements({ workArea, portion, areaM2: area, owner }));
+  }
+  return {
+    portion: {
+      ...emptyPortionPhysical(
+        workArea.id,
+        portion,
+        FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        []
+      ),
+      physicalNetAreaM2: area,
+      purchasing: null,
+    },
+    requirements,
+  };
+}
+
 export function calculateFlooringPortionPhysical(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   portion: FlooringPortion;
@@ -1632,6 +1801,10 @@ export function calculateFlooringPortionPhysical(params: {
 
   if (portion.specialist_kind === "laminate") {
     return laminatePortionPhysical({ workArea, portion });
+  }
+
+  if (portion.specialist_kind === "carpet_tile") {
+    return carpetTilePortionPhysical({ workArea, portion });
   }
 
   if (flooringPortionIsSpecialist(portion)) {

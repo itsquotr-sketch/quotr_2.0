@@ -92,6 +92,13 @@ const CANONICAL_UNITS: Record<string, string> = {
   "flooring.laminate.underlay.roll": "roll",
   "flooring.laminate.moisture_barrier.m2": "m2",
   "flooring.laminate.moisture_barrier.roll": "roll",
+  "flooring.carpet_tile.straight.supply.m2": "m2",
+  "flooring.carpet_tile.straight.supply.box": "box",
+  "flooring.carpet_tile.straight.supply.tile": "tile",
+  "flooring.carpet_tile.adhesive.m2": "m2",
+  "flooring.carpet_tile.adhesive.unit": "unit",
+  "flooring.carpet_tile.tackifier.m2": "m2",
+  "flooring.carpet_tile.tackifier.unit": "unit",
 };
 
 export function canonicalFinishMaterialUnit(itemKey: string): string | null {
@@ -118,6 +125,9 @@ export function normalizeFlooringPurchasingUnit(unit: string): string | null {
     return "l";
   }
   if (compact === "pack" || compact === "packs") return "pack";
+  if (compact === "box" || compact === "boxes") return "box";
+  if (compact === "tile" || compact === "tiles") return "tile";
+  if (compact === "unit" || compact === "units") return "unit";
   if (compact === "roll" || compact === "rolls") return "roll";
   return null;
 }
@@ -332,10 +342,12 @@ export function flooringPricingRecovery(input: {
     (key === "flooring.laminate.click_lock.supply" ||
       key === "flooring.laminate.underlay" ||
       key === "flooring.laminate.moisture_barrier" ||
+      key === "flooring.carpet_tile.straight.supply" ||
+      key === "flooring.carpet_tile.fixing" ||
       key === FLOORING_FINISH_WASTE_COMPONENT) &&
     itemKey &&
     canonicalFinishMaterialUnit(itemKey) &&
-    itemKey.startsWith("flooring.laminate.")
+    (itemKey.startsWith("flooring.laminate.") || itemKey.startsWith("flooring.carpet_tile."))
   ) {
     return materialRecovery({
       roomName,
@@ -343,11 +355,11 @@ export function flooringPricingRecovery(input: {
       itemKey,
       missing: /not converted|has no unit/i.test(notes)
         ? notes
-        : `${roomName} is missing the laminate rate ${itemKey}. No vinyl rate and no laminate benchmark are used.`,
+        : `${roomName} is missing the company rate ${itemKey}. No broadloom carpet rate and no benchmark are used.`,
     });
   }
 
-  if (key === "flooring.laminate.click_lock.install") {
+  if (key === "flooring.laminate.click_lock.install" || key === "flooring.carpet_tile.straight.install") {
     if (/carpenter hourly cost/i.test(notes)) {
       return {
         kind: "company_labour",
@@ -369,11 +381,34 @@ export function flooringPricingRecovery(input: {
       itemLabel,
       missing: /not converted|has no unit/i.test(notes)
         ? notes
-        : `${roomName} is missing laminate installation productivity flooring.laminate.click_lock.install.hours_per_m2. The vinyl installation rate is not reused.`,
+        : `${roomName} is missing installation productivity ${
+            key === "flooring.carpet_tile.straight.install"
+              ? "flooring.carpet_tile.straight.install.hours_per_m2"
+              : "flooring.laminate.click_lock.install.hours_per_m2"
+          }. A different finish rate is not reused.`,
       unitExplanation: "Productivity is hours per net square metre. Hours per sheet, each or lineal metre are not converted.",
       scopeExplanation: COMPANY_SCOPE,
-      itemKey: "flooring.laminate.click_lock.install.hours_per_m2",
+      itemKey:
+        key === "flooring.carpet_tile.straight.install"
+          ? "flooring.carpet_tile.straight.install.hours_per_m2"
+          : "flooring.laminate.click_lock.install.hours_per_m2",
       ratesSection: "productivity",
+      blocksManualAmount: false,
+      factKey: null,
+      decisions: [],
+    };
+  }
+
+  if (key === "flooring.carpet_tile.straight.supply_install.m2") {
+    return {
+      kind: "company_material",
+      roomName,
+      itemLabel,
+      missing: `${roomName} has no company straight-lay carpet tile package rate. No carpet-tile benchmark is applied and the broadloom carpet package is not reused.`,
+      unitExplanation: "The package cost is dollars per net square metre. It is not split into material and labour.",
+      scopeExplanation: COMPANY_SCOPE,
+      itemKey: "flooring.carpet_tile.straight.supply_install.m2",
+      ratesSection: "subcontract",
       blocksManualAmount: false,
       factKey: null,
       decisions: [],

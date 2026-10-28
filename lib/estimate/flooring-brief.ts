@@ -39,6 +39,7 @@ import {
   type FlooringSubstrateFamily,
 } from "@/lib/estimate/flooring-portions";
 import { applyLaminateBriefFacts } from "@/lib/estimate/flooring-laminate";
+import { applyCarpetTileBriefFacts } from "@/lib/estimate/flooring-carpet-tile";
 import {
   briefHasIndependentFlooring,
   clauseHasFlooringOperation,
@@ -76,6 +77,7 @@ function conciseDescription(snippet: string): string {
 
 function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
   if (kind === "laminate") return "laminate flooring";
+  if (kind === "carpet_tile") return "carpet tiles";
   if (kind === "engineered_timber") return "engineered timber flooring";
   if (kind === "sheet_vinyl") return "sheet vinyl flooring";
   if (kind === "client_supplied") return "client-supplied flooring";
@@ -87,7 +89,7 @@ function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
 
 const SPECIALIST_PHRASES: readonly { kind: FlooringSpecialistKind; phrases: readonly string[] }[] =
   [
-    { kind: "other_unsupported", phrases: ["carpet tiles", "carpet tile"] },
+    { kind: "carpet_tile", phrases: ["carpet tiles", "carpet tile"] },
     { kind: "sheet_vinyl", phrases: ["sheet vinyl"] },
     { kind: "laminate", phrases: ["laminate"] },
     { kind: "engineered_timber", phrases: ["engineered timber", "engineered wood"] },
@@ -807,6 +809,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.tile_length_mm = tile.length_mm;
     portion.tile_length_authority = "extracted";
   }
+  applyCarpetTileBriefFacts(portion, snippet);
   if (board != null) {
     portion.hardwood_board_width_mm = board;
     portion.hardwood_width_authority = "extracted";

@@ -32,6 +32,7 @@ import {
   flooringPortionIsSpecialist,
   type FlooringInformationContext,
 } from "@/lib/estimate/flooring-information-contract";
+import { planCarpetTileAssembly } from "@/lib/estimate/flooring-carpet-tile";
 import {
   FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY,
   flooringQuestionCopy,
@@ -143,6 +144,57 @@ export function flooringPortionFieldCurrentValue(
     }
     if (portion.laminate_package_covers_moisture === "separate") {
       return "Charge the moisture barrier separately";
+    }
+    return null;
+  }
+  if (field === "carpet_tile_pattern") {
+    if (portion.carpet_tile_pattern === "straight") return "Straight lay";
+    if (portion.carpet_tile_pattern === "other") return "Another pattern";
+    return null;
+  }
+  if (field === "carpet_tile_substrate") {
+    if (portion.carpet_tile_substrate === "ready") return "Ready substrate";
+    if (portion.carpet_tile_substrate === "preparation") return "Needs preparation";
+    if (portion.carpet_tile_substrate === "other") return "Other substrate";
+    return null;
+  }
+  if (field === "carpet_tile_waste") {
+    if (portion.carpet_tile_waste === "proposed") return "Use proposed 5% supply allowance";
+    if (portion.carpet_tile_waste === "zero") return "No waste";
+    if (portion.carpet_tile_waste === "custom") return "Enter a percentage";
+    if (portion.carpet_tile_waste === "stated") return "Waste percentage is already stated";
+    return null;
+  }
+  if (field === "carpet_tile_waste_percent") return portion.waste_percent ?? null;
+  if (field === "carpet_tile_size") {
+    if (portion.carpet_tile_size === "unknown") return "Size unknown";
+    if (portion.carpet_tile_size === "known") return "Size is known";
+    return null;
+  }
+  if (field === "carpet_tile_box") {
+    if (portion.carpet_tile_box === "unknown") return "Box coverage unknown";
+    if (portion.carpet_tile_box === "known") return "Box coverage is known";
+    return null;
+  }
+  if (field === "carpet_tile_box_coverage_m2") return portion.carpet_tile_box_coverage_m2 ?? null;
+  if (field === "carpet_tile_fixing") {
+    if (portion.carpet_tile_fixing === "adhesive") return "Pressure-sensitive adhesive";
+    if (portion.carpet_tile_fixing === "tackifier") return "Tackifier";
+    if (portion.carpet_tile_fixing === "none") return "No fixing material";
+    if (portion.carpet_tile_fixing === "other") return "Another fixing system";
+    return null;
+  }
+  if (field === "carpet_tile_supply") {
+    if (portion.finish_supplied_by === "customer") return "Customer supplies the tiles";
+    if (portion.finish_supplied_by === "contractor") return "Company supplies the tiles";
+    return null;
+  }
+  if (field === "carpet_tile_package_covers_fixing") {
+    if (portion.carpet_tile_package_covers_fixing === "included") {
+      return "Package rate covers the fixing";
+    }
+    if (portion.carpet_tile_package_covers_fixing === "separate") {
+      return "Charge the fixing separately";
     }
     return null;
   }
@@ -265,6 +317,11 @@ export function flooringPortionIsInformationComplete(
       return false;
     }
     return true;
+  }
+  if (portion.specialist_kind === "carpet_tile") {
+    if (!portion.other_description?.trim()) return false;
+    const area = portion.area_m2 && portion.area_m2 > 0 ? portion.area_m2 : 1;
+    return planCarpetTileAssembly({ portion, netM2: area, owner: portion.label ?? "Floor" }).status !== "needs_answers";
   }
   if (flooringPortionIsSpecialist(portion)) {
     return Boolean(portion.other_description?.trim());
@@ -600,11 +657,13 @@ export function listFlooringClarifyCandidates(
         continue;
       }
       const laminateChoice =
-        portion?.specialist_kind === "laminate" &&
+        (portion?.specialist_kind === "laminate" ||
+          portion?.specialist_kind === "carpet_tile") &&
         (row.factKey === "flooring.portion.finish_pricing" ||
           row.factKey === "flooring.portion.waste_treatment" ||
           row.factKey === "flooring.portion.laminate_package_covers_underlay" ||
-          row.factKey === "flooring.portion.laminate_package_covers_moisture");
+          row.factKey === "flooring.portion.laminate_package_covers_moisture" ||
+          row.factKey.startsWith("flooring.portion.carpet_tile_"));
       out.push(
         buildCandidate({
           input,

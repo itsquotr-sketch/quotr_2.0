@@ -156,6 +156,66 @@ export const FLOORING_INFORMATION_CONTRACT: readonly FlooringInformationContract
         "A combined laminate package covers a separate moisture barrier only when that is confirmed. The subcontract rate itself is not that confirmation.",
     },
     {
+      factKey: "flooring.portion.carpet_tile_pattern",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Only straight-lay carpet tiles are priced. An unstated pattern is asked, not stored as an extracted fact.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_substrate",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "This recipe prices carpet tiles on a ready substrate. Removal already completed is not that answer.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_waste",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "An unstated waste percentage is not applied and is not treated as zero.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_waste_percent",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "A custom supply allowance is a percentage on carpet tile supply only.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_size",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Tile dimensions are used only when known. Unknown does not invent a count.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_box",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Whole boxes are used only when coverage is known.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_box_coverage_m2",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Box coverage is not invented.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_fixing",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Adhesive or tackifier is asked. Carpet underlay is not added.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_supply",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "Customer-supplied tiles stay visible at no contractor purchasing cost.",
+    },
+    {
+      factKey: "flooring.portion.carpet_tile_package_covers_fixing",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: true,
+      reason: "A combined package covers fixing only when that is confirmed.",
+    },
+    {
       factKey: "flooring.portion.substrate_required",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: true,
@@ -308,6 +368,42 @@ export function flooringFactIsRelevant(
       portion.laminate_moisture === "separate"
     );
   }
+  const carpet = portion?.specialist_kind === "carpet_tile";
+  const straight = carpet && portion?.carpet_tile_pattern === "straight";
+  const readySubstrate = straight && portion?.carpet_tile_substrate === "ready";
+  const wasteDecided =
+    readySubstrate &&
+    portion?.carpet_tile_waste != null &&
+    (portion.carpet_tile_waste !== "custom" ||
+      (portion.waste_percent != null && portion.waste_percent > 0));
+  const sizeAnswered = wasteDecided && portion?.carpet_tile_size != null;
+  const boxAnswered = sizeAnswered && portion?.carpet_tile_box != null;
+  const fixingAnswered =
+    boxAnswered &&
+    (portion?.carpet_tile_fixing === "adhesive" ||
+      portion?.carpet_tile_fixing === "tackifier" ||
+      portion?.carpet_tile_fixing === "none");
+  if (factKey === "flooring.portion.carpet_tile_pattern") return Boolean(carpet);
+  if (factKey === "flooring.portion.carpet_tile_substrate") return Boolean(straight);
+  if (factKey === "flooring.portion.carpet_tile_waste") return Boolean(readySubstrate);
+  if (factKey === "flooring.portion.carpet_tile_waste_percent") {
+    return Boolean(readySubstrate && portion?.carpet_tile_waste === "custom");
+  }
+  if (factKey === "flooring.portion.carpet_tile_size") return Boolean(wasteDecided);
+  if (factKey === "flooring.portion.carpet_tile_box") return Boolean(sizeAnswered);
+  if (factKey === "flooring.portion.carpet_tile_box_coverage_m2") {
+    return Boolean(sizeAnswered && portion?.carpet_tile_box === "known");
+  }
+  if (factKey === "flooring.portion.carpet_tile_fixing") return Boolean(boxAnswered);
+  if (factKey === "flooring.portion.carpet_tile_supply") return Boolean(fixingAnswered);
+  if (factKey === "flooring.portion.carpet_tile_package_covers_fixing") {
+    return Boolean(
+      fixingAnswered &&
+        portion?.finish_supplied_by === "contractor" &&
+        portion.finish_pricing === "combined_package" &&
+        (portion.carpet_tile_fixing === "adhesive" || portion.carpet_tile_fixing === "tackifier")
+    );
+  }
   if (factKey === "flooring.portion.finish_pricing") {
     return (
       finish === "carpet" ||
@@ -318,7 +414,9 @@ export function flooringFactIsRelevant(
         portion.laminate_method === "floating_click_lock" &&
         portion.laminate_substrate != null &&
         (portion.laminate_substrate !== "concrete" ||
-          portion.laminate_moisture != null))
+          portion.laminate_moisture != null)) ||
+      (portion?.specialist_kind === "carpet_tile" &&
+        portion.finish_supplied_by === "contractor")
     );
   }
   if (factKey === "flooring.portion.waste_treatment") {
@@ -330,8 +428,12 @@ export function flooringFactIsRelevant(
     const laminateCombined =
       portion?.specialist_kind === "laminate" &&
       portion.finish_pricing === "combined_package";
+    const carpetCombined =
+      portion?.specialist_kind === "carpet_tile" &&
+      portion.finish_pricing === "combined_package" &&
+      portion.finish_supplied_by !== "customer";
     return (
-      (ordinary || laminateCombined) &&
+      (ordinary || laminateCombined || carpetCombined) &&
       portion?.waste_percent != null &&
       portion.waste_percent > 0 &&
       portion.finish_supplied_by !== "customer" &&
@@ -342,7 +444,10 @@ export function flooringFactIsRelevant(
     factKey === "flooring.portion.tile_width_mm" ||
     factKey === "flooring.portion.tile_length_mm"
   ) {
-    return flooringFinishUsesTileDimensions(finish);
+    return (
+      flooringFinishUsesTileDimensions(finish) ||
+      (portion?.specialist_kind === "carpet_tile" && portion.carpet_tile_size === "known")
+    );
   }
   if (factKey === "flooring.portion.hardwood_board_width_mm") {
     return flooringFinishUsesHardwoodWidth(finish);
