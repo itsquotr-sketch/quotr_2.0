@@ -119,7 +119,7 @@ export function flooringAncillaryLabel(
 }
 
 const ANCILLARY_SPECIFICATION =
-  "Included in the combined supply-and-install package. Installation hours do not include these consumables. No separate rate is invented.";
+  "Charged once on the net area. Not included in a combined package. Installation hours do not include these consumables. No rate is invented when this company rate is missing.";
 
 export function flooringAncillarySpecification(): string {
   return ANCILLARY_SPECIFICATION;

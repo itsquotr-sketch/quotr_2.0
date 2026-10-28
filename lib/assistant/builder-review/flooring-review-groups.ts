@@ -17,6 +17,12 @@ import {
   FLOORING_SUBSTRATE_MATERIAL_COMPONENT,
 } from "@/lib/estimate/flooring-identities";
 import { isFlooringFramingAllowanceKey } from "@/lib/estimate/flooring-framing-authority";
+import {
+  FLOORING_FINISH_ANCILLARY_COMPONENT,
+  FLOORING_FINISH_INSTALL_COMPONENT,
+  FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_FINISH_WASTE_COMPONENT,
+} from "@/lib/estimate/flooring-purchasing";
 import { calculateFlooringPhysical } from "@/lib/estimate/flooring-physical";
 import { hasFlooringPortionsFact } from "@/lib/estimate/flooring-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -55,6 +61,16 @@ function isSubstrateLine(line: BuilderReviewPricedLine): boolean {
 
 function isFramingLine(line: BuilderReviewPricedLine): boolean {
   return isFlooringFramingAllowanceKey(line.componentKey);
+}
+
+function isSeparateFinishLine(line: BuilderReviewPricedLine): boolean {
+  const key = line.componentKey ?? "";
+  return (
+    key === FLOORING_FINISH_SUPPLY_COMPONENT ||
+    key === FLOORING_FINISH_ANCILLARY_COMPONENT ||
+    key === FLOORING_FINISH_INSTALL_COMPONENT ||
+    key === FLOORING_FINISH_WASTE_COMPONENT
+  );
 }
 
 function isRemovalLine(line: BuilderReviewPricedLine): boolean {
@@ -154,6 +170,9 @@ export function applyFlooringReviewGroups(params: {
     const framing = children.filter(
       (row) => isFramingLine(row) && !lineIsPricingRequired(row)
     );
+    const separate = children.filter(
+      (row) => isSeparateFinishLine(row) && !lineIsPricingRequired(row)
+    );
     const removal = children.filter(
       (row) => isRemovalLine(row) && !lineIsPricingRequired(row)
     );
@@ -189,6 +208,12 @@ export function applyFlooringReviewGroups(params: {
         "Framing allowance",
         framing,
         "Combined allowance. No fabricated timber or labour split."
+      ),
+      makeGroup(
+        `flooring-separate-${portion.nestedItemId}`,
+        "Separate finish",
+        separate,
+        "Supply uses the waste-adjusted quantity. Adhesive and installation stay on the net area and are not inside the combined package."
       ),
       makeGroup(
         `flooring-removal-${portion.nestedItemId}`,
