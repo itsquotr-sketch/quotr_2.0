@@ -8,7 +8,10 @@ import {
   DECK_POST_HOLE_FINISH,
   deckPostHoleFinishItems,
 } from "@/lib/estimate/deck-post-hole-result";
-import { newSubstructureIncluded } from "@/lib/estimate/deck-scope-2c";
+import {
+  newSubstructureIncluded,
+  pileRetentionPending,
+} from "@/lib/estimate/deck-scope-2c";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type DeckDetailGap = {
@@ -16,11 +19,35 @@ export type DeckDetailGap = {
   readonly label: string;
 };
 
+/**
+ * Hole questions belong to supports that will be built.
+ * A confirmed bearer layout is that scope. Explicit replacement is that scope.
+ * Leaving existing piles until inspection is not, and it does not invent a count.
+ */
 export function deckPostsInScope(
   facts: readonly EstimateFact[],
   workAreaId: string
 ): boolean {
-  return newSubstructureIncluded([...facts], workAreaId);
+  const rows = [...facts];
+  const bearerRows = getNumberFact(rows, workAreaId, "deck.bearer_row_count");
+  const perBearer = getNumberFact(rows, workAreaId, "deck.supports_per_bearer");
+  if (
+    bearerRows != null &&
+    perBearer != null &&
+    bearerRows > 0 &&
+    perBearer > 0
+  ) {
+    return true;
+  }
+  const replacement = getBooleanFact(
+    rows,
+    workAreaId,
+    "deck.pile_or_post_replacement_required"
+  );
+  if (replacement === true) return true;
+  if (pileRetentionPending({ facts: rows, workAreaId })) return false;
+  if (replacement === false) return false;
+  return newSubstructureIncluded(rows, workAreaId);
 }
 
 export function statedDeckPostCount(
@@ -87,7 +114,7 @@ export function deckDetailGaps(
   const rows = [...facts];
   const postsInScope = deckPostsInScope(rows, workAreaId);
   const concrete = getBooleanFact(rows, workAreaId, "deck.concrete_to_supports");
-  if (!postsInScope && concrete !== true) return [];
+  if (!postsInScope) return [];
 
   const gaps: DeckDetailGap[] = [];
   const posts = postCount(rows, workAreaId);

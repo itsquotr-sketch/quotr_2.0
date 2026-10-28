@@ -9,6 +9,7 @@ import {
   deckCountWriteKey,
   deckDetailGaps,
   deckDetailQueuePrompt,
+  deckPostsInScope,
   deckSpoilDestination,
 } from "@/lib/estimate/deck-detail-completeness";
 import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
@@ -352,6 +353,8 @@ export function DeckPostHolesSection({
   const answerSaving = savingKeys.length > 0 || savingSetup;
   const showSummary =
     unanswered === 0 && !manualEditing && !focusGapId && !forceOpen && !setupError;
+
+  if (!deckPostsInScope(facts, workAreaId)) return null;
 
   if (showSummary) {
     return (

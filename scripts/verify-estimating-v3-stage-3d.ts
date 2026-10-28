@@ -376,6 +376,27 @@ check(
     firstQuestions.find((row) => row.factKey === "flooring.portion.carpet_tile_waste")?.question.includes("not converted to 132") === true,
   firstQuestions.map((row) => row.factKey)
 );
+const preparationQuestions = listFlooringClarifyCandidates({
+  facts: [
+    {
+      id: "prep-questions",
+      project_id: "project",
+      work_area_id: "flooring",
+      key: FLOORING_PORTIONS_FACT_KEY,
+      value: [{ ...focused!, carpet_tile_substrate: "preparation" }],
+      source: "user",
+    },
+  ],
+  workAreaId: "flooring",
+  workAreaName: "Flooring",
+});
+const preparationKeys = preparationQuestions.map((row) => row.factKey);
+check(
+  "needs preparation still asks the finish questions",
+  preparationKeys.includes("flooring.portion.carpet_tile_waste") &&
+    !preparationKeys.includes("flooring.portion.carpet_tile_substrate"),
+  preparationKeys
+);
 
 write("flooring.portion.carpet_tile_waste", "Use proposed 5% supply allowance");
 write("flooring.portion.carpet_tile_size", "Size unknown");

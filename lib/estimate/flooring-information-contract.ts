@@ -370,9 +370,13 @@ export function flooringFactIsRelevant(
   }
   const carpet = portion?.specialist_kind === "carpet_tile";
   const straight = carpet && portion?.carpet_tile_pattern === "straight";
-  const readySubstrate = straight && portion?.carpet_tile_substrate === "ready";
+  // Preparation stays its own unresolved task. It does not hide the finish questions.
+  const finishSubstrate =
+    straight &&
+    (portion?.carpet_tile_substrate === "ready" ||
+      portion?.carpet_tile_substrate === "preparation");
   const wasteDecided =
-    readySubstrate &&
+    finishSubstrate &&
     portion?.carpet_tile_waste != null &&
     (portion.carpet_tile_waste !== "custom" ||
       (portion.waste_percent != null && portion.waste_percent > 0));
@@ -385,9 +389,9 @@ export function flooringFactIsRelevant(
       portion?.carpet_tile_fixing === "none");
   if (factKey === "flooring.portion.carpet_tile_pattern") return Boolean(carpet);
   if (factKey === "flooring.portion.carpet_tile_substrate") return Boolean(straight);
-  if (factKey === "flooring.portion.carpet_tile_waste") return Boolean(readySubstrate);
+  if (factKey === "flooring.portion.carpet_tile_waste") return Boolean(finishSubstrate);
   if (factKey === "flooring.portion.carpet_tile_waste_percent") {
-    return Boolean(readySubstrate && portion?.carpet_tile_waste === "custom");
+    return Boolean(finishSubstrate && portion?.carpet_tile_waste === "custom");
   }
   if (factKey === "flooring.portion.carpet_tile_size") return Boolean(wasteDecided);
   if (factKey === "flooring.portion.carpet_tile_box") return Boolean(sizeAnswered);

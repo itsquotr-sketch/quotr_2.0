@@ -17,6 +17,10 @@ import {
 } from "../lib/estimate/doors-portions";
 import { resolveCommittedFactWrite } from "../lib/assistant/scope-persistence";
 import {
+  deckDetailGaps,
+  deckPostsInScope,
+} from "../lib/estimate/deck-detail-completeness";
+import {
   PILE_ALLOWANCE_COVERAGE_GAP,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
   PILE_INSPECTION_CONDITION_LABEL,
@@ -461,6 +465,38 @@ check(
     ) &&
     leftEstimate.missingInfo.includes(PILE_SUPPORTS_UNRESOLVED_PENDING) &&
     leftEstimate.lineItems.some((item) => /joist|bearer|framing/i.test(item.label))
+);
+check(
+  "pending inspection does not require a replacement count or hole specification",
+  deckPostsInScope(leftFacts, "deck-1") === false &&
+    deckDetailGaps(leftFacts, "deck-1").length === 0 &&
+    !leftFacts.some((fact) => fact.key === "deck.pile_or_post_count")
+);
+const pendingNewSupports: EstimateFact[] = [
+  ...leftFacts,
+  {
+    key: "deck.bearer_row_count",
+    work_area_id: "deck-1",
+    value: 3,
+    source: "user",
+  },
+  {
+    key: "deck.supports_per_bearer",
+    work_area_id: "deck-1",
+    value: 2,
+    source: "user",
+  },
+];
+check(
+  "confirmed new supports still ask for hole specifications during inspection",
+  deckPostsInScope(pendingNewSupports, "deck-1") === true &&
+    deckDetailGaps(pendingNewSupports, "deck-1").length > 0 &&
+    !deckDetailGaps(pendingNewSupports, "deck-1").some((gap) => gap.id === "posts")
+);
+check(
+  "explicit replacement still requires a quantity",
+  deckPostsInScope(assumedFacts, "deck-1") === true &&
+    deckDetailGaps(assumedFacts, "deck-1").some((gap) => gap.id === "posts")
 );
 const retainedFacts: EstimateFact[] = [
   ...elevatedFacts,
