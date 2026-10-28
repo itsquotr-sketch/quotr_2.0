@@ -115,3 +115,14 @@ When `bathroom.job_scope` is absent and the legacy coordination conditions match
 ## Explicitly not weakened
 
 The finite-number rejection stays. Deck readiness stays blocked while real post-hole gaps remain. Specialist laminate is not given the unused 110/165 pair in this pass.
+
+## Checkpoint 29 October 2026
+
+The Stage 0 rows above stay as the historical record. They are not the current hosted result. The original eight briefs were run again on Preview `434f214a`. Findings, project links, and the local readiness-count fix are in [V3_CHECKPOINT_2026-10-29.md](./V3_CHECKPOINT_2026-10-29.md).
+
+New demonstrated defects, not substituted for the Stage 0 rows:
+
+- Overview “All priced” / “1 needs a price” missed labour lines whose rate label is Pricing Required when the group flag was unset. `09be34fc` counts those lines separately from work areas, specifications, and scope gaps.
+- An elevated deck left until inspection priced a new pile set while the assumption said replacement was not assumed. `de30f3b3` withholds that set unless a new support layout is confirmed, and keeps the allowance as an unresolved defect when replacement is explicit.
+- An office wall with six door sets quantified one opening. Lining both sides stayed a review note, not a cost line.
+- Bathroom fittings and several office preliminaries stayed in the brief and did not stay on the estimate as visible unpriced scope.

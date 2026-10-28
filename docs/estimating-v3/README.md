@@ -14,6 +14,7 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_1_CORRECTION.md](./STAGE_1_CORRECTION.md) | What Stage 1 changed, and what it left untouched |
 | [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and release branches |
 | [V3_INTEGRATION_BASELINE.md](./V3_INTEGRATION_BASELINE.md) | Integration branch, Preview identities, and Stage 2A scope |
+| [V3_CHECKPOINT_2026-10-29.md](./V3_CHECKPOINT_2026-10-29.md) | Hosted original-brief checkpoint, plus the readiness, pile, and flooring follow-up. Stage 0 rows stay historical. |
 | [STAGE_2A_HANDOFF.md](./STAGE_2A_HANDOFF.md) | Analysis-to-Details handoff, compatibility, and what is still open |
 | [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) | The eight original acceptance briefs, stored verbatim |
 | [STAGE_2A_INSTANCE_IDENTITY.md](./STAGE_2A_INSTANCE_IDENTITY.md) | UUID and measurement matching, and the unapplied identity column |
