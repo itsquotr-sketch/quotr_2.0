@@ -79,7 +79,7 @@ Pricing reconciliation updated the three flooring charges and left the wall, doo
 
 ## Acceptance
 
-Accepted for ordinary modular carpet tiles, straight lay, on a ready substrate, using the company rates above and the existing labour modifiers.
+Accepted at `9335b6b7` for ordinary modular carpet tiles, straight lay, on a ready substrate, using the company rates above and the existing labour modifiers.
 
 The adhesive charge of $375.60 is the documented unit-first sell: $3.13/m² × 120 m². It is not an early-rounding error, and the money engine is unchanged. The materials takeoff shows the $2.50/m² company cost separately from the $300 extended cost and the $375.60 client sell. The installation explanation is 120 m² × 0.15 person-hours/m² = 18 h, then occupied site and restricted hours/delivery windows once, then 19.8 h × $75/h = $1,485.
 
