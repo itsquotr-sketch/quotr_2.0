@@ -62,6 +62,12 @@ Separate supply, 20% margin, company rates only: laminate $40/m², underlay $8/m
 
 Changing one setting changes only its own money. Laminate $50/m² makes supply $1,650 and the total $2,430. A project override of $45/m² makes supply $1,485 and is labelled as the work-area rate. Productivity 0.3 h/m² makes labour $675. Carpenter $80/h makes labour $480. Integrated moisture control removes the $90 barrier. Customer-supplied laminate leaves purchasing at $0 and the remaining direct cost at $780.
 
+## Acceptance
+
+The original brief was priced in the isolated Preview organisation through the signed-in UI. The installation method was chosen as floating click-lock, moisture control as a separate barrier, and price ownership as separate supply and installation. Underlay came from the brief. Company rates were saved from the named “Open this rate” actions: laminate $40/m², underlay $8/m², moisture barrier $3/m², 0.2 h/m², carpenter $75/h. After an explicit regenerate and a reload, the estimate is direct cost $2,100 and sell $2,625 ex GST at 20% margin. Persisted Pricing, after “Update final pricing”, shows laminate 33 m² at $1,650, underlay 30 m² at $300, barrier 30 m² at $112.50, and installation 6 h at $562.50. Skirting stays excluded. GST at 15% is shown beside that sell, not inside it. The quote was not created and pricing was not marked reviewed.
+
+A saved laminate package rate does not decide underlay, moisture, or waste coverage. Those answers are required first, and each confirmed item is charged once.
+
 ## Not in this recipe
 
 - Glued or nailed laminate. The area stays visible and unpriced, and this recipe is not applied.

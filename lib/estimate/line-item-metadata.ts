@@ -280,6 +280,9 @@ export function buildPricingNotesFromEstimateLineItem(
   if (metadata.sellRate != null) {
     metaToStore.sellRate = metadata.sellRate;
   }
+  if (metadata.itemKey) {
+    metaToStore.itemKey = metadata.itemKey;
+  }
   if (metadata.rateSourceType) {
     metaToStore.rateSourceType = metadata.rateSourceType;
   }
