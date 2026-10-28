@@ -17,6 +17,7 @@ import {
 } from "@/lib/estimate/ceilings-provisional-package";
 import { PricingTaxBasisNotice } from "@/components/pricing/PricingTaxBasisNotice";
 import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
+import { formatPricingMoney } from "@/lib/pricing/format";
 import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
@@ -98,9 +99,23 @@ export function PricingSummaryPanel({
     formattedSell: view.subtotalSellFormatted,
   });
   const sellIncomplete = clientSellValue === "Pricing required";
+  const taxBasis = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  const taxBasisBlock = taxBasis.quoteBlock;
+  const showOverrideGst = taxBasis.override && document.gst_rate > 0;
   const inclGstValue = sellIncomplete
     ? "Pricing required"
-    : view.totalInclGstFormatted;
+    : showOverrideGst
+      ? formatPricingMoney(document.total_incl_gst)
+      : view.totalInclGstFormatted;
+  const gstAmountValue = showOverrideGst
+    ? formatPricingMoney(document.gst_amount)
+    : view.gstAmountFormatted;
   const costValue = sellIncomplete && document.subtotal_cost <= 0
     ? "Pricing required"
     : view.directCostLabel;
@@ -109,13 +124,6 @@ export function PricingSummaryPanel({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
-  const taxBasisBlock = pricingTaxBasisDecision({
-    gstRegistered,
-    defaultGstRate,
-    documentGstRate: document.gst_rate,
-    taxBasis: document.gst_tax_basis,
-    status: document.status,
-  }).quoteBlock;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
     || provisionalBlock
@@ -141,7 +149,7 @@ export function PricingSummaryPanel({
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         <div className="space-y-2">
-          {view.gstRegistration === "unset" ? (
+          {showOverrideGst ? null : view.gstRegistration === "unset" ? (
             <p className="text-sm leading-5 text-foreground/80" data-gst-registration="unset">
               GST registration is not decided. No GST is added.
             </p>
@@ -158,11 +166,11 @@ export function PricingSummaryPanel({
             onUpdated={onTaxBasisUpdated}
           />
           <SummaryRow
-            label={view.showGst ? "Client sell ex GST" : "Client sell"}
+            label={view.showGst || showOverrideGst ? "Client sell ex GST" : "Client sell"}
             value={clientSellValue}
             prominent
           />
-          {compact && view.showGst ? (
+          {compact && (view.showGst || showOverrideGst) ? (
             <SummaryRow
               label="Client sell incl GST"
               value={inclGstValue}
@@ -185,10 +193,10 @@ export function PricingSummaryPanel({
                   label="Expected gross margin"
                   value={sellIncomplete ? "—" : view.marginLabel}
                 />
-                {view.showGst ? (
+                {view.showGst || showOverrideGst ? (
                   <SummaryRow
-                    label={view.gstLabel}
-                    value={sellIncomplete ? "—" : view.gstAmountFormatted}
+                    label={showOverrideGst ? `GST (${document.gst_rate}%)` : view.gstLabel}
+                    value={sellIncomplete ? "—" : gstAmountValue}
                   />
                 ) : null}
               </div>
@@ -200,11 +208,11 @@ export function PricingSummaryPanel({
                 label="Expected gross margin"
                 value={sellIncomplete ? "—" : view.marginLabel}
               />
-              {view.showGst ? (
+              {view.showGst || showOverrideGst ? (
                 <>
                   <SummaryRow
-                    label={view.gstLabel}
-                    value={sellIncomplete ? "—" : view.gstAmountFormatted}
+                    label={showOverrideGst ? `GST (${document.gst_rate}%)` : view.gstLabel}
+                    value={sellIncomplete ? "—" : gstAmountValue}
                   />
                   <SummaryRow label="Client sell incl GST" value={inclGstValue} prominent />
                 </>

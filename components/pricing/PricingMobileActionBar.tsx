@@ -13,6 +13,7 @@ import {
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
 import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
+import { formatPricingMoney } from "@/lib/pricing/format";
 import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -75,13 +76,15 @@ export function PricingMobileActionBar({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
-  const taxBasisBlock = pricingTaxBasisDecision({
+  const taxBasis = pricingTaxBasisDecision({
     gstRegistered,
     defaultGstRate,
     documentGstRate: document.gst_rate,
     taxBasis: document.gst_tax_basis,
     status: document.status,
-  }).quoteBlock;
+  });
+  const taxBasisBlock = taxBasis.quoteBlock;
+  const showOverrideGst = taxBasis.override && document.gst_rate > 0;
   const reviewBlock =
     estimateUpdateRequired?.trim() ||
     taxBasisBlock ||
@@ -110,10 +113,12 @@ export function PricingMobileActionBar({
       <div className={cn("mx-auto flex max-w-lg flex-col gap-3 px-4", mobileActionInnerClass)}>
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-xs font-medium text-muted-foreground">
-            {view.showGst ? "Total incl. GST" : "Your final price"}
+            {view.showGst || showOverrideGst ? "Total incl. GST" : "Your final price"}
           </p>
           <p className="text-lg font-semibold tabular-nums tracking-tight">
-            {view.showGst
+            {showOverrideGst
+              ? formatPricingMoney(document.total_incl_gst)
+              : view.showGst
               ? view.totalInclGstFormatted
               : view.subtotalSellFormatted}
           </p>
