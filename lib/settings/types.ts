@@ -74,6 +74,8 @@ export type CompanySettingsActionResult = {
 /** Subset loaded when snapshotting pricing/quote defaults — not full company profile. */
 export type OrgQuoteDefaults = {
   defaultGstRate: number;
+  /** Null is an explicit unknown. Omitted means the caller did not load registration. */
+  gstRegistered?: boolean | null;
   defaultQuoteValidityDays: number;
   defaultPaymentTerms: string | null;
   defaultQuoteTerms: string | null;

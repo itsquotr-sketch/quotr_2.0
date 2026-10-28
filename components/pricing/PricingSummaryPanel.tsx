@@ -15,6 +15,7 @@ import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
+import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
 import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
@@ -38,6 +39,7 @@ type PricingSummaryPanelProps = {
   compact?: boolean;
   canEdit?: boolean;
   scopeQuoteBlock?: string | null;
+  gstRegistered?: boolean | null;
   estimateUpdateRequired?: string | null;
 };
 
@@ -77,9 +79,10 @@ export function PricingSummaryPanel({
   canEdit = true,
   scopeQuoteBlock = null,
   estimateUpdateRequired = null,
+  gstRegistered,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
-  const view = pricingDocumentViewModel(document, items);
+  const view = pricingDocumentViewModel(document, items, gstRegistered);
   const pricingRequiredCount = items.filter(
     (item) => pricingItemViewModel(item).pricingRequired
   ).length;
@@ -104,6 +107,7 @@ export function PricingSummaryPanel({
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
     || provisionalBlock
+    || (gstRegistered === null ? GST_REGISTRATION_UNSET_QUOTE_BLOCK : null)
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : unresolvedManualPricingQuoteBlock(items) ??
@@ -125,6 +129,15 @@ export function PricingSummaryPanel({
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         <div className="space-y-2">
+          {view.gstRegistration === "unset" ? (
+            <p className="text-sm leading-5 text-foreground/80" data-gst-registration="unset">
+              GST registration is not decided. No GST is added.
+            </p>
+          ) : view.gstRegistration === "not_registered" ? (
+            <p className="text-sm leading-5 text-foreground/80" data-gst-registration="not-registered">
+              Not GST registered. No GST is added.
+            </p>
+          ) : null}
           <SummaryRow
             label={view.showGst ? "Client sell ex GST" : "Client sell"}
             value={clientSellValue}

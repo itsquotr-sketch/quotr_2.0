@@ -64,7 +64,9 @@ Changing one setting changes only its own money. Laminate $50/m² makes supply $
 
 ## Acceptance
 
-The original brief was priced in the isolated Preview organisation through the signed-in UI. The installation method was chosen as floating click-lock, moisture control as a separate barrier, and price ownership as separate supply and installation. Underlay came from the brief. Company rates were saved from the named “Open this rate” actions: laminate $40/m², underlay $8/m², moisture barrier $3/m², 0.2 h/m², carpenter $75/h. After an explicit regenerate and a reload, the estimate is direct cost $2,100 and sell $2,625 ex GST at 20% margin. Persisted Pricing, after “Update final pricing”, shows laminate 33 m² at $1,650, underlay 30 m² at $300, barrier 30 m² at $112.50, and installation 6 h at $562.50. Skirting stays excluded. GST at 15% is shown beside that sell, not inside it. The quote was not created and pricing was not marked reviewed.
+The original brief was priced in the isolated Preview organisation through the signed-in UI. The installation method was chosen as floating click-lock, moisture control as a separate barrier, and price ownership as separate supply and installation. Underlay came from the brief. Company rates were saved from the named “Open this rate” actions: laminate $40/m², underlay $8/m², moisture barrier $3/m², 0.2 h/m², carpenter $75/h. After an explicit regenerate and a reload, the estimate is direct cost $2,100 and sell $2,625 ex GST at 20% margin. Persisted Pricing, after “Update final pricing”, shows laminate 33 m² at $1,650, underlay 30 m² at $300, barrier 30 m² at $112.50, and installation 6 h at $562.50. Skirting stays excluded. The quote was not created and pricing was not marked reviewed.
+
+GST registration is `organisation_settings.gst_registered`. Null means it has not been answered. A stored `default_gst_rate` of 15, or a pricing document that already copied that rate, is not a yes. Registered uses the saved positive rate. Not registered applies 0. Unknown adds no GST and blocks quote creation until the business chooses. The saved pricing document is not rewritten. The setup notice that lists GST is the registration gap, not a stale warning.
 
 A saved laminate package rate does not decide underlay, moisture, or waste coverage. Those answers are required first, and each confirmed item is charged once.
 
@@ -79,7 +81,7 @@ Laminate supply, underlay, a separate moisture barrier, and installation use the
 - Hazardous-materials risk is an unanswered condition. No hazardous-materials cost is included, and an unanswered risk is not treated as zero.
 - The 10% waste sentence was a stale unpriced check. That waste is already in the laminate supply quantity. Review the formula in Materials takeoff.
 
-Quote creation remains blocked until pricing is marked reviewed. That review does not close the three unanswered site conditions.
+Quote creation remains blocked until pricing is marked reviewed and GST registration is decided. Reviewing the price does not close the three unanswered site conditions, and it does not decide GST.
 
 ## Not in this recipe
 

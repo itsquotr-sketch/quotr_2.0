@@ -12,6 +12,7 @@ import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
+import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
 import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -41,6 +42,7 @@ type PricingMobileActionBarProps = {
   className?: string;
   scopeQuoteBlock?: string | null;
   estimateUpdateRequired?: string | null;
+  gstRegistered?: boolean | null;
 };
 
 export function PricingMobileActionBar({
@@ -59,10 +61,11 @@ export function PricingMobileActionBar({
   className,
   scopeQuoteBlock = null,
   estimateUpdateRequired = null,
+  gstRegistered,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
-  const view = pricingDocumentViewModel(document, items);
+  const view = pricingDocumentViewModel(document, items, gstRegistered);
   const manualQuoteBlock = unresolvedManualPricingQuoteBlock(items);
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
   const provisionalBlock = ceilingProvisionalDecision({
@@ -77,6 +80,7 @@ export function PricingMobileActionBar({
     unknownCostBlock;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
+    || (gstRegistered === null ? GST_REGISTRATION_UNSET_QUOTE_BLOCK : null)
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : reviewBlock);

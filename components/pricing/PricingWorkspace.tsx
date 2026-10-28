@@ -76,6 +76,7 @@ type PricingWorkspaceProps = {
   supplierReview?: SupplierPriceReview | null;
   scopeReview?: ScheduleScopeReview | null;
   estimateUpdateRequired?: string | null;
+  gstRegistered?: boolean | null;
 };
 
 export function PricingWorkspace({
@@ -86,6 +87,7 @@ export function PricingWorkspace({
   supplierReview = null,
   scopeReview = null,
   estimateUpdateRequired = null,
+  gstRegistered,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -584,6 +586,7 @@ export function PricingWorkspace({
         pricingChangedAfterQuote={pricingChangedAfterQuote}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
+        gstRegistered={gstRegistered}
       />
 
       {quoteSummary != null ? (
@@ -822,6 +825,7 @@ export function PricingWorkspace({
           canEdit={canEditPricing}
           scopeQuoteBlock={scopeReview?.blocking ?? null}
           estimateUpdateRequired={estimateUpdateRequired}
+          gstRegistered={gstRegistered}
         />
       </div>
 
@@ -836,6 +840,7 @@ export function PricingWorkspace({
         canEdit={canEditPricing}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
+        gstRegistered={gstRegistered}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

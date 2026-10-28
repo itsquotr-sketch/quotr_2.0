@@ -22,7 +22,10 @@ export type GstSourceResolution = {
     | "organisation_settings"
     | "pricing_document"
     | "application_default"
-    | "validated_mutation";
+    | "validated_mutation"
+    | "registration_unset";
+  /** False only when GST registration has not been answered. */
+  readonly applied?: boolean;
 };
 
 export function isValidGstRatePercent(value: unknown): value is number {
@@ -114,9 +117,62 @@ export function resolvePricingGstForUpdate(params: {
 }
 
 /**
+ * Quote GST follows the saved registration decision.
+ * Registered uses the organisation rate when it is a positive saved rate,
+ * otherwise the application default. Not registered is 0 even if a positive
+ * default rate is still stored. Unknown is not registered and is not 0%:
+ * no GST is applied.
+ */
+export function resolveQuoteGstFromRegistration(input: {
+  readonly gstRegistered: boolean | null;
+  readonly defaultGstRate: number | null | undefined;
+}): GstSourceResolution {
+  if (input.gstRegistered === true) {
+    if (isValidGstRatePercent(input.defaultGstRate) && input.defaultGstRate > 0) {
+      return {
+        rate: input.defaultGstRate,
+        source: "organisation_settings",
+        applied: true,
+      };
+    }
+    return {
+      rate: DEFAULT_GST_RATE,
+      source: "application_default",
+      applied: true,
+    };
+  }
+  if (input.gstRegistered === false) {
+    return { rate: 0, source: "organisation_settings", applied: true };
+  }
+  return { rate: 0, source: "registration_unset", applied: false };
+}
+
+/**
  * Simulate createPricingFromEstimate GST wiring (pure).
  * After Batch 2B.5, insert and post-insert recalc must use the same rate.
  */
+export function resolveNewPricingDocumentGst(input: {
+  readonly gstRegistered: boolean | null | undefined;
+  readonly defaultGstRate: number | null | undefined;
+}): {
+  readonly documentGstRate: number;
+  readonly recalculationGstRate: number;
+  readonly source: GstSourceResolution["source"];
+} {
+  if (input.gstRegistered === undefined) {
+    return resolveCreatePricingFromEstimateGstRates(input.defaultGstRate);
+  }
+  const resolved = resolveQuoteGstFromRegistration({
+    gstRegistered: input.gstRegistered,
+    defaultGstRate: input.defaultGstRate,
+  });
+  return {
+    documentGstRate: resolved.rate,
+    recalculationGstRate: resolved.rate,
+    source: resolved.source,
+  };
+}
+
 export function resolveCreatePricingFromEstimateGstRates(
   organisationDefaultGstRate: number | null | undefined
 ): {

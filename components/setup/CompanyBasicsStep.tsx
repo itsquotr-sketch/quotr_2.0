@@ -23,7 +23,6 @@ import {
 } from "@/lib/setup/locale-catalogue";
 import {
   gstRateFromRegisteredChoice,
-  gstRegisteredFromRate,
   type GstRegisteredChoice,
 } from "@/lib/setup/gst-registered";
 import {
@@ -68,7 +67,12 @@ export function CompanyBasicsStep({
   );
   const suggestedGst =
     getCountryOption(initialCountry)?.suggestedGstPercent ?? 15;
-  const derivedRegistered = gstRegisteredFromRate(settings?.default_gst_rate);
+  const savedRegistration =
+    settings?.gst_registered === true
+      ? "yes"
+      : settings?.gst_registered === false
+        ? "no"
+        : "";
 
   const [country, setCountry] = useState(initialCountry);
   const [currency, setCurrency] = useState(initialCurrency);
@@ -93,7 +97,7 @@ export function CompanyBasicsStep({
   );
   const [contactPhone, setContactPhone] = useState(settings?.contact_phone ?? "");
   const [gstRegistered, setGstRegistered] = useState<GstRegisteredChoice | "">(
-    derivedRegistered ?? ""
+    savedRegistration
   );
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});

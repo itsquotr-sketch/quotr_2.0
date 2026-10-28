@@ -111,7 +111,7 @@ import {
 } from "@/lib/pricing/mappers";
 import {
   coercePersistedGstRate,
-  resolveCreatePricingFromEstimateGstRates,
+  resolveNewPricingDocumentGst,
   resolvePricingGstForUpdate,
   resolveStoredPricingDocumentGstRate,
 } from "@/lib/pricing/gst-source";
@@ -655,9 +655,10 @@ export async function createPricingFromEstimate(input: {
   });
   // C-28 / CD-09: organisation GST seeds the document; the same rate must
   // drive insert totals and the post-item recalculation (never hardcoded 15).
-  const createGst = resolveCreatePricingFromEstimateGstRates(
-    orgDefaults.defaultGstRate
-  );
+  const createGst = resolveNewPricingDocumentGst({
+    gstRegistered: orgDefaults.gstRegistered,
+    defaultGstRate: orgDefaults.defaultGstRate,
+  });
   const gstRate = createGst.documentGstRate;
   const validUntil = addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
 
@@ -2753,9 +2754,10 @@ export async function continueManualWorkToPricing(input: {
 
   if (!pricingDocumentId) {
     const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
-    const gstRate = resolveCreatePricingFromEstimateGstRates(
-      orgDefaults.defaultGstRate
-    ).documentGstRate;
+    const gstRate = resolveNewPricingDocumentGst({
+      gstRegistered: orgDefaults.gstRegistered,
+      defaultGstRate: orgDefaults.defaultGstRate,
+    }).documentGstRate;
     const assumptions = resolveClientQuoteAssumptions({
       pricingClientAssumptions: [],
       orgDefaults,

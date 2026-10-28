@@ -128,6 +128,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         supplierReview={supplierReview}
         scopeReview={scopeReview}
         estimateUpdateRequired={tabContext.quantityConflictDetail}
+        gstRegistered={access.gstRegistered}
       />
     </WorkspacePage>
   );

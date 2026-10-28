@@ -7,11 +7,14 @@
 
 import { readFileSync } from "node:fs";
 import { calculateDocumentTotals } from "../lib/pricing/calculations";
+import { presentGstForRegistration } from "../lib/pricing/gst-presentation";
 import {
   isValidGstRatePercent,
   resolveCreatePricingFromEstimateGstRates,
   resolveInitialPricingGstRate,
+  resolveNewPricingDocumentGst,
   resolvePricingGstForUpdate,
+  resolveQuoteGstFromRegistration,
   resolveStoredPricingDocumentGstRate,
 } from "../lib/pricing/gst-source";
 import { DEFAULT_GST_RATE } from "../lib/pricing/status";
@@ -274,6 +277,114 @@ function main(): void {
     assert(
       "KM-GST-C28 no longer blocks adoption",
       km != null && km.blocksAdoption === false
+    )
+  );
+
+  const registered = resolveQuoteGstFromRegistration({
+    gstRegistered: true,
+    defaultGstRate: 15,
+  });
+  checks.push(
+    assert(
+      "registered organisation applies its saved 15% rate",
+      registered.applied === true &&
+        registered.rate === 15 &&
+        registered.source === "organisation_settings"
+    )
+  );
+  const registeredWithoutRate = resolveQuoteGstFromRegistration({
+    gstRegistered: true,
+    defaultGstRate: null,
+  });
+  checks.push(
+    assert(
+      "registered organisation without a positive rate uses the application default",
+      registeredWithoutRate.applied === true &&
+        registeredWithoutRate.rate === DEFAULT_GST_RATE &&
+        registeredWithoutRate.source === "application_default"
+    )
+  );
+  const notRegistered = resolveQuoteGstFromRegistration({
+    gstRegistered: false,
+    defaultGstRate: 15,
+  });
+  checks.push(
+    assert(
+      "non-registered organisation applies 0 even when a positive default remains",
+      notRegistered.applied === true &&
+        notRegistered.rate === 0 &&
+        notRegistered.source === "organisation_settings"
+    )
+  );
+  const unknown = resolveQuoteGstFromRegistration({
+    gstRegistered: null,
+    defaultGstRate: 15,
+  });
+  checks.push(
+    assert(
+      "unknown registration does not apply the stored 15% default",
+      unknown.applied === false &&
+        unknown.rate === 0 &&
+        unknown.source === "registration_unset"
+    )
+  );
+  const newUnknown = resolveNewPricingDocumentGst({
+    gstRegistered: null,
+    defaultGstRate: 15,
+  });
+  checks.push(
+    assert(
+      "a new pricing document does not copy 15% while registration is unknown",
+      newUnknown.documentGstRate === 0 &&
+        newUnknown.recalculationGstRate === 0 &&
+        newUnknown.source === "registration_unset"
+    )
+  );
+  const storedWhileUnknown = presentGstForRegistration({
+    gstRegistered: null,
+    gstRate: 15,
+    gstAmount: 393.75,
+    subtotalExGst: 2625,
+    totalInclGst: 3018.75,
+  });
+  checks.push(
+    assert(
+      "an existing document rate is not shown as GST while registration is unknown",
+      storedWhileUnknown.registration === "unset" &&
+        storedWhileUnknown.showGst === false &&
+        storedWhileUnknown.gstAmount === 0 &&
+        storedWhileUnknown.inclGst === 2625
+    )
+  );
+  const storedWhileRegistered = presentGstForRegistration({
+    gstRegistered: true,
+    gstRate: 15,
+    gstAmount: 393.75,
+    subtotalExGst: 2625,
+    totalInclGst: 3018.75,
+  });
+  checks.push(
+    assert(
+      "a registered organisation still shows the stored document GST",
+      storedWhileRegistered.registration === "registered" &&
+        storedWhileRegistered.showGst === true &&
+        storedWhileRegistered.gstAmount === 393.75 &&
+        storedWhileRegistered.inclGst === 3018.75
+    )
+  );
+  const storedWhileNotRegistered = presentGstForRegistration({
+    gstRegistered: false,
+    gstRate: 15,
+    gstAmount: 393.75,
+    subtotalExGst: 2625,
+    totalInclGst: 3018.75,
+  });
+  checks.push(
+    assert(
+      "a non-registered organisation does not add a stored positive GST amount",
+      storedWhileNotRegistered.registration === "not_registered" &&
+        storedWhileNotRegistered.gstAmount === 0 &&
+        storedWhileNotRegistered.inclGst === 2625
     )
   );
 

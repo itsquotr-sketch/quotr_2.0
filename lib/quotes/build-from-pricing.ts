@@ -17,6 +17,7 @@ import {
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
@@ -145,6 +146,10 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     };
   }
 
+  if (orgDefaults.gstRegistered === null) {
+    return { error: GST_REGISTRATION_UNSET_QUOTE_BLOCK };
+  }
+
   const [{ data: pricingItems }, { data: workAreas }, { data: projectFacts }] =
     lineReads;
   const validationStarted = Date.now();
@@ -223,7 +228,9 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
 
   onStage?.("validation", Date.now() - validationStarted);
   const quoteGstRate =
-    document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
+    orgDefaults.gstRegistered === false
+      ? 0
+      : (document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE);
   const quoteTerms = resolveClientQuoteTerms({
     pricingClientTerms: document.terms,
     orgDefaults,
