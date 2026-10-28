@@ -26,7 +26,8 @@ export type RecalibrationItemClassification =
   | "will_update"
   | "manually_protected"
   | "new_item"
-  | "orphaned";
+  | "orphaned"
+  | "needs_review";
 
 export type RecalibrationPreviewItem = {
   classification: RecalibrationItemClassification;
@@ -49,6 +50,7 @@ export type RecalibrationPreview = {
     manuallyProtected: number;
     newItems: number;
     orphaned: number;
+    needsReview: number;
   };
   currentPricingSubtotalSell: number;
   latestEstimateRecommendedSell: number;
@@ -61,10 +63,103 @@ export const MANUAL_PRESERVED_NOTE =
   "Manually edited — preserved during recalibration.";
 
 export const ORPHANED_SOURCE_NOTE =
-  "Source estimate item no longer appears in the latest estimate.";
+  "This generated row will be removed. Its estimate requirement is no longer in the latest estimate.";
 
-function labelKey(workAreaId: string | null, label: string): string {
-  return `${workAreaId ?? ""}|${label.trim().toLowerCase()}`;
+export const REVIEW_RETAINED_NOTE =
+  "Kept for review. This row was edited, entered manually, or has no stable estimate requirement, so it was not removed.";
+
+export function pricingDraftReconciliationBlocked(
+  status: string | null | undefined
+): string | null {
+  if (status === "converted_to_quote") {
+    return "An issued quote is not changed when the estimate is updated.";
+  }
+  return null;
+}
+
+function sameNumber(
+  left: number | null | undefined,
+  right: number | null | undefined
+): boolean {
+  const a = left == null || !Number.isFinite(Number(left)) ? null : Number(left);
+  const b = right == null || !Number.isFinite(Number(right)) ? null : Number(right);
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return Math.abs(a - b) < 0.0001;
+}
+
+function requirementScope(
+  notes: string | null | undefined
+): string | null {
+  const scope = parseLineItemNotes(notes).metadata.scopeKey?.trim();
+  return scope || null;
+}
+
+export function isManualCommercialRow(item: PricingItem): boolean {
+  if (item.manually_edited) return true;
+  return parseLineItemNotes(item.notes_internal).metadata.pricingSource === "user_override";
+}
+
+export function estimateRequirementScopes(
+  estimateLineItems: readonly EstimateLineItemRow[]
+): Set<string> {
+  const scopes = new Set<string>();
+  for (const line of estimateLineItems) {
+    const scope = requirementScope(line.notes);
+    if (scope) scopes.add(scope);
+  }
+  return scopes;
+}
+
+/**
+ * An untouched generated row whose requirement is gone.
+ * A null source id is not enough: regenerate deletes estimate lines and the
+ * foreign key clears source_estimate_line_item_id. The scope key in the
+ * notes is the stable requirement identity.
+ */
+export function generatedRowLostItsRequirement(
+  item: PricingItem,
+  estimateIds: ReadonlySet<string>,
+  estimateScopes: ReadonlySet<string>
+): boolean {
+  if (isManualCommercialRow(item)) return false;
+  const scope = requirementScope(item.notes_internal);
+  const sourceId = item.source_estimate_line_item_id;
+  const sourceLive = sourceId != null && estimateIds.has(sourceId);
+  if (sourceLive) return false;
+  if (scope && estimateScopes.has(scope)) return false;
+  return Boolean(scope) || sourceId != null;
+}
+
+export function pricingRowsToRetire(
+  pricingItems: readonly PricingItem[],
+  matchedIds: ReadonlySet<string>,
+  estimateIds: ReadonlySet<string>,
+  estimateScopes: ReadonlySet<string>
+): string[] {
+  return pricingItems
+    .filter(
+      (item) =>
+        !matchedIds.has(item.id) &&
+        generatedRowLostItsRequirement(item, estimateIds, estimateScopes)
+    )
+    .map((item) => item.id);
+}
+
+export function pricingRowsNeedingReviewNote(
+  pricingItems: readonly PricingItem[],
+  matchedIds: ReadonlySet<string>,
+  estimateIds: ReadonlySet<string>,
+  estimateScopes: ReadonlySet<string>
+): string[] {
+  return pricingItems
+    .filter(
+      (item) =>
+        !matchedIds.has(item.id) &&
+        !generatedRowLostItsRequirement(item, estimateIds, estimateScopes) &&
+        item.recalibration_note !== REVIEW_RETAINED_NOTE
+    )
+    .map((item) => item.id);
 }
 
 export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
@@ -127,7 +222,7 @@ function parseDisplayNotes(notes: string | null | undefined): string | null {
   return displayNotes || null;
 }
 
-function valuesMateriallyMatch(
+export function valuesMateriallyMatch(
   pricingItem: PricingItem,
   lineItem: EstimateLineItemRow
 ): boolean {
@@ -135,7 +230,12 @@ function valuesMateriallyMatch(
   return (
     pricingItem.total_cost === estimateValues.totalCost &&
     pricingItem.total_sell === estimateValues.totalSell &&
-    pricingItem.internal_label.trim() === lineItem.label.trim()
+    pricingItem.internal_label.trim() === lineItem.label.trim() &&
+    sameNumber(pricingItem.quantity, estimateValues.quantity) &&
+    (pricingItem.unit ?? "") === (estimateValues.unit ?? "") &&
+    (pricingItem.component_key ?? null) === (lineItem.component_key ?? null) &&
+    (pricingItem.internal_description ?? "").trim() ===
+      (estimateValues.internalDescription ?? "").trim()
   );
 }
 
@@ -148,15 +248,16 @@ export function matchPricingToEstimateLines(
   const usedPricingIds = new Set<string>();
 
   const bySourceId = new Map<string, PricingItem>();
-  const byLabel = new Map<string, PricingItem>();
   const byScope = new Map<string, PricingItem>();
 
   for (const item of pricingItems) {
-    if (item.source_estimate_line_item_id) {
+    if (
+      item.source_estimate_line_item_id &&
+      estimateIds.has(item.source_estimate_line_item_id)
+    ) {
       bySourceId.set(item.source_estimate_line_item_id, item);
     }
-    byLabel.set(labelKey(item.work_area_id, item.internal_label), item);
-    const scope = parseLineItemNotes(item.notes_internal).metadata.scopeKey;
+    const scope = requirementScope(item.notes_internal);
     if (scope && !byScope.has(scope)) {
       byScope.set(scope, item);
     }
@@ -164,8 +265,7 @@ export function matchPricingToEstimateLines(
 
   for (const lineItem of estimateLineItems) {
     let match = bySourceId.get(lineItem.id) ?? null;
-    const lineScope =
-      parseLineItemNotes(lineItem.notes).metadata.scopeKey ?? null;
+    const lineScope = requirementScope(lineItem.notes);
 
     if (match && usedPricingIds.has(match.id)) {
       match = null;
@@ -175,27 +275,6 @@ export function matchPricingToEstimateLines(
       const scopeMatch = byScope.get(lineScope) ?? null;
       if (scopeMatch && !usedPricingIds.has(scopeMatch.id)) {
         match = scopeMatch;
-      }
-    }
-
-    if (!match) {
-      const labelMatch = byLabel.get(
-        labelKey(lineItem.work_area_id, lineItem.label)
-      );
-      if (labelMatch && !usedPricingIds.has(labelMatch.id)) {
-        const labelScope =
-          parseLineItemNotes(labelMatch.notes_internal).metadata.scopeKey ??
-          null;
-        if (labelScope && lineScope && labelScope !== lineScope) {
-          match = null;
-        } else {
-          const sourceStale =
-            labelMatch.source_estimate_line_item_id != null &&
-            !estimateIds.has(labelMatch.source_estimate_line_item_id);
-          if (sourceStale || labelMatch.source_estimate_line_item_id == null) {
-            match = labelMatch;
-          }
-        }
       }
     }
 
@@ -227,6 +306,7 @@ export function buildRecalibrationPreviewData(
     manuallyProtected: 0,
     newItems: 0,
     orphaned: 0,
+    needsReview: 0,
   };
 
   for (const lineItem of estimateLineItems) {
@@ -249,7 +329,7 @@ export function buildRecalibrationPreviewData(
       continue;
     }
 
-    if (match.manually_edited) {
+    if (isManualCommercialRow(match)) {
       summary.manuallyProtected += 1;
       items.push({
         classification: "manually_protected",
@@ -299,13 +379,10 @@ export function buildRecalibrationPreviewData(
     });
   }
 
+  const estimateScopes = estimateRequirementScopes(estimateLineItems);
   for (const item of pricingItems) {
-    const hasSource = item.source_estimate_line_item_id != null;
-    const sourceMissing =
-      hasSource && !estimateIds.has(item.source_estimate_line_item_id!);
-    const unmatched = !matchedPricingIds.has(item.id);
-
-    if (hasSource && (sourceMissing || unmatched)) {
+    if (matchedPricingIds.has(item.id)) continue;
+    if (generatedRowLostItsRequirement(item, estimateIds, estimateScopes)) {
       summary.orphaned += 1;
       items.push({
         classification: "orphaned",
@@ -320,7 +397,22 @@ export function buildRecalibrationPreviewData(
         orphaned: true,
         note: ORPHANED_SOURCE_NOTE,
       });
+      continue;
     }
+    summary.needsReview += 1;
+    items.push({
+      classification: "needs_review",
+      pricingItemId: item.id,
+      estimateLineItemId: item.source_estimate_line_item_id ?? undefined,
+      label: item.internal_label,
+      beforeCost: item.total_cost,
+      beforeSell: item.total_sell,
+      afterCost: item.total_cost,
+      afterSell: item.total_sell,
+      manuallyEdited: item.manually_edited,
+      orphaned: false,
+      note: REVIEW_RETAINED_NOTE,
+    });
   }
 
   const difference = roundMoney(

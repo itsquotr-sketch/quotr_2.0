@@ -37,7 +37,8 @@ const STATUS_LABELS: Record<
   will_update: "Will update",
   manually_protected: "Manually protected",
   new_item: "New item",
-  orphaned: "Orphaned",
+  orphaned: "Removed",
+  needs_review: "Needs review",
 };
 
 const STATUS_BADGE_CLASS: Record<
@@ -53,6 +54,8 @@ const STATUS_BADGE_CLASS: Record<
     "bg-sky-100 text-sky-950 dark:bg-sky-950/50 dark:text-sky-100",
   orphaned:
     "bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100",
+  needs_review:
+    "bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-100",
 };
 
 function formatDifference(before: number | null, after: number | null): string {
@@ -202,8 +205,12 @@ export function RecalibrationPreviewPanel({
                   value={preview.summary.manuallyProtected}
                 />
                 <SummaryCard
-                  label="Orphaned items"
+                  label="Removed items"
                   value={preview.summary.orphaned}
+                />
+                <SummaryCard
+                  label="Needs review"
+                  value={preview.summary.needsReview}
                 />
                 <SummaryCard
                   label="Unchanged"
