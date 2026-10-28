@@ -324,12 +324,16 @@ function FlooringLineRecovery({
     nestedItemId?: string | null;
   }) => void | Promise<void>;
 }) {
+  const roomName = line.roomName || workAreaName;
+  const itemLabel = line.description.startsWith(`${roomName} · `)
+    ? line.description.slice(roomName.length + 3)
+    : line.description;
   const recovery = flooringPricingRecovery({
     componentKey: line.componentKey,
     itemKey: line.itemKey,
     notes: line.detailNotes,
-    label: line.description,
-    roomName: workAreaName,
+    label: itemLabel,
+    roomName,
     unit: line.unit,
   });
   if (!recovery) {
@@ -739,16 +743,42 @@ export function WorkAreaBreakdown({
                     <section data-work-area-attention>
                       <h4 className="text-sm font-semibold">Required attention</h4>
                       <ul className="mt-2">
-                        {card.attention.map((item) => (
+                        {card.attention.map((item) => {
+                          const roomName = item.roomName || card.name;
+                          const itemLabel = item.description.startsWith(`${roomName} · `)
+                            ? item.description.slice(roomName.length + 3)
+                            : item.description;
+                          const recovery = flooringPricingRecovery({
+                            componentKey: item.componentKey,
+                            itemKey: item.itemKey,
+                            notes: item.detailNotes,
+                            label: itemLabel,
+                            roomName,
+                            unit: item.unit,
+                          });
+                          return (
                           <li
                             key={item.id}
                             className="border-t border-amber-300/70 py-3"
                             data-pricing-required="true"
                           >
                             <p className="font-medium break-words">{item.description}</p>
-                            <p className="mt-1 text-sm text-foreground/75">{item.detail}</p>
+                            {recovery ? (
+                              <div className="mt-2">
+                                <FlooringRecoveryActions
+                                  recovery={recovery}
+                                  projectId={projectId}
+                                  workAreaId={card.id}
+                                  nestedItemId={item.nestedItemId}
+                                  onDecide={onFlooringDecision}
+                                />
+                              </div>
+                            ) : (
+                              <p className="mt-1 text-sm text-foreground/75">{item.detail}</p>
+                            )}
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     </section>
                   ) : null}

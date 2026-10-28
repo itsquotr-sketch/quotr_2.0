@@ -3,6 +3,10 @@
  *
  * Run: npx tsx scripts/verify-estimating-v3-stage-3a.ts
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { BuilderReviewPricedLine, BuilderReviewView } from "../lib/assistant/builder-review";
+import { projectWorkAreaBreakdown } from "../lib/assistant/presentation/work-area-breakdown";
 import type { OrganisationRate } from "../components/setup/types";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import {
@@ -321,6 +325,143 @@ check(
   safeFlooringReturnPath("/app/projects/abc?recovery=saved") === "/app/projects/abc?recovery=saved" &&
     safeFlooringReturnPath("https://example.com") == null &&
     safeFlooringReturnPath("//app/projects/abc") == null
+);
+
+function attentionLine(input: {
+  id: string;
+  label: string;
+  componentKey: string;
+  itemKey: string;
+}): BuilderReviewPricedLine {
+  return {
+    id: input.id,
+    label: input.label,
+    category: "PRICING_REQUIRED",
+    recommendedCost: 0,
+    recommendedSell: 0,
+    quantity: 9.6,
+    unit: "m2",
+    labourHours: null,
+    costRate: null,
+    rateLabel: "Pricing Required",
+    labourRateLabel: null,
+    productivityLabel: null,
+    itemKey: input.itemKey,
+    componentKey: input.componentKey,
+    isAllowance: false,
+    specification: null,
+    supporting: null,
+    detail: null,
+    pricingHelper: null,
+    rateContext: null,
+    quantityFallback: null,
+    sourceLine: { notes: "", nestedItemId: "hall" } as BuilderReviewPricedLine["sourceLine"],
+  };
+}
+
+const supplyAttentionLine = attentionLine({
+  id: "supply",
+  label: "Hallway · vinyl plank supply 10.56 m²",
+  componentKey: FLOORING_FINISH_SUPPLY_COMPONENT,
+  itemKey: FLOORING_VINYL_SUPPLY_M2,
+});
+const installAttentionLine = attentionLine({
+  id: "install",
+  label: "Finish installation",
+  componentKey: FLOORING_FINISH_INSTALL_COMPONENT,
+  itemKey: FLOORING_FINISH_INSTALL_HOURS_PER_M2,
+});
+const attentionView: BuilderReviewView = {
+  overview: {
+    recommendedSell: 72,
+    recommendedCost: 57.6,
+    marginPercent: 20,
+    confidenceBand: null,
+    confidenceExplanation: null,
+    marginSourceLabel: null,
+    workAreaCount: 1,
+    workAreaNames: ["Flooring"],
+    categorySummary: [],
+    isStale: false,
+    partialEstimateLabel: null,
+    recommendedSellIsPartial: true,
+  },
+  workAreas: [
+    {
+      workAreaId: "flooring",
+      workAreaName: "Flooring",
+      workAreaType: "flooring",
+      cost: 57.6,
+      sell: 72,
+      categories: [],
+      portionGroups: [
+        {
+          id: "hallway",
+          label: "Hallway — 9.6 m² vinyl plank/LVT",
+          summary: null,
+          areaLabel: "9.6 m²",
+          assumptions: [],
+          lineGroups: [
+            {
+              id: "pricing",
+              label: "Pricing Required",
+              recommendedCost: 0,
+              supporting: null,
+              secondary: null,
+              itemKey: null,
+              showChangeMaterial: false,
+              rateContext: "Pricing Required",
+              pricingRequired: true,
+              children: [supplyAttentionLine, installAttentionLine],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  assumptions: [],
+  checks: [],
+  improvements: [],
+  costReconciles: true,
+  projectedCost: 57.6,
+  estimateCost: 57.6,
+  takeoffAffectsMoney: false,
+  requirements: [],
+};
+const attentionModel = projectWorkAreaBreakdown(attentionView);
+const supplyAttention = attentionModel.cards[0]?.attention.find((row) => row.id === "supply");
+const installAttention = attentionModel.cards[0]?.attention.find((row) => row.id === "install");
+const supplyRecovery = flooringPricingRecovery({
+  componentKey: supplyAttention?.componentKey ?? null,
+  itemKey: supplyAttention?.itemKey ?? null,
+  notes: supplyAttention?.detailNotes ?? null,
+  label: "vinyl plank supply 10.56 m²",
+  roomName: supplyAttention?.roomName ?? "",
+  unit: supplyAttention?.unit ?? null,
+});
+const hallwayInstallRecovery = flooringPricingRecovery({
+  componentKey: installAttention?.componentKey ?? null,
+  itemKey: installAttention?.itemKey ?? null,
+  notes: installAttention?.detailNotes ?? null,
+  label: "Finish installation",
+  roomName: installAttention?.roomName ?? "",
+  unit: installAttention?.unit ?? null,
+});
+const breakdownSource = readFileSync(
+  join(__dirname, "../components/assistant/mode/WorkAreaBreakdown.tsx"),
+  "utf8"
+);
+check(
+  "required attention names the hallway and opens the exact rate",
+  supplyAttention?.roomName === "Hallway" &&
+    installAttention?.roomName === "Hallway" &&
+    supplyRecovery?.kind === "company_material" &&
+    supplyRecovery.itemKey === FLOORING_VINYL_SUPPLY_M2 &&
+    hallwayInstallRecovery?.kind === "company_productivity" &&
+    hallwayInstallRecovery.itemKey === FLOORING_FINISH_INSTALL_HOURS_PER_M2 &&
+    breakdownSource.includes("data-pricing-required") &&
+    breakdownSource.includes("<FlooringRecoveryActions"),
+  { supplyAttention, supplyRecovery, hallwayInstallRecovery }
 );
 
 if (failures.length > 0) {

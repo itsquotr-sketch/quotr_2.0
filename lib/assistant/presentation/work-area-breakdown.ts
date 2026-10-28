@@ -78,6 +78,7 @@ export type WorkAreaBreakdownLine = {
   readonly itemKey: string | null;
   readonly detailNotes: string | null;
   readonly nestedItemId: string | null;
+  readonly roomName: string;
 };
 
 export type WorkAreaBreakdownGroup = {
@@ -106,6 +107,12 @@ export type WorkAreaBreakdownAttention = {
   readonly id: string;
   readonly description: string;
   readonly detail: string;
+  readonly roomName: string;
+  readonly componentKey: string | null;
+  readonly itemKey: string | null;
+  readonly detailNotes: string | null;
+  readonly unit: string | null;
+  readonly nestedItemId: string | null;
 };
 
 export type WorkAreaBreakdownCard = {
@@ -173,9 +180,27 @@ function sourceLabel(
   return label;
 }
 
+function flooringRoomName(
+  area: BuilderReviewWorkAreaGroup,
+  line: BuilderReviewPricedLine
+): string {
+  for (const portion of area.portionGroups ?? []) {
+    const owns = portion.lineGroups.some((group) =>
+      group.children.some((child) => child.id === line.id)
+    );
+    if (!owns) continue;
+    const room = portion.label.split(/\s+[—–]\s+/)[0]?.trim();
+    if (room) return room;
+  }
+  const prefixed = line.label.split(/\s+·\s+/)[0]?.trim();
+  if (prefixed && prefixed !== line.label.trim()) return prefixed;
+  return area.workAreaName;
+}
+
 function presentLine(
   line: BuilderReviewPricedLine,
-  group: BuilderReviewLineGroup | null
+  group: BuilderReviewLineGroup | null,
+  roomName: string
 ): WorkAreaBreakdownLine {
   const pricingRequired = lineIsPricingRequired(line, group);
   const hideCost = pricingRequired || Boolean(group?.costHidden) || line.recommendedCost <= 0;
@@ -229,6 +254,7 @@ function presentLine(
     itemKey: line.itemKey,
     detailNotes: line.sourceLine.notes ?? line.specification,
     nestedItemId: line.sourceLine.nestedItemId ?? null,
+    roomName,
   };
 }
 
@@ -263,7 +289,8 @@ function collectLines(area: BuilderReviewWorkAreaGroup): LineRef[] {
 
 function groupsFrom(
   idPrefix: string,
-  lines: readonly LineRef[]
+  lines: readonly LineRef[],
+  roomFor: (line: BuilderReviewPricedLine) => string
 ): WorkAreaBreakdownGroup[] {
   const groups: WorkAreaBreakdownGroup[] = [];
   for (const categoryId of COMPOSITION_ORDER) {
@@ -272,7 +299,7 @@ function groupsFrom(
     groups.push({
       id: `${idPrefix}-${categoryId}`,
       title: COMPOSITION_LABEL[categoryId],
-      lines: matched.map((row) => presentLine(row.line, row.group)),
+      lines: matched.map((row) => presentLine(row.line, row.group, roomFor(row.line))),
     });
   }
   return groups;
@@ -382,6 +409,7 @@ function presentCard(
       ? formatCurrency(area.sell)
       : null;
 
+  const roomFor = (line: BuilderReviewPricedLine) => flooringRoomName(area, line);
   const portions: WorkAreaBreakdownPortion[] = (area.portionGroups ?? []).map((portion) => ({
     id: portion.id,
     label: portion.label,
@@ -395,11 +423,11 @@ function presentCard(
           group,
           category: line.category,
         }))
-      )
+      ),
+      roomFor
     ),
     assumptions: portion.assumptions,
   }));
-
   const attention: WorkAreaBreakdownAttention[] = lines
     .filter((row) => lineIsPricingRequired(row.line, row.group))
     .map((row) => ({
@@ -407,6 +435,12 @@ function presentCard(
       description: row.line.label,
       detail:
         scopeReviewDisplay(row.line.sourceLine.notes) ?? WORK_AREA_PRICING_EXPLANATION,
+      roomName: roomFor(row.line),
+      componentKey: row.line.componentKey,
+      itemKey: row.line.itemKey,
+      detailNotes: row.line.sourceLine.notes ?? row.line.specification,
+      unit: row.line.unit,
+      nestedItemId: row.line.sourceLine.nestedItemId ?? null,
     }));
 
   return {
@@ -427,7 +461,8 @@ function presentCard(
       `${area.workAreaName}-shared`,
       (area.sharedLineGroups ?? []).flatMap((group) =>
         group.children.map((line) => ({ line, group, category: line.category }))
-      )
+      ),
+      roomFor
     ),
     costGroups: groupsFrom(
       area.workAreaName,
@@ -439,7 +474,8 @@ function presentCard(
           group.children.some((line) => line.id === row.line.id)
         );
         return !inPortion && !shared;
-      })
+      }),
+      roomFor
     ),
     assumptions,
     checks,
