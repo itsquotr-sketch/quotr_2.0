@@ -252,6 +252,7 @@ export function mapLineCategory(
 }
 
 export function mapRateLabel(raw: string): string {
+  if (/client supplied|customer supplied/i.test(raw)) return "Customer supplied";
   if (/provisional allowance/i.test(raw)) {
     return "Quotr provisional allowance · confirmed for this job";
   }
@@ -1371,6 +1372,23 @@ function isHighValueBuilderImprovement(
   return false;
 }
 
+function projectConditionCheckAction(
+  factKey: string | undefined,
+  label: string
+): string | null {
+  const key = factKey ?? "";
+  if (key === "site_access" || /site access/i.test(label)) {
+    return "Answer site access in Project Conditions. It can change labour hours. Reviewing the price does not answer it.";
+  }
+  if (key === "material_carry_distance" || /drop-off|waste carting|carry distance/i.test(label)) {
+    return "Answer the drop-off distance in Project Conditions. It can change labour. It is not a missing material cost.";
+  }
+  if (key === "hazardous_materials_risk" || /asbestos|hazardous materials/i.test(label)) {
+    return "Answer hazardous-materials risk in Project Conditions. No hazardous-materials cost is included. Do not treat an unanswered risk as zero.";
+  }
+  return null;
+}
+
 function buildIssues(
   input: ComposeBuilderReviewInput
 ): {
@@ -1452,7 +1470,7 @@ function buildIssues(
       id: item.id,
       kind: "check",
       label: item.label,
-      detail: null,
+      detail: projectConditionCheckAction(item.factKey, item.label),
       editSection: section,
       // Carry actionability to filter improvements below.
       _actionable: hasActionableTarget,

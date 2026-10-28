@@ -68,6 +68,19 @@ The original brief was priced in the isolated Preview organisation through the s
 
 A saved laminate package rate does not decide underlay, moisture, or waste coverage. Those answers are required first, and each confirmed item is charged once.
 
+## Materials and labour takeoff
+
+Laminate supply, underlay, a separate moisture barrier, and installation use the shared flooring review groups and the existing materials and labour projections. Supply shows the net area and the waste-adjusted purchase, with the purchasing unit, applied rate, and cost source. Underlay and a separate barrier stay on the net area. Installation stays on the labour takeoff. Each line is counted once. Customer-supplied laminate stays visible and has no contractor purchasing cost. Integrated moisture control does not add the separate barrier.
+
+## Site checks
+
+- Site access is an unanswered site condition. Answer it in Project Conditions. It can change labour hours. Reviewing the price does not answer it.
+- Drop-off or carting distance is an unanswered handling condition. Answer it in Project Conditions. It is not a missing material cost.
+- Hazardous-materials risk is an unanswered condition. No hazardous-materials cost is included, and an unanswered risk is not treated as zero.
+- The 10% waste sentence was a stale unpriced check. That waste is already in the laminate supply quantity. Review the formula in Materials takeoff.
+
+Quote creation remains blocked until pricing is marked reviewed. That review does not close the three unanswered site conditions.
+
 ## Not in this recipe
 
 - Glued or nailed laminate. The area stays visible and unpriced, and this recipe is not applied.

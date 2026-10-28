@@ -187,6 +187,12 @@ export function applyFlooringReviewGroups(params: {
       : portion.hardwood
         ? `m² package basis. Informational ${round2(portion.hardwood.linealM)} lm at ${portion.hardwood.boardWidthMm} mm boards. The lineal-metre takeoff does not multiply the subcontract COST.`
         : null;
+    const claimed = new Set<string>(
+      [...finish, ...addons, ...substrate, ...framing, ...separate, ...removal, ...pricing].map(
+        (row) => row.id
+      )
+    );
+    const unmatched = children.filter((row) => !claimed.has(row.id));
     const lineGroups = [
       makeGroup(
         `flooring-finish-${portion.nestedItemId}`,
@@ -230,6 +236,11 @@ export function applyFlooringReviewGroups(params: {
         pricing.some((row) => /information required/i.test(row.label))
           ? "Complete the remaining Details before this component can be priced."
           : "Continue to Pricing and add a price."
+      ),
+      makeGroup(
+        `flooring-lines-${portion.nestedItemId}`,
+        "Flooring",
+        unmatched
       ),
     ].filter((row): row is BuilderReviewLineGroup => row != null);
 

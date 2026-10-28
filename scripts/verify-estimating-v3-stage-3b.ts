@@ -3,7 +3,15 @@
  *
  * Run: npx tsx scripts/verify-estimating-v3-stage-3b.ts
  */
+import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationRate } from "../components/setup/types";
+import { toPricedLine } from "../lib/assistant/builder-review/compose";
+import { applyFlooringReviewGroups } from "../lib/assistant/builder-review/flooring-review-groups";
+import type { BuilderReviewView } from "../lib/assistant/builder-review/types";
+import {
+  projectLabourTakeoff,
+  projectMaterialsTakeoff,
+} from "../lib/assistant/presentation/estimate-takeoffs";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import { listFlooringClarifyCandidates } from "../lib/estimate/flooring-clarify";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
@@ -193,6 +201,69 @@ function writeFact(current: EstimateFact[], key: string, value: string): Estimat
 function currentPortion(current: EstimateFact[]): FlooringPortion | undefined {
   return resolveFlooringPortions({ facts: current, workAreaId: "flooring" }).portions[0];
 }
+
+function projectTakeoff(
+  lines: readonly EstimateLineItemInput[],
+  facts: readonly EstimateFact[]
+) {
+  const pricedLines = lines.map((item, index) =>
+    toPricedLine({
+      ...item,
+      id: `${item.componentKey ?? "line"}-${index}`,
+    } as EstimateLineItem)
+  );
+  const grouped = applyFlooringReviewGroups({
+    categories: [
+      {
+        id: "MATERIALS",
+        label: "Materials",
+        cost: 0,
+        lines: pricedLines.filter((line) => line.category === "MATERIALS"),
+        takeoff: [],
+        takeoffDisclaimer: null,
+        takeoffUnavailableHint: null,
+        takeoffCollapsedByDefault: false,
+        takeoffTitle: "Planning takeoff",
+        groupNotes: [],
+        lineGroups: [],
+      },
+      {
+        id: "LABOUR",
+        label: "Labour",
+        cost: 0,
+        lines: pricedLines.filter((line) => line.category === "LABOUR"),
+        takeoff: [],
+        takeoffDisclaimer: null,
+        takeoffUnavailableHint: null,
+        takeoffCollapsedByDefault: false,
+        takeoffTitle: "Planning takeoff",
+        groupNotes: [],
+        lineGroups: [],
+      },
+    ],
+    facts,
+    workAreaId: "flooring",
+  });
+  const view = {
+    overview: { isStale: false },
+    workAreas: [
+      {
+        workAreaId: "flooring",
+        workAreaName: "Flooring area 1",
+        cost: 0,
+        sell: 0,
+        categories: grouped.categories,
+        portionGroups: grouped.portionGroups,
+      },
+    ],
+    checks: [],
+    assumptions: [],
+  } as unknown as BuilderReviewView;
+  return {
+    materials: projectMaterialsTakeoff(view),
+    labour: projectLabourTakeoff(view),
+  };
+}
 let jobFacts = facts;
 jobFacts = writeFact(jobFacts, "flooring.portion.laminate_method", "Floating click-lock");
 const confirmed = currentPortion(jobFacts);
@@ -363,6 +434,37 @@ check(
   priced.lineItems.every((item) => item.recommendedCost !== FITOUT_BENCHMARKS.laminateFlooringPerM2.cost * 30),
   FITOUT_BENCHMARKS.laminateFlooringPerM2
 );
+check(
+  "priced laminate waste is a disclosed formula, not an unpriced check",
+  !priced.missingInfo.some((row) => /once this area can be priced/i.test(row)) &&
+    priced.assumptions.some((row) =>
+      /10% waste is included in the laminate supply quantity/i.test(row)
+    ),
+  { missing: priced.missingInfo, assumptions: priced.assumptions }
+);
+const pricedTakeoff = projectTakeoff(priced.lineItems, jobFacts);
+const materialRows = pricedTakeoff.materials.groups.flatMap((group) => group.rows);
+const labourRows = pricedTakeoff.labour.groups.flatMap((group) => group.rows);
+check(
+  "materials takeoff lists laminate, underlay and the separate barrier once",
+  pricedTakeoff.materials.lineCount === 3 &&
+    materialRows.some(
+      (row) => row.quantity === "33" && row.unit === "m2" && /company rate/i.test(row.source ?? "")
+    ) &&
+    materialRows.filter((row) => row.quantity === "30" && row.unit === "m2").length === 2 &&
+    materialRows.some((row) => /supply 33/i.test(row.specification ?? "")) &&
+    materialRows.some((row) => /underlay uses the net/i.test(row.specification ?? "")) &&
+    materialRows.some((row) => /moisture barrier uses the net/i.test(row.specification ?? "")),
+  materialRows.map((row) => [row.description, row.quantity, row.unit, row.source, row.specification])
+);
+check(
+  "labour takeoff keeps the 6 hour company installation",
+  pricedTakeoff.labour.lineCount === 1 &&
+    labourRows[0]?.hours === "6.00 hrs" &&
+    /\$75/.test(labourRows[0]?.hourlyCost ?? "") &&
+    /company|your rate/i.test(labourRows[0]?.hourlyRateSource ?? ""),
+  labourRows
+);
 
 const materialOnly = price(separatePortion, [
   ...companyRates.filter((row) => row.item_key !== FLOORING_LAMINATE_CLICK_LOCK_SUPPLY_M2),
@@ -492,6 +594,15 @@ check(
     includedCost(integratedPrice.lineItems) === 2010,
   integratedPrice.lineItems.map((item) => item.componentKey)
 );
+const integratedTakeoff = projectTakeoff(integratedPrice.lineItems, integratedFacts);
+check(
+  "integrated moisture removes the separate barrier from materials takeoff",
+  integratedTakeoff.materials.lineCount === 2 &&
+    integratedTakeoff.materials.groups
+      .flatMap((group) => group.rows)
+      .every((row) => !/moisture barrier/i.test(row.description + (row.specification ?? ""))),
+  integratedTakeoff.materials.groups
+);
 
 const customer = structuredClone(separatePortion) as FlooringPortion;
 customer.finish_supplied_by = "customer";
@@ -506,6 +617,19 @@ check(
     findLine(customerPrice.lineItems, FLOORING_LAMINATE_INSTALL_COMPONENT)?.recommendedCost === 450 &&
     includedCost(customerPrice.lineItems) === 780,
   customerPrice.lineItems.map((item) => [item.componentKey, item.quantity, item.recommendedCost, item.includedInTotal])
+);
+const customerTakeoff = projectTakeoff(customerPrice.lineItems, jobFacts);
+const customerMaterialRows = customerTakeoff.materials.groups.flatMap((group) => group.rows);
+const customerSupplyRow = customerMaterialRows.find((row) => row.quantity === "33");
+check(
+  "customer-supplied laminate stays on the takeoff without a purchasing cost",
+  customerTakeoff.materials.lineCount === 3 &&
+    customerSupplyRow?.source === "Customer supplied" &&
+    customerSupplyRow.knownCost == null &&
+    customerSupplyRow.unitCost == null &&
+    customerMaterialRows.some((row) => row.quantity === "30" && row.knownCost != null) &&
+    customerTakeoff.labour.lineCount === 1,
+  customerMaterialRows.map((row) => [row.description, row.quantity, row.source, row.knownCost])
 );
 
 const packed = structuredClone(separatePortion) as FlooringPortion;

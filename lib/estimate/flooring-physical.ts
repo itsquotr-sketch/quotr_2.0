@@ -1853,7 +1853,18 @@ export function calculateFlooringPhysical(params: {
       missingInfo.push("Transition strips are requested and have no priced rate.");
     }
     const purchasing = calculated.portion.purchasing;
-    if (purchasing?.kind === "carpet_unresolved") {
+    const wastePercent = portion.waste_percent;
+    const laminateWasteApplied =
+      calculated.portion.specialist_kind === "laminate" &&
+      calculated.portion.completeness ===
+        FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL &&
+      wastePercent != null &&
+      wastePercent > 0;
+    if (laminateWasteApplied && wastePercent != null) {
+      assumptions.add(
+        `${wastePercent}% waste is included in the laminate supply quantity. Underlay and a separate moisture barrier use the net area. Review that formula in Materials takeoff.`
+      );
+    } else if (purchasing?.kind === "carpet_unresolved") {
       missingInfo.push(purchasing.limitation);
     } else if (
       portion.waste_percent != null &&
