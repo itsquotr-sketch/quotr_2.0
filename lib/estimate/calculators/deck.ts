@@ -1013,7 +1013,7 @@ export function calculateDeck(
         { req: joistReq, label: "Joists" },
         { req: bearerReq, label: "Bearers" },
         { req: rimReq, label: "Rim framing" },
-        { req: supportCount > 0 ? supportReq : null, label: "Piles / posts" },
+        { req: supportCount > 0 ? supportReq : undefined, label: "Piles / posts" },
       ];
       for (const row of structuralLines) {
         const authority = resolveComponentCommercialAuthority({
