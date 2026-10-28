@@ -163,6 +163,7 @@ export function RecalibrationPreviewPanel({
   const error = previewError ?? applyError;
   const hasManualProtected = (preview?.summary.manuallyProtected ?? 0) > 0;
   const hasOrphaned = (preview?.summary.orphaned ?? 0) > 0;
+  const hasNeedsReview = (preview?.summary.needsReview ?? 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -341,8 +342,13 @@ export function RecalibrationPreviewPanel({
             ) : null}
             {hasOrphaned ? (
               <p>
-                Items no longer in the latest estimate will be kept and flagged,
-                not deleted.
+                An untouched generated row whose estimate requirement is gone
+                will be removed.
+              </p>
+            ) : null}
+            {hasNeedsReview ? (
+              <p>
+                Edited, manual, and unidentified rows stay for review.
               </p>
             ) : null}
           </div>
