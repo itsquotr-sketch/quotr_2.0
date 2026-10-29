@@ -82,6 +82,14 @@ Hosted checks on the isolated Stage 3C organisation:
 
 Pending inspection `b1a1263e-73ec-4016-b0ed-4a3421ddc767` is unchanged by the lining fix and is not re-run. Issued-snapshot protection stays the local `scripts/verify-pricing-draft-reconciliation.ts` fixture. No quote was sent.
 
+## Cost-integrity and status follow-up closed
+
+Closed on the behavior in `8c52b93b891d7aa3c696cc385c1df58a4d151fbb`. Preview deployment `dpl_H2x2zG4pwmBA7NXf5AZbzNw4Miux` (Ready, alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app). This note does not change that behavior. Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged. No quote was sent.
+
+When replacement is requested and support material, installation, or excavation is already its own line, the $1,440 pile/post replacement allowance stays out of the total. It remains a Pricing line the user can fill. A saved rate is not applied automatically. When that allowance is the only replacement money, the existing priced allowance stays. A spacing layout is not a confirmed pile count. Fresh job `3f349cff-8f28-4483-ab37-a29ca273c0b4` was regenerated on this behavior: known cost $6,024.54, known sell $7,530.20, three lines still need prices, and the allowance is not in that total.
+
+Where generated lines have prices and scope is still open, Overview, the work-area chip, the dashboard, and Pricing say “Generated lines priced” and do not call the job complete. Missing prices still take priority over that label. At 390×844 the Preview feedback control no longer covers the last assistant choice: the scroll pane keeps 3.25rem of clear space while that control is present.
+
 Explicitly deferred: bathroom card visibility; typical-setup footing copy; Low-level chip beside elevated labour; modifier text on pile and hole formulas; floating-point area headings; waste wording versus the pricing path; `verify-ux-01d` check 7; `verify-ux-01b` check 13; the Turbopack junction panic; preparation with no recipe and no price; insulation labour Pricing Required; skirting painting with no rate; the work-area “All priced” chip beside an Incomplete overview. `get-quotr.com` remains marketing HTML. The app stays on `app.get-quotr.com`. Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged.
 
 ## Original briefs
