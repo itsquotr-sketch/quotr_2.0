@@ -90,7 +90,21 @@ When replacement is requested and support material, installation, or excavation 
 
 Where generated lines have prices and scope is still open, Overview, the work-area chip, the dashboard, and Pricing say “Generated lines priced” and do not call the job complete. Missing prices still take priority over that label. At 390×844 the Preview feedback control no longer covers the last assistant choice: the scroll pane keeps 3.25rem of clear space while that control is present.
 
-Explicitly deferred: bathroom card visibility; typical-setup footing copy; Low-level chip beside elevated labour; modifier text on pile and hole formulas; floating-point area headings; waste wording versus the pricing path; `verify-ux-01d` check 7; `verify-ux-01b` check 13; the Turbopack junction panic; preparation with no recipe and no price; insulation labour Pricing Required; skirting painting with no rate; the work-area “All priced” chip beside an Incomplete overview. `get-quotr.com` remains marketing HTML. The app stays on `app.get-quotr.com`. Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged.
+Explicitly deferred: typical-setup footing copy; Low-level chip beside elevated labour; modifier text on pile and hole formulas; floating-point area headings; waste wording versus the pricing path; `verify-ux-01d` check 7; `verify-ux-01b` check 13; the Turbopack junction panic; preparation with no recipe and no price; insulation labour Pricing Required; skirting painting with no rate; the work-area “All priced” chip beside an Incomplete overview. `get-quotr.com` remains marketing HTML. The app stays on `app.get-quotr.com`. Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged.
+
+## Bathroom scope preservation
+
+Closed on the behavior in `b6327761e1f4`. Preview deployment `dpl_2ZoUpRWsvKVwV6P5DMGiAWy53uW4` (Ready, alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app). Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` is unchanged. No quote was sent. This is not a new bathroom recipe and not a new scope store.
+
+Before, job `d74704e5-7e4a-4536-b749-cc2f24821af7` kept the brief and showed only demolition plus waterproofing to confirm. After, fresh job `7c2c4d32-01a8-4704-97d1-028071412fbb` keeps the requested scope on the Bathroom card: removals of the vanity, shower, toilet and vinyl; the 900 mm vanity; shower and toilet staying in place; floor tiling; wall and ceiling paint; customer-supplied vanity, toilet, shower and tiles; upstairs occupied conditions; plumbing and electrical charges excluded. Partial lining, stair protection, daily cleaning and ancillary materials stay as coverage gaps. Waterproofing stays unanswered. “Where damaged only” does not become a full-wall reline. There is no separate Flooring or Painting work area.
+
+The partial estimate is Incomplete. Known cost $2,485.25, known sell $3,106.57. Priced lines are vanity installation, the four removals, bathroom disposal, floor tiler installation and painting. Shower and toilet installation stay plumber charges and are not priced. The overview says generated lines are priced and four requested tasks have no line. It does not call the bathroom complete. At 390×844 the overview does not overflow.
+
+Unpriced, and still not given a rate: partial wall-lining extent, stair protection, daily cleaning, and contractor-supplied ancillary materials. Tile format, floor substrate, framing extent and waterproofing stay open where the brief did not answer them. Site access Easy and carry under 10 m were session answers so the existing labour gate could run; they add no access or carry adjustment. The brief did not state them.
+
+Draft `31d66ec2-d37b-4562-9766-5f9eceba01a0` is unsent. Client exclusions include plumbing and electrical. It was created before the quote-visibility correction, so the coverage rows are still stored as quote-visible $0 lines. A new draft built from this behavior keeps those rows, and the customer-supplied tile supply row, off the quote. The priced total does not include them.
+
+The shorthand paraphrase and the mixed customer/contractor supply brief are covered by `scripts/verify-bathroom-scope-preservation.ts`. They were not separate Preview jobs. In the mixed brief the contractor-supplied toilet and shower stay supply-and-install, and the customer-supplied vanity and tiles do not become a supply charge.
 
 ## Original briefs
 
