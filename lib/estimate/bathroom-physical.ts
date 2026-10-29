@@ -28,8 +28,9 @@ import {
   BATHROOM_FRAMING_REQUIRED_MESSAGE,
   BATHROOM_FRAMING_TIMBER_KEY,
   BATHROOM_FRAMING_TIMBER_LABEL,
-  BATHROOM_PLYWOOD_ASSUMPTION,
   BATHROOM_PRODUCTIVITY_BENCHMARKS,
+  BATHROOM_SUBSTRATE_PARTIAL_COVERAGE,
+  BATHROOM_SUBSTRATE_UNKNOWN_COVERAGE,
   BATHROOM_PRODUCTIVITY_KEYS,
   BATHROOM_SHEET_WASTE_STATEMENT,
   BATHROOM_WALL_LINING_COMPONENT,
@@ -44,7 +45,7 @@ import {
   presentBathroomHours,
 } from "@/lib/estimate/bathroom-linings";
 import {
-  parseBathroomFloorSubstrate,
+  classifyBathroomFloorSubstrateAnswer,
   parseBathroomFramingLevel,
   type BathroomFloorSubstrateSystem,
   type BathroomFramingLevel,
@@ -79,7 +80,9 @@ import type { BathroomGeometryResolution } from "@/lib/estimate/bathroom-geometr
 
 export type BathroomPhysicalSelection = {
   floorSubstrate: BathroomFloorSubstrateSystem | null;
+  /** Kept for callers. Unknown substrate is unresolved, not an accepted plywood allowance. */
   floorSubstrateAssumed: boolean;
+  floorSubstrateUnresolved: boolean;
   wallLining: "aqualine" | "fibre_cement" | "other" | "unknown" | "none" | null;
   wallLiningAssumed: boolean;
   ceilingLining: "aqualine" | "other" | "none" | null;
@@ -104,10 +107,20 @@ export function resolveBathroomPhysicalSelection(params: {
   const jobScope = getStringFact(facts as never, workAreaId, "bathroom.job_scope");
   const stripOutOnly = jobScope === "strip_out_only";
   const substrateRaw = factValue(facts, workAreaId, "bathroom.floor_substrate_system");
-  const floorSubstrateAssumed = !stripOutOnly && isNotSureValue(substrateRaw);
-  const floorSubstrate = floorSubstrateAssumed
-    ? "treated_plywood"
-    : parseBathroomFloorSubstrate(substrateRaw);
+  const substrateTreatment = classifyBathroomFloorSubstrateAnswer(substrateRaw);
+  const floorSubstrateAssumed = false;
+  const floorSubstrateUnresolved =
+    !stripOutOnly &&
+    (substrateTreatment.kind === "unknown" ||
+      substrateTreatment.kind === "partial_unmeasured");
+  const floorSubstrate =
+    substrateTreatment.kind === "replacement"
+      ? substrateTreatment.system
+      : substrateTreatment.kind === "retained"
+        ? "none"
+        : substrateTreatment.kind === "other"
+          ? "other"
+          : null;
 
   const wallRaw = factValue(facts, workAreaId, "bathroom.wall_lining_included");
   const wallSystem = getStringFact(
@@ -163,6 +176,7 @@ export function resolveBathroomPhysicalSelection(params: {
   return {
     floorSubstrate,
     floorSubstrateAssumed,
+    floorSubstrateUnresolved,
     wallLining,
     wallLiningAssumed,
     ceilingLining,
@@ -342,8 +356,29 @@ export function buildBathroomPhysicalEnvelope(params: {
     constraintKeys: [] as string[],
   };
 
-  if (selection.floorSubstrateAssumed) {
-    assumptions.push(BATHROOM_PLYWOOD_ASSUMPTION);
+  if (selection.floorSubstrateUnresolved) {
+    const sentence =
+      classifyBathroomFloorSubstrateAnswer(
+        factValue(facts, workArea.id, "bathroom.floor_substrate_system")
+      ).kind === "partial_unmeasured"
+        ? BATHROOM_SUBSTRATE_PARTIAL_COVERAGE
+        : BATHROOM_SUBSTRATE_UNKNOWN_COVERAGE;
+    missingInfo.push(sentence);
+    lineItems.push({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: "Floor substrate",
+      category: "allowance",
+      quantity: 1,
+      unit: "allow",
+      notes: sentence,
+      identitySummary: sentence,
+      rateSource: "Excluded from this total",
+      rateSourceType: "default",
+      includedInTotal: false,
+      sortOrder: sortOrder++,
+      ...buildAmounts(0, 0, null),
+    });
   }
   if (selection.wallLiningAssumed) {
     assumptions.push(BATHROOM_AQUALINE_WALL_ASSUMPTION);
@@ -386,6 +421,7 @@ export function buildBathroomPhysicalEnvelope(params: {
         })
       : null;
 
+  let substrateInstall: { hoursPerUnit: number; hours: number } | null = null;
   if (structuralIdentity && floorArea != null && structuralIdentity.sheet) {
     if (
       floorBuildUp.structural === "fibre_cement_flooring_19mm" &&
@@ -408,6 +444,7 @@ export function buildBathroomPhysicalEnvelope(params: {
       rates: context.rates,
     });
     const hours = bathroomLiningHours(floorArea, productivity.hoursPerUnit);
+    substrateInstall = { hoursPerUnit: productivity.hoursPerUnit, hours };
     const adjustedHours = hours * params.accessFactor;
     const rate = resolveExactMaterialRate({
       itemKey,
@@ -434,9 +471,7 @@ export function buildBathroomPhysicalEnvelope(params: {
         variantKey: floorBuildUp.structural ?? "structural",
         description: `Floor substrate — ${label}`,
         confidence: "high",
-        assumptions: selection.floorSubstrateAssumed
-          ? [{ key: "bathroom.floor_substrate_system", text: BATHROOM_PLYWOOD_ASSUMPTION, source: "assumed_default" }]
-          : [],
+        assumptions: [],
         provenance: provenanceBase,
         priced: rate.priced,
         materialKey: itemKey,
@@ -745,6 +780,11 @@ export function buildBathroomPhysicalEnvelope(params: {
         }
       )
     );
+    if (substrateInstall && floorArea != null) {
+      assumptions.push(
+        `Floor substrate installation and tile underlay installation are separate tasks over ${presentBathroomAreaM2(floorArea)}. Substrate uses ${BATHROOM_PRODUCTIVITY_KEYS.floorSubstrateM2} at ${substrateInstall.hoursPerUnit} h/m² (${presentBathroomHours(substrateInstall.hours)} before access). Underlay uses ${BATHROOM_PRODUCTIVITY_KEYS.tileUnderlayM2} at ${productivity.hoursPerUnit} h/m² (${presentBathroomHours(hours)} before access). Both are multiplied by access factor ${params.accessFactor}. Matching hours are the same area and the same resolved rate, not one allowance counted twice.`
+      );
+    }
   }
 
   if (selection.wallLining === "unknown" && wallArea != null && wallArea > 0) {

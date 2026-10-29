@@ -109,6 +109,45 @@ function smallBathroomFactor(areaM2: number): number {
   return areaM2 < 6 ? 1.1 : 1;
 }
 
+const DEMOLITION_SCOPE_LABELS: Record<string, string> = {
+  vanity: "vanity",
+  shower: "shower",
+  toilet: "toilet",
+  bath: "bath",
+  floor_finish: "floor finish",
+  wall_lining: "wall lining",
+  ceiling: "ceiling",
+  fixture: "fixtures",
+  complete_strip: "the selected complete strip-out",
+};
+
+function bathroomSelectedScopeAssumption(params: {
+  jobScope: string | null;
+  demolitionComponents: readonly string[];
+  floorFinish: string | null;
+  paintingIncluded: boolean | null;
+  fixtures: readonly string[];
+}): string {
+  const parts: string[] = [];
+  const removals = params.demolitionComponents
+    .map((id) => DEMOLITION_SCOPE_LABELS[id] ?? id.replace(/_/g, " "))
+    .filter(Boolean);
+  if (removals.length > 0) parts.push(`remove ${removals.join(", ")}`);
+  if (params.floorFinish === "tile") parts.push("floor tiling");
+  else if (params.floorFinish) {
+    parts.push(`${params.floorFinish.replace(/_/g, " ")} floor finish`);
+  }
+  if (params.paintingIncluded === true) parts.push("painting");
+  if (params.fixtures.length > 0) parts.push(params.fixtures.join(", "));
+  if (parts.length === 0) {
+    const scope = params.jobScope?.replace(/_/g, " ");
+    return scope
+      ? `Bathroom allowances follow the selected job scope (${scope}).`
+      : "Bathroom allowances follow the selected components.";
+  }
+  return `Selected bathroom scope: ${parts.join("; ")}. Allowances follow those selections.`;
+}
+
 export function calculateBathroom(
   context: EstimateContext,
   workArea: EstimateWorkArea
@@ -1070,8 +1109,20 @@ export function calculateBathroom(
     );
   }
 
-  if (jobScopeFull || renovationType?.toLowerCase().includes("full")) {
-    assumptions.push("Full strip-out and rebuild — component trade allowances applied.");
+  if (jobScopeFull || renovationType?.toLowerCase().includes("full") || jobScope === "custom") {
+    assumptions.push(
+      bathroomSelectedScopeAssumption({
+        jobScope,
+        demolitionComponents: getArrayFact(
+          facts,
+          workArea.id,
+          "bathroom.demolition.components"
+        ),
+        floorFinish: getStringFact(facts, workArea.id, "bathroom.floor_finish_system"),
+        paintingIncluded: getBooleanFact(facts, workArea.id, "bathroom.painting_included"),
+        fixtures: getArrayFact(facts, workArea.id, "bathroom.fixtures_included"),
+      })
+    );
   } else if (renovationType?.toLowerCase().includes("minor") || jobScope === "fixture_replacement") {
     assumptions.push("Minor refresh scope — limited strip-out and trade changes assumed.");
   }

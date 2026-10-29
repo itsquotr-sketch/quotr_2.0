@@ -224,9 +224,13 @@ function parseDisplayNotes(notes: string | null | undefined): string | null {
 }
 
 /**
- * Money, quantity and wording only. Quote visibility is intentionally omitted
- * so an explicit reconcile does not rewrite an existing draft or issued snapshot
- * when the only difference is whether an unresolved row is shown on the quote.
+ * Money, quantity and wording only. Quote visibility is not compared.
+ *
+ * Tracked defect, not a permanent rule: an explicit reconcile therefore
+ * leaves an unedited generated row on the quote when the only change is
+ * visibility. A later reconciliation must update that unedited generated
+ * visibility and must still protect edited rows and issued snapshots.
+ * This comparison is unchanged in the substrate correction.
  */
 export function valuesMateriallyMatch(
   pricingItem: PricingItem,

@@ -94,6 +94,10 @@ export const BATHROOM_FRAMING_TIMBER_LABEL = "90 × 45 H1.2 radiata pine";
 
 export const BATHROOM_PLYWOOD_ASSUMPTION =
   "Quotr has allowed for 19 mm H3.2 treated plywood.";
+export const BATHROOM_SUBSTRATE_UNKNOWN_COVERAGE =
+  "Floor substrate condition is unknown. A full floor replacement is not assumed. Coverage is unresolved." as const;
+export const BATHROOM_SUBSTRATE_PARTIAL_COVERAGE =
+  "Floor substrate repair extent is not measured. A full floor replacement is not assumed. Coverage is unresolved." as const;
 export const BATHROOM_AQUALINE_WALL_ASSUMPTION =
   "Quotr has allowed for 13 mm GIB Aqualine wall lining.";
 export const BATHROOM_AQUALINE_CEILING_ASSUMPTION =

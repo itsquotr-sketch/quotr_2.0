@@ -208,6 +208,7 @@ export const BATHROOM_FLOOR_SUBSTRATE_FACT_KEY =
 
 export const BATHROOM_FLOOR_SUBSTRATE_OPTIONS = [
   "Keep existing floor",
+  "Partial repair",
   "19 mm treated plywood",
   "19 mm fibre-cement flooring",
   "Secura flooring",
@@ -767,12 +768,49 @@ export function bathroomQuestionGroupVisible(
   }
 }
 
+export type BathroomFloorSubstrateTreatment =
+  | { kind: "unanswered" }
+  | { kind: "retained" }
+  | { kind: "unknown" }
+  | { kind: "partial_unmeasured" }
+  | { kind: "other" }
+  | { kind: "replacement"; system: BathroomFloorSubstrateSystem };
+
+export function classifyBathroomFloorSubstrateAnswer(
+  value: unknown
+): BathroomFloorSubstrateTreatment {
+  if (value == null || value === "") return { kind: "unanswered" };
+  const lower = String(value).trim().toLowerCase();
+  if (lower === "not sure" || lower === "unknown" || lower === "unsure") {
+    return { kind: "unknown" };
+  }
+  if (
+    lower === "partial repair" ||
+    lower === "partial_repair" ||
+    (/partial/.test(lower) && /repair|extent|damaged/.test(lower))
+  ) {
+    return { kind: "partial_unmeasured" };
+  }
+  const parsed = parseBathroomFloorSubstrate(value);
+  if (parsed === "none") return { kind: "retained" };
+  if (parsed === "other") return { kind: "other" };
+  if (parsed) return { kind: "replacement", system: parsed };
+  return { kind: "unanswered" };
+}
+
 export function parseBathroomFloorSubstrate(
   value: unknown
 ): BathroomFloorSubstrateSystem | null {
   if (value == null || value === "") return null;
   const lower = String(value).trim().toLowerCase();
   if (lower === "not sure" || lower === "unknown" || lower === "unsure") {
+    return null;
+  }
+  if (
+    lower === "partial repair" ||
+    lower === "partial_repair" ||
+    (/partial/.test(lower) && /repair|extent|damaged/.test(lower))
+  ) {
     return null;
   }
   if (
