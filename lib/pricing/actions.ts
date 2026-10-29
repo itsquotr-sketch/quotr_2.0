@@ -79,7 +79,10 @@ import {
   type PersistedPricingItemMoneyFields,
 } from "@/lib/pricing/commercial-engine-adapter";
 import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
-import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
+import {
+  stampQuoteVisibilityOverride,
+  valuesFromEstimateLineItem,
+} from "@/lib/pricing/recalibration-helpers";
 import {
   inferStoredPricingCostKnown,
   mergeClientNotesPreservingIdentity,
@@ -1400,6 +1403,16 @@ export async function updatePricingItem(
     };
   }
 
+  const nextNotes = originatedAsPricingRequired
+    ? mergeClientNotesPreservingIdentity(
+        existing.notes_internal,
+        item.notes_internal,
+        costKnown
+      )
+    : (item.notes_internal ?? null);
+  const visibilityChosen =
+    (item.visible_on_quote ?? true) !== existing.visible_on_quote;
+
   const { error } = await supabase
     .from("pricing_items")
     .update({
@@ -1425,13 +1438,9 @@ export async function updatePricingItem(
       delivery_method: item.delivery_method,
       visible_on_quote: item.visible_on_quote ?? true,
       optional: item.optional ?? false,
-      notes_internal: originatedAsPricingRequired
-        ? mergeClientNotesPreservingIdentity(
-            existing.notes_internal,
-            item.notes_internal,
-            costKnown
-          )
-        : (item.notes_internal ?? null),
+      notes_internal: visibilityChosen
+        ? stampQuoteVisibilityOverride(nextNotes)
+        : nextNotes,
       notes_client: item.notes_client ?? null,
       work_area_id: item.work_area_id ?? null,
       manually_edited: originatedAsPricingRequired && !costKnown ? false : true,
@@ -2401,7 +2410,7 @@ export async function setPricingItemsQuoteVisibility(input: {
 
   const { data: ownedRows, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id")
+    .select("id, notes_internal")
     .eq("pricing_document_id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId)
     .in("id", uniqueIds);
@@ -2420,12 +2429,20 @@ export async function setPricingItemsQuoteVisibility(input: {
   if (visibilityLocked === null) return { error: PRICING_SAVE_FAILED };
   if (visibilityLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
 
-  const { error } = await supabase
-    .from("pricing_items")
-    .update({ visible_on_quote: parsed.data.visibleOnQuote })
-    .eq("pricing_document_id", parsed.data.pricingDocumentId)
-    .eq("org_id", orgId)
-    .in("id", ownedIds);
+  const visibilityWrites = await Promise.all(
+    (ownedRows ?? []).map((row) =>
+      supabase
+        .from("pricing_items")
+        .update({
+          visible_on_quote: parsed.data.visibleOnQuote,
+          notes_internal: stampQuoteVisibilityOverride(row.notes_internal as string | null),
+        })
+        .eq("id", row.id)
+        .eq("pricing_document_id", parsed.data.pricingDocumentId)
+        .eq("org_id", orgId)
+    )
+  );
+  const error = visibilityWrites.find((result) => result.error)?.error;
 
   if (error) {
     return {

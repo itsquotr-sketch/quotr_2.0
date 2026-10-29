@@ -49,7 +49,7 @@ export const PENDING_PRICING_ID_PREFIX = "pending-pricing:";
 
 /** Columns that exist on pricing_items. Never include cost_known. */
 export const PRICING_ITEM_UPDATE_SELECT =
-  "id, pricing_document_id, project_id, component_key, total_cost, total_sell, client_label, notes_internal, manually_edited";
+  "id, pricing_document_id, project_id, component_key, total_cost, total_sell, client_label, notes_internal, manually_edited, visible_on_quote";
 
 /**
  * Review loads persisted columns and derives cost_known through mapPricingItem.

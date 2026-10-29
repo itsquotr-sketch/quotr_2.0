@@ -119,6 +119,7 @@ export function PricingWorkspace({
   const saveInFlight = useRef(false);
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
+  const [meaningDrift, setMeaningDrift] = useState(initialData.documentMeaningDrift);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
   const { latestEstimateIsStale, latestEstimateRecommendedSell } = initialData;
   const projectId = document.project_id;
@@ -150,6 +151,7 @@ export function PricingWorkspace({
     }));
     setItems(initialData.items);
     setWorkAreas(initialData.workAreas);
+    setMeaningDrift(initialData.documentMeaningDrift);
   }, [initialData]);
 
   // Local disclosure only. The media-query callback records the first
@@ -625,12 +627,14 @@ export function PricingWorkspace({
           projectId={projectId}
           pricingDocumentId={pricingDocumentId}
           needsRecalibration={document.needs_recalibration}
+          documentMeaningDrift={meaningDrift}
           quoteExists={quoteSummary != null}
           latestEstimateIsStale={latestEstimateIsStale}
           canEdit={canEditPricing}
           onApplied={({ document: updatedDocument, items: updatedItems }) => {
             setDocument(updatedDocument);
             setItems(updatedItems);
+            setMeaningDrift(false);
           }}
           onKeepCurrent={() => {
             setDocument((current) => ({
@@ -866,7 +870,7 @@ export function PricingWorkspace({
         quoteSummary={quoteSummary}
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
-        needsRecalibration={document.needs_recalibration}
+        needsRecalibration={document.needs_recalibration || meaningDrift}
         canEdit={canEditPricing}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         extraReviewBlock={scopeFinalisationBlock}

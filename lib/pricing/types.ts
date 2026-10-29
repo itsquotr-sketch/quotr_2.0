@@ -191,4 +191,6 @@ export type PricingWorkspaceData = {
   projectTitle: string;
   latestEstimateRecommendedSell: number | null;
   latestEstimateIsStale: boolean;
+  /** Computed on read. A true value does not write the draft. */
+  documentMeaningDrift: boolean;
 };

@@ -11,6 +11,8 @@ import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   buildPricingItemRowFromEstimate,
+  buildRecalibrationPreviewData,
+  untouchedGeneratedQuoteChange,
   valuesMateriallyMatch,
 } from "../lib/pricing/recalibration-helpers";
 import {
@@ -391,9 +393,26 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
     const hidden = lining as unknown as PricingItem;
     const shown = { ...hidden, visible_on_quote: true } as PricingItem;
     check(
-      `${name} visibility-only change stays unreconciled`,
+      `${name} money match ignores quote visibility`,
       valuesMateriallyMatch(hidden, estimateLine as never) &&
         valuesMateriallyMatch(shown, estimateLine as never)
+    );
+    const visibilityPreview = buildRecalibrationPreviewData(
+      [estimateLine as never],
+      [shown],
+      shown.total_sell,
+      shown.total_sell
+    );
+    const visibilityRow = visibilityPreview.items.find(
+      (row) => row.pricingItemId === shown.id
+    );
+    check(
+      `${name} visibility-only change is offered for update`,
+      untouchedGeneratedQuoteChange(hidden, estimateLine as never) === "same" &&
+        untouchedGeneratedQuoteChange(shown, estimateLine as never) === "hide" &&
+        visibilityRow?.classification === "will_update" &&
+        visibilityRow.beforeSell === visibilityRow.afterSell &&
+        visibilityPreview.difference === 0
     );
     check(`${name} hidden row is not a free quote item`, quoteVisibleExcludedLineBlock([hidden]) == null);
     check(

@@ -334,8 +334,10 @@ export function RecalibrationPreviewPanel({
         <DialogFooter className="shrink-0 flex-col gap-3 border-t bg-background px-4 py-4 sm:flex-row sm:px-6">
           <div className="w-full space-y-1 text-xs text-muted-foreground sm:mr-auto sm:max-w-md sm:text-left">
             <p>
-              Recalculating will update unedited items. Your manual edits will be
-              preserved.
+              Recalculating will update unedited items, including whether an
+              untouched generated row appears on the customer quote. Your manual
+              edits, deliberate quote-visibility choices, and rows without a
+              stable requirement stay for review.
             </p>
             {hasManualProtected ? (
               <p>Manual edits will be preserved.</p>

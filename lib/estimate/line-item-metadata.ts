@@ -98,6 +98,11 @@ export type LineItemMetadata = {
   includedInTotal?: boolean;
   clientVisible?: boolean;
   pricingSource?: PricingSource;
+  /**
+   * Set when Pricing deliberately shows or hides the row.
+   * Reconciliation keeps that choice instead of copying the estimate.
+   */
+  quoteVisibilityOverride?: boolean;
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;
   allowanceMinimum?: AllowanceMinimumMeta;
@@ -246,6 +251,9 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.pricingSource) {
     metaToStore.pricingSource = metadata.pricingSource;
+  }
+  if (metadata.quoteVisibilityOverride === true) {
+    metaToStore.quoteVisibilityOverride = true;
   }
   if (metadata.quantityBasis) {
     metaToStore.quantityBasis = metadata.quantityBasis;

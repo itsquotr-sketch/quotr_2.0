@@ -3,13 +3,20 @@
  * Run: npx tsx scripts/verify-pricing-draft-reconciliation.ts
  */
 import {
+  buildPricingItemUpdateFromEstimate,
   buildRecalibrationPreviewData,
   estimateRequirementScopes,
+  generatedQuoteVisibilityDrift,
   matchPricingToEstimateLines,
   pricingDraftReconciliationBlocked,
   pricingRowsNeedingReviewNote,
   pricingRowsToRetire,
+  QUOTE_VISIBILITY_HIDE_NOTE,
+  QUOTE_VISIBILITY_KEPT_NOTE,
+  QUOTE_VISIBILITY_SHOW_NOTE,
+  quoteVisibilityDriftApplies,
   REVIEW_RETAINED_NOTE,
+  shouldApplyMatchedPricingUpdate,
   type EstimateLineItemRow,
 } from "../lib/pricing/recalibration-helpers";
 import type { PricingItem } from "../lib/pricing/types";
@@ -32,6 +39,7 @@ function line(input: {
   cost: number;
   sell: number;
   specification: string;
+  includedInTotal?: boolean;
 }): EstimateLineItemRow {
   return {
     id: input.id,
@@ -45,7 +53,7 @@ function line(input: {
       unit: "m2",
       scopeKey: input.scope,
       rateSourceType: "benchmark",
-      includedInTotal: true,
+      includedInTotal: input.includedInTotal ?? true,
     }),
     sort_order: 0,
     component_key: input.component,
@@ -65,15 +73,20 @@ function item(input: {
   manuallyEdited?: boolean;
   pricingSource?: string;
   note?: string | null;
+  visibleOnQuote?: boolean;
+  includedInTotal?: boolean;
+  quoteVisibilityOverride?: boolean;
 }): PricingItem {
   const metadata: Record<string, unknown> = {
     quantity: input.quantity,
     unit: input.quantity == null ? undefined : "m2",
     scopeKey: input.scope,
     rateSourceType: input.cost === 0 && input.sell === 0 ? "missing" : "benchmark",
-    includedInTotal: !(input.cost === 0 && input.sell === 0),
+    includedInTotal:
+      input.includedInTotal ?? !(input.cost === 0 && input.sell === 0),
   };
   if (input.pricingSource) metadata.pricingSource = input.pricingSource;
+  if (input.quoteVisibilityOverride) metadata.quoteVisibilityOverride = true;
   return {
     id: input.id,
     org_id: "org",
@@ -97,7 +110,7 @@ function item(input: {
     gross_profit: 0,
     margin_percent: 0,
     markup_percent: 0,
-    visible_on_quote: true,
+    visible_on_quote: input.visibleOnQuote ?? true,
     optional: false,
     sort_order: 0,
     notes_internal: meta(input.specification ?? "", metadata),
@@ -438,5 +451,224 @@ function requirementScopeOf(notes: string | null): string {
   const match = notes?.match(/"scopeKey":"([^"]+)"/);
   return match?.[1] ?? "";
 }
+
+const coverageScope = "bathroom:wa:floor_tile.coverage_unresolved";
+const coverageLine = line({
+  id: "coverage-line",
+  label: "Floor tile supply allowance",
+  scope: coverageScope,
+  component: "bathroom.floor_tile.coverage_unresolved",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  includedInTotal: false,
+});
+const visibleCoverage = item({
+  id: "coverage-price",
+  label: "Floor tile supply allowance",
+  scope: coverageScope,
+  component: "bathroom.floor_tile.coverage_unresolved",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  source: "coverage-line",
+  includedInTotal: false,
+  visibleOnQuote: true,
+});
+const noChargeLine = line({
+  id: "no-charge-line",
+  label: "Site protection included",
+  scope: "bathroom:wa:site_protection",
+  component: "bathroom.site_protection",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Included at no charge.",
+  includedInTotal: true,
+});
+const noChargeRow = item({
+  id: "no-charge-price",
+  label: "Site protection included",
+  scope: "bathroom:wa:site_protection",
+  component: "bathroom.site_protection",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Included at no charge.",
+  source: "no-charge-line",
+  includedInTotal: true,
+  visibleOnQuote: true,
+});
+const shownAgain = item({
+  id: "shown-again",
+  label: "Floor tile supply allowance",
+  scope: coverageScope,
+  component: "bathroom.floor_tile.coverage_unresolved",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  source: "coverage-line",
+  includedInTotal: false,
+  visibleOnQuote: false,
+});
+const pricedLine = line({
+  id: "priced-line",
+  label: "Vanity installation",
+  scope: "bathroom:wa:vanity.install",
+  component: "bathroom.vanity.install",
+  quantity: 4,
+  cost: 300,
+  sell: 375,
+  specification: "Vanity installation.",
+});
+const hiddenPriced = item({
+  id: "priced-hidden",
+  label: "Vanity installation",
+  scope: "bathroom:wa:vanity.install",
+  component: "bathroom.vanity.install",
+  quantity: 4,
+  cost: 300,
+  sell: 375,
+  specification: "Vanity installation.",
+  source: "priced-line",
+  visibleOnQuote: false,
+});
+const editedGenerated = item({
+  id: "edited-generated",
+  label: "Floor tile supply allowance",
+  scope: coverageScope,
+  component: "bathroom.floor_tile.coverage_unresolved",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  source: "coverage-line",
+  includedInTotal: false,
+  visibleOnQuote: true,
+  manuallyEdited: true,
+});
+const overrideRow = item({
+  id: "override-row",
+  label: "Floor tile supply allowance",
+  scope: coverageScope,
+  component: "bathroom.floor_tile.coverage_unresolved",
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  source: "coverage-line",
+  includedInTotal: false,
+  visibleOnQuote: true,
+  quoteVisibilityOverride: true,
+});
+const legacyRow = item({
+  id: "legacy-row",
+  label: "Floor tile supply allowance",
+  scope: null,
+  component: null,
+  quantity: 1,
+  cost: 0,
+  sell: 0,
+  specification: "Customer supplies the floor tiles.",
+  source: null,
+  includedInTotal: false,
+  visibleOnQuote: true,
+});
+
+function previewFor(rows: PricingItem[], lines: EstimateLineItemRow[] = [coverageLine]) {
+  return buildRecalibrationPreviewData(lines, rows, 0, 0);
+}
+
+const visibilityOnly = previewFor([visibleCoverage]);
+const visibilityItem = visibilityOnly.items.find((row) => row.pricingItemId === "coverage-price");
+check(
+  "visibility-only change is listed when the money difference is zero",
+  visibilityItem?.classification === "will_update" &&
+    visibilityItem.beforeSell === 0 &&
+    visibilityItem.afterSell === 0 &&
+    visibilityItem.note === QUOTE_VISIBILITY_HIDE_NOTE &&
+    visibilityOnly.difference === 0
+);
+
+const hidePatch = buildPricingItemUpdateFromEstimate(coverageLine, visibleCoverage);
+check(
+  "visible-to-hidden follows the source for an untouched generated row",
+  hidePatch.visible_on_quote === false &&
+    shouldApplyMatchedPricingUpdate(visibleCoverage, coverageLine)
+);
+const hiddenAfter = { ...visibleCoverage, ...hidePatch } as PricingItem;
+const secondHide = previewFor([hiddenAfter]);
+check(
+  "repeated update does not list the same visibility change again",
+  shouldApplyMatchedPricingUpdate(hiddenAfter, coverageLine) === false &&
+    secondHide.items.filter((row) => row.pricingItemId === "coverage-price" && row.classification === "will_update").length === 0 &&
+    secondHide.items.filter((row) => row.pricingItemId === "coverage-price").length === 1
+);
+
+const showPreview = previewFor([hiddenPriced], [pricedLine]);
+const showItem = showPreview.items.find((row) => row.pricingItemId === "priced-hidden");
+const showPatch = buildPricingItemUpdateFromEstimate(pricedLine, hiddenPriced);
+check(
+  "hidden-to-visible follows the source",
+  showItem?.classification === "will_update" &&
+    showItem.note === QUOTE_VISIBILITY_SHOW_NOTE &&
+    showItem.beforeSell === showItem.afterSell &&
+    showPatch.visible_on_quote === true
+);
+
+const editedVisibilityPreview = previewFor([editedGenerated]);
+check(
+  "an edited generated row keeps its quote visibility",
+  editedVisibilityPreview.items.some(
+    (row) => row.pricingItemId === "edited-generated" && row.classification === "manually_protected"
+  ) && shouldApplyMatchedPricingUpdate(editedGenerated, coverageLine) === false
+);
+
+const noChargePreview = previewFor([noChargeRow], [noChargeLine]);
+check(
+  "a no-charge included row stays on the quote",
+  noChargePreview.items.some(
+    (row) => row.pricingItemId === "no-charge-price" && row.classification === "unchanged"
+  ) &&
+    generatedQuoteVisibilityDrift([noChargeLine], [noChargeRow]) === false
+);
+
+const overridePreview = previewFor([overrideRow]);
+const overrideItem = overridePreview.items.find((row) => row.pricingItemId === "override-row");
+const overridePatch = buildPricingItemUpdateFromEstimate(coverageLine, overrideRow);
+check(
+  "an explicit visibility override stays for review",
+  overrideItem?.classification === "needs_review" &&
+    overrideItem.note === QUOTE_VISIBILITY_KEPT_NOTE &&
+    shouldApplyMatchedPricingUpdate(overrideRow, coverageLine) === false &&
+    overridePatch.visible_on_quote === true
+);
+
+const legacyPreview = previewFor([legacyRow]);
+check(
+  "a legacy row without a stable identity is not matched by label or amount",
+  legacyPreview.items.some(
+    (row) => row.pricingItemId === "legacy-row" && row.classification === "needs_review"
+  ) &&
+    legacyPreview.items.some(
+      (row) => row.estimateLineItemId === "coverage-line" && row.classification === "new_item"
+    ) &&
+    matchPricingToEstimateLines([coverageLine], [legacyRow]).size === 0
+);
+check(
+  "issued and archived drafts are not offered a visibility update",
+  quoteVisibilityDriftApplies("converted_to_quote") === false &&
+    quoteVisibilityDriftApplies("archived") === false &&
+    quoteVisibilityDriftApplies("draft") === true &&
+    pricingDraftReconciliationBlocked("converted_to_quote") != null
+);
+check(
+  "unchanged hidden coverage is not a second change",
+  generatedQuoteVisibilityDrift([coverageLine], [shownAgain]) === false &&
+    previewFor([shownAgain]).summary.willUpdate === 0
+);
 
 console.log("pricing draft reconciliation verifier passed");

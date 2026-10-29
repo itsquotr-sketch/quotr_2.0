@@ -14,7 +14,11 @@ import {
   eligibilityLineFromStoredEstimate,
   projectEligibleUnresolvedPricingItems,
 } from "@/lib/pricing/manual-requirement-promotion";
-import type { EstimateLineItemRow } from "@/lib/pricing/recalibration-helpers";
+import {
+  generatedQuoteVisibilityDrift,
+  quoteVisibilityDriftApplies,
+  type EstimateLineItemRow,
+} from "@/lib/pricing/recalibration-helpers";
 import type {
   PricingSummary,
   PricingWorkspaceData,
@@ -198,6 +202,7 @@ export async function getPricingWorkspaceDataWithContext(
 
   const mappedItems = (items ?? []).map((row) => mapPricingItem(row));
   let workspaceItems = mappedItems;
+  let documentMeaningDrift = false;
   const estimateId = (document.estimate_id as string | null) ?? null;
   if (estimateId) {
     const { data: estimateLines } = await supabase
@@ -208,11 +213,13 @@ export async function getPricingWorkspaceDataWithContext(
       .eq("estimate_id", estimateId)
       .eq("org_id", orgId)
       .order("sort_order");
+    const storedLines = (estimateLines ?? []) as EstimateLineItemRow[];
+    if (quoteVisibilityDriftApplies(document.status as string | null)) {
+      documentMeaningDrift = generatedQuoteVisibilityDrift(storedLines, mappedItems);
+    }
     const projected = projectEligibleUnresolvedPricingItems({
       items: mappedItems,
-      estimateLines: ((estimateLines ?? []) as EstimateLineItemRow[]).map(
-        eligibilityLineFromStoredEstimate
-      ),
+      estimateLines: storedLines.map(eligibilityLineFromStoredEstimate),
       orgId,
       projectId,
       pricingDocumentId,
@@ -265,6 +272,7 @@ export async function getPricingWorkspaceDataWithContext(
         ? Number(estimate.recommended_sell)
         : null,
     latestEstimateIsStale: estimate?.is_stale ?? false,
+    documentMeaningDrift,
   };
 }
 

@@ -1,4 +1,9 @@
-import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes, stampSellAuthorityOnNotes } from "@/lib/estimate/line-item-metadata";
+import {
+  buildPersistedLineItemNotes,
+  buildPricingNotesFromEstimateLineItem,
+  parseLineItemNotes,
+  stampSellAuthorityOnNotes,
+} from "@/lib/estimate/line-item-metadata";
 import { pricingOwnerToDeliveryMethod } from "@/lib/estimate/pricing-ownership";
 import {
   cleanClientLabel,
@@ -69,6 +74,17 @@ export const ORPHANED_SOURCE_NOTE =
 export const REVIEW_RETAINED_NOTE =
   "Kept for review. This row was edited, entered manually, or has no stable estimate requirement, so it was not removed.";
 
+export const QUOTE_VISIBILITY_HIDE_NOTE =
+  "This row will be hidden from the customer quote. Quantity and price are unchanged, and the task stays unresolved.";
+
+export const QUOTE_VISIBILITY_SHOW_NOTE =
+  "This row will be shown on the customer quote. Quantity and price are unchanged.";
+
+export const QUOTE_VISIBILITY_KEPT_NOTE =
+  "Quote visibility was chosen in Pricing and is kept. Review that choice before changing it.";
+
+export type QuoteVisibilityChange = "same" | "show" | "hide" | "kept";
+
 export function pricingDraftReconciliationBlocked(
   status: string | null | undefined
 ): string | null {
@@ -76,6 +92,94 @@ export function pricingDraftReconciliationBlocked(
     return "An issued quote is not changed when the estimate is updated.";
   }
   return null;
+}
+
+/** Issued and archived documents are not offered a visibility update. */
+export function quoteVisibilityDriftApplies(
+  status: string | null | undefined
+): boolean {
+  if (pricingDraftReconciliationBlocked(status)) return false;
+  if (status === "archived") return false;
+  return true;
+}
+
+export function quoteVisibilityOverridden(item: PricingItem): boolean {
+  return parseLineItemNotes(item.notes_internal).metadata.quoteVisibilityOverride === true;
+}
+
+export function stampQuoteVisibilityOverride(
+  notes: string | null | undefined
+): string | null {
+  const parsed = parseLineItemNotes(notes);
+  return buildPersistedLineItemNotes({
+    notes: parsed.displayNotes,
+    metadata: {
+      ...parsed.metadata,
+      quoteVisibilityOverride: true,
+    },
+  });
+}
+
+export function sourceRowQuoteVisible(line: EstimateLineItemRow): boolean {
+  return estimateLineIsQuoteVisible(parseLineItemNotes(line.notes).metadata);
+}
+
+/**
+ * Visibility for a row already matched by source id or requirement scope.
+ * A price of zero does not decide this. Label, position, and amount do not either.
+ */
+export function untouchedGeneratedQuoteChange(
+  item: PricingItem,
+  line: EstimateLineItemRow
+): QuoteVisibilityChange {
+  const sourceVisible = sourceRowQuoteVisible(line);
+  const currentVisible = item.visible_on_quote !== false;
+  if (sourceVisible === currentVisible) return "same";
+  if (quoteVisibilityOverridden(item)) return "kept";
+  return sourceVisible ? "show" : "hide";
+}
+
+export function generatedQuoteVisibilityDrift(
+  estimateLineItems: EstimateLineItemRow[],
+  pricingItems: PricingItem[]
+): boolean {
+  const matches = matchPricingToEstimateLines(estimateLineItems, pricingItems);
+  for (const line of estimateLineItems) {
+    const match = matches.get(line.id);
+    if (!match || isManualCommercialRow(match)) continue;
+    const change = untouchedGeneratedQuoteChange(match, line);
+    if (change !== "same") return true;
+  }
+  return false;
+}
+
+/** False when an explicit update must leave this matched row's visibility and money alone. */
+export function shouldApplyMatchedPricingUpdate(
+  existing: PricingItem,
+  lineItem: EstimateLineItemRow
+): boolean {
+  if (isManualCommercialRow(existing)) return false;
+  const visibility = untouchedGeneratedQuoteChange(existing, lineItem);
+  const moneyMatches = valuesMateriallyMatch(existing, lineItem);
+  if (visibility === "kept" && moneyMatches) return false;
+  if (
+    moneyMatches &&
+    visibility === "same" &&
+    existing.source_estimate_line_item_id === lineItem.id &&
+    existing.recalibration_note == null
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function quoteVisibilityPreviewNote(
+  change: QuoteVisibilityChange
+): string | undefined {
+  if (change === "hide") return QUOTE_VISIBILITY_HIDE_NOTE;
+  if (change === "show") return QUOTE_VISIBILITY_SHOW_NOTE;
+  if (change === "kept") return QUOTE_VISIBILITY_KEPT_NOTE;
+  return undefined;
 }
 
 function sameNumber(
@@ -224,13 +328,8 @@ function parseDisplayNotes(notes: string | null | undefined): string | null {
 }
 
 /**
- * Money, quantity and wording only. Quote visibility is not compared.
- *
- * Tracked defect, not a permanent rule: an explicit reconcile therefore
- * leaves an unedited generated row on the quote when the only change is
- * visibility. A later reconciliation must update that unedited generated
- * visibility and must still protect edited rows and issued snapshots.
- * This comparison is unchanged in the substrate correction.
+ * Money, quantity, and wording. Quote visibility is a separate comparison:
+ * an untouched generated row can match here and still need a visibility update.
  */
 export function valuesMateriallyMatch(
   pricingItem: PricingItem,
@@ -357,7 +456,28 @@ export function buildRecalibrationPreviewData(
       continue;
     }
 
-    if (valuesMateriallyMatch(match, lineItem)) {
+    const moneyMatches = valuesMateriallyMatch(match, lineItem);
+    const visibility = untouchedGeneratedQuoteChange(match, lineItem);
+    const visibilityNote = quoteVisibilityPreviewNote(visibility);
+    if (visibility === "kept" && moneyMatches) {
+      summary.needsReview += 1;
+      items.push({
+        classification: "needs_review",
+        pricingItemId: match.id,
+        estimateLineItemId: lineItem.id,
+        label: match.internal_label,
+        beforeCost: match.total_cost,
+        beforeSell: match.total_sell,
+        afterCost: estimateValues.totalCost,
+        afterSell: estimateValues.totalSell,
+        manuallyEdited: false,
+        orphaned: false,
+        note: QUOTE_VISIBILITY_KEPT_NOTE,
+      });
+      continue;
+    }
+
+    if (moneyMatches && visibility === "same") {
       summary.unchanged += 1;
       items.push({
         classification: "unchanged",
@@ -386,6 +506,7 @@ export function buildRecalibrationPreviewData(
       afterSell: estimateValues.totalSell,
       manuallyEdited: false,
       orphaned: false,
+      note: visibilityNote,
     });
   }
 
@@ -503,6 +624,7 @@ export function buildPricingItemUpdateFromEstimate(
   existing: PricingItem
 ) {
   const values = valuesFromEstimateLineItem(lineItem);
+  const followSourceVisibility = !quoteVisibilityOverridden(existing);
 
   return {
     work_area_id: lineItem.work_area_id,
@@ -518,12 +640,14 @@ export function buildPricingItemUpdateFromEstimate(
     recalibration_note: null,
     manually_edited: false,
     sort_order: existing.sort_order,
-    visible_on_quote: estimateLineIsQuoteVisible(values)
-      ? existing.visible_on_quote
-      : false,
+    visible_on_quote: followSourceVisibility
+      ? estimateLineIsQuoteVisible(values)
+      : existing.visible_on_quote,
     optional: existing.optional,
     notes_client: existing.notes_client,
-    notes_internal: values.notesInternal,
+    notes_internal: followSourceVisibility
+      ? values.notesInternal
+      : stampQuoteVisibilityOverride(values.notesInternal),
     component_key: lineItem.component_key ?? existing.component_key ?? null,
   };
 }

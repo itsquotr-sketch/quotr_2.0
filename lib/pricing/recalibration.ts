@@ -22,7 +22,7 @@ import {
   matchPricingToEstimateLines,
   pricingDraftReconciliationBlocked,
   REVIEW_RETAINED_NOTE,
-  valuesMateriallyMatch,
+  shouldApplyMatchedPricingUpdate,
   type EstimateLineItemRow,
   type RecalibrationPreview,
 } from "@/lib/pricing/recalibration-helpers";
@@ -425,11 +425,7 @@ export async function applyRecalibration(
         continue;
       }
 
-      if (
-        valuesMateriallyMatch(existing, lineItem) &&
-        existing.source_estimate_line_item_id === lineItem.id &&
-        existing.recalibration_note == null
-      ) {
+      if (!shouldApplyMatchedPricingUpdate(existing, lineItem)) {
         continue;
       }
 
