@@ -1308,18 +1308,17 @@ export function calculateDeck(
     "deck.substructure_condition"
   )?.toLowerCase();
 
-  if (pileReplacement === true) {
-    const pileCount = getNumberFact(facts, workArea.id, "deck.pile_or_post_count");
-    const replacementAlreadyItemised = lineItems.some(
-      (item) =>
-        item.includedInTotal !== false &&
-        (item.label === "Piles / posts" ||
-          item.label === "Pile/post installation" ||
-          item.label === "Hole excavation" ||
-          item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY ||
-          item.componentKey === DECK_CONCRETE_BAGS_COMPONENT_KEY)
-    );
-    if (replacementAlreadyItemised) {
+  const replacementRequested = pileReplacementFact === true;
+  const replacementAlreadyItemised = lineItems.some(
+    (item) =>
+      item.includedInTotal !== false &&
+      (item.label === "Piles / posts" ||
+        item.label === "Pile/post installation" ||
+        item.label === "Hole excavation" ||
+        item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY ||
+        item.componentKey === DECK_CONCRETE_BAGS_COMPONENT_KEY)
+  );
+  if (replacementRequested && replacementAlreadyItemised) {
       lineItems.push({
         ...createRateLineItem({
           workAreaId: workArea.id,
@@ -1341,7 +1340,8 @@ export function calculateDeck(
         includedInTotal: false,
       });
       missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
-    } else {
+    } else if (pileReplacement === true) {
+    const pileCount = getNumberFact(facts, workArea.id, "deck.pile_or_post_count");
     const postRates = resolveRate({
       rates: context.rates,
       rateType: "allowance",
@@ -1396,7 +1396,6 @@ export function calculateDeck(
         "Pile/post replacement count is subject to confirmation."
       );
       missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
-    }
     }
   } else if (pileReplacement === null && replacementApplicable) {
     assumptions.push(
