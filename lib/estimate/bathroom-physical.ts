@@ -451,7 +451,7 @@ export function buildBathroomPhysicalEnvelope(params: {
     substrateInstall = {
       hoursPerUnit: productivity.hoursPerUnit,
       hours,
-      sourceType: productivity.sourceType,
+      sourceType: productivity.sourceType ?? "benchmark",
     };
     const adjustedHours = hours * params.accessFactor;
     const rate = resolveExactMaterialRate({
@@ -798,7 +798,7 @@ export function buildBathroomPhysicalEnvelope(params: {
       const hoursPerM2 = (value: number) =>
         `${Math.round(value * 10000) / 10000} h/m²`;
       assumptions.push(
-        `Floor substrate installation and tile underlay installation are separate tasks over ${presentBathroomAreaM2(floorArea)}. Substrate is ${hoursPerM2(substrateInstall.hoursPerUnit)} from ${productivityLabel(substrateInstall.sourceType)} (${presentBathroomHours(substrateInstall.hours)} before access). Underlay is ${hoursPerM2(productivity.hoursPerUnit)} from ${productivityLabel(productivity.sourceType)} (${presentBathroomHours(hours)} before access). Both are multiplied by access factor ${params.accessFactor}. Matching hours are the same area and the same resolved rate, not one allowance counted twice.`
+        `Floor substrate installation and tile underlay installation are separate tasks over ${presentBathroomAreaM2(floorArea)}. Substrate is ${hoursPerM2(substrateInstall.hoursPerUnit)} from ${productivityLabel(substrateInstall.sourceType)} (${presentBathroomHours(substrateInstall.hours)} before access). Underlay is ${hoursPerM2(productivity.hoursPerUnit)} from ${productivityLabel(productivity.sourceType ?? "benchmark")} (${presentBathroomHours(hours)} before access). Both are multiplied by access factor ${params.accessFactor}. Matching hours are the same area and the same resolved rate, not one allowance counted twice.`
       );
     }
   }
