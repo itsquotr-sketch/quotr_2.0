@@ -222,6 +222,11 @@ function parseDisplayNotes(notes: string | null | undefined): string | null {
   return displayNotes || null;
 }
 
+/**
+ * Money, quantity and wording only. Quote visibility is intentionally omitted
+ * so an explicit reconcile does not rewrite an existing draft or issued snapshot
+ * when the only difference is whether an unresolved row is shown on the quote.
+ */
 export function valuesMateriallyMatch(
   pricingItem: PricingItem,
   lineItem: EstimateLineItemRow

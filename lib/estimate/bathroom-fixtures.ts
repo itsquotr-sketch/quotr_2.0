@@ -255,6 +255,25 @@ export function buildBathroomFixtureEnvelope(params: {
         "bathroom.fixture.shower_enclosure.install_owner"
       )
     );
+    const tradeLevel =
+      installOwner === "plumber" || installOwner === "electrician"
+        ? resolveBathroomTradeLevel({
+            canonical: getStringFact(
+              facts as never,
+              workArea.id,
+              installOwner === "plumber"
+                ? "bathroom.plumbing.level"
+                : "bathroom.electrical.level"
+            ),
+            legacy: getStringFact(
+              facts as never,
+              workArea.id,
+              installOwner === "plumber"
+                ? "bathroom.plumbing_changes"
+                : "bathroom.electrical_changes"
+            ),
+          })
+        : null;
 
     if (ownsSupply(ownership) && pcBenchmark != null) {
       const unit = id === "accessories" || id === "tapware" ? "allowance" : "each";
@@ -320,13 +339,15 @@ export function buildBathroomFixtureEnvelope(params: {
               }),
               identitySummary: (() => {
                 const installNote =
-                  installOwner === "plumber"
-                    ? "Install: included in plumbing scope"
-                    : installOwner === "electrician"
-                      ? "Install: included in electrical scope"
-                      : ownsInstall(ownership)
-                        ? null
-                        : "Supply only — no install";
+                  tradeLevel === "none"
+                    ? `Install: ${installOwner} charge excluded from this estimate.`
+                    : installOwner === "plumber"
+                      ? "Install: included in plumbing scope"
+                      : installOwner === "electrician"
+                        ? "Install: included in electrical scope"
+                        : ownsInstall(ownership)
+                          ? null
+                          : "Supply only — no install";
                 return [
                   `${label} — PC allowance $${rate.costRate}`,
                   installNote,
@@ -377,24 +398,8 @@ export function buildBathroomFixtureEnvelope(params: {
     }
 
     if (installOwner === "plumber" || installOwner === "electrician") {
-      const level = resolveBathroomTradeLevel({
-        canonical: getStringFact(
-          facts as never,
-          workArea.id,
-          installOwner === "plumber"
-            ? "bathroom.plumbing.level"
-            : "bathroom.electrical.level"
-        ),
-        legacy: getStringFact(
-          facts as never,
-          workArea.id,
-          installOwner === "plumber"
-            ? "bathroom.plumbing_changes"
-            : "bathroom.electrical_changes"
-        ),
-      });
       assumptions.push(
-        level === "none"
+        tradeLevel === "none"
           ? `${label} installation is a ${installOwner} charge and is excluded from this estimate.`
           : `${label} install is included in ${installOwner === "plumber" ? "plumbing" : "electrical"} scope.`
       );

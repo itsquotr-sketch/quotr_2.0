@@ -21,6 +21,10 @@ import {
 import { clearStaleCeilingProvisionalConfirmation } from "@/lib/pricing/ceiling-provisional-sync";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
+import {
+  quoteVisibleExcludedLineBlock,
+  unresolvedScopeReviewBlockForEstimate,
+} from "@/lib/pricing/scope-finalisation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -2152,6 +2156,14 @@ export async function markPricingReviewed(
     status: document.status,
   }).quoteBlock;
   if (taxBasisBlock) return { error: taxBasisBlock };
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(reviewItems ?? []);
+  if (excludedLineBlock) return { error: excludedLineBlock };
+  const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
+    supabase,
+    orgId,
+    sourceEstimateId
+  );
+  if (scopeBlock) return { error: scopeBlock };
 
   const { error } = await supabase
     .from("pricing_documents")

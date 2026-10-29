@@ -1,4 +1,9 @@
-import { getCombinedLabourAccessFactor, getQualityFactor, getQualityFactorNote } from "@/lib/estimate/adjustments";
+import {
+  getCombinedLabourAccessFactor,
+  getLabourAdjustmentParts,
+  getQualityFactor,
+  getQualityFactorNote,
+} from "@/lib/estimate/adjustments";
 import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   applyAllowanceMinimum,
@@ -261,6 +266,13 @@ export function calculateBathroom(
     }),
   });
   const accessFactor = labourAdjustment;
+  const labourParts = getLabourAdjustmentParts(context.constraints);
+  if (labourParts.occupiedAddend > 0) {
+    const percent = Math.round(labourParts.occupiedAddend * 100);
+    assumptions.push(
+      `Occupied site adds ${percent}% to bathroom demolition labour hours only. Vanity installation, floor tiling, painting and the disposal allowance are not adjusted for upstairs or occupied conditions. Stair protection and daily cleaning are separate requested tasks and are not included in that ${percent}%.`
+    );
+  }
   const projectAccess = context.constraints.find((c) => c.key === "site_access");
   const accessLabel =
     (projectAccess?.value != null ? String(projectAccess.value) : null) ??

@@ -65,6 +65,10 @@ import type {
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { SupplierPriceProvider } from "@/components/pricing/SupplierPriceEditor";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
+import {
+  quoteVisibleExcludedLineBlock,
+  UNRESOLVED_SCOPE_REVIEW_BLOCK,
+} from "@/lib/pricing/scope-finalisation";
 import type { SupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 import type { ScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
 import { ScheduleScopeGaps } from "@/components/pricing/ScheduleScopeGaps";
@@ -180,6 +184,12 @@ export function PricingWorkspace({
   const manualQuoteBlock = useMemo(
     () => unresolvedManualPricingQuoteBlock(items),
     [items]
+  );
+  const scopeFinalisationBlock = useMemo(
+    () =>
+      quoteVisibleExcludedLineBlock(items) ??
+      (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null),
+    [items, scopeStillOpen]
   );
   const provisionalQuoteBlock = useMemo(
     () =>
@@ -821,6 +831,7 @@ export function PricingWorkspace({
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
                 blockedReason={
+                  scopeFinalisationBlock ||
                   estimateUpdateRequired?.trim() ||
                   taxBasisBlock ||
                   provisionalQuoteBlock ||
@@ -858,6 +869,7 @@ export function PricingWorkspace({
         needsRecalibration={document.needs_recalibration}
         canEdit={canEditPricing}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
+        extraReviewBlock={scopeFinalisationBlock}
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}
         defaultGstRate={defaultGstRate}

@@ -9,7 +9,16 @@ import { bathroomJobPlanAdapter } from "../lib/assistant/job-plan/adapters/bathr
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
-import { buildPricingItemRowFromEstimate } from "../lib/pricing/recalibration-helpers";
+import {
+  buildPricingItemRowFromEstimate,
+  valuesMateriallyMatch,
+} from "../lib/pricing/recalibration-helpers";
+import {
+  quoteVisibleExcludedLineBlock,
+  unresolvedScopeReviewBlock,
+} from "../lib/pricing/scope-finalisation";
+import { mapPricingItemsToQuoteItems } from "../lib/quotes/from-pricing";
+import type { PricingItem } from "../lib/pricing/types";
 import {
   interpretBathroomBrief,
   BATHROOM_PARTIAL_LINING_VALUE,
@@ -314,6 +323,101 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
   check(`${name} tile supply stays off the quote`, quoteRow("Floor tile supply allowance")?.visible_on_quote === false);
   check(`${name} unresolved lining stays off the quote`, quoteRow("Partial wall lining")?.visible_on_quote === false);
   check(`${name} stair protection stays off the quote`, quoteRow("Stair protection")?.visible_on_quote === false);
+
+  const vanity = included.find((item) => item.label === "Vanity installation");
+  const tiler = included.find((item) => item.label === "Floor tiler installation");
+  const painting = included.find((item) => item.label === "Painting");
+  const disposal = included.find((item) => item.label === "Bathroom disposal");
+  check(`${name} vanity hours stay 4`, vanity?.quantity === 4, String(vanity?.quantity));
+  check(`${name} tiler uses net floor`, tiler?.quantity === 5.04, String(tiler?.quantity));
+  check(`${name} paint uses walls and ceiling`, painting?.quantity === 26.64, String(painting?.quantity));
+  check(`${name} disposal is the standard allowance`, disposal?.recommendedCost === 650, String(disposal?.recommendedCost));
+  check(
+    `${name} occupied adjusts demolition only`,
+    result.assumptions.some((row) =>
+      row.includes("Occupied site adds 5% to bathroom demolition labour hours only.")
+    ) &&
+      included.find((item) => item.label === "Floor finish removal")?.quantity === 1.32 &&
+      included.find((item) => item.label === "Vanity removal")?.quantity === 0.35 &&
+      included.find((item) => item.label === "Toilet removal")?.quantity === 0.18 &&
+      included.find((item) => item.label === "Shower / enclosure removal")?.quantity === 1.58
+  );
+  check(
+    `${name} open specs are not priced`,
+    !result.lineItems.some((item) => /waterproof|substrate|tile format|wall lining system/i.test(item.label))
+  );
+
+  if (mixedSupply) {
+    const toiletSupply = included.find((item) => item.label === "Toilet supply PC allowance");
+    const showerSupply = included.find((item) => item.label === "Shower tray/base supply PC allowance");
+    check(`${name} contractor toilet supply priced`, (toiletSupply?.recommendedCost ?? 0) > 0, String(toiletSupply?.recommendedCost));
+    check(`${name} contractor shower supply priced`, (showerSupply?.recommendedCost ?? 0) > 0, String(showerSupply?.recommendedCost));
+    check(
+      `${name} supply does not add plumber install`,
+      !result.lineItems.some((item) => /toilet installation|shower installation/i.test(item.label)) &&
+        result.lineItems
+          .filter((item) => item.label.endsWith("supply PC allowance"))
+          .every((item) => !/included in plumbing scope/i.test(item.identitySummary ?? ""))
+    );
+    check(
+      `${name} plumber install stays excluded`,
+      result.assumptions.some((row) => row.includes("Toilet installation is a plumber charge and is excluded")) &&
+        result.assumptions.some((row) => row.includes("Shower tray/base installation is a plumber charge and is excluded"))
+    );
+    check(
+      `${name} customer supply keeps ancillaries`,
+      result.lineItems.some(
+        (item) => item.label === "Ancillary materials" && item.includedInTotal === false
+      ) && included.some((item) => item.label === "Vanity installation")
+    );
+  }
+
+  const lining = quoteRow("Partial wall lining");
+  const liningEstimate = result.lineItems.find((item) => item.label === "Partial wall lining");
+  if (lining && liningEstimate) {
+    const estimateLine = {
+      id: "line",
+      work_area_id: "b1",
+      label: liningEstimate.label,
+      category: liningEstimate.category,
+      recommended_cost: liningEstimate.recommendedCost,
+      recommended_sell: liningEstimate.recommendedSell,
+      notes: buildLineItemNotes(liningEstimate),
+      sort_order: liningEstimate.sortOrder,
+      quantity: liningEstimate.quantity,
+      unit: liningEstimate.unit,
+    };
+    const hidden = lining as unknown as PricingItem;
+    const shown = { ...hidden, visible_on_quote: true } as PricingItem;
+    check(
+      `${name} visibility-only change stays unreconciled`,
+      valuesMateriallyMatch(hidden, estimateLine as never) &&
+        valuesMateriallyMatch(shown, estimateLine as never)
+    );
+    check(`${name} hidden row is not a free quote item`, quoteVisibleExcludedLineBlock([hidden]) == null);
+    check(
+      `${name} showing the row blocks review`,
+      quoteVisibleExcludedLineBlock([shown]) != null
+    );
+    const projected = mapPricingItemsToQuoteItems(
+      [hidden, quoteRow("Vanity installation") as unknown as PricingItem],
+      new Map([["b1", "Bathroom"]])
+    );
+    check(
+      `${name} quote projection omits the unresolved row`,
+      projected.every((item) => item.label !== "Partial wall lining") &&
+        projected.some((item) => item.label === "Vanity installation")
+    );
+  }
+  check(
+    `${name} coverage gaps still block review`,
+    unresolvedScopeReviewBlock(result.missingInfo) != null
+  );
+  check(
+    `${name} hiding does not clear the gap`,
+    result.missingInfo.some((row) => row.includes("Partial wall lining")) &&
+      result.missingInfo.some((row) => classifyReviewNotice(row) === "scope_gap")
+  );
 }
 
 check("reline brief is not this package", interpretBathroomBrief(RELINE) == null);

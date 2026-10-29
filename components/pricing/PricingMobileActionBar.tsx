@@ -42,6 +42,7 @@ type PricingMobileActionBarProps = {
   canEdit?: boolean;
   className?: string;
   scopeQuoteBlock?: string | null;
+  extraReviewBlock?: string | null;
   estimateUpdateRequired?: string | null;
   gstRegistered?: boolean | null;
   defaultGstRate?: number | null;
@@ -62,6 +63,7 @@ export function PricingMobileActionBar({
   canEdit = true,
   className,
   scopeQuoteBlock = null,
+  extraReviewBlock = null,
   estimateUpdateRequired = null,
   gstRegistered,
   defaultGstRate = null,
@@ -86,6 +88,7 @@ export function PricingMobileActionBar({
   const taxBasisBlock = taxBasis.quoteBlock;
   const showOverrideGst = taxBasis.override && document.gst_rate > 0;
   const reviewBlock =
+    extraReviewBlock?.trim() ||
     estimateUpdateRequired?.trim() ||
     taxBasisBlock ||
     provisionalBlock ||

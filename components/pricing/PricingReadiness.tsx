@@ -114,7 +114,8 @@ export function PricingStatusNote({
     return (
       <p className="text-sm leading-5 text-foreground/75" data-pricing-status-note="generated-lines">
         Generated lines are priced. Scope is still unresolved, so this is not a complete job.
-        You can still mark the priced lines as reviewed.
+        Review stays blocked until those tasks are priced or explicitly left out of the job.
+        Hiding a row does not price it or mark it excluded.
       </p>
     );
   }

@@ -23,6 +23,10 @@ import {
   resolveQuoteGstFromRegistration,
 } from "@/lib/pricing/gst-source";
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
+import {
+  quoteVisibleExcludedLineBlock,
+  unresolvedScopeReviewBlockForEstimate,
+} from "@/lib/pricing/scope-finalisation";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
@@ -177,6 +181,14 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (manualBlock) return { error: manualBlock };
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
   if (unknownCostBlock) return { error: unknownCostBlock };
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
+  if (excludedLineBlock) return { error: excludedLineBlock };
+  const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
+    supabase,
+    orgId,
+    document.estimate_id
+  );
+  if (scopeBlock) return { error: scopeBlock };
   const provisionalBlock = ceilingProvisionalDecision({
     lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
     confirmation: document.provisional_ceiling_confirmation ?? null,
