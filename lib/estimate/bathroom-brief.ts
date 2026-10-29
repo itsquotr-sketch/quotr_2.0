@@ -527,11 +527,22 @@ export function bathroomPreservationRows(params: {
   if (note.includes("Upstairs occupied house.")) {
     add("occupied", "Upstairs occupied house", "INCLUDED", "bathroom.coverage_note");
   }
-  if (valueOf("bathroom.plumbing.level") === "none") {
+  const levelNone = (key: string) =>
+    typeof valueOf(key) === "string" &&
+    String(valueOf(key)).trim().toLowerCase() === "none";
+  const tradesExcluded = note.includes("Excluded trades: plumbing, electrical.");
+  if (levelNone("bathroom.plumbing.level") || tradesExcluded) {
     add("plumbing-excluded", "Plumbing charges excluded", "NOT_INCLUDED", "bathroom.plumbing.level");
   }
-  if (valueOf("bathroom.electrical.level") === "none") {
+  if (levelNone("bathroom.electrical.level") || tradesExcluded) {
     add("electrical-excluded", "Electrical charges excluded", "NOT_INCLUDED", "bathroom.electrical.level");
   }
   return rows;
+}
+
+/** This package leaves waterproofing unanswered. Do not treat that as a price assumption. */
+export function bathroomWaterproofingStaysOpen(
+  note: string | null | undefined
+): boolean {
+  return Boolean(note?.includes("Excluded trades: plumbing, electrical."));
 }

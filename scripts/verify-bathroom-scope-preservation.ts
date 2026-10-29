@@ -3,6 +3,8 @@
  * Run: npx tsx scripts/verify-bathroom-scope-preservation.ts
  */
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
+import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import { bathroomJobPlanAdapter } from "../lib/assistant/job-plan/adapters/bathroom";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
@@ -179,6 +181,68 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
     check(`${name} card ${expected.slice(0, 42)}`, labels.some((label) => label.includes(expected.slice(0, 24))));
   }
   check(`${name} waterproofing still open`, card.notConfirmed.some((row) => row.label === "Waterproofing"));
+  const titledFacts = estimateFacts.map((fact) =>
+    fact.key === "bathroom.plumbing.level" || fact.key === "bathroom.electrical.level"
+      ? { ...fact, value: "None" }
+      : fact
+  );
+  const titledCard = bathroomJobPlanAdapter.project(
+    { id: "b1", type: "bathroom", name: "Bathroom", status: "confirmed" },
+    { facts: titledFacts, constraints: [], qualityLevel: null, briefText: brief }
+  );
+  check(
+    `${name} None still excludes trades`,
+    titledCard.notIncluded.some((row) => row.label === "Plumbing charges excluded") &&
+      titledCard.notIncluded.some((row) => row.label === "Electrical charges excluded")
+  );
+  const clarify = composeClarifyView({
+    stage: "work_area_questions",
+    briefText: brief,
+    qualityLevel: null,
+    workAreas: [{ id: "b1", type: "bathroom", name: "Bathroom", status: "confirmed" }],
+    facts: estimateFacts,
+    constraints: [
+      { key: "site_access", value: "Easy" },
+      { key: "occupied_site", value: "Yes" },
+    ],
+    jobPlan: {
+      cards: [
+        {
+          workAreaId: "b1",
+          workAreaType: "bathroom",
+          name: "Bathroom",
+          included: [],
+          notIncluded: [],
+          notConfirmed: card.notConfirmed.map((row) => ({
+            id: row.id,
+            label: row.label,
+            sourceFactKey: row.sourceFactKey,
+            write: row.write,
+            workAreaId: "b1",
+          })),
+        },
+      ],
+    },
+  });
+  const waterproofing = [...clarify.candidates, ...clarify.deferred].find(
+    (row) => row.factKey === "bathroom.waterproofing_included"
+  );
+  check(
+    `${name} waterproofing stays asked`,
+    waterproofing != null && waterproofing.question === "Is waterproofing required?"
+  );
+  check(
+    `${name} waterproofing does not block the partial estimate`,
+    waterproofing != null &&
+      !isInitialCaptureQuestion(waterproofing) &&
+      waterproofing.blocksEstimate === false &&
+      waterproofing.assumable === false
+  );
+  check(
+    `${name} waterproofing is not assumed`,
+    !clarify.assumptions.some((row) => /waterproof/i.test(row.statement)) &&
+      !clarify.estimateNowAssumptions.some((row) => /waterproof/i.test(row.statement))
+  );
 
   const result = calculateBathroom(context(estimateFacts, brief), area);
   const included = result.lineItems.filter((item) => item.includedInTotal !== false);

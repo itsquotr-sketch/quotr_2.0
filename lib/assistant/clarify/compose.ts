@@ -52,6 +52,7 @@ import {
   safeFactPresentationLabel,
   safeFactQuestion,
 } from "@/lib/assistant/presentation/fact-key-labels";
+import { bathroomWaterproofingStaysOpen } from "@/lib/estimate/bathroom-brief";
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import {
   deckClarifyAskClass,
@@ -462,7 +463,18 @@ function candidateFromJobPlanCheck(
   if (isAdvancedStructuralKey(key)) return null;
 
   const template = getQuestionTemplateByKey(key);
-  const askClass = askClassForScopeKey(key);
+  const waterproofingStaysOpen =
+    key === "bathroom.waterproofing_included" &&
+    bathroomWaterproofingStaysOpen(
+      getStringFact(
+        input.facts as EstimateFact[],
+        card.workAreaId,
+        "bathroom.coverage_note"
+      )
+    );
+  const askClass = waterproofingStaysOpen
+    ? "ASSUME_IF_SKIPPED"
+    : askClassForScopeKey(key);
   if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
     return null;
   }
@@ -496,8 +508,12 @@ function candidateFromJobPlanCheck(
     options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
     write: pilePending ? null : item.write,
-    blocksEstimate: askClass === "HARD_MINIMUM" || pilePending,
-    assumable: askClass !== "HARD_MINIMUM" && !pilePending,
+    blocksEstimate: waterproofingStaysOpen
+      ? false
+      : askClass === "HARD_MINIMUM" || pilePending,
+    assumable: waterproofingStaysOpen
+      ? false
+      : askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:
