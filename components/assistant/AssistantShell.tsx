@@ -3973,7 +3973,7 @@ export function AssistantShell({
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
                   {liningProductClarifications.length > 0 ? (
                     <section
-                      className="rounded-xl border border-border/60 bg-card px-4 py-4"
+                      className="rounded-xl border border-border/60 bg-card px-4 py-4 max-md:pb-28"
                       data-lining-clarification
                     >
                       {liningProductClarifications.map((candidate) => (

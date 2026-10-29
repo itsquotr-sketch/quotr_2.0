@@ -191,11 +191,12 @@ const removal = owned.lineItems.find((item) => item.label === "Existing deck rem
 console.log("pile lines:");
 for (const label of labels) console.log(`  ${label}`);
 check(
-  "the replacement allowance stays a separate lump on the stated count",
-  allowance?.notes === "4 piles/posts" &&
-    allowance.recommendedCost === 720 &&
+  "the replacement allowance is not an automatic charge beside itemised supports",
+  allowance?.includedInTotal === false &&
+    allowance.recommendedCost === 0 &&
     allowance.category === "allowance" &&
-    allowance.componentKey !== DECK_SUPPORTS_COMPONENT_KEY
+    allowance.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
+    /Enter an amount in Pricing/.test(allowance.notes ?? "")
 );
 check(
   "new pile material, installation, excavation, and deck removal stay their own lines",

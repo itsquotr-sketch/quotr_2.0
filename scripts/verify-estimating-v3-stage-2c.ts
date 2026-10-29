@@ -428,9 +428,16 @@ const countedAllowance = countedEstimate.lineItems.find((item) =>
   /pile\/post replacement/i.test(item.label)
 );
 check(
-  "an explicit count uses the existing each rate",
-  countedAllowance?.notes === "4 piles/posts" &&
-    countedAllowance.recommendedCost === 720 &&
+  "an explicit count does not add the each rate on top of itemised supports",
+  countedAllowance?.includedInTotal === false &&
+    countedAllowance.recommendedCost === 0 &&
+    countedAllowance.rateSourceType === "missing" &&
+    !countedEstimate.lineItems.some(
+      (item) =>
+        item.label === "Pile/post replacement allowance" &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    ) &&
     !countedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
 );
 check(
@@ -455,6 +462,11 @@ check(
 const leftEstimate = calculateDeck(
   deckContext(leftFacts, STAGE_2A_ELEVATED_REPLACEMENT_DECK_BRIEF),
   { id: "deck-1", type: "deck", name: "Deck", sort_order: 0 }
+);
+check(
+  "a pending layout is not shown as a support requirement",
+  !(leftEstimate.requirements ?? []).some((row) => row.componentKey === "deck.supports") &&
+    leftEstimate.assumptions.some((row) => row.includes("not a confirmed pile count"))
 );
 check(
   "leave until inspection does not price new piles, installation or holes",

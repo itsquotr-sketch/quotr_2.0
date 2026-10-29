@@ -272,13 +272,17 @@ function round2(value: number): number {
 function workAreaSummaryLine(
   count: number,
   missingPriceLineCount: number,
-  workAreasWithMissingPrices: number
+  workAreasWithMissingPrices: number,
+  scopeCoverageGapCount: number,
+  unresolvedSpecificationCount: number
 ): string {
   if (count === 0) return "No Work Areas yet";
   return formatWorkAreaPriceSummary({
     workAreaCount: count,
     missingPriceLineCount,
     workAreasWithMissingPrices,
+    scopeCoverageGapCount,
+    unresolvedSpecificationCount,
   });
 }
 
@@ -759,6 +763,8 @@ export function projectEstimateOverview(
     scopeCoverageGapCount,
   };
 
+  const scopeOrSpecificationOpen =
+    scopeCoverageGapCount > 0 || unresolvedSpecificationCount > 0;
   const hasPricingRequired = issues.missingPriceLineCount > 0;
   const estimate = input.estimate;
   const unresolvedSell =
@@ -771,7 +777,7 @@ export function projectEstimateOverview(
     input.hasEstimate &&
     estimate != null &&
     !hasPricingRequired &&
-    scopeCoverageGapCount === 0 &&
+    !scopeOrSpecificationOpen &&
     inferDisplayCostKnown(estimate.recommendedCost, estimate.recommendedSell) &&
     !unresolvedSell;
   const openCommercialConditions = (input.openCommercialConditions ?? [])
@@ -779,7 +785,7 @@ export function projectEstimateOverview(
     .filter(Boolean);
   const knownSellPartial =
     (hasPricingRequired ||
-      scopeCoverageGapCount > 0 ||
+      scopeOrSpecificationOpen ||
       openCommercialConditions.length > 0) &&
     estimate != null &&
     Number.isFinite(estimate.recommendedSell) &&
@@ -791,7 +797,7 @@ export function projectEstimateOverview(
   else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
   else if (
     hasPricingRequired ||
-    scopeCoverageGapCount > 0 ||
+    scopeOrSpecificationOpen ||
     openCommercialConditions.length > 0 ||
     scopeDecisionOpen ||
     input.review?.overview.recommendedSellIsPartial ||
@@ -822,12 +828,17 @@ export function projectEstimateOverview(
             ? openCommercialConditions.join(" ")
             : scopeDecisionOpen && pricingRequired.length === 0
             ? "A flooring scope or waste choice is still open. A typed amount does not answer it."
-            : issues.missingPriceLineCount > 0
+              : issues.missingPriceLineCount > 0
               ? productivityReview ??
                 estimateMissingPriceNotice(issues.missingPriceLineCount)
-              : scopeCoverageGapCount > 0
-                ? formatScopeCoverageGaps(scopeCoverageGapCount) ??
-                  "Requested scope still has no line."
+              : scopeOrSpecificationOpen
+                ? `Generated lines are priced. ${
+                    scopeCoverageGapCount > 0
+                      ? formatScopeCoverageGaps(scopeCoverageGapCount) ??
+                        "Requested scope still has no line."
+                      : formatUnresolvedSpecifications(unresolvedSpecificationCount) ??
+                        "A specification is still open."
+                  }`
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."
           : "Estimate ready";
@@ -884,7 +895,9 @@ export function projectEstimateOverview(
       summaryLine: workAreaSummaryLine(
         names.length,
         issues.missingPriceLineCount,
-        issues.workAreasWithMissingPrices
+        issues.workAreasWithMissingPrices,
+        issues.scopeCoverageGapCount,
+        issues.unresolvedSpecificationCount
       ),
       rows: names.map((name) => ({
         name,

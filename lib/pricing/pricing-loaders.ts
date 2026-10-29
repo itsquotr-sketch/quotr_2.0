@@ -1,7 +1,10 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
-import { aggregateMissingPriceLineCounts } from "@/lib/assistant/presentation/estimate-issues";
+import {
+  aggregateMissingPriceLineCounts,
+  scopeGapCountFromNotices,
+} from "@/lib/assistant/presentation/estimate-issues";
 import {
   mapPricingDocument,
   mapPricingItem,
@@ -66,6 +69,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   quantityConflictDetail: string | null;
   pricingSummary: PricingSummary | null;
   missingPriceLineCount: number | null;
+  scopeCoverageGapCount: number | null;
 }> {
   const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
@@ -75,6 +79,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       quantityConflictDetail: null,
       pricingSummary: null,
       missingPriceLineCount: null,
+      scopeCoverageGapCount: null,
     };
   }
 
@@ -88,7 +93,7 @@ export async function getProjectWorkspaceTabContextWithContext(
     pricingSummaryPromise,
     auth.supabase
       .from("estimates")
-      .select("id, is_stale")
+      .select("id, is_stale, missing_info")
       .eq("project_id", projectId)
       .eq("org_id", auth.orgId)
       .maybeSingle(),
@@ -125,6 +130,9 @@ export async function getProjectWorkspaceTabContextWithContext(
       ? null
       : (aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []).get(projectId) ??
         0),
+    scopeCoverageGapCount: estimateResult.error
+      ? null
+      : scopeGapCountFromNotices(estimateResult.data?.missing_info),
   };
 }
 

@@ -79,6 +79,7 @@ type PricingWorkspaceProps = {
   estimateUpdateRequired?: string | null;
   gstRegistered?: boolean | null;
   defaultGstRate?: number | null;
+  scopeStillOpen?: boolean;
 };
 
 export function PricingWorkspace({
@@ -91,6 +92,7 @@ export function PricingWorkspace({
   estimateUpdateRequired = null,
   gstRegistered,
   defaultGstRate = null,
+  scopeStillOpen = false,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -571,6 +573,7 @@ export function PricingWorkspace({
             latestEstimateIsStale={latestEstimateIsStale}
             quoteSummary={quoteSummary}
             projectId={projectId}
+            scopeStillOpen={scopeStillOpen}
           />
         }
       />
@@ -739,6 +742,7 @@ export function PricingWorkspace({
                 onDeleteItem={handleDeleteItem}
                 onAddItem={handleAddItem}
                 showAddItem={groupBy === "work_area"}
+                scopeStillOpen={scopeStillOpen}
                 openRequest={openRequest}
                 openRequestNonce={openRequestNonce}
                 initiallyRevealed={

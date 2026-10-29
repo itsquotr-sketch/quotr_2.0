@@ -1,6 +1,7 @@
 import {
   formatMissingPriceLines,
   formatScopeCoverageGaps,
+  GENERATED_LINES_PRICED,
 } from "@/lib/assistant/presentation/estimate-issues";
 import type { ProjectListItem } from "@/lib/projects/types";
 import type { CompanySetupReadiness } from "@/lib/setup/readiness";
@@ -19,7 +20,9 @@ function coverageAttention(project: ProjectListItem): string | null {
   const lineText = lines > 0 ? formatMissingPriceLines(lines) : null;
   const gapText = gaps > 0 ? formatScopeCoverageGaps(gaps) : null;
   if (lineText && gapText) return `${lineText}. ${gapText}`;
-  return lineText ?? gapText;
+  if (lineText) return lineText;
+  if (gapText) return `${GENERATED_LINES_PRICED}. ${gapText}`;
+  return null;
 }
 
 function projectContext(project: ProjectListItem): string {

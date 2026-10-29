@@ -20,6 +20,10 @@ import { scopeReviewDisplay, parseScopeReview, deckProductivityPhrase } from "@/
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 import { flooringOwnershipDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
+import {
+  classifyReviewNotice,
+  GENERATED_LINES_PRICED,
+} from "@/lib/assistant/presentation/estimate-issues";
 
 export const WORK_AREA_PRICING_EXPLANATION =
   "This price is completed in Pricing.";
@@ -47,6 +51,7 @@ const COMPOSITION_LABEL: Record<BuilderReviewCategoryId, string> = {
 
 export type WorkAreaBreakdownReadiness =
   | "All priced"
+  | "Generated lines priced"
   | "Pricing Required"
   | "Partial"
   | "Previous estimate";
@@ -400,6 +405,15 @@ function presentCard(
   const portionAssumptions = (area.portionGroups ?? []).flatMap((portion) => [
     ...portion.assumptions,
   ]);
+  if (
+    readiness === "All priced" &&
+    [...checks, ...assumptions, ...portionAssumptions].some((text) => {
+      const kind = classifyReviewNotice(text);
+      return kind === "scope_gap" || kind === "specification";
+    })
+  ) {
+    readiness = GENERATED_LINES_PRICED;
+  }
   const reviewCount = assumptions.length + checks.length + portionAssumptions.length;
   const sell =
     readiness === "All priced" &&

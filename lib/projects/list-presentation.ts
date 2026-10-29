@@ -1,6 +1,7 @@
 import {
   formatMissingPriceLines,
   formatScopeCoverageGaps,
+  GENERATED_LINES_PRICED,
 } from "@/lib/assistant/presentation/estimate-issues";
 import { formatStage } from "@/lib/projects/format";
 import type { ProjectListItem } from "@/lib/projects/types";
@@ -83,5 +84,7 @@ function coverageState(
   const gapText =
     scopeGaps != null && scopeGaps > 0 ? formatScopeCoverageGaps(scopeGaps) : null;
   if (lineText && gapText) return `${lineText}. ${gapText}`;
-  return lineText ?? gapText;
+  if (lineText) return lineText;
+  if (gapText) return `${GENERATED_LINES_PRICED}. ${gapText}`;
+  return null;
 }

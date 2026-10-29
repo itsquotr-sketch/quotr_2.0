@@ -21,6 +21,7 @@ import type {
   PricingItemInput,
   PricingWorkArea,
 } from "@/lib/pricing/types";
+import { GENERATED_LINES_PRICED } from "@/lib/assistant/presentation/estimate-issues";
 import { cn } from "@/lib/utils";
 
 type PricingWorkAreaSectionProps = {
@@ -49,6 +50,7 @@ type PricingWorkAreaSectionProps = {
   sectionKey?: string;
   documentStatus?: PricingDocumentStatus;
   canEdit?: boolean;
+  scopeStillOpen?: boolean;
 };
 
 export function PricingWorkAreaSection({
@@ -71,6 +73,7 @@ export function PricingWorkAreaSection({
   sectionKey = "section",
   documentStatus,
   canEdit = true,
+  scopeStillOpen = false,
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [handledNonce, setHandledNonce] = useState<number | null>(null);
@@ -107,7 +110,9 @@ export function PricingWorkAreaSection({
   const readiness =
     requiredCount > 0
       ? `${requiredCount} Pricing required`
-      : "Priced";
+      : scopeStillOpen
+        ? GENERATED_LINES_PRICED
+        : "Priced";
   if (initiallyRevealed && !userChoseExpansion && !appliedInitialReveal) {
     setAppliedInitialReveal(true);
     setExpanded(true);

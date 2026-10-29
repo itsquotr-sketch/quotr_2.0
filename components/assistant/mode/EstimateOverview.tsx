@@ -367,6 +367,7 @@ export function EstimateOverview({
         {readyForPricing &&
         model.issues.missingPriceLineCount === 0 &&
         model.issues.scopeCoverageGapCount === 0 &&
+        model.issues.unresolvedSpecificationCount === 0 &&
         model.pricingAttention.length === 0 &&
         model.primary !== "review_productivity" ? (
           <div className="mt-3" data-estimate-overview-ready="true">

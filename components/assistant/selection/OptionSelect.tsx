@@ -70,7 +70,10 @@ export function OptionSelect({
 
   return (
     <div
-      className={cn("grid w-full min-w-0", compact ? "gap-1.5" : "gap-2")}
+      className={cn(
+        "grid w-full min-w-0 max-md:pb-16",
+        compact ? "gap-1.5" : "gap-2"
+      )}
       data-option-select={multiple ? "multi" : "single"}
       data-option-optimistic={optimistic !== undefined ? "true" : "false"}
       data-option-pending={pending ? "true" : undefined}
@@ -88,7 +91,7 @@ export function OptionSelect({
             aria-pressed={selected}
             data-option-selected={selected ? "true" : "false"}
             className={cn(
-              "w-full min-w-0 rounded-xl border px-4 text-left text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "w-full min-w-0 scroll-mb-28 rounded-xl border px-4 text-left text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               "min-h-11 py-2.5",
               selected
                 ? "border-foreground bg-foreground font-medium text-background ring-2 ring-foreground"

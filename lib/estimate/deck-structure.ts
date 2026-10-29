@@ -787,7 +787,8 @@ function layoutAssumptions(quantities: DeckStructureQuantities): RequirementAssu
 }
 
 export function deckStructureAssumptionTexts(
-  quantities: DeckStructureQuantities
+  quantities: DeckStructureQuantities,
+  options?: { supportsInScope?: boolean }
 ): string[] {
   const texts: string[] = [];
   if (
@@ -822,8 +823,14 @@ export function deckStructureAssumptionTexts(
     );
   } else if (quantities.layoutEstimated) {
     texts.push("Standard rectangular layout assumed.");
-    texts.push("Support layout estimated.");
-    texts.push(CONSERVATIVE_SUPPORT_LAYOUT_HINT);
+    if (options?.supportsInScope === false) {
+      texts.push(
+        "A spacing layout was estimated for framing. It is not a confirmed pile count and it is not a replacement requirement."
+      );
+    } else {
+      texts.push("Support layout estimated.");
+      texts.push(CONSERVATIVE_SUPPORT_LAYOUT_HINT);
+    }
   }
   return texts;
 }

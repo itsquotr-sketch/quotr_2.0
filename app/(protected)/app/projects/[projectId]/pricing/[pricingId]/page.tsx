@@ -111,6 +111,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
           estimateIsStale={tabContext.estimateIsStale}
           quantityConflictDetail={tabContext.quantityConflictDetail}
           missingPriceLineCount={missingPriceLineCount}
+          scopeCoverageGapCount={tabContext.scopeCoverageGapCount}
           pricingUnresolvedRequired={missingPriceLineCount > 0}
         />
       }
@@ -141,6 +142,9 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         estimateUpdateRequired={tabContext.quantityConflictDetail}
         gstRegistered={access.gstRegistered}
         defaultGstRate={access.defaultGstRate}
+        scopeStillOpen={
+          missingPriceLineCount === 0 && (tabContext.scopeCoverageGapCount ?? 0) > 0
+        }
       />
     </WorkspacePage>
   );

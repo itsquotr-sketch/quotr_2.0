@@ -73,6 +73,7 @@ import {
 } from "@/lib/estimate/deck-surface-requirement";
 import {
   DECK_BEARERS_COMPONENT_KEY,
+  DECK_CONCRETE_COMPONENT_KEY,
   DECK_JOISTS_COMPONENT_KEY,
   DECK_RIM_FRAMING_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
@@ -525,9 +526,6 @@ export function calculateDeck(
     materialWastageSettings: context.materialWastageSettings,
     organisationSettings: context.organisationSettings,
   });
-  if (structural.quantities) {
-    assumptions.push(...deckStructureAssumptionTexts(structural.quantities));
-  }
 
   const joistReq = structural.requirements.find(
     (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
@@ -582,6 +580,13 @@ export function calculateDeck(
   const supportCount = deckSupportsArePriced(supportTreatment)
     ? derivedSupportCount
     : 0;
+  if (structural.quantities) {
+    assumptions.push(
+      ...deckStructureAssumptionTexts(structural.quantities, {
+        supportsInScope: deckSupportsArePriced(supportTreatment),
+      })
+    );
+  }
   const requiredDeckingLm = deckingBoardResult?.baseLm ?? 0;
   const requiredFramingLm = structural.quantities
     ? requiredInstalledFramingLm({
@@ -1305,6 +1310,38 @@ export function calculateDeck(
 
   if (pileReplacement === true) {
     const pileCount = getNumberFact(facts, workArea.id, "deck.pile_or_post_count");
+    const replacementAlreadyItemised = lineItems.some(
+      (item) =>
+        item.includedInTotal !== false &&
+        (item.label === "Piles / posts" ||
+          item.label === "Pile/post installation" ||
+          item.label === "Hole excavation" ||
+          item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY ||
+          item.componentKey === DECK_CONCRETE_BAGS_COMPONENT_KEY)
+    );
+    if (replacementAlreadyItemised) {
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Pile/post replacement allowance",
+          category: "allowance",
+          quantity: 1,
+          unit: "allow",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          itemKey: "deck.post_replacement.each",
+          notes:
+            "Support material, installation, excavation, concrete, and existing-deck removal stay their own lines. This additional allowance does not name any other work, so it is not included. Enter an amount in Pricing if you want it. A saved rate is not applied automatically.",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        }),
+        includedInTotal: false,
+      });
+      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
+    } else {
     const postRates = resolveRate({
       rates: context.rates,
       rateType: "allowance",
@@ -1359,6 +1396,7 @@ export function calculateDeck(
         "Pile/post replacement count is subject to confirmation."
       );
       missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
+    }
     }
   } else if (pileReplacement === null && replacementApplicable) {
     assumptions.push(
@@ -2166,7 +2204,13 @@ export function calculateDeck(
   const requirements = [
     surfaceRequirement,
     labourRequirement,
-    ...structural.requirements,
+    ...structural.requirements.filter((req) => {
+      if (deckSupportsArePriced(supportTreatment)) return true;
+      return (
+        req.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
+        req.componentKey !== DECK_CONCRETE_COMPONENT_KEY
+      );
+    }),
   ].filter((item): item is NonNullable<typeof item> => item != null);
 
   const deckSubstructureReconciliation =

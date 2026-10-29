@@ -29,14 +29,33 @@ export function formatMissingPriceNotice(count: number): string {
   return `${count} lines still need prices. Complete these in Pricing.`;
 }
 
+export const GENERATED_LINES_PRICED = "Generated lines priced";
+
+export function generatedLinesArePriced(input: {
+  readonly missingPriceLineCount: number;
+  readonly scopeCoverageGapCount?: number;
+  readonly unresolvedSpecificationCount?: number;
+}): boolean {
+  return (
+    input.missingPriceLineCount <= 0 &&
+    ((input.scopeCoverageGapCount ?? 0) > 0 ||
+      (input.unresolvedSpecificationCount ?? 0) > 0)
+  );
+}
+
 export function formatWorkAreaPriceSummary(input: {
   readonly workAreaCount: number;
   readonly missingPriceLineCount: number;
   readonly workAreasWithMissingPrices: number;
+  readonly scopeCoverageGapCount?: number;
+  readonly unresolvedSpecificationCount?: number;
 }): string {
   const areas =
     input.workAreaCount === 1 ? "1 Work Area" : `${input.workAreaCount} Work Areas`;
-  if (input.missingPriceLineCount <= 0) return `${areas} · All priced lines`;
+  if (input.missingPriceLineCount <= 0) {
+    if (generatedLinesArePriced(input)) return `${areas} · ${GENERATED_LINES_PRICED}`;
+    return `${areas} · All priced lines`;
+  }
   const lines = formatMissingPriceLines(input.missingPriceLineCount);
   if (
     input.workAreasWithMissingPrices > 0 &&
