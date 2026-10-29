@@ -119,6 +119,29 @@ Older draft `31d66ec2-d37b-4562-9766-5f9eceba01a0` is still Draft, unsent, cost 
 
 Still unpriced, with no rate invented: partial wall-lining extent, stair protection, daily cleaning, and contractor-supplied ancillary materials. `scripts/verify-bathroom-scope-preservation.ts` covers the original, shorthand and mixed assemblies, including quote projection and the visibility-only reconciliation limit. `scripts/verify-pricing-draft-reconciliation.ts` passed. `scripts/verify-estimate-readiness-contract-r1.ts` still fails only the pre-existing “CTA does not stay on Saving… during generate” check. Typecheck passed. The guarded webpack build exited 0 and refused the production database.
 
+## Bathroom substrate and repair costing
+
+Scope preservation stays the accepted slice above. This section is a separate correction. Behavior `bd9855404f4253c3908dd6509d39a3398986cee5`. Preview `dpl_3w784NZ3c9mfpYZgmpZ74PYW9XSz`, target none. Production remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` / `bc0a76674229`.
+
+“Not sure” had been treated as a confirmed 19 mm H3.2 plywood replacement whenever the job was not strip-out only. A tile floor then derived 6 mm Hardie Ceramic Tile Underlay. Both layers used the net floor area, 10% sheet waste, and installation labour of net m² × 0.9167 h/m² × the access factor. Plywood is the Quotr benchmark $145 per sheet. Underlay is the Quotr benchmark $42.12 per sheet. The two labour lines are different tasks that share that productivity figure. Equal hours are not one allowance counted twice.
+
+The earlier hosted mixed job that answered substrate “Not sure” included that assembly: known cost $5,029.11, sell $6,286.40, labour 17.13 h. That job and its drafts were not rewritten.
+
+Fresh Preview jobs on the correction:
+
+- Unknown, project `685fa67f-c364-41df-b34a-bac5cc250bca`. Substrate “Not sure”. The review keeps “Floor substrate condition is unknown. A full floor replacement is not assumed. Coverage is unresolved.” No plywood, no Hardie underlay, and no installation labour for either. Known cost $3,885, sell $4,857, labour 7.43 h. Customer tile supply stays out of the total. Vanity installation stays priced. Plumbing and electrical stay excluded. Desktop and a 390×844 reload kept the same totals and the same gap.
+- Retained, project `97978b91-baf0-4972-b50e-4a5e74569714`. “Keep existing floor”. No substrate replacement line and no substrate gap. Same known cost $3,885 and sell $4,857.
+- Partial repair, project `a6073803-08d5-4865-bb44-b0ea3dc4f5b9`. “Partial repair”. The review keeps “Floor substrate repair extent is not measured. A full floor replacement is not assumed. Coverage is unresolved.” There is no measured-extent recipe, so the gap stays and the full floor is not priced. Same known cost $3,885 and sell $4,857.
+- Confirmed replacement, project `96e020b8-fe48-4cca-b5e6-604eff4be103`, regenerated after this correction. “19 mm treated plywood” with a tile floor. 5.04 m² net, 5.54 m² purchase, 2 plywood sheets at $290 and 3 underlay sheets at $126, both Quotr benchmarks. Floor substrate labour and tile underlay labour are separate 4.85 h lines at the company carpenter rate, $364 each. The visible assumption states 0.9167 h/m² from the Quotr benchmark, 4.62 person-hours before access, then access factor 1.05, and that matching hours are not one allowance counted twice. Known cost $5,029, sell $6,286. Customer supply and the plumbing and electrical exclusions stay.
+
+The blanket “Full strip-out and rebuild” assumption is replaced by wording from the selected removals, floor finish, painting and fixtures. There is no existing way to accept a proposed substrate allowance before it is priced, so this correction does not add a universal bathroom default. Unknown and unmeasured partial repair stay visible gaps. A confirmed sheet system still prices. “Other” stays an open specification. This is not a fully supported bathroom assembly.
+
+`scripts/verify-bathroom-substrate-repair.ts` passed, including the builder-visible labour note. Preservation and pricing-draft reconciliation passed. Bathroom physical and polish checks passed apart from the pre-existing migration 110 failure. Readiness still fails only the pre-existing Saving CTA check. Typecheck passed. The guarded webpack build passed on the substrate commit and refused the production database. No quote was sent.
+
+## Quote visibility reconciliation
+
+Explicit draft reconciliation still ignores quote-visibility changes. `valuesMateriallyMatch` compares money, quantity and wording, not `visible_on_quote`, so an unedited generated row can stay on the quote when that is the only difference. The current finalisation block remains. It is not the permanent resolution. A later explicit reconciliation must be able to update unedited generated visibility while protecting edited rows and issued snapshots. This substrate correction does not implement that change.
+
 ## Original briefs
 
 Test answers below were supplied in the session. They are not facts extracted from the brief unless the note says the brief stated them. Company carpenter cost on this organisation was already $75/h. Laminate underlay $8/m² and laminate waste $40/m² were already company rates. No new benchmark was invented.
