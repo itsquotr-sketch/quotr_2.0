@@ -8,6 +8,14 @@ export const QUOTE_VISIBLE_EXCLUDED_BLOCK =
 export const UNRESOLVED_SCOPE_REVIEW_BLOCK =
   "Requested tasks still have no priced line. This pricing cannot be marked reviewed as a complete price.";
 
+/** Same rule for a new pricing row and a recalibrated row. */
+export function estimateLineIsQuoteVisible(values: {
+  includedInTotal?: boolean;
+  clientVisible?: boolean;
+}): boolean {
+  return values.includedInTotal !== false && values.clientVisible !== false;
+}
+
 type QuoteVisibilityItem = {
   visible_on_quote?: boolean | null;
   notes_internal?: string | null;

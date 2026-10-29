@@ -22,6 +22,7 @@ import { clearStaleCeilingProvisionalConfirmation } from "@/lib/pricing/ceiling-
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import {
+  estimateLineIsQuoteVisible,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
 } from "@/lib/pricing/scope-finalisation";
@@ -728,7 +729,7 @@ export async function createPricingFromEstimate(input: {
         productivity_rate: values.productivityRate,
         productivity_unit: values.productivityUnit,
         calculated_quantity: values.calculatedQuantity,
-        visible_on_quote: true,
+        visible_on_quote: estimateLineIsQuoteVisible(values),
         optional: false,
         sort_order: lineItem.sort_order ?? index,
         notes_internal: values.notesInternal,

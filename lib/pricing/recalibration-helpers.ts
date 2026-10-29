@@ -7,6 +7,7 @@ import {
   roundPercent,
 } from "@/lib/pricing/calculations";
 import { calculateAuthoritativeFieldsFromEstimateLine } from "@/lib/pricing/estimate-to-pricing-adapter";
+import { estimateLineIsQuoteVisible } from "@/lib/pricing/scope-finalisation";
 import type { PricingItem } from "@/lib/pricing/types";
 
 export type EstimateLineItemRow = {
@@ -482,8 +483,7 @@ export function buildPricingItemRowFromEstimate(
     internal_description: values.internalDescription,
     client_description: null,
     ...pricingFieldsToRowValues(values),
-    visible_on_quote:
-      values.includedInTotal !== false && values.clientVisible !== false,
+    visible_on_quote: estimateLineIsQuoteVisible(values),
     optional: false,
     sort_order: sortOrder,
     manually_edited: false,
@@ -514,10 +514,9 @@ export function buildPricingItemUpdateFromEstimate(
     recalibration_note: null,
     manually_edited: false,
     sort_order: existing.sort_order,
-    visible_on_quote:
-      values.includedInTotal === false || values.clientVisible === false
-        ? false
-        : existing.visible_on_quote,
+    visible_on_quote: estimateLineIsQuoteVisible(values)
+      ? existing.visible_on_quote
+      : false,
     optional: existing.optional,
     notes_client: existing.notes_client,
     notes_internal: values.notesInternal,

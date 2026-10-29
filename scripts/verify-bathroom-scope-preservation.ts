@@ -14,6 +14,7 @@ import {
   valuesMateriallyMatch,
 } from "../lib/pricing/recalibration-helpers";
 import {
+  estimateLineIsQuoteVisible,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlock,
 } from "../lib/pricing/scope-finalisation";
@@ -420,6 +421,12 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
   );
 }
 
+check(
+  "a new pricing row hides work that is outside the total",
+  estimateLineIsQuoteVisible({ includedInTotal: false }) === false &&
+    estimateLineIsQuoteVisible({ clientVisible: false }) === false &&
+    estimateLineIsQuoteVisible({}) === true
+);
 check("reline brief is not this package", interpretBathroomBrief(RELINE) == null);
 check("damaged gib is not full aqualine", suggestedBathroomWallLiningSystem(ORIGINAL) == null);
 check(
