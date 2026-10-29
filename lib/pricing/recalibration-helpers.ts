@@ -477,7 +477,8 @@ export function buildPricingItemRowFromEstimate(
     internal_description: values.internalDescription,
     client_description: null,
     ...pricingFieldsToRowValues(values),
-    visible_on_quote: true,
+    visible_on_quote:
+      values.includedInTotal !== false && values.clientVisible !== false,
     optional: false,
     sort_order: sortOrder,
     manually_edited: false,
@@ -508,7 +509,10 @@ export function buildPricingItemUpdateFromEstimate(
     recalibration_note: null,
     manually_edited: false,
     sort_order: existing.sort_order,
-    visible_on_quote: existing.visible_on_quote,
+    visible_on_quote:
+      values.includedInTotal === false || values.clientVisible === false
+        ? false
+        : existing.visible_on_quote,
     optional: existing.optional,
     notes_client: existing.notes_client,
     notes_internal: values.notesInternal,

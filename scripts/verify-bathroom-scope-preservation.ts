@@ -8,6 +8,8 @@ import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-cont
 import { bathroomJobPlanAdapter } from "../lib/assistant/job-plan/adapters/bathroom";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
+import { buildLineItemNotes } from "../lib/estimate/line-items";
+import { buildPricingItemRowFromEstimate } from "../lib/pricing/recalibration-helpers";
 import {
   interpretBathroomBrief,
   BATHROOM_PARTIAL_LINING_VALUE,
@@ -288,6 +290,30 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
     .filter((item) => item.rateSourceType !== "missing")
     .reduce((sum, item) => sum + item.recommendedCost, 0);
   check(`${name} known cost is partial`, known > 0 && result.missingInfo.some((row) => /coverage is unresolved/i.test(row)));
+  const quoteRow = (label: string) => {
+    const item = result.lineItems.find((row) => row.label === label);
+    if (!item) return null;
+    return buildPricingItemRowFromEstimate(
+      {
+        id: "line",
+        work_area_id: "b1",
+        label: item.label,
+        category: item.category,
+        recommended_cost: item.recommendedCost,
+        recommended_sell: item.recommendedSell,
+        notes: buildLineItemNotes(item),
+        sort_order: item.sortOrder,
+      },
+      "org",
+      "doc",
+      "project",
+      1
+    );
+  };
+  check(`${name} priced work stays on the quote`, quoteRow("Vanity installation")?.visible_on_quote === true);
+  check(`${name} tile supply stays off the quote`, quoteRow("Floor tile supply allowance")?.visible_on_quote === false);
+  check(`${name} unresolved lining stays off the quote`, quoteRow("Partial wall lining")?.visible_on_quote === false);
+  check(`${name} stair protection stays off the quote`, quoteRow("Stair protection")?.visible_on_quote === false);
 }
 
 check("reline brief is not this package", interpretBathroomBrief(RELINE) == null);
