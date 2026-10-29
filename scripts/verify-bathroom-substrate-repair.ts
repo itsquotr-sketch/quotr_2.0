@@ -4,6 +4,7 @@
  *
  * Run: npx tsx scripts/verify-bathroom-substrate-repair.ts
  */
+import { isUserFacingEstimateAssumption } from "../lib/assistant/presentation/user-facing-estimate-assumptions";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import {
   BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
@@ -171,7 +172,9 @@ check(
     BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2 ===
       BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 &&
     replacement.assumptions.some((line) =>
-      line.includes("not one allowance counted twice")
+      line.includes("not one allowance counted twice") &&
+      line.includes("Quotr benchmark") &&
+      isUserFacingEstimateAssumption(line)
     )
 );
 check(

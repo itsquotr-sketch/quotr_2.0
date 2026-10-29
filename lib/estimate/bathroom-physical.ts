@@ -421,7 +421,11 @@ export function buildBathroomPhysicalEnvelope(params: {
         })
       : null;
 
-  let substrateInstall: { hoursPerUnit: number; hours: number } | null = null;
+  let substrateInstall: {
+    hoursPerUnit: number;
+    hours: number;
+    sourceType: string;
+  } | null = null;
   if (structuralIdentity && floorArea != null && structuralIdentity.sheet) {
     if (
       floorBuildUp.structural === "fibre_cement_flooring_19mm" &&
@@ -444,7 +448,11 @@ export function buildBathroomPhysicalEnvelope(params: {
       rates: context.rates,
     });
     const hours = bathroomLiningHours(floorArea, productivity.hoursPerUnit);
-    substrateInstall = { hoursPerUnit: productivity.hoursPerUnit, hours };
+    substrateInstall = {
+      hoursPerUnit: productivity.hoursPerUnit,
+      hours,
+      sourceType: productivity.sourceType,
+    };
     const adjustedHours = hours * params.accessFactor;
     const rate = resolveExactMaterialRate({
       itemKey,
@@ -781,8 +789,16 @@ export function buildBathroomPhysicalEnvelope(params: {
       )
     );
     if (substrateInstall && floorArea != null) {
+      const productivityLabel = (sourceType: string) =>
+        sourceType === "user_rate"
+          ? "a company productivity rate"
+          : sourceType === "calibrated_productivity"
+            ? "a calibrated productivity rate"
+            : "the Quotr benchmark";
+      const hoursPerM2 = (value: number) =>
+        `${Math.round(value * 10000) / 10000} h/m²`;
       assumptions.push(
-        `Floor substrate installation and tile underlay installation are separate tasks over ${presentBathroomAreaM2(floorArea)}. Substrate uses ${BATHROOM_PRODUCTIVITY_KEYS.floorSubstrateM2} at ${substrateInstall.hoursPerUnit} h/m² (${presentBathroomHours(substrateInstall.hours)} before access). Underlay uses ${BATHROOM_PRODUCTIVITY_KEYS.tileUnderlayM2} at ${productivity.hoursPerUnit} h/m² (${presentBathroomHours(hours)} before access). Both are multiplied by access factor ${params.accessFactor}. Matching hours are the same area and the same resolved rate, not one allowance counted twice.`
+        `Floor substrate installation and tile underlay installation are separate tasks over ${presentBathroomAreaM2(floorArea)}. Substrate is ${hoursPerM2(substrateInstall.hoursPerUnit)} from ${productivityLabel(substrateInstall.sourceType)} (${presentBathroomHours(substrateInstall.hours)} before access). Underlay is ${hoursPerM2(productivity.hoursPerUnit)} from ${productivityLabel(productivity.sourceType)} (${presentBathroomHours(hours)} before access). Both are multiplied by access factor ${params.accessFactor}. Matching hours are the same area and the same resolved rate, not one allowance counted twice.`
       );
     }
   }
