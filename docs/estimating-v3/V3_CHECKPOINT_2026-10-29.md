@@ -140,7 +140,17 @@ The blanket “Full strip-out and rebuild” assumption is replaced by wording f
 
 ## Quote visibility reconciliation
 
-Explicit draft reconciliation still ignores quote-visibility changes. `valuesMateriallyMatch` compares money, quantity and wording, not `visible_on_quote`, so an unedited generated row can stay on the quote when that is the only difference. The current finalisation block remains. It is not the permanent resolution. A later explicit reconciliation must be able to update unedited generated visibility while protecting edited rows and issued snapshots. This substrate correction does not implement that change.
+Closed on behavior `4efc441f53d5bf54838ab7fbaaa0d40149c82aaf`. Verified on Preview `dpl_8yasoGUEMdGtqXT3cgCgGuVTjutu`, target none, alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. Production remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` / `bc0a76674229`. No quote was sent. Pricing was not marked reviewed.
+
+Explicit Pricing reconciliation now compares whether a generated row should appear on the customer quote. A row is matched by its source line id or requirement scope, not by label, position or amount. A visibility-only difference appears in Preview changes when quantity, wording and the monetary difference are unchanged. Page load does not rewrite the draft.
+
+Older draft `31d66ec2` on project `7c2c4d32` still had the customer tile purchase and four unresolved coverage rows on the quote at $0. Preview changes listed those five rows to update. Current and latest subtotals were both $3,107, difference $0. Each note said the row will be hidden and the task stays unresolved. Priced rows stayed unchanged. After Update final pricing, the same rows remain in Pricing as Not in total and Hidden from quote. Direct cost stays $2,485.25 and client sell stays $3,106.57. Desktop reload and a 390×844 reload kept that result, and Preview changes was not offered again. The customer projection omits those rows. The internal note still says floor tile supply is customer-supplied and installation stays in the estimate. Client exclusions still name plumbing and electrical. Review stays blocked because the requested tasks have no priced line. Hiding a row did not price it, resolve it, or mark it excluded.
+
+Fresh draft `a3116424` on project `6ba794d6` was created after insert-time visibility. The customer tile purchase and the unresolved coverage rows are already Not in total and Hidden from quote. There is no visibility-only update to apply. Totals stay $5,029.11 and $6,286.40. Review and Create quote stay disabled. Plumbing and electrical exclusions remain.
+
+Untouched generated rows take the current source visibility only through Update final pricing. A manually edited generated row is left for review. An explicit visibility override is kept and needs a review decision. A legacy row with no source id and no requirement scope is not matched by label or amount. An included no-charge row stays visible. Repeating the update does not list the same change again. An issued quote snapshot is not changed, and an archived document is not offered the update.
+
+`scripts/verify-pricing-draft-reconciliation.ts` covers the visibility-only $0 difference, visible-to-hidden and hidden-to-visible, an edited generated row, a manual no-charge row, an explicit visibility override, a legacy row without identity, a repeated update, and issued-snapshot immutability. `scripts/verify-bathroom-scope-preservation.ts` covers the quote projection and the readiness block. Both passed. Typecheck passed. The guarded webpack build exited 0 and refused the production database.
 
 ## Original briefs
 
