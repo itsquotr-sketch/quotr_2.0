@@ -14,6 +14,7 @@ import {
   explicitDeckPostCount,
   explicitDeckStepWidthM,
 } from "@/lib/estimate/deck-brief-facts";
+import { interpretBathroomBrief } from "@/lib/estimate/bathroom-brief";
 import { deckScopeIntent } from "@/lib/estimate/scope-intent";
 import {
   briefHasIntegralDeckStepLanguage,
@@ -989,6 +990,24 @@ function inferBathroom(
       key: "bathroom.fixtures_client_supplied",
       label: "Fixtures client supplied",
       value: true,
+    });
+  }
+
+  const preserved = interpretBathroomBrief(brief);
+  if (!preserved) return;
+  for (const key of preserved.dropKeys) {
+    extraction.facts = extraction.facts.filter(
+      (fact) => !(fact.work_area_type === "bathroom" && fact.key === key)
+    );
+  }
+  for (const fact of preserved.facts) {
+    upsertFact(extraction, {
+      workAreaType: "bathroom",
+      key: fact.key,
+      label: fact.label,
+      value: fact.value,
+      unit: fact.unit,
+      confidence: 0.92,
     });
   }
 }
@@ -2103,6 +2122,8 @@ export function extractConstraintsFromBrief(
       "occupied office",
       "site occupied",
       "house occupied",
+      "occupied house",
+      "occupied upstairs",
       "occupied during",
       "client living on site",
     ])

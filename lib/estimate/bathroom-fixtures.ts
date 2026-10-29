@@ -22,8 +22,10 @@ import {
   bathroomFixtureOwnershipFactKey,
   parseBathroomFixtureOwnership,
   parseBathroomSelectedFixtures,
+  resolveBathroomTradeLevel,
   type BathroomFixtureOwnership,
 } from "@/lib/estimate/bathroom-scope";
+import { bathroomVanitySpecificationMm } from "@/lib/estimate/bathroom-brief";
 import { getBooleanFact, getFact, getStringFact, round2 } from "@/lib/estimate/facts";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
@@ -374,12 +376,28 @@ export function buildBathroomFixtureEnvelope(params: {
       continue;
     }
 
-    if (installOwner === "plumber") {
-      assumptions.push(`${label} install is included in plumbing scope.`);
-      continue;
-    }
-    if (installOwner === "electrician") {
-      assumptions.push(`${label} install is included in electrical scope.`);
+    if (installOwner === "plumber" || installOwner === "electrician") {
+      const level = resolveBathroomTradeLevel({
+        canonical: getStringFact(
+          facts as never,
+          workArea.id,
+          installOwner === "plumber"
+            ? "bathroom.plumbing.level"
+            : "bathroom.electrical.level"
+        ),
+        legacy: getStringFact(
+          facts as never,
+          workArea.id,
+          installOwner === "plumber"
+            ? "bathroom.plumbing_changes"
+            : "bathroom.electrical_changes"
+        ),
+      });
+      assumptions.push(
+        level === "none"
+          ? `${label} installation is a ${installOwner} charge and is excluded from this estimate.`
+          : `${label} install is included in ${installOwner === "plumber" ? "plumbing" : "electrical"} scope.`
+      );
       continue;
     }
     if (installOwner === "specialist") {
@@ -457,7 +475,16 @@ export function buildBathroomFixtureEnvelope(params: {
             labourSellRate: labourRate.sellRate,
             rateSource: labourRate.sourceLabel,
             itemKey: "labour.carpenter.hour",
-            notes: `Install: Builder, ${hours} hours. Finish level does not change hours.`,
+            notes: `Install: Builder, ${hours} hours. Finish level does not change hours.${
+              id === "vanity" &&
+              bathroomVanitySpecificationMm(
+                getStringFact(facts as never, workArea.id, "bathroom.coverage_note")
+              ) != null
+                ? ` Specification: ${bathroomVanitySpecificationMm(
+                    getStringFact(facts as never, workArea.id, "bathroom.coverage_note")
+                  )} mm vanity.`
+                : ""
+            }`,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
           }),

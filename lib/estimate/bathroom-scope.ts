@@ -564,6 +564,13 @@ export function suggestedBathroomWallLiningSystem(brief: string): string | null 
       /rebuild the floor with\s+(?:\d+\s*mm\s+)?fibre[-\s]?cement/g,
       " "
     );
+  if (
+    /\b(?:where damaged|damaged only|only where damaged|extent unknown|dunno how much|how much yet)\b/.test(
+      withoutFloorSubstrate
+    )
+  ) {
+    return null;
+  }
   const gib =
     /\bgib\s+aqualine\b/.test(withoutFloorSubstrate) ||
     /\baqualine\b/.test(withoutFloorSubstrate) ||

@@ -1,5 +1,6 @@
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import { jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
+import { bathroomPreservationRows } from "@/lib/estimate/bathroom-brief";
 import {
   bathroomQuestionGroupVisible,
   isMatureBathroomPath,
@@ -106,7 +107,13 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
             ),
           ]
         : []),
-      ...(bathroomQuestionGroupVisible("linings", jobScope)
+      ...(bathroomQuestionGroupVisible("linings", jobScope) &&
+      context.facts.some(
+        (fact) =>
+          fact.key === "bathroom.wall_lining_included" &&
+          fact.work_area_id === id &&
+          (fact.value === true || fact.value === false)
+      )
         ? [
             boolScope(
               id,
@@ -118,7 +125,13 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
             ),
           ]
         : []),
-      ...(bathroomQuestionGroupVisible("ceiling_lining", jobScope)
+      ...(bathroomQuestionGroupVisible("ceiling_lining", jobScope) &&
+      context.facts.every(
+        (fact) =>
+          fact.key !== "bathroom.ceiling_lining_included" ||
+          fact.work_area_id !== id ||
+          fact.value !== false
+      )
         ? [
             boolScope(
               id,
@@ -151,6 +164,21 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
           ]
         : []),
     ];
+    const preserved = bathroomPreservationRows({
+      facts: context.facts,
+      workAreaId: id,
+    }).map((row) => ({
+      id: `${id}-${row.id}`,
+      workAreaId: id,
+      label: row.label,
+      presentation: row.presentation,
+      kind: "user_scope" as const,
+      togglable: false,
+      write: null,
+      sourceFactKey: row.factKey,
+      surfaceReason: "Requested bathroom scope",
+    }));
+    const allItems = [...items, ...preserved];
 
     return {
       workAreaId: id,
@@ -159,10 +187,10 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
       status: workArea.status,
       summary: chips.map((c) => c.value).join(" · "),
       specChips: chips,
-      included: items.filter((i) => i.presentation === "INCLUDED"),
-      notIncluded: items.filter((i) => i.presentation === "NOT_INCLUDED"),
-      notConfirmed: items.filter((i) => i.presentation === "NOT_CONFIRMED"),
-      confirmCount: items.filter((i) => i.presentation === "NOT_CONFIRMED").length,
+      included: allItems.filter((i) => i.presentation === "INCLUDED"),
+      notIncluded: allItems.filter((i) => i.presentation === "NOT_INCLUDED"),
+      notConfirmed: allItems.filter((i) => i.presentation === "NOT_CONFIRMED"),
+      confirmCount: allItems.filter((i) => i.presentation === "NOT_CONFIRMED").length,
     };
   },
 };

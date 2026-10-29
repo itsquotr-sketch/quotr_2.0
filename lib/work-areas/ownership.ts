@@ -88,8 +88,43 @@ export function briefHasIndependentPlastering(briefText: string): boolean {
   ]);
 }
 
+function bathroomOwnsNestedPaint(brief: string): boolean {
+  if (!briefHasIndependentBathroom(brief)) return false;
+  if (
+    /\b(?:whole house|all bedrooms|paint the interior|interior painting|paint doors|paint trims)\b/.test(
+      brief
+    )
+  ) {
+    return false;
+  }
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|office)\b/.test(
+      brief
+    )
+  ) {
+    return false;
+  }
+  return /\bpaint/.test(brief) && /\b(?:walls?|ceilings?)\b/.test(brief);
+}
+
+function clauseIsBathroomPackageFloor(clause: string, briefText: string): boolean {
+  if (!briefHasIndependentBathroom(briefText)) return false;
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|office|entry)\b/.test(
+      clause
+    )
+  ) {
+    return false;
+  }
+  const raw = clause.toLowerCase();
+  return /\b(?:tile|tiling)\s+(?:the\s+)?floors?\b|\bfloor\s+til(?:e|ing)\b|\bvinyl\b/.test(
+    raw
+  );
+}
+
 export function briefHasIndependentPainting(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
+  if (bathroomOwnsNestedPaint(brief)) return false;
   return includesAny(brief, [
     "paint the whole house",
     "paint the house",
@@ -580,6 +615,7 @@ export function briefHasIndependentFlooring(briefText: string): boolean {
     if (clauseIsBathroomSubstrateRebuild(clause, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(clause)) continue;
     if (clauseIsDemolitionMentionOfFlooring(clause)) continue;
+    if (clauseIsBathroomPackageFloor(clause, briefText)) continue;
     return true;
   }
   if (

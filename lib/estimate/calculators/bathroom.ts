@@ -48,7 +48,9 @@ import {
 import {
   BATHROOM_MATURE_FALLBACK_PROHIBITION_STATEMENT,
 } from "@/lib/estimate/bathroom-commercial-authority";
+import { bathroomPreservationSentences } from "@/lib/estimate/bathroom-brief";
 import {
+  buildAmounts,
   createAllowanceLineItem,
   createFixedLabourLineItem,
   createRateLineItem,
@@ -1158,6 +1160,37 @@ export function calculateBathroom(
     }
   }
 
+  const coverageNote = getStringFact(facts, workArea.id, "bathroom.coverage_note");
+  for (const sentence of bathroomPreservationSentences(coverageNote)) {
+    missingInfo.push(sentence);
+    const label = sentence.startsWith("Partial wall lining")
+      ? "Partial wall lining"
+      : sentence.startsWith("Stair protection")
+        ? "Stair protection"
+        : sentence.startsWith("Daily cleaning")
+          ? "Daily cleaning"
+          : "Ancillary materials";
+    lineItems.push({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label,
+      category: "allowance",
+      quantity: 1,
+      unit: "allow",
+      notes: sentence,
+      identitySummary: sentence,
+      rateSource: "Excluded from this total",
+      rateSourceType: "default",
+      includedInTotal: false,
+      sortOrder: sortOrder++,
+      ...buildAmounts(0, 0, null),
+    });
+  }
+  if (coverageNote?.includes("Excluded trades: plumbing, electrical.")) {
+    exclusions.push("Plumbing charges");
+    exclusions.push("Electrical charges");
+  }
+
   return {
     lineItems,
     requirements: requirements.length > 0 ? requirements : undefined,
@@ -1246,4 +1279,5 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.waste.level",
   "bathroom.stopping_included",
   "bathroom.painting_included",
+  "bathroom.coverage_note",
 ] as const;
