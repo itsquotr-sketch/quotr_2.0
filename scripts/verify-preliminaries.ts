@@ -3,6 +3,8 @@
  * Run: npx tsx scripts/verify-preliminaries.ts
  */
 import type { OrganisationRate } from "../components/setup/types";
+import { mapRateLabel } from "../lib/assistant/builder-review/compose";
+import { classifyRateSource } from "../lib/estimate/rate-source-labels";
 import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-briefs";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
@@ -163,9 +165,16 @@ check(
     establishment.category === "allowance" &&
     establishment.category !== "materials" &&
     establishment.costComponents == null &&
-    establishment.quantityBasis?.formula?.includes("combined amount") === true
+    establishment.quantityBasis?.formula?.includes("combined amount") === true &&
+    establishment.rateSource === "Entered amount"
 );
 const cleaning = priced.lineItems.find((line) => line.label === "Daily cleaning");
+check(
+  "an entered amount is not labelled as a benchmark",
+  mapRateLabel("Entered amount") === "Entered amount" &&
+    mapRateLabel("Entered amount · provisional") === "Entered amount · provisional" &&
+    classifyRateSource("Entered amount") !== "benchmark"
+);
 check(
   "daily cleaning uses the entered days",
   cleaning?.recommendedCost === 800 &&
@@ -198,7 +207,8 @@ check(
     provisional.category === "allowance" &&
     provisional.recommendedCost === 500 &&
     provisional.recommendedSell === 625 &&
-    provisional.includedInTotal === true
+    provisional.includedInTotal === true &&
+    provisional.rateSource === "Entered amount · provisional"
 );
 
 const split = run({

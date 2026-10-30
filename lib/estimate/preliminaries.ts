@@ -573,7 +573,9 @@ export function calculatePreliminaries(
       productivityUnit: item.basis === "recurring_labour" ? quote.unit ?? undefined : undefined,
       costRate: quote.hourlyCost ?? (quote.quantity ? round2(cost / quote.quantity) : cost),
       sellRate: quote.quantity ? round2(sell / quote.quantity) : sell,
-      rateSource: quote.sourceLabel,
+      rateSource: item.provisional
+        ? `${quote.sourceLabel} · provisional`
+        : quote.sourceLabel,
       rateSourceType: quote.sourceLabel === "Entered amount" ? "default" : "user_rate",
       sellDerivedFromMargin: true,
       sellAuthority: "derived_from_gross_margin",

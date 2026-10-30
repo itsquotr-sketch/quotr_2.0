@@ -260,6 +260,11 @@ export function mapRateLabel(raw: string): string {
   if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
   if (/derived quotr/i.test(raw)) return "Derived Quotr benchmark";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";

@@ -83,6 +83,10 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "default";
   }
 
+  if (source.includes("entered amount")) {
+    return "default";
+  }
+
   if (
     source.includes("quotr benchmark") ||
     source.includes("benchmark")
@@ -100,6 +104,11 @@ export function normalizeRateSourceLabel(raw: string): string {
   if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
   return getRateSourceLabel(classifyRateSource(raw));
 }
 
