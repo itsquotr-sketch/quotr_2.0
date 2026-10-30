@@ -3,11 +3,16 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { savePreliminariesPlan } from "@/lib/estimate/preliminaries-actions";
+import type { OrganisationRate } from "@/components/setup/types";
 import {
+  additionalIdentityItem,
   newCustomPreliminary,
   planFromFacts,
+  preliminaryLabourRate,
+  preliminaryRoleLabel,
   quotePreliminary,
   type PreliminaryBasis,
+  type PreliminaryIdentityReview,
   type PreliminaryItem,
   type PreliminaryRole,
   type PreliminaryTreatment,
@@ -19,6 +24,8 @@ type PreliminariesSectionProps = {
   projectId: string;
   briefText?: string | null;
   facts: readonly EstimateFact[];
+  tradeDescriptions?: readonly string[];
+  labourRates?: readonly OrganisationRate[];
 };
 
 const BASES: { value: PreliminaryBasis; label: string }[] = [
@@ -33,23 +40,43 @@ export function PreliminariesSection({
   projectId,
   briefText,
   facts,
+  tradeDescriptions = [],
+  labourRates = [],
 }: PreliminariesSectionProps) {
   const initial = useMemo(
-    () => planFromFacts(facts, briefText),
-    [facts, briefText]
+    () => planFromFacts(facts, briefText, tradeDescriptions),
+    [facts, briefText, tradeDescriptions]
   );
   const [plan, setPlan] = useState<PreliminariesPlan>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [customLabel, setCustomLabel] = useState("");
 
-  if (plan.items.length === 0 && !plan.deliveryWindow) return null;
+  if (plan.items.length === 0 && !plan.deliveryWindow && (plan.reviews ?? []).length === 0) {
+    return null;
+  }
 
   function update(id: string, patch: Partial<PreliminaryItem>) {
     setPlan((current) => ({
       ...current,
       items: current.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     }));
+    setStatus("idle");
+  }
+
+  function decideReview(review: PreliminaryIdentityReview, separate: boolean) {
+    setPlan((current) => {
+      const reviews = (current.reviews ?? []).map((row) =>
+        row.id === review.id ? { ...row, separate } : row
+      );
+      const extra = additionalIdentityItem({ ...review, separate });
+      const items = separate
+        ? current.items.some((item) => item.id === extra.id)
+          ? current.items
+          : [...current.items, extra]
+        : current.items.filter((item) => item.id !== extra.id);
+      return { ...current, reviews, items };
+    });
     setStatus("idle");
   }
 
@@ -77,8 +104,34 @@ export function PreliminariesSection({
         </p>
       ) : null}
       <div className="mt-3 space-y-3">
+        {(plan.reviews ?? []).map((review) => (
+          <article
+            key={review.id}
+            className="rounded-lg border border-border/60 p-3"
+            data-preliminary-review={review.id}
+          >
+            <h4 className="text-sm font-medium text-foreground">{review.label}</h4>
+            <p className="mt-1 text-sm text-muted-foreground">{review.detail}</p>
+            <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={review.separate}
+                onChange={(event) => decideReview(review, event.target.checked)}
+              />
+              This is a different service and can be priced on its own
+            </label>
+          </article>
+        ))}
         {plan.items.map((item) => {
-          const quote = quotePreliminary(item, [], null);
+          const quote = quotePreliminary(item, [...labourRates], null);
+          const labour =
+            item.basis === "labour_hours" || item.basis === "recurring_labour"
+              ? preliminaryLabourRate({
+                  item,
+                  rates: [...labourRates],
+                  settings: null,
+                })
+              : null;
           return (
             <article key={item.id} className="rounded-lg border border-border/60 p-3" data-preliminary-id={item.id}>
               <h4 className="text-sm font-medium text-foreground">{item.label}</h4>
@@ -196,6 +249,20 @@ export function PreliminariesSection({
                 />
                 This is separate from any existing setup, delivery or allowance with the same requirement
               </label>
+              {labour ? (
+                <p className="mt-3 text-sm text-foreground" data-preliminary-rate>
+                  {labour.sourceLabel} · $
+                  {labour.hourlyCost.toLocaleString("en-NZ", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  /h · {preliminaryRoleLabel(labour.role)}
+                </p>
+              ) : item.basis === "labour_hours" || item.basis === "recurring_labour" ? (
+                <p className="mt-3 text-sm text-foreground" data-preliminary-rate>
+                  A company labour rate or a project hourly cost is still required.
+                </p>
+              ) : null}
               <p className="mt-3 text-sm text-foreground" data-preliminary-formula>
                 {item.provisional ? "Provisional. " : ""}
                 {quote.formula}

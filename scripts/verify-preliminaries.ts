@@ -2,16 +2,20 @@
  * Project preliminaries. Deterministic. No network.
  * Run: npx tsx scripts/verify-preliminaries.ts
  */
+import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationRate } from "../components/setup/types";
-import { mapRateLabel } from "../lib/assistant/builder-review/compose";
-import { classifyRateSource } from "../lib/estimate/rate-source-labels";
+import { composeBuilderReview, mapRateLabel } from "../lib/assistant/builder-review/compose";
+import { projectLabourTakeoff } from "../lib/assistant/presentation/estimate-takeoffs";
+import { classifyRateSource, getRateSourceLabel } from "../lib/estimate/rate-source-labels";
 import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-briefs";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   calculatePreliminaries,
   mergePreliminaries,
+  planFromDescriptions,
   planFromFacts,
+  preliminaryLabourRate,
   PRELIMINARIES_FACT_KEY,
   recognisePreliminaries,
   type PreliminaryItem,
@@ -24,6 +28,8 @@ import {
   shouldApplyMatchedPricingUpdate,
   type EstimateLineItemRow,
 } from "../lib/pricing/recalibration-helpers";
+import { buildPricingCalculationDetails } from "../lib/pricing/calculation-details";
+import { presentPricingLine } from "../lib/pricing/line-presentation";
 import type { PricingItem } from "../lib/pricing/types";
 
 function check(name: string, ok: boolean, detail?: unknown) {
@@ -34,6 +40,20 @@ function check(name: string, ok: boolean, detail?: unknown) {
   }
   console.log("ok", name);
 }
+
+const labourer: OrganisationRate = {
+  id: "rate-labourer",
+  rate_type: "labour",
+  trade: "labourer",
+  work_area_type: null,
+  item_key: "labour.labourer.hour",
+  label: "Labourer",
+  unit: "h",
+  cost_rate: 40,
+  sell_rate: null,
+  markup_percent: null,
+  active: true,
+};
 
 const carpenter: OrganisationRate = {
   id: "rate-carpenter",
@@ -209,6 +229,15 @@ check(
     provisional.recommendedSell === 625 &&
     provisional.includedInTotal === true &&
     provisional.rateSource === "Entered amount · provisional"
+);
+check(
+  "accepted office preliminary totals stay priced work only",
+  priced.lineItems
+    .filter((line) => line.includedInTotal !== false)
+    .reduce((sum, line) => sum + line.recommendedCost, 0) === 2900 &&
+    priced.lineItems
+      .filter((line) => line.includedInTotal !== false)
+      .reduce((sum, line) => sum + line.recommendedSell, 0) === 3625
 );
 
 const split = run({
@@ -496,6 +525,327 @@ check(
     stairLines[0]?.workAreaName === "Preliminaries" &&
     cleaningLines[0]?.includedInTotal === false &&
     estimate.missingInfo.some((row) => row.includes("Stair protection") && row.includes("Coverage is unresolved"))
+);
+
+const repeated = planFromDescriptions([
+  {
+    role: "project",
+    text: "We need daily cleaning and protection of common areas.",
+  },
+  {
+    role: "trade",
+    text: "Clean up daily. Include protection of common areas while the walls are open.",
+  },
+]);
+check(
+  "the same daily cleaning and protection are one item each",
+  repeated.items.filter((row) => row.id === "daily_cleaning").length === 1 &&
+    repeated.items.filter((row) => row.id === "common_area_protection").length === 1 &&
+    (repeated.reviews ?? []).length === 0
+);
+const different = planFromDescriptions([
+  { role: "project", text: "Include daily cleaning and protection of common areas." },
+  { role: "trade", text: "The bathroom needs final cleaning and we must protect the stairs." },
+]);
+check(
+  "daily and final cleaning stay separate, as do the two protections",
+  ["daily_cleaning", "final_cleaning", "common_area_protection", "stair_protection"].every(
+    (id) => different.items.some((row) => row.id === id)
+  ) &&
+    different.items.length === 4 &&
+    (different.reviews ?? []).length === 0
+);
+const uncertain = planFromDescriptions([
+  { role: "project", text: "We need daily cleaning and protection of common areas." },
+  {
+    role: "trade",
+    text: "Painting includes a clean of the finished rooms. Also protect the new paint.",
+  },
+]);
+check(
+  "an uncertain second mention is a review and not another charge",
+  uncertain.items.filter((row) => row.id === "daily_cleaning").length === 1 &&
+    uncertain.items.filter((row) => row.id === "common_area_protection").length === 1 &&
+    !uncertain.items.some((row) => row.id === "additional_cleaning" || row.id === "additional_protection") &&
+    uncertain.reviews?.some((row) => row.id === "cleaning_identity" && row.separate === false) === true &&
+    uncertain.reviews?.some((row) => row.id === "protection_identity" && row.separate === false) === true
+);
+const uncertainPriced = calculatePreliminaries(
+  {
+    facts: [
+      {
+        key: PRELIMINARIES_FACT_KEY,
+        work_area_id: null,
+        value: {
+          items: uncertain.items.map((row) =>
+            row.id === "daily_cleaning"
+              ? { ...row, treatment: "included", basis: "occurrences", occurrences: 10, occurrenceUnit: "day", unitCost: 80 }
+              : row.id === "common_area_protection"
+                ? { ...row, treatment: "included", basis: "fixed", fixedCost: 200 }
+                : row
+          ),
+          deliveryWindow: null,
+        },
+      },
+    ],
+    organisationSettings: null,
+    rates: [carpenter],
+    briefText: "We need daily cleaning and protection of common areas.",
+    confirmedWorkAreas: [
+      {
+        ...area,
+        id: "paint",
+        type: "painting",
+        name: "Painting",
+        quoteDescription: "Painting includes a clean of the finished rooms. Also protect the new paint.",
+      },
+    ],
+  },
+  area
+);
+check(
+  "uncertain identity stays out of the total until it is a different service",
+  uncertainPriced.lineItems.filter((line) => line.includedInTotal !== false).length === 2 &&
+    uncertainPriced.lineItems
+      .filter((line) => line.includedInTotal !== false)
+      .reduce((sum, line) => sum + line.recommendedCost, 0) === 1000 &&
+    uncertainPriced.lineItems.some(
+      (line) => line.label === "Cleaning identity" && line.includedInTotal === false && line.recommendedCost === 0
+    ) &&
+    uncertainPriced.lineItems.some(
+      (line) => line.label === "Protection identity" && line.includedInTotal === false
+    )
+);
+const separateDecision = {
+  ...uncertain,
+  reviews: (uncertain.reviews ?? []).map((review) => ({ ...review, separate: true })),
+  items: uncertain.items,
+};
+const separated = calculatePreliminaries(
+  {
+    facts: [{ key: PRELIMINARIES_FACT_KEY, work_area_id: null, value: separateDecision }],
+    organisationSettings: null,
+    rates: [carpenter],
+    briefText: null,
+  },
+  area
+);
+check(
+  "a separate service is still unpriced until an amount is entered",
+  separated.lineItems.every(
+    (line) =>
+      line.label === "Daily cleaning" ||
+      line.label === "Common-area protection" ||
+      line.includedInTotal === false
+  ) &&
+    !separated.lineItems.some(
+      (line) =>
+        (line.label === "Additional cleaning" || line.label === "Additional protection") &&
+        line.includedInTotal !== false
+    )
+);
+
+const labourPreview = preliminaryLabourRate({
+  item: item("supervision", { role: "carpenter" }),
+  rates: [carpenter],
+  settings: null,
+});
+check(
+  "capture uses the company role rate generation will use",
+  labourPreview?.hourlyCost === 75 &&
+    labourPreview.sourceLabel === "Your company rate" &&
+    labourPreview.role === "carpenter"
+);
+const overridePreview = preliminaryLabourRate({
+  item: item("supervision", { role: "carpenter", hourlyCostOverride: 90 }),
+  rates: [carpenter],
+  settings: null,
+});
+check(
+  "an explicit project hourly cost replaces the company rate and names its source",
+  overridePreview?.hourlyCost === 90 && overridePreview.sourceLabel === "Project hourly cost"
+);
+const overridden = run({
+  items: [
+    item("supervision", {
+      treatment: "included",
+      basis: "labour_hours",
+      hours: 8,
+      role: "carpenter",
+      hourlyCostOverride: 90,
+    }),
+  ],
+  deliveryWindow: null,
+});
+check(
+  "generation prices the project hourly cost",
+  overridden.lineItems[0]?.recommendedCost === 720 &&
+    overridden.lineItems[0]?.recommendedSell === 900 &&
+    overridden.lineItems[0]?.rateSource === "Project hourly cost" &&
+    overridden.lineItems[0]?.itemKey === "labour.carpenter.hour" &&
+    presentPricingLine({
+      ...pricing,
+      id: "price-override",
+      item_type: "labour",
+      notes_internal: buildLineItemNotes(overridden.lineItems[0]!),
+    }).source === "Project hourly cost"
+);
+
+const recurring = calculatePreliminaries(
+  {
+    facts: [
+      {
+        key: PRELIMINARIES_FACT_KEY,
+        work_area_id: null,
+        value: {
+          items: [
+            item("daily_cleaning", {
+              treatment: "included",
+              basis: "recurring_labour",
+              occurrences: 4,
+              occurrenceUnit: "day",
+              hoursPerOccurrence: 2,
+              role: "labourer",
+            }),
+          ],
+          deliveryWindow: null,
+        },
+      },
+    ],
+    organisationSettings: null,
+    rates: [carpenter, labourer],
+    briefText: null,
+  },
+  area
+);
+const recurringLine = recurring.lineItems[0];
+check(
+  "recurring labour is occurrences times hours times the selected role rate",
+  recurringLine?.quantity === 4 &&
+    recurringLine.labourHours === 8 &&
+    recurringLine.recommendedCost === 320 &&
+    recurringLine.recommendedSell === 400 &&
+    recurringLine.itemKey === "labour.labourer.hour" &&
+    recurringLine.costRate === 40 &&
+    recurringLine.quantityBasis?.formula === "4 day × 2 h × $40.00/h (Your company rate, Labourer)."
+);
+const reloaded = calculatePreliminaries(
+  {
+    facts: [
+      {
+        key: PRELIMINARIES_FACT_KEY,
+        work_area_id: null,
+        value: {
+          items: [
+            item("daily_cleaning", {
+              treatment: "included",
+              basis: "recurring_labour",
+              occurrences: 4,
+              occurrenceUnit: "day",
+              hoursPerOccurrence: 2,
+              role: "labourer",
+            }),
+          ],
+          deliveryWindow: null,
+        },
+      },
+    ],
+    organisationSettings: null,
+    rates: [carpenter, labourer],
+    briefText: null,
+  },
+  area
+);
+check(
+  "reloading the same recurring plan keeps quantity, hours, cost and sell",
+  reloaded.lineItems[0]?.quantity === recurringLine?.quantity &&
+    reloaded.lineItems[0]?.labourHours === recurringLine?.labourHours &&
+    reloaded.lineItems[0]?.recommendedCost === 320 &&
+    reloaded.lineItems[0]?.recommendedSell === 400
+);
+
+check(
+  "supervision carries the selected role",
+  supervision?.itemKey === "labour.carpenter.hour"
+);
+const supervisionRow: EstimateLineItem = {
+  id: "supervision",
+  workAreaId: area.id,
+  workAreaName: area.name,
+  label: supervision?.label ?? "Supervision",
+  category: "labour",
+  costLow: 0,
+  costHigh: 0,
+  sellLow: 0,
+  sellHigh: 0,
+  recommendedCost: supervision?.recommendedCost ?? 0,
+  recommendedSell: supervision?.recommendedSell ?? 0,
+  grossProfit: 0,
+  marginPercent: 20,
+  rateSource: supervision?.rateSource ?? "",
+  labourHours: supervision?.labourHours,
+  quantity: supervision?.quantity,
+  unit: supervision?.unit,
+  costRate: supervision?.costRate,
+  itemKey: supervision?.itemKey,
+  includedInTotal: true,
+};
+const takeoff = projectLabourTakeoff(
+  composeBuilderReview({
+    estimate: {
+      recommendedCost: supervisionRow.recommendedCost,
+      recommendedSell: supervisionRow.recommendedSell,
+      marginPercent: 20,
+      confidence: 70,
+      assumptions: [],
+      missingInfo: [],
+      lineItems: [supervisionRow],
+    },
+    workAreas: [{ id: area.id, name: area.name, type: area.type, status: "confirmed" }],
+  })
+);
+const takeoffRow = takeoff.groups.flatMap((group) => group.rows).find((row) => row.description === "Supervision");
+check(
+  "labour takeoff names the selected supervision role",
+  takeoffRow?.workerType === "Carpenter" &&
+    takeoffRow.hourlyCost === "$75/h" &&
+    takeoffRow.hours === "8.00 hrs",
+  takeoffRow
+);
+
+const enteredNotes = buildLineItemNotes(establishment!);
+const enteredPricing: PricingItem = {
+  ...pricing,
+  id: "price-entered",
+  item_type: "allowance",
+  client_label: "Site establishment",
+  internal_label: "Site establishment",
+  total_cost: 1000,
+  total_sell: 1250,
+  notes_internal: enteredNotes,
+};
+check(
+  "an entered amount stays an entered amount in Pricing",
+  presentPricingLine(enteredPricing).source === "Entered amount" &&
+    buildPricingCalculationDetails(enteredPricing)?.rows.some(
+      (row) => row.label === "Rate source" && row.value === "Entered amount"
+    ) === true
+);
+const defaultOnly: PricingItem = {
+  ...pricing,
+  id: "price-default",
+  notes_internal: buildLineItemNotes({
+    ...establishment!,
+    rateSource: "Default allowance",
+    rateSourceType: "default",
+  }),
+};
+check(
+  "Default allowance is only the label when that is the source",
+  getRateSourceLabel("default") === "Default allowance" &&
+    presentPricingLine(defaultOnly).source === "Default allowance" &&
+    classifyRateSource("Entered amount") === "default" &&
+    mapRateLabel("Entered amount") === "Entered amount"
 );
 
 if (process.exitCode) {

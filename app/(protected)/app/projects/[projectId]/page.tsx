@@ -25,6 +25,7 @@ import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
 import { projectSectionContext } from "@/lib/projects/project-information";
 import { readProjectDocumentsForJobDetails } from "@/lib/projects/document-centre";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
+import { loadCaptureLabourRates } from "@/lib/estimate/preliminaries-store";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { memberCanEditProjects, memberCanRunEstimates } from "@/lib/team/permissions";
 import { parseEstimateSection } from "@/lib/assistant/presentation/estimate-section";
@@ -72,6 +73,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       tabContext,
       documents,
       onboardingAccess,
+      labourRates,
     ] = await Promise.all([
       getProjectWithContext(auth, projectId),
       getAssistantStateWithContext(auth, projectId),
@@ -84,6 +86,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       }),
       readProjectDocumentsForJobDetails(auth.supabase, projectId, auth.orgId),
       getOnboardingAccess(),
+      loadCaptureLabourRates(auth.supabase, auth.orgId),
     ]);
 
     return {
@@ -97,6 +100,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
       documents,
       canUploadFiles: memberCanEditProjects(onboardingAccess.role),
       canRunEstimates: memberCanRunEstimates(onboardingAccess.role),
+      labourRates,
     };
   });
 
@@ -111,6 +115,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     documents,
     canUploadFiles,
     canRunEstimates,
+    labourRates,
   } = pageData;
 
   const hasEstimate = Boolean(assistantState.estimate);
@@ -185,6 +190,7 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
         documents={documents}
         canUploadFiles={canUploadFiles}
         canRunEstimates={canRunEstimates}
+        labourRates={labourRates}
         initialEstimateSection={parseEstimateSection(query.estimate)}
         initialReviewProductivity={query.reviewProductivity === "1"}
       />

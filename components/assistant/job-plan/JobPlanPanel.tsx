@@ -26,6 +26,7 @@ import {
 } from "@/components/layout/mobile-nav-metrics";
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
+import type { OrganisationRate } from "@/components/setup/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type { JobPlanConstraintWrite } from "@/components/assistant/job-plan/quick-spec-editors";
 
@@ -83,6 +84,7 @@ type JobPlanPanelProps = {
   onConstraint?: JobPlanConstraintWrite;
   projectId?: string;
   briefText?: string | null;
+  labourRates?: readonly OrganisationRate[];
 };
 
 export function JobPlanPanel({
@@ -115,6 +117,7 @@ export function JobPlanPanel({
   onConstraint,
   projectId,
   briefText,
+  labourRates = [],
 }: JobPlanPanelProps) {
   const cardsToRender = focusWorkAreaId
     ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
@@ -129,11 +132,17 @@ export function JobPlanPanel({
   );
   const [addOpen, setAddOpen] = useState(false);
   const interactive = workspaceEditing || !submitted;
-  const preliminariesKey = JSON.stringify(
-    facts.find(
-      (fact) => fact.work_area_id == null && fact.key === PRELIMINARIES_FACT_KEY
-    )?.value ?? null
-  );
+  const tradeDescriptions = workAreas
+    .map((area) => area.quoteDescription?.trim() ?? "")
+    .filter((text) => text.length > 0);
+  const preliminariesKey = JSON.stringify({
+    plan:
+      facts.find(
+        (fact) => fact.work_area_id == null && fact.key === PRELIMINARIES_FACT_KEY
+      )?.value ?? null,
+    brief: briefText ?? "",
+    trades: tradeDescriptions,
+  });
   const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
 
   if (cardsToRender.length === 0) {
@@ -145,6 +154,8 @@ export function JobPlanPanel({
             projectId={projectId}
             briefText={briefText}
             facts={facts}
+            tradeDescriptions={tradeDescriptions}
+            labourRates={labourRates}
           />
         ) : null}
         <p className="text-sm text-muted-foreground">
@@ -214,6 +225,8 @@ export function JobPlanPanel({
           projectId={projectId}
           briefText={briefText}
           facts={facts}
+          tradeDescriptions={tradeDescriptions}
+          labourRates={labourRates}
         />
       ) : null}
       <div className="flex flex-col gap-3 max-md:pb-36">

@@ -5,7 +5,10 @@ import {
   GENERAL_LABOUR_RATE_KEY,
   LABOURER_LABOUR_RATE_KEY,
 } from "@/lib/estimate/labour-trade-mapping";
-import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  explicitRateSourceLabel,
+  getRateSourceLabel,
+} from "@/lib/estimate/rate-source-labels";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { formatPricingMoney } from "@/lib/pricing/format";
@@ -120,11 +123,14 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   const category =
     PRICING_ITEM_TYPES.find((type) => type.value === item.item_type)?.label ??
     item.item_type;
+  const explicitSource = explicitRateSourceLabel(metadata.rateSource);
   const rateSource = metadata.materialRateResolution?.display
     ? metadata.materialRateResolution.display
-    : metadata.rateSourceType
-      ? getRateSourceLabel(metadata.rateSourceType)
-      : null;
+    : explicitSource
+      ? explicitSource
+      : metadata.rateSourceType
+        ? getRateSourceLabel(metadata.rateSourceType)
+        : null;
   const productivitySource = metadata.productivitySourceType
     ? getRateSourceLabel(metadata.productivitySourceType)
     : null;

@@ -84,6 +84,11 @@ export type LineItemMetadata = {
   costRate?: number;
   sellRate?: number;
   rateSourceType?: RateSourceType;
+  /**
+   * Kept only when the words themselves are the source, such as an entered
+   * amount or a project hourly cost. Absent on ordinary company rates.
+   */
+  rateSource?: string;
   /** Distinct from labour $/h rateSourceType — hours-per-unit authority. */
   productivitySourceType?: RateSourceType;
   sellDerivedFromMargin?: boolean;
@@ -298,6 +303,9 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.rateSourceType) {
     metaToStore.rateSourceType = metadata.rateSourceType;
+  }
+  if (metadata.rateSource) {
+    metaToStore.rateSource = metadata.rateSource;
   }
   if (metadata.productivitySourceType) {
     metaToStore.productivitySourceType = metadata.productivitySourceType;

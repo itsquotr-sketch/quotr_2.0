@@ -189,7 +189,15 @@ A 390×844 reload of that capture kept the document at 390 px with no horizontal
 
 `scripts/verify-preliminaries.ts` checks the same money, an unknown duration, a shared protection identity, a later duration change classified as will update, a manual edit left in place, and an issued snapshot blocked from reconciliation. Stage 2A briefs, stage 3D, bathroom scope preservation, and pricing-draft reconciliation passed. Typecheck passed. The guarded webpack build compiled 50 pages and refused the production database.
 
-Limits that remain. The capture form calculates labour without the saved company rates, so supervision says a company rate is still required until generate; the estimate uses the $75 carpenter rate. The labour takeoff role for supervision says Not specified. A pricing row for an entered amount says Default allowance, while the estimate breakdown says Entered amount. The internal rate type for an entered amount is still the existing default type. Overlap is by exact requirement identity, and a genuine overlap stays unresolved until it is acknowledged. A delivery window without a delivery-service item is stored and shown in capture, and it does not by itself create the Preliminaries work area.
+Limits that remain from the first preliminaries slice are closed on `estimating/v3-preliminaries`, which starts at `af4a388b`. Production is not deployed. No schema change.
+
+Capture shows the company role rate generation will use. An explicit project hourly cost replaces that rate and is labelled Project hourly cost. The selected supervision role is stored on the labour line, so labour takeoff names Carpenter, Labourer, or Apprentice. An entered amount stays Entered amount on the estimate and in Pricing. Default allowance is only the label when that is the stored source. The internal type for an entered amount is still default.
+
+The same daily cleaning or the same protection named in the project and in a trade description is one item. Daily cleaning and final cleaning stay separate. Common-area protection and stair protection stay separate. A second mention that cannot be identified is a review and stays out of the total until someone confirms it is a different service. Confirming that does not invent a price.
+
+Recurring labour is occurrences × hours per occurrence × the selected company role rate. A project hourly cost is used instead when one is entered. Edited Pricing rows and issued snapshots are still left unchanged. The accepted office preliminary total stays $2,900 cost and $3,625 sell.
+
+A delivery window without a delivery-service item is stored and shown in capture, and it does not by itself create the Preliminaries work area.
 
 ## Original briefs
 

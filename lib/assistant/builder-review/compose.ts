@@ -265,6 +265,7 @@ export function mapRateLabel(raw: string): string {
       ? "Entered amount · provisional"
       : "Entered amount";
   }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
   if (/derived quotr/i.test(raw)) return "Derived Quotr benchmark";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";

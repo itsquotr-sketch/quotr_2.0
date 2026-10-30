@@ -87,6 +87,10 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "default";
   }
 
+  if (source.includes("project hourly")) {
+    return "user_rate";
+  }
+
   if (
     source.includes("quotr benchmark") ||
     source.includes("benchmark")
@@ -109,7 +113,20 @@ export function normalizeRateSourceLabel(raw: string): string {
       ? "Entered amount · provisional"
       : "Entered amount";
   }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
   return getRateSourceLabel(classifyRateSource(raw));
+}
+
+/** Labels that must stay word-for-word. A default type is not one of these. */
+export function explicitRateSourceLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
+  return null;
 }
 
 export function isUserRateSource(type: RateSourceType): boolean {

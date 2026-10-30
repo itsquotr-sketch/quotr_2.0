@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { OrganisationRate } from "@/components/setup/types";
 import { upsertScopedFact } from "@/lib/assistant/scope-persistence";
 import {
   planFromFacts,
@@ -8,14 +9,53 @@ import {
 } from "@/lib/estimate/preliminaries";
 import type { EstimateContext } from "@/lib/estimate/types";
 
+/** Company labour rows generation uses. Sell is omitted; preliminaries derive sell from margin. */
+export async function loadCaptureLabourRates(
+  supabase: SupabaseClient,
+  orgId: string
+): Promise<OrganisationRate[]> {
+  const { data } = await supabase
+    .from("rates")
+    .select(
+      "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, active"
+    )
+    .eq("org_id", orgId)
+    .eq("active", true)
+    .eq("rate_type", "labour");
+  return (data ?? []).flatMap((row) => {
+    const cost = Number(row.cost_rate);
+    if (!row.item_key || !Number.isFinite(cost) || cost <= 0) return [];
+    const rate: OrganisationRate = {
+      id: String(row.id),
+      rate_type: "labour",
+      trade: typeof row.trade === "string" ? row.trade : null,
+      work_area_type: typeof row.work_area_type === "string" ? row.work_area_type : null,
+      item_key: String(row.item_key),
+      label: typeof row.label === "string" ? row.label : "Labour",
+      unit: typeof row.unit === "string" && row.unit ? row.unit : "h",
+      cost_rate: cost,
+      sell_rate: null,
+      markup_percent: null,
+      active: true,
+    };
+    return [rate];
+  });
+}
+
 export async function preparePreliminariesForEstimate(params: {
   supabase: SupabaseClient;
   orgId: string;
   projectId: string;
   context: EstimateContext;
 }): Promise<{ context: EstimateContext } | { error: string }> {
-  const plan = planFromFacts(params.context.facts, params.context.briefText);
-  if (plan.items.length === 0 && !plan.deliveryWindow) {
+  const plan = planFromFacts(
+    params.context.facts,
+    params.context.briefText,
+    params.context.confirmedWorkAreas
+      .map((area) => area.quoteDescription?.trim() ?? "")
+      .filter((text) => text.length > 0)
+  );
+  if (plan.items.length === 0 && !plan.deliveryWindow && (plan.reviews ?? []).length === 0) {
     return { context: params.context };
   }
 

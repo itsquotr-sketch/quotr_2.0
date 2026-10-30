@@ -232,6 +232,7 @@ import {
   resolveAttentionNavigation,
   type EditJobSection,
 } from "@/lib/assistant/mode";
+import type { OrganisationRate } from "@/components/setup/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
 import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
@@ -316,6 +317,7 @@ type AssistantShellProps = {
   canRunEstimates?: boolean;
   initialEstimateSection?: EstimatePresentationView;
   initialReviewProductivity?: boolean;
+  labourRates?: readonly OrganisationRate[];
 };
 
 type PendingAction =
@@ -428,6 +430,7 @@ export function AssistantShell({
   canRunEstimates = true,
   initialEstimateSection = "overview",
   initialReviewProductivity = false,
+  labourRates = [],
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
@@ -4301,6 +4304,7 @@ export function AssistantShell({
                   onConstraint={handleConstraintSave}
                   projectId={project.id}
                   briefText={briefText}
+                  labourRates={labourRates}
                 />
               }
               projectConditions={
@@ -4548,9 +4552,10 @@ export function AssistantShell({
                 onConstraint={
                   workAreasConfirmed ? undefined : handleConstraintSave
                 }
-                projectId={project.id}
-                briefText={briefText}
-              />
+              projectId={project.id}
+              briefText={briefText}
+              labourRates={labourRates}
+            />
             </CollapsibleStageCard>
           ) : null}
 

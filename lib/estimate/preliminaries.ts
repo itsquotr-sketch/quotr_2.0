@@ -10,6 +10,11 @@ import type { OrganisationRate, OrganisationSettings } from "@/components/setup/
 import { round2 } from "@/lib/estimate/facts";
 import { buildAmounts } from "@/lib/estimate/line-items";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import {
+  APPRENTICE_LABOUR_RATE_KEY,
+  CARPENTER_LABOUR_RATE_KEY,
+  LABOURER_LABOUR_RATE_KEY,
+} from "@/lib/estimate/labour-trade-mapping";
 import { quotrFallbackSellFromCost, resolveLabourRate } from "@/lib/estimate/rates";
 import type {
   EstimateContext,
@@ -92,8 +97,23 @@ export type PreliminaryItem = {
   overlapAcknowledged: boolean;
 };
 
+export type PreliminaryIdentityReview = {
+  id: "cleaning_identity" | "protection_identity";
+  label: string;
+  detail: string;
+  /** True only after someone decides the other mention is a different service. */
+  separate: boolean;
+};
+
+export type PreliminaryDescription = {
+  role: "project" | "trade";
+  text: string;
+};
+
 export type PreliminariesPlan = {
   items: PreliminaryItem[];
+  /** Absent on plans saved before identity review. */
+  reviews?: PreliminaryIdentityReview[];
   deliveryWindow: string | null;
 };
 
@@ -218,12 +238,33 @@ export function parsePreliminariesPlan(value: unknown): PreliminariesPlan | null
   }
   return {
     items,
+    reviews: parseIdentityReviews(row.reviews),
     deliveryWindow: textOrNull(row.deliveryWindow),
   };
 }
 
+function parseIdentityReviews(value: unknown): PreliminaryIdentityReview[] {
+  if (!Array.isArray(value)) return [];
+  const reviews: PreliminaryIdentityReview[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const id = row.id === "cleaning_identity" || row.id === "protection_identity" ? row.id : null;
+    if (!id || reviews.some((review) => review.id === id)) continue;
+    reviews.push({
+      id,
+      label: textOrNull(row.label) ?? (id === "cleaning_identity" ? "Cleaning identity" : "Protection identity"),
+      detail:
+        textOrNull(row.detail) ??
+        "This mention may be the same service. Confirm it is different before charging it.",
+      separate: row.separate === true,
+    });
+  }
+  return reviews;
+}
+
 export function emptyPreliminariesPlan(): PreliminariesPlan {
-  return { items: [], deliveryWindow: null };
+  return { items: [], reviews: [], deliveryWindow: null };
 }
 
 function normaliseBrief(brief: string): string {
@@ -256,7 +297,104 @@ export function recognisePreliminaries(brief: string): PreliminariesPlan {
   const asksForDeliveryService =
     /\bdeliveries\b/.test(text) || /\bdelivery service\b/.test(text);
   if (asksForDeliveryService) add("deliveries");
-  return { items, deliveryWindow };
+  return { items, reviews: [], deliveryWindow };
+}
+
+const CLEANING_IDS = new Set<string>(["daily_cleaning", "final_cleaning"]);
+const PROTECTION_IDS = new Set<string>(["common_area_protection", "stair_protection"]);
+
+function descriptionSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+}
+
+function uncertainFamilies(sentence: string): Array<"cleaning" | "protection"> {
+  if (recognisePreliminaries(sentence).items.length > 0) return [];
+  const families: Array<"cleaning" | "protection"> = [];
+  if (/\bclean(?:ing|up|ed)?\b|\bclean up\b/i.test(sentence)) families.push("cleaning");
+  if (/\bprotect(?:ion|ed|ing|s)?\b/i.test(sentence)) families.push("protection");
+  return families;
+}
+
+function familyNeedsReview(
+  family: "cleaning" | "protection",
+  specific: { project: Set<string>; trade: Set<string> },
+  uncertain: { project: Set<"cleaning" | "protection">; trade: Set<"cleaning" | "protection"> }
+): boolean {
+  const ids = family === "cleaning" ? CLEANING_IDS : PROTECTION_IDS;
+  const projectSpecific = [...specific.project].some((id) => ids.has(id));
+  const tradeSpecific = [...specific.trade].some((id) => ids.has(id));
+  const projectUncertain = uncertain.project.has(family);
+  const tradeUncertain = uncertain.trade.has(family);
+  if (projectUncertain && tradeSpecific) return true;
+  if (tradeUncertain && projectSpecific) return true;
+  if (projectUncertain && tradeUncertain && !projectSpecific && !tradeSpecific) return true;
+  return false;
+}
+
+function identityReview(
+  id: "cleaning_identity" | "protection_identity"
+): PreliminaryIdentityReview {
+  const cleaning = id === "cleaning_identity";
+  return {
+    id,
+    label: cleaning ? "Cleaning identity" : "Protection identity",
+    detail: cleaning
+      ? "Cleaning is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both."
+      : "Protection is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both.",
+    separate: false,
+  };
+}
+
+/**
+ * One item per specific service. The same daily cleaning or protection
+ * named in the project and in a trade stays one item. Daily and final
+ * cleaning stay separate, as do stair and common-area protection.
+ * An uncertain second mention is a review, not a second charge.
+ */
+export function planFromDescriptions(
+  sources: readonly PreliminaryDescription[]
+): PreliminariesPlan {
+  const items: PreliminaryItem[] = [];
+  const seen = new Set<string>();
+  const specific = {
+    project: new Set<string>(),
+    trade: new Set<string>(),
+  };
+  const uncertain = {
+    project: new Set<"cleaning" | "protection">(),
+    trade: new Set<"cleaning" | "protection">(),
+  };
+  let deliveryWindow: string | null = null;
+  for (const source of sources) {
+    const text = source.text.trim();
+    if (!text) continue;
+    const recognised = recognisePreliminaries(text);
+    if (!deliveryWindow && recognised.deliveryWindow) {
+      deliveryWindow = recognised.deliveryWindow;
+    }
+    for (const item of recognised.items) {
+      specific[source.role].add(item.id);
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push(item);
+    }
+    for (const sentence of descriptionSentences(text)) {
+      for (const family of uncertainFamilies(sentence)) {
+        uncertain[source.role].add(family);
+      }
+    }
+  }
+  const reviews: PreliminaryIdentityReview[] = [];
+  if (familyNeedsReview("cleaning", specific, uncertain)) {
+    reviews.push(identityReview("cleaning_identity"));
+  }
+  if (familyNeedsReview("protection", specific, uncertain)) {
+    reviews.push(identityReview("protection_identity"));
+  }
+  return { items, reviews, deliveryWindow };
 }
 
 export function mergePreliminaries(
@@ -270,27 +408,57 @@ export function mergePreliminaries(
     seen.add(item.id);
     items.push(item);
   }
+  const reviews = [...(saved?.reviews ?? [])];
+  const recognisedIds = new Set((recognised.reviews ?? []).map((review) => review.id));
+  for (const review of recognised.reviews ?? []) {
+    if (reviews.some((row) => row.id === review.id)) continue;
+    reviews.push(review);
+  }
   return {
     items,
+    reviews: reviews.filter((review) => review.separate || recognisedIds.has(review.id)),
     deliveryWindow: saved?.deliveryWindow ?? recognised.deliveryWindow,
   };
 }
 
 export function planFromFacts(
   facts: readonly EstimateFact[],
-  briefText?: string | null
+  briefText?: string | null,
+  tradeDescriptions: readonly string[] = []
 ): PreliminariesPlan {
   const stored = facts.find(
     (fact) => fact.work_area_id == null && fact.key === PRELIMINARIES_FACT_KEY
   );
   const saved = parsePreliminariesPlan(stored?.value);
-  const fromBrief = recognisePreliminaries(briefText ?? "");
-  const fromNotes = facts
-    .filter((fact) => fact.key.endsWith(".coverage_note") && typeof fact.value === "string")
-    .map((fact) => recognisePreliminaries(String(fact.value)));
-  return fromNotes.reduce(
-    (plan, note) => mergePreliminaries(plan, note),
-    mergePreliminaries(saved, fromBrief)
+  const sources: PreliminaryDescription[] = [];
+  if (briefText?.trim()) sources.push({ role: "project", text: briefText });
+  for (const fact of facts) {
+    if (!fact.key.endsWith(".coverage_note") || typeof fact.value !== "string") continue;
+    sources.push({
+      role: fact.work_area_id ? "trade" : "project",
+      text: fact.value,
+    });
+  }
+  for (const text of tradeDescriptions) {
+    if (text.trim()) sources.push({ role: "trade", text });
+  }
+  return mergePreliminaries(saved, planFromDescriptions(sources));
+}
+
+export function additionalIdentityItem(
+  review: PreliminaryIdentityReview
+): PreliminaryItem {
+  if (review.id === "cleaning_identity") {
+    return blankItem(
+      "additional_cleaning",
+      "Additional cleaning",
+      "A trade description mentions cleaning that may be a different service."
+    );
+  }
+  return blankItem(
+    "additional_protection",
+    "Additional protection",
+    "A trade description mentions protection that may be a different service."
   );
 }
 
@@ -305,26 +473,41 @@ type LabourQuote = {
   sourceLabel: string;
   sourceType: "user_rate" | "project_override";
   role: PreliminaryRole;
+  itemKey: string;
 };
 
-function companyLabour(params: {
+export function preliminaryRoleItemKey(role: PreliminaryRole): string {
+  if (role === "labourer") return LABOURER_LABOUR_RATE_KEY;
+  if (role === "apprentice") return APPRENTICE_LABOUR_RATE_KEY;
+  return CARPENTER_LABOUR_RATE_KEY;
+}
+
+export function preliminaryRoleLabel(role: PreliminaryRole): string {
+  if (role === "labourer") return "Labourer";
+  if (role === "apprentice") return "Apprentice";
+  return "Carpenter";
+}
+
+/** The hourly cost generation will use for this role. A benchmark is not used. */
+export function preliminaryLabourRate(params: {
+  item: Pick<PreliminaryItem, "role" | "hourlyCostOverride">;
   rates: OrganisationRate[];
   settings: OrganisationSettings | null;
-  role: PreliminaryRole;
-  override: number | null;
 }): LabourQuote | null {
-  if (params.override != null && params.override > 0) {
+  const role = params.item.role ?? "carpenter";
+  if (params.item.hourlyCostOverride != null && params.item.hourlyCostOverride > 0) {
     return {
-      hourlyCost: params.override,
-      sourceLabel: "Project rate",
+      hourlyCost: params.item.hourlyCostOverride,
+      sourceLabel: "Project hourly cost",
       sourceType: "project_override",
-      role: params.role,
+      role,
+      itemKey: preliminaryRoleItemKey(role),
     };
   }
   const resolved = resolveLabourRate({
     rates: params.rates,
     organisationSettings: params.settings,
-    trade: params.role === "carpenter" ? undefined : params.role,
+    trade: role === "carpenter" ? undefined : role,
   });
   if (resolved.sourceType !== "user_rate" || !(resolved.costRate > 0)) {
     return null;
@@ -333,7 +516,8 @@ function companyLabour(params: {
     hourlyCost: resolved.costRate,
     sourceLabel: resolved.sourceLabel,
     sourceType: "user_rate",
-    role: params.role,
+    role,
+    itemKey: preliminaryRoleItemKey(role),
   };
 }
 
@@ -346,6 +530,7 @@ export type PreliminaryQuote = {
   hours: number | null;
   hourlyCost: number | null;
   sourceLabel: string;
+  itemKey: string | null;
   materialCost: number | null;
   labourCost: number | null;
   unresolvedReason: string | null;
@@ -365,6 +550,7 @@ export function quotePreliminary(
     hours: null,
     hourlyCost: null,
     sourceLabel: "Pricing required",
+    itemKey: null,
     materialCost: null,
     labourCost: null,
     unresolvedReason: reason,
@@ -389,6 +575,7 @@ export function quotePreliminary(
         hours: null,
         hourlyCost: null,
         sourceLabel: "Entered amount",
+        itemKey: null,
         materialCost: material,
         labourCost: labour,
         unresolvedReason: null,
@@ -406,22 +593,17 @@ export function quotePreliminary(
       hours: null,
       hourlyCost: null,
       sourceLabel: "Entered amount",
+      itemKey: null,
       materialCost: null,
       labourCost: null,
       unresolvedReason: null,
     };
   }
-  const role = item.role ?? "carpenter";
+  const labour = preliminaryLabourRate({ item, rates, settings });
   if (item.basis === "labour_hours") {
     if (item.hours == null || item.hours <= 0) {
       return unresolved("Labour hours are still required. Coverage is unresolved.");
     }
-    const labour = companyLabour({
-      rates,
-      settings,
-      role,
-      override: item.hourlyCostOverride,
-    });
     if (!labour) {
       return unresolved(
         "A company labour rate or a project hourly cost is still required. Coverage is unresolved."
@@ -429,7 +611,7 @@ export function quotePreliminary(
     }
     const cost = round2(item.hours * labour.hourlyCost);
     return {
-      formula: `${item.hours} h × ${money(labour.hourlyCost)}/h (${labour.sourceLabel}, ${labour.role}).`,
+      formula: `${item.hours} h × ${money(labour.hourlyCost)}/h (${labour.sourceLabel}, ${preliminaryRoleLabel(labour.role)}).`,
       cost,
       category: "labour",
       quantity: item.hours,
@@ -437,6 +619,7 @@ export function quotePreliminary(
       hours: item.hours,
       hourlyCost: labour.hourlyCost,
       sourceLabel: labour.sourceLabel,
+      itemKey: labour.itemKey,
       materialCost: null,
       labourCost: cost,
       unresolvedReason: null,
@@ -459,6 +642,7 @@ export function quotePreliminary(
       hours: null,
       hourlyCost: null,
       sourceLabel: "Entered amount",
+      itemKey: null,
       materialCost: null,
       labourCost: null,
       unresolvedReason: null,
@@ -469,12 +653,6 @@ export function quotePreliminary(
       "Occurrences and hours per occurrence are still required. Coverage is unresolved."
     );
   }
-  const labour = companyLabour({
-    rates,
-    settings,
-    role,
-    override: item.hourlyCostOverride,
-  });
   if (!labour) {
     return unresolved(
       "A company labour rate or a project hourly cost is still required. Coverage is unresolved."
@@ -484,7 +662,7 @@ export function quotePreliminary(
   const unit = item.occurrenceUnit ?? "day";
   const cost = round2(hours * labour.hourlyCost);
   return {
-    formula: `${item.occurrences} ${unit} × ${item.hoursPerOccurrence} h × ${money(labour.hourlyCost)}/h (${labour.sourceLabel}, ${labour.role}).`,
+    formula: `${item.occurrences} ${unit} × ${item.hoursPerOccurrence} h × ${money(labour.hourlyCost)}/h (${labour.sourceLabel}, ${preliminaryRoleLabel(labour.role)}).`,
     cost,
     category: "labour",
     quantity: item.occurrences,
@@ -492,6 +670,7 @@ export function quotePreliminary(
     hours,
     hourlyCost: labour.hourlyCost,
     sourceLabel: labour.sourceLabel,
+    itemKey: labour.itemKey,
     materialCost: null,
     labourCost: cost,
     unresolvedReason: null,
@@ -516,11 +695,16 @@ export function overlappingIdentity(
 }
 
 export function calculatePreliminaries(
-  context: Pick<EstimateContext, "facts" | "organisationSettings" | "rates" | "briefText">,
+  context: Pick<EstimateContext, "facts" | "organisationSettings" | "rates" | "briefText"> & {
+    confirmedWorkAreas?: readonly EstimateWorkArea[];
+  },
   workArea: EstimateWorkArea,
   siblingLines: readonly EstimateLineItemInput[] = []
 ): CalculatorResult {
-  const plan = planFromFacts(context.facts, context.briefText);
+  const tradeDescriptions = (context.confirmedWorkAreas ?? [])
+    .map((area) => area.quoteDescription?.trim() ?? "")
+    .filter((text) => text.length > 0);
+  const plan = planFromFacts(context.facts, context.briefText, tradeDescriptions);
   const lineItems: EstimateLineItemInput[] = [];
   const assumptions: string[] = [];
   const missingInfo: string[] = [];
@@ -536,7 +720,27 @@ export function calculatePreliminaries(
     );
   }
 
+  const reviews = plan.reviews ?? [];
+  const heldUntilSeparate = new Set(
+    reviews
+      .filter((review) => !review.separate)
+      .map((review) => additionalIdentityItem(review).id)
+  );
+  for (const review of reviews) {
+    if (review.separate) continue;
+    missingInfo.push(review.detail);
+    lineItems.push(
+      unresolvedLine(
+        workArea,
+        blankItem(review.id, review.label, review.detail),
+        review.detail,
+        sortOrder++
+      )
+    );
+  }
+
   for (const item of plan.items) {
+    if (heldUntilSeparate.has(item.id)) continue;
     if (item.treatment === "excluded") {
       exclusions.push(`${item.label} is excluded from this job.`);
       continue;
@@ -568,6 +772,7 @@ export function calculatePreliminaries(
       quantity: quote.quantity ?? 1,
       unit: quote.unit ?? "allow",
       labourHours: quote.hours ?? undefined,
+      itemKey: quote.itemKey ?? undefined,
       productivityRate:
         item.basis === "recurring_labour" ? item.hoursPerOccurrence ?? undefined : undefined,
       productivityUnit: item.basis === "recurring_labour" ? quote.unit ?? undefined : undefined,

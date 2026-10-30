@@ -6,7 +6,10 @@ import {
 } from "@/lib/estimate/builder-presentation-format";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { buildPersistedLineItemNotes, inferProductivitySourceType } from "@/lib/estimate/line-item-metadata";
-import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  explicitRateSourceLabel,
+  normalizeRateSourceLabel,
+} from "@/lib/estimate/rate-source-labels";
 import {
   buildAuthoritativeEstimateAmounts,
   requireEstimateLabourMoney,
@@ -374,6 +377,7 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       itemKey: item.itemKey,
       costRate: item.costRate,
       sellRate: item.sellRate,
+      rateSource: explicitRateSourceLabel(item.rateSource) ?? undefined,
       rateSourceType: item.rateSourceType,
       productivitySourceType: item.productivitySourceType,
       sellDerivedFromMargin: item.sellDerivedFromMargin,

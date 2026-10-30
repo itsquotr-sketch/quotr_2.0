@@ -32,6 +32,8 @@ export type EstimateWorkArea = {
   type: string;
   name: string;
   summary?: string | null;
+  /** Customer-facing trade description. Not the generated summary. */
+  quoteDescription?: string | null;
   sort_order: number;
 };
 
