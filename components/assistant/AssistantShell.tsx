@@ -4299,6 +4299,8 @@ export function AssistantShell({
                   onSpecFact={handleJobPlanSpecFact}
                   constraints={liveConstraints}
                   onConstraint={handleConstraintSave}
+                  projectId={project.id}
+                  briefText={briefText}
                 />
               }
               projectConditions={
@@ -4546,6 +4548,8 @@ export function AssistantShell({
                 onConstraint={
                   workAreasConfirmed ? undefined : handleConstraintSave
                 }
+                projectId={project.id}
+                briefText={briefText}
               />
             </CollapsibleStageCard>
           ) : null}

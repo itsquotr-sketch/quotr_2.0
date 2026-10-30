@@ -22,6 +22,7 @@ export const DETAILED_CALCULATOR_WORK_AREA_TYPES = [
   "painting",
   "plastering",
   "cladding",
+  "preliminaries",
 ] as const;
 
 export type DetailedCalculatorWorkAreaType =

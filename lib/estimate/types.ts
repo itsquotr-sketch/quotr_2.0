@@ -136,6 +136,8 @@ export type EstimateLineItemInput = {
   overlapGroup?: string;
   includedInTotal?: boolean;
   clientVisible?: boolean;
+  /** Provisional allowance. Separate from the cost category. */
+  provisional?: boolean;
   pricingSource?: PricingSource;
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;

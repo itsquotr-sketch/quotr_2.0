@@ -2367,9 +2367,16 @@ function recordRequestedCoverageGaps(
       }
     }
   }
-  if (hits.length === 0 && excludedTrades.length === 0) return;
+  const projectLevel = new Set([
+    "site establishment",
+    "daily cleaning",
+    "final cleaning",
+    "supervision",
+  ]);
+  const remaining = hits.filter((hit) => !projectLevel.has(hit));
+  if (remaining.length === 0 && excludedTrades.length === 0) return;
   const note = [
-    hits.length > 0 ? `Requested and not priced: ${hits.join(", ")}.` : "",
+    remaining.length > 0 ? `Requested and not priced: ${remaining.join(", ")}.` : "",
     excludedTrades.length > 0
       ? `Excluded trades: ${excludedTrades.join(", ")}.`
       : "",

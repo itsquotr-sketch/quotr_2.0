@@ -103,6 +103,8 @@ export type LineItemMetadata = {
    * Reconciliation keeps that choice instead of copying the estimate.
    */
   quoteVisibilityOverride?: boolean;
+  /** Provisional allowance. Separate from the cost category. */
+  provisional?: boolean;
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;
   allowanceMinimum?: AllowanceMinimumMeta;
@@ -254,6 +256,9 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.quoteVisibilityOverride === true) {
     metaToStore.quoteVisibilityOverride = true;
+  }
+  if (metadata.provisional === true) {
+    metaToStore.provisional = true;
   }
   if (metadata.quantityBasis) {
     metaToStore.quantityBasis = metadata.quantityBasis;

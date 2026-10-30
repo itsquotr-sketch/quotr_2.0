@@ -391,16 +391,6 @@ export function interpretBathroomBrief(
   }
   if (ancillary) noteParts.push(BATHROOM_COVERAGE_ANCILLARY);
   if (partialLining) noteParts.push(BATHROOM_COVERAGE_PARTIAL_LINING);
-  if (/\bprotect(?:ion)?\b[^.]*\bstairs?\b|\bstairs?\b[^.]*\bprotect/.test(brief)) {
-    noteParts.push(BATHROOM_COVERAGE_STAIR_PROTECTION);
-  }
-  if (
-    /\bdaily cleaning\b|\bclean up daily\b|\bdaily cleanup\b|\bclean up each day\b/.test(
-      brief
-    )
-  ) {
-    noteParts.push(BATHROOM_COVERAGE_DAILY_CLEANING);
-  }
   if (/\boccupied house\b|\boccupied upstairs\b|\bupstairs occupied\b/.test(brief)) {
     noteParts.push("Upstairs occupied house.");
   }
@@ -517,12 +507,6 @@ export function bathroomPreservationRows(params: {
   }
   if (note.includes(BATHROOM_COVERAGE_PARTIAL_LINING)) {
     add("partial-lining", BATHROOM_COVERAGE_PARTIAL_LINING, "NOT_CONFIRMED", "bathroom.coverage_note");
-  }
-  if (note.includes(BATHROOM_COVERAGE_STAIR_PROTECTION)) {
-    add("stairs", BATHROOM_COVERAGE_STAIR_PROTECTION, "NOT_CONFIRMED", "bathroom.coverage_note");
-  }
-  if (note.includes(BATHROOM_COVERAGE_DAILY_CLEANING)) {
-    add("cleaning", BATHROOM_COVERAGE_DAILY_CLEANING, "NOT_CONFIRMED", "bathroom.coverage_note");
   }
   if (note.includes("Upstairs occupied house.")) {
     add("occupied", "Upstairs occupied house", "INCLUDED", "bathroom.coverage_note");

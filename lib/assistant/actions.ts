@@ -63,6 +63,7 @@ import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-ava
 import { MANUAL_ESTIMATE_SKIPPED_MESSAGE } from "@/lib/work-areas/manual-pricing-route";
 import { loadProjectStage } from "@/lib/assistant/load-project-stage";
 import { getEstimateContextWithContext } from "@/lib/estimate/context";
+import { preparePreliminariesForEstimate } from "@/lib/estimate/preliminaries-store";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
 import { evaluateEstimateGenerationSuccess } from "@/lib/estimate/estimate-generation-success";
@@ -1903,7 +1904,20 @@ async function runEstimateGeneration(
     return { error: USER_ERRORS.projectConditionsIncomplete };
   }
 
-  const calculableWorkAreas = contextResult.confirmedWorkAreas.filter((area) =>
+  const briefText =
+    contextResult.briefText ??
+    (typeof projectRow?.brief_text === "string" ? projectRow.brief_text : null);
+  const prepared = await preparePreliminariesForEstimate({
+    supabase,
+    orgId,
+    projectId,
+    context: { ...contextResult, briefText },
+  });
+  if ("error" in prepared) {
+    return { error: prepared.error };
+  }
+
+  const calculableWorkAreas = prepared.context.confirmedWorkAreas.filter((area) =>
     workAreaTypeHasDetailedCalculator(area.type)
   );
   if (calculableWorkAreas.length === 0) {
@@ -1913,13 +1927,9 @@ async function runEstimateGeneration(
   let estimateResult;
   try {
     estimateResult = calculateEstimate({
-      ...contextResult,
+      ...prepared.context,
       confirmedWorkAreas: calculableWorkAreas,
-      briefText:
-        contextResult.briefText ??
-        (typeof projectRow?.brief_text === "string"
-          ? projectRow.brief_text
-          : null),
+      briefText,
     });
   } catch (error) {
     if (error instanceof EstimateEngineError) {

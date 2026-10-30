@@ -1225,6 +1225,12 @@ export function calculateBathroom(
 
   const coverageNote = getStringFact(facts, workArea.id, "bathroom.coverage_note");
   for (const sentence of bathroomPreservationSentences(coverageNote)) {
+    if (
+      sentence.startsWith("Stair protection") ||
+      sentence.startsWith("Daily cleaning")
+    ) {
+      continue;
+    }
     missingInfo.push(sentence);
     const label = sentence.startsWith("Partial wall lining")
       ? "Partial wall lining"

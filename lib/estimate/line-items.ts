@@ -388,6 +388,7 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       overlapGroup: item.overlapGroup,
       includedInTotal: item.includedInTotal,
       clientVisible: item.clientVisible,
+      provisional: item.provisional,
       pricingSource: item.pricingSource,
       quantityBasis: item.quantityBasis,
       labourMinimum: item.labourMinimum,

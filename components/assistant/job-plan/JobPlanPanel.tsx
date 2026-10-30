@@ -9,6 +9,8 @@ import {
   WORK_AREA_INTRODUCTION,
 } from "@/lib/work-areas/manual-pricing-route";
 import { JobPlanWorkAreaCardView } from "@/components/assistant/job-plan/JobPlanWorkAreaCard";
+import { PreliminariesSection } from "@/components/assistant/job-plan/PreliminariesSection";
+import { PRELIMINARIES_FACT_KEY } from "@/lib/estimate/preliminaries";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { getJobPlanQuickSpecEditor } from "@/components/assistant/job-plan/quick-spec-editors";
 import { Button } from "@/components/ui/button";
@@ -79,6 +81,8 @@ type JobPlanPanelProps = {
   }) => void;
   constraints?: readonly { key: string; value: unknown }[];
   onConstraint?: JobPlanConstraintWrite;
+  projectId?: string;
+  briefText?: string | null;
 };
 
 export function JobPlanPanel({
@@ -109,6 +113,8 @@ export function JobPlanPanel({
   onSpecFact,
   constraints,
   onConstraint,
+  projectId,
+  briefText,
 }: JobPlanPanelProps) {
   const cardsToRender = focusWorkAreaId
     ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
@@ -123,11 +129,24 @@ export function JobPlanPanel({
   );
   const [addOpen, setAddOpen] = useState(false);
   const interactive = workspaceEditing || !submitted;
+  const preliminariesKey = JSON.stringify(
+    facts.find(
+      (fact) => fact.work_area_id == null && fact.key === PRELIMINARIES_FACT_KEY
+    )?.value ?? null
+  );
   const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
 
   if (cardsToRender.length === 0) {
     return (
       <div className="space-y-3 overflow-x-hidden" data-job-plan-panel>
+        {projectId ? (
+          <PreliminariesSection
+            key={preliminariesKey}
+            projectId={projectId}
+            briefText={briefText}
+            facts={facts}
+          />
+        ) : null}
         <p className="text-sm text-muted-foreground">
           {onAddManualWork
             ? "Add a Work Area. If Quotr cannot calculate it, describe the scope and enter your price in Pricing."
@@ -189,6 +208,14 @@ export function JobPlanPanel({
       <p className="text-sm leading-5 text-muted-foreground" data-work-area-term>
         {WORK_AREA_INTRODUCTION}
       </p>
+      {projectId && !focusWorkAreaId ? (
+        <PreliminariesSection
+          key={preliminariesKey}
+          projectId={projectId}
+          briefText={briefText}
+          facts={facts}
+        />
+      ) : null}
       <div className="flex flex-col gap-3 max-md:pb-36">
         {cardsToRender.map((card) => (
           <JobPlanWorkAreaCardView

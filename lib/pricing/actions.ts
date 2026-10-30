@@ -113,6 +113,7 @@ import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
+import { customerScopeFromPreliminaryLines } from "@/lib/estimate/preliminaries";
 import {
   buildScopeSummaryFromWorkAreas,
   mapPricingDocument,
@@ -913,10 +914,17 @@ export async function createPricingFromEstimate(input: {
       gst_rate: gstRate,
       gst_amount: documentTotals.gstAmount,
       total_incl_gst: documentTotals.totalInclGst,
-      scope_summary: buildScopeSummaryFromWorkAreas(
-        workAreaNames,
-        project.brief_text
-      ),
+      scope_summary: [
+        buildScopeSummaryFromWorkAreas(workAreaNames, project.brief_text),
+        customerScopeFromPreliminaryLines(
+          (lineItems ?? []).map((row) => ({
+            label: String(row.label ?? ""),
+            notes: (row.notes as string | null) ?? null,
+          }))
+        ),
+      ]
+        .filter(Boolean)
+        .join(" "),
       assumptions,
       exclusions,
       terms,
@@ -953,10 +961,17 @@ export async function createPricingFromEstimate(input: {
       estimateId: estimate.id as string,
       requirementSnapshotId,
       resetReview: manualHandoff.resetReview,
-      scopeSummary: buildScopeSummaryFromWorkAreas(
-        workAreaNames,
-        project.brief_text
-      ),
+      scopeSummary: [
+        buildScopeSummaryFromWorkAreas(workAreaNames, project.brief_text),
+        customerScopeFromPreliminaryLines(
+          (lineItems ?? []).map((row) => ({
+            label: String(row.label ?? ""),
+            notes: (row.notes as string | null) ?? null,
+          }))
+        ),
+      ]
+        .filter(Boolean)
+        .join(" "),
       rows: rowsToAdd,
     });
     if (!attached.ok) {

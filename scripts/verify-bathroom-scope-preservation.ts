@@ -8,6 +8,7 @@ import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-cont
 import { bathroomJobPlanAdapter } from "../lib/assistant/job-plan/adapters/bathroom";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
+import { recognisePreliminaries } from "../lib/estimate/preliminaries";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   buildPricingItemRowFromEstimate,
@@ -152,7 +153,13 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
   check(`${name} vanity 900`, note.includes("Vanity specification: 900 mm."));
   check(`${name} same spots`, note.includes("Shower replacement stays in the existing location.") && note.includes("Toilet replacement stays in the existing location."));
   check(`${name} occupied`, note.includes("Upstairs occupied house."));
-  check(`${name} stairs and cleaning`, note.includes("Stair protection is requested") && note.includes("Daily cleaning is requested"));
+  check(
+    `${name} stairs and cleaning are project preliminaries`,
+    !note.includes("Stair protection is requested") &&
+      !note.includes("Daily cleaning is requested") &&
+      recognisePreliminaries(brief).items.some((item) => item.id === "stair_protection") &&
+      recognisePreliminaries(brief).items.some((item) => item.id === "daily_cleaning")
+  );
   check(`${name} ancillaries`, note.includes("Contractor-supplied ancillary materials"));
   check(`${name} exclusion sentence`, note.includes("Excluded trades: plumbing, electrical."));
   check(
@@ -275,10 +282,13 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
     result.lineItems.some((item) => item.label === "Partial wall lining" && item.includedInTotal === false) &&
       !result.lineItems.some((item) => item.label === "Wall lining" && item.quantity > 10)
   );
+  check(
+    `${name} stair and daily cleaning are not bathroom lines`,
+    !result.lineItems.some((item) => item.label === "Stair protection" || item.label === "Daily cleaning") &&
+      !result.missingInfo.some((row) => /Stair protection|Daily cleaning/.test(row))
+  );
   for (const sentence of [
     "Partial wall lining, extent unknown.",
-    "Stair protection is requested.",
-    "Daily cleaning is requested.",
     "Contractor-supplied ancillary materials are requested.",
   ]) {
     check(
@@ -325,7 +335,7 @@ function assertPackage(name: string, brief: string, mixedSupply: boolean) {
   check(`${name} priced work stays on the quote`, quoteRow("Vanity installation")?.visible_on_quote === true);
   check(`${name} tile supply stays off the quote`, quoteRow("Floor tile supply allowance")?.visible_on_quote === false);
   check(`${name} unresolved lining stays off the quote`, quoteRow("Partial wall lining")?.visible_on_quote === false);
-  check(`${name} stair protection stays off the quote`, quoteRow("Stair protection")?.visible_on_quote === false);
+  check(`${name} stair protection is not a bathroom quote row`, quoteRow("Stair protection") == null);
 
   const vanity = included.find((item) => item.label === "Vanity installation");
   const tiler = included.find((item) => item.label === "Floor tiler installation");

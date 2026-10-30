@@ -14,6 +14,7 @@ import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { FLOORING_PORTIONS_FACT_KEY } from "../lib/estimate/flooring-portions";
 import { DOORS_PORTIONS_FACT_KEY } from "../lib/estimate/doors-portions";
+import { recognisePreliminaries } from "../lib/estimate/preliminaries";
 import type { EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
 import {
@@ -150,7 +151,14 @@ check("office electrical excluded", officeWall?.electrical === "none", officeWal
 check("office occupied", office.constraints.some((row) => row.key === "occupied_site" && row.value === "Yes"), office.constraints);
 check("office protection", office.constraints.some((row) => row.key === "protection_dust_control" && row.value === "Yes"), office.constraints);
 check("office delivery windows", office.constraints.some((row) => row.key === "working_hours" && row.value === "Yes"), office.constraints);
-check("office coverage gap", /site establishment/.test(officeNote) && /duration is not confirmed/.test(officeNote) && /Excluded trades:/.test(officeNote), officeNote);
+check(
+  "office coverage gap",
+  !/site establishment/.test(officeNote) &&
+    /duration is not confirmed/.test(officeNote) &&
+    /Excluded trades:/.test(officeNote) &&
+    recognisePreliminaries(STAGE_2A_OFFICE_FITOUT_BRIEF).items.some((item) => item.id === "site_establishment"),
+  officeNote
+);
 check("office has no bathroom", !officeTypes.includes("bathroom"), officeTypes);
 
 const flooring = enrich(STAGE_2A_THREE_ROOM_FLOORING_BRIEF);

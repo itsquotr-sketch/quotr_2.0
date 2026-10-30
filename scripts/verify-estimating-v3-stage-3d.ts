@@ -199,8 +199,8 @@ check(
     )
 );
 check(
-  "preliminaries stay an unpriced coverage gap",
-  /site establishment/.test(String(office.extraction.facts.find((row) => row.key === "internal_walls.coverage_note")?.value ?? ""))
+  "preliminaries stay off the wall coverage note",
+  !/site establishment/.test(String(office.extraction.facts.find((row) => row.key === "internal_walls.coverage_note")?.value ?? ""))
 );
 
 const broadloom = extractFlooringPortionsFromBrief("Supply and install 40 m² of carpet with underlay.")[0];
