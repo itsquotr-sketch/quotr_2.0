@@ -16,6 +16,7 @@ import {
 } from "@/lib/estimate/deck-brief-facts";
 import { interpretBathroomBrief } from "@/lib/estimate/bathroom-brief";
 import { deckScopeIntent } from "@/lib/estimate/scope-intent";
+import { ambiguousMaterialWasteWarning } from "@/lib/estimate/explicit-material-waste";
 import {
   briefHasIntegralDeckStepLanguage,
   filterIntegralDeckExternalStairsWorkAreas,
@@ -54,6 +55,7 @@ import {
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
   extractDoorPortionsFromBrief,
+  clearDoorHeightCopiedFromAnotherAssembly,
   mergeDoorPortionsPreferringDeterministic,
   reconcileDoorLeavesWithBrief,
   readAiDoorPortionsFromExtraction,
@@ -114,10 +116,38 @@ function matchAreaM2(text: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function matchInternalWallHeight(text: string): { 1: string } | RegExpMatchArray | null {
+  const millimetres = text.match(/(\d{3,4})\s*mm\s+high\b/i);
+  if (millimetres) {
+    const metres = Number(millimetres[1]) / 1000;
+    if (Number.isFinite(metres) && metres >= 1.8 && metres <= 6) {
+      return { 1: String(metres) };
+    }
+  }
+  const atMillimetres = text.match(/\bat\s+(\d{3,4})\s*mm\b/i);
+  if (atMillimetres && /\b(walls?|partitions?|stud)\b/i.test(text)) {
+    const metres = Number(atMillimetres[1]) / 1000;
+    if (Number.isFinite(metres) && metres >= 1.8 && metres <= 6) {
+      return { 1: String(metres) };
+    }
+  }
+  return (
+    text.match(/(\d+(?:\.\d+)?)\s*m(?:etres?)?\s+high\b/i) ||
+    text.match(/(\d+(?:\.\d+)?)\s*high\b/i)
+  );
+}
+
 function matchLinearMetres(text: string): number | null {
   const match = text.match(/(\d+(?:\.\d+)?)\s*(?:lm|linear\s*metre|m\s+(?:of|long))/i);
-  if (!match) return null;
-  const value = Number(match[1]);
+  if (match) {
+    const value = Number(match[1]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  const beforeWall = text.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:long\s+|of\s+)?(?:non[-\s]?loadbearing\s+)?(?:timber\s+)?(?:stud\s+)?(?:internal\s+)?walls?\b/i
+  );
+  if (!beforeWall) return null;
+  const value = Number(beforeWall[1]);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
@@ -398,9 +428,7 @@ function addInternalWallsFactsFromSnippet(
     });
   }
 
-  const heightMatch =
-    snippet.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
-    snippet.match(/(\d+(?:\.\d+)?)\s*high/i);
+  const heightMatch = matchInternalWallHeight(snippet);
   if (heightMatch) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -412,7 +440,7 @@ function addInternalWallsFactsFromSnippet(
     });
   }
 
-  if (includesAny(snippet, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
+  if (includesAny(snippet, ["timber framed", "timber frame", "timber stud", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       workAreaName,
@@ -445,8 +473,17 @@ function inferInternalWalls(
     "90×45",
     "45x90",
     "45×90",
+    "stud wall",
+    "timber stud",
+    "plasterboard wall",
   ];
-  if (!includesAny(brief, patterns) && !/\bpartition/.test(brief)) return;
+  if (
+    !includesAny(brief, patterns) &&
+    !/\bpartition/.test(brief) &&
+    !/\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+  ) {
+    return;
+  }
 
   addWorkAreaIfMissing(
     extraction,
@@ -511,9 +548,7 @@ function inferInternalWalls(
     });
   }
 
-  const heightMatch =
-    brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
-    brief.match(/(\d+(?:\.\d+)?)\s*high/i);
+  const heightMatch = matchInternalWallHeight(brief);
   if (heightMatch) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -524,7 +559,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
+  if (includesAny(brief, ["timber framed", "timber frame", "timber stud", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.framing_type",
@@ -533,7 +568,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["line both sides", "both sides"])) {
+  if (includesAny(brief, ["line both sides", "both sides", "both faces"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.lining_sides",
@@ -652,7 +687,7 @@ function inferInternalWalls(
         key: "internal_walls.wall_type.side_a_product",
         value: "Standard GIB",
       });
-      if (includesAny(brief, ["both sides"])) {
+      if (includesAny(brief, ["both sides", "both faces"])) {
         facts = applyInternalWallsFactWrite({
           facts,
           workAreaId,
@@ -660,7 +695,7 @@ function inferInternalWalls(
           value: true,
         });
       }
-    } else if (includesAny(brief, ["both sides", "line both sides"])) {
+    } else if (includesAny(brief, ["both sides", "both faces", "line both sides"])) {
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId,
@@ -705,8 +740,11 @@ function inferDoors(
 
   const parsed = extractDoorPortionsFromBrief(brief);
   const ai = readAiDoorPortionsFromExtraction(extraction);
-  const portions = reconcileDoorLeavesWithBrief(
-    mergeDoorPortionsPreferringDeterministic(ai, parsed),
+  const portions = clearDoorHeightCopiedFromAnotherAssembly(
+    reconcileDoorLeavesWithBrief(
+      mergeDoorPortionsPreferringDeterministic(ai, parsed),
+      brief
+    ),
     brief
   );
   const modelLeaf = ai.find((row) => row.leaf_construction != null);
@@ -1012,6 +1050,25 @@ function inferBathroom(
   }
 }
 
+function matchDeckPlanMetres(brief: string): { length: number; width: number } | null {
+  const metres = brief.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)\s*m(?:etres?)?/i
+  );
+  if (metres) {
+    return { length: Number(metres[1]), width: Number(metres[2]) };
+  }
+  const millimetres = brief.match(
+    /(\d{1,2},\d{3}|\d{3,5})\s*mm\s*(?:[x×]|by)\s*(\d{1,2},\d{3}|\d{3,5})\s*mm/i
+  );
+  if (!millimetres) return null;
+  const length = Number(millimetres[1].replace(/,/g, "")) / 1000;
+  const width = Number(millimetres[2].replace(/,/g, "")) / 1000;
+  if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) {
+    return null;
+  }
+  return { length, width };
+}
+
 function inferDeck(
   brief: string,
   extraction: AIExtractionOutput,
@@ -1053,6 +1110,9 @@ function inferDeck(
       "build a deck",
       "build new deck",
       "new deck",
+      "decking board",
+      "decking platform",
+      "supply and install decking",
     ]) ||
     (includesAny(brief, ["build"]) &&
       mentionsDeck &&
@@ -1075,22 +1135,20 @@ function inferDeck(
     allowedTypes
   );
 
-  const dims = brief.match(
-    /(\d+(?:\.\d+)?)\s*m\s*[x×]\s*(\d+(?:\.\d+)?)\s*m/
-  );
+  const dims = matchDeckPlanMetres(brief);
   if (dims) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.length_m",
       label: "Deck length",
-      value: Number(dims[1]),
+      value: dims.length,
       unit: "m",
     });
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.width_m",
       label: "Deck width",
-      value: Number(dims[2]),
+      value: dims.width,
       unit: "m",
     });
   }
@@ -2464,6 +2522,25 @@ export function enrichExtractionFromBrief(params: {
         confidence: 0.95,
       });
     }
+    if (!extraction.facts.some((fact) => fact.key === "deck.length_m")) {
+      const plan = matchDeckPlanMetres(params.briefText);
+      if (plan) {
+        addFact(extraction, {
+          workAreaType: "deck",
+          key: "deck.length_m",
+          label: "Deck length",
+          value: plan.length,
+          unit: "m",
+        });
+        addFact(extraction, {
+          workAreaType: "deck",
+          key: "deck.width_m",
+          label: "Deck width",
+          value: plan.width,
+          unit: "m",
+        });
+      }
+    }
     if (intent.dropPaintingWorkArea) {
       extraction.workAreas = extraction.workAreas.filter(
         (row) => row.type !== "painting"
@@ -2504,6 +2581,10 @@ export function enrichExtractionFromBrief(params: {
   mergePossibleConstraints(extraction, constraints);
 
   recordRequestedCoverageGaps(brief, extraction);
+  const wasteWarning = ambiguousMaterialWasteWarning(params.briefText);
+  if (wasteWarning && !extraction.warnings.includes(wasteWarning)) {
+    extraction.warnings.push(wasteWarning);
+  }
 
   if (extraction.workAreas.length === 0) {
     extraction.warnings.push("No work areas detected after enrichment.");

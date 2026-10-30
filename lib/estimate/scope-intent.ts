@@ -5,6 +5,8 @@
  * "No demolition" is not "no preparation".
  */
 
+import { explicitMaterialWastePercent } from "@/lib/estimate/explicit-material-waste";
+
 export type ScopeTopic =
   | "stairs"
   | "balustrade"
@@ -250,6 +252,15 @@ export function deckScopeIntent(
       key: "deck.pile_or_post_count",
       label: "Piles/posts count",
       value: statedPileCount,
+    });
+  }
+
+  const boardWaste = explicitMaterialWastePercent(briefText, "deck_boards");
+  if (boardWaste != null) {
+    upserts.push({
+      key: "deck.board_waste_percent",
+      label: "Board waste",
+      value: boardWaste,
     });
   }
 

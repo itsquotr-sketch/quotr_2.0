@@ -39,6 +39,7 @@ import {
   type FlooringSubstrateFamily,
 } from "@/lib/estimate/flooring-portions";
 import { applyLaminateBriefFacts } from "@/lib/estimate/flooring-laminate";
+import { explicitMaterialWastePercent } from "@/lib/estimate/explicit-material-waste";
 import { applyCarpetTileBriefFacts } from "@/lib/estimate/flooring-carpet-tile";
 import {
   briefHasIndependentFlooring,
@@ -198,7 +199,7 @@ function directAreaFromSnippet(text: string): number | null {
 function measureTokenToMetres(value: string, unit: string): number | null {
   const numeric = Number(value.replace(/,/g, ""));
   if (!Number.isFinite(numeric) || numeric <= 0) return null;
-  if (unit.toLowerCase() === "mm") {
+  if (unit.toLowerCase().startsWith("mm")) {
     if (numeric < 300 || numeric > 100_000) return null;
     return numeric / 1000;
   }
@@ -212,12 +213,21 @@ function roomDimensionsFromSnippet(text: string): {
 } {
   const stripped = stripProductMillimetres(text);
   const match = stripped.match(
-    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m)\b/i
+    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\b/i
   );
-  if (!match) return { length_m: null, width_m: null };
+  if (match) {
+    return {
+      length_m: measureTokenToMetres(match[1]!, match[2]!),
+      width_m: measureTokenToMetres(match[3]!, match[4]!),
+    };
+  }
+  const trailing = stripped.match(
+    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\b/i
+  );
+  if (!trailing) return { length_m: null, width_m: null };
   return {
-    length_m: measureTokenToMetres(match[1]!, match[2]!),
-    width_m: measureTokenToMetres(match[3]!, match[4]!),
+    length_m: measureTokenToMetres(trailing[1]!, trailing[3]!),
+    width_m: measureTokenToMetres(trailing[2]!, trailing[3]!),
   };
 }
 
@@ -707,9 +717,9 @@ function applyGlobalConstraints(
     portion.underlay_required = portion.finish_type === "carpet";
     portion.underlay_authority = "extracted";
   }
-  const waste = raw.match(/(\d+(?:\.\d+)?)\s*%\s*waste/);
-  if (waste && portion.waste_percent == null) {
-    portion.waste_percent = Number(waste[1]);
+  const waste = explicitMaterialWastePercent(briefText, "floor_covering");
+  if (waste != null && portion.waste_percent == null) {
+    portion.waste_percent = waste;
   }
   if (
     /\b(?:customer|client)[-\s]supplied\b/.test(raw) &&
@@ -733,6 +743,33 @@ function applyGlobalConstraints(
     portion.skirting_replacement_excluded = true;
   }
   applyLaminateBriefFacts(portion, briefText);
+  fillSingleRoomDimensions(portion, briefText);
+}
+
+function fillSingleRoomDimensions(portion: FlooringPortion, briefText: string): void {
+  if (portion.length_m != null && portion.width_m != null) return;
+  const pairs: { length_m: number; width_m: number }[] = [];
+  for (const sentence of briefText.split(/(?<=[.!?])\s+/)) {
+    if (
+      /\b(?:deck(?:ing)?|platforms?)\b/i.test(sentence) &&
+      !clauseHasFlooringOperation(sentence, briefText)
+    ) {
+      continue;
+    }
+    const dims = roomDimensionsFromSnippet(sentence);
+    if (dims.length_m != null && dims.width_m != null) {
+      pairs.push({ length_m: dims.length_m, width_m: dims.width_m });
+    }
+  }
+  if (pairs.length !== 1) return;
+  portion.length_m = pairs[0]!.length_m;
+  portion.length_authority = "extracted";
+  portion.width_m = pairs[0]!.width_m;
+  portion.width_authority = "extracted";
+  if (flooringAreaMeasuresDisagree(portion) && portion.area_method_authority !== "user") {
+    portion.area_input_method = null;
+    portion.area_method_authority = undefined;
+  }
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {
@@ -875,11 +912,31 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
   applyClauseLocalRemoval(portion, snippet, true);
 }
 
+function splitMeasuredRooms(snippet: string): string[] {
+  const parts = snippet
+    .split(/\s*,?\s+\band\b\s+/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return [snippet];
+  const measured = parts.filter((part) => {
+    const dims = roomDimensionsFromSnippet(part);
+    return dims.length_m != null && dims.width_m != null;
+  });
+  if (measured.length < 2) return [snippet];
+  const inherited = snippet.match(
+    /\b(carpet(?:\s+tiles?)?|vinyl(?:\s+planks?)?|laminate|hardwood|flooring)\b/i
+  )?.[0];
+  return parts.map((part) => {
+    if (!inherited || clauseHasFlooringOperation(part, snippet)) return part;
+    return `${inherited} ${part}`;
+  });
+}
+
 export function extractFlooringPortionsFromBrief(briefText: string): FlooringPortion[] {
   if (!briefHasIndependentFlooring(briefText)) {
     return [];
   }
-  const snippets = splitFlooringSnippets(briefText);
+  const snippets = splitFlooringSnippets(briefText).flatMap(splitMeasuredRooms);
   const portions: FlooringPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
     if (clauseIsBathroomOwnedFloor(snippet)) continue;

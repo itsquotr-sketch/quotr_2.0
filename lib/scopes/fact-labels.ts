@@ -65,6 +65,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "deck.has_balustrade": "Balustrade",
   "deck.pergola_included": "Pergola",
   "deck.board_direction": "Board direction",
+  "deck.board_waste_percent": "Board waste",
   "deck.joist_direction": "Joist direction",
   "deck.joist_section": "Joist size",
   "deck.joist_centres_mm": "Joist spacing",

@@ -210,6 +210,7 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.board_material",
   "deck.material",
   "deck.board_width_mm",
+  "deck.board_waste_percent",
   "deck.board_direction",
   "deck.substructure_included",
   "deck.existing_deck_removal",
@@ -425,13 +426,22 @@ export function calculateDeck(
     context.materialWastageSettings,
     "decking"
   );
+  const statedBoardWaste = getNumberFact(
+    facts,
+    workArea.id,
+    "deck.board_waste_percent"
+  );
+  const boardWastePercent =
+    statedBoardWaste != null && statedBoardWaste > 0
+      ? statedBoardWaste
+      : wastagePercent;
 
   const deckingBoardResult =
     area != null && boardWidthFact != null
       ? calculateDeckingBoardLm({
           areaM2: area,
           boardWidthMm: boardWidthFact,
-          wastagePercent,
+          wastagePercent: boardWastePercent,
         })
       : null;
 
@@ -451,7 +461,7 @@ export function calculateDeck(
           result: deckingBoardResult,
           areaM2: area,
           boardWidthMm: boardWidthFact,
-          wastagePercent,
+          wastagePercent: boardWastePercent,
           materialLabel,
           priced: usedLmPricing,
         })
@@ -471,7 +481,7 @@ export function calculateDeck(
           required: deckingBoardResult.baseLm,
           purchased: deckingBoardResult.totalLm,
           unit: "lm",
-          wastePercent: wastagePercent,
+          wastePercent: boardWastePercent,
         })
       : null,
   ]);
@@ -506,7 +516,7 @@ export function calculateDeck(
         sourceLabel: "Board width and deck area",
         quantity: deckingBoardResult.totalLm,
         unit: "lm",
-        formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${wastagePercent}% waste)`,
+        formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${boardWastePercent}% waste)`,
         confidence: boardWidthAssumed ? "assumed" : "derived",
       }),
     });

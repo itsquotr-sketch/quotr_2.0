@@ -406,7 +406,7 @@ function kitchenTokenIsDoorLocation(clause: string): boolean {
 }
 
 const FLOORING_FINISH_TOKEN =
-  "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring)";
+  "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring|laminate|click[-\\s]?lock|floating\\s+floor|engineered\\s+timber|engineered\\s+wood)";
 
 function mentionsFloor(text: string): boolean {
   return /\b(?:floors?|flooring|floorboards?)\b/.test(text);
@@ -449,11 +449,24 @@ function hardwoodBelongsToDeckAssembly(
   return mentionsDeckAssembly(brief);
 }
 
+function laminateIsJoinery(raw: string): boolean {
+  if (!/\blaminate\b/.test(raw)) return false;
+  if (/\b(?:floors?|flooring|underlay|m²|m2|square\s+metres?)\b/.test(raw)) {
+    return false;
+  }
+  return /\b(?:benchtops?|bench\s*tops?|cabinets?|cupboards?|joinery|wardrobes?)\b/.test(
+    raw
+  );
+}
+
 function finishTokenIsFlooring(raw: string, briefText?: string): boolean {
   const token = new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`);
-  if (!token.test(raw)) return false;
-  if (!hardwoodBelongsToDeckAssembly(raw, briefText)) return true;
-  return token.test(raw.replace(/\bhardwood\b/g, " "));
+  const withoutJoineryLaminate = laminateIsJoinery(raw)
+    ? raw.replace(/\blaminate\b/g, " ")
+    : raw;
+  if (!token.test(withoutJoineryLaminate)) return false;
+  if (!hardwoodBelongsToDeckAssembly(withoutJoineryLaminate, briefText)) return true;
+  return token.test(withoutJoineryLaminate.replace(/\bhardwood\b/g, " "));
 }
 
 export function clauseHasFlooringOperation(
@@ -830,20 +843,28 @@ export function briefHasExplicitDemolition(briefText: string): boolean {
 
 export function briefHasExplicitInternalWalls(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
-  return includesAny(brief, [
-    "internal wall",
-    "internal partition",
-    "new partition",
-    "build a partition",
-    "build a new internal",
-    "build a wall",
-    "rebuild the walls",
-    "rebuild walls",
-    "timber framed wall",
-    "framed timber",
-    "timber partition",
-    "partition wall",
-  ]) || /\binternal\b[^.]{0,40}\bpartition\b/.test(brief);
+  return (
+    includesAny(brief, [
+      "internal wall",
+      "internal partition",
+      "new partition",
+      "build a partition",
+      "build a new internal",
+      "build a wall",
+      "rebuild the walls",
+      "rebuild walls",
+      "timber framed wall",
+      "framed timber",
+      "timber partition",
+      "partition wall",
+      "stud wall",
+      "timber stud",
+      "gib wall",
+      "plasterboard wall",
+    ]) ||
+    /\binternal\b[^.]{0,40}\bpartition\b/.test(brief) ||
+    /\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+  );
 }
 
 function bathroomOwnsEmbeddedTrades(briefText: string, proposedTypes: readonly string[]): boolean {

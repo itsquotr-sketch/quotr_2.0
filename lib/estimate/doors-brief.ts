@@ -322,6 +322,33 @@ function asWidth(value: number): DoorWidthMm | null {
   return WIDTH_SET.has(value) ? (value as DoorWidthMm) : null;
 }
 
+function heightMeasurementBelongsToDoor(text: string, index: number): boolean {
+  const start = Math.max(
+    text.lastIndexOf(".", index),
+    text.lastIndexOf("!", index),
+    text.lastIndexOf("?", index),
+    text.lastIndexOf(";", index)
+  );
+  const endRel = text.slice(index).search(/[.!?;]/);
+  const end = endRel < 0 ? text.length : index + endRel;
+  const sentence = text.slice(start + 1, end);
+  const at = index - (start + 1);
+  const hits: { kind: "door" | "other"; distance: number }[] = [];
+  for (const match of sentence.matchAll(
+    /\b(doors?|leaves|leaf|jambs?|prehung|pre-hung)\b/gi
+  )) {
+    hits.push({ kind: "door", distance: Math.abs((match.index ?? 0) - at) });
+  }
+  for (const match of sentence.matchAll(
+    /\b(walls?|partitions?|studs?|plasterboard|ceilings?|decks?|decking)\b/gi
+  )) {
+    hits.push({ kind: "other", distance: Math.abs((match.index ?? 0) - at) });
+  }
+  if (hits.length === 0) return true;
+  hits.sort((left, right) => left.distance - right.distance);
+  return hits[0]!.kind === "door";
+}
+
 function parseLabelledDimensions(text: string): {
   height: DoorHeightMm | null;
   width: DoorWidthMm | null;
@@ -365,10 +392,15 @@ function parseLabelledDimensions(text: string): {
     return { height, width, unsupported };
   }
 
-  const highN = labelledHigh
-    ? Number(labelledHigh[1])
-    : reverseHigh
-      ? Number(reverseHigh[1])
+  const highMatch = labelledHigh ?? reverseHigh;
+  const highIndex = highMatch?.index ?? null;
+  const highBelongsToDoor =
+    highMatch == null || highIndex == null
+      ? false
+      : heightMeasurementBelongsToDoor(text, highIndex);
+  const highN =
+    highMatch && highBelongsToDoor
+      ? Number(highMatch[1])
       : null;
   const wideN = labelledWide
     ? Number(labelledWide[1])
@@ -517,9 +549,7 @@ function snippetHasDoorSignal(text: string): boolean {
     /\bdoors?\b/.test(raw) ||
     /\bleaf\b|\bleaves\b/.test(raw) ||
     /\bprehung\b|\bpre-hung\b/.test(raw) ||
-    canonicalDoorSpecialistKindFromText(raw) != null ||
-    dimensionsFromSnippet(text).height != null ||
-    dimensionsFromSnippet(text).width != null
+    canonicalDoorSpecialistKindFromText(raw) != null
   );
 }
 
@@ -662,6 +692,64 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
     }
   }
   return portions;
+}
+
+function statedHeightMm(sentence: string): number | null {
+  const millimetres = sentence.match(/(\d{3,4})\s*mm\s+(?:high|height)\b/i);
+  if (millimetres) {
+    const value = Number(millimetres[1]);
+    return HEIGHT_SET.has(value) ? value : null;
+  }
+  const metres = sentence.match(/(\d+(?:\.\d+)?)\s*m\s+(?:high|height)\b/i);
+  if (!metres) return null;
+  const value = Math.round(Number(metres[1]) * 1000);
+  return HEIGHT_SET.has(value) ? value : null;
+}
+
+/**
+ * A model or an earlier clause can copy a wall, partition, or ceiling height
+ * onto the door. Keep a height only when a door clause states it.
+ * Otherwise restore the disclosed 1980 mm default.
+ */
+export function clearDoorHeightCopiedFromAnotherAssembly(
+  portions: readonly DoorPortion[],
+  briefText: string
+): DoorPortion[] {
+  const doorHeights = new Set<number>();
+  for (const snippet of splitDoorSetSnippets(briefText)) {
+    if (briefClauseIsWallOpeningOnly(snippet)) continue;
+    if (!snippetHasDoorSignal(snippet) && splitDoorSetSnippets(briefText).length > 1) {
+      continue;
+    }
+    const height = dimensionsFromSnippet(snippet).height;
+    if (height != null) doorHeights.add(height);
+  }
+  return portions.map((portion) => {
+    if (portion.height_mm == null || portion.height_authority !== "extracted") {
+      return portion;
+    }
+    if (doorHeights.has(portion.height_mm)) return portion;
+    const copied = sentencesOf(briefText).some((sentence) => {
+      const stated = statedHeightMm(sentence);
+      if (stated !== portion.height_mm) return false;
+      const index = sentence.search(/\d{3,4}\s*mm\s+(?:high|height)|\d+(?:\.\d+)?\s*m\s+(?:high|height)/i);
+      return index >= 0 && !heightMeasurementBelongsToDoor(sentence, index);
+    });
+    if (!copied) return portion;
+    return {
+      ...portion,
+      height_mm: DOORS_HEIGHT_DISCLOSED_DEFAULT_MM,
+      height_authority: "assumed_disclosed",
+    };
+  });
+}
+
+function sentencesOf(text: string): string[] {
+  const parts = text
+    .split(/(?<=[.!?])\s+/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [text.trim()];
 }
 
 function firstPresent<T>(explicit: T, fallback: T): T {
