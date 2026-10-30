@@ -19,6 +19,7 @@ import {
 import { nextInternalWallsFinishField } from "../lib/estimate/internal-walls-finish";
 import { parseInternalWallsJobScope } from "../lib/estimate/internal-walls-scope";
 import {
+  applyInternalWallsFactWrite,
   nextInternalWallsWallTypeField,
   resolveInternalWallsWallTypes,
   wallTypeFieldCurrentValue,
@@ -360,10 +361,83 @@ function assertExcludedCase(name: string, expected: CaseExpect, output: AIExtrac
   check(`${name} painting answer is No`, current.painting === "No", current);
   check(`${name} skirting answer is No`, current.skirting === "No", current);
   check(`${name} electrical answer is No`, current.electrical === "No", current);
+  const wallId = idsFor(output).internal_walls ?? "internal_walls";
+  const persisted = estimateFacts(output);
+  const cleared = persisted.map((row) => {
+    if (row.key !== "internal_walls.wall_types" || !row.value || typeof row.value !== "object") {
+      return row;
+    }
+    const value = row.value as { types?: Array<Record<string, unknown>> };
+    return {
+      ...row,
+      value: {
+        ...value,
+        types: (value.types ?? []).map((type) => ({
+          ...type,
+          painting: null,
+          skirting: null,
+          electrical: null,
+        })),
+      },
+    };
+  });
+  const written = applyInternalWallsFactWrite({
+    facts: cleared,
+    workAreaId: wallId,
+    key: "internal_walls.wall_type.frame_system",
+    value: "timber",
+  });
+  const afterWrite = resolveInternalWallsWallTypes({
+    facts: written,
+    workAreaId: wallId,
+  }).types[0];
+  const nextAfterWrite = nextInternalWallsWallTypeField({
+    type: afterWrite ?? null,
+    jobScope: parseInternalWallsJobScope(
+      written.find((row) => row.key === "internal_walls.job_scope")?.value
+    ),
+  });
+  check(
+    `${name} a later wall answer keeps painting excluded`,
+    wallTypeFieldCurrentValue(afterWrite ?? null, INTERNAL_WALLS_PAINTING_SIDES_KEY) === "No",
+    afterWrite?.painting
+  );
+  check(
+    `${name} a later wall answer keeps skirting excluded`,
+    wallTypeFieldCurrentValue(afterWrite ?? null, INTERNAL_WALLS_SKIRTING_SIDES_KEY) === "No",
+    afterWrite?.skirting
+  );
+  check(
+    `${name} a later wall answer keeps electrical excluded`,
+    wallTypeFieldCurrentValue(afterWrite ?? null, INTERNAL_WALLS_ELECTRICAL_KEY) === "No",
+    afterWrite?.electrical
+  );
+  check(
+    `${name} excluded finishes do not become the next question`,
+    nextAfterWrite == null || !ASKED.includes(nextAfterWrite),
+    nextAfterWrite
+  );
+  if (/stop the plasterboard/i.test(expected.brief)) {
+    const stopping = persisted.find((row) => row.key === "internal_walls.stopping_included")?.value;
+    check(`${name} stopping stays requested`, stopping === true, stopping);
+    check(
+      `${name} stopping level stays open`,
+      afterWrite?.stopping_side_a == null && afterWrite?.stopping_side_b == null,
+      afterWrite
+    );
+    check(
+      `${name} card keeps stopping unresolved`,
+      cards.confirm.some((row) => row.includes("Stopping requested")),
+      cards.confirm
+    );
+  }
   const charges = chargeText(output);
   check(`${name} quantities omit painting`, !charges.includes("paint"), charges);
   check(`${name} quantities omit skirting`, !charges.includes("skirt"), charges);
   check(`${name} quantities omit electrical`, !charges.includes("electric"), charges);
+  if (/stop the plasterboard/i.test(expected.brief)) {
+    check(`${name} quantities omit stopping`, !/stopp/i.test(charges), charges);
+  }
   const pricing = explicitJobExclusionLines(output.facts);
   for (const label of expected.pricing) {
     check(`${name} pricing keeps ${label}`, pricing.some((line) => line.includes(label)), pricing);

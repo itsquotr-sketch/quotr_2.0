@@ -1387,6 +1387,49 @@ export function legacyWallTypeFromFlatFacts(params: {
   return type;
 }
 
+/**
+ * An explicit exclusion fact answers the wall-type field when that field is
+ * still blank. A later chosen side or tier is left alone, so the control
+ * stays editable without asking for another No.
+ */
+export function withExplicitFinishExclusions(
+  type: InternalWallsWallType,
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): InternalWallsWallType {
+  const paintingExcluded =
+    getBooleanFact(facts as EstimateFact[], workAreaId, "internal_walls.painting_included") ===
+    false;
+  const skirtingExcluded =
+    getBooleanFact(facts as EstimateFact[], workAreaId, "internal_walls.skirtings_included") ===
+    false;
+  const coverage = getStringFact(
+    facts as EstimateFact[],
+    workAreaId,
+    "internal_walls.coverage_note"
+  );
+  const electricalExcluded = Boolean(
+    coverage && /excluded trades:[^.]*\belectrical\b/i.test(coverage)
+  );
+  if (
+    (!paintingExcluded || type.painting != null) &&
+    (!skirtingExcluded || type.skirting != null) &&
+    (!electricalExcluded || type.electrical != null)
+  ) {
+    return type;
+  }
+  return {
+    ...type,
+    side_a: cloneFace(type.side_a),
+    side_b: cloneFace(type.side_b),
+    openings: type.openings.map((row) => cloneOpening(row)),
+    painting: type.painting == null && paintingExcluded ? "none" : type.painting,
+    skirting: type.skirting == null && skirtingExcluded ? "none" : type.skirting,
+    electrical:
+      type.electrical == null && electricalExcluded ? "none" : type.electrical,
+  };
+}
+
 export function storedInternalWallsWallTypes(
   facts: readonly EstimateFact[],
   workAreaId: string
@@ -1430,13 +1473,16 @@ export function resolveInternalWallsWallTypes(params: {
 } {
   const stored = storedInternalWallsWallTypes(params.facts, params.workAreaId);
   if (stored.length > 0) {
+    const types = stored.map((type) =>
+      withExplicitFinishExclusions(type, params.facts, params.workAreaId)
+    );
     return {
-      types: stored,
+      types,
       source: "canonical",
       activeId: resolveInternalWallsActiveWallTypeId(
         params.facts,
         params.workAreaId,
-        stored
+        types
       ),
     };
   }
@@ -1703,9 +1749,16 @@ export function applyInternalWallsFactWrite(params: {
     });
   } else if (params.key.startsWith(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX)) {
     if (types.length === 0) {
-      const created = createEmptyWallType();
-      types = [created];
-      activeId = created.id;
+      const legacy = legacyWallTypeFromFlatFacts({
+        facts,
+        workAreaId: params.workAreaId,
+      });
+      const created = legacy
+        ? duplicateWallType(legacy)
+        : createEmptyWallType();
+      if (legacy) created.label = legacy.label;
+      types = [withExplicitFinishExclusions(created, facts, params.workAreaId)];
+      activeId = types[0]!.id;
     }
     const requested = params.wallTypeId?.trim() || null;
     const targetId =
@@ -2062,6 +2115,9 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
     });
+    types = types.map((type) =>
+      withExplicitFinishExclusions(type, facts, params.workAreaId)
+    );
   } else {
     return facts;
   }

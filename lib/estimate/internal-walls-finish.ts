@@ -956,6 +956,11 @@ export function visibleFaceAreaM2(params: {
   return insulationAreaForWallType(params);
 }
 
+/** Level question for stopping the brief already requested. No is still a deliberate edit. */
+export function requestedStoppingLevelQuestion(side: "A" | "B"): string {
+  return `What stopping level is required on Side ${side}?`;
+}
+
 export function stoppingTakeoff(params: {
   type: InternalWallsFinishHost;
   jobScope: InternalWallsJobScope | null;

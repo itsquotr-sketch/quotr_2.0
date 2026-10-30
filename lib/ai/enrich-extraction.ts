@@ -607,6 +607,16 @@ function inferInternalWalls(
     });
   }
 
+  const stoppingStance = internalWallsTopicStance(brief, "stopping");
+  if (stoppingStance === "included" || stoppingStance === "excluded") {
+    upsertFact(extraction, {
+      workAreaType: "internal_walls",
+      key: "internal_walls.stopping_included",
+      label: "Stopping",
+      value: stoppingStance === "included",
+    });
+  }
+
   const skirtingStance = internalWallsTopicStance(brief, "skirting");
   if (skirtingStance === "included" || skirtingStance === "excluded") {
     upsertFact(extraction, {

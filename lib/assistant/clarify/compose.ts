@@ -132,9 +132,12 @@ import {
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   corniceProductOptionsForType,
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
+  requestedStoppingLevelQuestion,
 } from "@/lib/estimate/internal-walls-finish";
 import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
@@ -1626,6 +1629,10 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         const displayName = type
           ? wallTypeDisplayName(type, index)
           : "Wall type";
+        const stoppingRequested =
+          (nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
+            nextField === INTERNAL_WALLS_STOPPING_SIDE_B_KEY) &&
+          getBooleanFact(facts, wa.id, "internal_walls.stopping_included") === true;
         out.push({
           id: internalWallsClarifyId(
             "fact",
@@ -1642,13 +1649,18 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           constraintKey: null,
           questionKey: nextField,
           label: `${displayName} · ${safeFactPresentationLabel(nextField)}`,
-          question: internalWallsUnresolvedCopy(
-            displayName,
-            nextField,
-            safeFactQuestion(nextField, template?.questionText)
-          ),
-          askClass:
-            nextField === "internal_walls.wall_type.height_m"
+          question: stoppingRequested
+            ? requestedStoppingLevelQuestion(
+                nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
+              )
+            : internalWallsUnresolvedCopy(
+                displayName,
+                nextField,
+                safeFactQuestion(nextField, template?.questionText)
+              ),
+          askClass: stoppingRequested
+            ? "ASSUME_IF_SKIPPED"
+            : nextField === "internal_walls.wall_type.height_m"
               ? "ASSUME_IF_SKIPPED"
               : isOptionalInternalWallsClarifyKey(nextField)
                 ? "REFINEMENT"
@@ -1667,8 +1679,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           write: null,
           blocksEstimate: false,
           assumable:
-            nextField === "internal_walls.wall_type.height_m" ||
-            isOptionalInternalWallsClarifyKey(nextField),
+            !stoppingRequested &&
+            (nextField === "internal_walls.wall_type.height_m" ||
+              isOptionalInternalWallsClarifyKey(nextField)),
           rankScore: (CHECK_SCORES[nextField] ?? 70) - index,
           rankReason: "Progressive wall type configuration",
           assumptionStatement:

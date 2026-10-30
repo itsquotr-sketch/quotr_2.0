@@ -198,21 +198,40 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
         excludedScopeItem(id, `${id}-trade-${trade}`, label, "internal_walls.coverage_note")
       );
     }
-    const notConfirmed: JobPlanScopeItem[] = coverage.unresolved
-      ? [
-          {
-            id: `${id}-coverage-note`,
-            workAreaId: id,
-            label: coverage.unresolved,
-            presentation: "NOT_CONFIRMED",
-            kind: "specification",
-            togglable: false,
-            write: null,
-            sourceFactKey: "internal_walls.coverage_note",
-            surfaceReason: "Requested work has no priced recipe",
-          },
-        ]
-      : [];
+    const stoppingRequested =
+      jobPlanBoolean(context.facts, id, "internal_walls.stopping_included") === true;
+    const stoppingLevelOpen =
+      stoppingRequested &&
+      resolved.types.some(
+        (type) => type.stopping_side_a == null || type.stopping_side_b == null
+      );
+    const notConfirmed: JobPlanScopeItem[] = [];
+    if (coverage.unresolved) {
+      notConfirmed.push({
+        id: `${id}-coverage-note`,
+        workAreaId: id,
+        label: coverage.unresolved,
+        presentation: "NOT_CONFIRMED",
+        kind: "specification",
+        togglable: false,
+        write: null,
+        sourceFactKey: "internal_walls.coverage_note",
+        surfaceReason: "Requested work has no priced recipe",
+      });
+    }
+    if (stoppingLevelOpen) {
+      notConfirmed.push({
+        id: `${id}-stopping-level`,
+        workAreaId: id,
+        label: "Stopping requested; level not set",
+        presentation: "NOT_CONFIRMED",
+        kind: "specification",
+        togglable: false,
+        write: null,
+        sourceFactKey: null,
+        surfaceReason: "The brief requests stopping and does not state a level",
+      });
+    }
 
     return {
       workAreaId: id,

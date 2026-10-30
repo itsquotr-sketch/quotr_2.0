@@ -1,4 +1,4 @@
-import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import { getBooleanFact, hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import { INTERNAL_WALLS_OPENINGS_QUESTION } from "@/lib/estimate/requested-task-coverage";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
@@ -56,6 +56,7 @@ import {
   faceEligibleForStopping,
   insulationAsksForScope,
   internalWallsPaintingOptions,
+  requestedStoppingLevelQuestion,
 } from "@/lib/estimate/internal-walls-finish";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -806,6 +807,8 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         );
       }
 
+    const stoppingRequested =
+      getBooleanFact(asFacts, workAreaId, "internal_walls.stopping_included") === true;
     if (jobScope !== "form_opening") {
       if (faceEligibleForStopping(active?.side_a)) {
         out.push(
@@ -814,7 +817,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
             label: "Stopping — Side A",
-            question: "Include stopping to Side A?",
+            question: stoppingRequested
+              ? requestedStoppingLevelQuestion("A")
+              : "Include stopping to Side A?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
             currentValue: wallTypeFieldCurrentValue(
@@ -832,7 +837,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
             label: "Stopping — Side B",
-            question: "Include stopping to Side B?",
+            question: stoppingRequested
+              ? requestedStoppingLevelQuestion("B")
+              : "Include stopping to Side B?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
             currentValue: wallTypeFieldCurrentValue(
