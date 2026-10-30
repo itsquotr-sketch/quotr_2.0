@@ -280,10 +280,18 @@ export function recognisePreliminaries(brief: string): PreliminariesPlan {
     if (row) items.push(row);
   };
   if (/\bsite establishment\b/.test(text)) add("site_establishment");
-  if (/\bprotection of common areas\b|\bcommon-area protection\b|\bcommon area protection\b/.test(text)) {
+  if (
+    /\bprotection of common areas\b|\bcommon-area protection\b|\bcommon area protection\b/.test(text) ||
+    /\bcommon areas?\b[^.]*\bprotect/.test(text) ||
+    /\bprotect(?:ion|ed|ing)?\b[^.]*\bcommon areas?\b/.test(text)
+  ) {
     add("common_area_protection");
   }
-  if (/\bdaily cleaning\b|\bdaily cleanup\b|\bclean up daily\b|\bclean up each day\b/.test(text)) {
+  if (
+    /\bdaily cleaning\b|\bdaily cleanup\b|\bclean up daily\b|\bclean up each day\b/.test(text) ||
+    /\bclean\b[^.]*\bend of (?:each|every) (?:working )?day\b/.test(text) ||
+    /\bend of (?:each|every) (?:working )?day\b[^.]*\bclean/.test(text)
+  ) {
     add("daily_cleaning");
   }
   if (/\bfinal cleaning\b/.test(text)) add("final_cleaning");

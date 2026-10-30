@@ -267,6 +267,11 @@ export function PreliminariesSection({
                 {item.provisional ? "Provisional. " : ""}
                 {quote.formula}
               </p>
+              {quote.sourceLabel === "Entered amount" ? (
+                <p className="mt-1 text-sm text-foreground" data-preliminary-source>
+                  {item.provisional ? "Entered amount · provisional" : "Entered amount"}
+                </p>
+              ) : null}
             </article>
           );
         })}

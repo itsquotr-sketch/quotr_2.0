@@ -17,6 +17,7 @@ import {
   planFromFacts,
   preliminaryLabourRate,
   PRELIMINARIES_FACT_KEY,
+  quotePreliminary,
   recognisePreliminaries,
   type PreliminaryItem,
   type PreliminariesPlan,
@@ -555,6 +556,64 @@ check(
     different.items.length === 4 &&
     (different.reviews ?? []).length === 0
 );
+const paraphrased = planFromDescriptions([
+  {
+    role: "project",
+    text: "The job includes daily cleaning. Also include protection of common areas.",
+  },
+  {
+    role: "trade",
+    text: "Clean the work area at the end of each working day. Keep the common areas protected while the walls are open.",
+  },
+]);
+check(
+  "a paraphrase of the same cleaning or protection is still one charge",
+  paraphrased.items.filter((row) => row.id === "daily_cleaning").length === 1 &&
+    paraphrased.items.filter((row) => row.id === "common_area_protection").length === 1 &&
+    paraphrased.items.length === 2 &&
+    (paraphrased.reviews ?? []).length === 0
+);
+const paraphrasedPriced = calculatePreliminaries(
+  {
+    facts: [
+      {
+        key: PRELIMINARIES_FACT_KEY,
+        work_area_id: null,
+        value: {
+          items: paraphrased.items.map((row) =>
+            row.id === "daily_cleaning"
+              ? { ...row, treatment: "included", basis: "occurrences", occurrences: 10, occurrenceUnit: "day", unitCost: 80 }
+              : { ...row, treatment: "included", basis: "fixed", fixedCost: 200 }
+          ),
+          deliveryWindow: null,
+        },
+      },
+    ],
+    organisationSettings: null,
+    rates: [carpenter],
+    briefText: "The job includes daily cleaning. Also include protection of common areas.",
+    confirmedWorkAreas: [
+      {
+        ...area,
+        id: "paint",
+        type: "painting",
+        name: "Painting",
+        quoteDescription:
+          "Clean the work area at the end of each working day. Keep the common areas protected while the walls are open.",
+      },
+    ],
+  },
+  area
+);
+check(
+  "a paraphrased repeat is not charged a second time",
+  paraphrasedPriced.lineItems.filter((line) => line.label === "Daily cleaning").length === 1 &&
+    paraphrasedPriced.lineItems.filter((line) => line.label === "Common-area protection").length === 1 &&
+    paraphrasedPriced.lineItems.filter((line) => line.includedInTotal !== false).length === 2 &&
+    paraphrasedPriced.lineItems
+      .filter((line) => line.includedInTotal !== false)
+      .reduce((sum, line) => sum + line.recommendedCost, 0) === 1000
+);
 const uncertain = planFromDescriptions([
   { role: "project", text: "We need daily cleaning and protection of common areas." },
   {
@@ -661,9 +720,23 @@ const overridePreview = preliminaryLabourRate({
   rates: [carpenter],
   settings: null,
 });
+const overrideQuote = quotePreliminary(
+  item("supervision", {
+    treatment: "included",
+    basis: "labour_hours",
+    hours: 8,
+    role: "carpenter",
+    hourlyCostOverride: 90,
+  }),
+  [carpenter],
+  null
+);
 check(
   "an explicit project hourly cost replaces the company rate and names its source",
-  overridePreview?.hourlyCost === 90 && overridePreview.sourceLabel === "Project hourly cost"
+  overridePreview?.hourlyCost === 90 &&
+    overridePreview.sourceLabel === "Project hourly cost" &&
+    overrideQuote.sourceLabel === "Project hourly cost" &&
+    overrideQuote.formula.includes("Project hourly cost")
 );
 const overridden = run({
   items: [
@@ -813,6 +886,11 @@ check(
   takeoffRow
 );
 
+const fixedQuote = quotePreliminary(
+  item("site_establishment", { treatment: "included", basis: "fixed", fixedCost: 1000 }),
+  [carpenter],
+  null
+);
 const enteredNotes = buildLineItemNotes(establishment!);
 const enteredPricing: PricingItem = {
   ...pricing,
@@ -825,8 +903,10 @@ const enteredPricing: PricingItem = {
   notes_internal: enteredNotes,
 };
 check(
-  "an entered amount stays an entered amount in Pricing",
-  presentPricingLine(enteredPricing).source === "Entered amount" &&
+  "a fixed entered amount stays Entered amount through capture, Estimate and Pricing",
+  fixedQuote.sourceLabel === "Entered amount" &&
+    establishment?.rateSource === "Entered amount" &&
+    presentPricingLine(enteredPricing).source === "Entered amount" &&
     buildPricingCalculationDetails(enteredPricing)?.rows.some(
       (row) => row.label === "Rate source" && row.value === "Entered amount"
     ) === true
