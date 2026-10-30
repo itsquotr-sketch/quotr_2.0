@@ -152,6 +152,45 @@ Untouched generated rows take the current source visibility only through Update 
 
 `scripts/verify-pricing-draft-reconciliation.ts` covers the visibility-only $0 difference, visible-to-hidden and hidden-to-visible, an edited generated row, a manual no-charge row, an explicit visibility override, a legacy row without identity, a repeated update, and issued-snapshot immutability. `scripts/verify-bathroom-scope-preservation.ts` covers the quote projection and the readiness block. Both passed. Typecheck passed. The guarded webpack build exited 0 and refused the production database.
 
+## Project preliminaries
+
+Quote visibility stays the accepted slice above. This section is project-wide preliminaries. Behavior `358f5574bd58`. Preview alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app, target none. Production remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` / `bc0a76674229`. No quote was sent. Pricing was not marked reviewed. No schema change.
+
+Preliminaries are one project fact and one Preliminaries work area, created only when items are saved or an estimate is generated. They are not a percentage and they are not copied into each trade. Provisional is a flag on the item, separate from requested, included, or excluded. A requested or unresolved item stays out of the total and off the customer quote. It is not an exclusion and it is not a free included line.
+
+Supported bases, using the existing sell convention (company margin; 20% on this organisation, so sell is cost / 0.8):
+
+- Fixed cost. A single amount is a combined allowance, not materials and not labour. Materials and labour are split only when both parts are entered.
+- Labour hours times a company role rate, or an explicit project hourly cost. A Quotr benchmark does not price this.
+- Days or occurrences times an entered unit cost.
+- Recurring labour: occurrences times hours per occurrence times the hourly cost.
+
+No duration, visit count, or benchmark amount is invented. “Clean up daily” recognises the item and leaves the number of days empty.
+
+Before this slice, the office brief left site establishment, daily cleaning, final cleaning, and supervision inside the walls coverage note, and the bathroom brief left stair protection and daily cleaning as bathroom coverage. Common-area protection and deliveries were in the office brief and were not even in that note. After this slice those names are one project item each. Duration still not confirmed, and goods-lift access, stay on the walls note. Booked delivery windows are a restriction, not a delivery charge. Occupied-site labour is not payment for protection, supervision, or daily cleaning.
+
+Office job `c2b4e96f-56c2-4559-a8e5-cfad8acfa1ce`, brief length 627. The details gate needed existing-workflow answers before Create estimate. Those answers do not price painting, lining, insulation labour, floor preparation, common-area protection, or final cleaning. The job stays Incomplete.
+
+Independent check at carpenter $75/h, then the hosted estimate:
+
+- Site establishment, fixed $1,000. Cost $1,000, sell $1,250. Combined amount. Source on the estimate: Entered amount.
+- Daily cleaning, 10 days × $80. Cost $800, sell $1,000. Formula `10 day × $80.00/day.`
+- Supervision, 8 h × $75. Cost $600, sell $750. Company rate. Labour takeoff shows 8.00 hrs, $75/h, Your rate, labour cost $600. The occupied +5% on carpet installation is not applied to these hours.
+- Deliveries, provisional fixed $500. Cost $500, sell $625, and it stays in the total. Source: Entered amount · provisional.
+- Common-area protection and final cleaning stay requested. Pricing required, not in the total, hidden from the quote, coverage unresolved.
+
+Priced preliminaries direct cost $2,900 and 8.00 hours. Preliminaries client sell $3,625. Whole-job known cost $12,994 and known sell $16,242 are priced work only. Eight lines still need prices. Two requested tasks have no line. Scope summary: included site establishment, daily cleaning, and supervision; provisional deliveries; requested and not yet priced common-area protection and final cleaning. Client exclusions name electrical, structural, plumbing, and fire-system work. They do not exclude the unpriced preliminaries.
+
+Saving 12 days, then an explicit Regenerate, moved known cost to $13,154 and known sell to $16,442. That is +$160 cost and +$200 sell, which is 2 × $80 and 2 × $100. Preview changes listed one item to update: Daily cleaning $1,000 to $1,200, difference +$200. The other 18 rows were unchanged, including the $0 unresolved rows. Update final pricing applied that one change. Preliminaries client sell became $3,825. Review and Create quote stayed disabled. No quote was created.
+
+Bathroom job `80a4b84a-1bde-43af-bb7b-69f9cbb46d8f` used the original bathroom brief. Analysis shows one Daily cleaning and one Stair protection under Preliminaries, both unresolved, and neither is a bathroom line. “Clean up daily” did not become one day. Partial wall lining, ancillary materials, and waterproofing stay to confirm. Waterproofing was not answered. Plumbing and electrical stay excluded. No estimate was forced, and the job is not complete.
+
+A 390×844 reload of that capture kept the document at 390 px with no horizontal overflow. Scope, pricing-basis, and provisional controls are 44 px or taller and sit inside the width.
+
+`scripts/verify-preliminaries.ts` checks the same money, an unknown duration, a shared protection identity, a later duration change classified as will update, a manual edit left in place, and an issued snapshot blocked from reconciliation. Stage 2A briefs, stage 3D, bathroom scope preservation, and pricing-draft reconciliation passed. Typecheck passed. The guarded webpack build compiled 50 pages and refused the production database.
+
+Limits that remain. The capture form calculates labour without the saved company rates, so supervision says a company rate is still required until generate; the estimate uses the $75 carpenter rate. The labour takeoff role for supervision says Not specified. A pricing row for an entered amount says Default allowance, while the estimate breakdown says Entered amount. The internal rate type for an entered amount is still the existing default type. Overlap is by exact requirement identity, and a genuine overlap stays unresolved until it is acknowledged. A delivery window without a delivery-service item is stored and shown in capture, and it does not by itself create the Preliminaries work area.
+
 ## Original briefs
 
 Test answers below were supplied in the session. They are not facts extracted from the brief unless the note says the brief stated them. Company carpenter cost on this organisation was already $75/h. Laminate underlay $8/m² and laminate waste $40/m² were already company rates. No new benchmark was invented.
