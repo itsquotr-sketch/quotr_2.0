@@ -1,0 +1,77 @@
+{
+  "variation": {
+    "brief": "Non-loadbearing timber stud wall, 2400 mm high by 6 m long. One standard internal door opening. Both faces in standard plasterboard, with the cavity insulated. Supply the door, jamb, hinges and handle. Stop the plasterboard ready to paint. Painting, electrical and skirting are excluded. Access is on the ground floor.",
+    "painting": "excluded",
+    "skirting": "excluded",
+    "electrical": "excluded",
+    "doorPainting": "excluded",
+    "wallHeightM": 2.4,
+    "wallLengthLm": 6,
+    "doorHeightMm": 1980,
+    "doorHeightAuthority": "assumed_disclosed",
+    "paintingWorkArea": false,
+    "cardExcluded": ["Painting excluded", "Skirting excluded", "Electrical excluded", "Door painting excluded"],
+    "cardMustNotInclude": ["Painting included; coverage not specified"],
+    "cardMustNotConfirm": ["Excluded trades"],
+    "pricing": ["Painting", "Skirting", "Electrical"],
+    "pricingMustNotInclude": ["Painting to the new walls"]
+  },
+  "original": {
+    "brief": "Build one non-loadbearing internal timber partition, 6m long and 2.4m high, with one opening for a standard internal door. Line both sides with standard plasterboard and insulate the wall cavity. Include the door, jamb, hinges and handle. Stop the plasterboard ready for painting, but exclude painting, electrical work and skirting. Ground-floor access.",
+    "painting": "excluded",
+    "skirting": "excluded",
+    "electrical": "excluded",
+    "doorPainting": "excluded",
+    "wallHeightM": 2.4,
+    "wallLengthLm": 6,
+    "doorHeightMm": 1980,
+    "paintingWorkArea": false,
+    "cardExcluded": ["Painting excluded", "Skirting excluded", "Electrical excluded"],
+    "pricing": ["Painting", "Skirting", "Electrical"]
+  },
+  "shorthand": {
+    "brief": "Stud wall 6 m by 2.4 m, plasterboard both sides, one standard door with jamb and handle. Painting, electrical and skirting stay out. Ground floor.",
+    "painting": "excluded",
+    "skirting": "excluded",
+    "electrical": "excluded",
+    "doorPainting": "excluded",
+    "paintingWorkArea": false,
+    "cardExcluded": ["Painting excluded", "Skirting excluded", "Electrical excluded"],
+    "pricing": ["Painting", "Skirting", "Electrical"]
+  },
+  "mixed": {
+    "brief": "Non-loadbearing internal timber stud wall, 6 m long and 2.4 m high, lined both sides with plasterboard. Painting, electrical and skirting on the partition are excluded. Paint the existing bedroom ceiling, 12 m² total.",
+    "painting": "excluded",
+    "skirting": "excluded",
+    "electrical": "excluded",
+    "paintingWorkArea": true,
+    "paintingAreaM2": 12,
+    "paintingLineQuantity": 12,
+    "pricingIncludes": ["Painting to the new walls", "Skirting", "Electrical"],
+    "pricingMustNotInclude": ["Excluded from this job: Painting"]
+  },
+  "unmentioned": {
+    "brief": "Non-loadbearing timber stud wall, 6 m long and 2.4 m high. Line both sides with plasterboard and insulate the cavity. One door opening. Supply the door, jamb and handle. Ground floor.",
+    "painting": "unknown",
+    "skirting": "unknown",
+    "electrical": "unknown",
+    "doorPainting": "unknown",
+    "paintingWorkArea": false,
+    "cardMustNotInclude": ["Painting excluded", "Skirting excluded", "Electrical excluded", "Door painting excluded", "Painting included; coverage not specified"],
+    "pricingMustNotInclude": ["Painting", "Skirting", "Electrical"]
+  },
+  "contradiction": {
+    "brief": "Paint both sides of the new partition. Painting is excluded.",
+    "painting": "contradiction",
+    "warning": "The brief both includes and excludes painting on the partition. That conflict is left for review."
+  },
+  "userDecision": {
+    "existingSource": "user",
+    "existingValue": true,
+    "extractedValue": false,
+    "action": "keep"
+  },
+  "existingDraft": {
+    "lines": ["Client kept this exclusion."]
+  }
+}

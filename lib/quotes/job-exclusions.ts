@@ -52,19 +52,38 @@ const DECK_CLIENT_EXCLUSIONS: Record<string, string> = {
   "deck.painting_included": "Painting",
 };
 
+function hasIndependentPaintingScope(
+  facts: readonly { key: string; value: unknown }[]
+): boolean {
+  return facts.some((fact) => {
+    if (fact.key.startsWith("painting.") && fact.value != null && fact.value !== false) {
+      return true;
+    }
+    return fact.key === "ceilings.painting_included" && fact.value === true;
+  });
+}
+
 export function explicitJobExclusionLines(
   facts: readonly { key: string; value: unknown }[]
 ): string[] {
   const lines: string[] = [];
+  const paintingLabel = hasIndependentPaintingScope(facts)
+    ? "Painting to the new walls"
+    : "Painting";
   for (const fact of facts) {
     if (fact.key === "internal_walls.wall_types") {
       const types = parseInternalWallsWallTypes(wallTypeValue(fact.value));
-      if (types.some((row) => row.painting === "none")) addLine(lines, "Painting");
+      if (types.some((row) => row.painting === "none")) addLine(lines, paintingLabel);
       if (types.some((row) => row.skirting === "none")) addLine(lines, "Skirting");
       if (types.some((row) => row.electrical === "none")) addLine(lines, "Electrical");
     }
     if (fact.key === "internal_walls.painting_included" && isExplicitFalse(fact.value)) {
-      addLine(lines, "Painting");
+      addLine(lines, paintingLabel);
+    }
+    if (fact.key === "doors.painting_included" && isExplicitFalse(fact.value)) {
+      if (!lines.some((line) => line.toLowerCase().includes("painting"))) {
+        addLine(lines, "Door painting");
+      }
     }
     if (fact.key === "internal_walls.skirtings_included" && isExplicitFalse(fact.value)) {
       addLine(lines, "Skirting");

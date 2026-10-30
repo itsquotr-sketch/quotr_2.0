@@ -27,6 +27,7 @@ import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-
 import {
   applyExtractedInternalWallsToFacts,
   classifyInternalWallsJobScopeFromBrief,
+  doorPaintingStance,
   extractInternalWallsTypesFromBrief,
   internalWallsTopicStance,
   stripInventedInternalWallsFacts,
@@ -40,6 +41,7 @@ import {
   briefHasIndependentDoors,
   briefHasIndependentFlooring,
   briefHasIndependentKitchen,
+  briefHasIndependentPainting,
   briefFlooringOwnsConnectedRemoval,
   briefHasStandaloneDemolitionPackage,
   filterTopLevelWorkAreas,
@@ -332,7 +334,7 @@ function inferPainting(
     "two coats",
     "2 coats",
   ];
-  if (!includesAny(brief, patterns)) return;
+  if (!briefHasIndependentPainting(brief) && !includesAny(brief, patterns)) return;
 
   addWorkAreaIfMissing(
     extraction,
@@ -596,7 +598,7 @@ function inferInternalWalls(
   }
 
   const paintingStance = internalWallsTopicStance(brief, "painting");
-  if (paintingStance) {
+  if (paintingStance === "included" || paintingStance === "excluded") {
     upsertFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.painting_included",
@@ -605,20 +607,18 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["skirting"])) {
-    addFact(extraction, {
+  const skirtingStance = internalWallsTopicStance(brief, "skirting");
+  if (skirtingStance === "included" || skirtingStance === "excluded") {
+    upsertFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.skirtings_included",
       label: "Skirtings",
-      value: internalWallsTopicStance(brief, "skirting") !== "excluded",
+      value: skirtingStance === "included",
     });
     const skirtingLength = brief.match(
       /(\d+(?:\.\d+)?)\s*(?:linear\s+)?m(?:etre)?s?\s+of\s+skirting\b/i
     );
-    if (
-      skirtingLength &&
-      internalWallsTopicStance(brief, "skirting") !== "excluded"
-    ) {
+    if (skirtingLength && skirtingStance === "included") {
       addFact(extraction, {
         workAreaType: "internal_walls",
         key: "internal_walls.skirting_length_lm",
@@ -769,6 +769,24 @@ function inferDoors(
   if (portions.length > 0) {
     seedExtractedDoorsFact(extraction, { portions });
     stripLegacyDoorFactsFromExtraction(extraction);
+  }
+  const hasDoorScope =
+    portions.length > 0 ||
+    extraction.workAreas.some((area) => area.type === "doors");
+  if (hasDoorScope) {
+    const doorPaint = doorPaintingStance(brief);
+    if (doorPaint === "included" || doorPaint === "excluded") {
+      upsertFact(extraction, {
+        workAreaType: "doors",
+        key: "doors.painting_included",
+        label: "Door painting",
+        value: doorPaint === "included",
+      });
+    } else if (doorPaint === "contradiction") {
+      const message =
+        "The brief both includes and excludes door painting. That conflict is left for review.";
+      if (!extraction.warnings.includes(message)) extraction.warnings.push(message);
+    }
   }
 }
 
@@ -2418,12 +2436,20 @@ function recordRequestedCoverageGaps(
   if (/\bgoods lift\b/.test(brief)) hits.push("goods-lift access");
   const excludedTrades: string[] = [];
   for (const sentence of brief.split(/(?<=[.!?])\s+/)) {
-    if (!/\b(?:no|without|exclud\w*)\b/.test(sentence)) continue;
+    if (!/\b(?:no|without|exclud\w*|stay out|stays out|left out|are out|is out|not included|not part of|by others)\b/.test(sentence)) {
+      continue;
+    }
     for (const trade of ["structural", "plumbing", "fire", "electrical"] as const) {
       if (sentence.includes(trade) && !excludedTrades.includes(trade)) {
         excludedTrades.push(trade);
       }
     }
+  }
+  if (
+    internalWallsTopicStance(brief, "electrical") === "excluded" &&
+    !excludedTrades.includes("electrical")
+  ) {
+    excludedTrades.push("electrical");
   }
   const projectLevel = new Set([
     "site establishment",

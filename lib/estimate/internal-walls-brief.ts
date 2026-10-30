@@ -6,6 +6,10 @@
 
 import type { AIExtractionOutput } from "@/lib/ai/schema";
 import type { EstimateFact } from "@/lib/estimate/types";
+import {
+  sentenceTopicSignals,
+  withoutFinishReadinessPhrases,
+} from "@/lib/estimate/scope-intent";
 import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import {
   applyInternalWallsFactWrite,
@@ -279,28 +283,65 @@ function topicPattern(
 }
 
 function briefForFinishStance(briefText: string): string {
-  return normalise(briefText).replace(/\bready for painting\b/g, " ");
+  return withoutFinishReadinessPhrases(normalise(briefText));
+}
+
+export type FinishTopicStance = "included" | "excluded" | "contradiction" | null;
+
+function withoutLocationFloors(sentence: string): string {
+  return sentence
+    .replace(/\b(?:ground|first|second|upper|lower) floors?\b/g, " ")
+    .replace(/\bfloor levels?\b/g, " ");
+}
+
+function namesOtherFinishAssembly(sentence: string): boolean {
+  return /\b(ceilings?|deck(?:ing)?|flooring|laminate|vinyl|carpet|roofs?|floors?)\b/.test(
+    withoutLocationFloors(sentence)
+  );
+}
+
+function namesWallSubject(sentence: string): boolean {
+  return /\b(walls?|partitions?|studs?|plasterboard|linings?|gib)\b/.test(sentence);
+}
+
+function namesDoorLeaf(sentence: string): boolean {
+  return /\bdoors?\b/.test(sentence.replace(/\bdoor openings?\b/g, " "));
+}
+
+/** Ceiling, deck and floor sentences do not decide the partition. A bare door sentence does not either. */
+function sentenceCountsForWallFinish(sentence: string): boolean {
+  const other = namesOtherFinishAssembly(sentence);
+  const wall = namesWallSubject(sentence);
+  const door = namesDoorLeaf(sentence);
+  if (other && !wall) return false;
+  if (door && !wall && !other) return false;
+  return true;
+}
+
+function sentenceCountsForDoorPainting(sentence: string): boolean {
+  const other = namesOtherFinishAssembly(sentence);
+  const wall = namesWallSubject(sentence);
+  const door = namesDoorLeaf(sentence);
+  if (door) return true;
+  if (other || wall) return false;
+  return true;
+}
+
+function finishSentences(briefText: string): string[] {
+  const brief = briefForFinishStance(briefText);
+  const sentences = brief.split(/(?<=[.!?])\s+/).filter(Boolean);
+  return sentences.length > 0 ? sentences : [brief];
 }
 
 export function internalWallsTopicStance(
   briefText: string,
   topic: "painting" | "skirting" | "insulation" | "stopping" | "electrical"
-): "included" | "excluded" | null {
-  const brief = briefForFinishStance(briefText);
+): FinishTopicStance {
   const pattern = topicPattern(topic);
-  const sentences = brief.split(/(?<=[.!?])\s+/).filter(Boolean);
   let included = false;
   let excluded = false;
-  for (const sentence of sentences.length > 0 ? sentences : [brief]) {
-    const exclusion = sentence.match(
-      /\b(excluded|excluding|exclude|without|no)\b([\s\S]*)$/i
-    );
-    const word = exclusion?.[1]?.toLowerCase() ?? "";
-    const tail = exclusion?.[2] ?? "";
-    const head = exclusion
-      ? sentence.slice(0, exclusion.index ?? sentence.length)
-      : sentence;
-    const topicsBeforeNegation = word === "excluded";
+  for (const sentence of finishSentences(briefText)) {
+    if (!sentenceCountsForWallFinish(sentence)) continue;
     if (topic === "stopping") {
       const stopsLining =
         /\bstopping\b/.test(sentence) ||
@@ -309,22 +350,51 @@ export function internalWallsTopicStance(
     } else if (!pattern.test(sentence)) {
       continue;
     }
-    if (topicsBeforeNegation) {
-      if (pattern.test(head)) excluded = true;
-      continue;
-    }
-    if (tail && pattern.test(tail)) excluded = true;
-    if (pattern.test(head) || (!exclusion && pattern.test(sentence))) {
-      if (topic === "stopping" && !/\bstop/.test(head) && !/\bstop/.test(sentence)) {
-        continue;
-      }
+    const signals = sentenceTopicSignals(sentence, pattern);
+    if (signals.excluded) excluded = true;
+    if (signals.included) {
+      if (topic === "stopping" && !/\bstop/.test(sentence)) continue;
       included = true;
     }
   }
-  if (excluded && !included) return "excluded";
-  if (included) return "included";
+  if (included && excluded) return "contradiction";
   if (excluded) return "excluded";
+  if (included) return "included";
   return null;
+}
+
+/**
+ * Door painting follows an explicit door sentence, otherwise an unqualified
+ * painting sentence. A ceiling or wall-only sentence does not decide the door.
+ * An exclusion of painting on the partition covers its door unless the door is
+ * explicitly included.
+ */
+export function doorPaintingStance(briefText: string): FinishTopicStance {
+  const pattern = topicPattern("painting");
+  let included = false;
+  let excluded = false;
+  for (const sentence of finishSentences(briefText)) {
+    if (!pattern.test(sentence)) continue;
+    if (!sentenceCountsForDoorPainting(sentence)) continue;
+    const signals = sentenceTopicSignals(sentence, pattern);
+    if (signals.excluded) excluded = true;
+    if (signals.included) included = true;
+  }
+  if (included && excluded) return "contradiction";
+  if (excluded) return "excluded";
+  if (included) return "included";
+  if (internalWallsTopicStance(briefText, "painting") === "excluded") {
+    return "excluded";
+  }
+  return null;
+}
+
+function notePartitionFinishConflict(
+  extraction: AIExtractionOutput,
+  topic: string
+): void {
+  const message = `The brief both includes and excludes ${topic} on the partition. That conflict is left for review.`;
+  if (!extraction.warnings.includes(message)) extraction.warnings.push(message);
 }
 
 function parseHeightM(text: string): number | null {
@@ -425,7 +495,7 @@ function insulationTypeFromBrief(
 function finishSideFromBrief(
   briefText: string,
   topic: "skirting" | "painting",
-  stance: "included" | "excluded" | null
+  stance: FinishTopicStance
 ): "none" | "both" | null {
   if (stance === "excluded") return "none";
   if (stance === "included" && explicitFinishBothSides(briefText, topic)) {
@@ -450,7 +520,10 @@ function withBriefFinish(
     doorOpeningCount: type.doorOpeningCount ?? openings.doorOpeningCount,
     insulationIncluded:
       insulation === "included" ? true : insulation === "excluded" ? false : null,
-    insulationType: insulationTypeFromBrief(brief, insulation),
+    insulationType: insulationTypeFromBrief(
+      brief,
+      insulation === "contradiction" ? null : insulation
+    ),
     skirting: finishSideFromBrief(briefText, "skirting", skirting),
     painting: finishSideFromBrief(briefText, "painting", painting),
     stoppingRequested:
@@ -1273,9 +1346,12 @@ export function stripInventedInternalWallsFacts(
           next.active_opening_id = null;
         }
         const insulationStance = internalWallsTopicStance(briefText, "insulation");
-        if (insulationStance == null) {
+        if (insulationStance === "contradiction" || insulationStance == null) {
           next.insulation_included = null;
           next.insulation_type = null;
+          if (insulationStance === "contradiction") {
+            notePartitionFinishConflict(extraction, "insulation");
+          }
         } else if (insulationStance === "excluded") {
           next.insulation_included = false;
           next.insulation_type = null;
@@ -1284,11 +1360,17 @@ export function stripInventedInternalWallsFacts(
         }
         const skirtingStance = internalWallsTopicStance(briefText, "skirting");
         if (skirtingStance === "excluded") next.skirting = "none";
-        else if (skirtingStance == null) next.skirting = null;
-        else if (
+        else if (skirtingStance === "contradiction" || skirtingStance == null) {
+          next.skirting = null;
+          if (skirtingStance === "contradiction") {
+            notePartitionFinishConflict(extraction, "skirting");
+          }
+        } else if (
           next.skirting === "both" &&
           !explicitFinishBothSides(briefText, "skirting")
         ) {
+          next.skirting = null;
+        } else if (next.skirting === "none") {
           next.skirting = null;
         }
         if (!includesAny(normalise(briefText), ["cornice", "cove", "scotia"])) {
@@ -1308,9 +1390,18 @@ export function stripInventedInternalWallsFacts(
         ) {
           next.cornice_product = null;
         }
-        if (internalWallsTopicStance(briefText, "electrical") === "excluded") {
+        const electricalStance = internalWallsTopicStance(briefText, "electrical");
+        if (electricalStance === "excluded") {
           next.electrical = "none";
-        } else if (!includesAny(normalise(briefText), ["electrical", "power point"])) {
+        } else if (electricalStance === "contradiction") {
+          next.electrical = null;
+          notePartitionFinishConflict(extraction, "electrical");
+        } else if (
+          electricalStance == null &&
+          !includesAny(normalise(briefText), ["electrical", "power point"])
+        ) {
+          next.electrical = null;
+        } else if (electricalStance === "included" && next.electrical === "none") {
           next.electrical = null;
         }
         const stoppingStance = internalWallsTopicStance(briefText, "stopping");
@@ -1318,19 +1409,29 @@ export function stripInventedInternalWallsFacts(
           next.stopping_side_a = "none";
           next.stopping_side_b = "none";
         } else if (
+          stoppingStance === "contradiction" ||
           stoppingStance == null ||
           !includesAny(normalise(briefText), ["level 4", "level 5"])
         ) {
           next.stopping_side_a = null;
           next.stopping_side_b = null;
+          if (stoppingStance === "contradiction") {
+            notePartitionFinishConflict(extraction, "stopping");
+          }
         }
         const paintingStance = internalWallsTopicStance(briefText, "painting");
         if (paintingStance === "excluded") next.painting = "none";
-        else if (paintingStance == null) next.painting = null;
-        else if (
+        else if (paintingStance === "contradiction" || paintingStance == null) {
+          next.painting = null;
+          if (paintingStance === "contradiction") {
+            notePartitionFinishConflict(extraction, "painting");
+          }
+        } else if (
           next.painting === "both" &&
           !explicitFinishBothSides(briefText, "painting")
         ) {
+          next.painting = null;
+        } else if (next.painting === "none") {
           next.painting = null;
         }
         return next;
@@ -1339,16 +1440,27 @@ export function stripInventedInternalWallsFacts(
     }
     if (fact.key === "internal_walls.skirtings_included") {
       const stance = internalWallsTopicStance(briefText, "skirting");
+      if (stance === "contradiction" || stance == null) return false;
       if (stance === "excluded") fact.value = false;
-      if (stance == null) return false;
     }
     if (fact.key === "internal_walls.painting_included") {
       const stance = internalWallsTopicStance(briefText, "painting");
+      if (stance === "contradiction" || stance == null) return false;
       if (stance === "excluded") fact.value = false;
-      if (stance == null) return false;
     }
     return !optionalInternalWallsFactIsInvented(fact.key, briefText);
   });
+  for (const topic of [
+    "painting",
+    "skirting",
+    "electrical",
+    "insulation",
+    "stopping",
+  ] as const) {
+    if (internalWallsTopicStance(briefText, topic) === "contradiction") {
+      notePartitionFinishConflict(extraction, topic);
+    }
+  }
 }
 
 /**

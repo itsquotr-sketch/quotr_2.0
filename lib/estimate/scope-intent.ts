@@ -37,7 +37,54 @@ const TOPIC_PATTERN: Record<ScopeTopic, RegExp> = {
 };
 
 const EXCLUSION_LEAD =
-  /\b(do not include|don't include|do not|don't|not including|excluding|exclude|excluded|without|no)\b/i
+  /\b(do not include|don't include|not included|not including|not part of|by others|stay out|stays out|left out|are out|is out|excluding|exclude|excluded|without|no|do not|don't)\b/i;
+
+/** Topic words that sit before the exclusion phrase: "painting is excluded", "skirting stays out". */
+const TOPIC_BEFORE_EXCLUSION = new Set([
+  "excluded",
+  "stay out",
+  "stays out",
+  "left out",
+  "are out",
+  "is out",
+  "not included",
+  "not part of",
+  "by others",
+]);
+
+/**
+ * Readiness is not a request to paint. "Stop the plasterboard ready to paint"
+ * and "ready for painting" stay stopping or preparation language.
+ */
+export function withoutFinishReadinessPhrases(sentence: string): string {
+  return sentence
+    .replace(/\bready for painting\b/g, " ")
+    .replace(/\bready for paint\b/g, " ")
+    .replace(/\bready to paint\b/g, " ")
+    .replace(/\bready to be painted\b/g, " ")
+    .replace(/\bso (?:they|it|the walls?) can be painted(?: later)?\b/g, " ")
+    .replace(/\bcan be painted later\b/g, " ")
+    .replace(/\bpainted later\b/g, " ");
+}
+
+export function sentenceTopicSignals(
+  sentence: string,
+  pattern: RegExp
+): { included: boolean; excluded: boolean } {
+  const lead = sentence.match(EXCLUSION_LEAD);
+  if (lead?.index == null) {
+    return { included: pattern.test(sentence), excluded: false };
+  }
+  const word = lead[1]?.toLowerCase() ?? "";
+  const head = sentence.slice(0, lead.index);
+  const tail = sentence.slice(lead.index + word.length);
+  const topicBefore = TOPIC_BEFORE_EXCLUSION.has(word);
+  const excluded = topicBefore
+    ? pattern.test(head) || pattern.test(tail)
+    : pattern.test(tail);
+  const included = !topicBefore && pattern.test(head);
+  return { included, excluded };
+}
 
 const PILE_MENTION = /\b(piles?|posts?)\b/i;
 const PILE_CONDITIONAL =
@@ -59,9 +106,30 @@ function sentences(text: string): string[] {
 }
 
 function sentenceForTopic(sentence: string): string {
-  return sentence
-    .replace(/\bready for painting\b/g, " ")
-    .replace(/\bdemolition waste\b/g, " waste");
+  return withoutFinishReadinessPhrases(sentence).replace(
+    /\bdemolition waste\b/g,
+    " waste"
+  );
+}
+
+/** A sentence that includes painting on a ceiling, floor, or deck is not partition painting. */
+export function briefPaintsSeparateAssembly(briefText: string): boolean {
+  const parts = normalise(briefText)
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const sentences = parts.length > 0 ? parts : [normalise(briefText)];
+  for (const raw of sentences) {
+    const sentence = withoutFinishReadinessPhrases(raw)
+      .replace(/\b(?:ground|first|second|upper|lower) floors?\b/g, " ")
+      .replace(/\bfloor levels?\b/g, " ");
+    if (!/\b(ceilings?|deck(?:ing)?|flooring|laminate|vinyl|carpet|roofs?|floors?)\b/.test(sentence)) {
+      continue;
+    }
+    const signals = sentenceTopicSignals(sentence, /\bpaint/);
+    if (signals.included && !signals.excluded) return true;
+  }
+  return false;
 }
 
 export function scopeTopicPolarity(
@@ -74,24 +142,9 @@ export function scopeTopicPolarity(
   for (const raw of sentences(briefText)) {
     const sentence = sentenceForTopic(raw);
     if (!pattern.test(sentence)) continue;
-    const lead = sentence.match(EXCLUSION_LEAD);
-    if (lead?.index != null) {
-      const word = lead[1]?.toLowerCase() ?? "";
-      const head = sentence.slice(0, lead.index);
-      const tail = sentence.slice(lead.index + word.length);
-      if (word === "excluded") {
-        if (pattern.test(head)) excluded = true;
-      } else if (pattern.test(tail)) {
-        excluded = true;
-      }
-      if (word !== "excluded" && pattern.test(head)) included = true;
-      continue;
-    }
-    if (/\b(not included|not part of|by others)\b/.test(sentence)) {
-      excluded = true;
-      continue;
-    }
-    included = true;
+    const signals = sentenceTopicSignals(sentence, pattern);
+    if (signals.excluded) excluded = true;
+    if (signals.included) included = true;
   }
   if (included && excluded) return "contradiction";
   if (excluded) return "excluded";

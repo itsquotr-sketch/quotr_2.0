@@ -6,6 +6,8 @@
  * Not a database model. Deterministic brief + proposed-type contract.
  */
 
+import { briefPaintsSeparateAssembly } from "@/lib/estimate/scope-intent";
+
 export const WORK_AREA_OWNERSHIP_CLASS = {
   EXPLICIT: "EXPLICIT",
   EMBEDDED: "EMBEDDED",
@@ -125,6 +127,7 @@ function clauseIsBathroomPackageFloor(clause: string, briefText: string): boolea
 export function briefHasIndependentPainting(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
   if (bathroomOwnsNestedPaint(brief)) return false;
+  if (briefPaintsSeparateAssembly(brief)) return true;
   return includesAny(brief, [
     "paint the whole house",
     "paint the house",

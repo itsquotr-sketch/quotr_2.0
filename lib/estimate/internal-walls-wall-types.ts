@@ -13,6 +13,7 @@
  */
 
 import {
+  getBooleanFact,
   getFact,
   getNumberFact,
   getStringFact,
@@ -1362,6 +1363,26 @@ export function legacyWallTypeFromFlatFacts(params: {
     if (both) {
       type.side_b = cloneFace(type.side_a);
     }
+  }
+  if (
+    getBooleanFact(params.facts as EstimateFact[], params.workAreaId, "internal_walls.painting_included") ===
+    false
+  ) {
+    type.painting = "none";
+  }
+  if (
+    getBooleanFact(params.facts as EstimateFact[], params.workAreaId, "internal_walls.skirtings_included") ===
+    false
+  ) {
+    type.skirting = "none";
+  }
+  const coverage = getStringFact(
+    params.facts as EstimateFact[],
+    params.workAreaId,
+    "internal_walls.coverage_note"
+  );
+  if (coverage && /excluded trades:[^.]*\belectrical\b/i.test(coverage)) {
+    type.electrical = "none";
   }
   return type;
 }

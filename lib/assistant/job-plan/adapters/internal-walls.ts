@@ -15,6 +15,47 @@ import type {
 } from "@/lib/assistant/job-plan/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 
+const EXCLUDED_TRADE_LABELS: Record<string, string> = {
+  electrical: "Electrical excluded",
+  structural: "Structural work excluded",
+  plumbing: "Plumbing excluded",
+  fire: "Fire-system work excluded",
+};
+
+function excludedScopeItem(
+  workAreaId: string,
+  id: string,
+  label: string,
+  sourceFactKey: string
+): JobPlanScopeItem {
+  return {
+    id,
+    workAreaId,
+    label,
+    presentation: "NOT_INCLUDED",
+    kind: "specification",
+    togglable: false,
+    write: null,
+    sourceFactKey,
+    surfaceReason: "The brief excludes this work",
+  };
+}
+
+function splitCoverageNote(note: string): { unresolved: string | null; trades: string[] } {
+  const trades =
+    note
+      .match(/Excluded trades:\s*([^.]+)/i)?.[1]
+      ?.split(",")
+      .map((part) => part.trim().toLowerCase())
+      .filter(Boolean) ?? [];
+  const unresolved = note
+    .replace(/\s*Excluded trades:\s*[^.]+(\.)?/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[,.\s]+|[,.\s]+$/g, "");
+  return { unresolved: unresolved.length > 0 ? unresolved : null, trades };
+}
+
 export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
   workAreaType: "internal_walls",
   project(workArea: JobPlanWorkAreaInput, context: JobPlanAdapterContext): JobPlanWorkAreaCard {
@@ -110,13 +151,59 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       });
     }
 
-    const coverageNote = jobPlanString(context.facts, id, "internal_walls.coverage_note");
-    const notConfirmed: JobPlanScopeItem[] = coverageNote
+    const coverage = splitCoverageNote(
+      jobPlanString(context.facts, id, "internal_walls.coverage_note") ?? ""
+    );
+    const notIncluded: JobPlanScopeItem[] = [];
+    const paintingExcluded =
+      !paintingKnown &&
+      (jobPlanBoolean(context.facts, id, "internal_walls.painting_included") === false ||
+        (resolved.types.length > 0 &&
+          resolved.types.every((type) => type.painting === "none")));
+    if (paintingExcluded) {
+      notIncluded.push(
+        excludedScopeItem(id, `${id}-painting-excluded`, "Painting excluded", "internal_walls.painting_included")
+      );
+    }
+    const skirtingExcluded =
+      !skirtingKnown &&
+      (jobPlanBoolean(context.facts, id, "internal_walls.skirtings_included") === false ||
+        (resolved.types.length > 0 &&
+          resolved.types.every((type) => type.skirting === "none")));
+    if (skirtingExcluded) {
+      notIncluded.push(
+        excludedScopeItem(id, `${id}-skirting-excluded`, "Skirting excluded", "internal_walls.skirtings_included")
+      );
+    }
+    const electricalKnown = resolved.types.some(
+      (type) => type.electrical != null && type.electrical !== "none"
+    );
+    const electricalExcluded =
+      !electricalKnown &&
+      ((resolved.types.length > 0 &&
+        resolved.types.every((type) => type.electrical === "none")) ||
+        coverage.trades.includes("electrical"));
+    if (electricalExcluded) {
+      notIncluded.push(
+        excludedScopeItem(id, `${id}-electrical-excluded`, "Electrical excluded", "internal_walls.coverage_note")
+      );
+    }
+    for (const trade of coverage.trades) {
+      if (trade === "electrical" && electricalExcluded) continue;
+      if (trade === "painting" && paintingExcluded) continue;
+      if (trade === "skirting" && skirtingExcluded) continue;
+      const label = EXCLUDED_TRADE_LABELS[trade] ?? `${trade} excluded`;
+      if (notIncluded.some((item) => item.label === label)) continue;
+      notIncluded.push(
+        excludedScopeItem(id, `${id}-trade-${trade}`, label, "internal_walls.coverage_note")
+      );
+    }
+    const notConfirmed: JobPlanScopeItem[] = coverage.unresolved
       ? [
           {
             id: `${id}-coverage-note`,
             workAreaId: id,
-            label: coverageNote,
+            label: coverage.unresolved,
             presentation: "NOT_CONFIRMED",
             kind: "specification",
             togglable: false,
@@ -135,7 +222,7 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       summary: knownSentences.join(" ") || workArea.name,
       specChips: chips,
       included,
-      notIncluded: [],
+      notIncluded,
       notConfirmed,
       confirmCount: notConfirmed.length,
     };
