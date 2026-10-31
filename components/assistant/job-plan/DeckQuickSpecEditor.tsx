@@ -18,7 +18,7 @@ export type QuickSpecFactWrite = (input: {
   value: string | number;
   valueType: "number" | "select" | "text";
   nestedItemId?: string | null;
-}) => void;
+}) => void | Promise<unknown>;
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (

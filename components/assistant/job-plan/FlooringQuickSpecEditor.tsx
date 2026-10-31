@@ -56,7 +56,7 @@ export function FlooringQuickSpecEditor({
         const writeMeasure = (
           key: "flooring.portion.length_m" | "flooring.portion.width_m" | "flooring.portion.area_m2",
           value: number
-        ) => {
+        ) =>
           onSpecFact?.({
             workAreaId,
             key,
@@ -65,7 +65,6 @@ export function FlooringQuickSpecEditor({
             valueType: "number",
             nestedItemId: portion.id,
           });
-        };
 
         return (
           <Group
@@ -161,21 +160,27 @@ export function FlooringQuickSpecEditor({
                 const length = Number(lengthInput?.value);
                 const width = Number(widthInput?.value);
                 const area = Number(areaInput?.value);
-                if (Number.isFinite(length) && length > 0) {
-                  writeMeasure("flooring.portion.length_m", length);
-                }
-                if (Number.isFinite(width) && width > 0) {
-                  writeMeasure("flooring.portion.width_m", width);
-                }
                 const measured = flooringMeasuredAreaM2({
                   length_m: Number.isFinite(length) && length > 0 ? length : portion.length_m,
                   width_m: Number.isFinite(width) && width > 0 ? width : portion.width_m,
                 });
                 const nextArea =
                   Number.isFinite(area) && area > 0 ? area : measured;
-                if (nextArea != null) {
-                  writeMeasure("flooring.portion.area_m2", nextArea);
-                }
+                void (async () => {
+                  if (Number.isFinite(width) && width > 0) {
+                    await writeMeasure("flooring.portion.width_m", width);
+                  }
+                  if (nextArea != null) {
+                    await writeMeasure("flooring.portion.area_m2", nextArea);
+                  }
+                  if (
+                    Number.isFinite(length) &&
+                    length > 0 &&
+                    length !== portion.length_m
+                  ) {
+                    await writeMeasure("flooring.portion.length_m", length);
+                  }
+                })();
               }}
             >
               Save room size
