@@ -1634,6 +1634,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           stoppingField &&
           getBooleanFact(facts, wa.id, "internal_walls.stopping_included") === true;
         const stoppingInclusionUnanswered = stoppingField && !stoppingRequested;
+        const openingsUnanswered =
+          nextField === "internal_walls.wall_type.has_openings";
         out.push({
           id: internalWallsClarifyId(
             "fact",
@@ -1659,13 +1661,14 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
                 nextField,
                 safeFactQuestion(nextField, template?.questionText)
               ),
-          askClass: stoppingRequested || stoppingInclusionUnanswered
-            ? "ASSUME_IF_SKIPPED"
-            : nextField === "internal_walls.wall_type.height_m"
+          askClass:
+            stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
               ? "ASSUME_IF_SKIPPED"
-              : isOptionalInternalWallsClarifyKey(nextField)
-                ? "REFINEMENT"
-                : "ASK_NOW",
+              : nextField === "internal_walls.wall_type.height_m"
+                ? "ASSUME_IF_SKIPPED"
+                : isOptionalInternalWallsClarifyKey(nextField)
+                  ? "REFINEMENT"
+                  : "ASK_NOW",
           inputType: clarifyInputTypeFromTemplate(template),
           unit: template?.unit,
           options:
@@ -1682,6 +1685,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           assumable:
             !stoppingRequested &&
             !stoppingInclusionUnanswered &&
+            !openingsUnanswered &&
             (nextField === "internal_walls.wall_type.height_m" ||
               isOptionalInternalWallsClarifyKey(nextField)),
           rankScore: (CHECK_SCORES[nextField] ?? 70) - index,

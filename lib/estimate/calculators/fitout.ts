@@ -83,6 +83,7 @@ import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
   isMatureInternalWallsPath,
+  INTERNAL_WALLS_OPENINGS_UNRESOLVED,
   INTERNAL_WALLS_SCOPE_UNRESOLVED,
   parseInternalWallsJobScope,
   parseInternalWallsStructuralInvolvement,
@@ -315,6 +316,9 @@ function calculateInternalWallsMature(
     };
   }
   assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  if (resolved.types.some((type) => type.has_openings == null)) {
+    missingInfo.push(INTERNAL_WALLS_OPENINGS_UNRESOLVED);
+  }
   const workAreaSummary = summariseInternalWallsWorkArea(resolved.types);
   if (workAreaSummary) {
     assumptions.push(workAreaSummary);
