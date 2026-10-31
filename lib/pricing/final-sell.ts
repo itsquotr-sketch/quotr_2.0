@@ -29,6 +29,20 @@ export function sellsMatchRecommended(
   return Math.abs(currentSell - recommendedSell) <= epsilon;
 }
 
+/** The price card follows the stored document sell. A typed value is not an override until it is saved. */
+export function pricingDecisionSelection(input: {
+  readonly storedSell: number;
+  readonly recommendedSell: number | null;
+}): { readonly mode: "recommended" | "own"; readonly field: string } {
+  const usingRecommended =
+    sellsMatchRecommended(input.storedSell, input.recommendedSell) ||
+    input.recommendedSell == null;
+  return {
+    mode: usingRecommended ? "recommended" : "own",
+    field: input.storedSell.toFixed(2),
+  };
+}
+
 /** Display-only expected gross margin from stored cost and a candidate sell. */
 export function presentExpectedGrossMarginPercent(
   estimatedCost: number,

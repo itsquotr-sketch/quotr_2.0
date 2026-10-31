@@ -8,6 +8,7 @@ import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import {
   presentExpectedGrossMarginPercent,
+  pricingDecisionSelection,
   sellsMatchRecommended,
 } from "@/lib/pricing/final-sell";
 import {
@@ -44,12 +45,18 @@ export function PricingDecisionCard({
     document.subtotal_sell,
     recommendedSell
   );
-  const [mode, setMode] = useState<"recommended" | "own">(
-    usingRecommended || recommendedSell == null ? "recommended" : "own"
-  );
-  const [ownPrice, setOwnPrice] = useState(
-    String(document.subtotal_sell.toFixed(2))
-  );
+  const selection = pricingDecisionSelection({
+    storedSell: document.subtotal_sell,
+    recommendedSell,
+  });
+  const [mode, setMode] = useState<"recommended" | "own">(selection.mode);
+  const [ownPrice, setOwnPrice] = useState(selection.field);
+  const [trackedStoredSell, setTrackedStoredSell] = useState(selection.field);
+  if (trackedStoredSell !== selection.field) {
+    setTrackedStoredSell(selection.field);
+    setOwnPrice(selection.field);
+    setMode(selection.mode);
+  }
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 

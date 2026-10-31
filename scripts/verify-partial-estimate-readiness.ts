@@ -37,6 +37,12 @@ import {
 } from "../lib/assistant/presentation/estimate-issues";
 import { formatLabourAdjustmentPrimary } from "../lib/estimate/builder-presentation-format";
 import {
+  allocateFinalSell,
+  presentExpectedGrossMarginPercent,
+  pricingDecisionSelection,
+  roundMoneyCents,
+} from "../lib/pricing/final-sell";
+import {
   clientPriceBasis,
   clientPriceCopy,
 } from "../lib/pricing/incomplete-price-label";
@@ -474,6 +480,58 @@ check(
 check(
   "an entered price stays identified",
   entered.heading === "Entered price" && entered.totalLabel === "Entered price"
+);
+const matchedRecommendation = pricingDecisionSelection({
+  storedSell: 2653.13,
+  recommendedSell: 2653.13,
+});
+const storedDivergence = pricingDecisionSelection({
+  storedSell: 2625,
+  recommendedSell: 2653.13,
+});
+const afterStoredUpdate = pricingDecisionSelection({
+  storedSell: 2653.13,
+  recommendedSell: 2653.13,
+});
+const marginOnUnsavedEarlierSell = presentExpectedGrossMarginPercent(2122.5, 2625);
+const allocatedOverride = allocateFinalSell(
+  [
+    { id: "a", total_sell: 1650, total_cost: 1320, cost_known: true },
+    { id: "b", total_sell: 300, total_cost: 240, cost_known: true },
+    { id: "c", total_sell: 112.5, total_cost: 90, cost_known: true },
+    { id: "d", total_sell: 590.63, total_cost: 472.5, cost_known: true },
+  ],
+  2625
+);
+const allocatedSum = allocatedOverride.ok
+  ? roundMoneyCents(
+      allocatedOverride.allocations.reduce((sum, row) => sum + row.totalSell, 0)
+    )
+  : null;
+check(
+  "a stored sell that matches the recommendation is not an override",
+  matchedRecommendation.mode === "recommended" &&
+    matchedRecommendation.field === "2653.13"
+);
+check(
+  "a stored sell that differs from the recommendation stays the entered amount",
+  storedDivergence.mode === "own" && storedDivergence.field === "2625.00"
+);
+check(
+  "the price field follows the stored sell after the document updates",
+  afterStoredUpdate.mode === "recommended" && afterStoredUpdate.field === "2653.13"
+);
+check(
+  "an applied final price keeps its allocated total",
+  allocatedSum === 2625 &&
+    pricingDecisionSelection({ storedSell: 2625, recommendedSell: 2653.13 }).mode ===
+      "own"
+);
+check(
+  "the earlier 19.1 percent caption is the new cost against 2625, not a second stored total",
+  marginOnUnsavedEarlierSell.ok &&
+    marginOnUnsavedEarlierSell.marginPercent > 19.1 &&
+    marginOnUnsavedEarlierSell.marginPercent < 19.2
 );
 check(
   "a complete price can still be the final price",
