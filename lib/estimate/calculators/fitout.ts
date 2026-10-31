@@ -83,6 +83,7 @@ import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
   isMatureInternalWallsPath,
+  INTERNAL_WALLS_SCOPE_UNRESOLVED,
   parseInternalWallsJobScope,
   parseInternalWallsStructuralInvolvement,
   structuralBlocksEstimate,
@@ -302,9 +303,18 @@ function calculateInternalWallsMature(
     workAreaId: workArea.id,
   });
 
-  if (jobScope) {
-    assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  if (!jobScope) {
+    missingInfo.push(INTERNAL_WALLS_SCOPE_UNRESOLVED);
+    return {
+      lineItems: [],
+      assumptions,
+      missingInfo,
+      exclusions: [],
+      confidence: baseConfidence(missingInfo.length),
+      assumptionMetadata,
+    };
   }
+  assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
   const workAreaSummary = summariseInternalWallsWorkArea(resolved.types);
   if (workAreaSummary) {
     assumptions.push(workAreaSummary);
@@ -427,6 +437,23 @@ export function calculateInternalWalls(
   const { facts } = context;
   if (isMatureInternalWallsPath({ facts, workAreaId: workArea.id })) {
     return calculateInternalWallsMature(context, workArea);
+  }
+  const unresolvedScope = parseInternalWallsJobScope(
+    getStringFact(facts, workArea.id, INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
+  );
+  const hasLegacyMeasurement =
+    getNumberFact(facts, workArea.id, "internal_walls.length_lm") != null ||
+    getNumberFact(facts, workArea.id, "internal_walls.height_m") != null ||
+    getNumberFact(facts, workArea.id, "internal_walls.area_m2") != null;
+  if (!unresolvedScope && !hasLegacyMeasurement) {
+    return {
+      lineItems: [],
+      assumptions: [],
+      missingInfo: [INTERNAL_WALLS_SCOPE_UNRESOLVED],
+      exclusions: [],
+      confidence: baseConfidence(1),
+      assumptionMetadata: createAssumptionMetadata(),
+    };
   }
 
   const missingInfo: string[] = [];

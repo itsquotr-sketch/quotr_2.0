@@ -973,7 +973,10 @@ function missingHardMinimum(
           questionKey: row.key,
           label: safeFactPresentationLabel(row.key),
           question: safeFactQuestion(row.key, template?.questionText),
-          askClass: "HARD_MINIMUM",
+          askClass:
+            row.key === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY
+              ? "ASSUME_IF_SKIPPED"
+              : "HARD_MINIMUM",
           inputType: row.inputType,
           unit: template?.unit,
           options: template?.options,
@@ -984,10 +987,13 @@ function missingHardMinimum(
             : undefined,
           writeTarget: "FACT",
           write: null,
-          blocksEstimate: true,
+          blocksEstimate: row.key !== INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
           assumable: false,
           rankScore: row.rankScore,
-          rankReason: "HARD_MINIMUM internal walls core",
+          rankReason:
+            row.key === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY
+              ? "Internal wall scope stays unresolved"
+              : "HARD_MINIMUM internal walls core",
           assumptionStatement: null,
           wallTypeId: active?.id ?? null,
           openingId: active?.active_opening_id ?? active?.openings[0]?.id ?? null,

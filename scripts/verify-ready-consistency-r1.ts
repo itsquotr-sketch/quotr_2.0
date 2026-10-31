@@ -122,14 +122,54 @@ check(
     !/Details[\s\S]{0,200}Not sure/.test(shell)
 );
 
-console.log("\n=== Four authorities agree (not Ready) ===\n");
-const blocked = authorities(
+console.log("\n=== Unresolved wall scope does not block unrelated generation ===\n");
+const openWallScope = authorities(
   [
     { key: "site_access", value: "Easy" },
     { key: "material_carry_distance", value: "< 10m" },
   ],
   0,
   facts.filter((row) => row.key !== "internal_walls.job_scope")
+);
+const openWallQuestion = openWallScope.clarify.candidates.find(
+  (row) => row.factKey === "internal_walls.job_scope"
+);
+check(
+  "unresolved wall scope does not block generation",
+  openWallScope.clarify.remainingRequiredCount === 0 &&
+    openWallScope.panel.enoughToEstimate === true &&
+    openWallScope.estimate.ready === true &&
+    openWallScope.generate.ready === true
+);
+check(
+  "unresolved wall scope stays open and is not assumed",
+  openWallQuestion != null &&
+    !isInitialCaptureQuestion(openWallQuestion) &&
+    openWallQuestion.assumable === false &&
+    openWallQuestion.blocksEstimate === false
+);
+
+console.log("\n=== Confirmed wall scope still requires its measurements ===\n");
+const missingLength = facts.map((row) => {
+  if (row.key !== "internal_walls.wall_types" || !Array.isArray(row.value)) {
+    return row;
+  }
+  return {
+    ...row,
+    value: row.value.map((type) =>
+      type != null && typeof type === "object"
+        ? { ...type, length_lm: null }
+        : type
+    ),
+  };
+});
+const blocked = authorities(
+  [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+  ],
+  0,
+  missingLength
 );
 check("clarify remainingRequiredCount > 0", blocked.clarify.remainingRequiredCount > 0);
 check("panel enoughToEstimate false", blocked.panel.enoughToEstimate === false);

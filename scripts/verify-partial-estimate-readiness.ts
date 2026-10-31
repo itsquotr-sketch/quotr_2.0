@@ -8,6 +8,8 @@ import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
+import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import { INTERNAL_WALLS_SCOPE_UNRESOLVED } from "../lib/estimate/internal-walls-scope";
 import { provisionalLabourBasisSentences } from "../lib/estimate/condition-basis";
 import {
   deckDetailGaps,
@@ -364,6 +366,23 @@ check(
       /not a confirmed Easy answer/i.test(row)
     ) &&
     !bathroomEstimate.lineItems.some((item) => /waterproof/i.test(item.label))
+);
+
+const unresolvedWalls = calculateInternalWalls(
+  {
+    ...deckContext([]),
+    confirmedWorkAreas: [
+      { id: "w1", type: "internal_walls", name: "Internal walls", sort_order: 1 },
+    ],
+  } as EstimateContext,
+  { id: "w1", type: "internal_walls", name: "Internal walls", sort_order: 1 }
+);
+check(
+  "unresolved wall scope is withheld rather than assumed",
+  unresolvedWalls.lineItems.length === 0 &&
+    unresolvedWalls.missingInfo.includes(INTERNAL_WALLS_SCOPE_UNRESOLVED) &&
+    classifyReviewNotice(INTERNAL_WALLS_SCOPE_UNRESOLVED) === "scope_gap" &&
+    !unresolvedWalls.assumptions.some((row) => /20 m²/i.test(row))
 );
 
 console.log("\n=== Incomplete price ===\n");
