@@ -467,7 +467,8 @@ function candidateFromJobPlanCheck(
 
   const template = getQuestionTemplateByKey(key);
   const waterproofingOpen = key === "bathroom.waterproofing_included";
-  const askClass = waterproofingOpen
+  const openingsOpen = key === "internal_walls.wall_type.has_openings";
+  const askClass = waterproofingOpen || openingsOpen
     ? "ASSUME_IF_SKIPPED"
     : askClassForScopeKey(key);
   if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
@@ -503,10 +504,10 @@ function candidateFromJobPlanCheck(
     options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
     write: pilePending ? null : item.write,
-    blocksEstimate: waterproofingOpen
+    blocksEstimate: waterproofingOpen || openingsOpen
       ? false
       : askClass === "HARD_MINIMUM" || pilePending,
-    assumable: waterproofingOpen
+    assumable: waterproofingOpen || openingsOpen
       ? false
       : askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
