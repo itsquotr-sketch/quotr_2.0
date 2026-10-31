@@ -93,6 +93,7 @@ import {
   INTERNAL_WALLS_PAINTING_AREA_RULE,
   INTERNAL_WALLS_PAINTING_RATE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_CORNICE_OPENING_RULE,
+  INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED,
   INTERNAL_WALLS_SKIRTING_OPENING_RULE,
   INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_STOPPING_AREA_RULE,
@@ -1020,14 +1021,77 @@ export function buildInternalWallsFinishEnvelope(params: {
     }
   });
 
+  const skirtingIncluded = getBooleanFact(
+    context.facts,
+    workArea.id,
+    "internal_walls.skirtings_included"
+  );
+  const skirtingExcludedByFact = skirtingIncluded === false;
+  const skirtingSidesExcluded =
+    types.length > 0 && types.every((type) => type.skirting === "none");
+  if (
+    statedSkirtingLm != null &&
+    statedSkirtingLm > 0 &&
+    skirtingTypeCount === 0 &&
+    !skirtingExcludedByFact &&
+    !skirtingSidesExcluded
+  ) {
+    const host = types[0];
+    const displayName = host ? wallTypeDisplayName(host, 0) : "Skirting";
+    const quantity = round2(statedSkirtingLm);
+    const specification = `${presentFinishQty(quantity)} lm stated length. ${INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED}`;
+    assumptions.push(specification);
+    const overlap = "internal_walls.skirting.stated";
+    const wallTypeId = host?.id ?? workArea.id;
+    sortOrder = emitQtyMaterial({
+      workArea,
+      context,
+      wallTypeId,
+      variantKey: `${wallTypeId}:stated`,
+      overlapGroup: overlap,
+      componentKey: INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
+      materialKey: INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
+      category: "TRIM",
+      label: `${displayName} — skirting`,
+      specification,
+      identitySummary: specification,
+      quantity,
+      unit: "lm",
+      wasteFactor: 0,
+      unpricedNotes: `${specification}. ${INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE}`,
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+    sortOrder = emitQtyLabour({
+      workArea,
+      context,
+      accessFactor,
+      priceWithQuotr: true,
+      wallTypeId,
+      variantKey: `${wallTypeId}:stated`,
+      overlapGroup: overlap,
+      componentKey: INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
+      hoursKey: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+      label: `${displayName} — skirting labour`,
+      identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION}`,
+      notes: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+      quantity,
+      unit: "lm",
+      assumptionText: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+  }
+
   const paintingAsked =
     paintingIncluded ||
     types.some((type) => type.painting != null && type.painting !== "none");
   const skirtingAsked =
     (statedSkirtingLm != null && statedSkirtingLm > 0) ||
     types.some((type) => type.skirting != null && type.skirting !== "none");
-  const skirtingExcluded =
-    types.length > 0 && types.every((type) => type.skirting === "none");
+  const skirtingExcluded = skirtingExcludedByFact || skirtingSidesExcluded;
   if (!omit.omitPainting && paintingAsked && skirtingAsked && !skirtingExcluded) {
     const skirtingPaintLm =
       statedSkirtingLm != null && statedSkirtingLm > 0 ? statedSkirtingLm : null;

@@ -46,6 +46,7 @@ import {
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_PAINTING_COMPONENT,
   INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
+  INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
   INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
   INTERNAL_WALLS_STOPPING_COMPONENT,
   internalWallsLiningMaterialComponent,
@@ -446,6 +447,70 @@ const derivedSkirtLine = derivedSkirt.lineItems.find(
 check(
   "skirting with no stated length uses both face lengths",
   derivedSkirtLine?.quantity === 20 && derivedSkirtLine.unit === "lm"
+);
+const unallocatedSkirtFacts = [
+  ...fixtureBase(
+    finishExtras({
+      insulation: false,
+      skirting: false,
+      stopping: "No",
+      painting: "No",
+    }).filter((row) => row.key !== INTERNAL_WALLS_SKIRTING_SIDES_KEY),
+    { length: 24, height: 2.7, openings: false, bothSides: true }
+  ),
+  fact("internal_walls.skirting_length_lm", "w1", 45),
+  fact("internal_walls.skirtings_included", "w1", true),
+  fact("internal_walls.painting_included", "w1", true),
+];
+const unallocatedType = resolveInternalWallsWallTypes({
+  facts: unallocatedSkirtFacts,
+  workAreaId: "w1",
+}).types[0];
+const unallocatedSkirt = calculateInternalWalls(
+  ctx([walls], unallocatedSkirtFacts),
+  walls
+);
+const unallocatedMaterial = unallocatedSkirt.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT
+);
+const unallocatedLabour = unallocatedSkirt.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT
+);
+const unallocatedPaint = unallocatedSkirt.lineItems.filter(
+  (row) => row.label === "Skirting painting"
+);
+check(
+  "unallocated edges keep the stated 45 lm supply and installation",
+  unallocatedType?.skirting == null &&
+    unallocatedMaterial.length === 1 &&
+    unallocatedMaterial[0]?.quantity === 45 &&
+    unallocatedLabour.length === 1 &&
+    unallocatedLabour[0]?.labourHours === 4.5 &&
+    unallocatedPaint.length === 1 &&
+    unallocatedPaint[0]?.quantity === 45 &&
+    unallocatedSkirt.lineItems.every((row) => row.quantity !== 48) &&
+    unallocatedSkirt.assumptions.some((row) =>
+      row.includes("Edges are not allocated")
+    ) &&
+    !unallocatedSkirt.assumptions.some((row) => row.includes("48"))
+);
+const excludedSkirtFacts = [
+  ...fixtureBase(
+    finishExtras({ insulation: false, skirting: false, stopping: "No", painting: "No" }),
+    { length: 24, height: 2.7, openings: false, bothSides: true }
+  ),
+  fact("internal_walls.skirting_length_lm", "w1", 45),
+  fact("internal_walls.skirtings_included", "w1", false),
+];
+const excludedSkirt = calculateInternalWalls(ctx([walls], excludedSkirtFacts), walls);
+check(
+  "an explicit skirting exclusion does not restore the stated length",
+  !excludedSkirt.lineItems.some(
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT ||
+      row.componentKey === INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT ||
+      row.label === "Skirting painting"
+  )
 );
 
 console.log("\n--- Double-layer stopping ---\n");

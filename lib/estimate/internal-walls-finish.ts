@@ -258,6 +258,9 @@ export const INTERNAL_WALLS_SKIRTING_OPENING_RULE =
 export const INTERNAL_WALLS_SKIRTING_LENGTH_FACT_KEY =
   "internal_walls.skirting_length_lm" as const;
 
+export const INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED =
+  "Edges are not allocated, so face lengths are not derived and do not replace the stated length." as const;
+
 export const INTERNAL_WALLS_CORNICE_OPENING_RULE =
   "Ordinary door and passage openings below wall height do not reduce cornice. Full-height openings that reach wall height deduct width." as const;
 
