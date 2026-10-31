@@ -5,6 +5,7 @@ import {
   getQualityFactorNote,
 } from "@/lib/estimate/adjustments";
 import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
+import { provisionalLabourBasisSentences } from "@/lib/estimate/condition-basis";
 import {
   applyAllowanceMinimum,
   applyAllowanceMinimumToLineItem,
@@ -306,6 +307,7 @@ export function calculateBathroom(
   });
   const accessFactor = labourAdjustment;
   const labourParts = getLabourAdjustmentParts(context.constraints);
+  assumptions.push(...provisionalLabourBasisSentences(context.constraints));
   if (labourParts.occupiedAddend > 0) {
     const percent = Math.round(labourParts.occupiedAddend * 100);
     assumptions.push(

@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import {
   composeClarifyInputFromEstimateContext,
   evaluateClarifyEstimateReadiness,
@@ -205,8 +206,11 @@ check(
 check(
   "CTA does not stay on Saving… during generate",
   read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
-    "ASSISTANT_LOADING_COPY.estimateGenerate"
-  )
+    "createEstimateActionLabel"
+  ) &&
+    read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+      "generating: Boolean(isGenerating)"
+    )
 );
 
 console.log("\n=== Carry distance before Ready ===\n");
@@ -215,18 +219,21 @@ const missingCarry = composeInput(construction, [
   { key: "site_access", value: "Easy" },
 ]);
 const missingCarryReady = evaluateClarifyEstimateReadiness(missingCarry);
+const missingCarryView = composeClarifyView(missingCarry);
+const openCarry = missingCarryView.candidates.find(
+  (row) => row.constraintKey === "material_carry_distance"
+);
 check(
-  "carry unresolved is not Ready",
-  missingCarryReady.ready === false,
+  "unresolved carry does not block Ready",
+  missingCarryReady.ready === true,
   missingCarryReady.builderCopy ?? "missing"
 );
 check(
-  "unresolved copy is carry distance",
-  Boolean(
-    missingCarryReady.builderCopy &&
-      /drop-off|carry|carting/i.test(missingCarryReady.builderCopy)
-  ),
-  missingCarryReady.builderCopy ?? "missing"
+  "unresolved carry stays open and is not a short carry",
+  openCarry != null &&
+    !isInitialCaptureQuestion(openCarry) &&
+    openCarry.assumable === false,
+  openCarry?.question ?? "missing"
 );
 
 const withCarry = composeInput(construction);
@@ -296,13 +303,13 @@ check(
   generateReady.ready === clarifyReady.ready
 );
 check(
-  "stale persisted snapshot still rejects",
+  "unresolved carry does not reject generate",
   evaluateGenerateEstimatePermission({
     compose: missingCarry,
     workAreas: missingCarry.workAreas,
     facts: construction,
     unresolvedRequiredProjectConditionKeys: [],
-  }).ready === false
+  }).ready === true
 );
 
 console.log("\n=== Estimate / double-count ===\n");

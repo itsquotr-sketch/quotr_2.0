@@ -114,6 +114,9 @@ export function pileRetentionPending(params: {
 export const PILE_ALLOWANCE_COVERAGE_GAP =
   "The pile/post replacement allowance does not name work outside new support material, installation, excavation, concrete, or existing-deck removal. Its coverage is unresolved, so this is not a complete price.";
 
+export const DECK_SUPPORT_DESIGN_UNRESOLVED =
+  "Concrete footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";
+
 export const PILE_SUPPORTS_UNRESOLVED_PENDING =
   "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";
 

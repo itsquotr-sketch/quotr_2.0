@@ -18,6 +18,11 @@ import {
 import { PricingTaxBasisNotice } from "@/components/pricing/PricingTaxBasisNotice";
 import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import { formatPricingMoney } from "@/lib/pricing/format";
+import { sellsMatchRecommended } from "@/lib/pricing/final-sell";
+import {
+  clientPriceBasis,
+  clientPriceCopy,
+} from "@/lib/pricing/incomplete-price-label";
 import {
   presentClientSellForUnresolvedDocument,
   unresolvedManualPricingQuoteBlock,
@@ -45,6 +50,9 @@ type PricingSummaryPanelProps = {
   defaultGstRate?: number | null;
   estimateUpdateRequired?: string | null;
   onTaxBasisUpdated?: (document: PricingDocument) => void;
+  recommendedSell?: number | null;
+  scopeUnresolved?: boolean;
+  pricesUnresolved?: boolean;
 };
 
 function SummaryRow({
@@ -86,6 +94,9 @@ export function PricingSummaryPanel({
   gstRegistered,
   defaultGstRate = null,
   onTaxBasisUpdated,
+  recommendedSell = null,
+  scopeUnresolved = false,
+  pricesUnresolved = false,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document, items, gstRegistered);
@@ -124,6 +135,21 @@ export function PricingSummaryPanel({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
+  const priceCopy = clientPriceCopy(
+    clientPriceBasis({
+      scopeUnresolved: scopeUnresolved || Boolean(scopeQuoteBlock),
+      pricesUnresolved: pricesUnresolved || pricingRequiredCount > 0,
+      enteredOverride:
+        recommendedSell != null &&
+        !sellsMatchRecommended(document.subtotal_sell, recommendedSell),
+    })
+  );
+  const clientSellLabel =
+    priceCopy.totalLabel === "Your final price"
+      ? view.showGst || showOverrideGst
+        ? "Client sell ex GST"
+        : "Client sell"
+      : priceCopy.totalLabel;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
     || provisionalBlock
@@ -166,10 +192,15 @@ export function PricingSummaryPanel({
             onUpdated={onTaxBasisUpdated}
           />
           <SummaryRow
-            label={view.showGst || showOverrideGst ? "Client sell ex GST" : "Client sell"}
+            label={clientSellLabel}
             value={clientSellValue}
             prominent
           />
+          {priceCopy.totalLabel !== "Your final price" ? (
+            <p className="text-xs leading-4 text-foreground/75" data-pricing-incomplete-basis>
+              {priceCopy.detail}
+            </p>
+          ) : null}
           {compact && (view.showGst || showOverrideGst) ? (
             <SummaryRow
               label="Client sell incl GST"

@@ -173,6 +173,7 @@ import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
   deckDetailGapCopy,
+  deckDetailGapsBlockingForAreas,
   deckDetailGapsForAreas,
   deckPostHoleControlId,
   firstDeckDetailTarget,
@@ -2997,6 +2998,14 @@ export function AssistantShell({
       ),
     [displayWorkAreas, jobPlanFacts]
   );
+  const deckGenerationGaps = useMemo(
+    () =>
+      deckDetailGapsBlockingForAreas(
+        jobPlanFacts,
+        displayWorkAreas.map((area) => ({ id: area.id, type: area.type }))
+      ),
+    [displayWorkAreas, jobPlanFacts]
+  );
   const estimateReadiness = useMemo(() => {
     const base = composeEstimateReadiness({
       clarify: clarifyView,
@@ -3012,19 +3021,19 @@ export function AssistantShell({
     const postHoleCount = settledPostHoleAnswerCount({
       workConfirmed: isStageAtOrBeyond(stage, "quality"),
       workSavePending: pendingAction === "work_areas",
-      gaps: estimate ? [] : deckDetailGaps,
+      gaps: estimate ? [] : deckGenerationGaps,
     });
     if (postHoleCount === 0 || estimate) return base;
     return {
       ...base,
       canInitiateGenerate: false,
       enoughToEstimate: false,
-      blockerCopy: deckDetailGapCopy(deckDetailGaps),
-      checks: [...deckDetailGaps.map((gap) => gap.label), ...base.checks],
+      blockerCopy: deckDetailGapCopy(deckGenerationGaps),
+      checks: [...deckGenerationGaps.map((gap) => gap.label), ...base.checks],
     };
   }, [
     clarifyView,
-    deckDetailGaps,
+    deckGenerationGaps,
     estimate,
     pendingAction,
     pendingReadinessWrites,
@@ -3111,7 +3120,7 @@ export function AssistantShell({
   const postHoleCount = settledPostHoleAnswerCount({
     workConfirmed: workAreasConfirmed,
     workSavePending: pendingAction === "work_areas",
-    gaps: estimate ? [] : deckDetailGaps,
+    gaps: estimate ? [] : deckGenerationGaps,
   });
   const postHolesSettled =
     workAreasConfirmed && pendingAction !== "work_areas";

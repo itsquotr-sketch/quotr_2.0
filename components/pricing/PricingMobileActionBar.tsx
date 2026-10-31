@@ -14,6 +14,11 @@ import {
 } from "@/lib/estimate/ceilings-provisional-package";
 import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import { formatPricingMoney } from "@/lib/pricing/format";
+import { sellsMatchRecommended } from "@/lib/pricing/final-sell";
+import {
+  clientPriceBasis,
+  clientPriceCopy,
+} from "@/lib/pricing/incomplete-price-label";
 import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -46,6 +51,9 @@ type PricingMobileActionBarProps = {
   estimateUpdateRequired?: string | null;
   gstRegistered?: boolean | null;
   defaultGstRate?: number | null;
+  recommendedSell?: number | null;
+  scopeUnresolved?: boolean;
+  pricesUnresolved?: boolean;
 };
 
 export function PricingMobileActionBar({
@@ -67,6 +75,9 @@ export function PricingMobileActionBar({
   estimateUpdateRequired = null,
   gstRegistered,
   defaultGstRate = null,
+  recommendedSell = null,
+  scopeUnresolved = false,
+  pricesUnresolved = false,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
@@ -87,6 +98,15 @@ export function PricingMobileActionBar({
   });
   const taxBasisBlock = taxBasis.quoteBlock;
   const showOverrideGst = taxBasis.override && document.gst_rate > 0;
+  const priceCopy = clientPriceCopy(
+    clientPriceBasis({
+      scopeUnresolved,
+      pricesUnresolved,
+      enteredOverride:
+        recommendedSell != null &&
+        !sellsMatchRecommended(document.subtotal_sell, recommendedSell),
+    })
+  );
   const reviewBlock =
     extraReviewBlock?.trim() ||
     estimateUpdateRequired?.trim() ||
@@ -116,7 +136,9 @@ export function PricingMobileActionBar({
       <div className={cn("mx-auto flex max-w-lg flex-col gap-3 px-4", mobileActionInnerClass)}>
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-xs font-medium text-muted-foreground">
-            {view.showGst || showOverrideGst ? "Total incl. GST" : "Your final price"}
+            {priceCopy.totalLabel === "Your final price" && (view.showGst || showOverrideGst)
+              ? "Total incl. GST"
+              : priceCopy.totalLabel}
           </p>
           <p className="text-lg font-semibold tabular-nums tracking-tight">
             {showOverrideGst

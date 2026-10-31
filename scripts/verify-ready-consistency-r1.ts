@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import {
   composeClarifyInputFromEstimateContext,
   evaluateClarifyEstimateReadiness,
@@ -59,14 +60,15 @@ const workAreas = [
 
 function authorities(
   constraints: readonly { key: string; value: string }[],
-  pendingWrites = 0
+  pendingWrites = 0,
+  factRows: readonly EstimateFact[] = facts
 ) {
   const compose = composeClarifyInputFromEstimateContext({
     stage: "work_area_questions",
     briefText: COORDINATION_ORIGINAL_BRIEF,
     qualityLevel: "standard",
     workAreas,
-    facts,
+    facts: factRows,
     constraints,
   });
   const clarify = composeClarifyView(compose);
@@ -81,7 +83,7 @@ function authorities(
   const generate = evaluateGenerateEstimatePermission({
     compose,
     workAreas,
-    facts,
+    facts: factRows,
     unresolvedRequiredProjectConditionKeys: [],
   });
   return { clarify, panel, estimate, generate };
@@ -121,7 +123,14 @@ check(
 );
 
 console.log("\n=== Four authorities agree (not Ready) ===\n");
-const blocked = authorities([{ key: "site_access", value: "Easy" }]);
+const blocked = authorities(
+  [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+  ],
+  0,
+  facts.filter((row) => row.key !== "internal_walls.job_scope")
+);
 check("clarify remainingRequiredCount > 0", blocked.clarify.remainingRequiredCount > 0);
 check("panel enoughToEstimate false", blocked.panel.enoughToEstimate === false);
 check("estimate ready false", blocked.estimate.ready === false);
@@ -180,9 +189,19 @@ const readyConstraints = [
 ];
 
 const unresolvedCarry = authorities([{ key: "site_access", value: "Easy" }], 0);
+const openCarry = unresolvedCarry.clarify.candidates.find(
+  (row) => row.constraintKey === "material_carry_distance"
+);
 check(
-  "select material_carry_distance unresolved: generation blocked",
-  unresolvedCarry.panel.enoughToEstimate === false
+  "unresolved carry does not block generation",
+  unresolvedCarry.panel.enoughToEstimate === true &&
+    unresolvedCarry.generate.ready === true
+);
+check(
+  "unresolved carry stays open and is not a short carry",
+  openCarry != null &&
+    !isInitialCaptureQuestion(openCarry) &&
+    openCarry.assumable === false
 );
 
 const persistencePending = authorities(readyConstraints, 1);

@@ -842,6 +842,10 @@ export function projectEstimateOverview(
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."
           : "Estimate ready";
+  const pricedLinesNote =
+    knownSellPartial && issues.missingPriceLineCount === 0
+      ? " The amount shown is the priced-lines subtotal, not the complete job price."
+      : "";
 
   const primary: EstimateOverviewPrimary = !input.hasEstimate
     ? input.detailsOutstanding
@@ -877,7 +881,7 @@ export function projectEstimateOverview(
   return {
     status,
     statusLabel,
-    statusDetail,
+    statusDetail: `${statusDetail}${pricedLinesNote}`,
     sell: sellPresentation({
       hasEstimate: input.hasEstimate,
       isStale: input.isStale,

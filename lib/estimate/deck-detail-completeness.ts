@@ -192,6 +192,47 @@ export function deckDetailGaps(
   return gaps;
 }
 
+/**
+ * Excluded concrete footings leave the support method, count and excavation
+ * unresolved. Those questions stay visible. They do not block decking,
+ * framing or fixings, and they are not treated as an exclusion of every post.
+ */
+export function deckExcludedConcreteLeavesSupportUnresolved(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  const rows = [...facts];
+  if (getBooleanFact(rows, workAreaId, "deck.concrete_to_supports") !== false) {
+    return false;
+  }
+  if (
+    getBooleanFact(rows, workAreaId, "deck.pile_or_post_replacement_required") ===
+    true
+  ) {
+    return false;
+  }
+  const bearerRows = getNumberFact(rows, workAreaId, "deck.bearer_row_count");
+  const perBearer = getNumberFact(rows, workAreaId, "deck.supports_per_bearer");
+  if (
+    bearerRows != null &&
+    perBearer != null &&
+    bearerRows > 0 &&
+    perBearer > 0
+  ) {
+    return false;
+  }
+  if (pileRetentionPending({ facts: rows, workAreaId })) return false;
+  return newSubstructureIncluded(rows, workAreaId);
+}
+
+export function deckDetailGapsBlockingEstimate(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): DeckDetailGap[] {
+  if (deckExcludedConcreteLeavesSupportUnresolved(facts, workAreaId)) return [];
+  return deckDetailGaps(facts, workAreaId);
+}
+
 export function deckDetailGapsForAreas(
   facts: readonly EstimateFact[],
   workAreas: readonly { id: string; type: string }[]
@@ -199,6 +240,15 @@ export function deckDetailGapsForAreas(
   return workAreas
     .filter((area) => area.type === "deck")
     .flatMap((area) => deckDetailGaps(facts, area.id));
+}
+
+export function deckDetailGapsBlockingForAreas(
+  facts: readonly EstimateFact[],
+  workAreas: readonly { id: string; type: string }[]
+): DeckDetailGap[] {
+  return workAreas
+    .filter((area) => area.type === "deck")
+    .flatMap((area) => deckDetailGapsBlockingEstimate(facts, area.id));
 }
 
 export function firstDeckDetailTarget(

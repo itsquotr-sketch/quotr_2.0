@@ -262,6 +262,22 @@ function hazmatSentence(value: string | null, demolition: boolean): {
   };
 }
 
+/** Unanswered or Not sure access and carry stay unresolved. Hours use the unadjusted basis. */
+export function provisionalLabourBasisSentences(
+  constraints: readonly ConditionConstraint[]
+): string[] {
+  const access = constraintValue(constraints, "site_access");
+  const carry = constraintValue(constraints, "material_carry_distance");
+  const sentences: string[] = [];
+  if (!access.value || isNotSureValue(access.value)) {
+    sentences.push(accessSentence(access.value, access.source).sentence);
+  }
+  if (!carry.value || isNotSureValue(carry.value)) {
+    sentences.push(carrySentence(carry.value, carry.source).sentence);
+  }
+  return sentences;
+}
+
 export function labourBasisNote(
   constraints: readonly ConditionConstraint[]
 ): string {

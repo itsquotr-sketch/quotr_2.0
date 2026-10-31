@@ -780,6 +780,8 @@ export function PricingWorkspace({
             recommendedSell={latestEstimateRecommendedSell}
             disabled={isSaving}
             readOnly={!canEditPricing}
+            scopeUnresolved={scopeStillOpen}
+            pricesUnresolved={unresolvedPriceCount > 0}
             onApplyFinalSell={handleApplyFinalSell}
           />
 
@@ -860,6 +862,9 @@ export function PricingWorkspace({
           gstRegistered={gstRegistered}
           defaultGstRate={defaultGstRate}
           onTaxBasisUpdated={setDocument}
+          recommendedSell={latestEstimateRecommendedSell}
+          scopeUnresolved={scopeStillOpen}
+          pricesUnresolved={unresolvedPriceCount > 0}
         />
       </div>
 
@@ -877,6 +882,9 @@ export function PricingWorkspace({
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}
         defaultGstRate={defaultGstRate}
+        recommendedSell={latestEstimateRecommendedSell}
+        scopeUnresolved={scopeStillOpen}
+        pricesUnresolved={unresolvedPriceCount > 0}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

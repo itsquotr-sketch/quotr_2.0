@@ -26,6 +26,7 @@ function read(path: string): string {
 }
 
 const decision = read("components/pricing/PricingDecisionCard.tsx");
+const priceCopy = read("lib/pricing/incomplete-price-label.ts");
 const summary = read("components/pricing/PricingSummaryPanel.tsx");
 const description = read("components/work-areas/WorkAreaQuoteDescriptionEditor.tsx");
 const group = read("components/pricing/PricingGroupControl.tsx");
@@ -45,8 +46,11 @@ check(
 );
 check(
   "lower card is the final-price choice",
-  decision.includes("Final client price") &&
-    decision.includes("The quote will use this price.") &&
+  decision.includes("clientPriceCopy") &&
+    priceCopy.includes("Final client price") &&
+    priceCopy.includes("The quote will use this price.") &&
+    priceCopy.includes("Priced lines so far") &&
+    priceCopy.includes("Entered price") &&
     decision.includes("Use Quotr recommendation") &&
     decision.includes("Set my own price") &&
     decision.includes("data-pricing-final-price-control") &&
@@ -72,7 +76,7 @@ check(
     !summary.includes("min-h-[") &&
     summary.includes("Client sell ex GST") &&
     summary.includes("Cost, margin and GST") &&
-    summary.includes("compact && view.showGst")
+    summary.includes("compact && (view.showGst || showOverrideGst)")
 );
 check(
   "client description actions wrap and do not auto-accept a suggestion",

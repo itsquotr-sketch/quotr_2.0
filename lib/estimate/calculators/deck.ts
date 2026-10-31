@@ -13,6 +13,7 @@ import {
 } from "@/lib/estimate/builder-presentation-format";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { DECK_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
+import { provisionalLabourBasisSentences } from "@/lib/estimate/condition-basis";
 import {
   formatMissing,
   getBooleanFact,
@@ -112,8 +113,10 @@ import {
   DEFAULT_STEP_WIDTH_M,
   formatStepGeometryTakeoff,
   STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT,
+  STEP_STORED_COUNT_DOES_NOT_FIT,
   STEP_WIDTH_ASSUMPTION_STATEMENT,
   stepPhysicalGeometryReady,
+  storedStepCountExceedsEstimatingRiser,
 } from "@/lib/estimate/deck-steps-physical";
 import { defaultStepFramingIdentity } from "@/lib/estimate/deck-default-identities";
 import {
@@ -137,6 +140,7 @@ import {
   formatDeckIdentityLine,
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
+  DECK_SUPPORT_DESIGN_UNRESOLVED,
   PILE_ALLOWANCE_COVERAGE_GAP,
   PILE_CONFIRMED_NEW_WHILE_PENDING,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
@@ -362,6 +366,7 @@ export function calculateDeck(
     labourAdjustment,
     labourAdjustmentParts
   );
+  assumptions.push(...provisionalLabourBasisSentences(context.constraints));
   const labourAdjustmentDetail = formatLabourAdjustmentDetail(
     labourAdjustmentParts
   );
@@ -587,13 +592,17 @@ export function calculateDeck(
     supportCountSource: structural.quantities?.supportCountSource ?? "spacing_layout",
     statedSupportCount: structural.quantities?.statedSupportCount ?? null,
   });
-  const supportCount = deckSupportsArePriced(supportTreatment)
-    ? derivedSupportCount
-    : 0;
+  const concreteFootingsExcluded =
+    getBooleanFact(facts, workArea.id, "deck.concrete_to_supports") === false;
+  const derivedSupportsUnresolved =
+    supportTreatment === "derived_new" && concreteFootingsExcluded;
+  const priceSupports =
+    deckSupportsArePriced(supportTreatment) && !derivedSupportsUnresolved;
+  const supportCount = priceSupports ? derivedSupportCount : 0;
   if (structural.quantities) {
     assumptions.push(
       ...deckStructureAssumptionTexts(structural.quantities, {
-        supportsInScope: deckSupportsArePriced(supportTreatment),
+        supportsInScope: priceSupports,
       })
     );
   }
@@ -1289,6 +1298,9 @@ export function calculateDeck(
   if (supportTreatment === "withheld_pending") {
     missingInfo.push(PILE_SUPPORTS_UNRESOLVED_PENDING);
   }
+  if (derivedSupportsUnresolved) {
+    missingInfo.push(DECK_SUPPORT_DESIGN_UNRESOLVED);
+  }
   if (supportTreatment === "withheld_retained") {
     assumptions.push(PILE_SUPPORTS_RETAINED);
   }
@@ -1982,7 +1994,20 @@ export function calculateDeck(
       true;
     if (!steps || steps.riseCount <= 0) {
       if (explicitStepsIncluded || stepsIncluded) {
-        missingInfo.push("Step arrangement required");
+        const storedStepCount = getNumberFact(
+          facts,
+          workArea.id,
+          "deck.step_count"
+        );
+        missingInfo.push(
+          storedStepCount != null &&
+            storedStepCountExceedsEstimatingRiser(
+              Math.round(storedStepCount),
+              deckHeight
+            )
+            ? STEP_STORED_COUNT_DOES_NOT_FIT
+            : "Step arrangement required"
+        );
       }
     } else {
       const goingMm = Math.round(steps.goingM * 1000);
@@ -2213,8 +2238,8 @@ export function calculateDeck(
   const requirements = [
     surfaceRequirement,
     labourRequirement,
-    ...structural.requirements.filter((req) => {
-      if (deckSupportsArePriced(supportTreatment)) return true;
+    ...    structural.requirements.filter((req) => {
+      if (priceSupports) return true;
       return (
         req.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
         req.componentKey !== DECK_CONCRETE_COMPONENT_KEY
