@@ -194,6 +194,26 @@ const afterReanalyse = resolveFlooringPortions({
   facts,
   workAreaId: "flooring",
 }).portions[0];
+const carpetOffice =
+  "Supply and install straight-lay carpet tiles in one office. Room size: 4.0 m × 3.0 m. Net floor area 12.00 m². Tiles are 500 × 500 mm. Box coverage is unknown. Waste is zero. The existing substrate is a ready substrate. Fixing is adhesive. No floor preparation. No removal of an existing finish. No disposal. No transition strips. Underlay is not required. Site conditions: easy access, materials carried under 10 m, the site is not occupied, working hours are unrestricted.";
+const carpetPortion = portions(carpetOffice)[0];
+check(
+  "carpet-tile office keeps 4.0 × 3.0 m, 500 mm tiles, explicit zero waste, ready substrate, and no disposal",
+  carpetPortion?.length_m === 4 &&
+    carpetPortion.width_m === 3 &&
+    carpetPortion.area_m2 === 12 &&
+    carpetPortion.tile_width_mm === 500 &&
+    carpetPortion.tile_length_mm === 500 &&
+    carpetPortion.carpet_tile_pattern === "straight" &&
+    carpetPortion.carpet_tile_substrate === "ready" &&
+    carpetPortion.carpet_tile_fixing === "adhesive" &&
+    carpetPortion.carpet_tile_waste === "zero" &&
+    carpetPortion.underlay_required === false &&
+    carpetPortion.transitions_required === false &&
+    carpetPortion.carpet_tile_disposal_requested !== true,
+  carpetPortion
+);
+
 check(
   "re-extraction does not overwrite a confirmed underlay answer",
   confirmed?.underlay_required === false &&

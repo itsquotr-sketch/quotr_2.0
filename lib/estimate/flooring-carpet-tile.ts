@@ -250,6 +250,14 @@ export function applyCarpetTileBriefFacts(
     portion.carpet_tile_waste = "stated";
     portion.carpet_tile_waste_authority = "extracted";
   }
+  if (portion.carpet_tile_waste == null) {
+    const waste = parseCarpetTileWasteDecision(raw);
+    if (waste === "zero") {
+      portion.carpet_tile_waste = "zero";
+      portion.carpet_tile_waste_authority = "extracted";
+      if (portion.waste_percent == null) portion.waste_percent = 0;
+    }
+  }
   if (
     /\b(?:customer|client)[-\s]supplied\b/.test(raw) &&
     portion.finish_supplied_by == null
@@ -272,7 +280,12 @@ export function applyCarpetTileBriefFacts(
     portion.carpet_tile_box = "known";
     portion.carpet_tile_tiles_per_box = Number(perBox[1]);
   }
-  if (/\bdispos/.test(raw)) portion.carpet_tile_disposal_requested = true;
+  if (
+    /\bdispos/.test(raw) &&
+    !/\b(?:no|without|not|exclud\w*)\b[^.]{0,40}\bdispos/.test(raw)
+  ) {
+    portion.carpet_tile_disposal_requested = true;
+  }
 }
 
 export type CarpetTilePurchase = {
