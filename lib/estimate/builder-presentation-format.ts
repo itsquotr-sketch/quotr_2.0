@@ -46,7 +46,8 @@ export function formatAdjustmentPercent(factor: number): string {
 
 /**
  * Primary-row adjustment copy.
- * Combined access+carry is one modifier: "+15% access/carry".
+ * Access and carry are named only from their own addends.
+ * A factor without those parts is not described as access or carry.
  */
 export function formatLabourAdjustmentPrimary(
   factor: number,
@@ -72,7 +73,7 @@ export function formatLabourAdjustmentPrimary(
     if (bits.length > 0) return bits.join(" · ");
   }
   const pct = formatAdjustmentPercent(factor);
-  return pct ? `${pct} access/carry` : "";
+  return pct ? `${pct} site conditions` : "";
 }
 
 /** Expanded detail: Site access +10% / Carry +5%. */

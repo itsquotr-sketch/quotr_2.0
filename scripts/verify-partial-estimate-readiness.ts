@@ -35,6 +35,7 @@ import {
   classifyReviewNotice,
   specificationCountFromNotices,
 } from "../lib/assistant/presentation/estimate-issues";
+import { formatLabourAdjustmentPrimary } from "../lib/estimate/builder-presentation-format";
 import {
   clientPriceBasis,
   clientPriceCopy,
@@ -401,6 +402,20 @@ const bathroomEstimate = calculateBathroom(
   { id: "b1", type: "bathroom", name: "Bathroom", sort_order: 1 }
 );
 const provisional = provisionalLabourBasisSentences([]);
+const occupiedHoursLabel = formatLabourAdjustmentPrimary(1.1, {
+  accessAddend: 0,
+  carryAddend: 0,
+  slopeAddend: 0,
+  occupiedAddend: 0.05,
+  hoursAddend: 0.05,
+});
+check(
+  "occupied hours are not described as access or carry",
+  occupiedHoursLabel.includes("occupied site") &&
+    occupiedHoursLabel.includes("restricted hours") &&
+    !occupiedHoursLabel.includes("access/carry") &&
+    !formatLabourAdjustmentPrimary(1.1).includes("access/carry")
+);
 check(
   "unadjusted labour is disclosed and not stored as Easy",
   provisional.some((row) => /not a confirmed Easy answer/i.test(row)) &&
