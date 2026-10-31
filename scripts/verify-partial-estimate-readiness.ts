@@ -8,7 +8,8 @@ import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
-import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import { calculateFlooring, calculateInternalWalls } from "../lib/estimate/calculators/fitout";
+import { CARPET_TILE_SPECIFICATION_UNRESOLVED } from "../lib/estimate/flooring-carpet-tile";
 import { INTERNAL_WALLS_SCOPE_UNRESOLVED } from "../lib/estimate/internal-walls-scope";
 import { provisionalLabourBasisSentences } from "../lib/estimate/condition-basis";
 import {
@@ -222,6 +223,48 @@ check(
     fixing.assumable === false &&
     fixing.blocksEstimate === false,
   flooringCandidates.map((row) => `${row.factKey}:${row.askClass}`).join(" | ")
+);
+const openPattern = {
+  ...portion,
+  carpet_tile_pattern: null,
+  carpet_tile_substrate: null,
+  carpet_tile_waste: null,
+  carpet_tile_size: null,
+  carpet_tile_box: null,
+};
+const openPatternCandidates = listFlooringClarifyCandidates({
+  facts: [fact("f1", FLOORING_PORTIONS_FACT_KEY, [openPattern])],
+  workAreaId: "f1",
+  workAreaName: "Flooring",
+});
+const patternQuestion = openPatternCandidates.find(
+  (row) => row.factKey === "flooring.portion.carpet_tile_pattern"
+);
+check(
+  "unanswered carpet pattern stays visible and does not block unrelated work",
+  patternQuestion != null &&
+    !isInitialCaptureQuestion(patternQuestion) &&
+    patternQuestion.assumable === false &&
+    patternQuestion.blocksEstimate === false
+);
+const flooringArea: EstimateWorkArea = {
+  id: "f1",
+  type: "flooring",
+  name: "Flooring",
+  sort_order: 1,
+};
+const carpetEstimate = calculateFlooring(
+  {
+    ...deckContext([fact("f1", FLOORING_PORTIONS_FACT_KEY, [openPattern])]),
+    confirmedWorkAreas: [flooringArea],
+  },
+  flooringArea
+);
+check(
+  "unanswered carpet pattern does not price the carpet",
+  carpetEstimate.missingInfo.includes(CARPET_TILE_SPECIFICATION_UNRESOLVED) &&
+    classifyReviewNotice(CARPET_TILE_SPECIFICATION_UNRESOLVED) === "scope_gap" &&
+    !carpetEstimate.lineItems.some((item) => (item.recommendedCost ?? 0) > 0)
 );
 
 const wall = createEmptyWallType({ id: "wt1", label: "Wall Type 1" });

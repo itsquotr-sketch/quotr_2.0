@@ -668,11 +668,13 @@ export function listFlooringClarifyCandidates(
       if (isResolved(flooringPortionFieldCurrentValue(portion, row.factKey))) {
         continue;
       }
-      const unresolvedCarpetFixing =
+      const carpetSpecificationOpen =
         portion?.specialist_kind === "carpet_tile" &&
-        row.factKey === "flooring.portion.carpet_tile_fixing";
+        (row.factKey.startsWith("flooring.portion.carpet_tile_") ||
+          row.factKey === "flooring.portion.finish_pricing" ||
+          row.factKey === "flooring.portion.waste_treatment");
       const laminateChoice =
-        !unresolvedCarpetFixing &&
+        !carpetSpecificationOpen &&
         (portion?.specialist_kind === "laminate" ||
           portion?.specialist_kind === "carpet_tile") &&
         (row.factKey === "flooring.portion.finish_pricing" ||
@@ -685,14 +687,14 @@ export function listFlooringClarifyCandidates(
         portion,
         portionIndex: index,
         factKey: row.factKey,
-        askClass: unresolvedCarpetFixing
+        askClass: carpetSpecificationOpen
           ? "ASSUME_IF_SKIPPED"
           : laminateChoice
             ? "HARD_MINIMUM"
             : row.askClass,
       });
       out.push(
-        unresolvedCarpetFixing
+        carpetSpecificationOpen
           ? {
               ...candidate,
               blocksEstimate: false,

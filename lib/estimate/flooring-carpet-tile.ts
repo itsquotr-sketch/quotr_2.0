@@ -62,6 +62,9 @@ export const FLOORING_CARPET_TILE_PREPARATION_GAP_COMPONENT =
 export const CARPET_TILE_PREPARATION_GAP =
   "Floor preparation is requested and is not priced. This recipe does not turn removal of the existing floor into substrate readiness, and it does not invent a preparation rate." as const;
 
+export const CARPET_TILE_SPECIFICATION_UNRESOLVED =
+  "Carpet tiles stay unresolved and are not priced. They do not establish a complete floor assembly." as const;
+
 export const CARPET_TILE_PATTERN_PROPOSAL =
   "The brief does not state the laying pattern. Proposed assumption: straight lay of ordinary modular carpet tiles. Confirm that assumption or record another pattern. This is not stored as something the brief said." as const;
 

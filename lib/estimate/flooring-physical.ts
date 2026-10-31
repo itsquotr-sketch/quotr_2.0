@@ -15,6 +15,7 @@ import {
 } from "@/lib/estimate/flooring-laminate";
 import {
   CARPET_TILE_PREPARATION_GAP,
+  CARPET_TILE_SPECIFICATION_UNRESOLVED,
   FLOORING_CARPET_TILE_FIXING_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_COMPONENT,
   FLOORING_CARPET_TILE_INSTALL_HOURS_PER_M2,
@@ -2040,6 +2041,13 @@ export function calculateFlooringPhysical(params: {
     requirements.push(...calculated.requirements);
     for (const field of calculated.portion.missingFields) {
       missingInfo.push(missingInfoLine(portion, field));
+    }
+    if (
+      portion.specialist_kind === "carpet_tile" &&
+      calculated.portion.completeness ===
+        FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED
+    ) {
+      missingInfo.push(CARPET_TILE_SPECIFICATION_UNRESOLVED);
     }
     if (portion.transitions_required === true) {
       missingInfo.push("Transition strips are requested and have no priced rate.");
