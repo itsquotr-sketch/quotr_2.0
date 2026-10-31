@@ -2145,7 +2145,16 @@ export function extractConstraintsFromBrief(
     });
   }
 
-  const carryDistance = mapCarryDistanceConstraint(cartingM);
+  const statedUnderTenMetres =
+    /(?:carried|carry|carting|carted)(?:\s+\w+){0,4}\s+under\s+10\s*m\b/.test(
+      brief
+    ) ||
+    /\bunder\s+10\s*m\b(?:\s+\w+){0,4}\s+(?:carry|carried|carting|carted)\b/.test(
+      brief
+    );
+  const carryDistance = statedUnderTenMetres
+    ? "< 10m"
+    : mapCarryDistanceConstraint(cartingM);
   if (carryDistance) {
     constraints.push({
       key: "material_carry_distance",
@@ -2174,6 +2183,18 @@ export function extractConstraintsFromBrief(
       key: "working_hours",
       label: "Working hours",
       value: "Yes",
+    });
+  } else if (
+    includesAny(brief, [
+      "unrestricted hours",
+      "hours are unrestricted",
+      "working hours are unrestricted",
+    ])
+  ) {
+    constraints.push({
+      key: "working_hours",
+      label: "Working hours",
+      value: "No",
     });
   }
 
@@ -2218,6 +2239,18 @@ export function extractConstraintsFromBrief(
       key: "occupied_site",
       label: "Occupied site",
       value: "Yes",
+    });
+  } else if (
+    includesAny(brief, [
+      "not occupied",
+      "site is unoccupied",
+      "unoccupied site",
+    ])
+  ) {
+    constraints.push({
+      key: "occupied_site",
+      label: "Occupied site",
+      value: "No",
     });
   }
 

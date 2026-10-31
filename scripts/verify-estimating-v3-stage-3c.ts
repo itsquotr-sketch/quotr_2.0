@@ -19,6 +19,7 @@ import {
   labourBasisNote,
   listConditionDecisions,
 } from "../lib/estimate/condition-basis";
+import { extractConstraintsFromBrief } from "../lib/ai/enrich-extraction";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
 import {
@@ -550,6 +551,35 @@ check(
 check(
   "the labour note explains the basis used for an unanswered job",
   /Access and carry adjustment on this line is 1.00/.test(labourBasisNote([]))
+);
+
+const ASSEMBLY_LAMINATE =
+  "Supply and install floating click-lock laminate in one meeting room. Room size: 4.0 m long by 5.0 m wide. Net floor area 20.00 m². The contractor supplies the laminate and prices the finish as separate supply and separate installation. Allow 10% waste once on the laminate supply only. The existing substrate is ready concrete. No floor preparation. No removal of an existing finish. No disposal. No transition strips. Underlay is required. Moisture control is a separate moisture barrier. Site conditions: easy access, materials carried under 10 m, the site is not occupied, working hours are unrestricted.";
+const assemblyPortion = extractFlooringPortionsFromBrief(ASSEMBLY_LAMINATE)[0];
+const assemblyConstraints = extractConstraintsFromBrief(ASSEMBLY_LAMINATE);
+check(
+  "a stated underlay is kept and a negated transition is not requested",
+  assemblyPortion?.underlay_required === true &&
+    assemblyPortion.transitions_required === false &&
+    assemblyPortion.waste_percent === 10 &&
+    assemblyPortion.floor_preparation_required === false,
+  assemblyPortion
+);
+check(
+  "an included transition strip stays requested",
+  extractFlooringPortionsFromBrief(
+    "Bedroom 1 is 3.6m × 3.2m and gets carpet. Include underlay where appropriate, transition strips and 10% waste."
+  ).every((row) => row.transitions_required === true)
+);
+check(
+  "carried under 10 m stays the short band, with occupancy and hours answered no",
+  assemblyConstraints.find((row) => row.key === "site_access")?.value === "Easy" &&
+    assemblyConstraints.find((row) => row.key === "material_carry_distance")?.value ===
+      "< 10m" &&
+    assemblyConstraints.find((row) => row.key === "occupied_site")?.value === "No" &&
+    assemblyConstraints.find((row) => row.key === "working_hours")?.value === "No" &&
+    parseCarryDistanceCategory("< 10m") === "short",
+  assemblyConstraints
 );
 
 if (failures.length > 0) {

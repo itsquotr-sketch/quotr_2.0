@@ -280,7 +280,15 @@ function triFromPhrases(
 function underlayFromSnippet(text: string): boolean | null {
   return triFromPhrases(
     text,
-    ["with underlay", "include underlay", "including underlay", "new underlay", "carpet and underlay"],
+    [
+      "with underlay",
+      "include underlay",
+      "including underlay",
+      "new underlay",
+      "carpet and underlay",
+      "underlay is required",
+      "underlay required",
+    ],
     [
       "without underlay",
       "no underlay",
@@ -692,6 +700,22 @@ function splitFlooringSeparators(briefText: string): string[] {
       : [trimmed];
 }
 
+function transitionsRequiredFromBrief(raw: string): boolean | null {
+  const mention = /\btransition strips?\b|\btransitions\b/;
+  if (!mention.test(raw)) return null;
+  const negated =
+    /\b(?:no|without|not|exclud\w*)\b(?:\s+\w+){0,6}\s+(?:transition strips?|transitions)\b/;
+  let positive = false;
+  let negative = false;
+  for (const sentence of raw.split(/[.;]/)) {
+    if (!mention.test(sentence)) continue;
+    if (negated.test(sentence)) negative = true;
+    else positive = true;
+  }
+  if (positive === negative) return null;
+  return positive;
+}
+
 function applyGlobalConstraints(
   portion: FlooringPortion,
   briefText: string
@@ -729,8 +753,9 @@ function applyGlobalConstraints(
   ) {
     portion.finish_supplied_by = "customer";
   }
-  if (/\btransition strips?\b|\btransitions\b/.test(raw)) {
-    portion.transitions_required = true;
+  const transitions = transitionsRequiredFromBrief(raw);
+  if (transitions != null) {
+    portion.transitions_required = transitions;
   }
   if (
     /\b(?:exclud\w*|no|without)\b[^.]{0,80}\b(?:major\s+)?subfloor\b/.test(raw) &&
