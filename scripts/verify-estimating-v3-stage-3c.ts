@@ -15,10 +15,13 @@ import type { EstimateConstraint } from "../lib/estimate/types";
 import { pricingTaxBasisDecision } from "../lib/pricing/gst-source";
 import {
   commercialConditionMessages,
+  conditionAnswerAffectsEstimateBasis,
+  conditionAnswerAffectsLabour,
   explicitAssumptionFor,
   labourBasisNote,
   listConditionDecisions,
 } from "../lib/estimate/condition-basis";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { extractConstraintsFromBrief } from "../lib/ai/enrich-extraction";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
@@ -213,11 +216,14 @@ const openDecisions = listConditionDecisions({
   workAreaTypes: flooringTypes,
 });
 check(
-  "the laminate job asks access, carry and hazardous materials",
+  "the laminate job asks access, carry, hazardous materials, floor level and protection",
   openDecisions.map((row) => row.key).join(",") ===
-    "site_access,material_carry_distance,hazardous_materials_risk" &&
+    "site_access,material_carry_distance,hazardous_materials_risk,floor_level,protection_dust_control" &&
     openDecisions.find((row) => row.key === "hazardous_materials_risk")?.informational ===
       true &&
+    openDecisions.find((row) => row.key === "floor_level")?.blocksCommercial === false &&
+    openDecisions.find((row) => row.key === "protection_dust_control")?.blocksCommercial ===
+      false &&
     openDecisions.every((row) => row.options.includes("Not sure") || row.key === "site_access"),
   openDecisions.map((row) => [row.key, row.state, row.blocksCommercial])
 );
@@ -362,6 +368,27 @@ check(
     constraints: [{ key: "hazardous_materials_risk", value: "Not sure" }],
     workAreaTypes: flooringTypes,
   }).some((row) => /Not sure/.test(row) && /not treated as No/.test(row))
+);
+check(
+  "unanswered floor level and protection do not block flooring commercial completeness",
+  !openMessages.some((row) => /floor level/i.test(row)) &&
+    !openMessages.some((row) => /protection/i.test(row)) &&
+    explicitAssumptionFor("floor_level")?.value === "Ground" &&
+    explicitAssumptionFor("protection_dust_control")?.value === "No"
+);
+check(
+  "a hazardous-materials answer marks the disclosure basis without changing labour",
+  conditionAnswerAffectsEstimateBasis("hazardous_materials_risk") &&
+    !conditionAnswerAffectsLabour("hazardous_materials_risk") &&
+    conditionAnswerAffectsLabour("site_access") &&
+    conditionAnswerAffectsEstimateBasis("site_access")
+);
+check(
+  "unanswered floor level and protection questions are not unresolved specifications",
+  classifyReviewNotice("What floor level are works on?") == null &&
+    classifyReviewNotice("What floor are the works on?") == null &&
+    classifyReviewNotice("Is extra protection or dust control required?") == null &&
+    classifyReviewNotice("Is protection / dust control required?") == null
 );
 
 const historical = composeBuilderReview({
@@ -525,9 +552,9 @@ const gate = readFileSync("lib/estimate/condition-commercial-gate.ts", "utf8");
 const setup = readFileSync("lib/setup/actions.ts", "utf8");
 const saveGst = setup.slice(setup.indexOf("export async function saveGstRegistration"));
 check(
-  "regenerate stays tied to a stale estimate and a price-affecting answer",
+  "regenerate stays tied to a stale estimate and a labour or disclosure-basis answer",
   shell.includes("canRunEstimates && displayEstimateStale ? handleRegenerateEstimate") &&
-    shell.includes("conditionAnswerAffectsLabour(input.key)") &&
+    shell.includes("conditionAnswerAffectsEstimateBasis(input.key)") &&
     shell.includes("setLocalEstimateStale(true)") &&
     shell.includes("ConditionDecisions")
 );

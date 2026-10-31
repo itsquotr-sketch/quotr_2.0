@@ -34,8 +34,8 @@ export function ConditionDecisions({
       <h2 className="text-lg font-semibold leading-6">Conditions that affect this estimate</h2>
       <p className="text-sm leading-5 text-foreground/80">
         {stale
-          ? "This estimate is out of date. Regenerate it to apply the labour basis, then preview the pricing change before applying it. Saved revisions and issued quotes stay as they are."
-          : "A priced line does not close these decisions. Answer the condition here. Regeneration appears after a price-affecting answer, without another unrelated edit."}
+          ? "This estimate is out of date. Regenerate it to apply the current labour and disclosure basis, then preview the pricing change before applying it. Saved revisions and issued quotes stay as they are."
+          : "A priced line does not close these decisions. Answer the condition here. Regeneration appears after an answer that changes the labour or disclosure basis, without another unrelated edit."}
       </p>
       {error ? (
         <p className="text-sm text-destructive" role="alert">
@@ -95,11 +95,11 @@ export function ConditionDecisions({
                 >
                   Use assumption — {assumption.statement}. {assumption.effect}
                 </Button>
-              ) : (
+              ) : decision.key === "hazardous_materials_risk" ? (
                 <p className="text-sm text-foreground/75">
                   There is no hazardous-materials allowance to accept.
                 </p>
-              )}
+              ) : null}
             </li>
           );
         })}

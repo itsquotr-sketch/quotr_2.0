@@ -46,7 +46,7 @@ import {
 import { ConditionDecisions } from "@/components/assistant/mode/ConditionDecisions";
 import {
   commercialConditionMessages,
-  conditionAnswerAffectsLabour,
+  conditionAnswerAffectsEstimateBasis,
   listConditionDecisions,
 } from "@/lib/estimate/condition-basis";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
@@ -1927,7 +1927,7 @@ export function AssistantShell({
             setConstraintError(result.error);
             return result;
           }
-          if (conditionAnswerAffectsLabour(input.key)) {
+          if (conditionAnswerAffectsEstimateBasis(input.key)) {
             setLocalEstimateStale(true);
           }
           setLiveConstraints((prev) => {

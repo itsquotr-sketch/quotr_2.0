@@ -307,7 +307,11 @@ export function laminateNegatedScope(text: string): {
   };
 }
 
-export function applyLaminateBriefFacts(portion: FlooringPortion, text: string): void {
+export function applyLaminateBriefFacts(
+  portion: FlooringPortion,
+  text: string,
+  options?: { readonly skipUnderlay?: boolean }
+): void {
   if (portion.specialist_kind !== "laminate") return;
   const method = laminateMethodFromText(text);
   if (method && portion.laminate_method == null) {
@@ -338,6 +342,7 @@ export function applyLaminateBriefFacts(portion: FlooringPortion, text: string):
   }
   const raw = normalise(text);
   if (
+    !options?.skipUnderlay &&
     portion.underlay_required == null &&
     /\b(?:include|including|with) underlay\b/.test(raw)
   ) {

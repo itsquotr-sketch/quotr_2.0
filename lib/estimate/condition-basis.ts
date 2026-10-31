@@ -44,7 +44,11 @@ export type ConditionConstraint = {
 };
 
 export type ExplicitAssumption = {
-  readonly key: "site_access" | "material_carry_distance";
+  readonly key:
+    | "site_access"
+    | "material_carry_distance"
+    | "floor_level"
+    | "protection_dust_control";
   readonly value: string;
   readonly statement: string;
   readonly effect: string;
@@ -66,6 +70,20 @@ const EXPLICIT_ASSUMPTIONS: readonly ExplicitAssumption[] = [
     effect: "No carry adjustment.",
     question: "Distance from material drop-off or waste carting?",
   },
+  {
+    key: "floor_level",
+    value: "Ground",
+    statement: "Ground floor",
+    effect: "No labour adjustment.",
+    question: "What floor are the works on?",
+  },
+  {
+    key: "protection_dust_control",
+    value: "No",
+    statement: "Standard protection",
+    effect: "No protection allowance.",
+    question: "Is extra protection or dust control required?",
+  },
 ];
 
 const HAZMAT_VISIBLE_TYPES = new Set([
@@ -86,6 +104,35 @@ const LABOUR_STALE_KEYS = new Set([
   "occupied_site",
   "working_hours",
   "site_slope",
+]);
+
+const ESTIMATE_BASIS_STALE_KEYS = new Set([
+  ...LABOUR_STALE_KEYS,
+  "hazardous_materials_risk",
+]);
+
+const FLOOR_LEVEL_TYPES = new Set([
+  "bathroom",
+  "kitchen",
+  "internal_walls",
+  "ceilings",
+  "doors",
+  "flooring",
+  "painting",
+  "plastering",
+  "demolition",
+]);
+
+const PROTECTION_TYPES = new Set([
+  "demolition",
+  "bathroom",
+  "kitchen",
+  "internal_walls",
+  "ceilings",
+  "doors",
+  "flooring",
+  "painting",
+  "plastering",
 ]);
 
 export type ConditionDecision = {
@@ -117,6 +164,11 @@ export function explicitAssumptionFor(key: string): ExplicitAssumption | null {
 
 export function conditionAnswerAffectsLabour(key: string): boolean {
   return LABOUR_STALE_KEYS.has(key);
+}
+
+/** Labour keys plus disclosure-basis answers that persist on the estimate. */
+export function conditionAnswerAffectsEstimateBasis(key: string): boolean {
+  return ESTIMATE_BASIS_STALE_KEYS.has(key);
 }
 
 export function accessLabourAddend(value: string | null | undefined): number {
@@ -262,6 +314,83 @@ function hazmatSentence(value: string | null, demolition: boolean): {
   };
 }
 
+function floorLevelSentence(
+  value: string | null,
+  source: string | null,
+  demolition: boolean
+): { state: ConditionDecision["state"]; sentence: string; blocks: boolean } {
+  if (!value) {
+    return {
+      state: "unanswered",
+      blocks: demolition,
+      sentence: demolition
+        ? "Floor level still needs an answer for demolition logistics. No level adjustment has been applied."
+        : "Floor level is unanswered. Ground is the usual assumption for interior flooring and has not been applied.",
+    };
+  }
+  if (isNotSureValue(value)) {
+    return {
+      state: "uncertain",
+      blocks: demolition,
+      sentence:
+        "Floor level is Not sure. It stays unresolved and is not treated as Ground.",
+    };
+  }
+  const assumed =
+    source === "assumption" ? " The ground-floor assumption is accepted." : "";
+  return {
+    state: "resolved",
+    blocks: false,
+    sentence: `Floor level is ${value}.${assumed}`,
+  };
+}
+
+function protectionSentence(
+  value: string | null,
+  source: string | null
+): {
+  state: ConditionDecision["state"];
+  sentence: string;
+  blocks: boolean;
+  informational: boolean;
+} {
+  if (!value) {
+    return {
+      state: "unanswered",
+      blocks: false,
+      informational: true,
+      sentence:
+        "Protection / dust control is unanswered. No protection allowance is included, and that is not a confirmed No.",
+    };
+  }
+  if (isNotSureValue(value)) {
+    return {
+      state: "uncertain",
+      blocks: true,
+      informational: false,
+      sentence:
+        "Protection / dust control is Not sure. It is not treated as No, and no allowance has been added.",
+    };
+  }
+  if (value.toLowerCase() === "yes" || value.toLowerCase() === "true") {
+    return {
+      state: "resolved",
+      blocks: true,
+      informational: false,
+      sentence:
+        "Protection / dust control is Yes. That work is not priced, and no allowance has been added.",
+    };
+  }
+  const assumed =
+    source === "assumption" ? " The standard-protection assumption is accepted." : "";
+  return {
+    state: "resolved",
+    blocks: false,
+    informational: false,
+    sentence: `Protection / dust control is No. No allowance is included.${assumed}`,
+  };
+}
+
 /** Unanswered or Not sure access and carry stay unresolved. Hours use the unadjusted basis. */
 export function provisionalLabourBasisSentences(
   constraints: readonly ConditionConstraint[]
@@ -321,6 +450,16 @@ export function commercialConditionMessages(input: {
   if (hazmatVisible || demolition) {
     const hazmat = constraintValue(input.constraints, "hazardous_materials_risk");
     const described = hazmatSentence(hazmat.value, demolition);
+    if (described.blocks) messages.push(described.sentence);
+  }
+  if (types.some((type) => FLOOR_LEVEL_TYPES.has(type))) {
+    const floor = constraintValue(input.constraints, "floor_level");
+    const described = floorLevelSentence(floor.value, floor.source, demolition);
+    if (described.blocks) messages.push(described.sentence);
+  }
+  if (types.some((type) => PROTECTION_TYPES.has(type))) {
+    const protection = constraintValue(input.constraints, "protection_dust_control");
+    const described = protectionSentence(protection.value, protection.source);
     if (described.blocks) messages.push(described.sentence);
   }
   return messages;
@@ -385,6 +524,39 @@ export function listConditionDecisions(input: {
       blocksCommercial: described.blocks,
       informational: described.informational,
       assumption: null,
+      detail: described.sentence,
+    });
+  }
+  if (types.some((type) => FLOOR_LEVEL_TYPES.has(type))) {
+    const floor = constraintValue(input.constraints, "floor_level");
+    const described = floorLevelSentence(floor.value, floor.source, demolition);
+    const assumption = explicitAssumptionFor("floor_level");
+    decisions.push({
+      key: "floor_level",
+      question: assumption?.question ?? "What floor are the works on?",
+      options: ["Ground", "Upper floor", "Basement", "Not sure"],
+      state: described.state,
+      storedValue: floor.value,
+      blocksCommercial: described.blocks,
+      informational: !described.blocks,
+      assumption,
+      detail: described.sentence,
+    });
+  }
+  if (types.some((type) => PROTECTION_TYPES.has(type))) {
+    const protection = constraintValue(input.constraints, "protection_dust_control");
+    const described = protectionSentence(protection.value, protection.source);
+    const assumption = explicitAssumptionFor("protection_dust_control");
+    decisions.push({
+      key: "protection_dust_control",
+      question:
+        assumption?.question ?? "Is extra protection or dust control required?",
+      options: ["Yes", "No", "Not sure"],
+      state: described.state,
+      storedValue: protection.value,
+      blocksCommercial: described.blocks,
+      informational: described.informational,
+      assumption,
       detail: described.sentence,
     });
   }

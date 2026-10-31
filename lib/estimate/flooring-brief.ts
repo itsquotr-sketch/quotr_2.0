@@ -288,10 +288,16 @@ function underlayFromSnippet(text: string): boolean | null {
       "carpet and underlay",
       "underlay is required",
       "underlay required",
+      "needs underlay",
+      "requires underlay",
     ],
     [
       "without underlay",
       "no underlay",
+      "underlay is not required",
+      "underlay not required",
+      "exclude underlay",
+      "excluding underlay",
       "reuse existing underlay",
       "retain existing underlay",
     ]
@@ -707,7 +713,7 @@ function transitionsRequiredFromBrief(raw: string): boolean | null {
     /\b(?:no|without|not|exclud\w*)\b(?:\s+\w+){0,6}\s+(?:transition strips?|transitions)\b/;
   let positive = false;
   let negative = false;
-  for (const sentence of raw.split(/[.;]/)) {
+  for (const sentence of raw.split(/;|(?<=[.!?])\s+/)) {
     if (!mention.test(sentence)) continue;
     if (negated.test(sentence)) negative = true;
     else positive = true;
@@ -753,9 +759,11 @@ function applyGlobalConstraints(
   ) {
     portion.finish_supplied_by = "customer";
   }
-  const transitions = transitionsRequiredFromBrief(raw);
-  if (transitions != null) {
-    portion.transitions_required = transitions;
+  if (portion.transitions_required == null) {
+    const transitions = transitionsRequiredFromBrief(raw);
+    if (transitions != null) {
+      portion.transitions_required = transitions;
+    }
   }
   if (
     /\b(?:exclud\w*|no|without)\b[^.]{0,80}\b(?:major\s+)?subfloor\b/.test(raw) &&
@@ -767,7 +775,24 @@ function applyGlobalConstraints(
   if (/\b(?:exclud\w*|no|without)\b[^.]{0,40}\bskirting replacement\b/.test(raw)) {
     portion.skirting_replacement_excluded = true;
   }
-  applyLaminateBriefFacts(portion, briefText);
+  applyLaminateBriefFacts(portion, briefText, { skipUnderlay: true });
+  if (portion.underlay_required == null) {
+    for (const sentence of briefText.split(/;|(?<=[.!?])\s+/)) {
+      const location = locationFromSnippet(sentence);
+      const underlay = underlayFromSnippet(sentence);
+      if (underlay == null) continue;
+      if (
+        location != null &&
+        portion.label != null &&
+        location !== portion.label
+      ) {
+        continue;
+      }
+      portion.underlay_required = underlay;
+      portion.underlay_authority = "extracted";
+      break;
+    }
+  }
   fillSingleRoomDimensions(portion, briefText);
 }
 
@@ -935,6 +960,10 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
   }
 
   applyClauseLocalRemoval(portion, snippet, true);
+  const transitions = transitionsRequiredFromBrief(normalise(snippet));
+  if (transitions != null) {
+    portion.transitions_required = transitions;
+  }
 }
 
 function splitMeasuredRooms(snippet: string): string[] {

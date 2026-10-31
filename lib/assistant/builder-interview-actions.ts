@@ -23,7 +23,7 @@ import { isNotSureValue } from "@/lib/scopes/fact-labels";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { disclosedProjectConditionForNotSure, disclosedProjectConditionValue } from "@/lib/project-conditions/consumed-authority";
 import {
-  conditionAnswerAffectsLabour,
+  conditionAnswerAffectsEstimateBasis,
   explicitAssumptionFor,
 } from "@/lib/estimate/condition-basis";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
@@ -221,7 +221,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
         }
         items.push({ questionKey: answer.questionKey, status: "saved" });
         savedCount += 1;
-        if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+        if (conditionAnswerAffectsEstimateBasis(def.targetKey)) labourAffectingSaved = true;
         continue;
       }
     }
@@ -249,7 +249,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
           }
           items.push({ questionKey: answer.questionKey, status: "saved" });
           savedCount += 1;
-          if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+          if (conditionAnswerAffectsEstimateBasis(def.targetKey)) labourAffectingSaved = true;
           continue;
         }
         // Keys without a supported explicit assumption stay unresolved.
@@ -279,7 +279,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       }
       items.push({ questionKey: answer.questionKey, status: "saved" });
       savedCount += 1;
-      if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+      if (conditionAnswerAffectsEstimateBasis(def.targetKey)) labourAffectingSaved = true;
       continue;
     }
 
@@ -308,7 +308,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       }
       items.push({ questionKey: answer.questionKey, status: "saved" });
       savedCount += 1;
-      if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+      if (conditionAnswerAffectsEstimateBasis(def.targetKey)) labourAffectingSaved = true;
       continue;
     }
     const incomingValue = remapped?.value ?? answer.value;
@@ -399,7 +399,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
 
     items.push({ questionKey: answer.questionKey, status: "saved" });
     savedCount += 1;
-    if (conditionAnswerAffectsLabour(def.targetKey)) labourAffectingSaved = true;
+    if (conditionAnswerAffectsEstimateBasis(def.targetKey)) labourAffectingSaved = true;
   }
 
   // Reload constraints + facts for one recompute

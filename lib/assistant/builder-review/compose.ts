@@ -1412,6 +1412,15 @@ function projectConditionCheckAction(
   if (key === "hazardous_materials_risk" || /asbestos|hazardous materials/i.test(label)) {
     return "Answer hazardous-materials risk in Project Conditions. No hazardous-materials cost is included. Do not treat an unanswered risk as zero.";
   }
+  if (key === "floor_level" || /what floor(?: level)?/i.test(label)) {
+    return "Answer floor level under Conditions that affect this estimate. Ground is the usual assumption for interior flooring and has not been applied. Reviewing the price does not answer it.";
+  }
+  if (
+    key === "protection_dust_control" ||
+    /protection(?: \/| or) dust control/i.test(label)
+  ) {
+    return "Answer protection / dust control under Conditions that affect this estimate. No protection allowance is included. Reviewing the price does not answer it.";
+  }
   return null;
 }
 

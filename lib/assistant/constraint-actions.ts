@@ -11,7 +11,7 @@ import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 import {
-  conditionAnswerAffectsLabour,
+  conditionAnswerAffectsEstimateBasis,
   explicitAssumptionFor,
 } from "@/lib/estimate/condition-basis";
 
@@ -86,7 +86,7 @@ export async function updateProjectConstraint(
     return { error: result.error };
   }
 
-  if (conditionAnswerAffectsLabour(key)) {
+  if (conditionAnswerAffectsEstimateBasis(key)) {
     await markEstimateStaleWithContext(context, projectId);
   }
   const mutation = await completeAssistantMutation(context, projectId);
