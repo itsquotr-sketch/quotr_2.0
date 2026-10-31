@@ -546,6 +546,14 @@ check(
 );
 
 const shell = readFileSync("components/assistant/AssistantShell.tsx", "utf8");
+const flooringEditor = readFileSync(
+  "components/assistant/job-plan/FlooringQuickSpecEditor.tsx",
+  "utf8"
+);
+const quickSpecEditors = readFileSync(
+  "components/assistant/job-plan/quick-spec-editors.ts",
+  "utf8"
+);
 const quote = readFileSync("lib/quotes/build-from-pricing.ts", "utf8");
 const review = readFileSync("lib/pricing/actions.ts", "utf8");
 const gate = readFileSync("lib/estimate/condition-commercial-gate.ts", "utf8");
@@ -578,6 +586,14 @@ check(
 check(
   "the labour note explains the basis used for an unanswered job",
   /Access and carry adjustment on this line is 1.00/.test(labourBasisNote([]))
+);
+check(
+  "flooring measurements stay editable after estimate without adding a portion",
+  quickSpecEditors.includes("flooring: FlooringQuickSpecEditor") &&
+    flooringEditor.includes("data-flooring-width") &&
+    flooringEditor.includes("nestedItemId: portion.id") &&
+    shell.includes("nestedItemId: input.nestedItemId ?? undefined") &&
+    !flooringEditor.includes("Add flooring area")
 );
 
 const ASSEMBLY_LAMINATE =

@@ -2551,6 +2551,7 @@ export function AssistantShell({
       label: string;
       value: string | number;
       valueType: "number" | "select" | "text";
+      nestedItemId?: string | null;
     }) => {
       const requestSeq = ++factMutationSeqRef.current;
       const identity = specFactIdentity(input.workAreaId, input.key);
@@ -2564,6 +2565,7 @@ export function AssistantShell({
           work_area_id: input.workAreaId,
           value: input.value,
           source: "user",
+          nestedItemId: input.nestedItemId ?? undefined,
         },
         requestSeq
       );
@@ -2573,6 +2575,7 @@ export function AssistantShell({
           work_area_id: input.workAreaId,
           value: input.value,
           source: "user",
+          nestedItemId: input.nestedItemId ?? undefined,
         })
       );
       const replay: FailedSpecReplay = { kind: "fact", seq: requestSeq, input };
@@ -2586,6 +2589,7 @@ export function AssistantShell({
               label: input.label,
               value: input.value,
               valueType: input.valueType,
+              nestedItemId: input.nestedItemId ?? undefined,
             })
           )
         );
