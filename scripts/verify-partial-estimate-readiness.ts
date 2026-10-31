@@ -29,9 +29,14 @@ import { listFlooringClarifyCandidates } from "../lib/estimate/flooring-clarify"
 import { FLOORING_PORTIONS_FACT_KEY } from "../lib/estimate/flooring-portions";
 import { createEmptyWallType } from "../lib/estimate/internal-walls-wall-types";
 import {
+  classifyReviewNotice,
+  specificationCountFromNotices,
+} from "../lib/assistant/presentation/estimate-issues";
+import {
   clientPriceBasis,
   clientPriceCopy,
 } from "../lib/pricing/incomplete-price-label";
+import { unresolvedScopeReviewBlock } from "../lib/pricing/scope-finalisation";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 
 let passed = 0;
@@ -397,6 +402,16 @@ check(
   "a complete price can still be the final price",
   complete.heading === "Final client price" &&
     complete.totalLabel === "Your final price"
+);
+check(
+  "excluded support is an unresolved scope gap",
+  classifyReviewNotice(DECK_SUPPORT_DESIGN_UNRESOLVED) === "scope_gap" &&
+    unresolvedScopeReviewBlock([DECK_SUPPORT_DESIGN_UNRESOLVED]) != null
+);
+check(
+  "an unanswered condition question is not a complete price",
+  specificationCountFromNotices(["How difficult is site access?"]) === 1 &&
+    unresolvedScopeReviewBlock(["How difficult is site access?"]) != null
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

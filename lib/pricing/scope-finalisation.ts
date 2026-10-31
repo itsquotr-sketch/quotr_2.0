@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { scopeGapCountFromNotices } from "@/lib/assistant/presentation/estimate-issues";
+import {
+  scopeGapCountFromNotices,
+  specificationCountFromNotices,
+} from "@/lib/assistant/presentation/estimate-issues";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 
 export const QUOTE_VISIBLE_EXCLUDED_BLOCK =
@@ -7,6 +10,9 @@ export const QUOTE_VISIBLE_EXCLUDED_BLOCK =
 
 export const UNRESOLVED_SCOPE_REVIEW_BLOCK =
   "Requested tasks still have no priced line. This pricing cannot be marked reviewed as a complete price.";
+
+export const UNRESOLVED_SPECIFICATION_REVIEW_BLOCK =
+  "Open specifications are still unresolved. This pricing cannot be marked reviewed as a complete price.";
 
 /** Same rule for a new pricing row and a recalibrated row. */
 export function estimateLineIsQuoteVisible(values: {
@@ -37,9 +43,11 @@ export function quoteVisibleExcludedLineBlock(
 
 /** Coverage gaps stay unresolved until the estimate itself changes. */
 export function unresolvedScopeReviewBlock(missingInfo: unknown): string | null {
-  return scopeGapCountFromNotices(missingInfo) > 0
-    ? UNRESOLVED_SCOPE_REVIEW_BLOCK
-    : null;
+  if (scopeGapCountFromNotices(missingInfo) > 0) return UNRESOLVED_SCOPE_REVIEW_BLOCK;
+  if (specificationCountFromNotices(missingInfo) > 0) {
+    return UNRESOLVED_SPECIFICATION_REVIEW_BLOCK;
+  }
+  return null;
 }
 
 export async function unresolvedScopeReviewBlockForEstimate(

@@ -83,10 +83,21 @@ export function formatUnresolvedSpecifications(count: number): string | null {
 }
 
 export function scopeGapCountFromNotices(value: unknown): number {
+  return countNotices(value, "scope_gap");
+}
+
+export function specificationCountFromNotices(value: unknown): number {
+  return countNotices(value, "specification");
+}
+
+function countNotices(
+  value: unknown,
+  kind: "scope_gap" | "specification"
+): number {
   if (!Array.isArray(value)) return 0;
   let count = 0;
   for (const item of value) {
-    if (typeof item === "string" && classifyReviewNotice(item) === "scope_gap") {
+    if (typeof item === "string" && classifyReviewNotice(item) === kind) {
       count += 1;
     }
   }
@@ -144,7 +155,7 @@ export function classifyReviewNotice(
   if (!text) return null;
   if (/pricing required|rate required/i.test(text)) return "missing_price";
   if (
-    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope|coverage is unresolved|not a complete pile price|stay unresolved while existing piles|does not assume they are replaced/i.test(
+    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope|coverage is unresolved|not a complete pile price|stay unresolved while existing piles|does not assume they are replaced|stay unresolved and are not priced|do not establish a complete or structurally adequate/i.test(
       text
     )
   ) {

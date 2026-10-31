@@ -84,6 +84,7 @@ type PricingWorkspaceProps = {
   gstRegistered?: boolean | null;
   defaultGstRate?: number | null;
   scopeStillOpen?: boolean;
+  scopeReviewBlock?: string | null;
 };
 
 export function PricingWorkspace({
@@ -97,6 +98,7 @@ export function PricingWorkspace({
   gstRegistered,
   defaultGstRate = null,
   scopeStillOpen = false,
+  scopeReviewBlock = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -190,8 +192,9 @@ export function PricingWorkspace({
   const scopeFinalisationBlock = useMemo(
     () =>
       quoteVisibleExcludedLineBlock(items) ??
-      (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null),
-    [items, scopeStillOpen]
+      (scopeReviewBlock ??
+        (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null)),
+    [items, scopeReviewBlock, scopeStillOpen]
   );
   const provisionalQuoteBlock = useMemo(
     () =>

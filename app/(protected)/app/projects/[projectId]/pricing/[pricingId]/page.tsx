@@ -23,6 +23,10 @@ import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { loadPendingRateReconciliations, loadSupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 import { loadScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
+import {
+  UNRESOLVED_SCOPE_REVIEW_BLOCK,
+  UNRESOLVED_SPECIFICATION_REVIEW_BLOCK,
+} from "@/lib/pricing/scope-finalisation";
 import { memberCanEditPricing } from "@/lib/team/permissions";
 import {
   MANUAL_PRICING_AFTER_QUOTE_NOTICE,
@@ -75,6 +79,10 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
   const missingPriceLineCount = data.items.filter(
     (item) => pricingItemViewModel(item).pricingRequired
   ).length;
+  const scopeStillOpen =
+    (tabContext.scopeCoverageGapCount ?? 0) > 0 ||
+    (tabContext.unresolvedSpecificationCount ?? 0) > 0;
+  const priceBasisIncomplete = missingPriceLineCount > 0 || scopeStillOpen;
 
   const pricingChangedAfterQuote =
     quoteSummaryForDoc != null &&
@@ -92,7 +100,9 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
             subtitle={
               missingPriceLineCount > 0
                 ? formatMissingPriceLines(missingPriceLineCount)
-                : "Final pricing"
+                : priceBasisIncomplete
+                  ? "Priced lines so far"
+                  : "Final pricing"
             }
           />
         </WorkspaceHeaderBar>
@@ -142,8 +152,13 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         estimateUpdateRequired={tabContext.quantityConflictDetail}
         gstRegistered={access.gstRegistered}
         defaultGstRate={access.defaultGstRate}
-        scopeStillOpen={
-          missingPriceLineCount === 0 && (tabContext.scopeCoverageGapCount ?? 0) > 0
+        scopeStillOpen={scopeStillOpen}
+        scopeReviewBlock={
+          (tabContext.scopeCoverageGapCount ?? 0) > 0
+            ? UNRESOLVED_SCOPE_REVIEW_BLOCK
+            : (tabContext.unresolvedSpecificationCount ?? 0) > 0
+              ? UNRESOLVED_SPECIFICATION_REVIEW_BLOCK
+              : null
         }
       />
     </WorkspacePage>

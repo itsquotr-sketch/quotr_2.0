@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   aggregateMissingPriceLineCounts,
   scopeGapCountFromNotices,
+  specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
 import {
   mapPricingDocument,
@@ -74,6 +75,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   pricingSummary: PricingSummary | null;
   missingPriceLineCount: number | null;
   scopeCoverageGapCount: number | null;
+  unresolvedSpecificationCount: number | null;
 }> {
   const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
@@ -84,6 +86,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       pricingSummary: null,
       missingPriceLineCount: null,
       scopeCoverageGapCount: null,
+      unresolvedSpecificationCount: null,
     };
   }
 
@@ -137,6 +140,9 @@ export async function getProjectWorkspaceTabContextWithContext(
     scopeCoverageGapCount: estimateResult.error
       ? null
       : scopeGapCountFromNotices(estimateResult.data?.missing_info),
+    unresolvedSpecificationCount: estimateResult.error
+      ? null
+      : specificationCountFromNotices(estimateResult.data?.missing_info),
   };
 }
 
