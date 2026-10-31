@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { flooringQuestionLabel } from "@/lib/estimate/flooring-question-copy";
@@ -142,6 +143,43 @@ export function FlooringQuickSpecEditor({
                 }}
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 min-h-11"
+              data-flooring-save-measurements={portion.id}
+              onClick={() => {
+                const lengthInput = document.getElementById(
+                  fieldId("length")
+                ) as HTMLInputElement | null;
+                const widthInput = document.getElementById(
+                  fieldId("width")
+                ) as HTMLInputElement | null;
+                const areaInput = document.getElementById(
+                  fieldId("area")
+                ) as HTMLInputElement | null;
+                const length = Number(lengthInput?.value);
+                const width = Number(widthInput?.value);
+                const area = Number(areaInput?.value);
+                if (Number.isFinite(length) && length > 0) {
+                  writeMeasure("flooring.portion.length_m", length);
+                }
+                if (Number.isFinite(width) && width > 0) {
+                  writeMeasure("flooring.portion.width_m", width);
+                }
+                const measured = flooringMeasuredAreaM2({
+                  length_m: Number.isFinite(length) && length > 0 ? length : portion.length_m,
+                  width_m: Number.isFinite(width) && width > 0 ? width : portion.width_m,
+                });
+                const nextArea =
+                  Number.isFinite(area) && area > 0 ? area : measured;
+                if (nextArea != null) {
+                  writeMeasure("flooring.portion.area_m2", nextArea);
+                }
+              }}
+            >
+              Save room size
+            </Button>
           </Group>
         );
       })}

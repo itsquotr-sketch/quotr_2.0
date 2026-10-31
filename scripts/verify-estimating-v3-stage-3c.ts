@@ -591,6 +591,7 @@ check(
   "flooring measurements stay editable after estimate without adding a portion",
   quickSpecEditors.includes("flooring: FlooringQuickSpecEditor") &&
     flooringEditor.includes("data-flooring-width") &&
+    flooringEditor.includes("Save room size") &&
     flooringEditor.includes("nestedItemId: portion.id") &&
     shell.includes("nestedItemId: input.nestedItemId ?? undefined") &&
     !flooringEditor.includes("Add flooring area")

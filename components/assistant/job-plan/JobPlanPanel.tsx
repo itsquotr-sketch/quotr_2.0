@@ -79,6 +79,7 @@ type JobPlanPanelProps = {
     label: string;
     value: string | number;
     valueType: "number" | "select" | "text";
+    nestedItemId?: string | null;
   }) => void;
   constraints?: readonly { key: string; value: unknown }[];
   onConstraint?: JobPlanConstraintWrite;
