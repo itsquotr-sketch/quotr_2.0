@@ -171,6 +171,129 @@ check(
     againWall.openings[0]?.id === wall?.openings[0]?.id
 );
 
+const sixOpeningBrief =
+  "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, six door openings. Painting and skirting excluded.";
+const sixOpeningSpecs = extractInternalWallsTypesFromBrief(sixOpeningBrief);
+const sixOpeningFacts = applyExtractedInternalWallsToFacts({
+  facts: [],
+  workAreaId: "six-openings",
+  types: sixOpeningSpecs,
+});
+const sixOpeningWall = resolveInternalWallsWallTypes({
+  facts: sixOpeningFacts,
+  workAreaId: "six-openings",
+}).types[0];
+check(
+  "six stated door openings stay six unsized openings",
+  sixOpeningSpecs[0]?.doorOpeningCount === 6 &&
+    sixOpeningWall?.has_openings === true &&
+    sixOpeningWall.openings.length === 6 &&
+    sixOpeningWall.openings.every(
+      (opening) =>
+        opening.type === "door" && opening.width_m == null && opening.height_m == null
+    ),
+  JSON.stringify({
+    count: sixOpeningSpecs[0]?.doorOpeningCount,
+    openings: sixOpeningWall?.openings.length,
+  })
+);
+const sixOpeningEstimate = calculateInternalWalls(
+  {
+    project: { id: "p", qualityLevel: null },
+    confirmedWorkAreas: [
+      {
+        id: "six-openings",
+        type: "internal_walls",
+        name: "Internal walls",
+        sort_order: 1,
+      },
+    ],
+    facts: [
+      ...sixOpeningFacts,
+      {
+        work_area_id: "six-openings",
+        key: "internal_walls.job_scope",
+        value: "New partition",
+        source: "user",
+      },
+    ],
+    constraints: [],
+    organisationSettings: null,
+    materialWastageSettings: null,
+    rates: [],
+  },
+  {
+    id: "six-openings",
+    type: "internal_walls",
+    name: "Internal walls",
+    sort_order: 1,
+  }
+);
+const openingSell = sixOpeningEstimate.lineItems
+  .filter((row) => row.componentKey?.includes("opening"))
+  .reduce((sum, row) => sum + (row.recommendedSell ?? 0), 0);
+check(
+  "unsized stated openings add no opening price",
+  openingSell === 0 &&
+    sixOpeningEstimate.missingInfo.includes("Add the opening width and height."),
+  JSON.stringify({
+    sell: openingSell,
+    missing: sixOpeningEstimate.missingInfo,
+    keys: sixOpeningEstimate.lineItems.map((row) => row.componentKey),
+  })
+);
+const sixAgain = applyExtractedInternalWallsToFacts({
+  facts: sixOpeningFacts,
+  workAreaId: "six-openings",
+  types: sixOpeningSpecs,
+});
+const sixAgainWall = resolveInternalWallsWallTypes({
+  facts: sixAgain,
+  workAreaId: "six-openings",
+}).types[0];
+check(
+  "reanalysis does not duplicate a stated opening count",
+  sixAgainWall?.openings.length === 6 &&
+    sixAgainWall.openings[0]?.id === sixOpeningWall?.openings[0]?.id
+);
+const keptSingle = applyExtractedInternalWallsToFacts({
+  facts: wallFacts,
+  workAreaId: "walls",
+  types: sixOpeningSpecs,
+});
+const keptSingleWall = resolveInternalWallsWallTypes({
+  facts: keptSingle,
+  workAreaId: "walls",
+}).types[0];
+check(
+  "a saved door opening is not expanded to the later stated count",
+  keptSingleWall?.openings.length === 1 &&
+    keptSingleWall.openings[0]?.id === wall?.openings[0]?.id
+);
+const sixDoorSetsBrief =
+  "Build a new 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, and include six door sets.";
+const sixDoorSetSpecs = extractInternalWallsTypesFromBrief(sixDoorSetsBrief);
+const sixDoorSetFacts = applyExtractedInternalWallsToFacts({
+  facts: [],
+  workAreaId: "six-door-sets",
+  types: sixDoorSetSpecs,
+});
+const sixDoorSetWall = resolveInternalWallsWallTypes({
+  facts: sixDoorSetFacts,
+  workAreaId: "six-door-sets",
+}).types[0];
+check(
+  "six door sets stay door work and do not become one wall opening",
+  sixDoorSetSpecs[0]?.doorOpeningCount == null &&
+    sixDoorSetWall?.openings.length === 0 &&
+    sixDoorSetWall.has_openings == null,
+  JSON.stringify({
+    count: sixDoorSetSpecs[0]?.doorOpeningCount,
+    openings: sixDoorSetWall?.openings.length ?? 0,
+    hasOpenings: sixDoorSetWall?.has_openings ?? null,
+  })
+);
+
 const officeWalls = extractInternalWallsTypesFromBrief(OFFICE_BRIEF);
 const officeFacts = applyExtractedInternalWallsToFacts({
   facts: [],

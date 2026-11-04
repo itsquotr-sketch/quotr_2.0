@@ -7,8 +7,8 @@ Restarted 5 November 2026. Production release is not authorised. This register d
 | Item | Value |
 | --- | --- |
 | Integration branch | `estimating/v3` |
-| Integration SHA | `bd35b7a8d509863e709012d1852d3dcd4f92eaf1` |
-| Integration Preview | `dpl_94XKNYKb9sLyK21ejDx5w9UFFM4X`, Ready, target preview, same SHA |
+| Integration SHA | `01e4b508c062dbee0bd46c12b763d77996308122` |
+| Integration Preview | `dpl_Emt3FLoE6WmNfeH7qYmcaUcywry2`, Ready, target preview, same SHA |
 | Preview alias | https://quotr-2-0-git-estimating-v3-quotr1.vercel.app |
 | Preview database | `quotr_preview` / `shhpjsoldmqtkdbgrbtm` |
 | Production database | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` |
@@ -16,41 +16,56 @@ Restarted 5 November 2026. Production release is not authorised. This register d
 | Android release line | `ff39ba31` on `release/android-estimating-stage-1`. Not this Preview. |
 | Open pull requests | None on `itsquotr-sketch/quotr_2.0` |
 
-`origin/estimating/v3` matches the last accepted integration. The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` is 20 commits behind and has unrelated uncommitted files. It was not updated or cleaned. The current workspace checkout `preview/project-workspace-spacing` at `68be9916` was clean and was left there.
+`origin/estimating/v3` is `01e4b508`. No newer remote commit. The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` remains `af4a388b` with unrelated uncommitted files. It was not updated or cleaned.
 
 Separate Preview and Production deployments do not separate the database. A branch deployment of this application uses the shared Preview database.
 
 ## Accepted on this integration
 
-Analysis integrity, explicit exclusions, partial estimates, flooring ownership and waste, laminate and carpet-tile recipes, project preliminaries, company-rate recovery, Pricing reconciliation, and GST gates. Edited drafts and issued snapshots stay in place until an explicit regenerate and Pricing apply. The disclosure-basis refresh for a hazardous-materials answer is already in `261c1ca2`. No separate hazardous-materials branch or draft pull request existed.
+Analysis integrity, explicit exclusions, partial estimates, flooring ownership and waste, laminate and carpet-tile recipes, project preliminaries, company-rate recovery, Pricing reconciliation, and GST gates. Edited drafts and issued snapshots stay in place until an explicit regenerate and Pricing apply.
+
+Hazardous-materials presentation is accepted at `01e4b508`. Product change `ad8cc7cf`. Verification `0594b0cf`. Hosted smoke passed on integration Preview `dpl_Emt3FLoE6WmNfeH7qYmcaUcywry2`. Do not repeat that batch without contrary evidence.
+
+## Assembly evidence already on this line
+
+Recognised, partial, or complete from the existing stage and checkpoint records. This is not a new audit.
+
+| Family | Where it stands |
+| --- | --- |
+| Flooring | Laminate and carpet-tile recipes are complete assemblies. A missing company rate stays unpriced. Area headings can still show a binary float. |
+| Internal walls and doors | Door sets are a separate assembly and are not wall openings. This slice stores a stated opening count as one unsized opening each. Lining without a product stays an unspecified line. |
+| Decks | Low and elevated replacement decks have priced assemblies. Pile replacement while inspection is open can still price a new set beside the allowance. |
+| Bathrooms | Floor-tile installation and painting can price from stated area. The whole bathroom is not a complete assembly. |
+| Ceilings and cladding | Catalogue recognition exists. No hosted complete assembly is recorded here. |
+| Fences and retaining walls | Calculators exist and were not re-run. There is not enough hosted evidence to prioritise a recipe repair. QA still owes one supported scenario per family. Do not invent structural specifications. |
+| Project preliminaries | Accepted. The office preliminary total remains $2,900 cost and $3,625 sell. |
 
 ## Current slice
 
-**Client price presentation for unanswered hazardous materials on non-demolition flooring.**
+**Stated wall-opening count.**
+
+A brief that says “six door openings” was written as one door opening. Six door sets stay door sets. User impact is opening quantity and the framing that follows once a size is known.
 
 Frozen acceptance:
 
-- The question “Is there asbestos or hazardous materials risk?” stays visible. Unanswered risk is not zero and creates no allowance.
-- That question is not an unresolved specification. A priced non-demolition flooring estimate with no other gap shows **Recommended client sell** and **Estimate ready**.
-- Yes, Not sure, and unanswered demolition still block commercial readiness, add no allowance, and do not change labour hours.
-- Site-access questions still count as specifications. Floor level and protection stay as they are.
-- No schema, model, rate, credential, or money change. Saved estimates, edited Pricing rows, and issued snapshots are not rewritten.
+- “Six door openings” on a new partition stores six door openings. Width and height stay empty. No 810×1980 size is invented.
+- Those unsized openings add no opening price. The estimate asks for the opening width and height.
+- Applying the same brief again does not create twelve openings.
+- A door opening the user already saved is not expanded to a later stated count.
+- “Six door sets” remains door work. It does not become one wall opening, and it does not become six openings.
+- One stated door opening still stores one opening.
+- No schema, rate, credential, or Production change. Saved opening rows are not rewritten.
 
-Branch: `estimating/v3-hazmat-presentation`, from `bd35b7a8`. Implementation owner: this development line. QA and release review are separate and do not edit the application.
-
-Accepted locally on 5 November 2026. Product change `ad8cc7cf`. Verification follow-up `0594b0cf`. QA passed both scripts on clean `0594b0cf`: Stage 3C passed, and partial-estimate readiness passed 30. Independent expectations passed, including 30 m² × 0.2 h/m² × 1.00 = 6.00 hours. Release review passed both commits for a Preview-only fast-forward. No live model calls were made.
-
-The branch is not on `origin`. `juansellis` and `jeanluc-wastex` were both denied write access to `itsquotr-sketch/quotr_2.0`. Integration Preview still serves `bd35b7a8` at `dpl_94XKNYKb9sLyK21ejDx5w9UFFM4X`. Production was not deployed. Pushing `estimating/v3` deploys Preview only: the Vercel production branch is `main`.
-
-The question stays on the condition panel and in the review list. `classifyReviewNotice` no longer treats that question as an unresolved specification, so it does not switch the client sell to “Known sell, not the complete price”. Yes, Not sure, and unanswered demolition still reach the overview through `commercialConditionMessages`. Local `npx tsx scripts/verify-estimating-v3-stage-3c.ts` passed on this tree before the commit. No live model calls were planned or made.
+Branch: `estimating/v3-opening-count`, from `01e4b508`. Implementation owner: this development line. Scenario QA and release review are separate and do not edit the application. Local check: `npx tsx scripts/verify-estimating-v3-stage-2a.ts` passed 46. No live model calls.
 
 ## Next slices, after this one
 
-These are recorded gaps, not frozen acceptance. Confirm each against `bd35b7a8` before coding.
+These are recorded gaps, not frozen acceptance.
 
-1. **Stated door sets versus one wall opening.** The 29 October checkpoint found six door sets associated with one opening. Later commits let an unanswered opening stay open. They do not record a count repair. User impact is quantity and price.
-2. **Multi-room area headings.** The same checkpoint showed binary floating-point areas such as `11.520000000001 m²`. No later commit closes that display. User impact is quantity trust.
-3. **Work-area “All priced” beside an Incomplete overview.** Explicitly deferred after the cost-integrity follow-up. User impact is disagreement between estimate surfaces.
+1. **Multi-room area headings.** Binary floats such as `11.520000000001 m²`. Quantity trust.
+2. **Work-area “All priced” beside an Incomplete overview.** Deferred. The surfaces disagree.
+3. **Pile replacement while inspection is open.** A new substructure can price beside the allowance. Deck money is not complete until this is resolved.
+4. **Fence and retaining-wall evidence.** One representative scenario each, using the existing calculator contracts. Not a recipe change until that evidence exists.
 
 ## Not in this register
 
