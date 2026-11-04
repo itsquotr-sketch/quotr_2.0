@@ -7,8 +7,8 @@ Restarted 5 November 2026. Production release is not authorised. This register d
 | Item | Value |
 | --- | --- |
 | Integration branch | `estimating/v3` |
-| Integration SHA | `01e4b508c062dbee0bd46c12b763d77996308122` |
-| Integration Preview | `dpl_Emt3FLoE6WmNfeH7qYmcaUcywry2`, Ready, target preview, same SHA |
+| Integration SHA | `475acf23b4cccf9fdea3264ff3de0905f5cf6969` |
+| Integration Preview | `dpl_CwgPuE9RCy4vmV8BNBz6zStQbkwb`, Ready, target preview, same SHA |
 | Preview alias | https://quotr-2-0-git-estimating-v3-quotr1.vercel.app |
 | Preview database | `quotr_preview` / `shhpjsoldmqtkdbgrbtm` |
 | Production database | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` |
@@ -16,7 +16,7 @@ Restarted 5 November 2026. Production release is not authorised. This register d
 | Android release line | `ff39ba31` on `release/android-estimating-stage-1`. Not this Preview. |
 | Open pull requests | None on `itsquotr-sketch/quotr_2.0` |
 
-`origin/estimating/v3` is `01e4b508`. No newer remote commit. The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` remains `af4a388b` with unrelated uncommitted files. It was not updated or cleaned.
+`origin/estimating/v3` is `475acf23`. Published by `itsquotr-sketch` as a fast-forward from `01e4b508`. Backup branch `estimating/v3-reviewed` is the same SHA. The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` remains `af4a388b` with unrelated uncommitted files. It was not updated or cleaned.
 
 Separate Preview and Production deployments do not separate the database. A branch deployment of this application uses the shared Preview database.
 
@@ -37,35 +37,32 @@ Recognised, partial, or complete from the existing stage and checkpoint records.
 | Decks | Low and elevated replacement decks have priced assemblies. Pile replacement while inspection is open can still price a new set beside the allowance. |
 | Bathrooms | Floor-tile installation and painting can price from stated area. The whole bathroom is not a complete assembly. |
 | Ceilings and cladding | Catalogue recognition exists. No hosted complete assembly is recorded here. |
-| Fences and retaining walls | Calculators exist and were not re-run. There is not enough hosted evidence to prioritise a recipe repair. QA still owes one supported scenario per family. Do not invent structural specifications. |
+| Fences and retaining walls | Two deterministic area-formula checks passed: fence face 18 × 1.8 = 32.4 m², retaining face 15 × (1.6 + 0.6) / 2 = 16.5 m². That is not end-to-end assembly acceptance. Do not invent structural specifications. |
 | Project preliminaries | Accepted. The office preliminary total remains $2,900 cost and $3,625 sell. |
+
+Stated wall-opening count is on the integration at `1288d9ee`, inside `475acf23`. Focused deterministic acceptance passed. Hosted reload was not completed: the Cursor browser has no signed-in session.
 
 ## Current slice
 
-**Stated wall-opening count.**
+**Multi-room area headings.**
 
-A brief that says “six door openings” was written as one door opening. Six door sets stay door sets. User impact is opening quantity and the framing that follows once a size is known.
+Bedroom area headings showed the raw product, such as `11.520000000000001 m²`. The heading text now uses the existing two-decimal display. The calculated area stays the full product.
 
 Frozen acceptance:
 
-- “Six door openings” on a new partition stores six door openings. Width and height stay empty. No 810×1980 size is invented.
-- Those unsized openings add no opening price. The estimate asks for the opening width and height.
-- Applying the same brief again does not create twelve openings.
-- A door opening the user already saved is not expanded to a later stated count.
-- “Six door sets” remains door work. It does not become one wall opening, and it does not become six openings.
-- One stated door opening still stores one opening.
-- No schema, rate, credential, or Production change. Saved opening rows are not rewritten.
+- Bedroom 1, 3.6 m × 3.2 m, shows `11.52 m²`. Bedroom 2, 4.2 m × 3.5 m, shows `14.7 m²`. The hallway, 8 m × 1.2 m, shows `9.6 m²`.
+- The stored net area stays `3.6 × 3.2` and `4.2 × 3.5`. Display rounding does not change purchasing quantity.
+- No schema, rate, credential, or Production change.
 
-Branch: `estimating/v3-opening-count`, from `01e4b508`. Implementation owner: this development line. Scenario QA and release review are separate and do not edit the application. Local check: `npx tsx scripts/verify-estimating-v3-stage-2a.ts` passed 46. No live model calls.
+Branch: `estimating/v3-area-headings`, from `475acf23`. Local check: `npx tsx scripts/verify-estimating-v3-stage-2e.ts` passed, including the heading check. No live model calls. Not accepted until scenario QA and release review.
 
 ## Next slices, after this one
 
 These are recorded gaps, not frozen acceptance.
 
-1. **Multi-room area headings.** Binary floats such as `11.520000000001 m²`. Quantity trust.
-2. **Work-area “All priced” beside an Incomplete overview.** Deferred. The surfaces disagree.
-3. **Pile replacement while inspection is open.** A new substructure can price beside the allowance. Deck money is not complete until this is resolved.
-4. **Fence and retaining-wall evidence.** One representative scenario each, using the existing calculator contracts. Not a recipe change until that evidence exists.
+1. **Work-area “All priced” beside an Incomplete overview.** Deferred. The surfaces disagree.
+2. **Pile replacement while inspection is open.** A new substructure can price beside the allowance. Deck money is not complete until this is resolved.
+3. **Fence and retaining-wall assembly evidence.** The area formulas are checked. A complete assembly is still not accepted.
 
 ## Not in this register
 

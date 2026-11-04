@@ -23,7 +23,10 @@ import {
   FLOORING_FINISH_SUPPLY_COMPONENT,
   FLOORING_FINISH_WASTE_COMPONENT,
 } from "@/lib/estimate/flooring-purchasing";
-import { calculateFlooringPhysical } from "@/lib/estimate/flooring-physical";
+import {
+  calculateFlooringPhysical,
+  presentFlooringAreaM2,
+} from "@/lib/estimate/flooring-physical";
 import { hasFlooringPortionsFact } from "@/lib/estimate/flooring-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -250,7 +253,7 @@ export function applyFlooringReviewGroups(params: {
       summary: portion.summary,
       areaLabel:
         portion.physicalNetAreaM2 != null
-          ? `${portion.physicalNetAreaM2} m²`
+          ? presentFlooringAreaM2(portion.physicalNetAreaM2).replace(/\.0 m²$/, " m²")
           : null,
       lineGroups,
       assumptions: [],

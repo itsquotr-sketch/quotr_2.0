@@ -15,6 +15,7 @@ import {
   FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
 } from "../lib/estimate/flooring-identities";
+import { applyFlooringReviewGroups } from "../lib/assistant/builder-review/flooring-review-groups";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import {
@@ -409,6 +410,38 @@ const threeCommercial = commercializeFlooring({
   constraints: [],
 });
 
+const roomGroups = applyFlooringReviewGroups({
+  categories: [],
+  facts: [
+    {
+      id: "fact-rooms",
+      project_id: "project",
+      work_area_id: "flooring",
+      key: FLOORING_PORTIONS_FACT_KEY,
+      value: extracted,
+      source: "user",
+    },
+  ] as EstimateFact[],
+  workAreaId: "flooring",
+});
+const roomHeading = (label: string) =>
+  roomGroups.portionGroups.find((row) => row.label.startsWith(label))?.areaLabel ?? null;
+const bedroom1Area = threePhysical.portions.find((row) => row.label === "Bedroom 1")?.physicalNetAreaM2;
+const bedroom2Area = threePhysical.portions.find((row) => row.label === "Bedroom 2")?.physicalNetAreaM2;
+check(
+  "room area headings format the binary product and keep the calculated area",
+  roomHeading("Bedroom 1") === "11.52 m²" &&
+    roomHeading("Bedroom 2") === "14.7 m²" &&
+    roomHeading("Hallway") === "9.6 m²" &&
+    bedroom1Area === 3.6 * 3.2 &&
+    bedroom2Area === 4.2 * 3.5 &&
+    !/000000/.test(roomGroups.portionGroups.map((row) => row.areaLabel ?? "").join(" ")),
+  {
+    headings: roomGroups.portionGroups.map((row) => [row.label, row.areaLabel]),
+    bedroom1Area,
+    bedroom2Area,
+  }
+);
 check(
   "three-room identities survive",
   extracted.map((row) => [row.label, row.finish_type, row.waste_percent, row.skirting_replacement_excluded, row.framing_required]).join("|") ===
