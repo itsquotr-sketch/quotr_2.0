@@ -38,6 +38,8 @@ Frozen acceptance:
 
 Branch: `estimating/v3-hazmat-presentation`, from `bd35b7a8`. Implementation owner: this development line. QA and release review are separate and do not edit the application.
 
+The question stays on the condition panel and in the review list. `classifyReviewNotice` no longer treats that question as an unresolved specification, so it does not switch the client sell to “Known sell, not the complete price”. Yes, Not sure, and unanswered demolition still reach the overview through `commercialConditionMessages`. Local `npx tsx scripts/verify-estimating-v3-stage-3c.ts` passed on this tree before the commit. No live model calls were planned or made.
+
 ## Next slices, after this one
 
 These are recorded gaps, not frozen acceptance. Confirm each against `bd35b7a8` before coding.

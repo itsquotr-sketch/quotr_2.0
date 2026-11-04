@@ -482,6 +482,27 @@ check(
     uncertainHazmatOverview.statusLabel === "Incomplete" &&
     uncertainHazmatOverview.issues.unresolvedSpecificationCount === 0
 );
+const yesHazmatOverview = projectEstimateOverview({
+  ...flooringOverviewMoney,
+  openCommercialConditions: [
+    "Hazardous-materials risk is Yes. That work is not priced, and no allowance has been added.",
+  ],
+});
+const demolitionHazmatOverview = projectEstimateOverview({
+  ...flooringOverviewMoney,
+  workAreaNames: ["Demolition"],
+  openCommercialConditions: [
+    "Hazardous-materials risk still needs an answer. No allowance has been added.",
+  ],
+});
+check(
+  "Yes and unanswered demolition still keep the client sell incomplete",
+  yesHazmatOverview.sell.presentation === "partial" &&
+    yesHazmatOverview.statusLabel === "Incomplete" &&
+    demolitionHazmatOverview.sell.presentation === "partial" &&
+    demolitionHazmatOverview.statusLabel === "Incomplete" &&
+    /still needs an answer/.test(demolitionHazmatOverview.statusDetail)
+);
 
 const historical = composeBuilderReview({
   estimate: {
