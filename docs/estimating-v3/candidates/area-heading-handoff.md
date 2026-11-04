@@ -5,7 +5,8 @@ Display formatting only. The calculated net area stays the full product.
 ## Identity
 
 - Baseline SHA: `475acf23b4cccf9fdea3264ff3de0905f5cf6969`
-- Candidate branch: `estimating/v3-area-headings`
+- Product commit: `3308d8067c5f526ee127b5c47c09d329d201bab1`
+- Candidate under test: the tip of `estimating/v3-area-headings`. The only commit after the product commit is this handoff line.
 - Checkout: `C:\Users\Admin\Desktop\quotr-v3-area-headings`
 - Preview URL: none. This candidate is not published.
 - Declared live model calls: 0
