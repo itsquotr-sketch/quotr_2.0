@@ -20,6 +20,7 @@ Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 l
 | [STAGE_2A_INSTANCE_IDENTITY.md](./STAGE_2A_INSTANCE_IDENTITY.md) | UUID and measurement matching, and the unapplied identity column |
 | [STAGE_2B_ANALYSIS.md](./STAGE_2B_ANALYSIS.md) | Flooring interpretation: deck boards stay off Flooring, and disagreeing areas stay unresolved |
 | [STAGE_2C_SCOPE_INTENT.md](./STAGE_2C_SCOPE_INTENT.md) | Exclusions, conditional pile retention, and door-leaf provenance |
+| [V3_CANDIDATE_HANDOFF.md](./V3_CANDIDATE_HANDOFF.md) | Handoff copied for one candidate before scenario QA and release review |
 
 Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, `scripts/verify-estimating-v3-stage-2a.ts`, `scripts/verify-estimating-v3-stage-2b.ts`, and `scripts/verify-estimating-v3-stage-2c.ts`.
 
