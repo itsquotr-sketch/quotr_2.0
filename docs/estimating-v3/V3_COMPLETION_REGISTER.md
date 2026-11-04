@@ -38,6 +38,10 @@ Frozen acceptance:
 
 Branch: `estimating/v3-hazmat-presentation`, from `bd35b7a8`. Implementation owner: this development line. QA and release review are separate and do not edit the application.
 
+Accepted locally on 5 November 2026. Product change `ad8cc7cf`. Verification follow-up `0594b0cf`. QA passed both scripts on clean `0594b0cf`: Stage 3C passed, and partial-estimate readiness passed 30. Independent expectations passed, including 30 m² × 0.2 h/m² × 1.00 = 6.00 hours. Release review passed both commits for a Preview-only fast-forward. No live model calls were made.
+
+The branch is not on `origin`. `juansellis` and `jeanluc-wastex` were both denied write access to `itsquotr-sketch/quotr_2.0`. Integration Preview still serves `bd35b7a8` at `dpl_94XKNYKb9sLyK21ejDx5w9UFFM4X`. Production was not deployed. Pushing `estimating/v3` deploys Preview only: the Vercel production branch is `main`.
+
 The question stays on the condition panel and in the review list. `classifyReviewNotice` no longer treats that question as an unresolved specification, so it does not switch the client sell to “Known sell, not the complete price”. Yes, Not sure, and unanswered demolition still reach the overview through `commercialConditionMessages`. Local `npx tsx scripts/verify-estimating-v3-stage-3c.ts` passed on this tree before the commit. No live model calls were planned or made.
 
 ## Next slices, after this one
