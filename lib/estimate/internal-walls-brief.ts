@@ -1093,24 +1093,28 @@ export function applyExtractedInternalWallsToFacts(params: {
     const savedDoorOpenings =
       existingType?.openings.filter((row) => row.type === "door" || row.type == null)
         .length ?? 0;
+    // A stated count is one row per opening. One saved door opening is left
+    // as the user stored it. Dimensions are not invented.
     if (statedDoorOpenings > 0 && savedDoorOpenings === 0) {
-      const openingId = createOpeningId();
-      facts = applyInternalWallsFactWrite({
-        facts,
-        workAreaId: params.workAreaId,
-        wallTypeId,
-        openingId,
-        key: INTERNAL_WALLS_ADD_OPENING_KEY,
-        value: openingId,
-      });
-      facts = applyInternalWallsFactWrite({
-        facts,
-        workAreaId: params.workAreaId,
-        wallTypeId,
-        openingId,
-        key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}type`,
-        value: "Door opening",
-      });
+      for (let index = 0; index < statedDoorOpenings; index += 1) {
+        const openingId = createOpeningId();
+        facts = applyInternalWallsFactWrite({
+          facts,
+          workAreaId: params.workAreaId,
+          wallTypeId,
+          openingId,
+          key: INTERNAL_WALLS_ADD_OPENING_KEY,
+          value: openingId,
+        });
+        facts = applyInternalWallsFactWrite({
+          facts,
+          workAreaId: params.workAreaId,
+          wallTypeId,
+          openingId,
+          key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}type`,
+          value: "Door opening",
+        });
+      }
     }
     if (spec.insulationIncluded === true && existingType?.insulation_included == null) {
       facts = applyInternalWallsFactWrite({
