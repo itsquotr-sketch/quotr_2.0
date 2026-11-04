@@ -22,6 +22,7 @@ import {
   listConditionDecisions,
 } from "../lib/estimate/condition-basis";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
 import { extractConstraintsFromBrief } from "../lib/ai/enrich-extraction";
 import { extractFlooringPortionsFromBrief } from "../lib/estimate/flooring-brief";
 import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
@@ -389,6 +390,97 @@ check(
     classifyReviewNotice("What floor are the works on?") == null &&
     classifyReviewNotice("Is extra protection or dust control required?") == null &&
     classifyReviewNotice("Is protection / dust control required?") == null
+);
+const HAZMAT_QUESTION = "Is there asbestos or hazardous materials risk?";
+check(
+  "an unanswered hazardous-materials question is not an unresolved specification",
+  classifyReviewNotice(HAZMAT_QUESTION) == null &&
+    classifyReviewNotice("How difficult is site access?") === "specification"
+);
+check(
+  "unanswered hazardous materials still blocks demolition and not flooring",
+  commercialConditionMessages({
+    constraints: [],
+    workAreaTypes: ["demolition"],
+  }).some((row) => /still needs an answer/i.test(row) && /no allowance/i.test(row)) &&
+    !commercialConditionMessages({
+      constraints: [],
+      workAreaTypes: ["flooring"],
+    }).some((row) => /hazardous-materials risk still needs an answer/i.test(row))
+);
+const pricedFlooringReview = {
+  overview: {
+    workAreaNames: ["Flooring"],
+    partialEstimateLabel: null,
+    recommendedSellIsPartial: false,
+  },
+  workAreas: [
+    {
+      workAreaName: "Flooring",
+      partialEstimateLabel: null,
+      categories: [],
+    },
+  ],
+  assumptions: [],
+  checks: [{ id: "hazmat", label: HAZMAT_QUESTION }],
+  improvements: [],
+};
+const flooringOverviewMoney = {
+  hasEstimate: true,
+  isStale: false,
+  detailsOutstanding: false,
+  estimate: {
+    recommendedSell: 800,
+    recommendedCost: 640,
+    grossProfit: 160,
+    marginPercent: 20,
+  },
+  gstRate: null,
+  breakdown: {
+    materialsCost: 400,
+    labourCost: 240,
+    labourHours: 2.1,
+    allowancesCost: 0,
+    subcontractCost: null,
+    plantCost: null,
+    otherCost: null,
+  },
+  review: pricedFlooringReview,
+  readinessBlockers: [],
+  rateSourceSummary: null,
+  pricingDocumentExists: true,
+  specialistPricingNotice: null,
+  workAreaNames: ["Flooring"],
+} as const;
+const unansweredHazmatOverview = projectEstimateOverview({
+  ...flooringOverviewMoney,
+  openCommercialConditions: [],
+});
+check(
+  "unanswered hazardous materials on priced flooring stays a complete client sell",
+  unansweredHazmatOverview.sell.label === "Recommended client sell" &&
+    unansweredHazmatOverview.sell.presentation === "current" &&
+    unansweredHazmatOverview.statusLabel === "Estimate ready" &&
+    unansweredHazmatOverview.specificationSummary == null &&
+    unansweredHazmatOverview.issues.unresolvedSpecificationCount === 0,
+  {
+    label: unansweredHazmatOverview.sell.label,
+    status: unansweredHazmatOverview.statusLabel,
+    detail: unansweredHazmatOverview.statusDetail,
+    specs: unansweredHazmatOverview.specificationSummary,
+  }
+);
+const uncertainHazmatOverview = projectEstimateOverview({
+  ...flooringOverviewMoney,
+  openCommercialConditions: [
+    "Hazardous-materials risk is Not sure. It is not treated as No, and no allowance has been added.",
+  ],
+});
+check(
+  "Not sure hazardous materials still keeps the client sell incomplete",
+  uncertainHazmatOverview.sell.label === "Known sell, not the complete price" &&
+    uncertainHazmatOverview.statusLabel === "Incomplete" &&
+    uncertainHazmatOverview.issues.unresolvedSpecificationCount === 0
 );
 
 const historical = composeBuilderReview({

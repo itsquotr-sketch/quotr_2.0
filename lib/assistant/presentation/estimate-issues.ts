@@ -148,8 +148,13 @@ export function issuesFromEstimateRecord(input: {
   };
 }
 
+/**
+ * Visible conditions that do not make a priced job look incomplete.
+ * Hazardous-materials Yes, Not sure, and unanswered demolition still block
+ * through the commercial condition messages. This question is not that block.
+ */
 const ASSUMABLE_NONCONSUMED_CONDITION_QUESTION =
-  /^(?:what floor(?: level)? (?:are )?(?:the )?works on|is (?:extra )?protection(?: \/| or) dust control required)\??$/i;
+  /^(?:what floor(?: level)? (?:are )?(?:the )?works on|is (?:extra )?protection(?: \/| or) dust control required|is there asbestos or hazardous materials risk)\??$/i;
 
 export function classifyReviewNotice(
   label: string
