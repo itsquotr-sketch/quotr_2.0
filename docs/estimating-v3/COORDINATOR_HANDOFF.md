@@ -28,18 +28,9 @@ No credentials are stored here. Verify the active organisation before every host
 
 - Area headings, at `68c5760c`. Product behaviour is `3308d806` inside that tip. Bedroom 1 `11.52 m²`, Bedroom 2 `14.7 m²`, hallway `9.6 m²`. Stored areas stay `3.6 × 3.2` and `4.2 × 3.5`. QA and release review are complete. Do not repeat them.
 - Opening-count deterministic acceptance and Preview integration are complete, at `1288d9ee` inside `475acf23` and later. Raw timber 5.72 lm. Purchase quantity 6.29 lm.
+- Opening-count hosted persistence, on project `f87a1677-59d4-4c19-93cb-295acbfffad2` in V3 QA isolated mw2usno8. Six door openings stayed unsized across a reload. One opening, the active sixth `9b451a38-863b-42a8-b73b-86c13692ecf7`, then stored 0.92 m by 2.10 m and survived a second reload. The other five stayed empty. No quote was sent and Pricing was not reviewed. Do not edit this project. Do not repeat the check.
 
 ## Still open
-
-### Opening-count hosted persistence
-
-Status: **NOT TESTED**. Area-heading acceptance does not cover it.
-
-Fresh project only, in V3 QA isolated mw2usno8, after the active organisation is verified.
-
-- Six explicit unsized wall openings survive reload.
-- Size one to 0.92 × 2.10 m, reload, and the other five stay unsized.
-- No quote send. No Pricing review. Do not edit proof projects, organisation settings, or shared rates.
 
 ### Fence and retaining-wall journeys
 
