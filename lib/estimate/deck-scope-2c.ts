@@ -178,7 +178,7 @@ export function pileReplacementUnpricedNotes(input: {
 }
 
 export const DECK_SUPPORT_DESIGN_UNRESOLVED =
-  "Concrete footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";
+  "Footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";
 
 export const PILE_SUPPORTS_UNRESOLVED_PENDING =
   "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";

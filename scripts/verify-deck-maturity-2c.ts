@@ -22,6 +22,7 @@ import {
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
   DECK_NORMAL_HANDLING_CONTRACT,
   DECK_STEPS_INCLUDED_FACT_KEY,
+  DECK_SUPPORT_DESIGN_UNRESOLVED,
   DECKING_LINE_LABEL,
   DECKING_PACKAGE_LINE_LABEL,
   concreteBagsPerHole,
@@ -453,7 +454,10 @@ check(
   "28 No suppresses",
     !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL) &&
     !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_PLACE_LABEL) &&
-    !concreteNo.missingInfo.some((info) => /concrete/i.test(info))
+    !concreteNo.missingInfo.some((info) => /concrete/i.test(info)) &&
+    concreteNo.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    /support method, post count and associated excavation/i.test(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    /not priced/i.test(DECK_SUPPORT_DESIGN_UNRESOLVED)
 );
 check(
   "29 absent bags-per-hole is not a 2.5 takeoff",
