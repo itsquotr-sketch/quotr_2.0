@@ -28,6 +28,9 @@ import type {
   EstimateFact,
   EstimateWorkArea,
 } from "../lib/estimate/types";
+import { lineVisibleInEstimateReview } from "../lib/assistant/builder-review/compose";
+import { presentEstimateWorkAreaTotals } from "../lib/estimate/presentation-breakdown";
+import { readFileSync } from "node:fs";
 import { buildWorkAreaQuoteDescriptionDraft } from "../lib/work-areas/quote-description";
 
 const workArea = {
@@ -88,6 +91,10 @@ const replaceQuote = buildWorkAreaQuoteDescriptionDraft({
 });
 const replacement = replace.lineItems.find((item) => item.label === "Kitchen replacement");
 check("1 request stays visible", replacement?.notes === KITCHEN_REPLACEMENT_VISIBLE);
+check(
+  "1 request stays visible in the estimate review",
+  replacement != null && lineVisibleInEstimateReview(replacement)
+);
 check("1 request stays out of the known total", replacement?.includedInTotal === false && knownSell(replace.lineItems) === 0);
 check(
   "1 asks for the area and the scope choice",
@@ -138,7 +145,21 @@ check(
     knownSell(stated.lineItems) === 0 &&
     (labour?.notes ?? "").includes(KITCHEN_PACKAGE_CHOICE_NOTE) &&
     stated.missingInfo.includes("Kitchen scope not confirmed") &&
-    !stated.missingInfo.includes("Kitchen area not confirmed")
+    !stated.missingInfo.includes("Kitchen area not confirmed") &&
+    labour != null &&
+    materials != null &&
+    lineVisibleInEstimateReview(labour) &&
+    lineVisibleInEstimateReview(materials) &&
+    presentEstimateWorkAreaTotals(stated.lineItems).every((area) => area.sell === 0)
+);
+check(
+  "2 breakdown lists the held lines without adding them to the total",
+  readFileSync("components/assistant/EstimateBreakdownModal.tsx", "utf8").includes(
+    "breakdownDisplayItems"
+  ) &&
+    readFileSync("components/assistant/EstimateBreakdownModal.tsx", "utf8").includes(
+      "kitchenHeldLineVisible"
+    )
 );
 check(
   "2 client text keeps the area and omits unstated components",

@@ -54,7 +54,7 @@ One representative fence journey and one retaining-wall journey, using the exist
 
 Representative briefs, continued from `b5d4957d`. An unstated area still does not become 10 m².
 
-1. “Replace the kitchen.” The request stays on a visible line and out of the known total. The estimate asks for the area, the kitchen scope, cabinetry, benchtop, plumbing, and electrical.
+1. “Replace the kitchen.” The request stays on a visible line in the estimate review and the breakdown, and out of the known total. The estimate asks for the area, the kitchen scope, cabinetry, benchtop, plumbing, and electrical.
 2. “Replace the kitchen. The room is 12 m².” The labour line keeps 12 m² at the existing 16 hours per m². The materials line keeps the existing minimum package, $20,000 cost and $30,000 sell. Both lines state that coverage and stay out of the known total until the kitchen scope is Full kitchen renovation. Demolition still prices when that component is selected on its own.
 3. “Include a splashback.” The existing lump stays $800 cost and $1,200 sell for an unmeasured area, a measured 3 m², and a measured 8 m². The unmeasured line does not say 3 m². A measured area is disclosed and does not multiply the lump.
 

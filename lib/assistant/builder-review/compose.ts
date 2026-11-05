@@ -114,6 +114,7 @@ import {
 } from "@/lib/estimate/bathroom-identities";
 import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey, isInternalWallsOpeningComponentKey, isInternalWallsFinishComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import { kitchenHeldLineVisible } from "@/lib/estimate/kitchen-held-lines";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
   labourRateProvenanceLabel,
@@ -201,8 +202,10 @@ const MAX_IMPROVEMENTS = 4;
 export function lineVisibleInEstimateReview(item: {
   includedInTotal?: boolean;
   rateSource?: string | null;
+  scopeKey?: string | null;
 }): boolean {
   if (item.includedInTotal !== false) return true;
+  if (kitchenHeldLineVisible(item)) return true;
   return classifyRateSource(item.rateSource ?? "") === "missing";
 }
 

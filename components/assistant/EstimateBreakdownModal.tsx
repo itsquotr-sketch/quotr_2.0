@@ -13,6 +13,7 @@ import { RateSourceBadge } from "@/components/assistant/EstimateCalibrationPanel
 import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
+import { kitchenHeldLineVisible } from "@/lib/estimate/kitchen-held-lines";
 import { scopeReviewDisplay } from "@/lib/estimate/deck-productivity-scope";
 import type {
   Estimate,
@@ -90,6 +91,12 @@ function includedItems(items: EstimateLineItem[]) {
   return items.filter((item) => item.includedInTotal !== false);
 }
 
+function breakdownDisplayItems(items: EstimateLineItem[]) {
+  return items.filter(
+    (item) => item.includedInTotal !== false || kitchenHeldLineVisible(item)
+  );
+}
+
 function groupByWorkArea(
   items: EstimateLineItem[],
   confirmedNames?: readonly string[]
@@ -99,7 +106,7 @@ function groupByWorkArea(
         confirmedNames.map((n) => n.trim().toLowerCase()).filter(Boolean)
       )
     : null;
-  return includedItems(items).reduce<Record<string, EstimateLineItem[]>>(
+  return breakdownDisplayItems(items).reduce<Record<string, EstimateLineItem[]>>(
     (acc, item) => {
       const raw = item.workAreaName?.trim() || "";
       let name: string;
