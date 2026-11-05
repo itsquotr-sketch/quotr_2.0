@@ -1,47 +1,57 @@
 # V3 coordinator handoff
 
-You are the single Development Lead. Continue in this worktree. Do not open another coordinator session. If `quotr-scenario-qa` and `quotr-release-review` are not invocable here, stop and say so.
+You are the single Development Lead. Continue in this worktree. Do not open another coordinator session. `quotr-scenario-qa` and `quotr-release-review` are invocable here.
 
 ## Verified state, 5 November 2026
 
-- `origin/estimating/v3` is `475acf23b4cccf9fdea3264ff3de0905f5cf6969`. No newer remote commit at handoff.
-- Integration Preview `dpl_CwgPuE9RCy4vmV8BNBz6zStQbkwb` is Ready and serves that SHA at https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. Re-check the deployment identity before any browser test.
+- `origin/estimating/v3` is `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d`. Area headings are accepted at that SHA. Do not repeat that QA.
+- Integration Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU` is Ready and serves that SHA at https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. Re-check the deployment identity before any browser test.
 - Production remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`, SHA `bc0a7667422927d87368bc151a4e442e61562d5c` on `release/website-estimating-stage-1`. Do not deploy it.
 - Publish with the stored `itsquotr-sketch` Git credential. Do not push as `juansellis` or `jeanluc-wastex`. Do not change git config, remotes, or permissions. Never force-push.
 - Dirty checkout `C:\Users\Admin\Desktop\quotr-estimating-v3-integration` is `af4a388b` on local `estimating/v3`. Do not reset or clean it.
-- This coordinator checkout started at `475acf23` on `coord/v3-lead`. The agent files are `.cursor/agents/quotr-scenario-qa.md` and `.cursor/agents/quotr-release-review.md`.
+- This coordinator checkout is `coord/v3-lead`. The agent files are `.cursor/agents/quotr-scenario-qa.md` and `.cursor/agents/quotr-release-review.md`.
 
-## Evidence already published
+## Approved QA environment
 
-- Opening-count evidence: `docs/v3-opening-count-evidence` at `08e21d3926d83d06111a5ecc7a4b633e909d828e`. Deterministic acceptance passed. Raw timber is 5.72 lm. Purchase quantity is 6.29 lm. Preview integration only.
-- Fence and retaining record: `docs/v3-fence-retaining-scenarios` at `d922ddaa27358cc8be0a33768ea7b45c9c918e6d`. Two area-formula checks only: 18 × 1.8 = 32.4 m² and 15 × (1.6 + 0.6) / 2 = 16.5 m². Not assembly acceptance.
+No credentials are stored here. Verify the active organisation before every hosted write.
 
-## Pending, in order
+- Preview alias: https://quotr-2-0-git-estimating-v3-quotr1.vercel.app
+- Preview database: `shhpjsoldmqtkdbgrbtm`
+- Organisation: `27d885fc-b175-4c9a-a703-07cd78293592`, name “Stage 3C isolated”
+- Account: `stage3c+1793164811597@erccontracting.co.nz`
+- That account is email-confirmed, has an email sign-in identity, and is not banned. Last sign-in recorded on Preview was 4 November 2026, 19:52 UTC.
+- ERC Contracting, including `jeanluc@erccontracting.co.nz`, is not authorised for these hosted tests. Do not create or edit projects there.
+- Do not change memberships, passwords, or billing. Do not use Forgot password or Create account.
 
-### A. Opening-count hosted smoke
+## Accepted
 
-Integration `475acf23`. Fresh QA project in organisation `27d885fc-b175-4c9a-a703-07cd78293592` (“Stage 3C isolated” on Preview `shhpjsoldmqtkdbgrbtm`). Confirm that identity before writing.
+- Area headings, at `68c5760c`. Product behaviour is `3308d806` inside that tip. Bedroom 1 `11.52 m²`, Bedroom 2 `14.7 m²`, hallway `9.6 m²`. Stored areas stay `3.6 × 3.2` and `4.2 × 3.5`. QA and release review are complete. Do not repeat them.
+- Opening-count deterministic acceptance and Preview integration are complete, at `1288d9ee` inside `475acf23` and later. Raw timber 5.72 lm. Purchase quantity 6.29 lm.
+
+## Still open
+
+### Opening-count hosted persistence
+
+Status: **NOT TESTED**. Area-heading acceptance does not cover it.
+
+Fresh project only, in Stage 3C isolated, after the active organisation is verified.
 
 - Six explicit unsized wall openings survive reload.
 - Size one to 0.92 × 2.10 m, reload, and the other five stay unsized.
-- Do not edit proof projects, organisation settings, or shared rates. No quote send. No Pricing review.
+- No quote send. No Pricing review. Do not edit proof projects, organisation settings, or shared rates.
 
-The Cursor testing browser had no session. Sign-in URL: https://quotr-2-0-git-estimating-v3-quotr1.vercel.app/login?next=%2Fapp. Bring that browser forward and ask for the existing account sign-in. Do not reset a password or create an account.
+### Fence and retaining-wall journeys
 
-### B. Area-heading candidate
+Area formulas already recorded are supporting evidence only: fence face 18 × 1.8 = 32.4 m², retaining face 15 × (1.6 + 0.6) / 2 = 16.5 m². They are not assembly acceptance.
 
-- Branch `estimating/v3-area-headings` at `4d65d4cf7b2fa66090b64a8e662fb2fe6f7c1d3a`.
-- Product commit `3308d8067c5f526ee127b5c47c09d329d201bab1`.
-- Worktree `C:\Users\Admin\Desktop\quotr-v3-area-headings`.
-- Handoff: `docs/estimating-v3/candidates/area-heading-handoff.md` in that worktree.
-- Display only. Bedroom 1 shows `11.52 m²`, Bedroom 2 `14.7 m²`, hallway `9.6 m²`. Stored areas stay `3.6 × 3.2` and `4.2 × 3.5`.
-- Focused check already passed: `npx tsx scripts/verify-estimating-v3-stage-2e.ts`. QA repeats it. QA does not edit application code.
-- No Preview URL yet. Publish the candidate branch only if QA needs a hosted build. Do not merge it into `estimating/v3` before release review.
-- Declared live model calls: 0.
+Frozen briefs, from the existing contracts:
 
-### C. After B
+- Fence: new 18 m timber paling fence, 1.8 m high, vertical boards, Radiata Pine, 150 × 19 mm, posts at 1.8 m centres, one 0.9 m gate within the run, top capping and gate capping included, paling gap 0.
+- Retaining wall: 15 m timber wall, raking from 1.6 m to 0.6 m, H5 SED retaining poles, backfill included, excavation 6 m³ with digger access, drainage included, drainage sock not required, disposal excluded.
 
-Establish one representative fence journey and one retaining-wall journey. The area-formula checks do not count. Use existing contracts. Declare the live model-call count before any batch. Do not select a recipe repair until those journeys exist.
+Planned live-analysis calls when the authorised session exists: 2, one per brief. Calls made while the browser was ERC Contracting: 0.
+
+Local contract comparison on `68c5760c` matched the frozen quantities for face area, 12 fence posts, 120 palings, 226.8 lm purchased palings at 5% fallback waste, 14 retaining piles, 121 lm purchased 150×50 face boards at 10% default waste, excavation quantity 6 m³, no drainage-sock line, and no disposal line. Retaining hole-excavation labour stays an explicit Pricing Required gap. Do not invent a rate or a structural specification. Do not select a recipe repair until the hosted journeys store scope and survive reload.
 
 ## Workflow
 
