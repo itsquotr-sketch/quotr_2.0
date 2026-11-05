@@ -50,15 +50,15 @@ Multi-room area headings are accepted at `4d65d4cf`. Product change `3308d806`. 
 
 One representative fence journey and one retaining-wall journey, using the existing calculator contracts. The area-formula checks, 18 × 1.8 = 32.4 m² and 15 × (1.6 + 0.6) / 2 = 16.5 m², do not count as assembly acceptance. Do not select a recipe repair until those journeys exist. Declare the live model-call count before any batch. Do not invent structural specifications.
 
-## Kitchen area is not invented
+## Kitchen pricing boundary
 
-Representative brief: “Replace the kitchen.” No area, and no cabinetry, benchtop, splashback, rangehood, flooring, or demolition.
+Representative briefs, continued from `b5d4957d`. An unstated area still does not become 10 m².
 
-On `68c5760c` that brief priced Kitchen labour at 10 m² ($9,600 cost / $12,000 sell) and a materials allowance of $20,000 cost / $30,000 sell, while saying “Using assumed kitchen area of 10 m² for rough estimate.” Kitchen area stayed “not confirmed”. The client draft named cabinetry, benchtop, and appliances.
+1. “Replace the kitchen.” The request stays on a visible line and out of the known total. The estimate asks for the area, the kitchen scope, cabinetry, benchtop, plumbing, and electrical.
+2. “Replace the kitchen. The room is 12 m².” The labour line keeps 12 m² at the existing 16 hours per m². The materials line keeps the existing minimum package, $20,000 cost and $30,000 sell. Both lines state that coverage and stay out of the known total until the kitchen scope is Full kitchen renovation. Demolition still prices when that component is selected on its own.
+3. “Include a splashback.” The existing lump stays $800 cost and $1,200 sell for an unmeasured area, a measured 3 m², and a measured 8 m². The unmeasured line does not say 3 m². A measured area is disclosed and does not multiply the lump.
 
-The same brief now has no priced line and no 10 m² assumption. Kitchen area stays “not confirmed”. The client draft does not name cabinetry, benchtop, or appliances unless those facts are stated. A stated 12 m² kitchen with no component flags still prices labour at 12 m² and the existing minimum package. Benchmark dollar values are unchanged. A splashback included without an area still notes 3 m². That quantity is not this repair.
-
-This branch is `estimating/v3-kitchen-area`. It is not integrated. Batch 3 stays pending its hosted check.
+Benchmark dollar values are unchanged. This branch is `estimating/v3-kitchen-area`. It is not integrated. Batch 3 stays pending its hosted check.
 
 ## Next slices, after this one
 
