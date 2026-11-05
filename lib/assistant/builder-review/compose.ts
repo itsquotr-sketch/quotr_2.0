@@ -1742,9 +1742,32 @@ export function composeBuilderReview(
       });
     })
     .map((area) => area.name);
+  const heldKitchenNames = input.workAreas
+    .filter((area) => area.status !== "excluded" && area.type === "kitchen")
+    .filter((area) => {
+      const key = area.name.toLowerCase();
+      if (waTotals.some((row) => row.name.toLowerCase() === key)) return false;
+      return lines.some(
+        (item) =>
+          (item.workAreaName?.trim().toLowerCase() || "") === key &&
+          kitchenHeldLineVisible(item)
+      );
+    })
+    .map((area) => area.name);
   const reviewAreas = [
     ...waTotals,
     ...specialistOnlyNames.map((name) => ({
+      name,
+      cost: 0,
+      sell: 0,
+      profit: 0,
+      marginPercent: 0,
+      costKnown: false as const,
+      hours: 0,
+      lineItemCount: 0,
+      items: [],
+    })),
+    ...heldKitchenNames.map((name) => ({
       name,
       cost: 0,
       sell: 0,
@@ -1786,7 +1809,14 @@ export function composeBuilderReview(
       return {
         id,
         label: CATEGORY_LABELS[id],
-        cost: round2(catLines.reduce((sum, line) => sum + line.recommendedCost, 0)),
+        cost: round2(
+          catLines.reduce(
+            (sum, line) =>
+              sum +
+              (line.sourceLine.includedInTotal === false ? 0 : line.recommendedCost),
+            0
+          )
+        ),
         lines: catLines,
         takeoff: [],
         takeoffDisclaimer: null,

@@ -28,7 +28,7 @@ import type {
   EstimateFact,
   EstimateWorkArea,
 } from "../lib/estimate/types";
-import { lineVisibleInEstimateReview } from "../lib/assistant/builder-review/compose";
+import { composeBuilderReview, lineVisibleInEstimateReview } from "../lib/assistant/builder-review/compose";
 import { presentEstimateWorkAreaTotals } from "../lib/estimate/presentation-breakdown";
 import { readFileSync } from "node:fs";
 import { buildWorkAreaQuoteDescriptionDraft } from "../lib/work-areas/quote-description";
@@ -95,6 +95,27 @@ check(
   "1 request stays visible in the estimate review",
   replacement != null && lineVisibleInEstimateReview(replacement)
 );
+const replaceReview = composeBuilderReview({
+  estimate: {
+    recommendedCost: 0,
+    recommendedSell: 0,
+    marginPercent: 0,
+    confidence: 0,
+    assumptions: replace.assumptions,
+    missingInfo: replace.missingInfo,
+    lineItems: replace.lineItems,
+  },
+  workAreas: [{ id: "k1", name: "Kitchen", type: "kitchen", status: "confirmed" }],
+});
+const replaceGroup = replaceReview.workAreas.find((area) => area.workAreaName === "Kitchen");
+check(
+  "1 review group lists the request outside the known total",
+  replaceGroup?.sell === 0 &&
+    replaceGroup.categories.some((category) =>
+      category.lines.some((line) => line.label === "Kitchen replacement")
+    ) &&
+    replaceGroup.categories.every((category) => category.cost === 0)
+);
 check("1 request stays out of the known total", replacement?.includedInTotal === false && knownSell(replace.lineItems) === 0);
 check(
   "1 asks for the area and the scope choice",
@@ -151,6 +172,30 @@ check(
     lineVisibleInEstimateReview(labour) &&
     lineVisibleInEstimateReview(materials) &&
     presentEstimateWorkAreaTotals(stated.lineItems).every((area) => area.sell === 0)
+);
+const statedReview = composeBuilderReview({
+  estimate: {
+    recommendedCost: 0,
+    recommendedSell: 0,
+    marginPercent: 0,
+    confidence: 0,
+    assumptions: stated.assumptions,
+    missingInfo: stated.missingInfo,
+    lineItems: stated.lineItems,
+  },
+  workAreas: [{ id: "k1", name: "Kitchen", type: "kitchen", status: "confirmed" }],
+});
+const statedGroup = statedReview.workAreas.find((area) => area.workAreaName === "Kitchen");
+check(
+  "2 review group lists the package outside the known total",
+  statedGroup?.sell === 0 &&
+    statedGroup.categories.some((category) =>
+      category.lines.some((line) => line.label === "Kitchen labour")
+    ) &&
+    statedGroup.categories.some((category) =>
+      category.lines.some((line) => line.label === "Kitchen materials/finishes allowance")
+    ) &&
+    statedGroup.categories.every((category) => category.cost === 0)
 );
 check(
   "2 breakdown lists the held lines without adding them to the total",
