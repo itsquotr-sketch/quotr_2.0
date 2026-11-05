@@ -1,6 +1,8 @@
-# Estimating V3 Stage 0
+# Estimating V3
 
-Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 later shipped the four completion fixes; the release record is in [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md).
+[V3_COMPLETION_REGISTER.md](./V3_COMPLETION_REGISTER.md) is the current finish plan. The stage notes below are historical records, not a second plan. Session and publish rules stay in [COORDINATOR_HANDOFF.md](./COORDINATOR_HANDOFF.md).
+
+Stage 1 shipped the four completion fixes; the release record is in [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md).
 
 | Document | Contents |
 | --- | --- |
