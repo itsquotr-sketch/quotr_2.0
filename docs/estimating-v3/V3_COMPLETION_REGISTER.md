@@ -2,7 +2,7 @@
 
 This is the only product direction for finishing V3. Stage notes, the capability matrix, and the coordinator handoff do not add another plan. The handoff keeps the session, the QA organisation, and the publish rules. The copy of this file inside `68c5760c` is the register as it stood at that product commit.
 
-Restarted 5 November 2026. Production release is not authorised. This register does not reopen an accepted slice without contrary evidence. A missing company rate is not a defect. Passing arithmetic is not proof that a benchmark or company rate is the right market price.
+Restarted 5 November 2026. Production release is not authorised. Routine development and bounded Preview repairs toward this finish line stay authorised. Ask Jean-Luc only for a material product decision or a protected operation. This register does not reopen an accepted slice without contrary evidence. A missing company rate is not a defect. Passing arithmetic is not proof that a benchmark or company rate is the right market price. A deferred row is a proposed scope decision. It is not an owner-approved exclusion from V3.
 
 Support means a demonstrated assembly path. A recognised work-area label is not support. V3 does not promise every variant of a family.
 
@@ -24,8 +24,8 @@ A release candidate needs all of these for the paths this register marks require
 
 - **Required.** Must be true before a V3 release candidate.
 - **Accepted.** Evidence meets the frozen criteria. Do not repeat it without contrary evidence.
-- **Deferred.** Recorded, and not part of this release.
-- **Owner decision.** Jean-Luc chooses before any repair.
+- **Deferred.** Proposed for this release. Jean-Luc has not approved it as an exclusion.
+- **Owner decision.** Jean-Luc chooses before that repair.
 
 Software correctness and rate calibration are separate rows.
 
@@ -49,25 +49,25 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 
 ### Deck
 
-- **User outcome.** A low or elevated replacement deck prices the supported assembly. Incomplete pile decisions stay visibly incomplete.
-- **Evidence.** Priced low and elevated assemblies are on the integration. Leave-until-inspection and explicit retention do not price a new pile set. Edited drafts and issued snapshots stay until regenerate and Pricing apply.
-- **Gap.** Explicit replacement can still price the pile/post replacement allowance beside, or instead of, the new support lines. Coverage of that allowance is unresolved. See the owner decision below.
-- **Acceptance.** The stated supports and the allowance do not silently buy the same work. The estimate does not present that result as a complete price.
-- **Status.** Required. Repair is blocked on the owner decision.
+- **User outcome.** A low or elevated replacement deck prices measured work. Requested pile replacement stays visible. It stays out of the known total until its operation is distinct.
+- **Evidence.** Priced low and elevated assemblies are on the integration. Leave-until-inspection and explicit retention do not price a new pile set. Edited drafts and issued snapshots stay until regenerate and Pricing apply. The allowance investigation is `docs/estimating-v3/PILE_REPLACEMENT_ALLOWANCE_DEFECT.md`.
+- **Gap.** `deck.post_replacement.each` and the count-free allowance do not name removal of existing piles, temporary support, or any other operation beyond measured new supports. A missing count is not a quantity.
+- **Acceptance.** Neither benchmark enters the known total. Measured supports stay when they are present. Uncovered replacement work stays unresolved. A typed Pricing amount needs an explicit scope and basis and must not repeat measured lines. Saved estimates, manual Pricing edits, issued snapshots, the general margin, and saved-sell rules stay as they are.
+- **Status.** Required. The scope-based decision is adopted. The candidate is in QA.
 
 ### Fence
 
 - **User outcome.** One timber paling fence keeps the stated run, gate, and quantities through analysis and reload.
-- **Evidence.** Project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd` on `68c5760c`. Two live analyses, then a retest with none. Fixed fence 17.1 m, gate 0.9 m, 12 posts, 120 palings, purchased posts 28.8 lm, rails 53.865 lm, palings 226.8 lm at the 5% fence factor. Face area 32.4 m² is supporting evidence only.
-- **Gap.** Metal, plastic, and other fence systems are not claimed. Mobile layout was not recorded. Benchmark sell $5,155.97 was not scored as a correct price.
+- **Evidence.** Desktop quantities are recorded only in coordinator handoff commits `d2a500e2` and `556e64ab`, not in a separate QA report. Project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd`. The handoff names application SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d` and Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Two live analyses, then a retest with none. Fixed fence 17.1 m, gate 0.9 m, 12 posts, 120 palings, purchased posts 28.8 lm, rails 53.865 lm, palings 226.8 lm at the 5% fence factor. Face area 32.4 m² is supporting evidence only. Do not rerun that desktop journey.
+- **Gap.** No standalone QA report. Mobile layout is not tested. Metal, plastic, and other fence systems are not claimed. Benchmark sell $5,155.97 was not scored as a correct price.
 - **Acceptance.** The stored quantities above survive reload. Missing company rates stay unpriced or labelled with their benchmark source. No invented structural specification.
 - **Status.** Accepted for this timber path. Mobile evidence and benchmark calibration remain required and are not code repairs.
 
 ### Retaining wall
 
 - **User outcome.** One timber raking wall keeps the stated geometry, drainage choice, and excavation quantity.
-- **Evidence.** Project `13eaab78-aaf0-445e-a030-61cc37e73e0d` on `68c5760c`. Face 16.5 m², 14 piles, face boards 121 lm at 10% as the disclosed 150×50 H4 assumption, excavation 6 m³, no sock line, no disposal line. Hole-excavation labour stays Pricing Required. Benchmark sell $4,861.33 was not scored.
-- **Gap.** Sleeper and masonry walls are not claimed. Mobile layout was not recorded.
+- **Evidence.** Desktop quantities are in the same handoff commits as the fence journey, `d2a500e2` and `556e64ab`. There is no separate QA report. Project `13eaab78-aaf0-445e-a030-61cc37e73e0d`. SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d`. Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Face 16.5 m², 14 piles, face boards 121 lm at 10% as the disclosed 150×50 H4 assumption, excavation 6 m³, no sock line, no disposal line. Hole-excavation labour stays Pricing Required. Do not rerun that desktop journey.
+- **Gap.** No standalone QA report. Mobile layout is not tested. Sleeper and masonry walls are not claimed. Benchmark sell $4,861.33 was not scored.
 - **Acceptance.** Those stored quantities survive reload. The excavation labour gap stays explicit. No invented rate.
 - **Status.** Accepted for this timber path. Mobile evidence and benchmark calibration remain required and are not code repairs.
 
@@ -90,8 +90,8 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 ### Internal walls and doors
 
 - **User outcome.** A stated opening count is one unsized opening each. Door sets stay door sets. A sized opening survives reload without resizing the others.
-- **Evidence.** Deterministic acceptance at `1288d9ee`. Hosted project `f87a1677-59d4-4c19-93cb-295acbfffad2`: six openings stayed unsized across reload; opening `9b451a38-863b-42a8-b73b-86c13692ecf7` stored 0.92 × 2.10 m and survived a second reload; the other five stayed empty. Raw timber 5.72 lm. Purchase quantity 6.29 lm. Lining without a product stays an unspecified line.
-- **Gap.** None for this slice.
+- **Evidence.** Deterministic report `C:/Users/Admin/Desktop/quotr-v3-opening-count-evidence/docs/estimating-v3/candidates/opening-count-qa.md`, with `opening-count-handoff.md` and `opening-count-release-review.md` beside it. Evidence commit `08e21d3926d83d06111a5ecc7a4b633e909d828e`. Tested SHA `1288d9ee387207fa4f4bdfa7daa26199360d8efd`. Baseline `01e4b508c062dbee0bd46c12b763d77996308122`. Candidate preview in that report `dpl_GEhr682QSyVy5t6rFrai9WiPs3ML`. That report marks hosted persistence BLOCKED. The later hosted reload is only in coordinator commit `6efe4a4c`: project `f87a1677-59d4-4c19-93cb-295acbfffad2`, sized opening `9b451a38-863b-42a8-b73b-86c13692ecf7`, six unsized openings, one stored size 0.92 × 2.10 m, raw timber 5.72 lm, purchase 6.29 lm. That commit does not name a deployment id. Do not rerun the recorded checks.
+- **Gap.** No separate hosted QA report. Mobile was not checked. The deterministic hosted section remains BLOCKED in the report file.
 - **Acceptance.** Do not edit that project or repeat the check.
 - **Status.** Accepted.
 
@@ -111,26 +111,79 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 - **Acceptance.** No Production deploy until it is reviewed and explicitly approved.
 - **Status.** Required, and not started.
 
-## Owner decision
+### Honest price status
+
+- **User outcome.** A work area with unresolved scope does not read as fully priced.
+- **Evidence.** `formatWorkAreaPriceSummary` says “All priced lines” only when the issue model has no missing price and no scope or specification gap. A scope gap changes that summary to “Generated lines priced”. `PricingItemRow` already says a typed amount does not resolve an open scope question.
+- **Gap.** An overview can still be read as complete while a card or a scope question is unresolved. That disagreement is not cosmetic.
+- **Acceptance.** Unresolved scope stays visible as incomplete. This pile repair marks the replacement line Pricing required so that line is not an all-priced claim.
+- **Status.** Required. Not part of the pile candidate.
+
+## Adopted decision
 
 ### Pile/post replacement allowance
 
-- **User outcome.** A deck that needs pile replacement shows a price whose scope a builder can explain.
-- **Evidence.** `docs/estimating-v3/PILE_REPLACEMENT_ALLOWANCE_DEFECT.md`. When replacement is explicit and the new support lines are absent, the calculator still prices the allowance (`deck.post_replacement.each`, benchmark $180 cost / $280 sell, or $1,200 when the count is absent). When the new support lines are present, the allowance is excluded from the total and the price is marked incomplete. The allowance notes do not name work outside material, installation, excavation, concrete, or removal.
-- **Gap.** Whether the allowance remains a separate charge.
-- **Acceptance.** No removal and no repricing until Jean-Luc chooses.
-- **Status.** Owner decision. Choices are: keep the allowance and the incomplete-price treatment; remove it when the new support lines already cover the piles; or name the physical work it buys and price only that work.
+- **Decision.** Scope-based pricing. Do not invent removal, temporary support, or another operation to justify the existing allowance.
+- **What the benchmarks cover.** `deck.post_replacement.each` is the each benchmark, $180 cost / $280 sell, stored in `lib/estimate/benchmark-rates.ts`. The count-free allowance is `substructureReplacementAllowance`, $1,200 cost / $1,800 sell. The partial sibling is `substructurePartialAllowance`, $650 cost / $1,000 sell. None of those notes names work outside new support material, installation, excavation, concrete, or deck-area removal.
+- **Rule.** Until a distinct operation is established, neither benchmark enters the known total. The request stays visible and unpriced. Independent measured work can still price. A missing count is not quantity one and not a lump sum. Measured supports remove the allowance only when they cover the requested replacement. New piles do not cover removal or temporary support. A typed Pricing amount needs an explicit scope and basis and must not repeat measured lines.
+- **Status.** Adopted. Benchmark dollar values are unchanged.
 
 ## Deferred
 
-- Work-area “All priced” beside an Incomplete overview. The surfaces disagree. Not a current repair.
-- Pergola and kitchen. The product calls them developing. No V3 recipe work.
-- Ceilings, cladding, painting, plastering, demolition, and external stairs. Catalogue recognition or a component calculator exists. No hosted complete assembly is required for this release.
-- Commercial fit-out as one work area. It stays an unsupported parent.
-- Roofing, windows, landscaping, earthworks, drainage, plumbing, electrical, and the other unsupported types. They stay unsupported.
-- Production deployment, Play Console, schema, RLS, analysis-model changes, and automatic credit purchases.
-- Company setup gaps and an undecided GST registration. Those are account answers.
+These rows are proposed. They are not approved exclusions.
+
+### Pergola and kitchen
+
+- **Advertised.** Selectable. Catalogue labels “Pergola” and “Kitchen renovation”. Capability label “Developing”.
+- **Existing function.** The current calculators remain. No new recipe is proposed.
+- **Known limit.** The kitchen catalogue sentence describes a renovation, including cabinetry and trade allowances, while the support contract says the calculator is not a mature commercial claim.
+- **Why proposed.** Reliable depth in the claimed paths comes first.
+- **When it cannot be priced.** The user sees the developing label and any existing Pricing Required line. The page does not gain a new complete-price claim.
+
+### Ceilings, cladding, painting, plastering, demolition, and external stairs
+
+- **Advertised.** Selectable from the catalogue. Capability label “Component”.
+- **Existing function.** The current component calculators remain.
+- **Known limit.** No hosted complete assembly is claimed. External stairs are often nested under a deck.
+- **Why proposed.** A new recipe is not required to keep the existing component path.
+- **When it cannot be priced.** The user sees Pricing Required or an unresolved component line. The family is not presented as a finished assembly.
+
+### Commercial fit-out
+
+- **Advertised.** The parent type is in the unsupported list. Capability label “Not supported as a work area”.
+- **Existing function.** Interior work stays on the component types.
+- **Known limit.** A parent calculator would contradict the support contract.
+- **Why proposed.** Keep the parent unsupported.
+- **When it cannot be priced.** The user does not get a fit-out assembly price. Component work areas remain the pricing surface.
+
+### Roofing, windows, landscaping, earthworks, drainage, plumbing, electrical, and the other unsupported types
+
+- **Advertised.** They remain in the catalogue, so Add Work Area can still offer them. Capability label “Not supported yet”.
+- **Existing function.** No supported assembly is claimed. Do not remove a working control that only recognises the type.
+- **Known limit.** The catalogue can make a type look selectable while the capability label says it is not supported.
+- **Why proposed.** Recognition is not a promise of a priced assembly.
+- **When it cannot be priced.** The user sees “Not supported yet” and no supported price.
+
+### Release operations and account answers
+
+- **Advertised.** Not a work-area family.
+- **Existing function.** Production, Play Console, schema, RLS, the analysis model, and automatic credit purchases stay untouched.
+- **Known limit.** GST registration and company setup answers are account facts, not estimate defects.
+- **Why proposed.** They are protected or they belong to the account.
+- **When it cannot be priced.** No Production change is made. An undecided GST answer stays an account question.
 
 ## Calibration
 
-Fence, retaining-wall, and deck allowance money in the evidence above came from Quotr benchmarks or from an empty company rate. That shows the software source of the number. It does not validate the productivity or the dollar rate. A calibration review is required before those sells are treated as pricing accuracy. It is not a recipe change.
+This is a review request. It does not approve or change any benchmark.
+
+Provenance:
+
+- Deck `postReplacementEach` is $180 cost / $280 sell. `substructureReplacementAllowance` is $1,200 / $1,800. `substructurePartialAllowance` is $650 / $1,000. Source: `lib/estimate/benchmark-rates.ts`. After the adopted pile decision, those three are not written into the known total.
+- Fence sell $5,155.97 and retaining sell $4,861.33 were recorded in handoff commit `556e64ab` from the QA organisation’s disclosed Quotr benchmarks and a 20% margin. They are not a pricing-accuracy result.
+- Hole-excavation labour on the retaining journey stayed Pricing Required. That gap is explicit.
+
+Priority questions for Jean-Luc:
+
+1. Which family should be calibrated first: deck support labour, fence timber, or retaining timber?
+2. May a line keep the visible source “Quotr benchmark” until a company rate exists?
+3. Once removal or temporary support is specified, who supplies that rate?

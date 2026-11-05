@@ -24,9 +24,13 @@ No credentials are stored here. Verify the active organisation before every host
 - ERC Contracting, including `jeanluc@erccontracting.co.nz` and `hello@erccontracting.co.nz`, is not authorised. Do not create or edit projects there.
 - Do not change memberships, passwords, or billing. Do not use Forgot password or Create account.
 
+## Authority
+
+Routine development and bounded repairs toward the V3 finish line stay authorised inside Preview. Do not stop implementation because an earlier note said no further code repair was authorised. Ask Jean-Luc only for a material product decision or a protected operation. Protected operations are Production, passwords, memberships, billing, ERC Contracting writes, quote send, and Pricing review.
+
 ## Product direction
 
-[V3_COMPLETION_REGISTER.md](V3_COMPLETION_REGISTER.md) is the only finish plan. Do not open a second plan. Accepted project ids, the pile-allowance decision, and deferred families are recorded there. Do not repeat the area-heading, opening-count, fence, or retaining checks without contrary evidence.
+[V3_COMPLETION_REGISTER.md](V3_COMPLETION_REGISTER.md) is the only finish plan. Do not open a second plan. The pile-allowance decision is adopted there. Deferred families are proposed scope decisions, not approved exclusions. Do not repeat the area-heading, opening-count, fence, or retaining desktop checks without contrary evidence. Fence and retaining mobile checks are still outstanding.
 
 ## Workflow
 
