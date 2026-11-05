@@ -116,7 +116,7 @@ export const PILE_REPLACEMENT_ITEM_KEY = "deck.post_replacement.each";
 export const PILE_REPLACEMENT_QUANTITY_UNKNOWN = "Quantity unknown";
 
 export const PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK =
-  "A typed amount does not identify the replacement operation. Name the uncovered work and a company rate, project rate, or subcontractor price before this amount can be saved. It must not repeat measured support lines.";
+  "Name the uncovered work in the client description. Record a company rate, project rate, or subcontractor price in the internal pricing basis. That basis is not printed on the quote, and the amount does not confirm coverage.";
 
 export const PILE_ALLOWANCE_COVERAGE_GAP =
   "Pile replacement was requested. Coverage is unresolved, so neither the each benchmark nor the count-free allowance is in the known total. Removal of existing piles, temporary support, and any other replacement operation stay unresolved. New-pile material, installation, excavation, and concrete do not cover those operations, so this is not a complete price.";
@@ -174,7 +174,7 @@ export function pileReplacementUnpricedNotes(input: {
   const coverage = input.measuredSupportsPresent
     ? "Measured new-pile material, installation, excavation, and concrete stay their own lines. They do not cover removal of existing piles, temporary support, or other replacement operations, so those stay unresolved."
     : "No measured support lines cover this request. Independent deck work can still be priced.";
-  return `${countText} ${coverage} A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.`;
+  return `${countText} ${coverage} A typed Pricing amount needs the uncovered work in the client description and the rate basis in the internal pricing basis. That basis is not printed on the quote and must not repeat measured support lines. A saved rate is not applied automatically.`;
 }
 
 export const DECK_SUPPORT_DESIGN_UNRESOLVED =

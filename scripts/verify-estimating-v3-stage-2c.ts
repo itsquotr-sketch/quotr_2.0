@@ -34,6 +34,7 @@ import {
 } from "../lib/estimate/deck-scope-2c";
 import { scopeTopicPolarity } from "../lib/estimate/scope-intent";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import { resolveQuoteItemDescription } from "../lib/quotes/from-pricing";
 import {
   explicitJobExclusionLines,
   jobExclusionLine,
@@ -447,6 +448,18 @@ check(
         item.includedInTotal !== false &&
         item.recommendedCost > 0
     )
+);
+const quoteDescription = resolveQuoteItemDescription({
+  client_description: "Removal of existing piles",
+  notes_client: null,
+  internal_description: "Subcontractor price",
+  client_label: "Pile/post replacement allowance",
+  internal_label: "Pile/post replacement allowance",
+} as never);
+check(
+  "the rate basis is not required quote text",
+  quoteDescription === "Removal of existing piles" &&
+    !/subcontractor|company rate|project rate|unit cost/i.test(quoteDescription ?? "")
 );
 const countedFacts: EstimateFact[] = [
   ...assumedFacts,

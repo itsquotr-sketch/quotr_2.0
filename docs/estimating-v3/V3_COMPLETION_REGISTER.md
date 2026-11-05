@@ -53,7 +53,7 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 - **Evidence.** Priced low and elevated assemblies are on the integration. Leave-until-inspection and explicit retention do not price a new pile set. Edited drafts and issued snapshots stay until regenerate and Pricing apply. The allowance investigation is `docs/estimating-v3/PILE_REPLACEMENT_ALLOWANCE_DEFECT.md`.
 - **Gap.** `deck.post_replacement.each` and the count-free allowance do not name removal of existing piles, temporary support, or any other operation beyond measured new supports. A missing count is not a quantity.
 - **Acceptance.** Neither benchmark enters the known total. Measured supports stay when they are present. Uncovered replacement work stays unresolved. A typed Pricing amount needs an explicit scope and basis and must not repeat measured lines. Saved estimates, manual Pricing edits, issued snapshots, the general margin, and saved-sell rules stay as they are.
-- **Status.** Required. The scope-based decision is adopted. A missing count is shown as “Quantity unknown”, not as zero piles. A Pricing amount is saved only when the client description names uncovered work and the client notes name a company rate, project rate, or subcontractor price. That amount does not remove the estimate’s coverage gap.
+- **Status.** Required. The scope-based decision is adopted. A missing count is shown as “Quantity unknown”, not as zero piles. A Pricing amount is saved only when the client description names uncovered work and the internal pricing basis names a company rate, project rate, or subcontractor price. That basis is not printed on the customer quote. The amount does not remove the estimate’s coverage gap.
 
 ### Concrete “No” still leaves support unresolved
 

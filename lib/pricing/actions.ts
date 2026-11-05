@@ -1427,7 +1427,7 @@ export async function updatePricingItem(
       itemKey: replacementNotes.metadata.itemKey,
       label: existing.client_label,
       scope: item.client_description,
-      basis: item.notes_client,
+      basis: item.internal_description,
       totalCost: totals.totalCost,
       totalSell: totals.totalSell,
     })
