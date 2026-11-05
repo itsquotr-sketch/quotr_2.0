@@ -46,7 +46,7 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     label: "Kitchen renovation",
     category: "Renovation",
     description:
-      "Kitchen renovations including demolition, cabinetry, plumbing/electrical allowances.",
+      "Kitchen renovation. A stated area and a stated component can be priced. Unstated area, cabinetry, and trade work stay unresolved.",
     estimateSupport: "calculator",
     defaultEnabled: true,
     suggestedRateTypes: ["scope", "subcontractor", "allowance"],

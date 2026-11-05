@@ -50,6 +50,16 @@ Multi-room area headings are accepted at `4d65d4cf`. Product change `3308d806`. 
 
 One representative fence journey and one retaining-wall journey, using the existing calculator contracts. The area-formula checks, 18 × 1.8 = 32.4 m² and 15 × (1.6 + 0.6) / 2 = 16.5 m², do not count as assembly acceptance. Do not select a recipe repair until those journeys exist. Declare the live model-call count before any batch. Do not invent structural specifications.
 
+## Kitchen area is not invented
+
+Representative brief: “Replace the kitchen.” No area, and no cabinetry, benchtop, splashback, rangehood, flooring, or demolition.
+
+On `68c5760c` that brief priced Kitchen labour at 10 m² ($9,600 cost / $12,000 sell) and a materials allowance of $20,000 cost / $30,000 sell, while saying “Using assumed kitchen area of 10 m² for rough estimate.” Kitchen area stayed “not confirmed”. The client draft named cabinetry, benchtop, and appliances.
+
+The same brief now has no priced line and no 10 m² assumption. Kitchen area stays “not confirmed”. The client draft does not name cabinetry, benchtop, or appliances unless those facts are stated. A stated 12 m² kitchen with no component flags still prices labour at 12 m² and the existing minimum package. Benchmark dollar values are unchanged. A splashback included without an area still notes 3 m². That quantity is not this repair.
+
+This branch is `estimating/v3-kitchen-area`. It is not integrated. Batch 3 stays pending its hosted check.
+
 ## Next slices, after this one
 
 These are recorded gaps, not frozen acceptance.

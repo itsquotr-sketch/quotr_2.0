@@ -17,10 +17,7 @@ import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, rateUnitsMatch } from "@/lib/estimate/rates";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { baseConfidence } from "@/lib/estimate/summary";
-import {
-  createAssumptionMetadata,
-  recordDefaultedNumber,
-} from "@/lib/estimate/assumption-metadata";
+import { createAssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import { rateFieldsFromResolved } from "@/lib/estimate/line-item-helpers";
 import type {
   CalculatorResult,
@@ -123,18 +120,7 @@ export function calculateKitchen(
     assumptions.push(qualityNote);
   }
 
-  let effectiveArea = area;
-  if (!effectiveArea) {
-    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
-      key: "kitchen.area_m2",
-      label: "Kitchen area",
-      workAreaId: workArea.id,
-      assumedValue: 10,
-      unit: "m²",
-      reason: "No kitchen area provided",
-    });
-    assumptions.push("Using assumed kitchen area of 10 m² for rough estimate.");
-  }
+  const statedArea = area != null && area > 0 ? area : null;
 
   const qualityFactor = getQualityFactor(
     context.project,
@@ -189,7 +175,7 @@ export function calculateKitchen(
     flooringIncluded === true ||
     demolitionRequired === true;
 
-  if (!hasComponentScope) {
+  if (!hasComponentScope && statedArea != null) {
     const packageProductivity = resolveProductivity({
       productivityKey: "kitchen.labour_hours_per_m2",
       unit: "m²",
@@ -202,7 +188,7 @@ export function calculateKitchen(
           workAreaId: workArea.id,
           workAreaName: workArea.name,
           label: "Kitchen labour",
-          quantity: effectiveArea,
+          quantity: statedArea,
           unit: "m²",
           productivityHoursPerUnit: packageProductivity.hoursPerUnit,
           labourCostRate: labourRate.costRate,
@@ -500,7 +486,10 @@ export function calculateKitchen(
   if (flooringIncluded) {
     const flooringArea =
       getNumberFact(facts, workArea.id, "kitchen.flooring_area_m2") ??
-      effectiveArea;
+      statedArea;
+    if (flooringArea == null) {
+      missingInfo.push(formatMissing("Kitchen flooring area"));
+    } else {
     lineItems.push(
       withPricingOwnership(
         createAllowanceLineItem({
@@ -524,6 +513,7 @@ export function calculateKitchen(
         }
       )
     );
+    }
   }
 
   const plumbingIncluded =
@@ -625,9 +615,13 @@ export function calculateKitchen(
     electricalIncluded === true ||
     cabinetryClientSupplied === true;
 
-  if (!hasComponentFinishes) {
-    let materialsCost = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
-    let materialsSell = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.sell;
+  if (hasComponentFinishes) {
+    assumptions.push(
+      "Component-based kitchen pricing — broad package materials allowance not applied."
+    );
+  } else if (statedArea != null) {
+    let materialsCost = statedArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
+    let materialsSell = statedArea * KITCHEN_BENCHMARKS.materialsPerM2.sell;
     materialsCost = Math.max(
       materialsCost,
       KITCHEN_BENCHMARKS.minimumPackage.cost
@@ -658,10 +652,6 @@ export function calculateKitchen(
           overlapGroup: "kitchen_materials",
         }
       )
-    );
-  } else {
-    assumptions.push(
-      "Component-based kitchen pricing — broad package materials allowance not applied."
     );
   }
 
