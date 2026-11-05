@@ -4,6 +4,8 @@
  *
  * Run: npx tsx scripts/verify-price-completeness.ts
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { BuilderReviewView } from "../lib/assistant/builder-review";
 import {
   ADD_MISSING_RATE,
@@ -127,6 +129,7 @@ check(
     complete.cards[0]?.nextAction == null &&
     complete.nextAction == null &&
     complete.sell === "$1,000" &&
+    complete.pricedWorkSoFar == null &&
     formatWorkAreaPriceSummary({
       workAreaCount: 1,
       missingPriceLineCount: 0,
@@ -150,6 +153,7 @@ check(
   openScope.cards.every((card) => card.readiness === "Generated lines priced") &&
     openScope.cards.every((card) => card.nextAction === "1 requested task has no line") &&
     openScope.sell == null &&
+    openScope.pricedWorkSoFar === "$1,000" &&
     openScope.nextAction === "1 requested task has no line" &&
     formatWorkAreaPriceSummary({
       workAreaCount: 2,
@@ -184,6 +188,7 @@ check(
     missing.cards[0]?.readiness !== "Generated lines priced" &&
     missing.cards[0]?.nextAction === ADD_MISSING_RATE &&
     missing.sell == null &&
+    missing.pricedWorkSoFar === "$1,000" &&
     formatWorkAreaPriceSummary({
       workAreaCount: 1,
       missingPriceLineCount: 1,
@@ -193,7 +198,10 @@ check(
       { cost_known: false, total_sell: 0, visible_on_quote: true },
     ]) === MISSING_GENERATED_RATE_REVIEW_BLOCK &&
     MISSING_GENERATED_RATE_REVIEW_BLOCK !== PRICING_TAX_BASIS_MISMATCH_BLOCK &&
-    displayed(ADD_MISSING_RATE)
+    displayed(ADD_MISSING_RATE) &&
+    readFileSync(join(__dirname, "../lib/quotes/build-from-pricing.ts"), "utf8").includes(
+      "missingGeneratedRateReviewBlock"
+    )
 );
 
 if (failed > 0) {

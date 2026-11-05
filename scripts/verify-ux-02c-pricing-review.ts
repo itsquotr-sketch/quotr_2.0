@@ -49,7 +49,7 @@ check(
   decision.includes("clientPriceCopy") &&
     priceCopy.includes("Final client price") &&
     priceCopy.includes("The quote will use this price.") &&
-    priceCopy.includes("Priced lines so far") &&
+    priceCopy.includes("Priced work so far") &&
     priceCopy.includes("Entered price") &&
     decision.includes("Use Quotr recommendation") &&
     decision.includes("Set my own price") &&

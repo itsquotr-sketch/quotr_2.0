@@ -298,7 +298,7 @@ check(
   knownBesideMissing.status === "pricing_required" &&
     knownBesideMissing.statusLabel === "Incomplete" &&
     knownBesideMissing.sell.presentation === "partial" &&
-    knownBesideMissing.sell.label === "Known sell, not the complete price" &&
+    knownBesideMissing.sell.label === "Priced work so far" &&
     knownBesideMissing.sell.exGst === "$1,000" &&
     knownBesideMissing.composition.some(
       (row) => row.id === "direct" && row.label === "Known cost" && row.value === "$800"

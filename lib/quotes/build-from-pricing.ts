@@ -24,6 +24,7 @@ import {
 } from "@/lib/pricing/gst-source";
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import {
+  missingGeneratedRateReviewBlock,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
 } from "@/lib/pricing/scope-finalisation";
@@ -183,6 +184,8 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (unknownCostBlock) return { error: unknownCostBlock };
   const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
   if (excludedLineBlock) return { error: excludedLineBlock };
+  const missingRateBlock = missingGeneratedRateReviewBlock(items);
+  if (missingRateBlock) return { error: missingRateBlock };
   const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
     supabase,
     orgId,

@@ -155,6 +155,7 @@ export type WorkAreaBreakdownModel = {
   readonly directCost: string | null;
   readonly previousDirectCost: string | null;
   readonly sell: string | null;
+  readonly pricedWorkSoFar: string | null;
   readonly staleWarning: string | null;
   readonly cards: readonly WorkAreaBreakdownCard[];
   readonly otherAssumptions: readonly string[];
@@ -578,6 +579,12 @@ export function projectWorkAreaBreakdown(
       !stale &&
       cards.every((card) => card.readiness === "All priced") &&
       !view.overview.recommendedSellIsPartial &&
+      view.overview.recommendedSell > 0
+        ? formatCurrency(view.overview.recommendedSell)
+        : null,
+    pricedWorkSoFar:
+      !stale &&
+      !cards.every((card) => card.readiness === "All priced") &&
       view.overview.recommendedSell > 0
         ? formatCurrency(view.overview.recommendedSell)
         : null,

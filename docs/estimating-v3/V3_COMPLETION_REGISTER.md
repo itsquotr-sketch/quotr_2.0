@@ -128,11 +128,11 @@ Preparation still required before any candidate is proposed:
 
 ### Honest price status
 
-- **User outcome.** A work area with unresolved scope does not read as fully priced.
-- **Evidence.** `formatWorkAreaPriceSummary` says “All priced lines” only when the issue model has no missing price and no scope or specification gap. A scope gap changes that summary to “Generated lines priced”. `PricingItemRow` already says a typed amount does not resolve an open scope question.
-- **Gap.** An overview can still be read as complete while a card or a scope question is unresolved. That disagreement is not cosmetic.
-- **Acceptance.** Unresolved scope stays visible as incomplete. This pile repair marks the replacement line Pricing required so that line is not an all-priced claim.
-- **Status.** Required. Not part of the pile candidate.
+- **User outcome.** A work area with unresolved scope does not read as fully priced. Where priced work exists, the known subtotal is “Priced work so far” and the final job price stays withheld. The next action names the open specification or the missing rate.
+- **Evidence.** The price-completeness repair is in this Preview batch. Review and quote creation use the same scope and missing-rate blocks.
+- **Gap.** Hosted QA of the combined batch has not run.
+- **Acceptance.** Unresolved scope stays visible as incomplete. GST and Pricing review stay separate from this label.
+- **Status.** In the combined Preview batch. Not integrated.
 
 ## Adopted decision
 

@@ -567,7 +567,7 @@ function sellPresentation(input: {
     const gst = presentEstimateGst(amount, input.gstRate);
     return {
       presentation: "partial",
-      label: "Known sell, not the complete price",
+      label: "Priced work so far",
       exGst: formatCurrency(gst.exGst),
       gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
       inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,

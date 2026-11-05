@@ -494,6 +494,9 @@ export function WorkAreaBreakdown({
             <Stat label="Previous direct cost" value={model.previousDirectCost} />
           ) : null}
           {model.sell ? <Stat label="Recommended client sell" value={model.sell} /> : null}
+          {model.pricedWorkSoFar ? (
+            <Stat label="Priced work so far" value={model.pricedWorkSoFar} />
+          ) : null}
         </div>
         {model.staleWarning ? (
           <p

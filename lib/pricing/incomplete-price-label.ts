@@ -3,6 +3,8 @@
  * prices are unresolved. An entered override keeps its stored amount.
  */
 
+export const PRICED_WORK_SO_FAR = "Priced work so far";
+
 export type ClientPriceBasis = "complete" | "priced_lines" | "entered";
 
 export function clientPriceBasis(input: {
@@ -32,11 +34,11 @@ export function clientPriceCopy(basis: ClientPriceBasis): {
   }
   if (basis === "priced_lines") {
     return {
-      totalLabel: "Priced lines so far",
-      heading: "Priced lines so far",
+      totalLabel: PRICED_WORK_SO_FAR,
+      heading: PRICED_WORK_SO_FAR,
       detail:
-        "This is the subtotal of priced lines. It is not the complete job price while scope or prices are unresolved.",
-      fieldLabel: "Priced lines so far",
+        "This is the subtotal of priced work. It is not the complete job price while scope or prices are unresolved.",
+      fieldLabel: PRICED_WORK_SO_FAR,
     };
   }
   return {
