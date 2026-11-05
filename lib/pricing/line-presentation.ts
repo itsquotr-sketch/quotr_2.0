@@ -1,5 +1,9 @@
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import {
+  PILE_REPLACEMENT_QUANTITY_UNKNOWN,
+  replacementAllowanceQuantityUnknown,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   APPRENTICE_LABOUR_RATE_KEY,
   CARPENTER_LABOUR_RATE_KEY,
   GENERAL_LABOUR_RATE_KEY,
@@ -158,8 +162,14 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   const hours = labour && storedHours != null && storedHours > 0 ? storedHours : null;
   const hourlyCost = item.unit_cost ?? 0;
   const hourlyKnown = labour && item.cost_known && hourlyCost > 0;
-  const quantityLabel =
-    item.quantity != null
+  const quantityUnknown = replacementAllowanceQuantityUnknown({
+    itemKey: metadata.itemKey,
+    label: item.internal_label ?? item.client_label,
+    quantity: item.quantity,
+  });
+  const quantityLabel = quantityUnknown
+    ? PILE_REPLACEMENT_QUANTITY_UNKNOWN
+    : item.quantity != null
       ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
       : "—";
 

@@ -1,5 +1,9 @@
 # Pile/post replacement allowance — unexplained additional cost
 
+## Decision, 5 November 2026
+
+Jean-Luc adopted scope-based pricing. Neither `deck.post_replacement.each` nor the count-free allowance enters the known total until a distinct replacement operation is established. A missing count is not quantity one and not a lump sum. Measured new-pile material and installation do not close removal, temporary support, or any other unnamed operation. The sections below describe the behaviour this decision replaces.
+
 This is an investigation record. The flooring slice does not remove or reinterpret the charge.
 
 ## What is charged

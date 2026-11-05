@@ -319,10 +319,15 @@ const removalFacts = [
   fact("deck.pile_or_post_replacement_required", kwilaId, true),
 ];
 const removalDeck = calculateDeck(ctx(removalFacts), wa(kwilaId));
+const removalAllowance = removalDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
-  "14 removal + new substructure still suppresses replacement",
+  "14 removal + new supports keep replacement visible and unpriced",
   hasLabel(removalDeck.lineItems, /Existing deck removal/) &&
-    !hasLabel(removalDeck.lineItems, /Pile\/post replacement/)
+    removalAllowance?.includedInTotal === false &&
+    removalAllowance.recommendedCost === 0 &&
+    removalAllowance.quantity === 0
 );
 
 const retainedFacts = [
@@ -344,9 +349,20 @@ const explicitFacts = [
   fact("deck.pile_or_post_count", "ret", 8),
 ];
 const explicitDeck = calculateDeck(ctx(explicitFacts), wa("ret"));
+const explicitAllowance = explicitDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
-  "16 explicit replacement remains valid",
-  hasLabel(explicitDeck.lineItems, /Pile\/post replacement/)
+  "16 explicit replacement stays visible and unpriced",
+  explicitAllowance?.includedInTotal === false &&
+    explicitAllowance.recommendedCost === 0 &&
+    explicitAllowance.quantity === 8 &&
+    !explicitDeck.lineItems.some(
+      (item) =>
+        /Pile\/post replacement/.test(item.label) &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
 );
 
 const staleFacts = [
@@ -354,10 +370,19 @@ const staleFacts = [
   fact("deck.pile_or_post_replacement_required", kwilaId, true),
 ];
 const staleDeck = calculateDeck(ctx(staleFacts), wa(kwilaId));
+const staleAllowance = staleDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
   "17 stale replacement does not double count",
-  !hasLabel(staleDeck.lineItems, /Pile\/post replacement/) &&
-    hasLabel(staleDeck.lineItems, /Piles \/ posts/)
+  staleAllowance?.includedInTotal === false &&
+    staleAllowance.recommendedCost === 0 &&
+    !staleDeck.lineItems.some(
+      (item) =>
+        /Pile\/post replacement/.test(item.label) &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
 );
 
 console.log("\n== MATERIAL DISPLAY ==");

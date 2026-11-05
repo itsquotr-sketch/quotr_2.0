@@ -196,7 +196,8 @@ check(
     allowance.recommendedCost === 0 &&
     allowance.category === "allowance" &&
     allowance.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
-    /Enter an amount in Pricing/.test(allowance.notes ?? "")
+    /typed Pricing amount/.test(allowance.notes ?? "") &&
+    /must not repeat measured support lines/.test(allowance.notes ?? "")
 );
 check(
   "new pile material, installation, excavation, and deck removal stay their own lines",

@@ -38,6 +38,10 @@ import { PricingCalculationDetails } from "@/components/pricing/PricingCalculati
 import { SupplierPriceEditor, useSupplierPriceLine } from "@/components/pricing/SupplierPriceEditor";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
+  PILE_REPLACEMENT_ITEM_KEY,
+  PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -418,7 +422,9 @@ function PricingItemRowComponent({
             <p className="text-xs text-amber-950">
               {blockFlooringManual
                 ? "A typed amount does not answer this choice. All priced does not mean this scope question is resolved."
-                : flooringRecovery
+                : pricingMetadata.itemKey === PILE_REPLACEMENT_ITEM_KEY
+                  ? PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK
+                  : flooringRecovery
                   ? "Add price records a manual amount on this pricing draft only. It does not save a company rate, and it does not answer an open scope question."
                   : canEdit
                     ? "A cost or client sell still needs to be entered. Use Add price."
