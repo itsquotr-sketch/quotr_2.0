@@ -65,7 +65,7 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 ### Fence
 
 - **User outcome.** One timber paling fence keeps the stated run, gate, and quantities through analysis and reload.
-- **Evidence.** Desktop quantities are recorded only in coordinator handoff commits `d2a500e2` and `556e64ab`, not in a separate QA report. Project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd`. The handoff names application SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d` and Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Two live analyses, then a retest with none. Fixed fence 17.1 m, gate 0.9 m, 12 posts, 120 palings, purchased posts 28.8 lm, rails 53.865 lm, palings 226.8 lm at the 5% fence factor. Face area 32.4 m² is supporting evidence only. Do not rerun that desktop journey.
+- **Evidence.** Durable report: `docs/estimating-v3/candidates/fence-journey-evidence.md`. Desktop quantities are recorded only in coordinator handoff commits `d2a500e2` and `556e64ab`. Project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd`. The handoff names application SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d` and Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Do not rerun that desktop journey.
 - **Gap.** No standalone QA report. Mobile layout is not tested. Metal, plastic, and other fence systems are not claimed. Benchmark sell $5,155.97 was not scored as a correct price.
 - **Acceptance.** The stored quantities above survive reload. Missing company rates stay unpriced or labelled with their benchmark source. No invented structural specification.
 - **Status.** Accepted for this timber path. Mobile evidence and benchmark calibration remain required and are not code repairs.
@@ -73,7 +73,7 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 ### Retaining wall
 
 - **User outcome.** One timber raking wall keeps the stated geometry, drainage choice, and excavation quantity.
-- **Evidence.** Desktop quantities are in the same handoff commits as the fence journey, `d2a500e2` and `556e64ab`. There is no separate QA report. Project `13eaab78-aaf0-445e-a030-61cc37e73e0d`. SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d`. Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Face 16.5 m², 14 piles, face boards 121 lm at 10% as the disclosed 150×50 H4 assumption, excavation 6 m³, no sock line, no disposal line. Hole-excavation labour stays Pricing Required. Do not rerun that desktop journey.
+- **Evidence.** Durable report: `docs/estimating-v3/candidates/retaining-journey-evidence.md`. Same handoff commits as the fence journey. Project `13eaab78-aaf0-445e-a030-61cc37e73e0d`. SHA `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d`. Preview `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`. Do not rerun that desktop journey.
 - **Gap.** No standalone QA report. Mobile layout is not tested. Sleeper and masonry walls are not claimed. Benchmark sell $4,861.33 was not scored.
 - **Acceptance.** Those stored quantities survive reload. The excavation labour gap stays explicit. No invented rate.
 - **Status.** Accepted for this timber path. Mobile evidence and benchmark calibration remain required and are not code repairs.
@@ -97,7 +97,7 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 ### Internal walls and doors
 
 - **User outcome.** A stated opening count is one unsized opening each. Door sets stay door sets. A sized opening survives reload without resizing the others.
-- **Evidence.** Deterministic report `C:/Users/Admin/Desktop/quotr-v3-opening-count-evidence/docs/estimating-v3/candidates/opening-count-qa.md`, with `opening-count-handoff.md` and `opening-count-release-review.md` beside it. Evidence commit `08e21d3926d83d06111a5ecc7a4b633e909d828e`. Tested SHA `1288d9ee387207fa4f4bdfa7daa26199360d8efd`. Baseline `01e4b508c062dbee0bd46c12b763d77996308122`. Candidate preview in that report `dpl_GEhr682QSyVy5t6rFrai9WiPs3ML`. That report marks hosted persistence BLOCKED. The later hosted reload is only in coordinator commit `6efe4a4c`: project `f87a1677-59d4-4c19-93cb-295acbfffad2`, sized opening `9b451a38-863b-42a8-b73b-86c13692ecf7`, six unsized openings, one stored size 0.92 × 2.10 m, raw timber 5.72 lm, purchase 6.29 lm. That commit does not name a deployment id. Do not rerun the recorded checks.
+- **Evidence.** Durable report: `docs/estimating-v3/candidates/opening-count-evidence.md`. Deterministic acceptance is in the opening-count evidence checkout at `08e21d39`, tested SHA `1288d9ee`. The later hosted reload is only in coordinator commit `6efe4a4c`. Its deployment id is unknown. Do not rerun the recorded checks.
 - **Gap.** No separate hosted QA report. Mobile was not checked. The deterministic hosted section remains BLOCKED in the report file.
 - **Acceptance.** Do not edit that project or repeat the check.
 - **Status.** Accepted.
@@ -116,7 +116,15 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 - **Evidence.** Production is still `bc0a7667` on `release/website-estimating-stage-1`. Android is `ff39ba31` on `release/android-estimating-stage-1`.
 - **Gap.** That review has not started.
 - **Acceptance.** No Production deploy until it is reviewed and explicitly approved.
-- **Status.** Required, and not started.
+- **Status.** Required, and not started. This is not a release candidate.
+
+Preparation still required before any candidate is proposed:
+
+- Website line `release/website-estimating-stage-1` at `bc0a7667` versus this Preview line. List the commits that would move.
+- Android line `release/android-estimating-stage-1` at `ff39ba31`. Record which estimating behaviour it does not contain.
+- Migrations in `supabase/migrations` that are on Preview and not on Production. No migration is applied from this register.
+- Environment configuration: Preview database `shhpjsoldmqtkdbgrbtm` versus Production `lxvnylhsbvudzzupxeqr`, and the Vercel env split. Production env is not changed.
+- Rollback: the current Production deployment `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` remains the rollback target until a later, explicit proposal names another.
 
 ### Honest price status
 
