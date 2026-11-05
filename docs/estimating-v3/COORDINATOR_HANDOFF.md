@@ -17,10 +17,11 @@ No credentials are stored here. Verify the active organisation before every host
 
 - Preview alias: https://quotr-2-0-git-estimating-v3-quotr1.vercel.app
 - Preview database: `shhpjsoldmqtkdbgrbtm`
-- Organisation: `27d885fc-b175-4c9a-a703-07cd78293592`, name “Stage 3C isolated”
-- Account: `stage3c+1793164811597@erccontracting.co.nz`
-- That account is email-confirmed, has an email sign-in identity, and is not banned. Last sign-in recorded on Preview was 4 November 2026, 19:52 UTC.
-- ERC Contracting, including `jeanluc@erccontracting.co.nz`, is not authorised for these hosted tests. Do not create or edit projects there.
+- Organisation: `0767b04e-31c2-4679-a275-16201135df02`, name “V3 QA isolated mw2usno8”
+- Account: `hello+v3-qa.mw2usno8@erccontracting.co.nz` (plus-address fixture only)
+- Sole active membership is that organisation. Setup is complete. GST is not registered. Carpenter and labourer costs are the disclosed Quotr benchmarks. Margin is 20%. Work types are Fence, Retaining wall, and Internal walls. Project count was 0 before the hosted checks.
+- Stage 3C isolated (`27d885fc-b175-4c9a-a703-07cd78293592`) is not the session for these checks. Its password was not available and was not reset.
+- ERC Contracting, including `jeanluc@erccontracting.co.nz` and `hello@erccontracting.co.nz`, is not authorised. Do not create or edit projects there.
 - Do not change memberships, passwords, or billing. Do not use Forgot password or Create account.
 
 ## Accepted
@@ -34,7 +35,7 @@ No credentials are stored here. Verify the active organisation before every host
 
 Status: **NOT TESTED**. Area-heading acceptance does not cover it.
 
-Fresh project only, in Stage 3C isolated, after the active organisation is verified.
+Fresh project only, in V3 QA isolated mw2usno8, after the active organisation is verified.
 
 - Six explicit unsized wall openings survive reload.
 - Size one to 0.92 × 2.10 m, reload, and the other five stay unsized.
