@@ -25,8 +25,10 @@ import {
   replacementAllowanceQuantityUnknown,
 } from "@/lib/estimate/deck-scope-2c";
 import {
+  ADD_MISSING_RATE,
   classifyReviewNotice,
   GENERATED_LINES_PRICED,
+  priceCompletenessNextAction,
 } from "@/lib/assistant/presentation/estimate-issues";
 
 export const WORK_AREA_PRICING_EXPLANATION =
@@ -143,6 +145,7 @@ export type WorkAreaBreakdownCard = {
   readonly assumptions: readonly string[];
   readonly checks: readonly string[];
   readonly attention: readonly WorkAreaBreakdownAttention[];
+  readonly nextAction: string | null;
 };
 
 export type WorkAreaBreakdownModel = {
@@ -156,6 +159,7 @@ export type WorkAreaBreakdownModel = {
   readonly cards: readonly WorkAreaBreakdownCard[];
   readonly otherAssumptions: readonly string[];
   readonly otherChecks: readonly string[];
+  readonly nextAction: string | null;
 };
 
 type LineRef = {
@@ -359,6 +363,17 @@ function mentions(text: string, name: string): boolean {
   return text.toLowerCase().includes(needle);
 }
 
+function noticeApplies(
+  label: string,
+  areaName: string,
+  areaNames: readonly string[]
+): boolean {
+  if (mentions(label, areaName)) return true;
+  if (areaNames.some((name) => name !== areaName && mentions(label, name))) return false;
+  const kind = classifyReviewNotice(label);
+  return kind === "scope_gap" || kind === "specification";
+}
+
 function scopeFor(
   area: BuilderReviewWorkAreaGroup,
   scope: readonly WorkAreaBreakdownScope[]
@@ -428,6 +443,21 @@ function presentCard(
     readiness = GENERATED_LINES_PRICED;
   }
   const reviewCount = assumptions.length + checks.length + portionAssumptions.length;
+  const noticeTexts = [...checks, ...assumptions, ...portionAssumptions];
+  let scopeCoverageGapCount = 0;
+  let unresolvedSpecificationCount = 0;
+  for (const text of noticeTexts) {
+    const kind = classifyReviewNotice(text);
+    if (kind === "scope_gap") scopeCoverageGapCount += 1;
+    else if (kind === "specification") unresolvedSpecificationCount += 1;
+  }
+  const nextAction = priceCompletenessNextAction({
+    missingPriceLineCount: lines.filter((row) =>
+      lineIsPricingRequired(row.line, row.group)
+    ).length,
+    scopeCoverageGapCount,
+    unresolvedSpecificationCount,
+  });
   const sell =
     readiness === "All priced" &&
     !stale &&
@@ -507,6 +537,7 @@ function presentCard(
     assumptions,
     checks,
     attention,
+    nextAction,
   };
 }
 
@@ -518,15 +549,16 @@ export function projectWorkAreaBreakdown(
   const directKnown = knownMoney(view.overview.recommendedCost, view.overview.recommendedSell);
   const areas = view.workAreas;
   const single = areas.length === 1;
+  const areaNames = areas.map((area) => area.workAreaName);
 
   const assignedAssumptions = new Set<string>();
   const assignedChecks = new Set<string>();
   const cards = areas.map((area) => {
     const assumptions = view.assumptions
-      .filter((item) => single || mentions(item.label, area.workAreaName))
+      .filter((item) => single || noticeApplies(item.label, area.workAreaName, areaNames))
       .map((item) => item.label);
     const checks = view.checks
-      .filter((item) => single || mentions(item.label, area.workAreaName))
+      .filter((item) => single || noticeApplies(item.label, area.workAreaName, areaNames))
       .map((item) => item.label);
     for (const label of assumptions) assignedAssumptions.add(label);
     for (const label of checks) assignedChecks.add(label);
@@ -544,6 +576,7 @@ export function projectWorkAreaBreakdown(
     previousDirectCost: stale ? directKnown : null,
     sell:
       !stale &&
+      cards.every((card) => card.readiness === "All priced") &&
       !view.overview.recommendedSellIsPartial &&
       view.overview.recommendedSell > 0
         ? formatCurrency(view.overview.recommendedSell)
@@ -560,5 +593,9 @@ export function projectWorkAreaBreakdown(
       : view.checks
           .map((item) => item.label)
           .filter((label) => !assignedChecks.has(label)),
+    nextAction:
+      cards.find((card) => card.nextAction === ADD_MISSING_RATE)?.nextAction ??
+      cards.find((card) => card.nextAction)?.nextAction ??
+      null,
   };
 }
