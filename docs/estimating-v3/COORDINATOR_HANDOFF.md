@@ -29,23 +29,15 @@ No credentials are stored here. Verify the active organisation before every host
 - Area headings, at `68c5760c`. Product behaviour is `3308d806` inside that tip. Bedroom 1 `11.52 m²`, Bedroom 2 `14.7 m²`, hallway `9.6 m²`. Stored areas stay `3.6 × 3.2` and `4.2 × 3.5`. QA and release review are complete. Do not repeat them.
 - Opening-count deterministic acceptance and Preview integration are complete, at `1288d9ee` inside `475acf23` and later. Raw timber 5.72 lm. Purchase quantity 6.29 lm.
 - Opening-count hosted persistence, on project `f87a1677-59d4-4c19-93cb-295acbfffad2` in V3 QA isolated mw2usno8. Six door openings stayed unsized across a reload. One opening, the active sixth `9b451a38-863b-42a8-b73b-86c13692ecf7`, then stored 0.92 m by 2.10 m and survived a second reload. The other five stayed empty. No quote was sent and Pricing was not reviewed. Do not edit this project. Do not repeat the check.
+- Fence and retaining-wall journeys, on `68c5760c`. Fence project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd`. Retaining project `13eaab78-aaf0-445e-a030-61cc37e73e0d`. Two live analyses, then a retest with none. Stored quantities matched the contract: fixed fence 17.1 m separate from the 0.9 m gate and the gate frame; 12 posts; 120 palings; purchased posts 28.8 lm; rails 53.865 lm; palings 226.8 lm at the 5% fence factor; retaining face 16.5 m²; 14 piles; face boards 121 lm at 10%; excavation 6 m³; no sock line; no disposal line. Hole-excavation labour stays Pricing Required. Face boards stayed the disclosed 150×50 H4 assumption. Benchmark sells were $5,155.97 and $4,861.33 and were not scored as assembly confirmation. No recipe repair. Do not edit these projects or repeat the journeys.
 
 ## Still open
 
-### Fence and retaining-wall journeys
+### Pile replacement allowance
 
-Area formulas already recorded are supporting evidence only: fence face 18 × 1.8 = 32.4 m², retaining face 15 × (1.6 + 0.6) / 2 = 16.5 m². They are not assembly acceptance.
+The completion register’s next money gap. When replacement is explicit and the new support lines are absent, the calculator still prices the pile/post replacement allowance. When those support lines are already present, the allowance is excluded from the total and the price is marked incomplete. The allowance’s coverage is unresolved. Do not remove or reprice it without a commercial decision.
 
-Frozen briefs, from the existing contracts:
-
-- Fence: new 18 m timber paling fence, 1.8 m high, vertical boards, Radiata Pine, 150 × 19 mm, posts at 1.8 m centres, one 0.9 m gate within the run, top capping and gate capping included, paling gap 0.
-- Retaining wall: 15 m timber wall, raking from 1.6 m to 0.6 m, H5 SED retaining poles, backfill included, excavation 6 m³ with digger access, drainage included, drainage sock not required, disposal excluded.
-
-Live-analysis calls used: 2. Calls made while the browser was ERC Contracting: 0.
-
-Local contract comparison on `68c5760c` matched the frozen quantities for face area, 12 fence posts, 120 palings, 226.8 lm purchased palings at 5% fallback waste, 14 retaining piles, 121 lm purchased 150×50 face boards at 10% default waste, excavation quantity 6 m³, no drainage-sock line, and no disposal line. Retaining hole-excavation labour stays an explicit Pricing Required gap. Company default wastage is 10%. Timber-framing wastage is null, so fence boards and rails stay on the 5% fence factor.
-
-Hosted scope, first pass: fence project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd` stored the frozen fence facts. Retaining project `13eaab78-aaf0-445e-a030-61cc37e73e0d` stored length, raking heights, timber, backfill, drainage, digger access, sock not required, and disposal excluded. Neither project stored an estimate. Removal, finish, and surcharge were left open because those answers are not extraction. The excavation volume field was filled without a blur, and the empty pile-material fact still displays the H5 SED default. No recipe repair is selected.
+The work-area “All priced” chip beside an Incomplete overview stays deferred.
 
 ## Workflow
 
