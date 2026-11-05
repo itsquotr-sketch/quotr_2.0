@@ -41,9 +41,11 @@ Frozen briefs, from the existing contracts:
 - Fence: new 18 m timber paling fence, 1.8 m high, vertical boards, Radiata Pine, 150 × 19 mm, posts at 1.8 m centres, one 0.9 m gate within the run, top capping and gate capping included, paling gap 0.
 - Retaining wall: 15 m timber wall, raking from 1.6 m to 0.6 m, H5 SED retaining poles, backfill included, excavation 6 m³ with digger access, drainage included, drainage sock not required, disposal excluded.
 
-Planned live-analysis calls when the authorised session exists: 2, one per brief. Calls made while the browser was ERC Contracting: 0.
+Live-analysis calls used: 2. Calls made while the browser was ERC Contracting: 0.
 
-Local contract comparison on `68c5760c` matched the frozen quantities for face area, 12 fence posts, 120 palings, 226.8 lm purchased palings at 5% fallback waste, 14 retaining piles, 121 lm purchased 150×50 face boards at 10% default waste, excavation quantity 6 m³, no drainage-sock line, and no disposal line. Retaining hole-excavation labour stays an explicit Pricing Required gap. Do not invent a rate or a structural specification. Do not select a recipe repair until the hosted journeys store scope and survive reload.
+Local contract comparison on `68c5760c` matched the frozen quantities for face area, 12 fence posts, 120 palings, 226.8 lm purchased palings at 5% fallback waste, 14 retaining piles, 121 lm purchased 150×50 face boards at 10% default waste, excavation quantity 6 m³, no drainage-sock line, and no disposal line. Retaining hole-excavation labour stays an explicit Pricing Required gap. Company default wastage is 10%. Timber-framing wastage is null, so fence boards and rails stay on the 5% fence factor.
+
+Hosted scope, first pass: fence project `f7a1095c-8928-4a6c-82a1-f8603d1e88fd` stored the frozen fence facts. Retaining project `13eaab78-aaf0-445e-a030-61cc37e73e0d` stored length, raking heights, timber, backfill, drainage, digger access, sock not required, and disposal excluded. Neither project stored an estimate. Removal, finish, and surcharge were left open because those answers are not extraction. The excavation volume field was filled without a blur, and the empty pile-material fact still displays the H5 SED default. No recipe repair is selected.
 
 ## Workflow
 
