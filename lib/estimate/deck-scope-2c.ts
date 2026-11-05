@@ -138,6 +138,20 @@ export function replacementAllowanceQuantityUnknown(input: {
   return allowance && (input.quantity == null || input.quantity === 0);
 }
 
+/**
+ * A generated replacement allowance has no requirement identity.
+ * Its typed amount is saved on the line. It does not become a requirement price.
+ */
+export function pileReplacementAllowanceSavesInPlace(input: {
+  itemKey?: string | null;
+  label?: string | null;
+}): boolean {
+  return (
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /pile\/post replacement allowance/i.test(input.label ?? "")
+  );
+}
+
 export function pileReplacementManualAmountBlocked(input: {
   itemKey?: string | null;
   label?: string | null;

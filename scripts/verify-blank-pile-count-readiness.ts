@@ -16,6 +16,7 @@ import {
 import {
   PILE_ALLOWANCE_COVERAGE_GAP,
   PILE_REPLACEMENT_ITEM_KEY,
+  pileReplacementAllowanceSavesInPlace,
 } from "../lib/estimate/deck-scope-2c";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import { projectWorkflowRoutes } from "../lib/projects/workflow-orientation";
@@ -173,6 +174,17 @@ const laidOut = [
   fact("deck.bearer_row_count", 2),
   fact("deck.supports_per_bearer", 4),
 ];
+check(
+  "the replacement allowance can be saved without a requirement identity",
+  pileReplacementAllowanceSavesInPlace({
+    itemKey: PILE_REPLACEMENT_ITEM_KEY,
+    label: allowance?.label,
+  }) &&
+    !pileReplacementAllowanceSavesInPlace({
+      itemKey: "deck.decking",
+      label: "Hardwood decking",
+    })
+);
 check(
   "a confirmed layout still requires its measured support answers",
   !blankPileReplacementLeavesSupportsUnpriced(laidOut, "d1") &&

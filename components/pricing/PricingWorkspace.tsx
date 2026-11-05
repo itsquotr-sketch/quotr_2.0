@@ -44,6 +44,8 @@ import {
   identityFromPricingItem,
   isPendingPricingItemId,
 } from "@/lib/pricing/manual-requirement-promotion";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { pileReplacementAllowanceSavesInPlace } from "@/lib/estimate/deck-scope-2c";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   UNKNOWN_MATERIAL_COST_QUOTE_BLOCK,
@@ -378,7 +380,14 @@ export function PricingWorkspace({
         }
         return result;
       }
-      if (promote && currentItem) {
+      if (
+        promote &&
+        currentItem &&
+        !pileReplacementAllowanceSavesInPlace({
+          itemKey: parseLineItemNotes(currentItem.notes_internal).metadata.itemKey,
+          label: currentItem.internal_label,
+        })
+      ) {
         const identity = identityFromPricingItem(currentItem);
         if (!identity) {
           return {
