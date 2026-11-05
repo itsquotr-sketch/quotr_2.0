@@ -22,6 +22,8 @@ import {
 } from "../lib/estimate/deck-detail-completeness";
 import {
   PILE_ALLOWANCE_COVERAGE_GAP,
+  pileReplacementManualAmountBlocked,
+  replacementAllowanceQuantityUnknown,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
   PILE_INSPECTION_CONDITION_LABEL,
   PILE_LEFT_UNTIL_INSPECTION_LABEL,
@@ -31,6 +33,7 @@ import {
   shouldAskPileReplacement,
 } from "../lib/estimate/deck-scope-2c";
 import { scopeTopicPolarity } from "../lib/estimate/scope-intent";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import {
   explicitJobExclusionLines,
   jobExclusionLine,
@@ -407,7 +410,36 @@ check(
     openAllowance.quantity === 0 &&
     openAllowance.quantity !== 1 &&
     /not a lump-sum scope/.test(openAllowance.notes ?? "") &&
+    /not zero piles requested/.test(openAllowance.notes ?? "") &&
+    replacementAllowanceQuantityUnknown({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      quantity: openAllowance.quantity,
+    }) &&
     assumedEstimate.missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP) &&
+    classifyReviewNotice(PILE_ALLOWANCE_COVERAGE_GAP) === "scope_gap" &&
+    pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
+    pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      scope: "Piles / posts and installation",
+      basis: "Company rate",
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
+    !pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      scope: "Removal of existing piles",
+      basis: "Subcontractor price",
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
     assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price")) &&
     !assumedEstimate.lineItems.some(
       (item) =>

@@ -111,8 +111,57 @@ export function pileRetentionPending(params: {
   );
 }
 
+export const PILE_REPLACEMENT_ITEM_KEY = "deck.post_replacement.each";
+
+export const PILE_REPLACEMENT_QUANTITY_UNKNOWN = "Quantity unknown";
+
+export const PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK =
+  "A typed amount does not identify the replacement operation. Name the uncovered work and a company rate, project rate, or subcontractor price before this amount can be saved. It must not repeat measured support lines.";
+
 export const PILE_ALLOWANCE_COVERAGE_GAP =
-  "Pile replacement was requested. Neither the each benchmark nor the count-free allowance is in the known total, because no distinct replacement operation is established. Removal of existing piles, temporary support, and any other replacement operation stay unresolved. New-pile material, installation, excavation, and concrete do not cover those operations, so this is not a complete price.";
+  "Pile replacement was requested. Coverage is unresolved, so neither the each benchmark nor the count-free allowance is in the known total. Removal of existing piles, temporary support, and any other replacement operation stay unresolved. New-pile material, installation, excavation, and concrete do not cover those operations, so this is not a complete price.";
+
+const UNCOVERED_REPLACEMENT_OPERATION =
+  /\b(?:remov(?:e|al|ing)|extract(?:ion|ing)?|temporary support|propping|underpinning)\b/i;
+
+const REPLACEMENT_PRICE_BASIS =
+  /\b(?:company rate|project rate|subcontractor(?: price| quote)?)\b/i;
+
+export function replacementAllowanceQuantityUnknown(input: {
+  itemKey?: string | null;
+  label?: string | null;
+  quantity?: number | null;
+}): boolean {
+  const allowance =
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /replacement allowance/i.test(input.label ?? "");
+  return allowance && (input.quantity == null || input.quantity === 0);
+}
+
+export function pileReplacementManualAmountBlocked(input: {
+  itemKey?: string | null;
+  label?: string | null;
+  scope?: string | null;
+  basis?: string | null;
+  totalCost?: number | null;
+  totalSell?: number | null;
+}): boolean {
+  const allowance =
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /pile\/post replacement allowance|substructure replacement allowance/i.test(
+      input.label ?? ""
+    );
+  if (!allowance) return false;
+  const cost = input.totalCost ?? 0;
+  const sell = input.totalSell ?? 0;
+  if (!(cost > 0 || sell > 0)) return false;
+  const scope = (input.scope ?? "").trim();
+  const basis = (input.basis ?? "").trim();
+  return (
+    !UNCOVERED_REPLACEMENT_OPERATION.test(scope) ||
+    !REPLACEMENT_PRICE_BASIS.test(basis)
+  );
+}
 
 export function pileReplacementUnpricedNotes(input: {
   count: number | null;
@@ -121,7 +170,7 @@ export function pileReplacementUnpricedNotes(input: {
   const countText =
     input.count != null && input.count > 0
       ? `${input.count} piles/posts were requested. The count is visible and is not priced at the each benchmark.`
-      : "The count is not confirmed. This is not quantity one and not a lump-sum scope.";
+      : "Quantity unknown. This is not zero piles requested, not quantity one, and not a lump-sum scope.";
   const coverage = input.measuredSupportsPresent
     ? "Measured new-pile material, installation, excavation, and concrete stay their own lines. They do not cover removal of existing piles, temporary support, or other replacement operations, so those stay unresolved."
     : "No measured support lines cover this request. Independent deck work can still be priced.";

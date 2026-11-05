@@ -142,6 +142,7 @@ import {
   formatPilePurchaseIdentity,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
   PILE_ALLOWANCE_COVERAGE_GAP,
+  PILE_REPLACEMENT_ITEM_KEY,
   pileReplacementUnpricedNotes,
   PILE_CONFIRMED_NEW_WHILE_PENDING,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
@@ -1361,7 +1362,7 @@ export function calculateDeck(
         sellRate: 0,
         rateSource: getRateSourceLabel("missing"),
         rateSourceType: "missing",
-        itemKey: "deck.post_replacement.each",
+        itemKey: PILE_REPLACEMENT_ITEM_KEY,
         notes: pileReplacementUnpricedNotes({
           count: visiblePileCount,
           measuredSupportsPresent,
@@ -1401,8 +1402,9 @@ export function calculateDeck(
           sellRate: 0,
           rateSource: getRateSourceLabel("missing"),
           rateSourceType: "missing",
+          itemKey: PILE_REPLACEMENT_ITEM_KEY,
           notes:
-            "Partial or full replacement was named without a distinct operation or a confirmed count. Neither the partial benchmark nor the count-free allowance is in the known total. A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.",
+            "Quantity unknown. Partial or full replacement was named without a distinct operation or a confirmed count. This is not zero piles requested. Neither the partial benchmark nor the count-free allowance is in the known total. A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         }),

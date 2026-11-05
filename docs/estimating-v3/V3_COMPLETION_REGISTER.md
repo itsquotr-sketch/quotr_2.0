@@ -53,7 +53,14 @@ The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v
 - **Evidence.** Priced low and elevated assemblies are on the integration. Leave-until-inspection and explicit retention do not price a new pile set. Edited drafts and issued snapshots stay until regenerate and Pricing apply. The allowance investigation is `docs/estimating-v3/PILE_REPLACEMENT_ALLOWANCE_DEFECT.md`.
 - **Gap.** `deck.post_replacement.each` and the count-free allowance do not name removal of existing piles, temporary support, or any other operation beyond measured new supports. A missing count is not a quantity.
 - **Acceptance.** Neither benchmark enters the known total. Measured supports stay when they are present. Uncovered replacement work stays unresolved. A typed Pricing amount needs an explicit scope and basis and must not repeat measured lines. Saved estimates, manual Pricing edits, issued snapshots, the general margin, and saved-sell rules stay as they are.
-- **Status.** Required. The scope-based decision is adopted. The candidate is in QA.
+- **Status.** Required. The scope-based decision is adopted. A missing count is shown as “Quantity unknown”, not as zero piles. A Pricing amount is saved only when the client description names uncovered work and the client notes name a company rate, project rate, or subcontractor price. That amount does not remove the estimate’s coverage gap.
+
+### Concrete “No” still leaves support unresolved
+
+- **User outcome.** Answering No to concrete footings removes the concrete material and placement lines. The deck still says the support method, post count, and excavation are unresolved and unpriced.
+- **Evidence.** `scripts/verify-deck-maturity-2c.ts` check “28 No suppresses” fails on baseline `68c5760c` and on the pile candidate. The failing notice is `DECK_SUPPORT_DESIGN_UNRESOLVED`: “Concrete footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced.”
+- **Impact.** The No answer is honoured for the concrete lines. It does not leave a clean priced support design. The user still sees an incomplete support warning. Matching the baseline shows the pile repair did not introduce it. It does not show the warning is harmless.
+- **Status.** Required honesty. Not part of the pile repair.
 
 ### Fence
 
@@ -174,16 +181,16 @@ These rows are proposed. They are not approved exclusions.
 
 ## Calibration
 
-This is a review request. It does not approve or change any benchmark.
+Jean-Luc prioritised deck support labour. “Quotr benchmark” is an approved source label for an applicable, disclosed benchmark. It is not approval of every existing rate or productivity. Numerical benchmarks stay unchanged until a proposed basis and values are reviewed. Software repairs continue while that review is pending.
 
-Provenance:
+Defined removal or temporary-support work uses a company rate, an explicit project rate, or a relevant subcontractor price. No fallback is invented for that work.
 
-- Deck `postReplacementEach` is $180 cost / $280 sell. `substructureReplacementAllowance` is $1,200 / $1,800. `substructurePartialAllowance` is $650 / $1,000. Source: `lib/estimate/benchmark-rates.ts`. After the adopted pile decision, those three are not written into the known total.
-- Fence sell $5,155.97 and retaining sell $4,861.33 were recorded in handoff commit `556e64ab` from the QA organisation’s disclosed Quotr benchmarks and a 20% margin. They are not a pricing-accuracy result.
-- Hole-excavation labour on the retaining journey stayed Pricing Required. That gap is explicit.
+Deck support coverage, from the current contracts. A separate rate key is not evidence of separate work.
 
-Priority questions for Jean-Luc:
-
-1. Which family should be calibrated first: deck support labour, fence timber, or retaining timber?
-2. May a line keep the visible source “Quotr benchmark” until a company rate exists?
-3. Once removal or temporary support is specified, who supplies that rate?
+| Operation | What the current path prices | Overlap |
+| --- | --- | --- |
+| New support installation | “Pile/post installation”, component `deck.posts.install`. Labour only. The note says hole excavation and concrete are separate, and the time is not inside substructure framing. | Does not include excavation, concrete, or removal. |
+| Excavation | “Hole excavation”, bank cubic metres. It is not deck demolition. | Does not include installation or concrete placement. |
+| Concrete placement | “Concrete placement”, hours per purchased bag. Material bags are a separate line. | Does not include digging or pile installation. |
+| Existing-support removal | Not priced. “Existing deck removal” is deck-area demolition, not pile extraction. | Must not be treated as covered by new piles or by deck removal. |
+| Temporary support | Not priced. No line names propping, temporary support, or underpinning. | Must not be inferred from the installation or excavation keys. |

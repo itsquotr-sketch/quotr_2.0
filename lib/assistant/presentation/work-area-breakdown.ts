@@ -21,6 +21,10 @@ import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 import { flooringOwnershipDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
 import {
+  PILE_REPLACEMENT_QUANTITY_UNKNOWN,
+  replacementAllowanceQuantityUnknown,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   classifyReviewNotice,
   GENERATED_LINES_PRICED,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -239,11 +243,20 @@ function presentLine(
         ? `${formatUnitRate(line.costRate)} / ${line.unit}`
         : formatUnitRate(line.costRate)
       : null;
+  const quantityUnknown = replacementAllowanceQuantityUnknown({
+    itemKey: line.itemKey,
+    label: line.label,
+    quantity: line.quantity,
+  });
   return {
     id: line.id,
     description: line.label,
-    quantity: line.quantity == null ? null : formatQuantity(line.quantity),
-    unit: line.unit,
+    quantity: quantityUnknown
+      ? PILE_REPLACEMENT_QUANTITY_UNKNOWN
+      : line.quantity == null
+        ? null
+        : formatQuantity(line.quantity),
+    unit: quantityUnknown ? null : line.unit,
     rate,
     hourlyCost,
     productivity,

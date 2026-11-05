@@ -6,6 +6,10 @@ import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { flooringManualAmountBlocked } from "@/lib/estimate/flooring-pricing-recovery";
 import {
+  PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK,
+  pileReplacementManualAmountBlocked,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   deckStatedCountConflictFromPersisted,
   deckStatedCountPricingBlock,
 } from "@/lib/estimate/deck-stated-count-guard";
@@ -1416,6 +1420,19 @@ export async function updatePricingItem(
       error:
         "A typed amount does not answer this flooring choice. Choose the waste treatment or package ownership first.",
     };
+  }
+  const replacementNotes = parseLineItemNotes(existing.notes_internal);
+  if (
+    pileReplacementManualAmountBlocked({
+      itemKey: replacementNotes.metadata.itemKey,
+      label: existing.client_label,
+      scope: item.client_description,
+      basis: item.notes_client,
+      totalCost: totals.totalCost,
+      totalSell: totals.totalSell,
+    })
+  ) {
+    return { error: PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK };
   }
 
   const nextNotes = originatedAsPricingRequired
