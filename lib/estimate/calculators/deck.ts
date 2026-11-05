@@ -142,6 +142,7 @@ import {
   formatPilePurchaseIdentity,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
   PILE_ALLOWANCE_COVERAGE_GAP,
+  pileReplacementUnpricedNotes,
   PILE_CONFIRMED_NEW_WHILE_PENDING,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
   PILE_SUPPORTS_RETAINED,
@@ -1331,7 +1332,7 @@ export function calculateDeck(
   )?.toLowerCase();
 
   const replacementRequested = pileReplacementFact === true;
-  const replacementAlreadyItemised = lineItems.some(
+  const measuredSupportsPresent = lineItems.some(
     (item) =>
       item.includedInTotal !== false &&
       (item.label === "Piles / posts" ||
@@ -1340,83 +1341,37 @@ export function calculateDeck(
         item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY ||
         item.componentKey === DECK_CONCRETE_BAGS_COMPONENT_KEY)
   );
-  if (replacementRequested && replacementAlreadyItemised) {
-      lineItems.push({
-        ...createRateLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post replacement allowance",
-          category: "allowance",
-          quantity: 1,
-          unit: "allow",
-          costRate: 0,
-          sellRate: 0,
-          rateSource: getRateSourceLabel("missing"),
-          rateSourceType: "missing",
-          itemKey: "deck.post_replacement.each",
-          notes:
-            "Support material, installation, excavation, concrete, and existing-deck removal stay their own lines. This additional allowance does not name any other work, so it is not included. Enter an amount in Pricing if you want it. A saved rate is not applied automatically.",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
+  const statedPileCount = getNumberFact(
+    facts,
+    workArea.id,
+    "deck.pile_or_post_count"
+  );
+  const visiblePileCount =
+    statedPileCount != null && statedPileCount > 0 ? statedPileCount : null;
+  if (replacementRequested) {
+    lineItems.push({
+      ...createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Pile/post replacement allowance",
+        category: "allowance",
+        quantity: visiblePileCount ?? 0,
+        unit: "each",
+        costRate: 0,
+        sellRate: 0,
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+        itemKey: "deck.post_replacement.each",
+        notes: pileReplacementUnpricedNotes({
+          count: visiblePileCount,
+          measuredSupportsPresent,
         }),
-        includedInTotal: false,
-      });
-      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
-    } else if (pileReplacement === true) {
-    const pileCount = getNumberFact(facts, workArea.id, "deck.pile_or_post_count");
-    const postRates = resolveRate({
-      rates: context.rates,
-      rateType: "allowance",
-      itemKey: "deck.post_replacement.each",
-      workAreaType: "deck",
-      unit: "each",
-      fallbackCostRate: DECK_BENCHMARKS.postReplacementEach.cost,
-      organisationSettings: context.organisationSettings,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+      }),
+      includedInTotal: false,
     });
-
-    if (pileCount != null && pileCount > 0) {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post replacement allowance",
-          category: "allowance",
-          recommendedCost: round2(postRates.costRate * pileCount),
-          recommendedSell: round2(postRates.sellRate * pileCount),
-          rateSource: postRates.sourceLabel,
-          sellDerivedFromMargin: postRates.sellDerivedFromMargin,
-          sellAuthority: postRates.sellAuthority,
-          notes: `${pileCount} piles/posts`,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
-    } else {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post replacement allowance",
-          category: "allowance",
-          recommendedCost: DECK_BENCHMARKS.substructureReplacementAllowance.cost,
-          recommendedSell: quotrFallbackSellFromCost(
-            DECK_BENCHMARKS.substructureReplacementAllowance.cost,
-            context.organisationSettings
-          ),
-          ...benchmarkRateFields(),
-          sellDerivedFromMargin: true,
-          sellAuthority: "derived_from_gross_margin",
-          notes: "Count subject to confirmation",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-      assumptions.push(
-        "Pile/post replacement count is subject to confirmation."
-      );
+    if (!missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP)) {
       missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
     }
   } else if (pileReplacement === null && replacementApplicable) {
@@ -1434,29 +1389,28 @@ export function calculateDeck(
       item.label.includes("Pile/post replacement")
     );
     if (!hasPileLine) {
-      const allowance =
-        substructureCondition.includes("full")
-          ? DECK_BENCHMARKS.substructureReplacementAllowance
-          : DECK_BENCHMARKS.substructurePartialAllowance;
-      lineItems.push(
-        createAllowanceLineItem({
+      lineItems.push({
+        ...createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
           label: "Substructure replacement allowance",
           category: "allowance",
-          recommendedCost: allowance.cost,
-          recommendedSell: quotrFallbackSellFromCost(
-            allowance.cost,
-            context.organisationSettings
-          ),
-          ...benchmarkRateFields(),
-          sellDerivedFromMargin: true,
-          sellAuthority: "derived_from_gross_margin",
+          quantity: 0,
+          unit: "allow",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          notes:
+            "Partial or full replacement was named without a distinct operation or a confirmed count. Neither the partial benchmark nor the count-free allowance is in the known total. A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
+        }),
+        includedInTotal: false,
+      });
+      if (!missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP)) {
+        missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
+      }
     }
   } else if (substructureCondition === "unknown") {
     assumptions.push(

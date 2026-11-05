@@ -112,7 +112,21 @@ export function pileRetentionPending(params: {
 }
 
 export const PILE_ALLOWANCE_COVERAGE_GAP =
-  "The pile/post replacement allowance does not name work outside new support material, installation, excavation, concrete, or existing-deck removal. Its coverage is unresolved, so this is not a complete price.";
+  "Pile replacement was requested. Neither the each benchmark nor the count-free allowance is in the known total, because no distinct replacement operation is established. Removal of existing piles, temporary support, and any other replacement operation stay unresolved. New-pile material, installation, excavation, and concrete do not cover those operations, so this is not a complete price.";
+
+export function pileReplacementUnpricedNotes(input: {
+  count: number | null;
+  measuredSupportsPresent: boolean;
+}): string {
+  const countText =
+    input.count != null && input.count > 0
+      ? `${input.count} piles/posts were requested. The count is visible and is not priced at the each benchmark.`
+      : "The count is not confirmed. This is not quantity one and not a lump-sum scope.";
+  const coverage = input.measuredSupportsPresent
+    ? "Measured new-pile material, installation, excavation, and concrete stay their own lines. They do not cover removal of existing piles, temporary support, or other replacement operations, so those stay unresolved."
+    : "No measured support lines cover this request. Independent deck work can still be priced.";
+  return `${countText} ${coverage} A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.`;
+}
 
 export const DECK_SUPPORT_DESIGN_UNRESOLVED =
   "Concrete footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";

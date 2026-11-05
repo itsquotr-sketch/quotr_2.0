@@ -401,11 +401,20 @@ const openAllowance = assumedEstimate.lineItems.find((item) =>
   /pile\/post replacement/i.test(item.label)
 );
 check(
-  "replacement without a count stays an incomplete allowance",
-  openAllowance?.notes === "Count subject to confirmation" &&
-    openAllowance.recommendedCost === 1200 &&
-    openAllowance.includedInTotal !== false &&
-    assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
+  "replacement without a count stays visible and unpriced",
+  openAllowance?.includedInTotal === false &&
+    openAllowance.recommendedCost === 0 &&
+    openAllowance.quantity === 0 &&
+    openAllowance.quantity !== 1 &&
+    /not a lump-sum scope/.test(openAllowance.notes ?? "") &&
+    assumedEstimate.missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP) &&
+    assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price")) &&
+    !assumedEstimate.lineItems.some(
+      (item) =>
+        item.label === "Pile/post replacement allowance" &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
 );
 const countedFacts: EstimateFact[] = [
   ...assumedFacts,
@@ -431,7 +440,9 @@ check(
   "an explicit count does not add the each rate on top of itemised supports",
   countedAllowance?.includedInTotal === false &&
     countedAllowance.recommendedCost === 0 &&
+    countedAllowance.quantity === 4 &&
     countedAllowance.rateSourceType === "missing" &&
+    /not priced at the each benchmark/.test(countedAllowance.notes ?? "") &&
     !countedEstimate.lineItems.some(
       (item) =>
         item.label === "Pile/post replacement allowance" &&

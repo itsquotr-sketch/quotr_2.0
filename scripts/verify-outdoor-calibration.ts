@@ -321,9 +321,15 @@ const deckPiles = calculateDeck(
   } as EstimateContext,
   wa("d3", "deck", "Deck piles")
 );
+const deckPileAllowance = deckPiles.lineItems.find(
+  (item) => item.label === "Pile/post replacement allowance"
+);
 assert(
-  labels(deckPiles.lineItems).includes("Pile/post replacement allowance"),
-  "Deck piles: replacement allowance"
+  deckPileAllowance != null &&
+    deckPileAllowance.includedInTotal === false &&
+    deckPileAllowance.recommendedCost === 0 &&
+    deckPileAllowance.quantity === 8,
+  "Deck piles: replacement allowance stays visible and unpriced"
 );
 assert(
   labels(deckPiles.lineItems).filter((l) => l === "Framing/substructure").length <= 1,
