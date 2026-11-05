@@ -549,6 +549,11 @@ export function WorkAreaBreakdown({
                     <span className="min-w-0">
                       <span className="block text-xs text-foreground/70">Readiness</span>
                       <span className="block font-medium">{card.readiness}</span>
+                      {card.nextAction ? (
+                        <span className="mt-1 block text-sm" data-work-area-next-action={card.id}>
+                          {card.nextAction}
+                        </span>
+                      ) : null}
                     </span>
                     {card.attention.length > 0 ? (
                       <span className="min-w-0" data-work-area-pricing-count={card.id}>

@@ -54,7 +54,7 @@ One representative fence journey and one retaining-wall journey, using the exist
 
 These are recorded gaps, not frozen acceptance.
 
-1. **Work-area “All priced” beside an Incomplete overview.** Deferred. The surfaces disagree.
+1. **Work-area “All priced” beside an Incomplete overview.** Repair is on `estimating/v3-price-completeness`, not integrated. Priced generated lines with an unresolved scope or specification stay “Generated lines priced” and name the next action. A missing rate says “Add the missing rate.” The review guard uses the same three states. GST and Pricing review stay separate. Hosted QA has not run.
 2. **Pile replacement while inspection is open.** A new substructure can price beside the allowance. Deck money is not complete until this is resolved.
 
 ## Not in this register

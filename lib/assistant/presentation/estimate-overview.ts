@@ -26,6 +26,7 @@ import {
   formatScopeCoverageGaps,
   formatUnresolvedSpecifications,
   formatWorkAreaPriceSummary,
+  priceCompletenessNextAction,
   type EstimateIssueModel,
 } from "@/lib/assistant/presentation/estimate-issues";
 
@@ -833,11 +834,11 @@ export function projectEstimateOverview(
                 estimateMissingPriceNotice(issues.missingPriceLineCount)
               : scopeOrSpecificationOpen
                 ? `Generated lines are priced. ${
-                    scopeCoverageGapCount > 0
-                      ? formatScopeCoverageGaps(scopeCoverageGapCount) ??
-                        "Requested scope still has no line."
-                      : formatUnresolvedSpecifications(unresolvedSpecificationCount) ??
-                        "A specification is still open."
+                    priceCompletenessNextAction({
+                      missingPriceLineCount: 0,
+                      scopeCoverageGapCount,
+                      unresolvedSpecificationCount,
+                    }) ?? "Requested scope still has no line."
                   }`
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."

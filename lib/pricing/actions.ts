@@ -23,6 +23,7 @@ import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-gener
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import {
   estimateLineIsQuoteVisible,
+  missingGeneratedRateReviewBlock,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
 } from "@/lib/pricing/scope-finalisation";
@@ -2183,6 +2184,8 @@ export async function markPricingReviewed(
   if (taxBasisBlock) return { error: taxBasisBlock };
   const excludedLineBlock = quoteVisibleExcludedLineBlock(reviewItems ?? []);
   if (excludedLineBlock) return { error: excludedLineBlock };
+  const missingRateBlock = missingGeneratedRateReviewBlock(reviewItems ?? []);
+  if (missingRateBlock) return { error: missingRateBlock };
   const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
     supabase,
     orgId,

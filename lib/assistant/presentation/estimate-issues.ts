@@ -24,9 +24,30 @@ export function formatMissingPriceLines(count: number): string {
   return `${count} lines need prices`;
 }
 
+export const ADD_MISSING_RATE = "Add the missing rate.";
+export const CONFIRM_OPEN_SPECIFICATION = "Confirm the open specification.";
+
 export function formatMissingPriceNotice(count: number): string {
-  if (count === 1) return "1 line still needs a price. Complete this in Pricing.";
-  return `${count} lines still need prices. Complete these in Pricing.`;
+  if (count === 1) return `1 line still needs a price. ${ADD_MISSING_RATE}`;
+  return `${count} lines still need prices. ${ADD_MISSING_RATE}`;
+}
+
+/**
+ * The single next pricing action. A missing rate comes before an open
+ * specification, and either comes before treating the job as fully priced.
+ * GST and Pricing review are not this action.
+ */
+export function priceCompletenessNextAction(input: {
+  readonly missingPriceLineCount: number;
+  readonly scopeCoverageGapCount?: number;
+  readonly unresolvedSpecificationCount?: number;
+}): string | null {
+  if (input.missingPriceLineCount > 0) return ADD_MISSING_RATE;
+  if ((input.unresolvedSpecificationCount ?? 0) > 0) return CONFIRM_OPEN_SPECIFICATION;
+  if ((input.scopeCoverageGapCount ?? 0) > 0) {
+    return formatScopeCoverageGaps(input.scopeCoverageGapCount ?? 0);
+  }
+  return null;
 }
 
 export const GENERATED_LINES_PRICED = "Generated lines priced";
