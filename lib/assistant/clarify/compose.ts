@@ -1,5 +1,10 @@
 import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/project-filter";
 import {
+  explicitKitchenRenovationChoice,
+  KITCHEN_RENOVATION_FACT_KEY,
+  kitchenPackageChoiceCandidates,
+} from "@/lib/assistant/clarify/kitchen-package-choice";
+import {
   applicableProjectConditionKeySet,
   toConfirmedInterviewInput,
 } from "@/lib/project-conditions/applicability";
@@ -2388,6 +2393,7 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
   raw.push(...missingHardMinimum(input));
   raw.push(...extraCommercialFacts(input));
   raw.push(...projectConditionCandidates(input));
+  raw.push(...kitchenPackageChoiceCandidates(input));
 
   const filtered = raw.filter((c) => c.askClass !== "ADVANCED");
   const ranked = sortClarifyCandidates(filtered);
@@ -2529,6 +2535,12 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         key,
         aliased.workAreaId
       );
+      if (key === KITCHEN_RENOVATION_FACT_KEY) {
+        return {
+          ...aliased,
+          currentValue: explicitKitchenRenovationChoice(rawValue),
+        };
+      }
       if (rawValue == null) return aliased;
       return { ...aliased, currentValue: rawValue as ClarifyCandidate["currentValue"] };
     });
