@@ -290,7 +290,7 @@ Nothing was deployed. No migration was applied. Customer projects were not opene
 
 #### Preview checks
 
-Serving deployment rechecked again: `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`, Ready, preview, SHA `b3520440b6127eaff9aeafbf69a40958a50a4350`, ref `estimating/v3`, alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. The Integration page is still “Welcome back” at `/login`, with the next path aimed at the retaining project. The signed-in browser is still the Batch 3 host. The organisation was not shown, so no project was opened. No password was entered.
+Serving deployment remains `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`, Ready, preview, SHA `b3520440b6127eaff9aeafbf69a40958a50a4350`. A direct sign-in on https://quotr-2-0-git-estimating-v3-quotr1.vercel.app with the stored isolated QA credential was rejected: “Email or password is incorrect.” The organisation was not shown. No project was opened. The password was not reset and was not written into a script or commit. The same credential was not retried on the release Preview.
 
 | Check | Deployment | Project | Result |
 | --- | --- | --- | --- |
@@ -319,7 +319,7 @@ Practical impact: a phone user of the accepted fence and retaining jobs is still
 
 #### Verdicts
 
-- Preview sign-off: not granted. Serving SHA `b3520440` on `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. Deck, kitchen, fence, and retaining are BLOCKED. The candidate hosted smoke was not started.
+- Preview sign-off: not granted. Serving SHA `b3520440` on `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. Deck, kitchen, fence, and retaining are BLOCKED because the stored isolated QA credential was rejected. The candidate hosted smoke on `dpl_ATto3MQMteRCcoGkHLNJVA2QMbzN` was not started.
 - Production: no-go. Release SHA remains `1dae7664b9cd59f93be4b121995f83c6d7970893`. Production stays `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` until migration 126 and the app promotion are each approved. The marketing site and Play host stay outside that rollout. Benchmark dollars and deferred-family selection are separate proposals and are not part of this go/no-go.
 
 #### Recommendations for owner approval
@@ -328,4 +328,4 @@ Ship the current disclosed benchmarks with no new dollar values. Keep deferred f
 
 ### Next action
 
-Jean-Luc. Sign in once at https://quotr-2-0-git-estimating-v3-quotr1.vercel.app as `hello+v3-qa.mw2usno8@erccontracting.co.nz` and confirm the dashboard says “V3 QA isolated mw2usno8”. Do not reset the password. Stop if it says ERC Contracting. Migration 126 and the app promotion each need their own approval. The benchmark and deferred-family proposals are separate from both.
+Jean-Luc. The stored password for `hello+v3-qa.mw2usno8@erccontracting.co.nz` was rejected on the Integration host. Provide a working password or approve a Preview-only reset for that plus-address fixture. Do not use an ERC Contracting session. Migration 126 and the app promotion each need their own approval. The benchmark and deferred-family proposals are separate from both.
