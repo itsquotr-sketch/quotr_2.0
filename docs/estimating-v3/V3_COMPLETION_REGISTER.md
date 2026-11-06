@@ -34,11 +34,11 @@ Software correctness and rate calibration are separate rows.
 | Item | Value |
 | --- | --- |
 | Integration branch | `estimating/v3` |
-| Accepted integration SHA | `68c5760c50e97b3bccb4f3fab314e7b2c37b9c7d` |
-| Integration Preview | `dpl_HjWgXJ3NbiSyH8DQDjuVUKRA7zDU`, Ready, target preview. GitHub status for `68c5760c` is success and points at that deployment. Re-checked 6 November 2026. |
+| Accepted integration SHA | `b3520440b6127eaff9aeafbf69a40958a50a4350` |
+| Integration Preview | `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`, Ready, target preview. Alias https://quotr-2-0-git-estimating-v3-quotr1.vercel.app. Fast-forwarded from `68c5760c` on 6 November 2026. |
 | Preview alias | https://quotr-2-0-git-estimating-v3-quotr1.vercel.app |
-| Kitchen candidate | `estimating/v3-kitchen-area` at `bb831f4b717005bc2977b4b1645f11144d17d8af`. Preview `dpl_SNPWi3mcb39CY4NEJ6Y1Z4eTp34f`, Ready, target preview, https://quotr-2-0-git-estimating-v3-kitchen-area-quotr1.vercel.app. Not on Integration. |
-| Batch 3 candidate | `estimating/v3-batch-3` at `615af37af9b9ba8854604a3773f54f8b43b1d480`. Preview `dpl_EmpYyMgD9pMEzfzpz3XNtVoKsPRH`, Ready, target preview, https://quotr-2-0-git-estimating-v3-batch-3-quotr1.vercel.app. `3e5efc74` and `2c29ab37` stay off Integration. Not published. |
+| Kitchen candidate | Included in `b3520440`. The earlier approval was `bb831f4b717005bc2977b4b1645f11144d17d8af`. |
+| Batch 3 candidate | Included in `b3520440` through approved `1c9cec426d5016345e77ebe9b89d393370a591ae`. `615af37a` was blocked because the rounding remainder missed the last priced row, and that fix is `1c9cec42`. `3e5efc74` and `2c29ab37` stay off the approved line. |
 | Preview database | `quotr_preview` / `shhpjsoldmqtkdbgrbtm` |
 | QA organisation | `0767b04e-31c2-4679-a275-16201135df02`, “V3 QA isolated mw2usno8” |
 | Production database | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` |
@@ -47,7 +47,7 @@ Software correctness and rate calibration are separate rows.
 
 The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` remains `af4a388b` with unrelated uncommitted files. It was not updated or cleaned. That checkout is not the integration tip. `origin/estimating/v3-preliminaries` is `a0479ef0`, and that commit is an ancestor of `68c5760c`. A branch deployment shares the Preview database. Production is unchanged.
 
-Kitchen release review of `bb831f4b` returned APPROVE FOR PREVIEW INTEGRATION on 6 November 2026. The candidate is not published. Integration still serves `68c5760c`.
+Kitchen release review of `bb831f4b` returned APPROVE FOR PREVIEW INTEGRATION. The combined SHA `b3520440` also returned APPROVE FOR PREVIEW INTEGRATION. Integration now serves that SHA.
 
 Preview service-role redeploy, recorded separately from the readiness fix. The first create on `dpl_CiyRDS5gACYT73BSBEjGeuwPTu9W` failed before any project existed because `estimating/v3-batch-3` had no service-role override and the shared Preview key is not a service_role JWT. A Preview-only branch secret was added for that branch, using the existing Preview service role. The same commit `3e5efc74` was redeployed as `dpl_FH2wSKeZqGPtxspyGAVoV9Xqckic`. That redeploy did not change product code. Production was not changed.
 
@@ -86,7 +86,7 @@ Every SHA in the historical column below is an ancestor of `68c5760c` unless the
 | Project preliminaries | First hosted slice behavior `358f5574`. Office job `c2b4e96f-56c2-4559-a8e5-cfad8acfa1ce`: priced preliminaries $2,900 cost and $3,625 sell. A duration change updated daily cleaning only. Bathroom job `80a4b84a-1bde-43af-bb7b-69f9cbb46d8f` captured cleaning and protection once at project level. | In the tree. Company-role capture is `a0479ef0`, the tip of `estimating/v3-preliminaries`, and that commit is an ancestor of `68c5760c`. The integration file labels an explicit project hourly cost “Project hourly cost”. | None. | No deployment id is named for the `a0479ef0` follow-up itself. The first slice names the alias and not a `dpl_` id. |
 | Changed conditions and GST | Stage 3C. A price-affecting condition marks the estimate stale. Regenerate and Pricing update are explicit. Unknown GST registration, Apply registration rate, and Keep this document rate are separate decisions. | In the tree. Migration `121_pricing_document_tax_basis.sql` is on this line and not on Production. | None. | The migration is not applied from this register. |
 | Draft reconciliation | `d3c7c837` and `4efc441f`, preview `dpl_8yasoGUEMdGtqXT3cgCgGuVTjutu`. Match by stable identity. Obsolete untouched rows can be removed on apply. Manual and edited rows stay. A visibility-only update can be a $0 difference. Older bathroom draft `31d66ec2` was corrected only by that explicit apply. | In the tree. | None. | Unresolved internal rows and customer-supplied purchases stay out of the client projection where that rule applies. An issued snapshot is not offered the update. |
-| Kitchen pricing boundary | On `68c5760c`, “Replace the kitchen.” with no area priced 10 m² labour at $9,600 / $12,000 and a $20,000 / $30,000 materials package, and the client draft named cabinetry, benchtop, and appliances. | That behaviour is still what Integration serves. | `bb831f4b`. Unstated replacement stays visible at known sell 0. A stated 12 m² holds labour at $11,520 / $14,400 and materials at $20,000 / $30,000 until Full kitchen renovation, when known sell is $44,400. Demolition alone is 8 h at $480 / $600. Splashback is the existing lump $800 / $1,200 for a missing area, 3 m², and 8 m². An unmeasured splashback does not display 3 m². A measured area does not multiply the lump. Review group sell is 0. | Approved for Preview integration and not published. The Integration catalogue sentence still promises cabinetry and trade allowances. |
+| Kitchen pricing boundary | On `68c5760c`, “Replace the kitchen.” with no area priced 10 m² labour at $9,600 / $12,000 and a $20,000 / $30,000 materials package, and the client draft named cabinetry, benchtop, and appliances. | The old behaviour was what `68c5760c` served. `b3520440` now serves the kitchen boundary. | `bb831f4b`, now inside `b3520440`. Unstated replacement stays visible at known sell 0. A stated 12 m² holds labour at $11,520 / $14,400 and materials at $20,000 / $30,000 until Full kitchen renovation, when known sell is $44,400. Demolition alone is 8 h at $480 / $600. Splashback is the existing lump $800 / $1,200. | Published on Integration. The catalogue sentence no longer promises cabinetry and trade allowances. |
 
 ## Required
 
@@ -96,14 +96,14 @@ Every SHA in the historical column below is an ancestor of `68c5760c` unless the
 - **Evidence.** Priced low and elevated assemblies are on the integration. Leave-until-inspection and explicit retention do not price a new pile set. Edited drafts and issued snapshots stay until regenerate and Pricing apply. The allowance investigation is `docs/estimating-v3/PILE_REPLACEMENT_ALLOWANCE_DEFECT.md`.
 - **Gap.** `deck.post_replacement.each` and the count-free allowance do not name removal of existing piles, temporary support, or any other operation beyond measured new supports. A missing count is not a quantity.
 - **Acceptance.** Neither benchmark enters the known total. Measured supports stay when they are present. Uncovered replacement work stays unresolved. A typed Pricing amount needs an explicit scope and basis and must not repeat measured lines. Saved estimates, manual Pricing edits, issued snapshots, the general margin, and saved-sell rules stay as they are.
-- **Status.** Required, and not on Integration. `3e5efc74` is blocked. `2c29ab37` saved the allowance but put its $600 into the document sell. The hosted check of the correction is `615af37a`. A missing count stays “Quantity unknown”. The amount does not enter the priced total or clear the coverage gap. The review and quote gates stay.
+- **Status.** On Integration in `b3520440`. `3e5efc74` and `2c29ab37` are not the approved candidate. `615af37a` was blocked for the rounding remainder, and `1c9cec42` closes that. A missing count stays “Quantity unknown”. The amount does not enter the priced total or clear the coverage gap. The review and quote gates stay.
 
 ### Concrete “No” still leaves support unresolved
 
 - **User outcome.** Answering No to concrete footings removes the concrete material and placement lines. The deck still says the support method, post count, and excavation are unresolved and unpriced.
 - **Evidence.** `scripts/verify-deck-maturity-2c.ts` check “28 No suppresses” fails on baseline `68c5760c` and on the pile candidate. The failing notice is `DECK_SUPPORT_DESIGN_UNRESOLVED`: “Concrete footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced.”
 - **Impact.** The No answer is honoured for the concrete lines. It does not leave a clean priced support design. The user still sees an incomplete support warning. Matching the baseline shows the pile repair did not introduce it. It does not show the warning is harmless.
-- **Status.** Required honesty. The repair is inside Batch 3 at `3e5efc74` and passes the local kwila check there. It is not on Integration. The outstanding Batch 3 hosted check is the pile save-and-reload, not a repeat of this local result.
+- **Status.** Required honesty. The repair is inside `b3520440` and passes the local kwila check. The hosted pile check is the save-and-reload, not a repeat of this local result.
 
 ### Fence
 
@@ -198,7 +198,7 @@ These rows are proposed. They are not approved exclusions.
 - **Repair.** `estimating/v3-kitchen-area` keeps an unstated area out of the known total. “Replace the kitchen.” stays visible and asks for the area and the scope choice. “Replace the kitchen. The room is 12 m².” keeps 12 m² on the labour line and shows the existing minimum package, and both stay out of the known total until the kitchen scope is Full kitchen renovation. “Include a splashback.” keeps the existing lump at $800 cost and $1,200 sell. That lump is the same for an unmeasured area, a measured 3 m², and a measured 8 m². An unmeasured splashback does not display 3 m².
 - **Why proposed.** Reliable depth in the claimed paths comes first.
 - **When it cannot be priced.** The user sees the developing label and any existing Pricing Required line. The page does not gain a new complete-price claim.
-- **Status.** Approved for Preview integration and not published. Scenario QA passed all three briefs on `bb831f4b`. Release review returned APPROVE FOR PREVIEW INTEGRATION. The earlier block of `a582deee` is closed on this SHA only. Integration still serves `68c5760c`. The package is held out of the known total until Full kitchen renovation. The splashback figure is the existing lump, not a price per square metre. The Integration catalogue sentence still promises cabinetry and trade allowances. Do not publish this branch on its own while Batch 3 is still open.
+- **Status.** Published on Integration in `b3520440`. Scenario QA passed all three briefs on `bb831f4b` and again on the combined SHA. The package is held out of the known total until Full kitchen renovation. The splashback figure is the existing lump, not a price per square metre. The catalogue sentence no longer promises cabinetry and trade allowances.
 
 ### Ceilings, cladding, painting, plastering, demolition, and external stairs
 
@@ -250,7 +250,7 @@ Deck support coverage, from the current contracts. A separate rate key is not ev
 
 ## Finish plan, 6 November 2026
 
-Two candidates sit on `68c5760c` and have diverged from each other. Do not fast-forward both onto Integration. Kitchen scenario QA has finished. Batch 3 has not gained its hosted check. Production is unchanged.
+Integration is the combined SHA `b3520440`. Production is unchanged.
 
 ### Smallest credible Preview release
 
@@ -262,9 +262,9 @@ After that candidate, a builder who replaces a deck sees an unknown pile count a
 
 | Item | User impact | Evidence still needed | Next action | Depends on | Effort | Needs | Acceptance |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Kitchen close-out | An unstated kitchen is no longer a 10 m² package, and a stated area is not added until the builder chooses the package. | Review returned APPROVE FOR PREVIEW INTEGRATION. QA passed the three briefs. | Hold publication until Batch 3 is on the same candidate. | The Batch 3 review. | Hours after that review. | Merge, not a second fast-forward. | Both candidates on one Integration SHA. |
-| Batch 3 hosted check | Unknown pile replacement can be saved with an internal basis and reloaded. Its sell stays out of the priced total. The client projection names the work and not the basis. | Same project `48a03529`. After save and reload on `615af37a`, the allowance is Quantity unknown, $400 / $600, not in the total. Priced work so far is $5,736.88. Quote locked. Review disabled. No client document. | Release review of `615af37a` only. | The review verdict. | In review. | Review. | Basis stays internal, client text omits it, quantity stays unknown, the excluded sell stays out of the total, and the gates stay. |
-| One Integration candidate | The builder gets both repairs on the same Preview. | Combined diff review. Reuse both QA packs unless the merge changes a priced path. | After Batch 3 is approved, merge `615af37a` onto `bb831f4b`. One scenario pass and one release review. | Kitchen verdict and the Batch 3 approval. | About a day if `compose.ts` conflicts. | Code merge, then QA and review. | Both frozen briefs still pass, and Integration fast-forwards once. |
+| Kitchen close-out | An unstated kitchen is no longer a 10 m² package, and a stated area is not added until the builder chooses the package. | Review returned APPROVE FOR PREVIEW INTEGRATION. QA passed the three briefs on `b3520440`. | Published with Batch 3. | None. | Done. | None. | Both candidates are on `b3520440`. |
+| Batch 3 hosted check | Unknown pile replacement can be saved with an internal basis and reloaded. Its sell stays out of the priced total. The client projection names the work and not the basis. | Same project `48a03529`. After save and reload, the allowance is Quantity unknown, $400 / $600, not in the total. Priced work so far is $5,736.88. Quote locked. Review disabled. No client document. `615af37a` was blocked for rounding, and `1c9cec42` closed it. | Keep the gates. Do not create a quote. | None. | Done. | None. | Basis stays internal, client text omits it, quantity stays unknown, the excluded sell stays out of the total, and the gates stay. |
+| One Integration candidate | The builder gets both repairs on the same Preview. | [Release review](3e706da7-6b9b-4827-a77e-e8919d00e8ac) returned APPROVE FOR PREVIEW INTEGRATION for `b3520440`. | Integration fast-forward is done. Serving deployment `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. | None. | Done. | None. | Integration serves `b3520440`. |
 | Catalogue honesty | Add Work Area no longer describes work the calculator will not price. | The sentences below. No new journey. | Edit descriptions on the combined tip. | The combined candidate, so this does not open a third branch. | Half a day. | Code. | Descriptions match the release boundary. Capability labels stay as they are. |
 | Fence and retaining mobile | The accepted timber journeys remain usable on a phone. | Mobile layout only. Desktop reports stay accepted. | One pass each on Integration Preview. These candidates do not change those journeys. | Isolated QA sign-in. | One session. | Access. | Stated quantities still readable. No new price claim. |
 | Deck mobile | The accepted deck partials were desktop hosted jobs. A 390 px note covers the feedback control, not a full deck journey. | One mobile pass of an already priced deck path. Bathroom desktop and 390×844 reloads already exist and are not repeated. | After the combined Preview, only if this remains required for the claimed deck path. | Combined Preview. | One session. | Access. | Stated deck quantities stay readable. No new price claim. |
@@ -303,8 +303,8 @@ This is the evidence a later recommendation needs. It is not a deploy.
 
 ### Next three actions
 
-1. Release review of `615af37a` / `dpl_EmpYyMgD9pMEzfzpz3XNtVoKsPRH`. `3e5efc74` and `2c29ab37` stay off Integration.
-2. Development Lead. Keep the review and quote gates. Do not type a pile count. Do not mark project `48a03529` reviewed or create a quote.
-3. Development Lead. After that approval, merge `615af37a` onto `bb831f4b`, QA only the paths the merge changes, then narrow the catalogue sentences. One release review, then one Integration fast-forward. Kitchen stays unpublished until then.
+1. Integration serves `b3520440` / `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. Keep the review and quote gates on project `48a03529`. Do not mark it reviewed or create a quote.
+2. Development Lead. The locked quote on that project is the hosted evidence that no client document was rendered. `resolveQuoteItemDescription` is the code evidence: client description, then client notes, and not the internal basis.
+3. Development Lead. Production stays `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`. The next work is the release-mechanics review, not a Production deploy.
 
 Decisions needed before the release boundary is final: ship the current disclosed benchmarks without new dollar values, and keep deferred families selectable without a new recipe. Bathroom may stay labelled Supported only as a partial estimate. Production deployment stays unauthorised.
