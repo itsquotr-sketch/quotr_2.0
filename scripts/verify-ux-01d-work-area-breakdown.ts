@@ -306,7 +306,23 @@ check(
     requiredModel.cards[0]?.attention[0]?.detail === "This price is completed in Pricing." &&
     requiredModel.cards[0]?.costGroups[0]?.lines[0]?.total == null &&
     requiredModel.cards[0]?.costGroups[0]?.lines[0]?.source === "Pricing Required" &&
-    !requiredJson.includes("$0")
+    !requiredJson.includes("$0") &&
+    requiredModel.pricingRequiredCount === 1
+);
+
+const twoLines = JSON.parse(JSON.stringify(required)) as BuilderReviewView;
+const firstLine = twoLines.workAreas[0]?.categories[0]?.lines[0];
+if (firstLine) {
+  twoLines.workAreas[0]?.categories[0]?.lines.push({
+    ...firstLine,
+    id: "rails",
+    label: "Fence rails",
+  });
+}
+const twoModel = projectWorkAreaBreakdown(twoLines);
+check(
+  "4 two Rate required lines count as two prices",
+  twoModel.pricingRequiredCount === 2 && twoModel.cards[0]?.attention.length === 2
 );
 
 const stale = view({

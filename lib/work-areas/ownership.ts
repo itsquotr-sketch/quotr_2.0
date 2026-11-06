@@ -6,6 +6,8 @@
  * Not a database model. Deterministic brief + proposed-type contract.
  */
 
+import { briefPaintsSeparateAssembly } from "@/lib/estimate/scope-intent";
+
 export const WORK_AREA_OWNERSHIP_CLASS = {
   EXPLICIT: "EXPLICIT",
   EMBEDDED: "EMBEDDED",
@@ -88,8 +90,44 @@ export function briefHasIndependentPlastering(briefText: string): boolean {
   ]);
 }
 
+function bathroomOwnsNestedPaint(brief: string): boolean {
+  if (!briefHasIndependentBathroom(brief)) return false;
+  if (
+    /\b(?:whole house|all bedrooms|paint the interior|interior painting|paint doors|paint trims)\b/.test(
+      brief
+    )
+  ) {
+    return false;
+  }
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|office)\b/.test(
+      brief
+    )
+  ) {
+    return false;
+  }
+  return /\bpaint/.test(brief) && /\b(?:walls?|ceilings?)\b/.test(brief);
+}
+
+function clauseIsBathroomPackageFloor(clause: string, briefText: string): boolean {
+  if (!briefHasIndependentBathroom(briefText)) return false;
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|office|entry)\b/.test(
+      clause
+    )
+  ) {
+    return false;
+  }
+  const raw = clause.toLowerCase();
+  return /\b(?:tile|tiling)\s+(?:the\s+)?floors?\b|\bfloor\s+til(?:e|ing)\b|\bvinyl\b/.test(
+    raw
+  );
+}
+
 export function briefHasIndependentPainting(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
+  if (bathroomOwnsNestedPaint(brief)) return false;
+  if (briefPaintsSeparateAssembly(brief)) return true;
   return includesAny(brief, [
     "paint the whole house",
     "paint the house",
@@ -273,12 +311,15 @@ export function briefRequestsDoorWork(briefText: string): boolean {
   }
   if (/\bdoor leaves?\b/.test(brief) || /\bdoor leaf\b/.test(brief)) return true;
   if (/\bprehung\b|\bpre-hung\b/.test(brief)) return true;
+  if (/\bdoor assembly\b/.test(brief)) return true;
   if (/\bhollow[-\s]?core\b/.test(brief) || /\bsolid[-\s]?core\b/.test(brief)) {
     return true;
   }
   if (/\bdoor jamb\b|\bdoor hardware\b|\bjamb and hardware\b/.test(brief)) {
     return true;
   }
+  if (/\bdoors?\b[^.]{0,40}\bjamb\b|\bdoor sets?\b/.test(brief)) return true;
+  if (/\binclude (?:the |a |one )?doors?\b(?!\s+opening)/.test(brief)) return true;
   if (/\binstall\b[\s\S]{0,48}\bdoors?\b/.test(brief)) return true;
   if (includesAny(brief, ["client supplying door", "client supplied door"])) {
     return true;
@@ -368,20 +409,84 @@ function kitchenTokenIsDoorLocation(clause: string): boolean {
 }
 
 const FLOORING_FINISH_TOKEN =
-  "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring)";
+  "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring|laminate|click[-\\s]?lock|floating\\s+floor|engineered\\s+timber|engineered\\s+wood)";
 
-export function clauseHasFlooringOperation(clause: string): boolean {
+function mentionsFloor(text: string): boolean {
+  return /\b(?:floors?|flooring|floorboards?)\b/.test(text);
+}
+
+function mentionsFloorRoom(text: string): boolean {
+  return /\b(?:bedrooms?|living(?:\s+rooms?)?|lounges?|hall(?:way)?s?|kitchens?|dining(?:\s+rooms?)?|rumpus|offices?|entr(?:y|ance)|laundr(?:y|ies))\b/.test(
+    text
+  );
+}
+
+function mentionsDeckAssembly(text: string): boolean {
+  return /\b(?:decks?|decking|joists?|bearers?|balustrades?|fascia|face boards?|platforms?)\b/.test(
+    text
+  );
+}
+
+/**
+ * "Hardwood" names a floor finish only when the clause is about a floor.
+ * The same word on a deck, joist line, or platform is the deck board.
+ */
+function hardwoodBelongsToDeckAssembly(
+  clause: string,
+  briefText?: string
+): boolean {
+  const raw = clause.toLowerCase();
+  if (!/\bhardwood\b/.test(raw)) return false;
+  if (mentionsFloor(raw) || mentionsFloorRoom(raw)) return false;
+  if (mentionsDeckAssembly(raw)) return true;
+  if (
+    /\bboards?\b/.test(raw) &&
+    /\b(?:above ground|off the ground|high)\b/.test(raw)
+  ) {
+    return true;
+  }
+  const brief = (briefText ?? "").toLowerCase();
+  if (!brief || brief === raw) return false;
+  if (mentionsFloorRoom(brief)) return false;
+  if (mentionsFloor(brief) && !mentionsDeckAssembly(brief)) return false;
+  return mentionsDeckAssembly(brief);
+}
+
+function laminateIsJoinery(raw: string): boolean {
+  if (!/\blaminate\b/.test(raw)) return false;
+  if (/\b(?:floors?|flooring|underlay|m²|m2|square\s+metres?)\b/.test(raw)) {
+    return false;
+  }
+  return /\b(?:benchtops?|bench\s*tops?|cabinets?|cupboards?|joinery|wardrobes?)\b/.test(
+    raw
+  );
+}
+
+function finishTokenIsFlooring(raw: string, briefText?: string): boolean {
+  const token = new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`);
+  const withoutJoineryLaminate = laminateIsJoinery(raw)
+    ? raw.replace(/\blaminate\b/g, " ")
+    : raw;
+  if (!token.test(withoutJoineryLaminate)) return false;
+  if (!hardwoodBelongsToDeckAssembly(withoutJoineryLaminate, briefText)) return true;
+  return token.test(withoutJoineryLaminate.replace(/\bhardwood\b/g, " "));
+}
+
+export function clauseHasFlooringOperation(
+  clause: string,
+  briefText?: string
+): boolean {
   const raw = clause.toLowerCase();
   if (/\bsheet\s+vinyl\b/.test(raw) && !/\b(?:vinyl\s+plank|lvt|slat\s+vinyl)\b/.test(raw)) {
     return true;
   }
   if (
     /\b(?:install|lay|replace|supply and install|carpet|tile)\b/.test(raw) &&
-    new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)
+    finishTokenIsFlooring(raw, briefText)
   ) {
     return true;
   }
-  if (new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)) return true;
+  if (finishTokenIsFlooring(raw, briefText)) return true;
   if (/\b(?:floor tiles?|tile the (?:ensuite |bathroom )?floor)\b/.test(raw)) {
     return true;
   }
@@ -521,11 +626,12 @@ export function briefHasIndependentFlooring(briefText: string): boolean {
   }
   const clauses = ownershipClauses(brief);
   for (const clause of clauses) {
-    if (!clauseHasFlooringOperation(clause)) continue;
+    if (!clauseHasFlooringOperation(clause, briefText)) continue;
     if (clauseIsBathroomOwnedFloor(clause)) continue;
     if (clauseIsBathroomSubstrateRebuild(clause, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(clause)) continue;
     if (clauseIsDemolitionMentionOfFlooring(clause)) continue;
+    if (clauseIsBathroomPackageFloor(clause, briefText)) continue;
     return true;
   }
   if (
@@ -634,6 +740,7 @@ export function briefHasIndependentBathroom(briefText: string): boolean {
     const hasSignal = includesAny(clause, INDEPENDENT_BATHROOM_SIGNALS);
     if (
       hasSignal &&
+      hasRoom &&
       includesAny(clause, [
         "vanity",
         "waterproof",
@@ -739,18 +846,28 @@ export function briefHasExplicitDemolition(briefText: string): boolean {
 
 export function briefHasExplicitInternalWalls(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
-  return includesAny(brief, [
-    "internal wall",
-    "internal partition",
-    "new partition",
-    "build a partition",
-    "build a new internal",
-    "build a wall",
-    "rebuild the walls",
-    "rebuild walls",
-    "timber framed wall",
-    "framed timber",
-  ]);
+  return (
+    includesAny(brief, [
+      "internal wall",
+      "internal partition",
+      "new partition",
+      "build a partition",
+      "build a new internal",
+      "build a wall",
+      "rebuild the walls",
+      "rebuild walls",
+      "timber framed wall",
+      "framed timber",
+      "timber partition",
+      "partition wall",
+      "stud wall",
+      "timber stud",
+      "gib wall",
+      "plasterboard wall",
+    ]) ||
+    /\binternal\b[^.]{0,40}\bpartition\b/.test(brief) ||
+    /\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+  );
 }
 
 function bathroomOwnsEmbeddedTrades(briefText: string, proposedTypes: readonly string[]): boolean {

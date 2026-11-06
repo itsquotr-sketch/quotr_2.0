@@ -1,6 +1,6 @@
 # Estimating V3 Stage 0
 
-Audit and plan only. No estimator rewrite, no Production deploy, and no customer-data change.
+Audit and plan only. No estimator rewrite and no customer-data change. Stage 1 later shipped the four completion fixes; the release record is in [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md). Production deployment stays a separate decision.
 
 | Document | Contents |
 | --- | --- |
@@ -12,7 +12,16 @@ Audit and plan only. No estimator rewrite, no Production deploy, and no customer
 | [STAGE_0_IMPLEMENTATION_PLAN.md](./STAGE_0_IMPLEMENTATION_PLAN.md) | Incremental design and later stages |
 | [STAGE_1_BLOCKER_SCOPE.md](./STAGE_1_BLOCKER_SCOPE.md) | The four blockers Stage 1 was allowed to change |
 | [STAGE_1_CORRECTION.md](./STAGE_1_CORRECTION.md) | What Stage 1 changed, and what it left untouched |
+| [STAGE_1_ACCEPTANCE.md](./STAGE_1_ACCEPTANCE.md) | Browser status, safe build, and release branches |
+| [V3_INTEGRATION_BASELINE.md](./V3_INTEGRATION_BASELINE.md) | Integration branch, Preview identities, and Stage 2A scope |
+| [V3_CHECKPOINT_2026-10-29.md](./V3_CHECKPOINT_2026-10-29.md) | Hosted original-brief checkpoint, plus the readiness, pile, and flooring follow-up. Stage 0 rows stay historical. |
+| [STAGE_2A_HANDOFF.md](./STAGE_2A_HANDOFF.md) | Analysis-to-Details handoff, compatibility, and what is still open |
+| [STAGE_2A_ORIGINAL_BRIEFS.md](./STAGE_2A_ORIGINAL_BRIEFS.md) | The eight original acceptance briefs, stored verbatim |
+| [STAGE_2A_INSTANCE_IDENTITY.md](./STAGE_2A_INSTANCE_IDENTITY.md) | UUID and measurement matching, and the unapplied identity column |
+| [STAGE_2B_ANALYSIS.md](./STAGE_2B_ANALYSIS.md) | Flooring interpretation: deck boards stay off Flooring, and disagreeing areas stay unresolved |
+| [STAGE_2C_SCOPE_INTENT.md](./STAGE_2C_SCOPE_INTENT.md) | Exclusions, conditional pile retention, and door-leaf provenance |
+| [V3_CANDIDATE_HANDOFF.md](./V3_CANDIDATE_HANDOFF.md) | Handoff copied for one candidate before scenario QA and release review |
 
-Runnable evidence: `scripts/verify-estimating-v3-stage0.ts` and `scripts/verify-estimating-v3-stage1.ts`.
+Runnable evidence: `scripts/verify-estimating-v3-stage0.ts`, `scripts/verify-estimating-v3-stage1.ts`, `scripts/verify-estimating-v3-stage-2a.ts`, `scripts/verify-estimating-v3-stage-2b.ts`, and `scripts/verify-estimating-v3-stage-2c.ts`.
 
 A follow-up pass added the contract gaps that the first write-up had not yet checked: door customer-supply keys, the split between `resolveRate` and `resolveMaterialRate`, cladding’s missing template, the four calculators with no consumed-fact contract, legacy flooring stairs, and the bathroom-floor overlap group. Those notes are in the architecture, defect register, and capability matrix. The fixture locks the template and consumed-fact cases.

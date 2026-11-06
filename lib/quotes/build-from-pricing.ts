@@ -17,8 +17,18 @@ import {
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { GST_REGISTRATION_UNSET_QUOTE_BLOCK } from "@/lib/pricing/gst-presentation";
+import {
+  pricingTaxBasisDecision,
+  resolveQuoteGstFromRegistration,
+} from "@/lib/pricing/gst-source";
+import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
+import {
+  missingGeneratedRateReviewBlock,
+  quoteVisibleExcludedLineBlock,
+  unresolvedScopeReviewBlockForEstimate,
+} from "@/lib/pricing/scope-finalisation";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
-import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
 import { filterInternalLinesFromBlock } from "@/lib/quotes/client-narrative";
@@ -145,6 +155,22 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     };
   }
 
+  if (orgDefaults.gstRegistered === null) {
+    return { error: GST_REGISTRATION_UNSET_QUOTE_BLOCK };
+  }
+
+  const taxBasis = pricingTaxBasisDecision({
+    gstRegistered: orgDefaults.gstRegistered,
+    defaultGstRate: orgDefaults.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (taxBasis.quoteBlock) return { error: taxBasis.quoteBlock };
+
+  const conditionBlock = await materialConditionQuoteBlock(supabase, orgId, projectId);
+  if (conditionBlock) return { error: conditionBlock };
+
   const [{ data: pricingItems }, { data: workAreas }, { data: projectFacts }] =
     lineReads;
   const validationStarted = Date.now();
@@ -156,6 +182,16 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   if (manualBlock) return { error: manualBlock };
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
   if (unknownCostBlock) return { error: unknownCostBlock };
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
+  if (excludedLineBlock) return { error: excludedLineBlock };
+  const missingRateBlock = missingGeneratedRateReviewBlock(items);
+  if (missingRateBlock) return { error: missingRateBlock };
+  const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
+    supabase,
+    orgId,
+    document.estimate_id
+  );
+  if (scopeBlock) return { error: scopeBlock };
   const provisionalBlock = ceilingProvisionalDecision({
     lines: items.map((item) => ceilingProvisionalLineFromPricingItem(item)),
     confirmation: document.provisional_ceiling_confirmation ?? null,
@@ -222,8 +258,12 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   );
 
   onStage?.("validation", Date.now() - validationStarted);
-  const quoteGstRate =
-    document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
+  const quoteGstRate = taxBasis.useDocumentRate
+    ? taxBasis.documentRate
+    : resolveQuoteGstFromRegistration({
+        gstRegistered: orgDefaults.gstRegistered ?? null,
+        defaultGstRate: orgDefaults.defaultGstRate,
+      }).rate;
   const quoteTerms = resolveClientQuoteTerms({
     pricingClientTerms: document.terms,
     orgDefaults,

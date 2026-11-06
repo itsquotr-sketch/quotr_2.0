@@ -56,6 +56,83 @@ export const DECK_SPOIL_DECISION_COMPONENT = "deck.spoil.destination" as const;
 
 export const DECK_HOLE_ASSUMED_DIAMETER_MM = 350;
 export const DECK_HOLE_ASSUMED_DEPTH_MM = 600;
+
+export type TypicalPostHoleSetupFact = {
+  readonly key: string;
+  readonly label: string;
+  readonly value: string | number;
+  readonly valueType: "select" | "number" | "text";
+};
+
+/** Excluded concrete footings are not written back as full concrete fill. */
+export function typicalPostHoleSetupFacts(input: {
+  readonly concreteExcluded: boolean;
+}): TypicalPostHoleSetupFact[] {
+  const signature = input.concreteExcluded
+    ? "assumed:circular|350|600|125x125|concrete-excluded|600"
+    : "assumed:circular|350|600|125x125|full|600";
+  const facts: TypicalPostHoleSetupFact[] = [
+    { key: "deck.hole_shape", label: "Hole shape", value: "circular", valueType: "select" },
+    {
+      key: "deck.hole_diameter_mm",
+      label: "Hole diameter",
+      value: DECK_HOLE_ASSUMED_DIAMETER_MM,
+      valueType: "number",
+    },
+    {
+      key: "deck.hole_depth_mm",
+      label: "Hole depth",
+      value: DECK_HOLE_ASSUMED_DEPTH_MM,
+      valueType: "number",
+    },
+    {
+      key: "deck.support_section",
+      label: "Pile/post section",
+      value: "125x125",
+      valueType: "select",
+    },
+  ];
+  if (!input.concreteExcluded) {
+    facts.push({
+      key: "deck.concrete_fill",
+      label: "Concrete fill",
+      value: "full",
+      valueType: "select",
+    });
+  }
+  facts.push(
+    {
+      key: "deck.post_embedment_mm",
+      label: "Post embedded depth",
+      value: DECK_HOLE_ASSUMED_DEPTH_MM,
+      valueType: "number",
+    },
+    {
+      key: "deck.post_embedment_linked",
+      label: "Post embedment link",
+      value: "yes",
+      valueType: "select",
+    },
+    {
+      key: "deck.hole_setup_signature",
+      label: "Post hole setup",
+      value: signature,
+      valueType: "text",
+    }
+  );
+  return facts;
+}
+
+export function typicalPostHoleSetupSummary(
+  count: number | null,
+  concreteExcluded: boolean
+): string {
+  const holes = count != null ? `${count} circular holes` : "Circular holes";
+  const concrete = concreteExcluded
+    ? "concrete footings excluded"
+    : "full concrete fill";
+  return `${holes} · ${DECK_HOLE_ASSUMED_DIAMETER_MM} × ${DECK_HOLE_ASSUMED_DEPTH_MM} mm · 125 × 125 mm posts · ${concrete}.`;
+}
 /** One person for 30 minutes. Approved 14 October 2026, ordinary scope only. */
 export const DECK_HOLE_PROVISIONAL_HOURS = 0.5;
 export const DECK_HOLE_HOURS_STATUS_FACT = "deck.hole_hours_status" as const;

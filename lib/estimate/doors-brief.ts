@@ -49,10 +49,13 @@ const PREHUNG_PHRASES = [
   "prehung",
   "pre-hung",
   "complete door set",
+  "door set",
   "door and jamb",
+  "door, jamb",
   "door, jamb and stops",
   "door, jamb, and stops",
   "door set with frame",
+  "door assembly",
 ] as const;
 
 const REPLACEMENT_PHRASES = [
@@ -81,6 +84,8 @@ const HARDWARE_INCLUDED_PHRASES = [
   "including door furniture",
   "supply and install hardware",
   "hardware included",
+  "hinges and handle",
+  "hinges",
 ] as const;
 
 const HARDWARE_EXCLUDED_PHRASES = [
@@ -255,13 +260,20 @@ function stripOpeningQuantityClauses(text: string): string {
 
 function quantityFromSnippet(text: string): number | null {
   const raw = stripOpeningQuantityClauses(normalise(text));
+  if (
+    /\bdoor assembly\b/.test(raw) &&
+    !/\b(?:one|two|three|four|five|six|\d{1,2})\s+door assembly\b/.test(raw)
+  ) {
+    return 1;
+  }
   const word = Object.keys(QUANTITY_WORDS)
     .sort((a, b) => b.length - a.length)
     .join("|");
   const tokenGroup = `(\\d{1,2}|${word})`;
+  const notAMeasure = "(?!\\.\\d|\\s*m(?:m|etre|2|²)?\\b)";
   const patterned = raw.match(
     new RegExp(
-      `\\b${tokenGroup}\\s+(?:(?:\\d{3,4}\\s*(?:mm)?\\s*[x×]\\s*\\d{3,4}\\s*(?:mm)?|[a-z-]+)\\s+)*(?:door leaves|door leaf|doors|door)(?!\\s+opening)\\b`
+      `\\b${tokenGroup}\\b${notAMeasure}\\s+(?:(?:\\d{3,4}\\s*(?:mm)?\\s*[x×]\\s*\\d{3,4}\\s*(?:mm)?|[a-z-]+)\\s+)*(?:door leaves|door leaf|doors|door)(?!\\s+opening)\\b`
     )
   );
   const leading = raw.match(
@@ -271,7 +283,7 @@ function quantityFromSnippet(text: string): number | null {
   );
   const nearby = raw.match(
     new RegExp(
-      `\\b${tokenGroup}\\b(?=[\\s\\S]{0,80}\\b(?:doors?|door leaves?|leaves?)\\b)`
+      `\\b${tokenGroup}\\b${notAMeasure}(?=[\\s\\S]{0,80}\\b(?:doors?|door leaves?|leaves?)\\b)`
     )
   );
   const beforeDim = raw.match(
@@ -279,6 +291,8 @@ function quantityFromSnippet(text: string): number | null {
   );
   const token =
     patterned?.[1] ?? leading?.[1] ?? beforeDim?.[1] ?? nearby?.[1] ?? "";
+  if (!token && raw.includes("door assembly")) return 1;
+  if (!token && /\bdoor\b/.test(raw) && !/\bdoors\b/.test(raw)) return 1;
   if (!token) return null;
   const fromWord = QUANTITY_WORDS[token];
   if (fromWord != null) return fromWord;
@@ -306,6 +320,33 @@ function asHeight(value: number): DoorHeightMm | null {
 
 function asWidth(value: number): DoorWidthMm | null {
   return WIDTH_SET.has(value) ? (value as DoorWidthMm) : null;
+}
+
+function heightMeasurementBelongsToDoor(text: string, index: number): boolean {
+  const start = Math.max(
+    text.lastIndexOf(".", index),
+    text.lastIndexOf("!", index),
+    text.lastIndexOf("?", index),
+    text.lastIndexOf(";", index)
+  );
+  const endRel = text.slice(index).search(/[.!?;]/);
+  const end = endRel < 0 ? text.length : index + endRel;
+  const sentence = text.slice(start + 1, end);
+  const at = index - (start + 1);
+  const hits: { kind: "door" | "other"; distance: number }[] = [];
+  for (const match of sentence.matchAll(
+    /\b(doors?|leaves|leaf|jambs?|prehung|pre-hung)\b/gi
+  )) {
+    hits.push({ kind: "door", distance: Math.abs((match.index ?? 0) - at) });
+  }
+  for (const match of sentence.matchAll(
+    /\b(walls?|partitions?|studs?|plasterboard|ceilings?|decks?|decking)\b/gi
+  )) {
+    hits.push({ kind: "other", distance: Math.abs((match.index ?? 0) - at) });
+  }
+  if (hits.length === 0) return true;
+  hits.sort((left, right) => left.distance - right.distance);
+  return hits[0]!.kind === "door";
 }
 
 function parseLabelledDimensions(text: string): {
@@ -351,10 +392,15 @@ function parseLabelledDimensions(text: string): {
     return { height, width, unsupported };
   }
 
-  const highN = labelledHigh
-    ? Number(labelledHigh[1])
-    : reverseHigh
-      ? Number(reverseHigh[1])
+  const highMatch = labelledHigh ?? reverseHigh;
+  const highIndex = highMatch?.index ?? null;
+  const highBelongsToDoor =
+    highMatch == null || highIndex == null
+      ? false
+      : heightMeasurementBelongsToDoor(text, highIndex);
+  const highN =
+    highMatch && highBelongsToDoor
+      ? Number(highMatch[1])
       : null;
   const wideN = labelledWide
     ? Number(labelledWide[1])
@@ -470,15 +516,40 @@ function readDimensionsFromSnippet(text: string): {
   };
 }
 
+function briefClauseIsWallOpeningOnly(text: string): boolean {
+  const raw = normalise(text);
+  if (
+    includesAny(raw, [
+      "door assembly",
+      "door set",
+      "prehung",
+      "pre-hung",
+      "door leaf",
+      "door and jamb",
+      "supply and install",
+    ])
+  ) {
+    return false;
+  }
+  const stripped = raw
+    .replace(
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+(?:door\s+)?openings?\b/g,
+      " "
+    )
+    .replace(
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+doors?\b/g,
+      " "
+    );
+  return !/\bdoors?\b|\bleaf\b|\bleaves\b/.test(stripped);
+}
+
 function snippetHasDoorSignal(text: string): boolean {
   const raw = normalise(text);
   return (
     /\bdoors?\b/.test(raw) ||
     /\bleaf\b|\bleaves\b/.test(raw) ||
     /\bprehung\b|\bpre-hung\b/.test(raw) ||
-    canonicalDoorSpecialistKindFromText(raw) != null ||
-    dimensionsFromSnippet(text).height != null ||
-    dimensionsFromSnippet(text).width != null
+    canonicalDoorSpecialistKindFromText(raw) != null
   );
 }
 
@@ -596,6 +667,7 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
   const snippets = splitDoorSetSnippets(briefText);
   const portions: DoorPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
+    if (briefClauseIsWallOpeningOnly(snippet)) continue;
     if (!snippetHasDoorSignal(snippet) && snippets.length > 1) continue;
     const portion = createEmptyDoorPortion({
       label: locationFromSnippet(snippet),
@@ -604,7 +676,7 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
     portion.clause_ordinal = index;
     portions.push(portion);
   }
-  if (portions.length === 0 && briefText.trim()) {
+  if (portions.length === 0 && briefText.trim() && !briefClauseIsWallOpeningOnly(briefText)) {
     const fallback = createEmptyDoorPortion();
     applySnippetToPortion(fallback, briefText);
     fallback.clause_ordinal = 0;
@@ -622,6 +694,64 @@ export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
   return portions;
 }
 
+function statedHeightMm(sentence: string): number | null {
+  const millimetres = sentence.match(/(\d{3,4})\s*mm\s+(?:high|height)\b/i);
+  if (millimetres) {
+    const value = Number(millimetres[1]);
+    return HEIGHT_SET.has(value) ? value : null;
+  }
+  const metres = sentence.match(/(\d+(?:\.\d+)?)\s*m\s+(?:high|height)\b/i);
+  if (!metres) return null;
+  const value = Math.round(Number(metres[1]) * 1000);
+  return HEIGHT_SET.has(value) ? value : null;
+}
+
+/**
+ * A model or an earlier clause can copy a wall, partition, or ceiling height
+ * onto the door. Keep a height only when a door clause states it.
+ * Otherwise restore the disclosed 1980 mm default.
+ */
+export function clearDoorHeightCopiedFromAnotherAssembly(
+  portions: readonly DoorPortion[],
+  briefText: string
+): DoorPortion[] {
+  const doorHeights = new Set<number>();
+  for (const snippet of splitDoorSetSnippets(briefText)) {
+    if (briefClauseIsWallOpeningOnly(snippet)) continue;
+    if (!snippetHasDoorSignal(snippet) && splitDoorSetSnippets(briefText).length > 1) {
+      continue;
+    }
+    const height = dimensionsFromSnippet(snippet).height;
+    if (height != null) doorHeights.add(height);
+  }
+  return portions.map((portion) => {
+    if (portion.height_mm == null || portion.height_authority !== "extracted") {
+      return portion;
+    }
+    if (doorHeights.has(portion.height_mm)) return portion;
+    const copied = sentencesOf(briefText).some((sentence) => {
+      const stated = statedHeightMm(sentence);
+      if (stated !== portion.height_mm) return false;
+      const index = sentence.search(/\d{3,4}\s*mm\s+(?:high|height)|\d+(?:\.\d+)?\s*m\s+(?:high|height)/i);
+      return index >= 0 && !heightMeasurementBelongsToDoor(sentence, index);
+    });
+    if (!copied) return portion;
+    return {
+      ...portion,
+      height_mm: DOORS_HEIGHT_DISCLOSED_DEFAULT_MM,
+      height_authority: "assumed_disclosed",
+    };
+  });
+}
+
+function sentencesOf(text: string): string[] {
+  const parts = text
+    .split(/(?<=[.!?])\s+/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [text.trim()];
+}
+
 function firstPresent<T>(explicit: T, fallback: T): T {
   if (explicit == null || explicit === "") return fallback;
   return explicit;
@@ -637,10 +767,11 @@ function fillMissingDoorPortion(
     out.installation_type,
     secondary.installation_type
   );
-  out.leaf_construction = firstPresent(
-    out.leaf_construction,
-    secondary.leaf_construction
-  );
+  if (out.leaf_authority === "extracted" || out.leaf_authority === "user") {
+    // The brief or a saved answer already named the leaf. Model output cannot fill it.
+  } else if (out.leaf_construction == null) {
+    out.leaf_construction = null;
+  }
   out.height_mm = firstPresent(out.height_mm, secondary.height_mm);
   out.width_mm = firstPresent(out.width_mm, secondary.width_mm);
   out.quantity = firstPresent(out.quantity, secondary.quantity);
@@ -658,7 +789,9 @@ function fillMissingDoorPortion(
   );
   out.installation_authority =
     out.installation_authority ?? secondary.installation_authority;
-  out.leaf_authority = out.leaf_authority ?? secondary.leaf_authority;
+  if (out.leaf_authority == null && out.leaf_construction != null) {
+    out.leaf_authority = "extracted";
+  }
   out.height_authority = out.height_authority ?? secondary.height_authority;
   out.width_authority = out.width_authority ?? secondary.width_authority;
   out.quantity_authority =
@@ -763,6 +896,44 @@ export function mergeDoorPortionsPreferringDeterministic(
     });
   }
   return ai.map(cloneDoorPortion);
+}
+
+/**
+ * A leaf the brief does not name stays unresolved.
+ * Parser-extracted and saved answers stay. A model leaf is kept only when
+ * the brief, or that portion's own text, names the same construction.
+ */
+export function reconcileDoorLeavesWithBrief(
+  portions: readonly DoorPortion[],
+  briefText: string
+): DoorPortion[] {
+  return portions.map((portion) => {
+    if (
+      portion.leaf_authority === "user" ||
+      portion.leaf_authority === "extracted"
+    ) {
+      return portion;
+    }
+    if (portion.leaf_construction == null) return cloneDoorPortion(portion);
+    const local = leafConstructionFromSnippet(
+      `${portion.label ?? ""} ${portion.other_description ?? ""}`
+    );
+    const briefLeaf = leafConstructionFromSnippet(briefText);
+    const supported =
+      local === portion.leaf_construction ||
+      (portions.length === 1 && briefLeaf === portion.leaf_construction);
+    if (!supported) {
+      return {
+        ...cloneDoorPortion(portion),
+        leaf_construction: null,
+        leaf_authority: undefined,
+      };
+    }
+    return {
+      ...cloneDoorPortion(portion),
+      leaf_authority: "extracted",
+    };
+  });
 }
 
 function doorsPortionsFactNameMatches(

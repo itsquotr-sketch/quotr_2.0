@@ -1,5 +1,8 @@
 import { getMaterialBuildUps, parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
-import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  explicitRateSourceLabel,
+  getRateSourceLabel,
+} from "@/lib/estimate/rate-source-labels";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import { inferCalculationMode } from "@/lib/pricing/pricing-item-calculation";
 import type { PricingItem } from "@/lib/pricing/types";
@@ -40,9 +43,11 @@ function firstFiniteNumber(
 
 function rateSourceLabelFromNotes(notes: string | null): string | null {
   const { metadata } = parseLineItemNotes(notes);
+  const explicitSource = explicitRateSourceLabel(metadata.rateSource);
   if (metadata.materialRateResolution?.display?.trim()) {
     return metadata.materialRateResolution.display.trim();
   }
+  if (explicitSource) return explicitSource;
   if (metadata.rateSourceType) {
     return getRateSourceLabel(metadata.rateSourceType);
   }

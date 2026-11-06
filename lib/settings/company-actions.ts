@@ -220,6 +220,10 @@ function mapSettingsRow(
 
 function mapQuoteDefaultsRow(row: Record<string, unknown>): OrgQuoteDefaults {
   return {
+    gstRegistered:
+      row.gst_registered === true || row.gst_registered === false
+        ? row.gst_registered
+        : null,
     defaultGstRate: Number(row.default_gst_rate ?? 15),
     defaultQuoteValidityDays: Number(row.default_quote_validity_days ?? 30),
     defaultPaymentTerms: (row.default_payment_terms as string | null) ?? null,
@@ -232,7 +236,7 @@ function mapQuoteDefaultsRow(row: Record<string, unknown>): OrgQuoteDefaults {
 }
 
 const QUOTE_DEFAULTS_SELECT =
-  "default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions";
+  "gst_registered, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions";
 
 export async function getOrgQuoteDefaultsForOrg(
   supabase: SettingsAuthContext["supabase"],

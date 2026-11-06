@@ -35,6 +35,8 @@ export function ProjectCard({ project, prefetch = true }: ProjectCardProps) {
     stage: project.stage,
     hasEstimate: project.has_estimate,
     estimateIsStale: project.estimate_is_stale,
+    missingPriceLineCount: project.missing_price_line_count,
+    scopeCoverageGapCount: project.scope_coverage_gap_count,
   });
 
   const isClosedStatus =

@@ -30,6 +30,14 @@ export type InternalWallsJobScope =
 export const INTERNAL_WALLS_JOB_SCOPE_FACT_KEY =
   "internal_walls.job_scope" as const;
 
+/** Unresolved wall scope stays open. It must not be priced or treated as a wall assembly. */
+export const INTERNAL_WALLS_SCOPE_UNRESOLVED =
+  "Wall scope and the associated framing stay unresolved and are not priced. They do not establish a complete or structurally adequate wall assembly.";
+
+/** Door sets in the brief are not openings in these walls until that association is answered. */
+export const INTERNAL_WALLS_OPENINGS_UNRESOLVED =
+  "Openings in these new walls stay unresolved and are not deducted. They do not establish a complete or structurally adequate opening allowance.";
+
 export const INTERNAL_WALLS_JOB_SCOPE_OPTIONS = [
   "New partition",
   "Extend partition",

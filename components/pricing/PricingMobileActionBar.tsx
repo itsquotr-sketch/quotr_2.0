@@ -12,6 +12,13 @@ import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
 } from "@/lib/estimate/ceilings-provisional-package";
+import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
+import { formatPricingMoney } from "@/lib/pricing/format";
+import { sellsMatchRecommended } from "@/lib/pricing/final-sell";
+import {
+  clientPriceBasis,
+  clientPriceCopy,
+} from "@/lib/pricing/incomplete-price-label";
 import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
@@ -40,7 +47,13 @@ type PricingMobileActionBarProps = {
   canEdit?: boolean;
   className?: string;
   scopeQuoteBlock?: string | null;
+  extraReviewBlock?: string | null;
   estimateUpdateRequired?: string | null;
+  gstRegistered?: boolean | null;
+  defaultGstRate?: number | null;
+  recommendedSell?: number | null;
+  scopeUnresolved?: boolean;
+  pricesUnresolved?: boolean;
 };
 
 export function PricingMobileActionBar({
@@ -58,11 +71,17 @@ export function PricingMobileActionBar({
   canEdit = true,
   className,
   scopeQuoteBlock = null,
+  extraReviewBlock = null,
   estimateUpdateRequired = null,
+  gstRegistered,
+  defaultGstRate = null,
+  recommendedSell = null,
+  scopeUnresolved = false,
+  pricesUnresolved = false,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const isConverted = document.status === "converted_to_quote";
-  const view = pricingDocumentViewModel(document, items);
+  const view = pricingDocumentViewModel(document, items, gstRegistered);
   const manualQuoteBlock = unresolvedManualPricingQuoteBlock(items);
   const unknownCostBlock = unknownMaterialCostQuoteBlock(items);
   const provisionalBlock = ceilingProvisionalDecision({
@@ -70,13 +89,34 @@ export function PricingMobileActionBar({
     confirmation: document.provisional_ceiling_confirmation ?? null,
     documentOrgId: document.org_id,
   }).block;
+  const taxBasis = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  const taxBasisBlock = taxBasis.quoteBlock;
+  const showOverrideGst = taxBasis.override && document.gst_rate > 0;
+  const priceCopy = clientPriceCopy(
+    clientPriceBasis({
+      scopeUnresolved,
+      pricesUnresolved,
+      enteredOverride:
+        recommendedSell != null &&
+        !sellsMatchRecommended(document.subtotal_sell, recommendedSell),
+    })
+  );
   const reviewBlock =
+    extraReviewBlock?.trim() ||
     estimateUpdateRequired?.trim() ||
+    taxBasisBlock ||
     provisionalBlock ||
     manualQuoteBlock ||
     unknownCostBlock;
   const quoteBlockedReason = estimateUpdateRequired?.trim()
     || scopeQuoteBlock
+    || taxBasisBlock
     || (nestedCeilingsQuoteIsBlocked({ items })
       ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
       : reviewBlock);
@@ -96,10 +136,14 @@ export function PricingMobileActionBar({
       <div className={cn("mx-auto flex max-w-lg flex-col gap-3 px-4", mobileActionInnerClass)}>
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-xs font-medium text-muted-foreground">
-            {view.showGst ? "Total incl. GST" : "Your final price"}
+            {priceCopy.totalLabel === "Your final price" && (view.showGst || showOverrideGst)
+              ? "Total incl. GST"
+              : priceCopy.totalLabel}
           </p>
           <p className="text-lg font-semibold tabular-nums tracking-tight">
-            {view.showGst
+            {showOverrideGst
+              ? formatPricingMoney(document.total_incl_gst)
+              : view.showGst
               ? view.totalInclGstFormatted
               : view.subtotalSellFormatted}
           </p>

@@ -65,6 +65,7 @@ import {
   INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT,
   INTERNAL_WALLS_WALL_TYPE_REQUIRED_MESSAGE,
   grossFaceAreaM2,
+  legacyInternalWallsFinishApplies,
   linedFaceCount,
   resolveInternalWallsWallTypes,
   summariseInternalWallsWorkArea,
@@ -82,6 +83,8 @@ import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
   isMatureInternalWallsPath,
+  INTERNAL_WALLS_OPENINGS_UNRESOLVED,
+  INTERNAL_WALLS_SCOPE_UNRESOLVED,
   parseInternalWallsJobScope,
   parseInternalWallsStructuralInvolvement,
   structuralBlocksEstimate,
@@ -301,8 +304,20 @@ function calculateInternalWallsMature(
     workAreaId: workArea.id,
   });
 
-  if (jobScope) {
-    assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  if (!jobScope) {
+    missingInfo.push(INTERNAL_WALLS_SCOPE_UNRESOLVED);
+    return {
+      lineItems: [],
+      assumptions,
+      missingInfo,
+      exclusions: [],
+      confidence: baseConfidence(missingInfo.length),
+      assumptionMetadata,
+    };
+  }
+  assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  if (resolved.types.some((type) => type.has_openings == null)) {
+    missingInfo.push(INTERNAL_WALLS_OPENINGS_UNRESOLVED);
   }
   const workAreaSummary = summariseInternalWallsWorkArea(resolved.types);
   if (workAreaSummary) {
@@ -427,6 +442,23 @@ export function calculateInternalWalls(
   if (isMatureInternalWallsPath({ facts, workAreaId: workArea.id })) {
     return calculateInternalWallsMature(context, workArea);
   }
+  const unresolvedScope = parseInternalWallsJobScope(
+    getStringFact(facts, workArea.id, INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
+  );
+  const hasLegacyMeasurement =
+    getNumberFact(facts, workArea.id, "internal_walls.length_lm") != null ||
+    getNumberFact(facts, workArea.id, "internal_walls.height_m") != null ||
+    getNumberFact(facts, workArea.id, "internal_walls.area_m2") != null;
+  if (!unresolvedScope && !hasLegacyMeasurement) {
+    return {
+      lineItems: [],
+      assumptions: [],
+      missingInfo: [INTERNAL_WALLS_SCOPE_UNRESOLVED],
+      exclusions: [],
+      confidence: baseConfidence(1),
+      assumptionMetadata: createAssumptionMetadata(),
+    };
+  }
 
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
@@ -434,6 +466,10 @@ export function calculateInternalWalls(
   const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
+  const canonicalTypes = resolveInternalWallsWallTypes({
+    facts,
+    workAreaId: workArea.id,
+  }).types;
   const length = getNumberFact(facts, workArea.id, "internal_walls.length_lm");
   const height = getNumberFact(facts, workArea.id, "internal_walls.height_m");
   const sides = getStringFact(facts, workArea.id, "internal_walls.lining_sides");
@@ -582,7 +618,15 @@ export function calculateInternalWalls(
     )
   );
 
-  if (getBooleanFact(facts, workArea.id, "internal_walls.skirtings_included")) {
+  if (
+    legacyInternalWallsFinishApplies({
+      types: canonicalTypes,
+      field: "skirting",
+      legacyIncluded:
+        getBooleanFact(facts, workArea.id, "internal_walls.skirtings_included") ===
+        true,
+    })
+  ) {
     const skirtingLm =
       getNumberFact(facts, workArea.id, "internal_walls.skirting_length_lm") ??
       length ??
@@ -671,7 +715,15 @@ export function calculateInternalWalls(
     );
   }
 
-  if (getBooleanFact(facts, workArea.id, "internal_walls.painting_included")) {
+  if (
+    legacyInternalWallsFinishApplies({
+      types: canonicalTypes,
+      field: "painting",
+      legacyIncluded:
+        getBooleanFact(facts, workArea.id, "internal_walls.painting_included") ===
+        true,
+    })
+  ) {
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,

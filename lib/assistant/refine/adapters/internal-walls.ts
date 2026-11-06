@@ -1,4 +1,5 @@
-import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import { getBooleanFact, hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import { INTERNAL_WALLS_OPENINGS_QUESTION } from "@/lib/estimate/requested-task-coverage";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_JOB_SCOPE_OPTIONS,
@@ -55,6 +56,7 @@ import {
   faceEligibleForStopping,
   insulationAsksForScope,
   internalWallsPaintingOptions,
+  requestedStoppingLevelQuestion,
 } from "@/lib/estimate/internal-walls-finish";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -385,6 +387,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       const thicknessOptions = liningThicknessOptionsForProduct(sideAProduct);
       const lengthOptions = liningSheetLengthOptionsForProduct(sideAProduct);
       if (thicknessOptions.length > 0) {
+        const assumedA =
+          active?.side_a.thickness_source === "assumed_disclosed" &&
+          active.side_a.thickness_mm != null
+            ? `${active.side_a.thickness_mm} mm (assumed default)`
+            : null;
         out.push(
           candidate({
             workAreaId,
@@ -393,7 +400,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             label: "Side A thickness",
             question: "What lining thickness is on Side A?",
             inputType: "select",
-            options: thicknessOptions,
+            options: assumedA
+              ? thicknessOptions.map((option) =>
+                  option === `${active?.side_a.thickness_mm} mm` ? assumedA : option
+                )
+              : thicknessOptions,
             currentValue: wallTypeFieldCurrentValue(
               active,
               "internal_walls.wall_type.side_a_thickness_mm"
@@ -485,6 +496,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         const thicknessOptionsB = liningThicknessOptionsForProduct(sideBProduct);
         const lengthOptionsB = liningSheetLengthOptionsForProduct(sideBProduct);
         if (thicknessOptionsB.length > 0) {
+          const assumedB =
+            active.side_b.thickness_source === "assumed_disclosed" &&
+            active.side_b.thickness_mm != null
+              ? `${active.side_b.thickness_mm} mm (assumed default)`
+              : null;
           out.push(
             candidate({
               workAreaId,
@@ -493,7 +509,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
               label: "Side B thickness",
               question: "What lining thickness is on Side B?",
               inputType: "select",
-              options: thicknessOptionsB,
+              options: assumedB
+                ? thicknessOptionsB.map((option) =>
+                    option === `${active.side_b.thickness_mm} mm` ? assumedB : option
+                  )
+                : thicknessOptionsB,
               currentValue: wallTypeFieldCurrentValue(
                 active,
                 "internal_walls.wall_type.side_b_thickness_mm"
@@ -550,7 +570,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           workAreaName,
           factKey: INTERNAL_WALLS_HAS_OPENINGS_KEY,
           label: "Openings",
-          question: "Does this wall have any openings?",
+          question: INTERNAL_WALLS_OPENINGS_QUESTION,
           inputType: "select",
           options: INTERNAL_WALLS_HAS_OPENINGS_OPTIONS,
           currentValue: wallTypeFieldCurrentValue(
@@ -787,6 +807,8 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         );
       }
 
+    const stoppingRequested =
+      getBooleanFact(asFacts, workAreaId, "internal_walls.stopping_included") === true;
     if (jobScope !== "form_opening") {
       if (faceEligibleForStopping(active?.side_a)) {
         out.push(
@@ -795,7 +817,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
             label: "Stopping — Side A",
-            question: "Include stopping to Side A?",
+            question: stoppingRequested
+              ? requestedStoppingLevelQuestion("A")
+              : "Include stopping to Side A?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
             currentValue: wallTypeFieldCurrentValue(
@@ -813,7 +837,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
             label: "Stopping — Side B",
-            question: "Include stopping to Side B?",
+            question: stoppingRequested
+              ? requestedStoppingLevelQuestion("B")
+              : "Include stopping to Side B?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
             currentValue: wallTypeFieldCurrentValue(

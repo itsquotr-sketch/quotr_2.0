@@ -37,7 +37,8 @@ const STATUS_LABELS: Record<
   will_update: "Will update",
   manually_protected: "Manually protected",
   new_item: "New item",
-  orphaned: "Orphaned",
+  orphaned: "Removed",
+  needs_review: "Needs review",
 };
 
 const STATUS_BADGE_CLASS: Record<
@@ -53,6 +54,8 @@ const STATUS_BADGE_CLASS: Record<
     "bg-sky-100 text-sky-950 dark:bg-sky-950/50 dark:text-sky-100",
   orphaned:
     "bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100",
+  needs_review:
+    "bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-100",
 };
 
 function formatDifference(before: number | null, after: number | null): string {
@@ -160,6 +163,7 @@ export function RecalibrationPreviewPanel({
   const error = previewError ?? applyError;
   const hasManualProtected = (preview?.summary.manuallyProtected ?? 0) > 0;
   const hasOrphaned = (preview?.summary.orphaned ?? 0) > 0;
+  const hasNeedsReview = (preview?.summary.needsReview ?? 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -202,8 +206,12 @@ export function RecalibrationPreviewPanel({
                   value={preview.summary.manuallyProtected}
                 />
                 <SummaryCard
-                  label="Orphaned items"
+                  label="Removed items"
                   value={preview.summary.orphaned}
+                />
+                <SummaryCard
+                  label="Needs review"
+                  value={preview.summary.needsReview}
                 />
                 <SummaryCard
                   label="Unchanged"
@@ -326,16 +334,23 @@ export function RecalibrationPreviewPanel({
         <DialogFooter className="shrink-0 flex-col gap-3 border-t bg-background px-4 py-4 sm:flex-row sm:px-6">
           <div className="w-full space-y-1 text-xs text-muted-foreground sm:mr-auto sm:max-w-md sm:text-left">
             <p>
-              Recalculating will update unedited items. Your manual edits will be
-              preserved.
+              Recalculating will update unedited items, including whether an
+              untouched generated row appears on the customer quote. Your manual
+              edits, deliberate quote-visibility choices, and rows without a
+              stable requirement stay for review.
             </p>
             {hasManualProtected ? (
               <p>Manual edits will be preserved.</p>
             ) : null}
             {hasOrphaned ? (
               <p>
-                Items no longer in the latest estimate will be kept and flagged,
-                not deleted.
+                An untouched generated row whose estimate requirement is gone
+                will be removed.
+              </p>
+            ) : null}
+            {hasNeedsReview ? (
+              <p>
+                Edited, manual, and unidentified rows stay for review.
               </p>
             ) : null}
           </div>

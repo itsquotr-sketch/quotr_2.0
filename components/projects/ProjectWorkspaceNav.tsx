@@ -19,6 +19,8 @@ type ProjectWorkspaceNavProps = {
   onUpdateEstimate?: () => void;
   updateDialogOpen?: boolean;
   pricingUnresolvedRequired?: boolean | null;
+  missingPriceLineCount?: number | null;
+  scopeCoverageGapCount?: number | null;
   variations?: ProjectWorkflowInput["variations"];
 };
 
@@ -34,6 +36,8 @@ export function ProjectWorkspaceNav({
   onUpdateEstimate,
   updateDialogOpen = false,
   pricingUnresolvedRequired = null,
+  missingPriceLineCount = null,
+  scopeCoverageGapCount = null,
   variations = null,
 }: ProjectWorkspaceNavProps) {
   return (
@@ -50,6 +54,8 @@ export function ProjectWorkspaceNav({
           updateDialogOpen={updateDialogOpen}
           pricingSummary={pricingSummary}
           pricingUnresolvedRequired={pricingUnresolvedRequired}
+          missingPriceLineCount={missingPriceLineCount}
+          scopeCoverageGapCount={scopeCoverageGapCount}
           quoteSummary={quoteSummary ?? null}
           variations={variations}
         />

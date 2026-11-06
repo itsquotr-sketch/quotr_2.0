@@ -367,11 +367,17 @@ const notSureFloor = bathroom([
   fact("bathroom.framing_level", "b1", "Not sure"),
 ]);
 check(
-  "Not sure floor → disclosed plywood",
-  materials(notSureFloor).some(
+  "Not sure floor stays unresolved and does not price plywood",
+  !materials(notSureFloor).some(
     (row) => row.materialKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY
   ) &&
-    notSureFloor.assumptions.some((line) => /19 mm H3\.2 treated plywood/i.test(line))
+    notSureFloor.missingInfo.some((line) =>
+      /Floor substrate condition is unknown/i.test(line)
+    ) &&
+    notSureFloor.lineItems.some(
+      (row) => row.label === "Floor substrate" && row.includedInTotal === false
+    ) &&
+    !notSureFloor.assumptions.some((line) => /allowed for 19 mm H3\.2/i.test(line))
 );
 check(
   "Not sure wall lining asks for GIB or fibre cement",

@@ -49,6 +49,8 @@ type PricingStatusNoteProps = {
   latestEstimateIsStale: boolean;
   quoteSummary?: QuoteSummary | null;
   projectId: string;
+  /** Generated lines have prices, and scope is still unresolved. */
+  scopeStillOpen?: boolean;
 };
 
 export function PricingStatusNote({
@@ -57,6 +59,7 @@ export function PricingStatusNote({
   latestEstimateIsStale,
   quoteSummary = null,
   projectId,
+  scopeStillOpen = false,
 }: PricingStatusNoteProps) {
   const requiredCount = pricingRequiredItems(items).length;
   const quoteHref = quoteSummary
@@ -106,6 +109,16 @@ export function PricingStatusNote({
   }
 
   if (requiredCount > 0) return null;
+
+  if (scopeStillOpen) {
+    return (
+      <p className="text-sm leading-5 text-foreground/75" data-pricing-status-note="generated-lines">
+        Generated lines are priced. Scope is still unresolved, so this is not a complete job.
+        Review stays blocked until those tasks are priced or explicitly left out of the job.
+        Hiding a row does not price it or mark it excluded.
+      </p>
+    );
+  }
 
   return (
     <p className="text-sm leading-5 text-foreground/75" data-pricing-status-note="ready">

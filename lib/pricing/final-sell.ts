@@ -10,6 +10,7 @@ import {
   MIN_GROSS_MARGIN_PERCENT,
   validateGrossMarginPercent,
 } from "@/lib/security/margin-validation";
+import { pricingLineIncludedInDocumentTotal } from "@/lib/pricing/scope-finalisation";
 import type { PricingItem } from "@/lib/pricing/types";
 
 const CENTS = 100;
@@ -27,6 +28,20 @@ export function sellsMatchRecommended(
     return false;
   }
   return Math.abs(currentSell - recommendedSell) <= epsilon;
+}
+
+/** The price card follows the stored document sell. A typed value is not an override until it is saved. */
+export function pricingDecisionSelection(input: {
+  readonly storedSell: number;
+  readonly recommendedSell: number | null;
+}): { readonly mode: "recommended" | "own"; readonly field: string } {
+  const usingRecommended =
+    sellsMatchRecommended(input.storedSell, input.recommendedSell) ||
+    input.recommendedSell == null;
+  return {
+    mode: usingRecommended ? "recommended" : "own",
+    field: input.storedSell.toFixed(2),
+  };
 }
 
 /** Display-only expected gross margin from stored cost and a candidate sell. */
@@ -82,7 +97,9 @@ export type AllocateFinalSellResult =
   | { ok: false; error: string };
 
 export function allocateFinalSell(
-  items: readonly Pick<PricingItem, "id" | "total_sell" | "total_cost" | "cost_known">[],
+  items: readonly (Pick<PricingItem, "id" | "total_sell" | "total_cost" | "cost_known"> & {
+    notes_internal?: string | null;
+  })[],
   targetSell: number
 ): AllocateFinalSellResult {
   if (!Number.isFinite(targetSell)) {
@@ -92,8 +109,9 @@ export function allocateFinalSell(
     return { ok: false, error: "Final price cannot be negative." };
   }
 
-  const costComplete = items.every((item) => item.cost_known !== false);
-  const knownCost = items.reduce(
+  const priced = items.filter((item) => pricingLineIncludedInDocumentTotal(item));
+  const costComplete = priced.every((item) => item.cost_known !== false);
+  const knownCost = priced.reduce(
     (sum, item) => sum + (item.cost_known === false ? 0 : item.total_cost),
     0
   );
@@ -111,7 +129,7 @@ export function allocateFinalSell(
   }
 
   const currentSell = roundMoneyCents(
-    items.reduce((sum, item) => sum + item.total_sell, 0)
+    priced.reduce((sum, item) => sum + item.total_sell, 0)
   );
   if (currentSell <= 0) {
     return {
@@ -124,7 +142,7 @@ export function allocateFinalSell(
   if (Math.abs(currentSell - target) < 0.005) {
     return {
       ok: true,
-      allocations: items.map((item) => ({
+      allocations: priced.map((item) => ({
         itemId: item.id,
         totalSell: roundMoneyCents(item.total_sell),
       })),
@@ -134,9 +152,9 @@ export function allocateFinalSell(
   const scale = target / currentSell;
   const allocations: FinalSellAllocation[] = [];
   let allocated = 0;
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index]!;
-    const isLast = index === items.length - 1;
+  for (let index = 0; index < priced.length; index += 1) {
+    const item = priced[index]!;
+    const isLast = index === priced.length - 1;
     const nextSell = isLast
       ? roundMoneyCents(target - allocated)
       : roundMoneyCents(item.total_sell * scale);

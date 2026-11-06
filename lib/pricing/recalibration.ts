@@ -14,9 +14,15 @@ import {
   buildPricingItemRowFromEstimate,
   buildPricingItemUpdateFromEstimate,
   buildRecalibrationPreviewData,
+  estimateRequirementScopes,
+  isManualCommercialRow,
+  pricingRowsNeedingReviewNote,
+  pricingRowsToRetire,
   MANUAL_PRESERVED_NOTE,
   matchPricingToEstimateLines,
-  ORPHANED_SOURCE_NOTE,
+  pricingDraftReconciliationBlocked,
+  REVIEW_RETAINED_NOTE,
+  shouldApplyMatchedPricingUpdate,
   type EstimateLineItemRow,
   type RecalibrationPreview,
 } from "@/lib/pricing/recalibration-helpers";
@@ -99,6 +105,13 @@ async function loadRecalibrationContext(input: RecalibrationInput) {
     return { error: "Pricing document not found." as const };
   }
 
+  const issued = pricingDraftReconciliationBlocked(
+    documentRow.status as string | null
+  );
+  if (issued) {
+    return { error: issued };
+  }
+
   if (!estimate) {
     return {
       error: "Generate a quick estimate before updating final pricing.",
@@ -153,7 +166,8 @@ export async function markPricingDocumentsNeedingRecalibration(
     })
     .eq("project_id", projectId)
     .eq("org_id", orgId)
-    .neq("status", "archived");
+    .neq("status", "archived")
+    .neq("status", "converted_to_quote");
 
   if (error) {
     console.error(
@@ -256,7 +270,7 @@ async function recalculateDocumentTotals(
 
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -264,11 +278,17 @@ async function recalculateDocumentTotals(
     throw new Error(error.message);
   }
 
-  const mapped = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const { pricingLineIncludedInDocumentTotal } = await import(
+    "@/lib/pricing/scope-finalisation"
+  );
+  const mapped = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
 
   let totals: {
     subtotalCost: number;
@@ -388,21 +408,30 @@ export async function applyRecalibration(
           itemsChanged = true;
           continue;
         }
-        if (existing.manually_edited) {
-        updates.push({
-          id: existing.id,
-          patch: {
-            source_estimate_line_item_id: lineItem.id,
-            recalibration_note: MANUAL_PRESERVED_NOTE,
-          },
-        });
-        itemsChanged = true;
+        if (isManualCommercialRow(existing)) {
+          if (
+            existing.source_estimate_line_item_id !== lineItem.id ||
+            existing.recalibration_note !== MANUAL_PRESERVED_NOTE
+          ) {
+            updates.push({
+              id: existing.id,
+              patch: {
+                source_estimate_line_item_id: lineItem.id,
+                recalibration_note: MANUAL_PRESERVED_NOTE,
+              },
+            });
+            itemsChanged = true;
+          }
         if (
           isCeilingProvisionalComponentKey(existing.component_key) ||
           isCeilingProvisionalComponentKey(lineItem.component_key)
         ) {
           provisionalTouched = true;
         }
+        continue;
+      }
+
+      if (!shouldApplyMatchedPricingUpdate(existing, lineItem)) {
         continue;
       }
 
@@ -443,28 +472,41 @@ export async function applyRecalibration(
     };
   }
 
-  for (const item of pricingItems) {
-    const hasSource = item.source_estimate_line_item_id != null;
-    const sourceMissing =
-      hasSource && !estimateIds.has(item.source_estimate_line_item_id!);
-    const unmatched = !matchedPricingIds.has(item.id);
-
-    if (hold.scheduleAllowanceIds.has(item.id) || hold.keptAllowanceIds.has(item.id)) continue;
-    if (hasSource && (sourceMissing || unmatched)) {
-      if (!item.orphaned) {
-        itemsChanged = true;
-      }
-      if (isCeilingProvisionalComponentKey(item.component_key)) {
-        provisionalTouched = true;
-      }
-      updates.push({
-        id: item.id,
-        patch: {
-          orphaned: true,
-          recalibration_note: ORPHANED_SOURCE_NOTE,
-        },
-      });
+  const estimateScopes = estimateRequirementScopes(estimateLineItems);
+  const retireIds = pricingRowsToRetire(
+    pricingItems,
+    matchedPricingIds,
+    estimateIds,
+    estimateScopes
+  ).filter(
+    (id) =>
+      !hold.scheduleAllowanceIds.has(id) && !hold.keptAllowanceIds.has(id)
+  );
+  const reviewIds = pricingRowsNeedingReviewNote(
+    pricingItems,
+    matchedPricingIds,
+    estimateIds,
+    estimateScopes
+  ).filter(
+    (id) =>
+      !hold.scheduleAllowanceIds.has(id) && !hold.keptAllowanceIds.has(id)
+  );
+  if (retireIds.length > 0) itemsChanged = true;
+  for (const id of retireIds) {
+    const item = pricingItems.find((row) => row.id === id);
+    if (item && isCeilingProvisionalComponentKey(item.component_key)) {
+      provisionalTouched = true;
     }
+  }
+  for (const id of reviewIds) {
+    updates.push({
+      id,
+      patch: {
+        orphaned: false,
+        recalibration_note: REVIEW_RETAINED_NOTE,
+      },
+    });
+    itemsChanged = true;
   }
 
   if (inserts.length > 0) {
@@ -477,6 +519,24 @@ export async function applyRecalibration(
         error: toUserError(
           insertError,
           "recalibration-insert",
+          USER_ERRORS.recalibrationFailed
+        ),
+      };
+    }
+  }
+
+  if (retireIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("pricing_items")
+      .delete()
+      .in("id", retireIds)
+      .eq("org_id", orgId)
+      .eq("pricing_document_id", pricingDocumentId);
+    if (deleteError) {
+      return {
+        error: toUserError(
+          deleteError,
+          "recalibration-delete",
           USER_ERRORS.recalibrationFailed
         ),
       };
@@ -614,7 +674,7 @@ export async function keepCurrentPricing(
 
   const { data: document, error: loadError } = await supabase
     .from("pricing_documents")
-    .select("id")
+    .select("id, status")
     .eq("id", pricingDocumentId)
     .eq("project_id", projectId)
     .eq("org_id", orgId)
@@ -623,6 +683,9 @@ export async function keepCurrentPricing(
   if (loadError || !document) {
     return { error: "Pricing document not found." };
   }
+
+  const issued = pricingDraftReconciliationBlocked(document.status as string | null);
+  if (issued) return { error: issued };
 
   const { error } = await supabase
     .from("pricing_documents")

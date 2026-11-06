@@ -2,6 +2,11 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 import {
+  aggregateMissingPriceLineCounts,
+  scopeGapCountFromNotices,
+  specificationCountFromNotices,
+} from "@/lib/assistant/presentation/estimate-issues";
+import {
   mapPricingDocument,
   mapPricingItem,
   mapPricingWorkArea,
@@ -10,7 +15,11 @@ import {
   eligibilityLineFromStoredEstimate,
   projectEligibleUnresolvedPricingItems,
 } from "@/lib/pricing/manual-requirement-promotion";
-import type { EstimateLineItemRow } from "@/lib/pricing/recalibration-helpers";
+import {
+  generatedQuoteVisibilityDrift,
+  quoteVisibilityDriftApplies,
+  type EstimateLineItemRow,
+} from "@/lib/pricing/recalibration-helpers";
 import type {
   PricingSummary,
   PricingWorkspaceData,
@@ -64,6 +73,9 @@ export async function getProjectWorkspaceTabContextWithContext(
   estimateIsStale: boolean;
   quantityConflictDetail: string | null;
   pricingSummary: PricingSummary | null;
+  missingPriceLineCount: number | null;
+  scopeCoverageGapCount: number | null;
+  unresolvedSpecificationCount: number | null;
 }> {
   const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
@@ -72,6 +84,9 @@ export async function getProjectWorkspaceTabContextWithContext(
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null,
+      missingPriceLineCount: null,
+      scopeCoverageGapCount: null,
+      unresolvedSpecificationCount: null,
     };
   }
 
@@ -81,14 +96,22 @@ export async function getProjectWorkspaceTabContextWithContext(
       ? Promise.resolve(options.pricingSummary ?? null)
       : getLatestPricingSummaryWithContext(auth, projectId));
 
-  const [pricingSummary, estimateResult] = await Promise.all([
+  const [pricingSummary, estimateResult, missingPriceLinesResult] = await Promise.all([
     pricingSummaryPromise,
     auth.supabase
       .from("estimates")
-      .select("id, is_stale")
+      .select("id, is_stale, missing_info")
       .eq("project_id", projectId)
       .eq("org_id", auth.orgId)
       .maybeSingle(),
+    auth.supabase
+      .from("estimate_line_items")
+      .select("project_id, rate_source")
+      .eq("project_id", projectId)
+      .eq("org_id", auth.orgId)
+      .or(
+        "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
+      ),
   ]);
 
   const quantityConflictDetail = estimateResult.data?.id
@@ -110,6 +133,16 @@ export async function getProjectWorkspaceTabContextWithContext(
     estimateIsStale: estimateResult.data?.is_stale ?? false,
     quantityConflictDetail,
     pricingSummary,
+    missingPriceLineCount: missingPriceLinesResult.error
+      ? null
+      : (aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []).get(projectId) ??
+        0),
+    scopeCoverageGapCount: estimateResult.error
+      ? null
+      : scopeGapCountFromNotices(estimateResult.data?.missing_info),
+    unresolvedSpecificationCount: estimateResult.error
+      ? null
+      : specificationCountFromNotices(estimateResult.data?.missing_info),
   };
 }
 
@@ -175,6 +208,7 @@ export async function getPricingWorkspaceDataWithContext(
 
   const mappedItems = (items ?? []).map((row) => mapPricingItem(row));
   let workspaceItems = mappedItems;
+  let documentMeaningDrift = false;
   const estimateId = (document.estimate_id as string | null) ?? null;
   if (estimateId) {
     const { data: estimateLines } = await supabase
@@ -185,11 +219,13 @@ export async function getPricingWorkspaceDataWithContext(
       .eq("estimate_id", estimateId)
       .eq("org_id", orgId)
       .order("sort_order");
+    const storedLines = (estimateLines ?? []) as EstimateLineItemRow[];
+    if (quoteVisibilityDriftApplies(document.status as string | null)) {
+      documentMeaningDrift = generatedQuoteVisibilityDrift(storedLines, mappedItems);
+    }
     const projected = projectEligibleUnresolvedPricingItems({
       items: mappedItems,
-      estimateLines: ((estimateLines ?? []) as EstimateLineItemRow[]).map(
-        eligibilityLineFromStoredEstimate
-      ),
+      estimateLines: storedLines.map(eligibilityLineFromStoredEstimate),
       orgId,
       projectId,
       pricingDocumentId,
@@ -242,6 +278,7 @@ export async function getPricingWorkspaceDataWithContext(
         ? Number(estimate.recommended_sell)
         : null,
     latestEstimateIsStale: estimate?.is_stale ?? false,
+    documentMeaningDrift,
   };
 }
 
@@ -263,6 +300,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null as PricingSummary | null,
+      missingPriceLineCount: null,
     };
   }
   return getProjectWorkspaceTabContextWithContext(auth, projectId);

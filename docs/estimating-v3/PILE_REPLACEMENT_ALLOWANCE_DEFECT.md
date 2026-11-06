@@ -1,0 +1,35 @@
+# Pile/post replacement allowance — unexplained additional cost
+
+## Decision, 5 November 2026
+
+Jean-Luc adopted scope-based pricing. Neither `deck.post_replacement.each` nor the count-free allowance enters the known total until a distinct replacement operation is established. A missing count is not quantity one and not a lump sum. Measured new-pile material and installation do not close removal, temporary support, or any other unnamed operation. The sections below describe the behaviour this decision replaces.
+
+This is an investigation record. The flooring slice does not remove or reinterpret the charge.
+
+## What is charged
+
+When `deck.pile_or_post_replacement_required` is true and a count is present, the deck calculator adds a line labelled "Pile/post replacement allowance". The rate key is `deck.post_replacement.each`. The Quotr benchmark is $180 cost and $280 sell per pile. The line category is `allowance`. The note is the count, for example "4 piles/posts". The line has no `deck.supports` component.
+
+When replacement is true and no count is present, the same label is used for the flat `substructureReplacementAllowance` of $1,200 cost. The note is "Count subject to confirmation".
+
+## What the other lines already cover
+
+- New support material is "Piles / posts", component `deck.supports`, House pile 125×125 H5, from the structural takeoff.
+- "Pile/post installation" is labour only, component `deck.posts.install`. Its note says hole excavation and concrete are separate, and the time is not inside substructure framing.
+- Hole excavation is labour in bank cubic metres. It is not deck demolition.
+- Concrete for the holes is a separate placement line.
+- "Existing deck removal" is labour on deck area, and only when demolition is included. Its note says the driver is deck area and that this is deck demolition, not post-hole soil. It does not pull piles.
+
+## Why the allowance is not a distinct scope
+
+`pileReplacementApplicable` returns false when new substructure is included, because the new layout already owns the new piles. `pileRetentionPending` is true when the substructure condition is still pending inspection. The calculator then keeps the replacement boolean even though the applicable check is false. Pending inspection, explicit replacement, and new substructure therefore emit both the new-pile takeoff and the allowance on the same stated count.
+
+The allowance notes do not name a physical task that the material, installation, excavation, concrete, or removal lines exclude. A separate component identity is not evidence that the dollars buy different work.
+
+## Status
+
+The allowance is still not a distinct scope. It is kept, and it is not treated as proof of extra work.
+
+Leave until inspection, and explicit retention, do not price new pile material, installation, excavation, or concrete from a spacing layout or from the replacement count. New framing stays, because it does not decide the existing piles. A confirmed bearer layout is a separate new-support quantity and is still priced when existing piles are retained.
+
+Explicit replacement still prices the stated supports and still adds the allowance. The allowance's coverage is an unresolved costing defect, so that result is not a complete price. The line is not removed because it has its own component.

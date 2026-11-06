@@ -1,11 +1,18 @@
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import {
+  PILE_REPLACEMENT_QUANTITY_UNKNOWN,
+  replacementAllowanceQuantityUnknown,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   APPRENTICE_LABOUR_RATE_KEY,
   CARPENTER_LABOUR_RATE_KEY,
   GENERAL_LABOUR_RATE_KEY,
   LABOURER_LABOUR_RATE_KEY,
 } from "@/lib/estimate/labour-trade-mapping";
-import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  explicitRateSourceLabel,
+  getRateSourceLabel,
+} from "@/lib/estimate/rate-source-labels";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { formatPricingMoney } from "@/lib/pricing/format";
@@ -107,24 +114,33 @@ function formatHours(hours: number): string {
 
 export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   const view = pricingItemViewModel(item);
-  const { metadata } = parseLineItemNotes(item.notes_internal);
+  const parsedNotes = parseLineItemNotes(item.notes_internal);
+  const { metadata } = parsedNotes;
+  const identitySummary =
+    metadata.identitySummary ??
+    (parsedNotes.displayNotes?.includes("Quantity basis:")
+      ? parsedNotes.displayNotes
+      : null);
   const manual = item.source_estimate_line_item_id == null;
   const labour =
     item.item_type === "labour" || item.calculation_mode === "productivity_labour";
   const category =
     PRICING_ITEM_TYPES.find((type) => type.value === item.item_type)?.label ??
     item.item_type;
+  const explicitSource = explicitRateSourceLabel(metadata.rateSource);
   const rateSource = metadata.materialRateResolution?.display
     ? metadata.materialRateResolution.display
-    : metadata.rateSourceType
-      ? getRateSourceLabel(metadata.rateSourceType)
-      : null;
+    : explicitSource
+      ? explicitSource
+      : metadata.rateSourceType
+        ? getRateSourceLabel(metadata.rateSourceType)
+        : null;
   const productivitySource = metadata.productivitySourceType
     ? getRateSourceLabel(metadata.productivitySourceType)
     : null;
   const identity = labour
     ? null
-    : splitStoredIdentity(item.client_label, metadata.identitySummary ?? null);
+    : splitStoredIdentity(item.client_label, identitySummary);
   const labourIdentity = labour ? labourRateIdentity(metadata.itemKey) : null;
   const generic =
     identity != null &&
@@ -146,8 +162,14 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   const hours = labour && storedHours != null && storedHours > 0 ? storedHours : null;
   const hourlyCost = item.unit_cost ?? 0;
   const hourlyKnown = labour && item.cost_known && hourlyCost > 0;
-  const quantityLabel =
-    item.quantity != null
+  const quantityUnknown = replacementAllowanceQuantityUnknown({
+    itemKey: metadata.itemKey,
+    label: item.internal_label ?? item.client_label,
+    quantity: item.quantity,
+  });
+  const quantityLabel = quantityUnknown
+    ? PILE_REPLACEMENT_QUANTITY_UNKNOWN
+    : item.quantity != null
       ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
       : "—";
 
@@ -175,7 +197,7 @@ export function presentPricingLine(item: PricingItem): PricingLinePresentation {
   return {
     title,
     supporting,
-    specification: identity?.specification ?? metadata.identitySummary ?? null,
+    specification: identity?.specification ?? identitySummary,
     category,
     quantityLabel: hours != null ? formatHours(hours) : quantityLabel,
     costLabel: view.pricingRequired ? "—" : view.totalCostFormatted,

@@ -4,6 +4,7 @@ import {
   toConfirmedInterviewInput,
 } from "@/lib/project-conditions/applicability";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
+import { isAssumableProjectConditionKey } from "@/lib/scopes/level1-blocking";
 import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
 import { sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
 import { groupDetailsCandidates } from "@/lib/assistant/clarify/details-groups";
@@ -32,8 +33,15 @@ import {
 } from "@/lib/project-conditions/consumed-authority";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
+  PILE_TREATMENT_OPTIONS,
+  pileRetentionPending,
+  shouldAskPileCount,
+} from "@/lib/estimate/deck-scope-2c";
+import { fasciaLengthDetailCandidates } from "@/lib/estimate/deck-fascia";
+import {
   blockingClassForKey,
   constraintIsKnown,
+  explicitUnknownConstraintValue,
   isAdvancedStructuralKey,
   isKnownValue,
   shouldAskBalustrade,
@@ -124,9 +132,12 @@ import {
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   corniceProductOptionsForType,
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
+  requestedStoppingLevelQuestion,
 } from "@/lib/estimate/internal-walls-finish";
 import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
@@ -455,10 +466,20 @@ function candidateFromJobPlanCheck(
   if (isAdvancedStructuralKey(key)) return null;
 
   const template = getQuestionTemplateByKey(key);
-  const askClass = askClassForScopeKey(key);
+  const waterproofingOpen = key === "bathroom.waterproofing_included";
+  const openingsOpen = key === "internal_walls.wall_type.has_openings";
+  const askClass = waterproofingOpen || openingsOpen
+    ? "ASSUME_IF_SKIPPED"
+    : askClassForScopeKey(key);
   if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
     return null;
   }
+  const pilePending =
+    key === "deck.pile_or_post_replacement_required" &&
+    pileRetentionPending({
+      facts: input.facts as EstimateFact[],
+      workAreaId: card.workAreaId,
+    });
 
   return {
     id: `check:${card.workAreaId}:${item.id}`,
@@ -470,16 +491,25 @@ function candidateFromJobPlanCheck(
     constraintKey: null,
     questionKey: key,
     label: item.label,
-    question:
-      template?.questionText ??
-      `Should ${item.label.toLowerCase()} be included?`,
+    question: pilePending
+      ? "Existing piles may be retained if sound after inspection. Should this quote assume they are replaced, or leave that decision until inspection?"
+      : (template?.questionText ??
+        `Should ${item.label.toLowerCase()} be included?`),
     askClass,
-    inputType: item.write?.valueType === "select" ? "select" : "boolean",
-    options: template?.options,
+    inputType: pilePending
+      ? "select"
+      : item.write?.valueType === "select"
+        ? "select"
+        : "boolean",
+    options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
-    write: item.write,
-    blocksEstimate: askClass === "HARD_MINIMUM",
-    assumable: askClass !== "HARD_MINIMUM",
+    write: pilePending ? null : item.write,
+    blocksEstimate: waterproofingOpen || openingsOpen
+      ? false
+      : askClass === "HARD_MINIMUM" || pilePending,
+    assumable: waterproofingOpen || openingsOpen
+      ? false
+      : askClass !== "HARD_MINIMUM" && !pilePending,
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:
@@ -944,7 +974,10 @@ function missingHardMinimum(
           questionKey: row.key,
           label: safeFactPresentationLabel(row.key),
           question: safeFactQuestion(row.key, template?.questionText),
-          askClass: "HARD_MINIMUM",
+          askClass:
+            row.key === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY
+              ? "ASSUME_IF_SKIPPED"
+              : "HARD_MINIMUM",
           inputType: row.inputType,
           unit: template?.unit,
           options: template?.options,
@@ -955,10 +988,13 @@ function missingHardMinimum(
             : undefined,
           writeTarget: "FACT",
           write: null,
-          blocksEstimate: true,
+          blocksEstimate: row.key !== INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
           assumable: false,
           rankScore: row.rankScore,
-          rankReason: "HARD_MINIMUM internal walls core",
+          rankReason:
+            row.key === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY
+              ? "Internal wall scope stays unresolved"
+              : "HARD_MINIMUM internal walls core",
           assumptionStatement: null,
           wallTypeId: active?.id ?? null,
           openingId: active?.active_opening_id ?? active?.openings[0]?.id ?? null,
@@ -1592,6 +1628,15 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         const displayName = type
           ? wallTypeDisplayName(type, index)
           : "Wall type";
+        const stoppingField =
+          nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
+          nextField === INTERNAL_WALLS_STOPPING_SIDE_B_KEY;
+        const stoppingRequested =
+          stoppingField &&
+          getBooleanFact(facts, wa.id, "internal_walls.stopping_included") === true;
+        const stoppingInclusionUnanswered = stoppingField && !stoppingRequested;
+        const openingsUnanswered =
+          nextField === "internal_walls.wall_type.has_openings";
         out.push({
           id: internalWallsClarifyId(
             "fact",
@@ -1608,17 +1653,23 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           constraintKey: null,
           questionKey: nextField,
           label: `${displayName} · ${safeFactPresentationLabel(nextField)}`,
-          question: internalWallsUnresolvedCopy(
-            displayName,
-            nextField,
-            safeFactQuestion(nextField, template?.questionText)
-          ),
+          question: stoppingRequested
+            ? requestedStoppingLevelQuestion(
+                nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
+              )
+            : internalWallsUnresolvedCopy(
+                displayName,
+                nextField,
+                safeFactQuestion(nextField, template?.questionText)
+              ),
           askClass:
-            nextField === "internal_walls.wall_type.height_m"
+            stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
               ? "ASSUME_IF_SKIPPED"
-              : isOptionalInternalWallsClarifyKey(nextField)
-                ? "REFINEMENT"
-                : "ASK_NOW",
+              : nextField === "internal_walls.wall_type.height_m"
+                ? "ASSUME_IF_SKIPPED"
+                : isOptionalInternalWallsClarifyKey(nextField)
+                  ? "REFINEMENT"
+                  : "ASK_NOW",
           inputType: clarifyInputTypeFromTemplate(template),
           unit: template?.unit,
           options:
@@ -1633,8 +1684,11 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           write: null,
           blocksEstimate: false,
           assumable:
-            nextField === "internal_walls.wall_type.height_m" ||
-            isOptionalInternalWallsClarifyKey(nextField),
+            !stoppingRequested &&
+            !stoppingInclusionUnanswered &&
+            !openingsUnanswered &&
+            (nextField === "internal_walls.wall_type.height_m" ||
+              isOptionalInternalWallsClarifyKey(nextField)),
           rankScore: (CHECK_SCORES[nextField] ?? 70) - index,
           rankReason: "Progressive wall type configuration",
           assumptionStatement:
@@ -1795,6 +1849,71 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankReason: `${descriptor.askClass} · ${descriptor.section}`,
           assumptionStatement: deckClarifyAssumptionStatement(key),
           economicClass,
+        });
+      }
+      const pileFacts = input.facts as EstimateFact[];
+      if (
+        pileRetentionPending({ facts: pileFacts, workAreaId: wa.id }) &&
+        shouldAskPileCount({ facts: pileFacts, workAreaId: wa.id }) &&
+        !factHas(input, "deck.pile_or_post_count", wa.id)
+      ) {
+        const countTemplate = getQuestionTemplateByKey("deck.pile_or_post_count");
+        out.push({
+          id: `fact:${wa.id}:deck.pile_or_post_count`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "deck.pile_or_post_count",
+          constraintKey: null,
+          questionKey: "deck.pile_or_post_count",
+          label: countTemplate?.label ?? "Piles/posts to replace",
+          question:
+            countTemplate?.questionText ??
+            "Approximate number of piles or posts to replace?",
+          askClass: "ASSUME_IF_SKIPPED",
+          inputType: "number",
+          unit: countTemplate?.unit,
+          options: countTemplate?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: false,
+          rankScore: CHECK_SCORES["deck.pile_or_post_count"] ?? 67,
+          rankReason: "Pending inspection · replacement count",
+          assumptionStatement: null,
+          economicClass: deckEconomicClass("deck.pile_or_post_count"),
+        });
+      }
+      for (const fasciaCandidate of fasciaLengthDetailCandidates({
+        facts: pileFacts,
+        workAreaId: wa.id,
+        lengthM: getNumberFact(pileFacts, wa.id, "deck.length_m"),
+        widthM: getNumberFact(pileFacts, wa.id, "deck.width_m"),
+      })) {
+        out.push({
+          id: `fact:${wa.id}:${fasciaCandidate.factKey}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: fasciaCandidate.factKey,
+          constraintKey: null,
+          questionKey: fasciaCandidate.factKey,
+          label: fasciaCandidate.label,
+          question: fasciaCandidate.question,
+          askClass: "ASK_NOW",
+          inputType: fasciaCandidate.inputType,
+          unit: fasciaCandidate.unit,
+          options: fasciaCandidate.options ? [...fasciaCandidate.options] : undefined,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: fasciaCandidate.blocksEstimate,
+          assumable: false,
+          rankScore: 70,
+          rankReason: "Fascia length",
+          assumptionStatement: null,
+          economicClass: deckEconomicClass("deck.vertical_face_boards_required"),
         });
       }
       continue;
@@ -2083,7 +2202,8 @@ function fallbackProjectCondition(
   ) {
     return null;
   }
-  const required = Boolean(params.required);
+  const level1Open = isAssumableProjectConditionKey(params.targetKey);
+  const required = level1Open ? false : Boolean(params.required);
   return {
     id: `pc:${params.targetKey}`,
     source: "project_condition",
@@ -2095,19 +2215,25 @@ function fallbackProjectCondition(
     questionKey: params.questionKey,
     label: safeFactPresentationLabel(params.targetKey),
     question: params.question,
-    askClass: required ? "ASK_NOW" : "ASSUME_IF_SKIPPED",
+    askClass: level1Open || !required ? "ASSUME_IF_SKIPPED" : "ASK_NOW",
     inputType: params.inputType ?? "select",
     options: params.options,
     writeTarget: "CONSTRAINT",
     write: null,
     blocksEstimate: false,
-    assumable: !required,
+    assumable: level1Open ? false : !required,
+    currentValue: explicitUnknownConstraintValue(
+      input.constraints,
+      params.targetKey
+    ),
     rankScore: params.score,
     rankReason: `Project Condition · ${params.targetKey}`,
     assumptionStatement: params.assumption,
-    economicClass: required
-      ? "REQUIRED_FOR_ECONOMIC_MODEL"
-      : params.economicClass,
+    economicClass: level1Open
+      ? undefined
+      : required
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : params.economicClass,
   };
 }
 
@@ -2159,14 +2285,19 @@ function projectConditionCandidates(
     if (!bathroom && score < 30) return [];
     const types = confirmedWorkAreaTypes(input);
     const consumedClass = consumedProjectConditionAskClass(c.targetKey);
-    const required = consumedClass
-      ? consumedConditionIsReadyBlocking(c.targetKey, types)
-      : isRequiredConsumedProjectCondition(c.targetKey);
-    const askClass = required
-      ? "ASK_NOW"
-      : consumedClass === "ASK_NOW"
-        ? "ASSUME_IF_SKIPPED"
-        : consumedClass ?? "ASSUME_IF_SKIPPED";
+    const level1Open = isAssumableProjectConditionKey(c.targetKey);
+    const required = level1Open
+      ? false
+      : consumedClass
+        ? consumedConditionIsReadyBlocking(c.targetKey, types)
+        : isRequiredConsumedProjectCondition(c.targetKey);
+    const askClass = level1Open
+      ? "ASSUME_IF_SKIPPED"
+      : required
+        ? "ASK_NOW"
+        : consumedClass === "ASK_NOW"
+          ? "ASSUME_IF_SKIPPED"
+          : consumedClass ?? "ASSUME_IF_SKIPPED";
     return [
       {
         id: `pc:${c.targetKey}`,
@@ -2188,7 +2319,11 @@ function projectConditionCandidates(
         writeTarget: "CONSTRAINT" as const,
         write: null,
         blocksEstimate: false,
-        assumable: !required,
+        assumable: level1Open ? false : !required,
+        currentValue: explicitUnknownConstraintValue(
+          input.constraints,
+          c.targetKey
+        ),
         rankScore: score,
         rankReason: `Project Condition · ${c.targetKey}`,
         assumptionStatement:
@@ -2198,11 +2333,13 @@ function projectConditionCandidates(
             : c.targetKey === "waste_bin_access"
               ? "Standard waste handling"
               : null),
-        economicClass: required
-          ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
-          : bathroom && p0
+        economicClass: level1Open
+          ? undefined
+          : required
             ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
-            : undefined,
+            : bathroom && p0
+              ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
+              : undefined,
       },
     ];
   });

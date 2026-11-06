@@ -4,7 +4,8 @@
  * waste %, hours, or $ allowances. Do not change IW-03–06 formulas.
  */
 
-import { round2 } from "@/lib/estimate/facts";
+import { getNumberFact, round2 } from "@/lib/estimate/facts";
+import type { EstimateFact } from "@/lib/estimate/types";
 import {
   openingHasCompleteGeometry,
   openingsEligibleForTakeoff,
@@ -252,6 +253,13 @@ export const INTERNAL_WALLS_INSULATION_WASTE_DECISION =
 
 export const INTERNAL_WALLS_SKIRTING_OPENING_RULE =
   "Door, passage, and other openings deduct their width from skirting on each selected face. Passage is not deducted twice on the same face." as const;
+
+/** A stated length stays the quantity. Face selection does not replace it. */
+export const INTERNAL_WALLS_SKIRTING_LENGTH_FACT_KEY =
+  "internal_walls.skirting_length_lm" as const;
+
+export const INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED =
+  "Edges are not allocated, so face lengths are not derived and do not replace the stated length." as const;
 
 export const INTERNAL_WALLS_CORNICE_OPENING_RULE =
   "Ordinary door and passage openings below wall height do not reduce cornice. Full-height openings that reach wall height deduct width." as const;
@@ -809,6 +817,56 @@ export function skirtingTakeoff(params: {
   };
 }
 
+export function statedSkirtingLengthLm(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): number | null {
+  const value = getNumberFact(
+    [...facts],
+    workAreaId,
+    INTERNAL_WALLS_SKIRTING_LENGTH_FACT_KEY
+  );
+  return value != null && value > 0 ? value : null;
+}
+
+/**
+ * Explicit measured length is the commercial quantity.
+ * Face allocation says where that length applies.
+ * A different face-derived length is a review, not a replacement.
+ * With no stated length, the face derivation is the quantity.
+ * One stated total is not copied onto every wall type.
+ */
+export function resolveSkirtingCommercialQuantity(params: {
+  statedLm: number | null;
+  derivedLm: number;
+  skirtingTypeCount: number;
+}): {
+  quantityLm: number;
+  usedStated: boolean;
+  review: string | null;
+} {
+  const derived = params.derivedLm;
+  if (params.statedLm == null || !(params.statedLm > 0)) {
+    return { quantityLm: derived, usedStated: false, review: null };
+  }
+  if (params.skirtingTypeCount !== 1) {
+    return {
+      quantityLm: derived,
+      usedStated: false,
+      review: `Stated skirting length ${params.statedLm} lm applies to the job. It is not split across ${params.skirtingTypeCount} wall types until that allocation is chosen. Face lengths stay derived.`,
+    };
+  }
+  const stated = params.statedLm;
+  const conflicts = Math.abs(stated - derived) > 0.05;
+  return {
+    quantityLm: stated,
+    usedStated: true,
+    review: conflicts
+      ? `Stated skirting length ${stated} lm is used. The selected faces derive ${round2(derived)} lm. That derived length does not replace the stated length.`
+      : null,
+  };
+}
+
 export function openingInterruptsCornice(params: {
   opening: Pick<InternalWallsOpening, "width_m" | "height_m">;
   wallHeightM: number | null;
@@ -899,6 +957,11 @@ export function visibleFaceAreaM2(params: {
   | { ok: true; areaM2: number; grossM2: number; openingDeductionM2: number }
   | { ok: false; message: string } {
   return insulationAreaForWallType(params);
+}
+
+/** Level question for stopping the brief already requested. No is still a deliberate edit. */
+export function requestedStoppingLevelQuestion(side: "A" | "B"): string {
+  return `What stopping level is required on Side ${side}?`;
 }
 
 export function stoppingTakeoff(params: {

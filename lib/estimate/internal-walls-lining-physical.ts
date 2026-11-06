@@ -25,6 +25,11 @@ import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  liningSpecificationComponent,
+  liningUnspecifiedComponent,
+  requestedTaskCoverageText,
+} from "@/lib/estimate/requested-task-coverage";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import type {
   EstimateRequirement,
@@ -497,6 +502,21 @@ function emitLinedFaces(params: {
     if (!takeoff.ok) {
       if (takeoff.kind === "not_lined") continue;
       if (takeoff.kind === "incomplete" && takeoff.message == null) continue;
+      if (takeoff.kind === "incomplete" && takeoff.message) {
+        emitUnspecifiedLining({
+          workArea,
+          type,
+          displayName,
+          side,
+          overlapGroup,
+          message: takeoff.message,
+          productKnown: face.product != null,
+          requirements,
+          lineItems,
+          bumpSortOrder,
+        });
+        continue;
+      }
       if (takeoff.kind === "too_short" && takeoff.message) {
         missingInfo.push(takeoff.message);
         continue;
@@ -540,6 +560,80 @@ function emitLinedFaces(params: {
       bumpSortOrder,
     });
   }
+}
+
+function emitUnspecifiedLining(params: {
+  workArea: EstimateWorkArea;
+  type: InternalWallsWallType;
+  displayName: string;
+  side: InternalWallsLiningFaceSide;
+  overlapGroup: string;
+  message: string;
+  productKnown: boolean;
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  bumpSortOrder: () => number;
+}): void {
+  const componentKey = params.productKnown
+    ? liningSpecificationComponent(params.side)
+    : liningUnspecifiedComponent(params.side);
+  const area =
+    params.type.length_lm != null &&
+    params.type.height_m != null &&
+    params.type.length_lm > 0 &&
+    params.type.height_m > 0
+      ? round2(params.type.length_lm * params.type.height_m)
+      : null;
+  const label = `${params.displayName} — ${sideLabel(params.side)} lining`;
+  const notes = requestedTaskCoverageText({
+    task: `${sideLabel(params.side)} lining is requested${
+      area != null ? ` over ${area} m²` : ""
+    }.`,
+    kind: "unresolved_specification",
+    recovery: params.productKnown
+      ? params.message
+      : `${params.message} Plasterboard is not assumed from the word lining.`,
+  });
+  params.requirements.push(
+    buildMaterialRequirement({
+      workAreaId: params.workArea.id,
+      workAreaType: "internal_walls",
+      componentKey,
+      variantKey: `${params.type.id}:${params.side}`,
+      description: label,
+      confidence: "low",
+      assumptions: [],
+      provenance: {
+        calculatorSource: "internal-walls-lining",
+        factKeys: ["internal_walls.wall_types"],
+        constraintKeys: [],
+      },
+      priced: false,
+      materialKey: null,
+      category: "LINING",
+      specification: notes,
+      baseQuantity: area ?? 1,
+      baseUnit: area != null ? "m2" : "face",
+      wasteFactor: 0,
+      purchaseQuantity: area ?? 1,
+      purchaseUnit: area != null ? "m2" : "face",
+      rateSource: "missing",
+      unitCost: null,
+      totalCost: null,
+    })
+  );
+  const line = unpricedMaterialLine({
+    workArea: params.workArea,
+    label,
+    quantity: area ?? 1,
+    unit: area != null ? "m2" : "face",
+    componentKey,
+    identitySummary: notes,
+    notes,
+    sortOrder: params.bumpSortOrder(),
+    overlapGroup: `${params.overlapGroup}:${params.side}`,
+  });
+  params.lineItems.push({ ...line, includedInTotal: false, scopeKey: componentKey });
 }
 
 function emitCatalogueGap(params: {

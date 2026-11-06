@@ -11,8 +11,12 @@ import {
 } from "@/lib/project-conditions/brief-logistics";
 import {
   explicitDeckBriefFacts,
+  explicitDeckPostCount,
   explicitDeckStepWidthM,
 } from "@/lib/estimate/deck-brief-facts";
+import { interpretBathroomBrief } from "@/lib/estimate/bathroom-brief";
+import { deckScopeIntent } from "@/lib/estimate/scope-intent";
+import { ambiguousMaterialWasteWarning } from "@/lib/estimate/explicit-material-waste";
 import {
   briefHasIntegralDeckStepLanguage,
   filterIntegralDeckExternalStairsWorkAreas,
@@ -23,7 +27,9 @@ import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-
 import {
   applyExtractedInternalWallsToFacts,
   classifyInternalWallsJobScopeFromBrief,
+  doorPaintingStance,
   extractInternalWallsTypesFromBrief,
+  internalWallsTopicStance,
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
 import { discoverWorkAreaInstances, snippetForDiscoveredInstance } from "@/lib/work-areas/discovery-instances";
@@ -35,6 +41,7 @@ import {
   briefHasIndependentDoors,
   briefHasIndependentFlooring,
   briefHasIndependentKitchen,
+  briefHasIndependentPainting,
   briefFlooringOwnsConnectedRemoval,
   briefHasStandaloneDemolitionPackage,
   filterTopLevelWorkAreas,
@@ -50,7 +57,9 @@ import {
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
   extractDoorPortionsFromBrief,
+  clearDoorHeightCopiedFromAnotherAssembly,
   mergeDoorPortionsPreferringDeterministic,
+  reconcileDoorLeavesWithBrief,
   readAiDoorPortionsFromExtraction,
   seedExtractedDoorsFact,
   stripLegacyDoorFactsFromExtraction,
@@ -109,10 +118,38 @@ function matchAreaM2(text: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function matchInternalWallHeight(text: string): { 1: string } | RegExpMatchArray | null {
+  const millimetres = text.match(/(\d{3,4})\s*mm\s+high\b/i);
+  if (millimetres) {
+    const metres = Number(millimetres[1]) / 1000;
+    if (Number.isFinite(metres) && metres >= 1.8 && metres <= 6) {
+      return { 1: String(metres) };
+    }
+  }
+  const atMillimetres = text.match(/\bat\s+(\d{3,4})\s*mm\b/i);
+  if (atMillimetres && /\b(walls?|partitions?|stud)\b/i.test(text)) {
+    const metres = Number(atMillimetres[1]) / 1000;
+    if (Number.isFinite(metres) && metres >= 1.8 && metres <= 6) {
+      return { 1: String(metres) };
+    }
+  }
+  return (
+    text.match(/(\d+(?:\.\d+)?)\s*m(?:etres?)?\s+high\b/i) ||
+    text.match(/(\d+(?:\.\d+)?)\s*high\b/i)
+  );
+}
+
 function matchLinearMetres(text: string): number | null {
   const match = text.match(/(\d+(?:\.\d+)?)\s*(?:lm|linear\s*metre|m\s+(?:of|long))/i);
-  if (!match) return null;
-  const value = Number(match[1]);
+  if (match) {
+    const value = Number(match[1]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  const beforeWall = text.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+(?:long\s+|of\s+)?(?:non[-\s]?loadbearing\s+)?(?:timber\s+)?(?:stud\s+)?(?:internal\s+)?walls?\b/i
+  );
+  if (!beforeWall) return null;
+  const value = Number(beforeWall[1]);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
@@ -297,7 +334,7 @@ function inferPainting(
     "two coats",
     "2 coats",
   ];
-  if (!includesAny(brief, patterns)) return;
+  if (!briefHasIndependentPainting(brief) && !includesAny(brief, patterns)) return;
 
   addWorkAreaIfMissing(
     extraction,
@@ -393,9 +430,7 @@ function addInternalWallsFactsFromSnippet(
     });
   }
 
-  const heightMatch =
-    snippet.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
-    snippet.match(/(\d+(?:\.\d+)?)\s*high/i);
+  const heightMatch = matchInternalWallHeight(snippet);
   if (heightMatch) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -407,7 +442,7 @@ function addInternalWallsFactsFromSnippet(
     });
   }
 
-  if (includesAny(snippet, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
+  if (includesAny(snippet, ["timber framed", "timber frame", "timber stud", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       workAreaName,
@@ -440,8 +475,17 @@ function inferInternalWalls(
     "90×45",
     "45x90",
     "45×90",
+    "stud wall",
+    "timber stud",
+    "plasterboard wall",
   ];
-  if (!includesAny(brief, patterns) && !/\bpartition/.test(brief)) return;
+  if (
+    !includesAny(brief, patterns) &&
+    !/\bpartition/.test(brief) &&
+    !/\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+  ) {
+    return;
+  }
 
   addWorkAreaIfMissing(
     extraction,
@@ -506,9 +550,7 @@ function inferInternalWalls(
     });
   }
 
-  const heightMatch =
-    brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
-    brief.match(/(\d+(?:\.\d+)?)\s*high/i);
+  const heightMatch = matchInternalWallHeight(brief);
   if (heightMatch) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -519,7 +561,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
+  if (includesAny(brief, ["timber framed", "timber frame", "timber stud", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.framing_type",
@@ -528,7 +570,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["line both sides", "both sides"])) {
+  if (includesAny(brief, ["line both sides", "both sides", "both faces"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.lining_sides",
@@ -555,13 +597,45 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["skirting"])) {
-    addFact(extraction, {
+  const paintingStance = internalWallsTopicStance(brief, "painting");
+  if (paintingStance === "included" || paintingStance === "excluded") {
+    upsertFact(extraction, {
+      workAreaType: "internal_walls",
+      key: "internal_walls.painting_included",
+      label: "Painting",
+      value: paintingStance === "included",
+    });
+  }
+
+  const stoppingStance = internalWallsTopicStance(brief, "stopping");
+  if (stoppingStance === "included" || stoppingStance === "excluded") {
+    upsertFact(extraction, {
+      workAreaType: "internal_walls",
+      key: "internal_walls.stopping_included",
+      label: "Stopping",
+      value: stoppingStance === "included",
+    });
+  }
+
+  const skirtingStance = internalWallsTopicStance(brief, "skirting");
+  if (skirtingStance === "included" || skirtingStance === "excluded") {
+    upsertFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.skirtings_included",
       label: "Skirtings",
-      value: true,
+      value: skirtingStance === "included",
     });
+    const skirtingLength = brief.match(
+      /(\d+(?:\.\d+)?)\s*(?:linear\s+)?m(?:etre)?s?\s+of\s+skirting\b/i
+    );
+    if (skirtingLength && skirtingStance === "included") {
+      addFact(extraction, {
+        workAreaType: "internal_walls",
+        key: "internal_walls.skirting_length_lm",
+        label: "Skirting length",
+        value: Number(skirtingLength[1]),
+      });
+    }
   }
 
   const proposedLength =
@@ -616,14 +690,14 @@ function inferInternalWalls(
         value: proposedHeight,
       });
     }
-    if (includesAny(brief, ["gib", "plasterboard", "both sides"])) {
+    if (includesAny(brief, ["gib", "plasterboard"])) {
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId,
         key: "internal_walls.wall_type.side_a_product",
         value: "Standard GIB",
       });
-      if (includesAny(brief, ["both sides"])) {
+      if (includesAny(brief, ["both sides", "both faces"])) {
         facts = applyInternalWallsFactWrite({
           facts,
           workAreaId,
@@ -631,6 +705,19 @@ function inferInternalWalls(
           value: true,
         });
       }
+    } else if (includesAny(brief, ["both sides", "both faces", "line both sides"])) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.side_a_lined",
+        value: "Lined",
+      });
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.same_lining_both_sides",
+        value: true,
+      });
     }
     const wallTypes = facts.find((row) => row.key === "internal_walls.wall_types")?.value;
     if (Array.isArray(wallTypes) && wallTypes.length > 0) {
@@ -663,10 +750,53 @@ function inferDoors(
 
   const parsed = extractDoorPortionsFromBrief(brief);
   const ai = readAiDoorPortionsFromExtraction(extraction);
-  const portions = mergeDoorPortionsPreferringDeterministic(ai, parsed);
+  const portions = clearDoorHeightCopiedFromAnotherAssembly(
+    reconcileDoorLeavesWithBrief(
+      mergeDoorPortionsPreferringDeterministic(ai, parsed),
+      brief
+    ),
+    brief
+  );
+  const modelLeaf = ai.find((row) => row.leaf_construction != null);
+  const keptLeaf = portions.find((row) => row.leaf_authority === "extracted");
+  if (
+    modelLeaf?.leaf_construction &&
+    keptLeaf?.leaf_construction &&
+    modelLeaf.leaf_construction !== keptLeaf.leaf_construction
+  ) {
+    extraction.warnings.push(
+      "The analysis named a different door leaf from the brief. The brief was kept."
+    );
+  } else if (
+    modelLeaf?.leaf_construction &&
+    portions.every((row) => row.leaf_construction == null) &&
+    !portions.some((row) => row.leaf_authority === "user")
+  ) {
+    extraction.warnings.push(
+      "Door leaf construction was not in the brief, so it was left unresolved."
+    );
+  }
   if (portions.length > 0) {
     seedExtractedDoorsFact(extraction, { portions });
     stripLegacyDoorFactsFromExtraction(extraction);
+  }
+  const hasDoorScope =
+    portions.length > 0 ||
+    extraction.workAreas.some((area) => area.type === "doors");
+  if (hasDoorScope) {
+    const doorPaint = doorPaintingStance(brief);
+    if (doorPaint === "included" || doorPaint === "excluded") {
+      upsertFact(extraction, {
+        workAreaType: "doors",
+        key: "doors.painting_included",
+        label: "Door painting",
+        value: doorPaint === "included",
+      });
+    } else if (doorPaint === "contradiction") {
+      const message =
+        "The brief both includes and excludes door painting. That conflict is left for review.";
+      if (!extraction.warnings.includes(message)) extraction.warnings.push(message);
+    }
   }
 }
 
@@ -928,6 +1058,43 @@ function inferBathroom(
       value: true,
     });
   }
+
+  const preserved = interpretBathroomBrief(brief);
+  if (!preserved) return;
+  for (const key of preserved.dropKeys) {
+    extraction.facts = extraction.facts.filter(
+      (fact) => !(fact.work_area_type === "bathroom" && fact.key === key)
+    );
+  }
+  for (const fact of preserved.facts) {
+    upsertFact(extraction, {
+      workAreaType: "bathroom",
+      key: fact.key,
+      label: fact.label,
+      value: fact.value,
+      unit: fact.unit,
+      confidence: 0.92,
+    });
+  }
+}
+
+function matchDeckPlanMetres(brief: string): { length: number; width: number } | null {
+  const metres = brief.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)\s*m(?:etres?)?/i
+  );
+  if (metres) {
+    return { length: Number(metres[1]), width: Number(metres[2]) };
+  }
+  const millimetres = brief.match(
+    /(\d{1,2},\d{3}|\d{3,5})\s*mm\s*(?:[x×]|by)\s*(\d{1,2},\d{3}|\d{3,5})\s*mm/i
+  );
+  if (!millimetres) return null;
+  const length = Number(millimetres[1].replace(/,/g, "")) / 1000;
+  const width = Number(millimetres[2].replace(/,/g, "")) / 1000;
+  if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) {
+    return null;
+  }
+  return { length, width };
 }
 
 function inferDeck(
@@ -971,6 +1138,9 @@ function inferDeck(
       "build a deck",
       "build new deck",
       "new deck",
+      "decking board",
+      "decking platform",
+      "supply and install decking",
     ]) ||
     (includesAny(brief, ["build"]) &&
       mentionsDeck &&
@@ -993,22 +1163,20 @@ function inferDeck(
     allowedTypes
   );
 
-  const dims = brief.match(
-    /(\d+(?:\.\d+)?)\s*m\s*[x×]\s*(\d+(?:\.\d+)?)\s*m/
-  );
+  const dims = matchDeckPlanMetres(brief);
   if (dims) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.length_m",
       label: "Deck length",
-      value: Number(dims[1]),
+      value: dims.length,
       unit: "m",
     });
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.width_m",
       label: "Deck width",
-      value: Number(dims[2]),
+      value: dims.width,
       unit: "m",
     });
   }
@@ -1977,7 +2145,16 @@ export function extractConstraintsFromBrief(
     });
   }
 
-  const carryDistance = mapCarryDistanceConstraint(cartingM);
+  const statedUnderTenMetres =
+    /(?:carried|carry|carting|carted)(?:\s+\w+){0,4}\s+under\s+10\s*m\b/.test(
+      brief
+    ) ||
+    /\bunder\s+10\s*m\b(?:\s+\w+){0,4}\s+(?:carry|carried|carting|carted)\b/.test(
+      brief
+    );
+  const carryDistance = statedUnderTenMetres
+    ? "< 10m"
+    : mapCarryDistanceConstraint(cartingM);
   if (carryDistance) {
     constraints.push({
       key: "material_carry_distance",
@@ -2007,6 +2184,18 @@ export function extractConstraintsFromBrief(
       label: "Working hours",
       value: "Yes",
     });
+  } else if (
+    includesAny(brief, [
+      "unrestricted hours",
+      "hours are unrestricted",
+      "working hours are unrestricted",
+    ])
+  ) {
+    constraints.push({
+      key: "working_hours",
+      label: "Working hours",
+      value: "No",
+    });
   }
 
   if (
@@ -2035,8 +2224,13 @@ export function extractConstraintsFromBrief(
     includesAny(brief, [
       "occupied site",
       "occupied dwelling",
+      "occupied commercial",
+      "occupied building",
+      "occupied office",
       "site occupied",
       "house occupied",
+      "occupied house",
+      "occupied upstairs",
       "occupied during",
       "client living on site",
     ])
@@ -2045,6 +2239,18 @@ export function extractConstraintsFromBrief(
       key: "occupied_site",
       label: "Occupied site",
       value: "Yes",
+    });
+  } else if (
+    includesAny(brief, [
+      "not occupied",
+      "site is unoccupied",
+      "unoccupied site",
+    ])
+  ) {
+    constraints.push({
+      key: "occupied_site",
+      label: "Occupied site",
+      value: "No",
     });
   }
 
@@ -2062,6 +2268,40 @@ export function extractConstraintsFromBrief(
       key: "floor_level",
       label: "Floor level",
       value: "Upper floor",
+    });
+  } else if (includesAny(brief, ["ground floor", "ground-floor"])) {
+    constraints.push({
+      key: "floor_level",
+      label: "Floor level",
+      value: "Ground",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "protection of",
+      "protect common",
+      "common areas",
+    ])
+  ) {
+    constraints.push({
+      key: "protection_dust_control",
+      label: "Protection / dust control",
+      value: "Yes",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "booked delivery",
+      "delivery windows",
+      "after hours",
+    ])
+  ) {
+    constraints.push({
+      key: "working_hours",
+      label: "Working hours",
+      value: "Yes",
     });
   }
 
@@ -2224,6 +2464,65 @@ function inferCeilings(
   }
 }
 
+function recordRequestedCoverageGaps(
+  brief: string,
+  extraction: AIExtractionOutput
+): void {
+  const hits: string[] = [];
+  if (/\bsite establishment\b/.test(brief)) hits.push("site establishment");
+  if (/\bdaily cleaning\b/.test(brief)) hits.push("daily cleaning");
+  if (/\bfinal cleaning\b/.test(brief)) hits.push("final cleaning");
+  if (/\bsupervision\b/.test(brief)) hits.push("supervision");
+  if (/\bduration\b[^.]{0,40}\bnot\b/.test(brief)) {
+    hits.push("duration is not confirmed");
+  }
+  if (/\bgoods lift\b/.test(brief)) hits.push("goods-lift access");
+  const excludedTrades: string[] = [];
+  for (const sentence of brief.split(/(?<=[.!?])\s+/)) {
+    if (!/\b(?:no|without|exclud\w*|stay out|stays out|left out|are out|is out|not included|not part of|by others)\b/.test(sentence)) {
+      continue;
+    }
+    for (const trade of ["structural", "plumbing", "fire", "electrical"] as const) {
+      if (sentence.includes(trade) && !excludedTrades.includes(trade)) {
+        excludedTrades.push(trade);
+      }
+    }
+  }
+  if (
+    internalWallsTopicStance(brief, "electrical") === "excluded" &&
+    !excludedTrades.includes("electrical")
+  ) {
+    excludedTrades.push("electrical");
+  }
+  const projectLevel = new Set([
+    "site establishment",
+    "daily cleaning",
+    "final cleaning",
+    "supervision",
+  ]);
+  const remaining = hits.filter((hit) => !projectLevel.has(hit));
+  if (remaining.length === 0 && excludedTrades.length === 0) return;
+  const note = [
+    remaining.length > 0 ? `Requested and not priced: ${remaining.join(", ")}.` : "",
+    excludedTrades.length > 0
+      ? `Excluded trades: ${excludedTrades.join(", ")}.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  extraction.warnings.push(note);
+  const host =
+    extraction.workAreas.find((row) => row.type === "internal_walls") ??
+    extraction.workAreas[0];
+  if (!host) return;
+  addFact(extraction, {
+    workAreaType: host.type,
+    key: `${host.type}.coverage_note`,
+    label: "Coverage note",
+    value: note,
+  });
+}
+
 export function enrichExtractionFromBrief(params: {
   briefText: string;
   extraction: AIExtractionOutput;
@@ -2260,6 +2559,71 @@ export function enrichExtractionFromBrief(params: {
   applyDiscoveredWorkAreaInstances(params.briefText, extraction, params.allowedTypes);
   applyConstraintFactsToWorkAreas(brief, extraction);
   stripInventedInternalWallsFacts(extraction, params.briefText);
+  const deckIntent = /\bdeck(?:ing)?\b/i.test(params.briefText)
+    ? deckScopeIntent(params.briefText, explicitDeckPostCount(params.briefText))
+    : null;
+  if (
+    deckIntent &&
+    deckIntent.upserts.length > 0 &&
+    !hasWorkAreaType(extraction, "deck")
+  ) {
+    addWorkAreaIfMissing(
+      extraction,
+      "deck",
+      0.9,
+      "Deck mentioned in brief",
+      params.allowedTypes
+    );
+  }
+  if (deckIntent && hasWorkAreaType(extraction, "deck")) {
+    const intent = deckIntent;
+    for (const key of intent.dropKeys) {
+      extraction.facts = extraction.facts.filter(
+        (fact) => !(fact.work_area_type === "deck" && fact.key === key)
+      );
+    }
+    for (const fact of intent.upserts) {
+      upsertFact(extraction, {
+        workAreaType: "deck",
+        key: fact.key,
+        label: fact.label,
+        value: fact.value,
+        confidence: 0.95,
+      });
+    }
+    if (!extraction.facts.some((fact) => fact.key === "deck.length_m")) {
+      const plan = matchDeckPlanMetres(params.briefText);
+      if (plan) {
+        addFact(extraction, {
+          workAreaType: "deck",
+          key: "deck.length_m",
+          label: "Deck length",
+          value: plan.length,
+          unit: "m",
+        });
+        addFact(extraction, {
+          workAreaType: "deck",
+          key: "deck.width_m",
+          label: "Deck width",
+          value: plan.width,
+          unit: "m",
+        });
+      }
+    }
+    if (intent.dropPaintingWorkArea) {
+      extraction.workAreas = extraction.workAreas.filter(
+        (row) => row.type !== "painting"
+      );
+      extraction.facts = extraction.facts.filter(
+        (fact) => fact.work_area_type !== "painting"
+      );
+    }
+    for (const warning of intent.warnings) {
+      if (!extraction.warnings.includes(warning)) {
+        extraction.warnings.push(warning);
+      }
+    }
+  }
   const owned = filterTopLevelWorkAreas({
     briefText: params.briefText,
     workAreas: extraction.workAreas,
@@ -2284,6 +2648,12 @@ export function enrichExtractionFromBrief(params: {
   const qualityLevel = extractQualityFromBrief(params.briefText);
   const constraints = extractConstraintsFromBrief(params.briefText);
   mergePossibleConstraints(extraction, constraints);
+
+  recordRequestedCoverageGaps(brief, extraction);
+  const wasteWarning = ambiguousMaterialWasteWarning(params.briefText);
+  if (wasteWarning && !extraction.warnings.includes(wasteWarning)) {
+    extraction.warnings.push(wasteWarning);
+  }
 
   if (extraction.workAreas.length === 0) {
     extraction.warnings.push("No work areas detected after enrichment.");

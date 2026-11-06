@@ -35,6 +35,7 @@ import {
   updatePricingItem,
 } from "@/lib/pricing/actions";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import { pricingTaxBasisDecision } from "@/lib/pricing/gst-source";
 import {
   ceilingProvisionalDecision,
   ceilingProvisionalLineFromPricingItem,
@@ -43,6 +44,8 @@ import {
   identityFromPricingItem,
   isPendingPricingItemId,
 } from "@/lib/pricing/manual-requirement-promotion";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { pileReplacementAllowanceSavesInPlace } from "@/lib/estimate/deck-scope-2c";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   UNKNOWN_MATERIAL_COST_QUOTE_BLOCK,
@@ -64,6 +67,10 @@ import type {
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { SupplierPriceProvider } from "@/components/pricing/SupplierPriceEditor";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
+import {
+  quoteVisibleExcludedLineBlock,
+  UNRESOLVED_SCOPE_REVIEW_BLOCK,
+} from "@/lib/pricing/scope-finalisation";
 import type { SupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 import type { ScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
 import { ScheduleScopeGaps } from "@/components/pricing/ScheduleScopeGaps";
@@ -76,6 +83,10 @@ type PricingWorkspaceProps = {
   supplierReview?: SupplierPriceReview | null;
   scopeReview?: ScheduleScopeReview | null;
   estimateUpdateRequired?: string | null;
+  gstRegistered?: boolean | null;
+  defaultGstRate?: number | null;
+  scopeStillOpen?: boolean;
+  scopeReviewBlock?: string | null;
 };
 
 export function PricingWorkspace({
@@ -86,6 +97,10 @@ export function PricingWorkspace({
   supplierReview = null,
   scopeReview = null,
   estimateUpdateRequired = null,
+  gstRegistered,
+  defaultGstRate = null,
+  scopeStillOpen = false,
+  scopeReviewBlock = null,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [isBulkPending, startBulk] = useTransition();
@@ -108,6 +123,7 @@ export function PricingWorkspace({
   const saveInFlight = useRef(false);
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
+  const [meaningDrift, setMeaningDrift] = useState(initialData.documentMeaningDrift);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
   const { latestEstimateIsStale, latestEstimateRecommendedSell } = initialData;
   const projectId = document.project_id;
@@ -139,6 +155,7 @@ export function PricingWorkspace({
     }));
     setItems(initialData.items);
     setWorkAreas(initialData.workAreas);
+    setMeaningDrift(initialData.documentMeaningDrift);
   }, [initialData]);
 
   // Local disclosure only. The media-query callback records the first
@@ -174,6 +191,17 @@ export function PricingWorkspace({
     () => unresolvedManualPricingQuoteBlock(items),
     [items]
   );
+  const excludedFromTotalBlock = useMemo(
+    () => quoteVisibleExcludedLineBlock(items),
+    [items]
+  );
+  const scopeFinalisationBlock = useMemo(
+    () =>
+      excludedFromTotalBlock ??
+      (scopeReviewBlock ??
+        (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null)),
+    [excludedFromTotalBlock, scopeReviewBlock, scopeStillOpen]
+  );
   const provisionalQuoteBlock = useMemo(
     () =>
       ceilingProvisionalDecision({
@@ -183,6 +211,13 @@ export function PricingWorkspace({
       }).block,
     [document.org_id, document.provisional_ceiling_confirmation, items]
   );
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered,
+    defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
 
   const activeItems = useMemo(
     () => items.filter((item) => !isReplacedSubcontractPlaceholder(item)),
@@ -349,7 +384,14 @@ export function PricingWorkspace({
         }
         return result;
       }
-      if (promote && currentItem) {
+      if (
+        promote &&
+        currentItem &&
+        !pileReplacementAllowanceSavesInPlace({
+          itemKey: parseLineItemNotes(currentItem.notes_internal).metadata.itemKey,
+          label: currentItem.internal_label,
+        })
+      ) {
         const identity = identityFromPricingItem(currentItem);
         if (!identity) {
           return {
@@ -559,6 +601,7 @@ export function PricingWorkspace({
             latestEstimateIsStale={latestEstimateIsStale}
             quoteSummary={quoteSummary}
             projectId={projectId}
+            scopeStillOpen={scopeStillOpen}
           />
         }
       />
@@ -584,6 +627,9 @@ export function PricingWorkspace({
         pricingChangedAfterQuote={pricingChangedAfterQuote}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
+        gstRegistered={gstRegistered}
+        defaultGstRate={defaultGstRate}
+        onTaxBasisUpdated={setDocument}
       />
 
       {quoteSummary != null ? (
@@ -597,12 +643,14 @@ export function PricingWorkspace({
           projectId={projectId}
           pricingDocumentId={pricingDocumentId}
           needsRecalibration={document.needs_recalibration}
+          documentMeaningDrift={meaningDrift}
           quoteExists={quoteSummary != null}
           latestEstimateIsStale={latestEstimateIsStale}
           canEdit={canEditPricing}
           onApplied={({ document: updatedDocument, items: updatedItems }) => {
             setDocument(updatedDocument);
             setItems(updatedItems);
+            setMeaningDrift(false);
           }}
           onKeepCurrent={() => {
             setDocument((current) => ({
@@ -724,6 +772,7 @@ export function PricingWorkspace({
                 onDeleteItem={handleDeleteItem}
                 onAddItem={handleAddItem}
                 showAddItem={groupBy === "work_area"}
+                scopeStillOpen={scopeStillOpen}
                 openRequest={openRequest}
                 openRequestNonce={openRequestNonce}
                 initiallyRevealed={
@@ -745,8 +794,10 @@ export function PricingWorkspace({
             items={items}
             workAreas={workAreas}
             recommendedSell={latestEstimateRecommendedSell}
-            disabled={isSaving}
+            disabled={isSaving || excludedFromTotalBlock != null}
             readOnly={!canEditPricing}
+            scopeUnresolved={scopeStillOpen}
+            pricesUnresolved={unresolvedPriceCount > 0}
             onApplyFinalSell={handleApplyFinalSell}
           />
 
@@ -802,7 +853,9 @@ export function PricingWorkspace({
                 disabled={isSaving}
                 pendingLabel={reviewLabel}
                 blockedReason={
+                  scopeFinalisationBlock ||
                   estimateUpdateRequired?.trim() ||
+                  taxBasisBlock ||
                   provisionalQuoteBlock ||
                   manualQuoteBlock ||
                   (unresolvedPriceCount > 0 ? UNKNOWN_MATERIAL_COST_QUOTE_BLOCK : null)
@@ -822,6 +875,12 @@ export function PricingWorkspace({
           canEdit={canEditPricing}
           scopeQuoteBlock={scopeReview?.blocking ?? null}
           estimateUpdateRequired={estimateUpdateRequired}
+          gstRegistered={gstRegistered}
+          defaultGstRate={defaultGstRate}
+          onTaxBasisUpdated={setDocument}
+          recommendedSell={latestEstimateRecommendedSell}
+          scopeUnresolved={scopeStillOpen}
+          pricesUnresolved={unresolvedPriceCount > 0}
         />
       </div>
 
@@ -832,10 +891,16 @@ export function PricingWorkspace({
         quoteSummary={quoteSummary}
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
-        needsRecalibration={document.needs_recalibration}
+        needsRecalibration={document.needs_recalibration || meaningDrift}
         canEdit={canEditPricing}
         scopeQuoteBlock={scopeReview?.blocking ?? null}
+        extraReviewBlock={scopeFinalisationBlock}
         estimateUpdateRequired={estimateUpdateRequired}
+        gstRegistered={gstRegistered}
+        defaultGstRate={defaultGstRate}
+        recommendedSell={latestEstimateRecommendedSell}
+        scopeUnresolved={scopeStillOpen}
+        pricesUnresolved={unresolvedPriceCount > 0}
         onSaveDocument={canEditPricing ? handleSaveDocument : undefined}
         onMarkReviewed={canEditPricing ? handleMarkReviewed : undefined}
         reviewLabel={reviewLabel}

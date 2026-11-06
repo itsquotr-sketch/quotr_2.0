@@ -49,6 +49,7 @@ export default async function VariationDetailPage({ params, searchParams }: Page
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
         quantityConflictDetail={tabContext.quantityConflictDetail}
+        missingPriceLineCount={tabContext.missingPriceLineCount}
           variations={{
             eligible: editor.eligible,
             reason: editor.reason,

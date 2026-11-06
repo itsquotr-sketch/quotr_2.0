@@ -6,6 +6,7 @@ import type {
   JobPlanWorkAreaCard,
 } from "@/lib/assistant/job-plan/types";
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
+import { PRELIMINARIES_WORK_AREA_TYPE } from "@/lib/estimate/preliminaries";
 import { isMonolithicCommercialFitoutType } from "@/lib/work-areas/support-contract";
 
 function assertNoLogisticsAsScope(card: JobPlanWorkAreaCard): JobPlanWorkAreaCard {
@@ -42,6 +43,7 @@ export function composeJobPlan(input: ComposeJobPlanInput): JobPlanView {
 
   const active = input.workAreas
     .filter((wa) => wa.status !== "excluded")
+    .filter((wa) => wa.type !== PRELIMINARIES_WORK_AREA_TYPE)
     .filter((wa) => !isMonolithicCommercialFitoutType(wa.type))
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));

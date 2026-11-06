@@ -62,6 +62,7 @@ import {
   type BathroomWaterproofingExtent,
 } from "@/lib/estimate/bathroom-scope";
 import { getBooleanFact, getFact, getNumberFact, getStringFact, isNotSureValue, round2 } from "@/lib/estimate/facts";
+import { bathroomCustomerSuppliesTiles } from "@/lib/estimate/bathroom-brief";
 import { presentBathroomAreaM2 } from "@/lib/estimate/bathroom-linings";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { buildSubcontractRequirement } from "@/lib/estimate/subcontract-requirement";
@@ -497,6 +498,7 @@ export function buildBathroomFinishEnvelope(params: {
     sizeLabel?: string | null;
     approxCount?: number | null;
     countNoun?: string;
+    customerSupplied?: boolean;
   }) => {
     const purchase = bathroomPurchaseAreaM2(args.netAreaM2);
     const materialRate = resolveFinishRate({
@@ -535,7 +537,29 @@ export function buildBathroomFinishEnvelope(params: {
       .filter(Boolean)
       .join(" · ");
 
-    requirements.push(
+    if (args.customerSupplied) {
+      assumptions.push(
+        `${args.materialLabel} is customer-supplied. Installation stays in this estimate.`
+      );
+      lineItems.push({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: args.materialLabel,
+        category: "materials",
+        quantity: args.netAreaM2,
+        unit: "m²",
+        itemKey: args.materialKey,
+        componentKey: args.materialComponent,
+        identitySummary: "Customer-supplied",
+        notes:
+          "Customer-supplied. This supply is not a Quotr charge. Installation remains.",
+        rateSource: "Customer supplied",
+        rateSourceType: "default",
+        includedInTotal: false,
+        sortOrder: sortOrder++,
+        ...buildAmounts(0, 0, null),
+      });
+    } else requirements.push(
       buildMaterialRequirement({
         workAreaId: workArea.id,
         workAreaType: "bathroom",
@@ -591,7 +615,9 @@ export function buildBathroomFinishEnvelope(params: {
     );
 
     const materialNotes = `${identity}. ${BATHROOM_FLOOR_FINISH_XOR_STATEMENT}`;
-    if (materialRate.priced && materialRate.costRate != null && materialRate.sellRate != null) {
+    if (args.customerSupplied) {
+      // Supply stays on the excluded line above. Installation follows.
+    } else if (materialRate.priced && materialRate.costRate != null && materialRate.sellRate != null) {
       lineItems.push(
         withPricingOwnership(
           {
@@ -698,6 +724,9 @@ export function buildBathroomFinishEnvelope(params: {
     } else {
       assumptions.push(BATHROOM_FLOORING_WA_OVERLAP_STATEMENT);
       emitMaterialInstall({
+        customerSupplied: bathroomCustomerSuppliesTiles(
+          getStringFact(facts as never, workArea.id, "bathroom.coverage_note")
+        ),
         netAreaM2: net,
         materialKey: BATHROOM_TILE_MATERIAL_KEY,
         installKey: BATHROOM_TILE_INSTALL_KEY,

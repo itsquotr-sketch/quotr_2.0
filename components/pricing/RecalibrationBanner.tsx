@@ -11,6 +11,7 @@ type RecalibrationBannerProps = {
   projectId: string;
   pricingDocumentId: string;
   needsRecalibration: boolean;
+  documentMeaningDrift?: boolean;
   quoteExists: boolean;
   latestEstimateIsStale: boolean;
   onKeepCurrent: () => void;
@@ -22,6 +23,7 @@ export function RecalibrationBanner({
   projectId,
   pricingDocumentId,
   needsRecalibration,
+  documentMeaningDrift = false,
   quoteExists,
   latestEstimateIsStale,
   onKeepCurrent,
@@ -36,11 +38,13 @@ export function RecalibrationBanner({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  if (!needsRecalibration && !keptMessage) {
+  const offerUpdate = needsRecalibration || documentMeaningDrift;
+
+  if (!offerUpdate && !keptMessage) {
     return null;
   }
 
-  if (!needsRecalibration && keptMessage) {
+  if (!offerUpdate && keptMessage) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         {keptMessage}
@@ -96,9 +100,17 @@ export function RecalibrationBanner({
       >
         <div>
           <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
-            This pricing was created from an earlier estimate. A newer estimate
-            is available.
+            {needsRecalibration
+              ? "This pricing was created from an earlier estimate. A newer estimate is available."
+              : "Generated rows no longer match what should appear on the customer quote."}
           </p>
+          {documentMeaningDrift ? (
+            <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/90">
+              Preview changes includes a row whose quote visibility differs even
+              when the price is unchanged. Update final pricing applies that
+              for untouched generated rows.
+            </p>
+          ) : null}
           {quoteExists ? (
             <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-200/90">
               Existing quotes are not updated automatically. Revise or create a
@@ -129,15 +141,17 @@ export function RecalibrationBanner({
             >
               Preview changes
             </Button>
-            <Button
-              type="button"
-              size="touch"
-              variant="ghost"
-              onClick={handleKeepCurrent}
-              disabled={isPending}
-            >
-              Keep current pricing
-            </Button>
+            {needsRecalibration ? (
+              <Button
+                type="button"
+                size="touch"
+                variant="ghost"
+                onClick={handleKeepCurrent}
+                disabled={isPending}
+              >
+                Keep current pricing
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>

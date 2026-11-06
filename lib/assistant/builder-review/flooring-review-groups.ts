@@ -17,7 +17,16 @@ import {
   FLOORING_SUBSTRATE_MATERIAL_COMPONENT,
 } from "@/lib/estimate/flooring-identities";
 import { isFlooringFramingAllowanceKey } from "@/lib/estimate/flooring-framing-authority";
-import { calculateFlooringPhysical } from "@/lib/estimate/flooring-physical";
+import {
+  FLOORING_FINISH_ANCILLARY_COMPONENT,
+  FLOORING_FINISH_INSTALL_COMPONENT,
+  FLOORING_FINISH_SUPPLY_COMPONENT,
+  FLOORING_FINISH_WASTE_COMPONENT,
+} from "@/lib/estimate/flooring-purchasing";
+import {
+  calculateFlooringPhysical,
+  presentFlooringAreaM2,
+} from "@/lib/estimate/flooring-physical";
 import { hasFlooringPortionsFact } from "@/lib/estimate/flooring-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -55,6 +64,16 @@ function isSubstrateLine(line: BuilderReviewPricedLine): boolean {
 
 function isFramingLine(line: BuilderReviewPricedLine): boolean {
   return isFlooringFramingAllowanceKey(line.componentKey);
+}
+
+function isSeparateFinishLine(line: BuilderReviewPricedLine): boolean {
+  const key = line.componentKey ?? "";
+  return (
+    key === FLOORING_FINISH_SUPPLY_COMPONENT ||
+    key === FLOORING_FINISH_ANCILLARY_COMPONENT ||
+    key === FLOORING_FINISH_INSTALL_COMPONENT ||
+    key === FLOORING_FINISH_WASTE_COMPONENT
+  );
 }
 
 function isRemovalLine(line: BuilderReviewPricedLine): boolean {
@@ -154,6 +173,9 @@ export function applyFlooringReviewGroups(params: {
     const framing = children.filter(
       (row) => isFramingLine(row) && !lineIsPricingRequired(row)
     );
+    const separate = children.filter(
+      (row) => isSeparateFinishLine(row) && !lineIsPricingRequired(row)
+    );
     const removal = children.filter(
       (row) => isRemovalLine(row) && !lineIsPricingRequired(row)
     );
@@ -168,6 +190,12 @@ export function applyFlooringReviewGroups(params: {
       : portion.hardwood
         ? `m² package basis. Informational ${round2(portion.hardwood.linealM)} lm at ${portion.hardwood.boardWidthMm} mm boards. The lineal-metre takeoff does not multiply the subcontract COST.`
         : null;
+    const claimed = new Set<string>(
+      [...finish, ...addons, ...substrate, ...framing, ...separate, ...removal, ...pricing].map(
+        (row) => row.id
+      )
+    );
+    const unmatched = children.filter((row) => !claimed.has(row.id));
     const lineGroups = [
       makeGroup(
         `flooring-finish-${portion.nestedItemId}`,
@@ -191,6 +219,12 @@ export function applyFlooringReviewGroups(params: {
         "Combined allowance. No fabricated timber or labour split."
       ),
       makeGroup(
+        `flooring-separate-${portion.nestedItemId}`,
+        "Separate finish",
+        separate,
+        "Supply uses the waste-adjusted quantity. Adhesive and installation stay on the net area and are not inside the combined package."
+      ),
+      makeGroup(
         `flooring-removal-${portion.nestedItemId}`,
         "Removal",
         removal,
@@ -206,6 +240,11 @@ export function applyFlooringReviewGroups(params: {
           ? "Complete the remaining Details before this component can be priced."
           : "Continue to Pricing and add a price."
       ),
+      makeGroup(
+        `flooring-lines-${portion.nestedItemId}`,
+        "Flooring",
+        unmatched
+      ),
     ].filter((row): row is BuilderReviewLineGroup => row != null);
 
     portionGroups.push({
@@ -214,7 +253,7 @@ export function applyFlooringReviewGroups(params: {
       summary: portion.summary,
       areaLabel:
         portion.physicalNetAreaM2 != null
-          ? `${portion.physicalNetAreaM2} m²`
+          ? presentFlooringAreaM2(portion.physicalNetAreaM2).replace(/\.0 m²$/, " m²")
           : null,
       lineGroups,
       assumptions: [],

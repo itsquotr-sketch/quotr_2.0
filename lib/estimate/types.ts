@@ -32,6 +32,8 @@ export type EstimateWorkArea = {
   type: string;
   name: string;
   summary?: string | null;
+  /** Customer-facing trade description. Not the generated summary. */
+  quoteDescription?: string | null;
   sort_order: number;
 };
 
@@ -54,6 +56,7 @@ export type EstimateConstraint = {
   key: string;
   label: string;
   value: unknown;
+  source?: string | null;
 };
 
 export type EstimateContext = {
@@ -135,6 +138,8 @@ export type EstimateLineItemInput = {
   overlapGroup?: string;
   includedInTotal?: boolean;
   clientVisible?: boolean;
+  /** Provisional allowance. Separate from the cost category. */
+  provisional?: boolean;
   pricingSource?: PricingSource;
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;

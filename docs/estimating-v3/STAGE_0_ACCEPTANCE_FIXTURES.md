@@ -22,15 +22,26 @@ The eight prompts referred to in the Stage 0 request were not in the request. Th
 | Same set with concrete included | Gaps `fill`, `post`, `embedment` only | Those three remain required. They are not described as unfinished excavation. |
 | Deck only, then deck plus bathroom | Project-condition queue grows and is ordered by ask class | Already shown conditions keep their order. New conditions are added without reshuffling answered ones. |
 
+## Fascia length coverage
+
+Not a Stage 1 blocker. Present on `40d98384` and on `d4b6286e`.
+
+| Case | Current result | Desired result, not implemented |
+| --- | --- | --- |
+| Fascia included, no `deck.vertical_face_board_length_lm` | No length question in the live Details queue or beside the fascia control. Quantity is the exposed perimeter: `2 × (length + width)` when both dimensions exist. The 4.8 m × 3.6 m deck is 16.8 lm. | Ask the length when fascia is included. Use a saved length as the quantity. Keep the perimeter only as the fallback when length is unanswered. |
+| Fascia not included | Length stays hidden | Unchanged |
+
+The Stage 0 baseline on `bc0a7667` recorded the older coverage results: carpet tiles parsed as broadloom, a second room dropped when its sentence did not start with a finish verb, and a 4.2 m partition stored without length or a door opening. The rows below are the accepted V3 behaviour this release keeps. The older results stay historical and are not the release behaviour.
+
 ## Coverage briefs
 
 | Brief | Actual recognition | Questions still open | Money |
 | --- | --- | --- | --- |
 | Office, 10 m2 laminate, no removal, no new substrate | One portion. Finish `other`. Specialist `laminate`. Area 10. Label Office. | Specialist pricing message | Completeness `UNSUPPORTED_SPECIALIST`. One unpriced requirement. Sell 0. Legacy benchmark 110/165 is not applied. |
-| 18 m2 carpet tiles in the meeting room, no removal | Finish `carpet`. No specialist. Area 18. Label null. | Underlay, new substrate, new framing | `INFORMATION_REQUIRED`. Sell 0. No carpet-tile catalogue row. |
-| Kitchen 12 m2 vinyl plank. Living 20 m2 carpet. | One portion. Kitchen, vinyl plank, 12. Living carpet omitted. | Floor preparation, substrate, framing for the kitchen only | `INFORMATION_REQUIRED`. Sell 0. The omitted room is not a zero-price room. It is absent. |
+| 18 m2 carpet tiles in the meeting room, no removal | One portion. Meeting room. Finish `other`. Specialist `other_unsupported`. Description carpet tiles. Area 18. Not broadloom carpet. | Specialist pricing. Underlay, substrate, and framing are not a carpet-tile recipe. | `UNSUPPORTED_SPECIALIST`. Sell 0. No `flooring.carpet_tile.m2` row. Not complete. |
+| Kitchen 12 m2 vinyl plank. Living 20 m2 carpet. | Two portions. Kitchen vinyl plank 12, and Living room carpet 20. | Ordinary finish questions for each portion | `INFORMATION_REQUIRED`. Sell 0. The second room is present and unpriced, not absent. |
 | Kitchen 12 m2 vinyl plank. Carpet the living room, 20 m2. | Two portions. Kitchen vinyl 12 and Living room carpet 20. | The ordinary finish questions for each portion | Not a priced success. Two portions exist. Sell was not asserted. |
-| New 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, one door | One wall type. Timber. Height 2.4. Length null. Openings null. | Length and openings were not extracted, so they cannot already be answered | No quantity was calculated. |
+| New 4.2 m internal partition, 2.4 m high, timber frame, plasterboard both sides, one door | One wall type. Timber. Height 2.4. Length 4.2. One door opening, dimensions still unstated. | Opening width and height. Door-set width is not invented from “one door”. | No quantity formula was changed. |
 
 A non-zero sell is not used anywhere above as proof of coverage. Laminate and carpet tiles have sell 0 and are still recognised.
 

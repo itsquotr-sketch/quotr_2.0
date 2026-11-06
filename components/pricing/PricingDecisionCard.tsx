@@ -8,8 +8,13 @@ import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import {
   presentExpectedGrossMarginPercent,
+  pricingDecisionSelection,
   sellsMatchRecommended,
 } from "@/lib/pricing/final-sell";
+import {
+  clientPriceBasis,
+  clientPriceCopy,
+} from "@/lib/pricing/incomplete-price-label";
 import { formatProfitabilityDisplay } from "@/lib/financial-presentation/format";
 import type { PricingDocument, PricingItem, PricingWorkArea } from "@/lib/pricing/types";
 
@@ -20,6 +25,8 @@ type PricingDecisionCardProps = {
   recommendedSell: number | null;
   disabled?: boolean;
   readOnly?: boolean;
+  scopeUnresolved?: boolean;
+  pricesUnresolved?: boolean;
   onApplyFinalSell: (finalSellExGst: number) => Promise<{ error?: string }>;
 };
 
@@ -29,6 +36,8 @@ export function PricingDecisionCard({
   recommendedSell,
   disabled = false,
   readOnly = false,
+  scopeUnresolved = false,
+  pricesUnresolved = false,
   onApplyFinalSell,
 }: PricingDecisionCardProps) {
   const view = pricingDocumentViewModel(document, items);
@@ -36,12 +45,18 @@ export function PricingDecisionCard({
     document.subtotal_sell,
     recommendedSell
   );
-  const [mode, setMode] = useState<"recommended" | "own">(
-    usingRecommended || recommendedSell == null ? "recommended" : "own"
-  );
-  const [ownPrice, setOwnPrice] = useState(
-    String(document.subtotal_sell.toFixed(2))
-  );
+  const selection = pricingDecisionSelection({
+    storedSell: document.subtotal_sell,
+    recommendedSell,
+  });
+  const [mode, setMode] = useState<"recommended" | "own">(selection.mode);
+  const [ownPrice, setOwnPrice] = useState(selection.field);
+  const [trackedStoredSell, setTrackedStoredSell] = useState(selection.field);
+  if (trackedStoredSell !== selection.field) {
+    setTrackedStoredSell(selection.field);
+    setOwnPrice(selection.field);
+    setMode(selection.mode);
+  }
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -63,6 +78,13 @@ export function PricingDecisionCard({
     recommendedSell != null && !usingRecommended
       ? document.subtotal_sell - recommendedSell
       : null;
+  const priceCopy = clientPriceCopy(
+    clientPriceBasis({
+      scopeUnresolved,
+      pricesUnresolved,
+      enteredOverride: recommendedSell != null && !usingRecommended,
+    })
+  );
 
   const apply = (target: number) => {
     setError(null);
@@ -83,11 +105,8 @@ export function PricingDecisionCard({
       data-pricing-using-recommended={usingRecommended ? "true" : "false"}
     >
       <div>
-        <h2 className="text-base font-semibold">Final client price</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The estimate is Quotr’s working recommendation. Pricing is what you
-          intend to charge. The quote will use this price.
-        </p>
+        <h2 className="text-base font-semibold">{priceCopy.heading}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{priceCopy.detail}</p>
       </div>
 
       {priceDifference != null && recommendedSell != null ? (
@@ -102,7 +121,7 @@ export function PricingDecisionCard({
       {readOnly ? (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            Final price{view.showGst ? " (ex GST)" : ""}
+            {priceCopy.fieldLabel}{view.showGst ? " (ex GST)" : ""}
           </p>
           <p className="text-sm font-medium tabular-nums">{view.subtotalSellFormatted}</p>
           {view.costKnown ? (
@@ -139,7 +158,7 @@ export function PricingDecisionCard({
         {mode === "own" ? (
           <div className="space-y-2">
             <Label htmlFor="pricing-final-sell">
-              Final price{view.showGst ? " (ex GST)" : ""}
+              {priceCopy.fieldLabel}{view.showGst ? " (ex GST)" : ""}
             </Label>
             <Input
               id="pricing-final-sell"

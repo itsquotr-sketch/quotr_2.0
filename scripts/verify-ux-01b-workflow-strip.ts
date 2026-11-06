@@ -70,6 +70,24 @@ check(
     stage(currentEstimate, "pricing").href === null
 );
 
+const missingLines = deriveProjectWorkflow(
+  input({
+    activeTab: "assistant",
+    hasEstimate: true,
+    missingPriceLineCount: 9,
+    scopeCoverageGapCount: 1,
+  })
+);
+check(
+  "2 missing-price lines and scope gaps stay separate and are not one total",
+  stage(missingLines, "estimate").status === "Needs attention" &&
+    stage(missingLines, "estimate").detail.includes("9 lines need prices") &&
+    stage(missingLines, "estimate").detail.includes("1 requested task has no line") &&
+    !stage(missingLines, "estimate").detail.includes("10") &&
+    stage(missingLines, "pricing").status === "Needs attention" &&
+    stage(missingLines, "pricing").locked === false
+);
+
 const stale = deriveProjectWorkflow(
   input({ activeTab: "assistant", hasEstimate: true, estimateIsStale: true })
 );

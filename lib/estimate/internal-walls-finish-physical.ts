@@ -12,7 +12,7 @@
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
-import { round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, round2 } from "@/lib/estimate/facts";
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
 import {
   buildAmounts,
@@ -29,6 +29,11 @@ import { buildSubcontractRequirement } from "@/lib/estimate/subcontract-requirem
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  SKIRTING_PAINTING_COVERAGE_COMPONENT,
+  WALL_PAINTING_COVERAGE_COMPONENT,
+  requestedTaskCoverageText,
+} from "@/lib/estimate/requested-task-coverage";
 import {
   WALL_INSULATION_HOURS_DERIVATION,
   wallInsulationResolvesWithQuotr,
@@ -88,6 +93,7 @@ import {
   INTERNAL_WALLS_PAINTING_AREA_RULE,
   INTERNAL_WALLS_PAINTING_RATE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_CORNICE_OPENING_RULE,
+  INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED,
   INTERNAL_WALLS_SKIRTING_OPENING_RULE,
   INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_STOPPING_AREA_RULE,
@@ -103,8 +109,10 @@ import {
   internalWallsNestedFinishOmit,
   paintingTakeoff,
   presentFinishQty,
+  resolveSkirtingCommercialQuantity,
   sideSelectionDisplay,
   skirtingTakeoff,
+  statedSkirtingLengthLm,
   stoppingLevelDisplay,
   stoppingTakeoff,
   type InternalWallsElectricalTier,
@@ -628,6 +636,13 @@ export function buildInternalWallsFinishEnvelope(params: {
   const omit = internalWallsNestedFinishOmit({
     confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
   });
+  const statedSkirtingLm = statedSkirtingLengthLm(context.facts, workArea.id);
+  const paintingIncluded =
+    getBooleanFact(context.facts, workArea.id, "internal_walls.painting_included") ===
+    true;
+  const skirtingTypeCount = types.filter(
+    (row) => row.skirting != null && row.skirting !== "none"
+  ).length;
 
   types.forEach((type, index) => {
     const displayName = wallTypeDisplayName(type, index);
@@ -708,13 +723,23 @@ export function buildInternalWallsFinishEnvelope(params: {
       type.skirting !== "none"
     ) {
       const overlap = internalWallsSkirtingOverlapGroup(type.id);
-      assumptions.push(INTERNAL_WALLS_SKIRTING_OPENING_RULE);
-      // One commercial line per wall type: net face length × side count.
-      // Per-face emit shared overlapGroup|scopeKey and exclusive-winner
-      // dedupe discarded Side B (same CORRECT-01B lining collapse).
+      // One commercial line per wall type. Face length is summed only when
+      // no measured length was stated. A stated length is not multiplied by
+      // the number of faces, and a different derived length stays a review.
       const sideLabel = sideSelectionDisplay(type.skirting) ?? "Skirting";
-      const quantity = round2(skirting.totalLm);
-      const specification = `${sideLabel} · ${presentFinishQty(quantity)} lm`;
+      const resolved = resolveSkirtingCommercialQuantity({
+        statedLm: statedSkirtingLm,
+        derivedLm: skirting.totalLm,
+        skirtingTypeCount,
+      });
+      if (resolved.review) assumptions.push(resolved.review);
+      if (!resolved.usedStated) {
+        assumptions.push(INTERNAL_WALLS_SKIRTING_OPENING_RULE);
+      }
+      const quantity = round2(resolved.quantityLm);
+      const specification = resolved.usedStated
+        ? `${sideLabel} · ${presentFinishQty(quantity)} lm stated length`
+        : `${sideLabel} · ${presentFinishQty(quantity)} lm`;
       const variantKey = `${type.id}:${type.skirting}`;
       sortOrder = emitQtyMaterial({
         workArea,
@@ -882,7 +907,6 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         } else {
           assumptions.push(INTERNAL_WALLS_STOPPING_AREA_RULE);
-          const overlap = internalWallsStoppingOverlapGroup(type.id);
           const faces: Array<{
             side: "side_a" | "side_b";
             level: "level_4" | "level_5" | "custom";
@@ -911,7 +935,7 @@ export function buildInternalWallsFinishEnvelope(params: {
               context,
               wallTypeId: type.id,
               variantKey: `${type.id}:${face.side}:${face.level}`,
-              overlapGroup: overlap,
+              overlapGroup: internalWallsStoppingOverlapGroup(type.id, face.side),
               componentKey: INTERNAL_WALLS_STOPPING_COMPONENT,
               itemKey: internalWallsStoppingItemKey(face.level),
               label: `${displayName} — stopping`,
@@ -930,6 +954,7 @@ export function buildInternalWallsFinishEnvelope(params: {
 
     if (!omit.omitPainting) {
       const painting = paintingTakeoff({ type, jobScope });
+      let emittedWallPainting = false;
       if (type.painting && type.painting !== "none") {
         if (!painting) {
           const area = insulationAreaForWallType({ type, jobScope });
@@ -938,7 +963,6 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         } else {
           assumptions.push(INTERNAL_WALLS_PAINTING_AREA_RULE);
-          const overlap = internalWallsPaintingOverlapGroup(type.id);
           const faces: Array<{ side: "side_a" | "side_b"; areaM2: number }> = [];
           if (painting.sideAM2 != null && painting.sideAM2 > 0) {
             faces.push({ side: "side_a", areaM2: painting.sideAM2 });
@@ -949,12 +973,13 @@ export function buildInternalWallsFinishEnvelope(params: {
           for (const face of faces) {
             const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
             const specification = `${sideLabel} · ${face.areaM2} m² wall face`;
+            emittedWallPainting = true;
             sortOrder = emitServiceM2({
               workArea,
               context,
               wallTypeId: type.id,
               variantKey: `${type.id}:${face.side}`,
-              overlapGroup: overlap,
+              overlapGroup: internalWallsPaintingOverlapGroup(type.id, face.side),
               componentKey: INTERNAL_WALLS_PAINTING_COMPONENT,
               itemKey: INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
               label: `${displayName} — painting`,
@@ -969,8 +994,131 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
         }
       }
+      const paintingRequested =
+        type.painting === "none" ? false : type.painting != null || paintingIncluded;
+      if (paintingRequested && !emittedWallPainting) {
+        const coverage = requestedTaskCoverageText({
+          task: "Wall painting is requested.",
+          kind: "unsupported",
+          recovery:
+            "Choose the painted faces. No painting rate is applied, and skirting painting stays a separate task.",
+        });
+        sortOrder = emitUnresolvedTask({
+          workArea,
+          context,
+          wallTypeId: type.id,
+          componentKey: WALL_PAINTING_COVERAGE_COMPONENT,
+          label: `${displayName} — wall painting`,
+          notes: coverage,
+          quantity: 1,
+          unit: "task",
+          overlapGroup: `internal_walls.painting.coverage:${type.id}`,
+          requirements,
+          lineItems,
+          sortOrder,
+        });
+      }
     }
   });
+
+  const skirtingIncluded = getBooleanFact(
+    context.facts,
+    workArea.id,
+    "internal_walls.skirtings_included"
+  );
+  const skirtingExcludedByFact = skirtingIncluded === false;
+  const skirtingSidesExcluded =
+    types.length > 0 && types.every((type) => type.skirting === "none");
+  if (
+    statedSkirtingLm != null &&
+    statedSkirtingLm > 0 &&
+    skirtingTypeCount === 0 &&
+    !skirtingExcludedByFact &&
+    !skirtingSidesExcluded
+  ) {
+    const host = types[0];
+    const displayName = host ? wallTypeDisplayName(host, 0) : "Skirting";
+    const quantity = round2(statedSkirtingLm);
+    const specification = `${presentFinishQty(quantity)} lm stated length. ${INTERNAL_WALLS_SKIRTING_EDGES_UNALLOCATED}`;
+    assumptions.push(specification);
+    const overlap = "internal_walls.skirting.stated";
+    const wallTypeId = host?.id ?? workArea.id;
+    sortOrder = emitQtyMaterial({
+      workArea,
+      context,
+      wallTypeId,
+      variantKey: `${wallTypeId}:stated`,
+      overlapGroup: overlap,
+      componentKey: INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
+      materialKey: INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
+      category: "TRIM",
+      label: `${displayName} — skirting`,
+      specification,
+      identitySummary: specification,
+      quantity,
+      unit: "lm",
+      wasteFactor: 0,
+      unpricedNotes: `${specification}. ${INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE}`,
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+    sortOrder = emitQtyLabour({
+      workArea,
+      context,
+      accessFactor,
+      priceWithQuotr: true,
+      wallTypeId,
+      variantKey: `${wallTypeId}:stated`,
+      overlapGroup: overlap,
+      componentKey: INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
+      hoursKey: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+      label: `${displayName} — skirting labour`,
+      identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION}`,
+      notes: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+      quantity,
+      unit: "lm",
+      assumptionText: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+  }
+
+  const paintingAsked =
+    paintingIncluded ||
+    types.some((type) => type.painting != null && type.painting !== "none");
+  const skirtingAsked =
+    (statedSkirtingLm != null && statedSkirtingLm > 0) ||
+    types.some((type) => type.skirting != null && type.skirting !== "none");
+  const skirtingExcluded = skirtingExcludedByFact || skirtingSidesExcluded;
+  if (!omit.omitPainting && paintingAsked && skirtingAsked && !skirtingExcluded) {
+    const skirtingPaintLm =
+      statedSkirtingLm != null && statedSkirtingLm > 0 ? statedSkirtingLm : null;
+    const coverage = requestedTaskCoverageText({
+      task:
+        skirtingPaintLm != null
+          ? `Skirting painting is requested for ${skirtingPaintLm} lm.`
+          : "Skirting painting is requested.",
+      kind: "unsupported",
+      recovery:
+        "Skirting supply and installation stay separate. No skirting paint rate is applied.",
+    });
+    sortOrder = emitUnresolvedTask({
+      workArea,
+      context,
+      wallTypeId: types[0]?.id ?? workArea.id,
+      componentKey: SKIRTING_PAINTING_COVERAGE_COMPONENT,
+      label: "Skirting painting",
+      notes: coverage,
+      quantity: skirtingPaintLm ?? 1,
+      unit: skirtingPaintLm != null ? "lm" : "task",
+      overlapGroup: "internal_walls.skirting.painting.coverage",
+      requirements,
+      lineItems,
+      sortOrder,
+    });
+  }
 
   return {
     requirements,
@@ -1160,6 +1308,70 @@ function resolveExactServiceM2Rate(params: {
   };
 }
 
+function emitUnresolvedTask(params: {
+  workArea: EstimateWorkArea;
+  context: EstimateContext;
+  wallTypeId: string;
+  componentKey: string;
+  label: string;
+  notes: string;
+  quantity: number;
+  unit: string;
+  overlapGroup: string;
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  sortOrder: number;
+}): number {
+  params.requirements.push(
+    buildSubcontractRequirement({
+      workAreaId: params.workArea.id,
+      workAreaType: "internal_walls",
+      componentKey: params.componentKey,
+      variantKey: params.wallTypeId,
+      description: params.label,
+      confidence: "low",
+      assumptions: [],
+      provenance: {
+        calculatorSource: "internal-walls-finish",
+        factKeys: ["internal_walls.wall_types"],
+        constraintKeys: [],
+      },
+      priced: false,
+      trade: "painting",
+      allowanceCost: null,
+      quotedCost: null,
+      totalCost: null,
+    })
+  );
+  params.lineItems.push(
+    withPricingOwnership(
+      {
+        workAreaId: params.workArea.id,
+        workAreaName: params.workArea.name,
+        label: params.label,
+        category: "subcontractor",
+        quantity: params.quantity,
+        unit: params.unit,
+        componentKey: params.componentKey,
+        identitySummary: params.notes,
+        notes: params.notes,
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+        sortOrder: params.sortOrder,
+        ...buildAmounts(0, 0, null),
+      },
+      {
+        pricingOwner: "subcontractor_allowance",
+        scopeKey: `${params.componentKey}:${params.wallTypeId}`,
+        overlapGroup: params.overlapGroup,
+        includedInTotal: false,
+      }
+    )
+  );
+  void params.context;
+  return params.sortOrder + 1;
+}
+
 function emitServiceM2(params: {
   workArea: EstimateWorkArea;
   context: EstimateContext;
@@ -1236,7 +1448,7 @@ function emitServiceM2(params: {
         },
         {
           pricingOwner: "subcontractor_allowance",
-          scopeKey: params.componentKey,
+          scopeKey: `${params.componentKey}:${params.variantKey}`,
           overlapGroup: params.overlapGroup,
         }
       )
@@ -1262,7 +1474,7 @@ function emitServiceM2(params: {
         },
         {
           pricingOwner: "subcontractor_allowance",
-          scopeKey: params.componentKey,
+          scopeKey: `${params.componentKey}:${params.variantKey}`,
           overlapGroup: params.overlapGroup,
         }
       )

@@ -11,7 +11,7 @@ import type { ComposeJobPlanInput } from "@/lib/assistant/job-plan/types";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import {
   deckDetailGapCopy,
-  deckDetailGapsForAreas,
+  deckDetailGapsBlockingForAreas,
 } from "@/lib/estimate/deck-detail-completeness";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 
@@ -91,7 +91,10 @@ export function evaluateGenerateEstimatePermission(params: {
     pendingWrites: params.pendingWrites,
   });
   if (!clarify.ready) return clarify;
-  const deckGaps = deckDetailGapsForAreas(params.facts as never, params.workAreas);
+  const deckGaps = deckDetailGapsBlockingForAreas(
+    params.facts as never,
+    params.workAreas
+  );
   if (deckGaps.length > 0) {
     return {
       ready: false,

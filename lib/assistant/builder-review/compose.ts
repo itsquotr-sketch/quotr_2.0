@@ -5,6 +5,7 @@
  */
 
 import { round2 } from "@/lib/estimate/facts";
+import { FLOORING_LAMINATE_SUPPLY_COMPONENT } from "@/lib/estimate/flooring-laminate";
 import {
   presentEstimateCategoryTotals,
   presentEstimateWorkAreaTotals,
@@ -113,6 +114,7 @@ import {
 } from "@/lib/estimate/bathroom-identities";
 import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey, isInternalWallsOpeningComponentKey, isInternalWallsFinishComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import { kitchenHeldLineVisible } from "@/lib/estimate/kitchen-held-lines";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
   labourRateProvenanceLabel,
@@ -200,8 +202,10 @@ const MAX_IMPROVEMENTS = 4;
 export function lineVisibleInEstimateReview(item: {
   includedInTotal?: boolean;
   rateSource?: string | null;
+  scopeKey?: string | null;
 }): boolean {
   if (item.includedInTotal !== false) return true;
+  if (kitchenHeldLineVisible(item)) return true;
   return classifyRateSource(item.rateSource ?? "") === "missing";
 }
 
@@ -252,12 +256,19 @@ export function mapLineCategory(
 }
 
 export function mapRateLabel(raw: string): string {
+  if (/client supplied|customer supplied/i.test(raw)) return "Customer supplied";
   if (/provisional allowance/i.test(raw)) {
     return "Quotr provisional allowance · confirmed for this job";
   }
   if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
   if (/derived quotr/i.test(raw)) return "Derived Quotr benchmark";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
@@ -1335,6 +1346,25 @@ function attachTakeoff(
   return categories;
 }
 
+const OBSOLETE_UNPRICED_WASTE =
+  /waste is stated for the new floor covering and applies to finish supply once this area can be priced/i;
+
+function savedWasteIsHistorical(input: ComposeBuilderReviewInput, row: string): boolean {
+  if (!OBSOLETE_UNPRICED_WASTE.test(row)) return false;
+  if (
+    input.estimate.assumptions.some((line) =>
+      /waste is included in the laminate supply quantity/i.test(line)
+    )
+  ) {
+    return true;
+  }
+  return input.estimate.lineItems.some(
+    (item) =>
+      item.componentKey === FLOORING_LAMINATE_SUPPLY_COMPONENT &&
+      (item.recommendedCost ?? 0) > 0
+  );
+}
+
 function normalizeIssueKey(text: string): string {
   return text
     .toLowerCase()
@@ -1369,6 +1399,32 @@ function isHighValueBuilderImprovement(
     return false;
   }
   return false;
+}
+
+function projectConditionCheckAction(
+  factKey: string | undefined,
+  label: string
+): string | null {
+  const key = factKey ?? "";
+  if (key === "site_access" || /site access/i.test(label)) {
+    return "Answer site access in Project Conditions. It can change labour hours. Reviewing the price does not answer it.";
+  }
+  if (key === "material_carry_distance" || /drop-off|waste carting|carry distance/i.test(label)) {
+    return "Answer the drop-off distance in Project Conditions. It can change labour. It is not a missing material cost.";
+  }
+  if (key === "hazardous_materials_risk" || /asbestos|hazardous materials/i.test(label)) {
+    return "Answer hazardous-materials risk in Project Conditions. No hazardous-materials cost is included. Do not treat an unanswered risk as zero.";
+  }
+  if (key === "floor_level" || /what floor(?: level)?/i.test(label)) {
+    return "Answer floor level under Conditions that affect this estimate. Ground is the usual assumption for interior flooring and has not been applied. Reviewing the price does not answer it.";
+  }
+  if (
+    key === "protection_dust_control" ||
+    /protection(?: \/| or) dust control/i.test(label)
+  ) {
+    return "Answer protection / dust control under Conditions that affect this estimate. No protection allowance is included. Reviewing the price does not answer it.";
+  }
+  return null;
 }
 
 function buildIssues(
@@ -1452,7 +1508,7 @@ function buildIssues(
       id: item.id,
       kind: "check",
       label: item.label,
-      detail: null,
+      detail: projectConditionCheckAction(item.factKey, item.label),
       editSection: section,
       // Carry actionability to filter improvements below.
       _actionable: hasActionableTarget,
@@ -1469,6 +1525,18 @@ function buildIssues(
     }
     const key = normalizeIssueKey(row);
     if (!key || assumptionKeys.has(key) || checkKeys.has(key)) continue;
+    if (savedWasteIsHistorical(input, row)) {
+      assumptionKeys.add(key);
+      assumptions.push({
+        id: `historical-waste:${key}`,
+        kind: "assumption",
+        label: row,
+        detail:
+          "Saved wording from an earlier result. It is not a missing price. The laminate supply quantity already includes this waste.",
+        editSection: "details",
+      });
+      continue;
+    }
     checkKeys.add(key);
     checks.push({
       id: `missing:${key}`,
@@ -1674,9 +1742,32 @@ export function composeBuilderReview(
       });
     })
     .map((area) => area.name);
+  const heldKitchenNames = input.workAreas
+    .filter((area) => area.status !== "excluded" && area.type === "kitchen")
+    .filter((area) => {
+      const key = area.name.toLowerCase();
+      if (waTotals.some((row) => row.name.toLowerCase() === key)) return false;
+      return lines.some(
+        (item) =>
+          (item.workAreaName?.trim().toLowerCase() || "") === key &&
+          kitchenHeldLineVisible(item)
+      );
+    })
+    .map((area) => area.name);
   const reviewAreas = [
     ...waTotals,
     ...specialistOnlyNames.map((name) => ({
+      name,
+      cost: 0,
+      sell: 0,
+      profit: 0,
+      marginPercent: 0,
+      costKnown: false as const,
+      hours: 0,
+      lineItemCount: 0,
+      items: [],
+    })),
+    ...heldKitchenNames.map((name) => ({
       name,
       cost: 0,
       sell: 0,
@@ -1718,7 +1809,14 @@ export function composeBuilderReview(
       return {
         id,
         label: CATEGORY_LABELS[id],
-        cost: round2(catLines.reduce((sum, line) => sum + line.recommendedCost, 0)),
+        cost: round2(
+          catLines.reduce(
+            (sum, line) =>
+              sum +
+              (line.sourceLine.includedInTotal === false ? 0 : line.recommendedCost),
+            0
+          )
+        ),
         lines: catLines,
         takeoff: [],
         takeoffDisclaimer: null,

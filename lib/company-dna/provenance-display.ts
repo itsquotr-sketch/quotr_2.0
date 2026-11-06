@@ -18,6 +18,7 @@ import {
 import { inferProductivitySourceType } from "@/lib/estimate/line-item-metadata";
 
 export function labourRateProvenanceLabel(rateSource: string): string {
+  if (/project hourly cost/i.test(rateSource)) return "Project hourly cost";
   const type = classifyRateSource(rateSource);
   if (isUserRateSource(type)) return "Your rate";
   if (isCalibratedProductivitySource(type)) return "Your rate";

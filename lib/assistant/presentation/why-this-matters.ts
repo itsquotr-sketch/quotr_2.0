@@ -61,7 +61,7 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
   "bathroom.waterproofing_extent":
     "Waterproofing uses selected wet areas only. It is not copied from the tiling area.",
   "bathroom.floor_substrate_system":
-    "Floor substrate quantity uses the bathroom floor area and a 10% sheet waste.",
+    "A confirmed replacement uses the bathroom floor area and 10% sheet waste. Not sure and partial repair do not price a full replacement.",
   "bathroom.wall_lining_included":
     "Wall lining quantity uses gross wall area. Door and window openings are not deducted.",
   "bathroom.ceiling_lining_included":

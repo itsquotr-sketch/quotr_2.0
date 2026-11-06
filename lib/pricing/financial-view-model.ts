@@ -11,7 +11,7 @@ import {
   formatProfitabilityDisplay,
 } from "@/lib/financial-presentation/format";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
-import { presentStoredGst } from "@/lib/pricing/gst-presentation";
+import { presentGstForRegistration } from "@/lib/pricing/gst-presentation";
 import { isReplacedSubcontractPlaceholder } from "@/lib/pricing/replaced-subcontract-line";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 
@@ -76,7 +76,8 @@ export function pricingDocumentCostComplete(
 
 export function pricingDocumentViewModel(
   document: PricingDocument,
-  items?: readonly Pick<PricingItem, "cost_known">[]
+  items?: readonly Pick<PricingItem, "cost_known">[],
+  gstRegistered?: boolean | null
 ) {
   const fromItems = pricingDocumentCostComplete(items);
   const costKnown =
@@ -94,12 +95,14 @@ export function pricingDocumentViewModel(
       ? `Known cost ${knownCostFormatted}`
       : COST_UNKNOWN_LABEL;
 
-  const gst = presentStoredGst({
+  const gst = presentGstForRegistration({
+    gstRegistered,
     gstRate: document.gst_rate,
     gstAmount: document.gst_amount,
     subtotalExGst: document.subtotal_sell,
     totalInclGst: document.total_incl_gst,
   });
+  const gstWithheld = gst.registration === "unset" || gst.registration === "not_registered";
 
   return {
     costKnown,
@@ -108,9 +111,12 @@ export function pricingDocumentViewModel(
     directCostLabel,
     subtotalCostFormatted: knownCostFormatted,
     subtotalSellFormatted: formatPricingMoney(document.subtotal_sell),
-    gstRate: document.gst_rate,
-    gstAmountFormatted: formatPricingMoney(document.gst_amount),
-    totalInclGstFormatted: formatPricingMoney(document.total_incl_gst),
+    gstRate: gstWithheld ? 0 : document.gst_rate,
+    gstAmountFormatted: gst.registration === "unset"
+      ? "Not decided"
+      : formatPricingMoney(gst.gstAmount),
+    totalInclGstFormatted: formatPricingMoney(gst.inclGst),
+    gstRegistration: gst.registration,
     profitLabel: profitability.profitLabel,
     marginLabel: profitability.marginLabel,
     gstLabel: gst.gstLabel,

@@ -6,6 +6,7 @@ import {
   type QuickSpecFactWrite,
 } from "@/components/assistant/job-plan/DeckQuickSpecEditor";
 import { FenceQuickSpecEditor } from "@/components/assistant/job-plan/FenceQuickSpecEditor";
+import { FlooringQuickSpecEditor } from "@/components/assistant/job-plan/FlooringQuickSpecEditor";
 import { RetainingWallQuickSpecEditor } from "@/components/assistant/job-plan/RetainingWallQuickSpecEditor";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -40,6 +41,7 @@ const QUICK_SPEC_EDITORS: Record<
   deck: DeckQuickSpecEditor,
   retaining_wall: RetainingWallQuickSpecEditor,
   fence: FenceQuickSpecEditor,
+  flooring: FlooringQuickSpecEditor,
 };
 
 export function getJobPlanQuickSpecEditor(

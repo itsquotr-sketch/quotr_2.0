@@ -11,8 +11,14 @@ export const DECK_FASCIA_BUILDER_LABEL = "Fascia / edge boards";
 export const DECK_SKIRTING_BUILDER_LABEL =
   "Full-height deck skirting / screening";
 export const DECK_SKIRTING_INSTALL_LABEL = "Full-height skirting installation";
-import { getBooleanFact, getNumberFact, round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, getNumberFact, getStringFact, round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
+
+export const DECK_FASCIA_LENGTH_KEY = "deck.vertical_face_board_length_lm";
+export const DECK_FASCIA_LENGTH_BASIS_KEY = "deck.fascia_length_basis";
+export const DECK_FASCIA_RECTANGULAR_PERIMETER = "rectangular_perimeter";
+export const DECK_FASCIA_RECTANGULAR_PERIMETER_LABEL =
+  "Use the full rectangular perimeter";
 
 export const DEFAULT_FASCIA_GROUND_GAP_M = 0.02;
 export const DEFAULT_FASCIA_BOARD_FACE_M = 0.14;
@@ -81,6 +87,96 @@ export function deckExposedPerimeterM(params: {
       ? 2 * (params.lengthM + params.widthM)
       : params.areaM2 * 0.5
   );
+}
+
+export type DeckFasciaEdgeResolution =
+  | { status: "stated"; lengthM: number }
+  | { status: "rectangular_perimeter"; lengthM: number }
+  | { status: "needs_length"; rectangularChoiceAvailable: boolean };
+
+/**
+ * Stated length wins. The rectangular perimeter is used only after an
+ * explicit choice, and only when both plan dimensions are known.
+ * Inclusion alone does not invent a length.
+ */
+export function resolveDeckFasciaEdgeLength(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  lengthM: number | null;
+  widthM: number | null;
+}): DeckFasciaEdgeResolution {
+  const stated = getNumberFact(
+    [...params.facts],
+    params.workAreaId,
+    DECK_FASCIA_LENGTH_KEY
+  );
+  if (stated != null && stated > 0) {
+    return { status: "stated", lengthM: round2(stated) };
+  }
+  const rectangular =
+    params.lengthM != null &&
+    params.widthM != null &&
+    params.lengthM > 0 &&
+    params.widthM > 0;
+  const basis = getStringFact(
+    [...params.facts],
+    params.workAreaId,
+    DECK_FASCIA_LENGTH_BASIS_KEY
+  );
+  if (
+    (basis === DECK_FASCIA_RECTANGULAR_PERIMETER ||
+      basis === DECK_FASCIA_RECTANGULAR_PERIMETER_LABEL) &&
+    rectangular
+  ) {
+    return {
+      status: "rectangular_perimeter",
+      lengthM: round2(2 * (params.lengthM! + params.widthM!)),
+    };
+  }
+  return { status: "needs_length", rectangularChoiceAvailable: rectangular };
+}
+
+export type FasciaLengthDetailCandidate = {
+  factKey: string;
+  label: string;
+  question: string;
+  inputType: "number" | "select";
+  unit?: string;
+  options?: readonly string[];
+  blocksEstimate: boolean;
+};
+
+export function fasciaLengthDetailCandidates(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  lengthM: number | null;
+  widthM: number | null;
+}): FasciaLengthDetailCandidate[] {
+  if (!deckFasciaIncluded(params)) return [];
+  const edge = resolveDeckFasciaEdgeLength(params);
+  if (edge.status !== "needs_length") return [];
+  const candidates: FasciaLengthDetailCandidate[] = [
+    {
+      factKey: DECK_FASCIA_LENGTH_KEY,
+      label: "Fascia length",
+      question:
+        "How much fascia length is exposed? A partial edge is enough. Leaving this blank does not price the full perimeter.",
+      inputType: "number",
+      unit: "lm",
+      blocksEstimate: true,
+    },
+  ];
+  if (edge.rectangularChoiceAvailable) {
+    candidates.push({
+      factKey: DECK_FASCIA_LENGTH_BASIS_KEY,
+      label: "Fascia length basis",
+      question: "Or use the full perimeter of this rectangle?",
+      inputType: "select",
+      options: [DECK_FASCIA_RECTANGULAR_PERIMETER_LABEL],
+      blocksEstimate: false,
+    });
+  }
+  return candidates;
 }
 
 function wastePurchaseLm(netLm: number, wastePercent: number): number {

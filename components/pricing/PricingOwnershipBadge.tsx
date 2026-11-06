@@ -28,22 +28,21 @@ export function PricingOwnershipBadge({
   includedInTotal = true,
   className,
 }: PricingOwnershipBadgeProps) {
-  if (!owner) return null;
+  if (!owner && includedInTotal !== false) return null;
 
-  const label = PRICING_OWNER_LABELS[owner];
+  const label = owner ? PRICING_OWNER_LABELS[owner] : "Not in total";
   const excluded = includedInTotal === false || owner === "excluded";
 
   return (
     <Badge
-      variant={OWNER_VARIANTS[owner]}
+      variant={owner ? OWNER_VARIANTS[owner] : "outline"}
       className={cn(
         "text-[10px] font-normal",
         excluded && "opacity-70",
         className
       )}
     >
-      {label}
-      {excluded ? " · not in total" : ""}
+      {owner && excluded ? `${label} · not in total` : label}
     </Badge>
   );
 }

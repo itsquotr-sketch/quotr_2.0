@@ -20,6 +20,7 @@ import {
   applyFlooringFactWrite,
   cloneFlooringPortion,
   createEmptyFlooringPortion,
+  flooringAreaMeasuresDisagree,
   flooringPortionFieldsCompatible,
   FLOORING_PORTIONS_FACT_KEY,
   normalizeExtractedFlooringPortions,
@@ -37,6 +38,9 @@ import {
   type FlooringSpecialistKind,
   type FlooringSubstrateFamily,
 } from "@/lib/estimate/flooring-portions";
+import { applyLaminateBriefFacts } from "@/lib/estimate/flooring-laminate";
+import { explicitMaterialWastePercent } from "@/lib/estimate/explicit-material-waste";
+import { applyCarpetTileBriefFacts } from "@/lib/estimate/flooring-carpet-tile";
 import {
   briefHasIndependentFlooring,
   clauseHasFlooringOperation,
@@ -74,6 +78,7 @@ function conciseDescription(snippet: string): string {
 
 function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
   if (kind === "laminate") return "laminate flooring";
+  if (kind === "carpet_tile") return "carpet tiles";
   if (kind === "engineered_timber") return "engineered timber flooring";
   if (kind === "sheet_vinyl") return "sheet vinyl flooring";
   if (kind === "client_supplied") return "client-supplied flooring";
@@ -85,6 +90,7 @@ function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
 
 const SPECIALIST_PHRASES: readonly { kind: FlooringSpecialistKind; phrases: readonly string[] }[] =
   [
+    { kind: "carpet_tile", phrases: ["carpet tiles", "carpet tile"] },
     { kind: "sheet_vinyl", phrases: ["sheet vinyl"] },
     { kind: "laminate", phrases: ["laminate"] },
     { kind: "engineered_timber", phrases: ["engineered timber", "engineered wood"] },
@@ -122,7 +128,10 @@ export function specialistKindFromSnippet(
   for (const row of SPECIALIST_PHRASES) {
     if (includesAny(raw, row.phrases)) return row.kind;
   }
-  return parseFlooringSpecialistKind(text);
+  if (raw.split(/\s+/).filter(Boolean).length <= 4) {
+    return parseFlooringSpecialistKind(text);
+  }
+  return null;
 }
 
 function installFacingText(text: string): string {
@@ -139,8 +148,11 @@ function finishFromSnippet(text: string): FlooringFinishType | null {
 }
 
 function locationFromSnippet(text: string): string | null {
+  const bedroom = text.match(/\bbedroom\s+(\d+)\b/i);
+  if (bedroom) return `Bedroom ${bedroom[1]}`;
   if (/\bbedrooms?\b/i.test(text)) return "Bedrooms";
-  if (/\bliving rooms?\b/i.test(text)) return "Living room";
+  if (/\bmeeting rooms?\b/i.test(text)) return "Meeting room";
+  if (/\bliving(?:\s+rooms?)?\b/i.test(text)) return "Living room";
   if (/\blounge\b/i.test(text)) return "Lounge";
   if (/\bensuite\b/i.test(text)) return "Ensuite";
   if (/\bbathroom\b/i.test(text)) return "Bathroom";
@@ -184,18 +196,38 @@ function directAreaFromSnippet(text: string): number | null {
   return parseFlooringPositiveMeasure(match[1]);
 }
 
+function measureTokenToMetres(value: string, unit: string): number | null {
+  const numeric = Number(value.replace(/,/g, ""));
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  if (unit.toLowerCase().startsWith("mm")) {
+    if (numeric < 300 || numeric > 100_000) return null;
+    return numeric / 1000;
+  }
+  if (numeric > 100) return null;
+  return numeric;
+}
+
 function roomDimensionsFromSnippet(text: string): {
   length_m: number | null;
   width_m: number | null;
 } {
   const stripped = stripProductMillimetres(text);
   const match = stripped.match(
-    /(\d+(?:\.\d+)?)\s*m\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)\s*m\b/i
+    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\b/i
   );
-  if (!match) return { length_m: null, width_m: null };
+  if (match) {
+    return {
+      length_m: measureTokenToMetres(match[1]!, match[2]!),
+      width_m: measureTokenToMetres(match[3]!, match[4]!),
+    };
+  }
+  const trailing = stripped.match(
+    /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\b/i
+  );
+  if (!trailing) return { length_m: null, width_m: null };
   return {
-    length_m: parseFlooringPositiveMeasure(match[1]),
-    width_m: parseFlooringPositiveMeasure(match[2]),
+    length_m: measureTokenToMetres(trailing[1]!, trailing[3]!),
+    width_m: measureTokenToMetres(trailing[2]!, trailing[3]!),
   };
 }
 
@@ -248,10 +280,24 @@ function triFromPhrases(
 function underlayFromSnippet(text: string): boolean | null {
   return triFromPhrases(
     text,
-    ["with underlay", "include underlay", "including underlay", "new underlay", "carpet and underlay"],
+    [
+      "with underlay",
+      "include underlay",
+      "including underlay",
+      "new underlay",
+      "carpet and underlay",
+      "underlay is required",
+      "underlay required",
+      "needs underlay",
+      "requires underlay",
+    ],
     [
       "without underlay",
       "no underlay",
+      "underlay is not required",
+      "underlay not required",
+      "exclude underlay",
+      "excluding underlay",
       "reuse existing underlay",
       "retain existing underlay",
     ]
@@ -437,6 +483,9 @@ const FINISH_REMOVAL_NO = [
   "no floor removal required",
   "no flooring removal",
   "no floor removal",
+  "already been removed",
+  "already removed",
+  "has been removed",
   "no removal is required",
   "no removal in",
   "no removal",
@@ -482,14 +531,23 @@ type FlooringRemovalIntent = {
 };
 
 function finishRemovalFromSnippet(text: string): boolean | null {
-  return triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
+  const fromPhrases = triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
+  if (fromPhrases != null) return fromPhrases;
+  if (
+    /\b(?:remove|uplift|dispose of)\b[^.]{0,80}\b(?:existing\s+)?(?:carpet|vinyl|tiles?|hardwood|timber|flooring|floor finish)\b/i.test(
+      text
+    )
+  ) {
+    return true;
+  }
+  return null;
 }
 
 function existingFinishFromSnippet(
   text: string
 ): FlooringExistingFinishType | null {
   const match = text.match(
-    /\b(?:remove|uplift)\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
+    /\b(?:remove|uplift|dispose of)(?:\s+and\s+dispose\s+of)?\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
   );
   if (!match) return null;
   return parseFlooringExistingFinishType(match[1]);
@@ -598,11 +656,36 @@ function applyClauseLocalRemoval(
   }
 }
 
-function snippetHasFlooringSignal(text: string): boolean {
-  return clauseHasFlooringOperation(text) || specialistKindFromSnippet(text) != null;
+function snippetHasFlooringSignal(text: string, briefText?: string): boolean {
+  return (
+    clauseHasFlooringOperation(text, briefText) ||
+    specialistKindFromSnippet(text) != null
+  );
+}
+
+function snippetOwnsFlooringPortion(snippet: string): boolean {
+  const dims = roomDimensionsFromSnippet(snippet);
+  const measured =
+    directAreaFromSnippet(snippet) != null ||
+    (dims.length_m != null && dims.width_m != null);
+  if (!measured && locationFromSnippet(snippet) == null) return false;
+  return finishFromSnippet(snippet) != null || specialistKindFromSnippet(snippet) != null;
 }
 
 function splitFlooringSnippets(briefText: string): string[] {
+  const primary = splitFlooringSeparators(briefText);
+  const owned = primary.filter(snippetOwnsFlooringPortion);
+  if (owned.length > 0 && owned.length < primary.length) return owned;
+  if (primary.length >= 2) return primary;
+  const sentences = briefText
+    .split(/(?<=[.!?])\s+/)
+    .map((row) => row.trim())
+    .filter((sentence) => snippetOwnsFlooringPortion(sentence));
+  if (sentences.length >= 2) return sentences;
+  return primary;
+}
+
+function splitFlooringSeparators(briefText: string): string[] {
   const trimmed = briefText.trim();
   if (!trimmed) return [];
   const parts = trimmed
@@ -611,10 +694,32 @@ function splitFlooringSnippets(briefText: string): string[] {
     )
     .map((row) => row.replace(/^(?:also|plus)\s+/i, "").trim())
     .filter(Boolean);
-  const withSignal = parts.filter(snippetHasFlooringSignal);
+  const withSignal = parts.filter((part) =>
+    snippetHasFlooringSignal(part, trimmed)
+  );
   if (withSignal.length >= 2) return withSignal;
   if (withSignal.length === 1 && parts.length > 1) return withSignal;
-  return snippetHasFlooringSignal(trimmed) ? [trimmed] : parts.length > 0 ? parts : [trimmed];
+  return snippetHasFlooringSignal(trimmed, trimmed)
+    ? [trimmed]
+    : parts.length > 0
+      ? parts
+      : [trimmed];
+}
+
+function transitionsRequiredFromBrief(raw: string): boolean | null {
+  const mention = /\btransition strips?\b|\btransitions\b/;
+  if (!mention.test(raw)) return null;
+  const negated =
+    /\b(?:no|without|not|exclud\w*)\b(?:\s+\w+){0,6}\s+(?:transition strips?|transitions)\b/;
+  let positive = false;
+  let negative = false;
+  for (const sentence of raw.split(/;|(?<=[.!?])\s+/)) {
+    if (!mention.test(sentence)) continue;
+    if (negated.test(sentence)) negative = true;
+    else positive = true;
+  }
+  if (positive === negative) return null;
+  return positive;
 }
 
 function applyGlobalConstraints(
@@ -632,6 +737,89 @@ function applyGlobalConstraints(
     portion.framing_required_authority = "extracted";
   }
   applyClauseLocalRemoval(portion, briefText, false);
+  const raw = normalise(briefText);
+  if (
+    /\bunderlay where appropriate\b|\bunderlay where required\b|\binclude underlay\b/.test(
+      raw
+    ) &&
+    portion.underlay_required == null
+  ) {
+    portion.underlay_required = portion.finish_type === "carpet";
+    portion.underlay_authority = "extracted";
+  }
+  const waste = explicitMaterialWastePercent(briefText, "floor_covering");
+  if (waste != null && portion.waste_percent == null) {
+    portion.waste_percent = waste;
+  }
+  if (
+    /\b(?:customer|client)[-\s]supplied\b/.test(raw) &&
+    portion.finish_type != null &&
+    portion.finish_type !== "other" &&
+    portion.finish_supplied_by == null
+  ) {
+    portion.finish_supplied_by = "customer";
+  }
+  if (portion.transitions_required == null) {
+    const transitions = transitionsRequiredFromBrief(raw);
+    if (transitions != null) {
+      portion.transitions_required = transitions;
+    }
+  }
+  if (
+    /\b(?:exclud\w*|no|without)\b[^.]{0,80}\b(?:major\s+)?subfloor\b/.test(raw) &&
+    portion.framing_required == null
+  ) {
+    portion.framing_required = false;
+    portion.framing_required_authority = "extracted";
+  }
+  if (/\b(?:exclud\w*|no|without)\b[^.]{0,40}\bskirting replacement\b/.test(raw)) {
+    portion.skirting_replacement_excluded = true;
+  }
+  applyLaminateBriefFacts(portion, briefText, { skipUnderlay: true });
+  if (portion.underlay_required == null) {
+    for (const sentence of briefText.split(/;|(?<=[.!?])\s+/)) {
+      const location = locationFromSnippet(sentence);
+      const underlay = underlayFromSnippet(sentence);
+      if (underlay == null) continue;
+      if (
+        location != null &&
+        portion.label != null &&
+        location !== portion.label
+      ) {
+        continue;
+      }
+      portion.underlay_required = underlay;
+      portion.underlay_authority = "extracted";
+      break;
+    }
+  }
+  fillSingleRoomDimensions(portion, briefText);
+}
+
+function fillSingleRoomDimensions(portion: FlooringPortion, briefText: string): void {
+  if (portion.length_m != null && portion.width_m != null) return;
+  const pairs: { length_m: number; width_m: number }[] = [];
+  for (const sentence of briefText.split(/(?<=[.!?])\s+/)) {
+    if (
+      /\b(?:deck(?:ing)?|platforms?)\b/i.test(sentence) &&
+      !clauseHasFlooringOperation(sentence, briefText)
+    ) {
+      continue;
+    }
+    const dims = roomDimensionsFromSnippet(sentence);
+    if (dims.length_m != null && dims.width_m != null) {
+      pairs.push({ length_m: dims.length_m, width_m: dims.width_m });
+    }
+  }
+  if (pairs.length !== 1) return;
+  portion.length_m = pairs[0]!.length_m;
+  portion.length_authority = "extracted";
+  portion.width_m = pairs[0]!.width_m;
+  portion.width_authority = "extracted";
+  if (flooringAreaMeasuresDisagree(portion) && portion.area_method_authority !== "user") {
+    portion.area_input_method = null;
+    portion.area_method_authority = undefined;
+  }
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {
@@ -648,7 +836,9 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.finish_authority = "extracted";
     portion.specialist_kind = specialist;
     portion.specialist_authority = "extracted";
-    portion.other_description = specialistDescriptionFromKind(specialist);
+    portion.other_description = /carpet tiles?/i.test(snippet)
+      ? "carpet tiles"
+      : specialistDescriptionFromKind(specialist);
     portion.other_description_authority = "extracted";
   } else if (finish) {
     portion.finish_type = finish;
@@ -682,6 +872,10 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.area_input_method = "length_width";
     portion.area_method_authority = "extracted";
   }
+  if (flooringAreaMeasuresDisagree(portion)) {
+    portion.area_input_method = null;
+    portion.area_method_authority = undefined;
+  }
 
   const underlay = underlayFromSnippet(snippet);
   if (underlay != null) {
@@ -693,6 +887,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.floor_preparation_required = prep;
     portion.preparation_authority = "extracted";
   }
+  applyLaminateBriefFacts(portion, snippet);
   if (tile.width_mm != null) {
     portion.tile_width_mm = tile.width_mm;
     portion.tile_width_authority = "extracted";
@@ -701,6 +896,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.tile_length_mm = tile.length_mm;
     portion.tile_length_authority = "extracted";
   }
+  applyCarpetTileBriefFacts(portion, snippet);
   if (board != null) {
     portion.hardwood_board_width_mm = board;
     portion.hardwood_width_authority = "extracted";
@@ -764,31 +960,57 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
   }
 
   applyClauseLocalRemoval(portion, snippet, true);
+  const transitions = transitionsRequiredFromBrief(normalise(snippet));
+  if (transitions != null) {
+    portion.transitions_required = transitions;
+  }
+}
+
+function splitMeasuredRooms(snippet: string): string[] {
+  const parts = snippet
+    .split(/\s*,?\s+\band\b\s+/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return [snippet];
+  const measured = parts.filter((part) => {
+    const dims = roomDimensionsFromSnippet(part);
+    return dims.length_m != null && dims.width_m != null;
+  });
+  if (measured.length < 2) return [snippet];
+  const inherited = snippet.match(
+    /\b(carpet(?:\s+tiles?)?|vinyl(?:\s+planks?)?|laminate|hardwood|flooring)\b/i
+  )?.[0];
+  return parts.map((part) => {
+    if (!inherited || clauseHasFlooringOperation(part, snippet)) return part;
+    return `${inherited} ${part}`;
+  });
 }
 
 export function extractFlooringPortionsFromBrief(briefText: string): FlooringPortion[] {
   if (!briefHasIndependentFlooring(briefText)) {
     return [];
   }
-  const snippets = splitFlooringSnippets(briefText);
+  const snippets = splitFlooringSnippets(briefText).flatMap(splitMeasuredRooms);
   const portions: FlooringPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
     if (clauseIsBathroomOwnedFloor(snippet)) continue;
     if (clauseIsBathroomSubstrateRebuild(snippet, briefText)) continue;
     if (clauseIsKitchenOwnedFloor(snippet)) continue;
-    if (!snippetHasFlooringSignal(snippet) && snippets.length > 1) continue;
+    if (!snippetHasFlooringSignal(snippet, briefText) && snippets.length > 1) continue;
     const portion = createEmptyFlooringPortion({
       label: locationFromSnippet(snippet),
     });
     applySnippetToPortion(portion, snippet);
     applyGlobalConstraints(portion, briefText);
     portion.clause_ordinal = index;
-    if (
+    const identifiable =
       portion.finish_type != null ||
       portion.area_m2 != null ||
       portion.length_m != null ||
-      portion.specialist_kind != null ||
-      portion.finish_removal_required === true
+      portion.specialist_kind != null;
+    if (
+      identifiable ||
+      (portion.finish_removal_required === true && snippets.length === 1)
     ) {
       portions.push(portion);
     }
@@ -854,6 +1076,13 @@ function fillMissingFlooringPortion(
   // explicit extracted No that the regex already owns via firstPresent(false).
   if (out.finish_removal_required == null && secondary.finish_removal_required === false) {
     out.finish_removal_required = false;
+  }
+  if (
+    flooringAreaMeasuresDisagree(out) &&
+    out.area_method_authority !== "user"
+  ) {
+    out.area_input_method = null;
+    out.area_method_authority = undefined;
   }
   if (out.finish_removal_required === true) {
     out.existing_finish_type = firstPresent(
@@ -928,6 +1157,13 @@ function fillMissingFlooringPortion(
     out.other_description_authority ?? secondary.other_description_authority;
   out.specialist_authority =
     out.specialist_authority ?? secondary.specialist_authority;
+  out.waste_percent = firstPresent(out.waste_percent, secondary.waste_percent);
+  out.finish_supplied_by = firstPresent(
+    out.finish_supplied_by,
+    secondary.finish_supplied_by
+  );
+  out.finish_pricing = firstPresent(out.finish_pricing, secondary.finish_pricing);
+  out.waste_treatment = firstPresent(out.waste_treatment, secondary.waste_treatment);
   if (
     primary.finish_type === "other" &&
     secondary.finish_type != null &&

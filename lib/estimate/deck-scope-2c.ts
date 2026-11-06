@@ -10,6 +10,7 @@
  * Do not inflate productivity and also apply access for the same issue.
  */
 import { getBooleanFact, getNumberFact, getStringFact, round2 } from "@/lib/estimate/facts";
+import { pileConditionTextIsPending } from "@/lib/estimate/scope-intent";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 function factRows(facts: readonly EstimateFact[]): EstimateFact[] {
@@ -77,14 +78,14 @@ export function pileReplacementApplicable(params: {
     params.workAreaId,
     "deck.substructure_included"
   );
-  const newLayout = substructure ?? true;
-  if (newLayout) return false;
-
   const explicit = getBooleanFact(
     facts,
     params.workAreaId,
     "deck.pile_or_post_replacement_required"
   );
+  if (explicit === true && substructure !== true) return true;
+  const newLayout = substructure ?? true;
+  if (newLayout) return false;
   if (explicit === true) return true;
 
   const removal = getBooleanFact(
@@ -97,17 +98,217 @@ export function pileReplacementApplicable(params: {
   return true;
 }
 
+export function pileRetentionPending(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  return pileConditionTextIsPending(
+    getStringFact(
+      factRows(params.facts),
+      params.workAreaId,
+      "deck.substructure_condition"
+    )
+  );
+}
+
+export const PILE_REPLACEMENT_ITEM_KEY = "deck.post_replacement.each";
+
+export const PILE_REPLACEMENT_QUANTITY_UNKNOWN = "Quantity unknown";
+
+export const PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK =
+  "Name the uncovered work in the client description. Record a company rate, project rate, or subcontractor price in the internal pricing basis. That basis is not printed on the quote, and the amount does not confirm coverage.";
+
+export const PILE_ALLOWANCE_COVERAGE_GAP =
+  "Pile replacement was requested. Coverage is unresolved, so neither the each benchmark nor the count-free allowance is in the known total. Removal of existing piles, temporary support, and any other replacement operation stay unresolved. New-pile material, installation, excavation, and concrete do not cover those operations, so this is not a complete price.";
+
+const UNCOVERED_REPLACEMENT_OPERATION =
+  /\b(?:remov(?:e|al|ing)|extract(?:ion|ing)?|temporary support|propping|underpinning)\b/i;
+
+const REPLACEMENT_PRICE_BASIS =
+  /\b(?:company rate|project rate|subcontractor(?: price| quote)?)\b/i;
+
+export function replacementAllowanceQuantityUnknown(input: {
+  itemKey?: string | null;
+  label?: string | null;
+  quantity?: number | null;
+}): boolean {
+  const allowance =
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /replacement allowance/i.test(input.label ?? "");
+  return allowance && (input.quantity == null || input.quantity === 0);
+}
+
+/**
+ * A generated replacement allowance has no requirement identity.
+ * Its typed amount is saved on the line. It does not become a requirement price.
+ */
+export function pileReplacementAllowanceSavesInPlace(input: {
+  itemKey?: string | null;
+  label?: string | null;
+}): boolean {
+  return (
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /pile\/post replacement allowance/i.test(input.label ?? "")
+  );
+}
+
+export function pileReplacementManualAmountBlocked(input: {
+  itemKey?: string | null;
+  label?: string | null;
+  scope?: string | null;
+  basis?: string | null;
+  totalCost?: number | null;
+  totalSell?: number | null;
+}): boolean {
+  const allowance =
+    input.itemKey === PILE_REPLACEMENT_ITEM_KEY ||
+    /pile\/post replacement allowance|substructure replacement allowance/i.test(
+      input.label ?? ""
+    );
+  if (!allowance) return false;
+  const cost = input.totalCost ?? 0;
+  const sell = input.totalSell ?? 0;
+  if (!(cost > 0 || sell > 0)) return false;
+  const scope = (input.scope ?? "").trim();
+  const basis = (input.basis ?? "").trim();
+  return (
+    !UNCOVERED_REPLACEMENT_OPERATION.test(scope) ||
+    !REPLACEMENT_PRICE_BASIS.test(basis)
+  );
+}
+
+export function pileReplacementUnpricedNotes(input: {
+  count: number | null;
+  measuredSupportsPresent: boolean;
+}): string {
+  const countText =
+    input.count != null && input.count > 0
+      ? `${input.count} piles/posts were requested. The count is visible and is not priced at the each benchmark.`
+      : "Quantity unknown. This is not zero piles requested, not quantity one, and not a lump-sum scope.";
+  const coverage = input.measuredSupportsPresent
+    ? "Measured new-pile material, installation, excavation, and concrete stay their own lines. They do not cover removal of existing piles, temporary support, or other replacement operations, so those stay unresolved."
+    : "No measured support lines cover this request. Independent deck work can still be priced.";
+  return `${countText} ${coverage} A typed Pricing amount needs the uncovered work in the client description and the rate basis in the internal pricing basis. That basis is not printed on the quote and must not repeat measured support lines. A saved rate is not applied automatically.`;
+}
+
+export const DECK_SUPPORT_DESIGN_UNRESOLVED =
+  "Footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";
+
+export const PILE_SUPPORTS_UNRESOLVED_PENDING =
+  "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";
+
+export const PILE_SUPPORTS_RETAINED =
+  "Existing piles are retained as a scope decision. That is not proof they are structurally adequate. New support material, installation, excavation and concrete are not included. New framing is priced separately.";
+
+export const PILE_CONFIRMED_NEW_WHILE_PENDING =
+  "The confirmed support layout is priced as new supports. Existing piles are not deducted and are not assumed to be replaced.";
+
+export const PILE_CONFIRMED_NEW_WHILE_RETAINED =
+  "Existing piles are retained as a scope decision, which is not proof they are structurally adequate. The confirmed support layout is new supports and is not a replacement of those piles.";
+
+export type DeckSupportPriceTreatment =
+  | "confirmed_new"
+  | "explicit_replacement"
+  | "replacement_unquantified"
+  | "withheld_pending"
+  | "withheld_retained"
+  | "derived_new";
+
+/**
+ * Confirmed bearer layout is a new support quantity.
+ * A stated pile count is replacement quantity only.
+ * Spacing is not a decision about existing piles.
+ */
+export function deckSupportPriceTreatment(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  supportCountSource: "stated" | "spacing_layout" | "confirmed_layout";
+  statedSupportCount: number | null;
+}): DeckSupportPriceTreatment {
+  if (params.supportCountSource === "confirmed_layout") return "confirmed_new";
+  const replacement = getBooleanFact(
+    factRows(params.facts),
+    params.workAreaId,
+    "deck.pile_or_post_replacement_required"
+  );
+  if (replacement === true) {
+    return params.statedSupportCount != null && params.statedSupportCount > 0
+      ? "explicit_replacement"
+      : "replacement_unquantified";
+  }
+  if (replacement === false) return "withheld_retained";
+  if (pileRetentionPending(params)) return "withheld_pending";
+  return "derived_new";
+}
+
+export function deckSupportsArePriced(
+  treatment: DeckSupportPriceTreatment
+): boolean {
+  return (
+    treatment === "confirmed_new" ||
+    treatment === "explicit_replacement" ||
+    treatment === "derived_new"
+  );
+}
+
+export const PILE_INSPECTION_CONDITION_LABEL =
+  "Existing piles may be retained if sound after inspection";
+export const PILE_LEFT_UNTIL_INSPECTION_LABEL =
+  "Existing piles left until inspection";
+export const PILE_TREATMENT_OPTIONS = [
+  "Leave until inspection",
+  "Assume replaced",
+  "Assume retained",
+] as const;
+
+/** Details treatment labels for a pending inspection. Not a new fact. */
+export function pileTreatmentChoiceValue(
+  choice: unknown
+): boolean | "Not sure" | null {
+  if (typeof choice !== "string") return null;
+  const trimmed = choice.trim();
+  if (trimmed === "Assume replaced") return true;
+  if (trimmed === "Assume retained") return false;
+  if (trimmed === "Leave until inspection") return "Not sure";
+  return null;
+}
+
 export function shouldAskPileReplacement(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
 }): boolean {
-  if (!pileReplacementApplicable(params)) return false;
   const known = getBooleanFact(
     factRows(params.facts),
     params.workAreaId,
     "deck.pile_or_post_replacement_required"
   );
-  return known == null;
+  if (known != null) return false;
+  if (pileRetentionPending(params)) return true;
+  if (!pileReplacementApplicable(params)) return false;
+  return true;
+}
+
+/** Ask for a count only after replacement is an explicit assumption. */
+export function shouldAskPileCount(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  const facts = factRows(params.facts);
+  if (
+    getBooleanFact(
+      facts,
+      params.workAreaId,
+      "deck.pile_or_post_replacement_required"
+    ) !== true
+  ) {
+    return false;
+  }
+  const count = getNumberFact(
+    facts,
+    params.workAreaId,
+    "deck.pile_or_post_count"
+  );
+  return count == null || !(count > 0);
 }
 
 /**

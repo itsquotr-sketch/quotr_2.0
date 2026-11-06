@@ -38,6 +38,7 @@ import {
   type PersistedPricingItemMoneyFields,
 } from "@/lib/pricing/commercial-engine-adapter";
 import { isAuthoritativePricingItemCalculation } from "@/lib/pricing/adoption-authority";
+import { pricingLineIncludedInDocumentTotal } from "@/lib/pricing/scope-finalisation";
 import { mapPricingItem } from "@/lib/pricing/mappers";
 import {
   valuesFromEstimateLineItem,
@@ -49,7 +50,7 @@ export const PENDING_PRICING_ID_PREFIX = "pending-pricing:";
 
 /** Columns that exist on pricing_items. Never include cost_known. */
 export const PRICING_ITEM_UPDATE_SELECT =
-  "id, pricing_document_id, project_id, total_cost, total_sell, client_label, notes_internal, manually_edited";
+  "id, pricing_document_id, project_id, component_key, total_cost, total_sell, client_label, notes_internal, manually_edited, visible_on_quote";
 
 /**
  * Review loads persisted columns and derives cost_known through mapPricingItem.
@@ -754,15 +755,18 @@ export async function refreshPricingDocumentTotals(
   const rate = gstRate ?? Number(document?.gst_rate ?? 15);
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
   if (error) return;
-  const mapped = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const mapped = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
   const totals = isAuthoritativePricingItemCalculation()
     ? calculateAuthoritativeDocumentTotals(mapped, rate, `pricing-doc-${pricingDocumentId}`)
     : {

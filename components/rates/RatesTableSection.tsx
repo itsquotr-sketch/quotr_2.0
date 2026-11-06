@@ -1,6 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  COMPANY_RATE_SAVED_NOTICE,
+  RateSavedNotice,
+} from "@/components/rates/RateSavedNotice";
 import { ChevronDown, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +55,8 @@ type RatesTableSectionProps = {
   showEngineColumn?: boolean;
   showAddButton?: boolean;
   readOnly?: boolean;
+  focusItemKey?: string | null;
+  returnHref?: string | null;
 };
 
 function isProductivityEntry(entry: RateCatalogueEntry): boolean {
@@ -182,6 +188,8 @@ export function RatesTableSection({
   showEngineColumn = false,
   showAddButton = true,
   readOnly = false,
+  focusItemKey = null,
+  returnHref = null,
 }: RatesTableSectionProps) {
   const margin = resolveCompanyGrossMarginPercent(companyGrossMarginPercent);
   void showEngineColumn;
@@ -191,12 +199,12 @@ export function RatesTableSection({
   );
 
   const [editingEntry, setEditingEntry] = useState<RateCatalogueEntry | null>(
-    null
+    () => catalogue.find((entry) => entry.item_key === focusItemKey) ?? null
   );
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeTone, setNoticeTone] = useState<"error" | "success">("success");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(focusItemKey ?? "");
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   function showNotice(message: string, tone: "error" | "success") {
@@ -255,7 +263,12 @@ export function RatesTableSection({
           )
         : [...rates, result.rate];
       onRatesChange(nextRates);
-      showNotice("Regenerate an estimate to apply updated rates.", "success");
+      showNotice(
+        returnHref
+          ? COMPANY_RATE_SAVED_NOTICE
+          : "Regenerate an estimate to apply updated rates.",
+        "success"
+      );
     }
 
     return true;
@@ -356,14 +369,11 @@ export function RatesTableSection({
           ) : null}
         </CardHeader>
         <CardContent className="space-y-4">
-          {notice ? (
-            <p
-              role={noticeTone === "error" ? "alert" : "status"}
-              className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
-            >
-              {notice}
-            </p>
-          ) : null}
+          <RateSavedNotice
+            notice={notice}
+            returnHref={returnHref}
+            tone={noticeTone === "error" ? "alert" : "status"}
+          />
 
           {catalogue.length === 0 ? (
             <p className="text-sm text-muted-foreground">

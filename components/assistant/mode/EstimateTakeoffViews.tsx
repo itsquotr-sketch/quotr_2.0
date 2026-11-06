@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PrepareFinalPricingButton, OpenFinalPricingLink } from "@/components/pricing/PrepareFinalPricingButton";
 import { Button } from "@/components/ui/button";
 import type { BuilderReviewView } from "@/lib/assistant/builder-review";
@@ -663,14 +663,17 @@ export function MaterialsTakeoff({
 
 export function LabourTakeoff({
   view,
+  decisions = null,
   ...actions
-}: TakeoffActions & { view: BuilderReviewView }) {
+}: TakeoffActions & { view: BuilderReviewView; decisions?: ReactNode }) {
   const model = projectLabourTakeoff(view);
   const facts: { label: string; value: string }[] = [];
   if (model.knownHours) facts.push({ label: model.knownHoursLabel, value: model.knownHours });
   if (model.heldHours) facts.push({ label: "Hours awaiting review", value: model.heldHours });
   if (model.knownCost) facts.push({ label: model.knownCostLabel, value: model.knownCost });
   return (
+    <div className="min-w-0 space-y-4">
+      {decisions}
     <TakeoffBoard
       title={model.title}
       marker="labour"
@@ -685,6 +688,7 @@ export function LabourTakeoff({
       emptyMessage="No labour lines in this estimate."
       actions={actions}
     />
+    </div>
   );
 }
 
@@ -721,11 +725,13 @@ function ReviewList({
 
 export function AssumptionsChecks({
   view,
+  decisions = null,
   ...actions
-}: TakeoffActions & { view: BuilderReviewView }) {
+}: TakeoffActions & { view: BuilderReviewView; decisions?: ReactNode }) {
   const model = projectAssumptionsReview(view);
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff="checks">
+      {decisions}
       <section className="rounded-xl border border-border/60 bg-card px-4 py-4">
         <h2 className="text-lg font-semibold leading-6">{model.title}</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -1,6 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  COMPANY_RATE_SAVED_NOTICE,
+  RateSavedNotice,
+} from "@/components/rates/RateSavedNotice";
 import { ChevronDown, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +50,8 @@ type MaterialsByProductFamilyProps = {
   readOnly?: boolean;
   companyGrossMarginPercent?: number;
   onRatesChange: (rates: RatesPageRate[]) => void;
+  focusItemKey?: string | null;
+  returnHref?: string | null;
 };
 
 const STATUS_OPTIONS: { value: MaterialStatusFilter; label: string }[] = [
@@ -81,8 +87,10 @@ export function MaterialsByProductFamily({
   readOnly = false,
   companyGrossMarginPercent = DEFAULT_MARGIN_PERCENT,
   onRatesChange,
+  focusItemKey = null,
+  returnHref = null,
 }: MaterialsByProductFamilyProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(focusItemKey ?? "");
   const [status, setStatus] = useState<MaterialStatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [workAreaFilter, setWorkAreaFilter] = useState("all");
@@ -90,7 +98,7 @@ export function MaterialsByProductFamily({
     {}
   );
   const [openFamilies, setOpenFamilies] = useState<Record<string, boolean>>({});
-  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(focusItemKey);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [showKeys, setShowKeys] = useState(false);
@@ -183,7 +191,11 @@ export function MaterialsByProductFamily({
           )
         : [...rates, result.rate];
       onRatesChange(nextRates);
-      setNotice("Regenerate an estimate to apply updated rates.");
+      setNotice(
+        returnHref
+          ? COMPANY_RATE_SAVED_NOTICE
+          : "Regenerate an estimate to apply updated rates."
+      );
       setOpenCategories((prev) => ({
         ...prev,
         [editingItem.categoryId]: true,
@@ -308,11 +320,7 @@ export function MaterialsByProductFamily({
         Show technical keys
       </label>
 
-      {notice ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {notice}
-        </p>
-      ) : null}
+      <RateSavedNotice notice={notice} returnHref={returnHref} />
 
       {filteredCategories.length === 0 ? (
         <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">

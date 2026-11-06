@@ -1322,8 +1322,8 @@ check(
       (row) => row.componentKey === FLOORING_SPECIALIST_COMPONENT
     );
     return (
-      lines.length === 2 &&
-      lines[0]?.nestedItemId !== lines[1]?.nestedItemId &&
+      lines.length === 4 &&
+      new Set(lines.map((row) => row.nestedItemId)).size === 2 &&
       lines.every((row) => row.rateSourceType === "missing")
     );
   })()

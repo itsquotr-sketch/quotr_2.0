@@ -4,6 +4,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { flooringManualAmountBlocked } from "@/lib/estimate/flooring-pricing-recovery";
+import {
+  PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK,
+  pileReplacementManualAmountBlocked,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   deckStatedCountConflictFromPersisted,
   deckStatedCountPricingBlock,
@@ -19,6 +24,14 @@ import {
 } from "@/lib/estimate/ceilings-provisional-package";
 import { clearStaleCeilingProvisionalConfirmation } from "@/lib/pricing/ceiling-provisional-sync";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
+import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
+import {
+  estimateLineIsQuoteVisible,
+  missingGeneratedRateReviewBlock,
+  pricingLineIncludedInDocumentTotal,
+  quoteVisibleExcludedLineBlock,
+  unresolvedScopeReviewBlockForEstimate,
+} from "@/lib/pricing/scope-finalisation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -72,7 +85,10 @@ import {
   type PersistedPricingItemMoneyFields,
 } from "@/lib/pricing/commercial-engine-adapter";
 import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
-import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
+import {
+  stampQuoteVisibilityOverride,
+  valuesFromEstimateLineItem,
+} from "@/lib/pricing/recalibration-helpers";
 import {
   inferStoredPricingCostKnown,
   mergeClientNotesPreservingIdentity,
@@ -103,6 +119,7 @@ import {
   unresolvedManualPricingQuoteBlock,
   unknownMaterialCostQuoteBlock,
 } from "@/lib/work-areas/manual-pricing-route";
+import { customerScopeFromPreliminaryLines } from "@/lib/estimate/preliminaries";
 import {
   buildScopeSummaryFromWorkAreas,
   mapPricingDocument,
@@ -110,7 +127,9 @@ import {
 } from "@/lib/pricing/mappers";
 import {
   coercePersistedGstRate,
-  resolveCreatePricingFromEstimateGstRates,
+  pricingDocumentTaxBasisForRate,
+  pricingTaxBasisDecision,
+  resolveNewPricingDocumentGst,
   resolvePricingGstForUpdate,
   resolveStoredPricingDocumentGstRate,
 } from "@/lib/pricing/gst-source";
@@ -120,6 +139,10 @@ import {
   resolveClientQuoteAssumptions,
   resolveClientQuoteExclusions,
 } from "@/lib/quotes/client-fields";
+import {
+  explicitJobExclusionLines,
+  seedPricingClientExclusions,
+} from "@/lib/quotes/job-exclusions";
 import {
   resolveTermsForSnapshot,
 } from "@/lib/settings/snapshot";
@@ -193,7 +216,7 @@ async function recalculateAndPersistDocumentTotals(
 ) {
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -204,11 +227,14 @@ async function recalculateAndPersistDocumentTotals(
     throw new Error(PRICING_SAVE_FAILED);
   }
 
-  const mappedItems = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const mappedItems = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
 
   let totals: {
     subtotalCost: number;
@@ -449,6 +475,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       estimateIsStale: false,
       quantityConflictDetail: null,
       pricingSummary: null,
+      missingPriceLineCount: null,
     };
   }
 
@@ -634,10 +661,15 @@ export async function createPricingFromEstimate(input: {
     pricingClientAssumptions: [],
     orgDefaults,
   });
-  const exclusions = resolveClientQuoteExclusions({
-    pricingClientExclusions: [],
-    orgDefaults,
-  });
+  const exclusions = seedPricingClientExclusions({
+    templateLines: resolveClientQuoteExclusions({
+      pricingClientExclusions: [],
+      orgDefaults,
+    }),
+    jobLines: explicitJobExclusionLines(
+      factsResult.error ? [] : (factsResult.data ?? [])
+    ),
+  }).lines;
   const terms = resolveTermsForSnapshot(null, orgDefaults);
   const internalNotes = formatEstimateNarrativeForInternalNotes({
     assumptions: parseStringArray(estimate.assumptions),
@@ -645,9 +677,10 @@ export async function createPricingFromEstimate(input: {
   });
   // C-28 / CD-09: organisation GST seeds the document; the same rate must
   // drive insert totals and the post-item recalculation (never hardcoded 15).
-  const createGst = resolveCreatePricingFromEstimateGstRates(
-    orgDefaults.defaultGstRate
-  );
+  const createGst = resolveNewPricingDocumentGst({
+    gstRegistered: orgDefaults.gstRegistered,
+    defaultGstRate: orgDefaults.defaultGstRate,
+  });
   const gstRate = createGst.documentGstRate;
   const validUntil = addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
 
@@ -659,6 +692,7 @@ export async function createPricingFromEstimate(input: {
     total_cost: number;
     total_sell: number;
     cost_known: boolean;
+    included_in_total?: boolean;
   }> = [];
 
   if (lineItems && lineItems.length > 0) {
@@ -681,6 +715,7 @@ export async function createPricingFromEstimate(input: {
         total_cost: values.totalCost,
         total_sell: values.totalSell,
         cost_known: values.costKnown,
+        included_in_total: values.includedInTotal !== false,
       });
 
       pricingItemRows.push({
@@ -709,7 +744,7 @@ export async function createPricingFromEstimate(input: {
         productivity_rate: values.productivityRate,
         productivity_unit: values.productivityUnit,
         calculated_quantity: values.calculatedQuantity,
-        visible_on_quote: true,
+        visible_on_quote: estimateLineIsQuoteVisible(values),
         optional: false,
         sort_order: lineItem.sort_order ?? index,
         notes_internal: values.notesInternal,
@@ -890,10 +925,17 @@ export async function createPricingFromEstimate(input: {
       gst_rate: gstRate,
       gst_amount: documentTotals.gstAmount,
       total_incl_gst: documentTotals.totalInclGst,
-      scope_summary: buildScopeSummaryFromWorkAreas(
-        workAreaNames,
-        project.brief_text
-      ),
+      scope_summary: [
+        buildScopeSummaryFromWorkAreas(workAreaNames, project.brief_text),
+        customerScopeFromPreliminaryLines(
+          (lineItems ?? []).map((row) => ({
+            label: String(row.label ?? ""),
+            notes: (row.notes as string | null) ?? null,
+          }))
+        ),
+      ]
+        .filter(Boolean)
+        .join(" "),
       assumptions,
       exclusions,
       terms,
@@ -930,10 +972,17 @@ export async function createPricingFromEstimate(input: {
       estimateId: estimate.id as string,
       requirementSnapshotId,
       resetReview: manualHandoff.resetReview,
-      scopeSummary: buildScopeSummaryFromWorkAreas(
-        workAreaNames,
-        project.brief_text
-      ),
+      scopeSummary: [
+        buildScopeSummaryFromWorkAreas(workAreaNames, project.brief_text),
+        customerScopeFromPreliminaryLines(
+          (lineItems ?? []).map((row) => ({
+            label: String(row.label ?? ""),
+            notes: (row.notes as string | null) ?? null,
+          }))
+        ),
+      ]
+        .filter(Boolean)
+        .join(" "),
       rows: rowsToAdd,
     });
     if (!attached.ok) {
@@ -1123,8 +1172,16 @@ export async function updatePricingDocument(
   if (documentInput.internal_notes !== undefined) {
     update.internal_notes = documentInput.internal_notes;
   }
-  if (documentInput.gst_rate !== undefined) {
+  const issuedTaxSnapshot =
+    document.status === "converted_to_quote" || document.status === "archived";
+  if (documentInput.gst_rate !== undefined && !issuedTaxSnapshot) {
     update.gst_rate = documentInput.gst_rate;
+    const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+    update.gst_tax_basis = pricingDocumentTaxBasisForRate({
+      gstRegistered: registration.gstRegistered ?? null,
+      defaultGstRate: registration.defaultGstRate,
+      documentGstRate: gstRate,
+    });
   }
 
   const { error } = await supabase
@@ -1171,7 +1228,7 @@ export async function updatePricingDocument(
   // Product intent: updatePricingDocument accepts metadata + optional GST only.
   // There is no document-level margin field; GST-only changes do not recalculate
   // GST-exclusive line cost/sell — only document GST amount / inclusive total.
-  if (documentInput.gst_rate !== undefined) {
+  if (documentInput.gst_rate !== undefined && !issuedTaxSnapshot) {
     await recalculateAndPersistDocumentTotals(
       supabase,
       orgId,
@@ -1359,6 +1416,41 @@ export async function updatePricingItem(
   if (!commercial.ok) {
     return { error: commercial.error };
   }
+  if (
+    flooringManualAmountBlocked({
+      componentKey: existing.component_key,
+      notes: existing.notes_internal,
+    }) &&
+    (totals.totalCost > 0 || totals.totalSell > 0)
+  ) {
+    return {
+      error:
+        "A typed amount does not answer this flooring choice. Choose the waste treatment or package ownership first.",
+    };
+  }
+  const replacementNotes = parseLineItemNotes(existing.notes_internal);
+  if (
+    pileReplacementManualAmountBlocked({
+      itemKey: replacementNotes.metadata.itemKey,
+      label: existing.client_label,
+      scope: item.client_description,
+      basis: item.internal_description,
+      totalCost: totals.totalCost,
+      totalSell: totals.totalSell,
+    })
+  ) {
+    return { error: PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK };
+  }
+
+  const nextNotes = originatedAsPricingRequired
+    ? mergeClientNotesPreservingIdentity(
+        existing.notes_internal,
+        item.notes_internal,
+        costKnown
+      )
+    : (item.notes_internal ?? null);
+  const visibilityChosen =
+    (item.visible_on_quote ?? true) !== existing.visible_on_quote;
 
   const { error } = await supabase
     .from("pricing_items")
@@ -1385,13 +1477,9 @@ export async function updatePricingItem(
       delivery_method: item.delivery_method,
       visible_on_quote: item.visible_on_quote ?? true,
       optional: item.optional ?? false,
-      notes_internal: originatedAsPricingRequired
-        ? mergeClientNotesPreservingIdentity(
-            existing.notes_internal,
-            item.notes_internal,
-            costKnown
-          )
-        : (item.notes_internal ?? null),
+      notes_internal: visibilityChosen
+        ? stampQuoteVisibilityOverride(nextNotes)
+        : nextNotes,
       notes_client: item.notes_client ?? null,
       work_area_id: item.work_area_id ?? null,
       manually_edited: originatedAsPricingRequired && !costKnown ? false : true,
@@ -2102,6 +2190,31 @@ export async function markPricingReviewed(
     documentOrgId: orgId,
   }).block;
   if (provisionalBlock) return { error: provisionalBlock };
+  const conditionBlock = await materialConditionQuoteBlock(
+    supabase,
+    orgId,
+    document.project_id as string
+  );
+  if (conditionBlock) return { error: conditionBlock };
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const taxBasisBlock = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  }).quoteBlock;
+  if (taxBasisBlock) return { error: taxBasisBlock };
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(reviewItems ?? []);
+  if (excludedLineBlock) return { error: excludedLineBlock };
+  const missingRateBlock = missingGeneratedRateReviewBlock(reviewItems ?? []);
+  if (missingRateBlock) return { error: missingRateBlock };
+  const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
+    supabase,
+    orgId,
+    sourceEstimateId
+  );
+  if (scopeBlock) return { error: scopeBlock };
 
   const { error } = await supabase
     .from("pricing_documents")
@@ -2123,6 +2236,120 @@ export async function markPricingReviewed(
     parsed.data.pricingDocumentId
   );
   return { success: true };
+}
+
+export async function applyRegistrationGstToPricing(
+  pricingDocumentId: string
+): Promise<PricingActionState> {
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+  if (document.status === "converted_to_quote" || document.status === "archived") {
+    return { error: "Issued pricing keeps its tax snapshot." };
+  }
+
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const decision = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (decision.quoteBlock && decision.registration === "unset") {
+    return { error: decision.quoteBlock };
+  }
+  if (!decision.mismatch) return { success: true, document };
+
+  const { error } = await supabase
+    .from("pricing_documents")
+    .update({
+      gst_rate: decision.registrationRate,
+      gst_tax_basis: null,
+      status: "draft",
+      reviewed_at: null,
+    })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-apply-registration-gst", PRICING_SAVE_FAILED),
+    };
+  }
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId,
+    decision.registrationRate,
+    true
+  );
+  const updated = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updated) return { error: "Failed to load updated pricing document." };
+  revalidatePricingDashboard(document.project_id, parsed.data.pricingDocumentId);
+  return { success: true, document: updated };
+}
+
+export async function keepPricingDocumentGstRate(
+  pricingDocumentId: string
+): Promise<PricingActionState> {
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) return { error: loaded.error };
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+  if (document.status === "converted_to_quote" || document.status === "archived") {
+    return { error: "Issued pricing keeps its tax snapshot." };
+  }
+
+  const registration = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const decision = pricingTaxBasisDecision({
+    gstRegistered: registration.gstRegistered ?? null,
+    defaultGstRate: registration.defaultGstRate,
+    documentGstRate: document.gst_rate,
+    taxBasis: document.gst_tax_basis,
+    status: document.status,
+  });
+  if (decision.quoteBlock && decision.registration === "unset") {
+    return { error: decision.quoteBlock };
+  }
+  if (!decision.mismatch || !decision.overrideMarker) {
+    return { success: true, document };
+  }
+
+  const { error } = await supabase
+    .from("pricing_documents")
+    .update({ gst_tax_basis: decision.overrideMarker })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-keep-document-gst", PRICING_SAVE_FAILED),
+    };
+  }
+  const updated = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updated) return { error: "Failed to load updated pricing document." };
+  revalidatePricingDashboard(document.project_id, parsed.data.pricingDocumentId);
+  return { success: true, document: updated };
 }
 
 export async function confirmCeilingProvisionalPackage(
@@ -2224,7 +2451,7 @@ export async function setPricingItemsQuoteVisibility(input: {
 
   const { data: ownedRows, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id")
+    .select("id, notes_internal")
     .eq("pricing_document_id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId)
     .in("id", uniqueIds);
@@ -2243,12 +2470,20 @@ export async function setPricingItemsQuoteVisibility(input: {
   if (visibilityLocked === null) return { error: PRICING_SAVE_FAILED };
   if (visibilityLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
 
-  const { error } = await supabase
-    .from("pricing_items")
-    .update({ visible_on_quote: parsed.data.visibleOnQuote })
-    .eq("pricing_document_id", parsed.data.pricingDocumentId)
-    .eq("org_id", orgId)
-    .in("id", ownedIds);
+  const visibilityWrites = await Promise.all(
+    (ownedRows ?? []).map((row) =>
+      supabase
+        .from("pricing_items")
+        .update({
+          visible_on_quote: parsed.data.visibleOnQuote,
+          notes_internal: stampQuoteVisibilityOverride(row.notes_internal as string | null),
+        })
+        .eq("id", row.id)
+        .eq("pricing_document_id", parsed.data.pricingDocumentId)
+        .eq("org_id", orgId)
+    )
+  );
+  const error = visibilityWrites.find((result) => result.error)?.error;
 
   if (error) {
     return {
@@ -2454,6 +2689,8 @@ export async function applyPricingFinalSell(input: {
   }
 
   const items = (rows ?? []).map((row) => mapPricingItem(row));
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
+  if (excludedLineBlock) return { error: excludedLineBlock };
   const finalSellLocked = await lockedSupplierItemIds(supabase, orgId, items.map((row) => row.id));
   if (finalSellLocked === null) return { error: PRICING_SAVE_FAILED };
   if (finalSellLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };
@@ -2731,9 +2968,10 @@ export async function continueManualWorkToPricing(input: {
 
   if (!pricingDocumentId) {
     const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
-    const gstRate = resolveCreatePricingFromEstimateGstRates(
-      orgDefaults.defaultGstRate
-    ).documentGstRate;
+    const gstRate = resolveNewPricingDocumentGst({
+      gstRegistered: orgDefaults.gstRegistered,
+      defaultGstRate: orgDefaults.defaultGstRate,
+    }).documentGstRate;
     const assumptions = resolveClientQuoteAssumptions({
       pricingClientAssumptions: [],
       orgDefaults,

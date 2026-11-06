@@ -40,6 +40,14 @@ export type Project = {
 export type ProjectListItem = Project & {
   has_estimate: boolean;
   estimate_is_stale: boolean;
+  /**
+   * Missing-price lines already on the estimate. Null when the list did not
+   * load them. This is not a work-area count and not a scope-coverage count.
+   */
+  /** Lines whose rate is still missing. Not a work-area count. */
+  missing_price_line_count?: number | null;
+  /** Requested tasks with no priced or explicitly unpriced line. Not added to the line count. */
+  scope_coverage_gap_count?: number | null;
   pricing_summary: PricingSummary | null;
   quote_summary: QuoteSummary | null;
 };

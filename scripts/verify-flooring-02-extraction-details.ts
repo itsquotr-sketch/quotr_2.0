@@ -274,9 +274,14 @@ check("23. length × width", (() => {
   const row = portionsOf("install carpet 5m × 4m")[0];
   return row?.length_m === 5 && row.width_m === 4 && row.area_input_method === "length_width";
 })());
-check("24. dimensions do not overwrite direct area", (() => {
+check("24. disagreeing dimensions and stated area stay unresolved", (() => {
   const row = portionsOf("install 24 m² of carpet 5 m by 4 m")[0];
-  return row?.area_m2 === 24 && row.area_input_method === "direct_m2";
+  return (
+    row?.area_m2 === 24 &&
+    row.length_m === 5 &&
+    row.width_m === 4 &&
+    row.area_input_method == null
+  );
 })());
 check("25. tile dimensions are not room dimensions", (() => {
   const row = portionsOf("install 600 × 600 mm floor tiles to the entry")[0];

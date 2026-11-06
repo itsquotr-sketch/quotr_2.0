@@ -170,6 +170,7 @@ function deckRef01Facts(workAreaId: string): EstimateFact[] {
     fact("deck.footing_width_mm", workAreaId, 300),
     fact("deck.footing_depth_mm", workAreaId, 450),
     fact("deck.vertical_face_boards_required", workAreaId, true),
+    fact("deck.fascia_length_basis", workAreaId, "Use the full rectangular perimeter"),
     fact("deck.access_type", workAreaId, "Stair set"),
     fact("deck.balustrade_required", workAreaId, false),
   ];

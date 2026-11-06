@@ -79,6 +79,15 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     reason: "Physical board coverage for lineal takeoff. 140 mm disclosed if skipped.",
   },
   {
+    factKey: "deck.board_waste_percent",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason:
+      "Explicit board waste from the brief. Company decking wastage applies only when this is absent. It is not asked, and it is not copied onto framing.",
+  },
+  {
     factKey: "deck.board_direction",
     questionClass: "DERIVED",
     calculatorConsumed: true,

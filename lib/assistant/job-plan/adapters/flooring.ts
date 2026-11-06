@@ -66,6 +66,25 @@ export const flooringJobPlanAdapter: JobPlanWorkAreaAdapter = {
       });
     }
 
+    const skirtingExcluded = resolved.portions.some(
+      (portion) => portion.skirting_replacement_excluded === true
+    );
+    const notIncluded: JobPlanScopeItem[] = skirtingExcluded
+      ? [
+          {
+            id: `${id}-skirting-replacement-excluded`,
+            workAreaId: id,
+            label: "Skirting replacement excluded",
+            presentation: "NOT_INCLUDED",
+            kind: "specification",
+            togglable: false,
+            write: null,
+            sourceFactKey: "flooring.portions",
+            surfaceReason: "The brief excluded skirting replacement",
+          },
+        ]
+      : [];
+
     return {
       workAreaId: id,
       workAreaType: workArea.type,
@@ -77,7 +96,7 @@ export const flooringJobPlanAdapter: JobPlanWorkAreaAdapter = {
           : workArea.name,
       specChips: chips,
       included,
-      notIncluded: [],
+      notIncluded,
       notConfirmed: [],
       confirmCount: 0,
     };

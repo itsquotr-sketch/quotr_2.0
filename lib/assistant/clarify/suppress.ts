@@ -103,7 +103,16 @@ export function constraintIsKnown(
   key: string
 ): boolean {
   const row = constraints.find((c) => c.key === key);
-  return hasFactValue(row?.value);
+  return hasFactValue(row?.value) && !isNotSureValue(row?.value);
+}
+
+/** A stored explicit unknown stays selected, and the question stays open. */
+export function explicitUnknownConstraintValue(
+  constraints: ComposeClarifyInput["constraints"],
+  key: string
+): "Not sure" | undefined {
+  const row = constraints.find((c) => c.key === key);
+  return isNotSureValue(row?.value) ? "Not sure" : undefined;
 }
 
 export function isLowLevelDeck(

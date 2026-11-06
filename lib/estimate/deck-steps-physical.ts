@@ -34,6 +34,17 @@ export const STEP_WIDTH_ASSUMPTION_STATEMENT =
   "Assuming 1.0 m step width for pricing. Not the full deck edge unless specified.";
 export const STEP_GOING_ASSUMPTION_STATEMENT =
   "Assuming 280 mm stair tread depth for pricing (LOW-CONFIDENCE).";
+export const STEP_STORED_COUNT_DOES_NOT_FIT =
+  "The stored step count does not fit this deck height, so the step is not priced. Dividing the deck height by that count is a riser, not a step width.";
+
+/** A stored rise count is not used when each riser would exceed the estimating maximum. */
+export function storedStepCountExceedsEstimatingRiser(
+  count: number,
+  deckHeightM: number | null
+): boolean {
+  if (!(count > 0) || deckHeightM == null || !(deckHeightM > 0)) return false;
+  return deckHeightM / count > MAX_STEP_ESTIMATING_RISER_M;
+}
 
 export type DeckStepsQuantities = {
   riseCount: number;
@@ -293,6 +304,26 @@ export function calculateDeckStepsQuantities(params: {
   const countFact = getNumberFact(facts, params.workAreaId, "deck.step_count");
   const knownCount =
     countFact != null && countFact > 0 ? Math.round(countFact) : null;
+  if (
+    knownCount != null &&
+    storedStepCountExceedsEstimatingRiser(knownCount, params.deckHeightM)
+  ) {
+    return emptyQuantities({
+      riseCount: 0,
+      riseCountDefaulted: false,
+      riseCountResolution: "INFORMATION_REQUIRED",
+      estimatedRiserM:
+        params.deckHeightM != null && knownCount > 0
+          ? round2(params.deckHeightM / knownCount)
+          : DEFAULT_STEP_TARGET_RISER_M,
+      widthM: 0,
+      widthDefaulted: false,
+      widthResolution: "INFORMATION_REQUIRED",
+      goingM: 0,
+      goingDefaulted: false,
+      goingResolution: "INFORMATION_REQUIRED",
+    });
+  }
   const derivedRise =
     knownCount == null
       ? params.deckHeightM != null

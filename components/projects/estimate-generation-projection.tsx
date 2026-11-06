@@ -138,11 +138,15 @@ export function ProjectWorkspaceNavProjected({
   activeTab,
   projectContext,
   quoteSummary = null,
+  missingPriceLineCount = null,
+  scopeCoverageGapCount = null,
 }: {
   projectId: string;
   activeTab: ProjectWorkflowInput["activeTab"];
   projectContext: string;
   quoteSummary?: QuoteSummary | null;
+  missingPriceLineCount?: number | null;
+  scopeCoverageGapCount?: number | null;
 }) {
   const ctx = useEstimateGenerationProjection();
   const projection = ctx?.projection;
@@ -156,6 +160,8 @@ export function ProjectWorkspaceNavProjected({
       hasEstimate={projection?.hasEstimate}
       estimateIsStale={projection?.estimateIsStale}
       quantityConflictDetail={ctx?.quantityConflictDetail}
+      missingPriceLineCount={missingPriceLineCount}
+      scopeCoverageGapCount={scopeCoverageGapCount}
       onUpdateEstimate={ctx?.runEstimateUpdate}
       updateDialogOpen={ctx?.updateDialogOpen}
     />

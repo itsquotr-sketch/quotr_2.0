@@ -22,6 +22,7 @@ import {
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
   DECK_NORMAL_HANDLING_CONTRACT,
   DECK_STEPS_INCLUDED_FACT_KEY,
+  DECK_SUPPORT_DESIGN_UNRESOLVED,
   DECKING_LINE_LABEL,
   DECKING_PACKAGE_LINE_LABEL,
   concreteBagsPerHole,
@@ -319,10 +320,15 @@ const removalFacts = [
   fact("deck.pile_or_post_replacement_required", kwilaId, true),
 ];
 const removalDeck = calculateDeck(ctx(removalFacts), wa(kwilaId));
+const removalAllowance = removalDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
-  "14 removal + new substructure still suppresses replacement",
+  "14 removal + new supports keep replacement visible and unpriced",
   hasLabel(removalDeck.lineItems, /Existing deck removal/) &&
-    !hasLabel(removalDeck.lineItems, /Pile\/post replacement/)
+    removalAllowance?.includedInTotal === false &&
+    removalAllowance.recommendedCost === 0 &&
+    removalAllowance.quantity === 0
 );
 
 const retainedFacts = [
@@ -344,9 +350,20 @@ const explicitFacts = [
   fact("deck.pile_or_post_count", "ret", 8),
 ];
 const explicitDeck = calculateDeck(ctx(explicitFacts), wa("ret"));
+const explicitAllowance = explicitDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
-  "16 explicit replacement remains valid",
-  hasLabel(explicitDeck.lineItems, /Pile\/post replacement/)
+  "16 explicit replacement stays visible and unpriced",
+  explicitAllowance?.includedInTotal === false &&
+    explicitAllowance.recommendedCost === 0 &&
+    explicitAllowance.quantity === 8 &&
+    !explicitDeck.lineItems.some(
+      (item) =>
+        /Pile\/post replacement/.test(item.label) &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
 );
 
 const staleFacts = [
@@ -354,10 +371,19 @@ const staleFacts = [
   fact("deck.pile_or_post_replacement_required", kwilaId, true),
 ];
 const staleDeck = calculateDeck(ctx(staleFacts), wa(kwilaId));
+const staleAllowance = staleDeck.lineItems.find((item) =>
+  /Pile\/post replacement/.test(item.label)
+);
 check(
   "17 stale replacement does not double count",
-  !hasLabel(staleDeck.lineItems, /Pile\/post replacement/) &&
-    hasLabel(staleDeck.lineItems, /Piles \/ posts/)
+  staleAllowance?.includedInTotal === false &&
+    staleAllowance.recommendedCost === 0 &&
+    !staleDeck.lineItems.some(
+      (item) =>
+        /Pile\/post replacement/.test(item.label) &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
 );
 
 console.log("\n== MATERIAL DISPLAY ==");
@@ -428,7 +454,10 @@ check(
   "28 No suppresses",
     !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL) &&
     !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_PLACE_LABEL) &&
-    !concreteNo.missingInfo.some((info) => /concrete/i.test(info))
+    !concreteNo.missingInfo.some((info) => /concrete/i.test(info)) &&
+    concreteNo.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    /support method, post count and associated excavation/i.test(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    /not priced/i.test(DECK_SUPPORT_DESIGN_UNRESOLVED)
 );
 check(
   "29 absent bags-per-hole is not a 2.5 takeoff",
@@ -705,13 +734,21 @@ check(
 
 const fasciaBoost = calculateDeck(
   ctx(
-    [...kwilaFacts, fact("deck.vertical_face_boards_required", kwilaId, true)],
+    [
+      ...kwilaFacts,
+      fact("deck.vertical_face_boards_required", kwilaId, true),
+      fact("deck.fascia_length_basis", kwilaId, "Use the full rectangular perimeter"),
+    ],
     [productivityOrgRate("deck.fascia.install.hours_per_lm", "lm", 0.9)]
   ),
   wa(kwilaId)
 );
 const fasciaBase = calculateDeck(
-  ctx([...kwilaFacts, fact("deck.vertical_face_boards_required", kwilaId, true)]),
+  ctx([
+    ...kwilaFacts,
+    fact("deck.vertical_face_boards_required", kwilaId, true),
+    fact("deck.fascia_length_basis", kwilaId, "Use the full rectangular perimeter"),
+  ]),
   wa(kwilaId)
 );
 check(

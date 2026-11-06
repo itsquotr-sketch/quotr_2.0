@@ -257,7 +257,7 @@ function buildDeckDraft(
   if (isAffirmative(factValue(facts, "deck.pile_or_post_replacement_required"))) {
     draft = appendScopeClause(
       draft,
-      "Pile, post or substructure replacement is included where applicable."
+      "Pile or post replacement is requested and stays out of the known price until its operation is distinct from measured support work."
     );
   }
 
@@ -554,12 +554,9 @@ function buildBathroomDraft(facts?: WorkAreaQuoteFact[]): string {
 function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
   const area = factValue(facts, "kitchen.area_m2");
   const renovationType = factValue(facts, "kitchen.renovation_type");
-  let draft =
-    "Carry out kitchen renovation works to the agreed scope, including cabinetry, benchtop, appliance and associated installation works where included.";
-
-  if (renovationType) {
-    draft = `Carry out ${renovationType.toLowerCase()} kitchen works to the agreed scope, including cabinetry, benchtop, appliance and associated installation works where included.`;
-  }
+  let draft = renovationType
+    ? `Carry out ${renovationType.toLowerCase()} kitchen works to the agreed scope.`
+    : "Carry out kitchen renovation works to the agreed scope.";
 
   if (area) {
     draft = `${draft.replace(/\.$/, "")} for an approximately ${area} m² kitchen.`;
@@ -574,6 +571,21 @@ function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
       draft,
       "Cabinetry is client supplied; contractor install and coordination included where applicable."
     );
+  } else if (isAffirmative(factValue(facts, "kitchen.cabinetry_included"))) {
+    draft = appendScopeClause(draft, "Cabinetry is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.benchtop_included"))) {
+    draft = appendScopeClause(draft, "Benchtop is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.appliances_client_supplied"))) {
+    draft = appendScopeClause(
+      draft,
+      "Appliances are client supplied; installation is included where applicable."
+    );
+  } else if (isAffirmative(factValue(facts, "kitchen.appliances_included"))) {
+    draft = appendScopeClause(draft, "Appliances are included where applicable.");
   }
 
   if (isAffirmative(factValue(facts, "kitchen.splashback_included"))) {
@@ -677,6 +689,8 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
     }
     if (hasSkirting) {
       draft = appendScopeClause(draft, "Skirting is included where selected.");
+    } else if (types.every((row) => row.skirting === "none")) {
+      draft = appendScopeClause(draft, "Skirting is excluded.");
     }
     if (hasCornice) {
       draft = appendScopeClause(
@@ -701,6 +715,8 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
         draft,
         "Wall-face painting is included to the selected faces."
       );
+    } else if (types.every((row) => row.painting === "none")) {
+      draft = appendScopeClause(draft, "Painting is excluded.");
     }
     if (hasElectrical) {
       draft = appendScopeClause(
@@ -745,7 +761,13 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
   if (isAffirmative(factValue(facts, "internal_walls.insulation_included"))) {
     draft = appendScopeClause(draft, "Wall insulation is included where applicable.");
   }
-  if (isAffirmative(factValue(facts, "internal_walls.skirtings_included"))) {
+  const legacyTypes = parseInternalWallsQuoteTypes(facts);
+  const legacySkirtingExcluded =
+    legacyTypes.length > 0 && legacyTypes.every((row) => row.skirting === "none");
+  if (
+    !legacySkirtingExcluded &&
+    isAffirmative(factValue(facts, "internal_walls.skirtings_included"))
+  ) {
     draft = appendScopeClause(draft, "Skirting is included where applicable.");
   }
 

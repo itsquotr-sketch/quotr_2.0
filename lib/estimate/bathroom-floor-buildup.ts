@@ -25,11 +25,12 @@ import {
 } from "@/lib/estimate/bathroom-identities";
 import { bathroomSheetTakeoff } from "@/lib/estimate/bathroom-linings";
 import {
+  classifyBathroomFloorSubstrateAnswer,
   parseBathroomFcFlooringSheetSize,
   parseBathroomFloorFinish,
-  parseBathroomFloorSubstrate,
   type BathroomFcFlooringSheetSize,
   type BathroomFloorFinishSystem,
+  type BathroomFloorSubstrateTreatment,
 } from "@/lib/estimate/bathroom-scope";
 
 export const BATHROOM_FC_19MM_SHEET_AREA_M2 = 1.62;
@@ -49,7 +50,9 @@ export type BathroomStructuralFloorKind =
 
 export type BathroomFloorBuildUp = {
   structural: BathroomStructuralFloorKind | null;
+  /** Unknown substrate is not a silent plywood allowance. This stays false. */
   structuralAssumedPlywood: boolean;
+  substrateTreatment: BathroomFloorSubstrateTreatment["kind"];
   fcSheetSize: BathroomFcFlooringSheetSize | null;
   tileUnderlayRequired: boolean;
   floorFinish: BathroomFloorFinishSystem | null;
@@ -71,13 +74,15 @@ export function resolveBathroomFloorBuildUp(params: {
 }): BathroomFloorBuildUp {
   const assumptions: string[] = [];
   const floorFinish = parseBathroomFloorFinish(params.floorFinishRaw);
-  const assumedPlywood =
-    !params.stripOutOnly &&
-    typeof params.substrateRaw === "string" &&
-    /not sure|unknown|unsure/i.test(params.substrateRaw.trim());
-  const structural = assumedPlywood
-    ? "treated_plywood"
-    : parseBathroomFloorSubstrate(params.substrateRaw);
+  const treatment = classifyBathroomFloorSubstrateAnswer(params.substrateRaw);
+  const structural =
+    treatment.kind === "replacement"
+      ? treatment.system
+      : treatment.kind === "retained"
+        ? "none"
+        : treatment.kind === "other"
+          ? "other"
+          : null;
   const fcSheetSize = parseBathroomFcFlooringSheetSize(params.sheetSizeRaw);
 
   if (structural === "fibre_cement") {
@@ -99,8 +104,9 @@ export function resolveBathroomFloorBuildUp(params: {
   }
 
   return {
-    structural,
-    structuralAssumedPlywood: assumedPlywood,
+    structural: params.stripOutOnly && treatment.kind !== "replacement" ? null : structural,
+    structuralAssumedPlywood: false,
+    substrateTreatment: params.stripOutOnly && treatment.kind === "unknown" ? "unanswered" : treatment.kind,
     fcSheetSize,
     tileUnderlayRequired,
     floorFinish,

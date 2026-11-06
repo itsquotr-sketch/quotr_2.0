@@ -194,6 +194,9 @@ export type OnboardingAccessState = {
   noticeCategories: string[];
   /** Canonical step for an owner or admin review. Null when nothing is missing. */
   noticeReviewPath: string | null;
+  /** Null means registration has not been answered. */
+  gstRegistered: boolean | null;
+  defaultGstRate: number | null;
   role: MembershipRole | null;
 };
 
@@ -260,6 +263,8 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
       incompleteSetupNotice: false,
       noticeCategories: [],
       noticeReviewPath: null,
+      gstRegistered: null,
+      defaultGstRate: null,
       role: null,
     };
   }
@@ -304,6 +309,8 @@ async function loadOnboardingAccessUncached(): Promise<OnboardingAccessState> {
       ? incompleteSetupCategoryLabels(authority)
       : [],
     noticeReviewPath: incompleteSetupNotice ? firstRunForcedPath(reviewStage) : null,
+    gstRegistered: authority.gstRegistered,
+    defaultGstRate: authority.defaultGstRate,
     role,
   };
 }

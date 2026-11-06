@@ -9,6 +9,7 @@ import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHe
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { measureServerLoad } from "@/lib/perf/timing";
+import { formatMissingPriceLines } from "@/lib/assistant/presentation/estimate-issues";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import {
   getPricingWorkspaceDataWithContext,
@@ -22,6 +23,10 @@ import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getOnboardingAccess } from "@/lib/setup/actions";
 import { loadPendingRateReconciliations, loadSupplierPriceReview } from "@/lib/subcontractors/rate-use-actions";
 import { loadScheduleScopeReview } from "@/lib/rfqs/schedule-scope-gaps";
+import {
+  UNRESOLVED_SCOPE_REVIEW_BLOCK,
+  UNRESOLVED_SPECIFICATION_REVIEW_BLOCK,
+} from "@/lib/pricing/scope-finalisation";
 import { memberCanEditPricing } from "@/lib/team/permissions";
 import {
   MANUAL_PRICING_AFTER_QUOTE_NOTICE,
@@ -71,6 +76,14 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
   const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview } =
     pageData;
 
+  const missingPriceLineCount = data.items.filter(
+    (item) => pricingItemViewModel(item).pricingRequired
+  ).length;
+  const scopeStillOpen =
+    (tabContext.scopeCoverageGapCount ?? 0) > 0 ||
+    (tabContext.unresolvedSpecificationCount ?? 0) > 0;
+  const priceBasisIncomplete = missingPriceLineCount > 0 || scopeStillOpen;
+
   const pricingChangedAfterQuote =
     quoteSummaryForDoc != null &&
     new Date(data.document.updated_at).getTime() >
@@ -82,7 +95,16 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         <WorkspaceHeaderBar
           actions={<UserMenu className="hidden md:inline-flex" />}
         >
-          <ProjectWorkspaceHeader project={project} subtitle="Final pricing" />
+          <ProjectWorkspaceHeader
+            project={project}
+            subtitle={
+              missingPriceLineCount > 0
+                ? formatMissingPriceLines(missingPriceLineCount)
+                : priceBasisIncomplete
+                  ? "Priced work so far"
+                  : "Final pricing"
+            }
+          />
         </WorkspaceHeaderBar>
       }
       nav={
@@ -98,9 +120,9 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
           quantityConflictDetail={tabContext.quantityConflictDetail}
-          pricingUnresolvedRequired={data.items.some(
-            (item) => pricingItemViewModel(item).pricingRequired
-          )}
+          missingPriceLineCount={missingPriceLineCount}
+          scopeCoverageGapCount={tabContext.scopeCoverageGapCount}
+          pricingUnresolvedRequired={missingPriceLineCount > 0}
         />
       }
       contentClassName="bg-muted/30"
@@ -128,6 +150,16 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         supplierReview={supplierReview}
         scopeReview={scopeReview}
         estimateUpdateRequired={tabContext.quantityConflictDetail}
+        gstRegistered={access.gstRegistered}
+        defaultGstRate={access.defaultGstRate}
+        scopeStillOpen={scopeStillOpen}
+        scopeReviewBlock={
+          (tabContext.scopeCoverageGapCount ?? 0) > 0
+            ? UNRESOLVED_SCOPE_REVIEW_BLOCK
+            : (tabContext.unresolvedSpecificationCount ?? 0) > 0
+              ? UNRESOLVED_SPECIFICATION_REVIEW_BLOCK
+              : null
+        }
       />
     </WorkspacePage>
   );

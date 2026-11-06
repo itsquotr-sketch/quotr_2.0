@@ -104,7 +104,7 @@ export function resolveQuoteItemDescription(item: PricingItem): string | null {
   return clientSafeQuoteLineDescription(description);
 }
 
-function resolveQuoteUnitPrice(item: PricingItem): number | null {
+export function resolveQuoteUnitPrice(item: PricingItem): number | null {
   const mode = inferCalculationMode({
     calculationMode: item.calculation_mode,
     quantity: item.quantity,

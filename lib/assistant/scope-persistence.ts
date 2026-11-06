@@ -21,6 +21,7 @@ import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
+import { pileTreatmentChoiceValue } from "@/lib/estimate/deck-scope-2c";
 import { isNotSureValue } from "@/lib/estimate/facts";
 import {
   INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
@@ -138,6 +139,7 @@ export async function upsertScopedFact(
     unit: input.unit ?? null,
     source,
     confidence: input.confidence ?? 1,
+    ...(source === "user" ? { conflict_warning: null } : {}),
   };
 
   if (existingFact) {
@@ -249,6 +251,7 @@ async function persistInternalWallsCollectionWrite(
           value: nextEnvelope,
           source: "user",
           confidence: 1,
+          conflict_warning: null,
         })
         .eq("id", typesRow.id)
         .eq("project_id", params.projectId);
@@ -692,6 +695,7 @@ async function persistFlooringPortionsCollectionWrite(
           value: nextEnvelope,
           source: portionsSource,
           confidence: 1,
+          ...(portionsSource === "user" ? { conflict_warning: null } : {}),
         })
         .eq("id", portionsRow.id)
         .eq("project_id", params.projectId);
@@ -1111,6 +1115,13 @@ export function resolveCommittedFactWrite(params: {
   value: unknown;
   valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
 }): { value: unknown; source: "user" | "assumption" } {
+  if (params.key === "deck.pile_or_post_replacement_required") {
+    const treatment = pileTreatmentChoiceValue(params.value);
+    if (treatment != null) {
+      return { value: treatment, source: "user" };
+    }
+  }
+
   if (isNotSureValue(params.value)) {
     const disclosed = disclosedAssumptionForNotSure(params.key, params.value);
     if (disclosed) {

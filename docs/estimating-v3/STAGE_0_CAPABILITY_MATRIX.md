@@ -82,3 +82,7 @@ Calibration rows are company productivity and rate overrides. They win under the
 ## Protections this programme must keep
 
 Saved work areas, portion JSON, scalar facts, constraints, company rates, productivity overrides, inclusions, exclusions, and issued quote snapshots stay readable. A calculation change does not rewrite them. Generate and quote issue remain explicit. Permissions, billing, signup, consent, and the Android play-surface gate are outside this branch’s parent and stay outside Stage 1.
+
+## Checkpoint 29 October 2026
+
+The flooring and carpet-tile rows above are the Stage 0 record. Hosted Preview `434f214a` no longer drops the second flooring room, and carpet tiles are no longer rewritten as broadloom on the three-room brief. Laminate still has no package benchmark. Those current results, and what remains unpriced, are in [V3_CHECKPOINT_2026-10-29.md](./V3_CHECKPOINT_2026-10-29.md). Do not read a Stage 0 “not re-run” cell as the checkpoint result.

@@ -1,7 +1,8 @@
 /**
  * First-run GST registered yes/no → customer Quote GST rate.
  *
- * No schema field. Authority remains organisation_settings.default_gst_rate.
+ * organisation_settings.gst_registered is the decision.
+ * A stored default_gst_rate is not a yes when that column is null.
  * SaaS/subscription GST is unrelated.
  */
 

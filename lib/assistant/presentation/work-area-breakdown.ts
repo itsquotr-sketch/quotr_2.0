@@ -3,7 +3,7 @@
  * Reads Builder Review fields already on the page. Does not recalculate money.
  */
 
-import { formatCurrency } from "@/components/assistant/format";
+import { formatCurrency, formatUnitRate } from "@/components/assistant/format";
 import type {
   BuilderReviewCategoryId,
   BuilderReviewLineGroup,
@@ -17,7 +17,19 @@ import {
   formatQuantity,
 } from "@/lib/estimate/builder-presentation-format";
 import { scopeReviewDisplay, parseScopeReview, deckProductivityPhrase } from "@/lib/estimate/deck-productivity-scope";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
+import { flooringOwnershipDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
+import {
+  PILE_REPLACEMENT_QUANTITY_UNKNOWN,
+  replacementAllowanceQuantityUnknown,
+} from "@/lib/estimate/deck-scope-2c";
+import {
+  ADD_MISSING_RATE,
+  classifyReviewNotice,
+  GENERATED_LINES_PRICED,
+  priceCompletenessNextAction,
+} from "@/lib/assistant/presentation/estimate-issues";
 
 export const WORK_AREA_PRICING_EXPLANATION =
   "This price is completed in Pricing.";
@@ -45,6 +57,7 @@ const COMPOSITION_LABEL: Record<BuilderReviewCategoryId, string> = {
 
 export type WorkAreaBreakdownReadiness =
   | "All priced"
+  | "Generated lines priced"
   | "Pricing Required"
   | "Partial"
   | "Previous estimate";
@@ -72,6 +85,11 @@ export type WorkAreaBreakdownLine = {
   readonly reviewFactKey: string | null;
   readonly reviewValue: string | null;
   readonly reviewJobFactKey: string | null;
+  readonly componentKey: string | null;
+  readonly itemKey: string | null;
+  readonly detailNotes: string | null;
+  readonly nestedItemId: string | null;
+  readonly roomName: string;
 };
 
 export type WorkAreaBreakdownGroup = {
@@ -100,6 +118,12 @@ export type WorkAreaBreakdownAttention = {
   readonly id: string;
   readonly description: string;
   readonly detail: string;
+  readonly roomName: string;
+  readonly componentKey: string | null;
+  readonly itemKey: string | null;
+  readonly detailNotes: string | null;
+  readonly unit: string | null;
+  readonly nestedItemId: string | null;
 };
 
 export type WorkAreaBreakdownCard = {
@@ -121,6 +145,7 @@ export type WorkAreaBreakdownCard = {
   readonly assumptions: readonly string[];
   readonly checks: readonly string[];
   readonly attention: readonly WorkAreaBreakdownAttention[];
+  readonly nextAction: string | null;
 };
 
 export type WorkAreaBreakdownModel = {
@@ -130,10 +155,12 @@ export type WorkAreaBreakdownModel = {
   readonly directCost: string | null;
   readonly previousDirectCost: string | null;
   readonly sell: string | null;
+  readonly pricedWorkSoFar: string | null;
   readonly staleWarning: string | null;
   readonly cards: readonly WorkAreaBreakdownCard[];
   readonly otherAssumptions: readonly string[];
   readonly otherChecks: readonly string[];
+  readonly nextAction: string | null;
 };
 
 type LineRef = {
@@ -167,17 +194,40 @@ function sourceLabel(
   return label;
 }
 
+function flooringRoomName(
+  area: BuilderReviewWorkAreaGroup,
+  line: BuilderReviewPricedLine
+): string {
+  for (const portion of area.portionGroups ?? []) {
+    const owns = portion.lineGroups.some((group) =>
+      group.children.some((child) => child.id === line.id)
+    );
+    if (!owns) continue;
+    const room = portion.label.split(/\s+[—–]\s+/)[0]?.trim();
+    if (room) return room;
+  }
+  const prefixed = line.label.split(/\s+·\s+/)[0]?.trim();
+  if (prefixed && prefixed !== line.label.trim()) return prefixed;
+  return area.workAreaName;
+}
+
 function presentLine(
   line: BuilderReviewPricedLine,
-  group: BuilderReviewLineGroup | null
+  group: BuilderReviewLineGroup | null,
+  roomName: string
 ): WorkAreaBreakdownLine {
   const pricingRequired = lineIsPricingRequired(line, group);
   const hideCost = pricingRequired || Boolean(group?.costHidden) || line.recommendedCost <= 0;
   const review = parseScopeReview(line.sourceLine.notes);
+  const parsedNotes = parseLineItemNotes(line.sourceLine.notes);
+  const ownership =
+    parsedNotes.metadata.identitySummary ?? parsedNotes.displayNotes ?? null;
+  const ownershipNote =
+    ownership && ownership.includes("Quantity basis:") ? ownership : null;
   const labour = line.sourceLine.category === "labour";
   const hourlyCost =
     labour && line.costRate != null && line.costRate > 0
-      ? `${formatCurrency(line.costRate)}/h`
+      ? `${formatUnitRate(line.costRate)}/h`
       : null;
   const productivity =
     labour && line.sourceLine.productivityRate != null && line.sourceLine.productivityRate > 0
@@ -195,14 +245,23 @@ function presentLine(
     ? null
     : !pricingRequired && line.costRate != null && line.costRate > 0
       ? line.unit
-        ? `${formatCurrency(line.costRate)} / ${line.unit}`
-        : formatCurrency(line.costRate)
+        ? `${formatUnitRate(line.costRate)} / ${line.unit}`
+        : formatUnitRate(line.costRate)
       : null;
+  const quantityUnknown = replacementAllowanceQuantityUnknown({
+    itemKey: line.itemKey,
+    label: line.label,
+    quantity: line.quantity,
+  });
   return {
     id: line.id,
     description: line.label,
-    quantity: line.quantity == null ? null : formatQuantity(line.quantity),
-    unit: line.unit,
+    quantity: quantityUnknown
+      ? PILE_REPLACEMENT_QUANTITY_UNKNOWN
+      : line.quantity == null
+        ? null
+        : formatQuantity(line.quantity),
+    unit: quantityUnknown ? null : line.unit,
     rate,
     hourlyCost,
     productivity,
@@ -210,10 +269,15 @@ function presentLine(
     total: hideCost ? null : formatCurrency(line.recommendedCost),
     source: sourceLabel(line, pricingRequired),
     pricingRequired,
-    reviewNote: scopeReviewDisplay(line.sourceLine.notes),
+    reviewNote: scopeReviewDisplay(line.sourceLine.notes) ?? ownershipNote,
     reviewFactKey: review?.factKey ?? null,
     reviewValue: review?.value ?? null,
     reviewJobFactKey: review?.jobFactKey ?? null,
+    componentKey: line.componentKey,
+    itemKey: line.itemKey,
+    detailNotes: line.sourceLine.notes ?? line.specification,
+    nestedItemId: line.sourceLine.nestedItemId ?? null,
+    roomName,
   };
 }
 
@@ -248,7 +312,8 @@ function collectLines(area: BuilderReviewWorkAreaGroup): LineRef[] {
 
 function groupsFrom(
   idPrefix: string,
-  lines: readonly LineRef[]
+  lines: readonly LineRef[],
+  roomFor: (line: BuilderReviewPricedLine) => string
 ): WorkAreaBreakdownGroup[] {
   const groups: WorkAreaBreakdownGroup[] = [];
   for (const categoryId of COMPOSITION_ORDER) {
@@ -257,7 +322,7 @@ function groupsFrom(
     groups.push({
       id: `${idPrefix}-${categoryId}`,
       title: COMPOSITION_LABEL[categoryId],
-      lines: matched.map((row) => presentLine(row.line, row.group)),
+      lines: matched.map((row) => presentLine(row.line, row.group, roomFor(row.line))),
     });
   }
   return groups;
@@ -297,6 +362,17 @@ function mentions(text: string, name: string): boolean {
   const needle = name.trim().toLowerCase();
   if (needle.length < 3) return false;
   return text.toLowerCase().includes(needle);
+}
+
+function noticeApplies(
+  label: string,
+  areaName: string,
+  areaNames: readonly string[]
+): boolean {
+  if (mentions(label, areaName)) return true;
+  if (areaNames.some((name) => name !== areaName && mentions(label, name))) return false;
+  const kind = classifyReviewNotice(label);
+  return kind === "scope_gap" || kind === "specification";
 }
 
 function scopeFor(
@@ -348,11 +424,41 @@ function presentCard(
     readiness = "Pricing Required";
   } else if (needsPrice || partial) readiness = "Partial";
   else if (!costLabel) readiness = "Pricing Required";
+  if (
+    readiness === "All priced" &&
+    checks.some((check) => flooringOwnershipDecisionOpen(check))
+  ) {
+    readiness = "Partial";
+  }
 
   const portionAssumptions = (area.portionGroups ?? []).flatMap((portion) => [
     ...portion.assumptions,
   ]);
+  if (
+    readiness === "All priced" &&
+    [...checks, ...assumptions, ...portionAssumptions].some((text) => {
+      const kind = classifyReviewNotice(text);
+      return kind === "scope_gap" || kind === "specification";
+    })
+  ) {
+    readiness = GENERATED_LINES_PRICED;
+  }
   const reviewCount = assumptions.length + checks.length + portionAssumptions.length;
+  const noticeTexts = [...checks, ...assumptions, ...portionAssumptions];
+  let scopeCoverageGapCount = 0;
+  let unresolvedSpecificationCount = 0;
+  for (const text of noticeTexts) {
+    const kind = classifyReviewNotice(text);
+    if (kind === "scope_gap") scopeCoverageGapCount += 1;
+    else if (kind === "specification") unresolvedSpecificationCount += 1;
+  }
+  const nextAction = priceCompletenessNextAction({
+    missingPriceLineCount: lines.filter((row) =>
+      lineIsPricingRequired(row.line, row.group)
+    ).length,
+    scopeCoverageGapCount,
+    unresolvedSpecificationCount,
+  });
   const sell =
     readiness === "All priced" &&
     !stale &&
@@ -361,6 +467,7 @@ function presentCard(
       ? formatCurrency(area.sell)
       : null;
 
+  const roomFor = (line: BuilderReviewPricedLine) => flooringRoomName(area, line);
   const portions: WorkAreaBreakdownPortion[] = (area.portionGroups ?? []).map((portion) => ({
     id: portion.id,
     label: portion.label,
@@ -374,11 +481,11 @@ function presentCard(
           group,
           category: line.category,
         }))
-      )
+      ),
+      roomFor
     ),
     assumptions: portion.assumptions,
   }));
-
   const attention: WorkAreaBreakdownAttention[] = lines
     .filter((row) => lineIsPricingRequired(row.line, row.group))
     .map((row) => ({
@@ -386,6 +493,12 @@ function presentCard(
       description: row.line.label,
       detail:
         scopeReviewDisplay(row.line.sourceLine.notes) ?? WORK_AREA_PRICING_EXPLANATION,
+      roomName: roomFor(row.line),
+      componentKey: row.line.componentKey,
+      itemKey: row.line.itemKey,
+      detailNotes: row.line.sourceLine.notes ?? row.line.specification,
+      unit: row.line.unit,
+      nestedItemId: row.line.sourceLine.nestedItemId ?? null,
     }));
 
   return {
@@ -406,7 +519,8 @@ function presentCard(
       `${area.workAreaName}-shared`,
       (area.sharedLineGroups ?? []).flatMap((group) =>
         group.children.map((line) => ({ line, group, category: line.category }))
-      )
+      ),
+      roomFor
     ),
     costGroups: groupsFrom(
       area.workAreaName,
@@ -418,11 +532,13 @@ function presentCard(
           group.children.some((line) => line.id === row.line.id)
         );
         return !inPortion && !shared;
-      })
+      }),
+      roomFor
     ),
     assumptions,
     checks,
     attention,
+    nextAction,
   };
 }
 
@@ -434,15 +550,16 @@ export function projectWorkAreaBreakdown(
   const directKnown = knownMoney(view.overview.recommendedCost, view.overview.recommendedSell);
   const areas = view.workAreas;
   const single = areas.length === 1;
+  const areaNames = areas.map((area) => area.workAreaName);
 
   const assignedAssumptions = new Set<string>();
   const assignedChecks = new Set<string>();
   const cards = areas.map((area) => {
     const assumptions = view.assumptions
-      .filter((item) => single || mentions(item.label, area.workAreaName))
+      .filter((item) => single || noticeApplies(item.label, area.workAreaName, areaNames))
       .map((item) => item.label);
     const checks = view.checks
-      .filter((item) => single || mentions(item.label, area.workAreaName))
+      .filter((item) => single || noticeApplies(item.label, area.workAreaName, areaNames))
       .map((item) => item.label);
     for (const label of assumptions) assignedAssumptions.add(label);
     for (const label of checks) assignedChecks.add(label);
@@ -452,14 +569,22 @@ export function projectWorkAreaBreakdown(
   return {
     title: "Estimate by Work Area",
     workAreaCount: view.overview.workAreaCount,
-    pricingRequiredCount: cards.filter(
-      (card) => card.readiness === "Pricing Required" || card.readiness === "Partial"
-    ).length,
+    pricingRequiredCount: cards.reduce(
+      (sum, card) => sum + card.attention.length,
+      0
+    ),
     directCost: stale ? null : directKnown,
     previousDirectCost: stale ? directKnown : null,
     sell:
       !stale &&
+      cards.every((card) => card.readiness === "All priced") &&
       !view.overview.recommendedSellIsPartial &&
+      view.overview.recommendedSell > 0
+        ? formatCurrency(view.overview.recommendedSell)
+        : null,
+    pricedWorkSoFar:
+      !stale &&
+      !cards.every((card) => card.readiness === "All priced") &&
       view.overview.recommendedSell > 0
         ? formatCurrency(view.overview.recommendedSell)
         : null,
@@ -475,5 +600,9 @@ export function projectWorkAreaBreakdown(
       : view.checks
           .map((item) => item.label)
           .filter((label) => !assignedChecks.has(label)),
+    nextAction:
+      cards.find((card) => card.nextAction === ADD_MISSING_RATE)?.nextAction ??
+      cards.find((card) => card.nextAction)?.nextAction ??
+      null,
   };
 }

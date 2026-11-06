@@ -43,6 +43,12 @@ import {
   LabourTakeoff,
   MaterialsTakeoff,
 } from "@/components/assistant/mode/EstimateTakeoffViews";
+import { ConditionDecisions } from "@/components/assistant/mode/ConditionDecisions";
+import {
+  commercialConditionMessages,
+  conditionAnswerAffectsEstimateBasis,
+  listConditionDecisions,
+} from "@/lib/estimate/condition-basis";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -77,6 +83,7 @@ import type {
 } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
+import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { QuotrLoader } from "@/components/brand/QuotrLoader";
@@ -166,6 +173,7 @@ import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
   deckDetailGapCopy,
+  deckDetailGapsBlockingForAreas,
   deckDetailGapsForAreas,
   deckPostHoleControlId,
   firstDeckDetailTarget,
@@ -173,6 +181,7 @@ import {
   settledPostHoleAnswerCount,
 } from "@/lib/estimate/deck-detail-completeness";
 import { spoilAccessAllowsAllowance } from "@/lib/estimate/deck-hole-excavation";
+import { pileTreatmentChoiceValue } from "@/lib/estimate/deck-scope-2c";
 import {
   detailsReadinessPhase,
   detailsStageStatusLabel,
@@ -224,6 +233,7 @@ import {
   resolveAttentionNavigation,
   type EditJobSection,
 } from "@/lib/assistant/mode";
+import type { OrganisationRate } from "@/components/setup/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
 import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
@@ -308,6 +318,7 @@ type AssistantShellProps = {
   canRunEstimates?: boolean;
   initialEstimateSection?: EstimatePresentationView;
   initialReviewProductivity?: boolean;
+  labourRates?: readonly OrganisationRate[];
 };
 
 type PendingAction =
@@ -420,6 +431,7 @@ export function AssistantShell({
   canRunEstimates = true,
   initialEstimateSection = "overview",
   initialReviewProductivity = false,
+  labourRates = [],
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
@@ -695,6 +707,7 @@ export function AssistantShell({
   // Never clear this from a fresh (isStale=false) server render — that older RSC
   // payload can arrive after a newer write. Clear only after successful regenerate.
   const [localEstimateStale, setLocalEstimateStale] = useState(false);
+  const [rateRecoveryNotice, setRateRecoveryNotice] = useState(false);
   const [generationProjection, setGenerationProjection] = useState<
     EstimateGenerationResult | undefined
   >(undefined);
@@ -786,6 +799,16 @@ export function AssistantShell({
   const questionsSubmitted = isStageAtOrBeyond(stage, "constraints");
   const constraintsSubmitted = isStageAtOrBeyond(stage, "ready_to_estimate");
   const estimateReady = stage === "estimate_ready";
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("recovery") !== "saved") return;
+    setRateRecoveryNotice(true);
+    setLocalEstimateStale(true);
+    setEstimateView("work_areas");
+    const area = url.searchParams.get("workArea");
+    if (area) setFocusWorkAreaId(area);
+  }, [project.id, setEstimateView]);
 
   const bridgeEstimateStaleAfterCanonicalWrite = useCallback(() => {
     if (!estimateReady) return;
@@ -1100,6 +1123,17 @@ export function AssistantShell({
               setEditJobOpen(false);
               setEditJobSection(null);
               setJobPlanEditFocus(null);
+              setRateRecoveryNotice(false);
+              const url = new URL(window.location.href);
+              if (url.searchParams.has("recovery")) {
+                url.searchParams.delete("recovery");
+                url.searchParams.delete("workArea");
+                window.history.replaceState(
+                  window.history.state,
+                  "",
+                  `${url.pathname}${url.search}`
+                );
+              }
             }
             shouldRefresh = false;
             estimateApplied = true;
@@ -1870,6 +1904,7 @@ export function AssistantShell({
       label: string;
       value: string | number | boolean;
       inputType?: "select" | "boolean";
+      acceptance?: "answer" | "assumption";
     }) => {
       setSavingConstraintKey(input.key);
       setConstraintError(null);
@@ -1885,11 +1920,15 @@ export function AssistantShell({
               label: input.label,
               value: input.value,
               inputType: input.inputType,
+              acceptance: input.acceptance,
             })
           );
           if (result.error) {
             setConstraintError(result.error);
             return result;
+          }
+          if (conditionAnswerAffectsEstimateBasis(input.key)) {
+            setLocalEstimateStale(true);
           }
           setLiveConstraints((prev) => {
             const next = prev.filter((row) => row.key !== input.key);
@@ -1898,7 +1937,7 @@ export function AssistantShell({
               key: input.key,
               label: input.label,
               value: input.value,
-              source: "user",
+              source: input.acceptance === "assumption" ? "assumption" : "user",
             });
             return next;
           });
@@ -2412,11 +2451,18 @@ export function AssistantShell({
         }
         if (!candidate.factKey) return { error: "Invalid fact update." };
         const disclosed = disclosedAssumptionForNotSure(candidate.factKey, value);
+        const pileTreatment =
+          candidate.factKey === "deck.pile_or_post_replacement_required"
+            ? pileTreatmentChoiceValue(value)
+            : null;
+        const storedValue = pileTreatment ?? (disclosed ? disclosed.value : value);
         const overlayRow = {
           key: candidate.factKey,
           work_area_id: candidate.workAreaId,
-          value: disclosed ? disclosed.value : value,
-          source: (disclosed ? disclosed.source : "user") as "user" | "assumption",
+          value: storedValue,
+          source: (disclosed && pileTreatment == null ? disclosed.source : "user") as
+            | "user"
+            | "assumption",
           wallTypeId: candidate.wallTypeId ?? undefined,
           openingId: candidate.openingId ?? undefined,
           nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
@@ -2447,8 +2493,11 @@ export function AssistantShell({
             workAreaId: candidate.workAreaId,
             key: candidate.factKey!,
             label: candidate.label,
-            value,
-            valueType,
+            value: storedValue,
+            valueType:
+              pileTreatment === true || pileTreatment === false
+                ? "boolean"
+                : valueType,
             wallTypeId: candidate.wallTypeId ?? undefined,
             openingId: candidate.openingId ?? undefined,
             nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
@@ -2502,6 +2551,7 @@ export function AssistantShell({
       label: string;
       value: string | number;
       valueType: "number" | "select" | "text";
+      nestedItemId?: string | null;
     }) => {
       const requestSeq = ++factMutationSeqRef.current;
       const identity = specFactIdentity(input.workAreaId, input.key);
@@ -2515,6 +2565,7 @@ export function AssistantShell({
           work_area_id: input.workAreaId,
           value: input.value,
           source: "user",
+          nestedItemId: input.nestedItemId ?? undefined,
         },
         requestSeq
       );
@@ -2524,6 +2575,7 @@ export function AssistantShell({
           work_area_id: input.workAreaId,
           value: input.value,
           source: "user",
+          nestedItemId: input.nestedItemId ?? undefined,
         })
       );
       const replay: FailedSpecReplay = { kind: "fact", seq: requestSeq, input };
@@ -2537,6 +2589,7 @@ export function AssistantShell({
               label: input.label,
               value: input.value,
               valueType: input.valueType,
+              nestedItemId: input.nestedItemId ?? undefined,
             })
           )
         );
@@ -2931,10 +2984,27 @@ export function AssistantShell({
       stage,
     ]
   );
+  const liningProductClarifications = useMemo(
+    () =>
+      clarifyView.candidates.filter(
+        (candidate) =>
+          candidate.rankReason === "HARD_MINIMUM internal walls core" ||
+          candidate.rankReason === "Progressive wall type configuration"
+      ),
+    [clarifyView.candidates]
+  );
 
   const deckDetailGaps = useMemo(
     () =>
       deckDetailGapsForAreas(
+        jobPlanFacts,
+        displayWorkAreas.map((area) => ({ id: area.id, type: area.type }))
+      ),
+    [displayWorkAreas, jobPlanFacts]
+  );
+  const deckGenerationGaps = useMemo(
+    () =>
+      deckDetailGapsBlockingForAreas(
         jobPlanFacts,
         displayWorkAreas.map((area) => ({ id: area.id, type: area.type }))
       ),
@@ -2955,19 +3025,19 @@ export function AssistantShell({
     const postHoleCount = settledPostHoleAnswerCount({
       workConfirmed: isStageAtOrBeyond(stage, "quality"),
       workSavePending: pendingAction === "work_areas",
-      gaps: estimate ? [] : deckDetailGaps,
+      gaps: estimate ? [] : deckGenerationGaps,
     });
     if (postHoleCount === 0 || estimate) return base;
     return {
       ...base,
       canInitiateGenerate: false,
       enoughToEstimate: false,
-      blockerCopy: deckDetailGapCopy(deckDetailGaps),
-      checks: [...deckDetailGaps.map((gap) => gap.label), ...base.checks],
+      blockerCopy: deckDetailGapCopy(deckGenerationGaps),
+      checks: [...deckGenerationGaps.map((gap) => gap.label), ...base.checks],
     };
   }, [
     clarifyView,
-    deckDetailGaps,
+    deckGenerationGaps,
     estimate,
     pendingAction,
     pendingReadinessWrites,
@@ -3054,7 +3124,7 @@ export function AssistantShell({
   const postHoleCount = settledPostHoleAnswerCount({
     workConfirmed: workAreasConfirmed,
     workSavePending: pendingAction === "work_areas",
-    gaps: estimate ? [] : deckDetailGaps,
+    gaps: estimate ? [] : deckGenerationGaps,
   });
   const postHolesSettled =
     workAreasConfirmed && pendingAction !== "work_areas";
@@ -3596,6 +3666,32 @@ export function AssistantShell({
     productivityCoverId,
   ]);
 
+  const conditionWorkAreaTypes = displayWorkAreas
+    .filter((area) => area.status !== "excluded")
+    .map((area) => area.type);
+  const conditionDecisions = listConditionDecisions({
+    constraints: liveConstraints,
+    workAreaTypes: conditionWorkAreaTypes,
+  });
+  const openCommercialConditions = commercialConditionMessages({
+    constraints: liveConstraints,
+    workAreaTypes: conditionWorkAreaTypes,
+  });
+  const conditionDecisionPanel = (
+    <ConditionDecisions
+      decisions={conditionDecisions}
+      stale={displayEstimateStale}
+      savingKey={savingConstraintKey}
+      error={constraintError}
+      onAnswer={(input) => {
+        void handleConstraintSave({
+          ...input,
+          inputType: "select",
+        });
+      }}
+    />
+  );
+
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
         isStale: displayEstimateStale,
@@ -3628,6 +3724,7 @@ export function AssistantShell({
         workAreaNames: workAreaLists.included,
         statedCountConflictDetail: deckCountConflict?.summary ?? null,
         productivityReviewDetail,
+        openCommercialConditions,
       });
 
   const estimateReviewActionable =
@@ -3890,6 +3987,29 @@ export function AssistantShell({
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
+                  {liningProductClarifications.length > 0 ? (
+                    <section
+                      className="rounded-xl border border-border/60 bg-card px-4 py-4 max-md:pb-28"
+                      data-lining-clarification
+                    >
+                      {liningProductClarifications.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="space-y-2"
+                          data-clarify-fact-key={candidate.factKey ?? undefined}
+                        >
+                          <p className="text-sm font-medium leading-snug">{candidate.question}</p>
+                          <ClarifyAnswerControl
+                            candidate={candidate}
+                            value={candidate.currentValue}
+                            pending={pendingReadinessWrites > 0 || updatingEstimate}
+                            disabled={pendingReadinessWrites > 0 || updatingEstimate}
+                            onAnswerValue={handleClarifyValue}
+                          />
+                        </div>
+                      ))}
+                    </section>
+                  ) : null}
                   {productivityProgress && estimateView !== "overview" ? (
                     <p
                       className="text-sm font-medium text-foreground"
@@ -3905,9 +4025,34 @@ export function AssistantShell({
                     onChange={setEstimateView}
                   />
                   {estimateView === "work_areas" && builderReviewView ? (
+                    <>
+                    {rateRecoveryNotice ? (
+                      <p
+                        className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+                        data-flooring-rate-saved="true"
+                      >
+                        The company rate is saved. This estimate has not changed yet.
+                        Update the estimate to apply it. Saved answers and manual
+                        pricing amounts stay as they are.
+                      </p>
+                    ) : null}
                     <WorkAreaBreakdown
                       view={builderReviewView}
                       scope={estimateScope}
+                      projectId={project.id}
+                      onFlooringDecision={
+                        canRunEstimates
+                          ? (input) =>
+                              handleFactSave({
+                                workAreaId: input.workAreaId,
+                                key: input.factKey,
+                                label: input.label,
+                                value: input.value,
+                                inputType: "select",
+                                nestedItemId: input.nestedItemId,
+                              })
+                          : undefined
+                      }
                       focusWorkAreaId={focusWorkAreaId}
                       onFocusApplied={() => setFocusWorkAreaId(null)}
                       isRegenerating={updatingEstimate}
@@ -3935,6 +4080,7 @@ export function AssistantShell({
                           : undefined
                       }
                     />
+                    </>
                   ) : estimateView === "materials" && builderReviewView ? (
                     <MaterialsTakeoff
                       view={builderReviewView}
@@ -3951,6 +4097,7 @@ export function AssistantShell({
                   ) : estimateView === "labour" && builderReviewView ? (
                     <LabourTakeoff
                       view={builderReviewView}
+                      decisions={conditionDecisionPanel}
                       onViewWorkArea={openWorkArea}
                       isRegenerating={updatingEstimate}
                       onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
@@ -3964,6 +4111,7 @@ export function AssistantShell({
                   ) : estimateView === "checks" && builderReviewView ? (
                     <AssumptionsChecks
                       view={builderReviewView}
+                      decisions={conditionDecisionPanel}
                       isRegenerating={updatingEstimate}
                       onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
                       onReviewWorkArea={
@@ -4167,6 +4315,9 @@ export function AssistantShell({
                   onSpecFact={handleJobPlanSpecFact}
                   constraints={liveConstraints}
                   onConstraint={handleConstraintSave}
+                  projectId={project.id}
+                  briefText={briefText}
+                  labourRates={labourRates}
                 />
               }
               projectConditions={
@@ -4414,7 +4565,10 @@ export function AssistantShell({
                 onConstraint={
                   workAreasConfirmed ? undefined : handleConstraintSave
                 }
-              />
+              projectId={project.id}
+              briefText={briefText}
+              labourRates={labourRates}
+            />
             </CollapsibleStageCard>
           ) : null}
 

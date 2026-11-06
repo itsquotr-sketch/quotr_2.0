@@ -76,6 +76,7 @@ const LABOUR_ACCESS_WORK_AREA_TYPES = new Set([
   "internal_walls",
   "demolition",
   "kitchen",
+  "flooring",
 ]);
 
 export function labourAccessWorkAreaPresent(

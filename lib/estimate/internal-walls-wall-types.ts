@@ -13,6 +13,7 @@
  */
 
 import {
+  getBooleanFact,
   getFact,
   getNumberFact,
   getStringFact,
@@ -260,6 +261,8 @@ export type InternalWallsFace = {
   material_family: InternalWallsMaterialFamily | null;
   product: InternalWallsLiningProduct | null;
   thickness_mm: number | null;
+  /** Known when the brief or the user stated millimetres. Assumed when the product default was applied. */
+  thickness_source?: "known" | "assumed_disclosed" | null;
   sheet_length_mm: number | null;
   sheet_length_source?: "recommended" | "override" | null;
   layers: number | null;
@@ -279,6 +282,8 @@ export type InternalWallsWallType = {
   height_m: number | null;
   height_source: "known" | "assumed_disclosed" | null;
   frame_system: InternalWallsFrameSystem | null;
+  /** The builder recorded that the framing system is unknown. It is not a system. */
+  frame_unresolved?: boolean;
   frame_size: InternalWallsTimberSize | null;
   steel: InternalWallsSteelMeta | null;
   stud_centres_mm: number | null;
@@ -395,6 +400,7 @@ function emptyFace(): InternalWallsFace {
     material_family: null,
     product: null,
     thickness_mm: null,
+    thickness_source: null,
     sheet_length_mm: null,
     sheet_length_source: null,
     layers: null,
@@ -718,6 +724,18 @@ function parseMillimetreOption(value: unknown): number | null {
   return parsePositiveNumber(value);
 }
 
+function parseThicknessSource(
+  raw: unknown,
+  product: InternalWallsLiningProduct | null,
+  thicknessMm: number | null
+): "known" | "assumed_disclosed" | null {
+  if (raw === "known" || raw === "assumed_disclosed") return raw;
+  if (thicknessMm == null) return null;
+  return thicknessMm === defaultThicknessMmForProduct(product)
+    ? "assumed_disclosed"
+    : "known";
+}
+
 function parseFace(value: unknown): InternalWallsFace {
   if (!isRecord(value)) return emptyFace();
   const product = parseInternalWallsLiningProduct(value.product);
@@ -732,6 +750,7 @@ function parseFace(value: unknown): InternalWallsFace {
       materialFamilyForProduct(product),
     product,
     thickness_mm: parsePositiveNumber(value.thickness_mm),
+    thickness_source: parseThicknessSource(value.thickness_source, product, parsePositiveNumber(value.thickness_mm)),
     sheet_length_mm: parsePositiveNumber(value.sheet_length_mm),
     sheet_length_source:
       value.sheet_length_source === "override" ||
@@ -786,6 +805,9 @@ export function parseInternalWallsWallType(
           ? "known"
           : null,
     frame_system: frameSystem,
+    ...(value.frame_unresolved === true && frameSystem == null
+      ? { frame_unresolved: true as const }
+      : {}),
     frame_size:
       frameSystem === "timber"
         ? parseInternalWallsTimberSize(value.frame_size)
@@ -959,6 +981,7 @@ function applyLiningDefaults(
     face.material_family = materialFamilyForProduct(face.product);
     if (face.thickness_mm == null) {
       face.thickness_mm = defaultThicknessMmForProduct(face.product);
+      face.thickness_source = face.thickness_mm != null ? "assumed_disclosed" : null;
     }
     if (face.sheet_length_mm == null && face.material_family === "plasterboard") {
       const recommended = recommendedSheetLengthMmForProduct(face.product, heightM);
@@ -1088,6 +1111,9 @@ export function summariseWallType(
     type.frame_system === "steel" ? "Steel framing" : null,
     type.frame_system === "existing_frame" ? "Existing frame" : null,
     type.frame_system === "other" ? "Other framing" : null,
+    type.frame_unresolved && type.frame_system == null
+      ? "Framing not confirmed"
+      : null,
   ].filter(Boolean);
   const geometry =
     type.length_lm != null && type.height_m != null
@@ -1118,7 +1144,11 @@ export function summariseWallType(
   ) {
     const product = liningProductDisplay(type.side_a.product) ?? "Lined";
     const thickness =
-      type.side_a.thickness_mm != null ? `${type.side_a.thickness_mm} mm ` : "";
+      type.side_a.thickness_mm == null
+        ? ""
+        : type.side_a.thickness_source === "assumed_disclosed"
+          ? `${type.side_a.thickness_mm} mm (assumed default) `
+          : `${type.side_a.thickness_mm} mm `;
     const layers =
       type.side_a.layers != null && type.side_a.layers > 1
         ? ` · ${type.side_a.layers} layers`
@@ -1164,6 +1194,33 @@ export function summariseWallType(
     linedFaceCount: lined,
     source,
   };
+}
+
+/**
+ * Canonical side selection wins over the legacy included boolean.
+ * `none` is an exclusion. A chosen side is an inclusion.
+ * Absent or unanswered does not rewrite a historical boolean.
+ */
+export function canonicalInternalWallsFinishStance(
+  types: readonly { skirting: string | null; painting: string | null }[],
+  field: "skirting" | "painting"
+): "included" | "excluded" | "unanswered" | "absent" {
+  if (types.length === 0) return "absent";
+  const values = types.map((row) => row[field]);
+  if (values.some((value) => value != null && value !== "none")) return "included";
+  if (values.every((value) => value === "none")) return "excluded";
+  return "unanswered";
+}
+
+export function legacyInternalWallsFinishApplies(params: {
+  types: readonly { skirting: string | null; painting: string | null }[];
+  field: "skirting" | "painting";
+  legacyIncluded: boolean | null;
+}): boolean {
+  const stance = canonicalInternalWallsFinishStance(params.types, params.field);
+  if (stance === "excluded") return false;
+  if (stance === "included") return true;
+  return params.legacyIncluded === true;
 }
 
 export function summariseInternalWallsWorkArea(
@@ -1307,7 +1364,70 @@ export function legacyWallTypeFromFlatFacts(params: {
       type.side_b = cloneFace(type.side_a);
     }
   }
+  if (
+    getBooleanFact(params.facts as EstimateFact[], params.workAreaId, "internal_walls.painting_included") ===
+    false
+  ) {
+    type.painting = "none";
+  }
+  if (
+    getBooleanFact(params.facts as EstimateFact[], params.workAreaId, "internal_walls.skirtings_included") ===
+    false
+  ) {
+    type.skirting = "none";
+  }
+  const coverage = getStringFact(
+    params.facts as EstimateFact[],
+    params.workAreaId,
+    "internal_walls.coverage_note"
+  );
+  if (coverage && /excluded trades:[^.]*\belectrical\b/i.test(coverage)) {
+    type.electrical = "none";
+  }
   return type;
+}
+
+/**
+ * An explicit exclusion fact answers the wall-type field when that field is
+ * still blank. A later chosen side or tier is left alone, so the control
+ * stays editable without asking for another No.
+ */
+export function withExplicitFinishExclusions(
+  type: InternalWallsWallType,
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): InternalWallsWallType {
+  const paintingExcluded =
+    getBooleanFact(facts as EstimateFact[], workAreaId, "internal_walls.painting_included") ===
+    false;
+  const skirtingExcluded =
+    getBooleanFact(facts as EstimateFact[], workAreaId, "internal_walls.skirtings_included") ===
+    false;
+  const coverage = getStringFact(
+    facts as EstimateFact[],
+    workAreaId,
+    "internal_walls.coverage_note"
+  );
+  const electricalExcluded = Boolean(
+    coverage && /excluded trades:[^.]*\belectrical\b/i.test(coverage)
+  );
+  if (
+    (!paintingExcluded || type.painting != null) &&
+    (!skirtingExcluded || type.skirting != null) &&
+    (!electricalExcluded || type.electrical != null)
+  ) {
+    return type;
+  }
+  return {
+    ...type,
+    side_a: cloneFace(type.side_a),
+    side_b: cloneFace(type.side_b),
+    openings: type.openings.map((row) => cloneOpening(row)),
+    painting: type.painting == null && paintingExcluded ? "none" : type.painting,
+    skirting: type.skirting == null && skirtingExcluded ? "none" : type.skirting,
+    electrical:
+      type.electrical == null && electricalExcluded ? "none" : type.electrical,
+  };
 }
 
 export function storedInternalWallsWallTypes(
@@ -1353,13 +1473,16 @@ export function resolveInternalWallsWallTypes(params: {
 } {
   const stored = storedInternalWallsWallTypes(params.facts, params.workAreaId);
   if (stored.length > 0) {
+    const types = stored.map((type) =>
+      withExplicitFinishExclusions(type, params.facts, params.workAreaId)
+    );
     return {
-      types: stored,
+      types,
       source: "canonical",
       activeId: resolveInternalWallsActiveWallTypeId(
         params.facts,
         params.workAreaId,
-        stored
+        types
       ),
     };
   }
@@ -1626,9 +1749,16 @@ export function applyInternalWallsFactWrite(params: {
     });
   } else if (params.key.startsWith(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX)) {
     if (types.length === 0) {
-      const created = createEmptyWallType();
-      types = [created];
-      activeId = created.id;
+      const legacy = legacyWallTypeFromFlatFacts({
+        facts,
+        workAreaId: params.workAreaId,
+      });
+      const created = legacy
+        ? duplicateWallType(legacy)
+        : createEmptyWallType();
+      if (legacy) created.label = legacy.label;
+      types = [withExplicitFinishExclusions(created, facts, params.workAreaId)];
+      activeId = types[0]!.id;
     }
     const requested = params.wallTypeId?.trim() || null;
     const targetId =
@@ -1652,7 +1782,14 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
       if (field === "frame_system") {
+        if (isNotSureValue(params.value)) {
+          type.frame_system = null;
+          type.frame_size = null;
+          type.frame_unresolved = true;
+          return;
+        }
         type.frame_system = parseInternalWallsFrameSystem(params.value);
+        type.frame_unresolved = false;
         if (type.frame_system === "existing_frame") {
           type.frame_size = null;
         }
@@ -1699,11 +1836,19 @@ export function applyInternalWallsFactWrite(params: {
           normalised === "not_included" ||
           normalised === "not included";
         type.same_lining_both_sides = yes ? true : no ? false : null;
+        if (type.same_lining_both_sides === true) {
+          type.side_b = cloneFace(type.side_a);
+        }
         return;
       }
       if (field === "side_a_lined") {
         const lined = parseLinedFlag(params.value);
-        if (lined != null) type.side_a.lined = lined;
+        if (lined != null) {
+          type.side_a.lined = lined;
+          if (type.same_lining_both_sides === true) {
+            type.side_b = cloneFace(type.side_a);
+          }
+        }
         return;
       }
       if (field === "side_a_product") {
@@ -1712,12 +1857,20 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_a.product = product;
         type.side_a.lined = product != null;
-        type.side_a.thickness_mm = isLiningThicknessSupported(
+        const keptThickness = isLiningThicknessSupported(
           product,
           previous.thickness_mm
         )
           ? previous.thickness_mm
-          : defaultThicknessMmForProduct(product);
+          : null;
+        type.side_a.thickness_mm =
+          keptThickness ?? defaultThicknessMmForProduct(product);
+        type.side_a.thickness_source =
+          keptThickness != null
+            ? previous.thickness_source ?? "known"
+            : type.side_a.thickness_mm != null
+              ? "assumed_disclosed"
+              : null;
         if (
           previous.sheet_length_source === "override" &&
           previous.sheet_length_mm != null &&
@@ -1735,6 +1888,15 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_a_thickness_mm") {
         type.side_a.thickness_mm = parseMillimetreOption(params.value);
+        type.side_a.thickness_source =
+          type.side_a.thickness_mm == null
+            ? null
+            : String(params.value).toLowerCase().includes("assumed")
+              ? "assumed_disclosed"
+              : "known";
+        if (type.same_lining_both_sides === true) {
+          type.side_b = cloneFace(type.side_a);
+        }
         return;
       }
       if (field === "side_a_sheet_length_mm") {
@@ -1761,12 +1923,20 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
-        type.side_b.thickness_mm = isLiningThicknessSupported(
+        const keptThicknessB = isLiningThicknessSupported(
           product,
           previous.thickness_mm
         )
           ? previous.thickness_mm
-          : defaultThicknessMmForProduct(product);
+          : null;
+        type.side_b.thickness_mm =
+          keptThicknessB ?? defaultThicknessMmForProduct(product);
+        type.side_b.thickness_source =
+          keptThicknessB != null
+            ? previous.thickness_source ?? "known"
+            : type.side_b.thickness_mm != null
+              ? "assumed_disclosed"
+              : null;
         if (
           previous.sheet_length_source === "override" &&
           previous.sheet_length_mm != null &&
@@ -1785,6 +1955,12 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_b_thickness_mm") {
         type.side_b.thickness_mm = parseMillimetreOption(params.value);
+        type.side_b.thickness_source =
+          type.side_b.thickness_mm == null
+            ? null
+            : String(params.value).toLowerCase().includes("assumed")
+              ? "assumed_disclosed"
+              : "known";
         type.same_lining_both_sides = false;
         return;
       }
@@ -1939,6 +2115,9 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
     });
+    types = types.map((type) =>
+      withExplicitFinishExclusions(type, facts, params.workAreaId)
+    );
   } else {
     return facts;
   }
@@ -2009,6 +2188,27 @@ export function wallTypeIsBuildOrReline(
   );
 }
 
+/**
+ * A face the brief already included, with no product yet.
+ * Same lining on both sides stays one Side A answer; Side B is asked only
+ * when the faces are explicitly different.
+ */
+function nextIncludedUnspecifiedLiningField(
+  type: InternalWallsWallType
+): string | null {
+  if (type.side_a.lined && type.side_a.product == null) {
+    return "internal_walls.wall_type.side_a_product";
+  }
+  if (
+    type.same_lining_both_sides === false &&
+    type.side_b.lined &&
+    type.side_b.product == null
+  ) {
+    return "internal_walls.wall_type.side_b_product";
+  }
+  return null;
+}
+
 function nextOpeningField(type: InternalWallsWallType): string | null {
   const active =
     type.openings.find((row) => row.id === type.active_opening_id) ??
@@ -2064,6 +2264,8 @@ export function nextInternalWallsWallTypeField(params: {
     }
     const openingNext = nextOpeningField(type);
     if (openingNext) return openingNext;
+    const includedLining = nextIncludedUnspecifiedLiningField(type);
+    if (includedLining) return includedLining;
     if (!type.side_a.lined && type.side_a.product == null) {
       return "internal_walls.wall_type.side_a_product";
     }
@@ -2089,6 +2291,8 @@ export function nextInternalWallsWallTypeField(params: {
     if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
     if (type.length_lm == null) return "internal_walls.wall_type.length_lm";
     if (type.height_m == null) return "internal_walls.wall_type.height_m";
+    const includedLining = nextIncludedUnspecifiedLiningField(type);
+    if (includedLining) return includedLining;
     if (!type.side_a.lined && !type.side_b.lined) {
       return "internal_walls.wall_type.side_a_product";
     }
@@ -2114,6 +2318,8 @@ export function nextInternalWallsWallTypeField(params: {
   if (type.stud_centres_mm == null && type.frame_system !== "existing_frame") {
     return "internal_walls.wall_type.stud_centres_mm";
   }
+  const includedLining = nextIncludedUnspecifiedLiningField(type);
+  if (includedLining) return includedLining;
   if (!type.side_a.lined && type.side_a.product == null) {
     return "internal_walls.wall_type.side_a_product";
   }
@@ -2151,6 +2357,7 @@ export function wallTypeFieldCurrentValue(
     case "internal_walls.wall_type.wall_count":
       return type.wall_count;
     case "internal_walls.wall_type.frame_system":
+      if (type.frame_unresolved && type.frame_system == null) return "Not sure";
       return frameSystemDisplay(type.frame_system);
     case "internal_walls.wall_type.frame_size":
       if (type.frame_size === "90x45") return INTERNAL_WALLS_TIMBER_SIZE_OPTIONS[0];
@@ -2176,7 +2383,9 @@ export function wallTypeFieldCurrentValue(
       return liningProductDisplay(type.side_a.product);
     case "internal_walls.wall_type.side_a_thickness_mm":
       return type.side_a.thickness_mm != null
-        ? `${type.side_a.thickness_mm} mm`
+        ? type.side_a.thickness_source === "assumed_disclosed"
+          ? `${type.side_a.thickness_mm} mm (assumed default)`
+          : `${type.side_a.thickness_mm} mm`
         : null;
     case "internal_walls.wall_type.side_a_sheet_length_mm":
       return type.side_a.sheet_length_mm != null
@@ -2192,7 +2401,9 @@ export function wallTypeFieldCurrentValue(
       return liningProductDisplay(type.side_b.product);
     case "internal_walls.wall_type.side_b_thickness_mm":
       return type.side_b.thickness_mm != null
-        ? `${type.side_b.thickness_mm} mm`
+        ? type.side_b.thickness_source === "assumed_disclosed"
+          ? `${type.side_b.thickness_mm} mm (assumed default)`
+          : `${type.side_b.thickness_mm} mm`
         : null;
     case "internal_walls.wall_type.side_b_sheet_length_mm":
       return type.side_b.sheet_length_mm != null

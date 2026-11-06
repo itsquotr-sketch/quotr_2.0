@@ -86,6 +86,7 @@ const deck2Facts = [
   fact("deck.height_m", "d2", 0.15),
   fact("deck.level", "d2", "Ground-level"),
   fact("deck.vertical_face_boards_required", "d2", true),
+  fact("deck.vertical_face_board_length_lm", "d2", 18),
 ];
 const deck2 = calculateDeck(
   { ...baseContext, facts: deck2Facts } as EstimateContext,
@@ -320,9 +321,15 @@ const deckPiles = calculateDeck(
   } as EstimateContext,
   wa("d3", "deck", "Deck piles")
 );
+const deckPileAllowance = deckPiles.lineItems.find(
+  (item) => item.label === "Pile/post replacement allowance"
+);
 assert(
-  labels(deckPiles.lineItems).includes("Pile/post replacement allowance"),
-  "Deck piles: replacement allowance"
+  deckPileAllowance != null &&
+    deckPileAllowance.includedInTotal === false &&
+    deckPileAllowance.recommendedCost === 0 &&
+    deckPileAllowance.quantity === 8,
+  "Deck piles: replacement allowance stays visible and unpriced"
 );
 assert(
   labels(deckPiles.lineItems).filter((l) => l === "Framing/substructure").length <= 1,

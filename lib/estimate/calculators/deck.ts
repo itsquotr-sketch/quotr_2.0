@@ -13,6 +13,7 @@ import {
 } from "@/lib/estimate/builder-presentation-format";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { DECK_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
+import { provisionalLabourBasisSentences } from "@/lib/estimate/condition-basis";
 import {
   formatMissing,
   getBooleanFact,
@@ -73,6 +74,7 @@ import {
 } from "@/lib/estimate/deck-surface-requirement";
 import {
   DECK_BEARERS_COMPONENT_KEY,
+  DECK_CONCRETE_COMPONENT_KEY,
   DECK_JOISTS_COMPONENT_KEY,
   DECK_RIM_FRAMING_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
@@ -94,6 +96,7 @@ import {
   calculateDeckFasciaQuantities,
   calculateDeckSkirtingQuantities,
   deckSkirtingIncluded,
+  resolveDeckFasciaEdgeLength,
 } from "@/lib/estimate/deck-fascia";
 import {
   DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
@@ -110,8 +113,10 @@ import {
   DEFAULT_STEP_WIDTH_M,
   formatStepGeometryTakeoff,
   STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT,
+  STEP_STORED_COUNT_DOES_NOT_FIT,
   STEP_WIDTH_ASSUMPTION_STATEMENT,
   stepPhysicalGeometryReady,
+  storedStepCountExceedsEstimatingRiser,
 } from "@/lib/estimate/deck-steps-physical";
 import { defaultStepFramingIdentity } from "@/lib/estimate/deck-default-identities";
 import {
@@ -135,7 +140,18 @@ import {
   formatDeckIdentityLine,
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
+  DECK_SUPPORT_DESIGN_UNRESOLVED,
+  PILE_ALLOWANCE_COVERAGE_GAP,
+  PILE_REPLACEMENT_ITEM_KEY,
+  pileReplacementUnpricedNotes,
+  PILE_CONFIRMED_NEW_WHILE_PENDING,
+  PILE_CONFIRMED_NEW_WHILE_RETAINED,
+  PILE_SUPPORTS_RETAINED,
+  PILE_SUPPORTS_UNRESOLVED_PENDING,
+  deckSupportPriceTreatment,
+  deckSupportsArePriced,
   pileReplacementApplicable,
+  pileRetentionPending,
 } from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_FIXINGS_RESIDUAL_ITEM_KEY,
@@ -200,6 +216,7 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.board_material",
   "deck.material",
   "deck.board_width_mm",
+  "deck.board_waste_percent",
   "deck.board_direction",
   "deck.substructure_included",
   "deck.existing_deck_removal",
@@ -351,6 +368,7 @@ export function calculateDeck(
     labourAdjustment,
     labourAdjustmentParts
   );
+  assumptions.push(...provisionalLabourBasisSentences(context.constraints));
   const labourAdjustmentDetail = formatLabourAdjustmentDetail(
     labourAdjustmentParts
   );
@@ -415,13 +433,22 @@ export function calculateDeck(
     context.materialWastageSettings,
     "decking"
   );
+  const statedBoardWaste = getNumberFact(
+    facts,
+    workArea.id,
+    "deck.board_waste_percent"
+  );
+  const boardWastePercent =
+    statedBoardWaste != null && statedBoardWaste > 0
+      ? statedBoardWaste
+      : wastagePercent;
 
   const deckingBoardResult =
     area != null && boardWidthFact != null
       ? calculateDeckingBoardLm({
           areaM2: area,
           boardWidthMm: boardWidthFact,
-          wastagePercent,
+          wastagePercent: boardWastePercent,
         })
       : null;
 
@@ -441,7 +468,7 @@ export function calculateDeck(
           result: deckingBoardResult,
           areaM2: area,
           boardWidthMm: boardWidthFact,
-          wastagePercent,
+          wastagePercent: boardWastePercent,
           materialLabel,
           priced: usedLmPricing,
         })
@@ -461,7 +488,7 @@ export function calculateDeck(
           required: deckingBoardResult.baseLm,
           purchased: deckingBoardResult.totalLm,
           unit: "lm",
-          wastePercent: wastagePercent,
+          wastePercent: boardWastePercent,
         })
       : null,
   ]);
@@ -496,7 +523,7 @@ export function calculateDeck(
         sourceLabel: "Board width and deck area",
         quantity: deckingBoardResult.totalLm,
         unit: "lm",
-        formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${wastagePercent}% waste)`,
+        formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${boardWastePercent}% waste)`,
         confidence: boardWidthAssumed ? "assumed" : "derived",
       }),
     });
@@ -516,9 +543,6 @@ export function calculateDeck(
     materialWastageSettings: context.materialWastageSettings,
     organisationSettings: context.organisationSettings,
   });
-  if (structural.quantities) {
-    assumptions.push(...deckStructureAssumptionTexts(structural.quantities));
-  }
 
   const joistReq = structural.requirements.find(
     (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
@@ -563,7 +587,27 @@ export function calculateDeck(
         ? postsScope.hoursPerUnit
         : 0,
   };
-  const supportCount = structural.quantities?.supportCount ?? 0;
+  const derivedSupportCount = structural.quantities?.supportCount ?? 0;
+  const supportTreatment = deckSupportPriceTreatment({
+    facts,
+    workAreaId: workArea.id,
+    supportCountSource: structural.quantities?.supportCountSource ?? "spacing_layout",
+    statedSupportCount: structural.quantities?.statedSupportCount ?? null,
+  });
+  const concreteFootingsExcluded =
+    getBooleanFact(facts, workArea.id, "deck.concrete_to_supports") === false;
+  const derivedSupportsUnresolved =
+    supportTreatment === "derived_new" && concreteFootingsExcluded;
+  const priceSupports =
+    deckSupportsArePriced(supportTreatment) && !derivedSupportsUnresolved;
+  const supportCount = priceSupports ? derivedSupportCount : 0;
+  if (structural.quantities) {
+    assumptions.push(
+      ...deckStructureAssumptionTexts(structural.quantities, {
+        supportsInScope: priceSupports,
+      })
+    );
+  }
   const requiredDeckingLm = deckingBoardResult?.baseLm ?? 0;
   const requiredFramingLm = structural.quantities
     ? requiredInstalledFramingLm({
@@ -761,6 +805,7 @@ export function calculateDeck(
           includedInTotal: false,
         });
       }
+      if (supportCount > 0) {
       const holePlan = planDeckHoleExcavation({
         facts,
         workAreaId: workArea.id,
@@ -905,6 +950,7 @@ export function calculateDeck(
         baseHours: round2(postHours.baseHours + excavationHours.baseHours),
         adjustedHours: round2(postHours.adjustedHours + excavationHours.adjustedHours),
       };
+      }
     }
     let elevatedHours = shapeLabourHours({
       quantity: 0,
@@ -993,7 +1039,7 @@ export function calculateDeck(
         { req: joistReq, label: "Joists" },
         { req: bearerReq, label: "Bearers" },
         { req: rimReq, label: "Rim framing" },
-        { req: supportReq, label: "Piles / posts" },
+        { req: supportCount > 0 ? supportReq : undefined, label: "Piles / posts" },
       ];
       for (const row of structuralLines) {
         const authority = resolveComponentCommercialAuthority({
@@ -1109,8 +1155,23 @@ export function calculateDeck(
     "deck.existing_deck_removal",
     "deck.demolition_required",
   ]);
-  if (existingDeckRemoval == null) {
+  if (existingDeckRemoval === false) {
+    exclusions.push("Demolition");
+  } else if (existingDeckRemoval == null) {
     assumptions.push("No demolition assumed.");
+  }
+  if (
+    getBooleanFact(facts, workArea.id, "deck.steps_included") === false
+  ) {
+    exclusions.push("Stairs");
+  }
+  if (
+    getBooleanFact(facts, workArea.id, "deck.balustrade_required") === false
+  ) {
+    exclusions.push("Balustrade");
+  }
+  if (getBooleanFact(facts, workArea.id, "deck.painting_included") === false) {
+    exclusions.push("Painting");
   }
 
   if (existingDeckRemoval) {
@@ -1230,67 +1291,89 @@ export function calculateDeck(
     facts,
     workAreaId: workArea.id,
   });
-  const pileReplacement = replacementApplicable ? pileReplacementFact : false;
+  const pilePending = pileRetentionPending({ facts, workAreaId: workArea.id });
+  if (pilePending && pileReplacementFact == null) {
+    missingInfo.push(
+      "Existing piles may be retained if sound after inspection. This price does not assume they are replaced or kept."
+    );
+  }
+  if (supportTreatment === "withheld_pending") {
+    missingInfo.push(PILE_SUPPORTS_UNRESOLVED_PENDING);
+  }
+  if (derivedSupportsUnresolved) {
+    missingInfo.push(DECK_SUPPORT_DESIGN_UNRESOLVED);
+  }
+  if (supportTreatment === "withheld_retained") {
+    assumptions.push(PILE_SUPPORTS_RETAINED);
+  }
+  if (supportTreatment === "confirmed_new" && pilePending && pileReplacementFact == null) {
+    missingInfo.push(PILE_CONFIRMED_NEW_WHILE_PENDING);
+  }
+  if (supportTreatment === "confirmed_new" && pileReplacementFact === false) {
+    assumptions.push(PILE_CONFIRMED_NEW_WHILE_RETAINED);
+  }
+  if (
+    pilePending &&
+    pileReplacementFact === true &&
+    getNumberFact(facts, workArea.id, "deck.pile_or_post_count") == null
+  ) {
+    missingInfo.push(
+      "Pile replacement is an assumption. No pile count was stated, so this is not a complete pile price."
+    );
+  }
+  const pileReplacement = pilePending
+    ? pileReplacementFact
+    : replacementApplicable
+      ? pileReplacementFact
+      : false;
   const substructureCondition = getStringFact(
     facts,
     workArea.id,
     "deck.substructure_condition"
   )?.toLowerCase();
 
-  if (pileReplacement === true) {
-    const pileCount = getNumberFact(facts, workArea.id, "deck.pile_or_post_count");
-    const postRates = resolveRate({
-      rates: context.rates,
-      rateType: "allowance",
-      itemKey: "deck.post_replacement.each",
-      workAreaType: "deck",
-      unit: "each",
-      fallbackCostRate: DECK_BENCHMARKS.postReplacementEach.cost,
-      organisationSettings: context.organisationSettings,
+  const replacementRequested = pileReplacementFact === true;
+  const measuredSupportsPresent = lineItems.some(
+    (item) =>
+      item.includedInTotal !== false &&
+      (item.label === "Piles / posts" ||
+        item.label === "Pile/post installation" ||
+        item.label === "Hole excavation" ||
+        item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY ||
+        item.componentKey === DECK_CONCRETE_BAGS_COMPONENT_KEY)
+  );
+  const statedPileCount = getNumberFact(
+    facts,
+    workArea.id,
+    "deck.pile_or_post_count"
+  );
+  const visiblePileCount =
+    statedPileCount != null && statedPileCount > 0 ? statedPileCount : null;
+  if (replacementRequested) {
+    lineItems.push({
+      ...createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Pile/post replacement allowance",
+        category: "allowance",
+        quantity: visiblePileCount ?? 0,
+        unit: "each",
+        costRate: 0,
+        sellRate: 0,
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+        itemKey: PILE_REPLACEMENT_ITEM_KEY,
+        notes: pileReplacementUnpricedNotes({
+          count: visiblePileCount,
+          measuredSupportsPresent,
+        }),
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+      }),
+      includedInTotal: false,
     });
-
-    if (pileCount != null && pileCount > 0) {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post replacement allowance",
-          category: "allowance",
-          recommendedCost: round2(postRates.costRate * pileCount),
-          recommendedSell: round2(postRates.sellRate * pileCount),
-          rateSource: postRates.sourceLabel,
-          sellDerivedFromMargin: postRates.sellDerivedFromMargin,
-          sellAuthority: postRates.sellAuthority,
-          notes: `${pileCount} piles/posts`,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-    } else {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Pile/post replacement allowance",
-          category: "allowance",
-          recommendedCost: DECK_BENCHMARKS.substructureReplacementAllowance.cost,
-          recommendedSell: quotrFallbackSellFromCost(
-            DECK_BENCHMARKS.substructureReplacementAllowance.cost,
-            context.organisationSettings
-          ),
-          ...benchmarkRateFields(),
-          sellDerivedFromMargin: true,
-          sellAuthority: "derived_from_gross_margin",
-          notes: "Count subject to confirmation",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-      assumptions.push(
-        "Pile/post replacement count is subject to confirmation."
-      );
+    if (!missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP)) {
+      missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
     }
   } else if (pileReplacement === null && replacementApplicable) {
     assumptions.push(
@@ -1307,29 +1390,29 @@ export function calculateDeck(
       item.label.includes("Pile/post replacement")
     );
     if (!hasPileLine) {
-      const allowance =
-        substructureCondition.includes("full")
-          ? DECK_BENCHMARKS.substructureReplacementAllowance
-          : DECK_BENCHMARKS.substructurePartialAllowance;
-      lineItems.push(
-        createAllowanceLineItem({
+      lineItems.push({
+        ...createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
           label: "Substructure replacement allowance",
           category: "allowance",
-          recommendedCost: allowance.cost,
-          recommendedSell: quotrFallbackSellFromCost(
-            allowance.cost,
-            context.organisationSettings
-          ),
-          ...benchmarkRateFields(),
-          sellDerivedFromMargin: true,
-          sellAuthority: "derived_from_gross_margin",
+          quantity: 0,
+          unit: "allow",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          itemKey: PILE_REPLACEMENT_ITEM_KEY,
+          notes:
+            "Quantity unknown. Partial or full replacement was named without a distinct operation or a confirmed count. This is not zero piles requested. Neither the partial benchmark nor the count-free allowance is in the known total. A typed Pricing amount needs an explicit scope and basis and must not repeat measured support lines. A saved rate is not applied automatically.",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
+        }),
+        includedInTotal: false,
+      });
+      if (!missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP)) {
+        missingInfo.push(PILE_ALLOWANCE_COVERAGE_GAP);
+      }
     }
   } else if (substructureCondition === "unknown") {
     assumptions.push(
@@ -1349,6 +1432,17 @@ export function calculateDeck(
   }
 
   if (fasciaFact === true) {
+    const fasciaEdge = resolveDeckFasciaEdgeLength({
+      facts,
+      workAreaId: workArea.id,
+      lengthM: length,
+      widthM: width,
+    });
+    if (fasciaEdge.status === "needs_length") {
+      missingInfo.push(
+        "Fascia is included. No exposed length was stated, and the full rectangular perimeter was not chosen, so fascia materials and labour are not priced."
+      );
+    } else {
     const fasciaQty = calculateDeckFasciaQuantities({
       facts,
       workAreaId: workArea.id,
@@ -1360,7 +1454,12 @@ export function calculateDeck(
       wastePercent: wastagePercent,
     });
     assumptions.push(
-      `Fascia / edge boards use exposed perimeter × ${fasciaQty.courses} course${fasciaQty.courses === 1 ? "" : "s"} (${formatLm(fasciaQty.fasciaNetLm)} lm required). Not height-driven.`
+      fasciaEdge.status === "stated"
+        ? `Fascia length is the stated ${formatLm(fasciaEdge.lengthM)} m, including when that is only part of the edge. It is not assumed to be the full perimeter.`
+        : `Fascia length is the explicit rectangular perimeter ${formatLm(fasciaEdge.lengthM)} m. Inclusion alone did not choose the full perimeter.`
+    );
+    assumptions.push(
+      `Fascia / edge boards use that length × ${fasciaQty.courses} course${fasciaQty.courses === 1 ? "" : "s"} (${formatLm(fasciaQty.fasciaNetLm)} lm required). Not height-driven.`
     );
     const fasciaProductivity = resolveProductivity({
       productivityKey: DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
@@ -1451,6 +1550,7 @@ export function calculateDeck(
           qualityFactor,
         })
       );
+    }
     }
   }
 
@@ -1850,7 +1950,20 @@ export function calculateDeck(
       true;
     if (!steps || steps.riseCount <= 0) {
       if (explicitStepsIncluded || stepsIncluded) {
-        missingInfo.push("Step arrangement required");
+        const storedStepCount = getNumberFact(
+          facts,
+          workArea.id,
+          "deck.step_count"
+        );
+        missingInfo.push(
+          storedStepCount != null &&
+            storedStepCountExceedsEstimatingRiser(
+              Math.round(storedStepCount),
+              deckHeight
+            )
+            ? STEP_STORED_COUNT_DOES_NOT_FIT
+            : "Step arrangement required"
+        );
       }
     } else {
       const goingMm = Math.round(steps.goingM * 1000);
@@ -2081,7 +2194,13 @@ export function calculateDeck(
   const requirements = [
     surfaceRequirement,
     labourRequirement,
-    ...structural.requirements,
+    ...    structural.requirements.filter((req) => {
+      if (priceSupports) return true;
+      return (
+        req.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
+        req.componentKey !== DECK_CONCRETE_COMPONENT_KEY
+      );
+    }),
   ].filter((item): item is NonNullable<typeof item> => item != null);
 
   const deckSubstructureReconciliation =

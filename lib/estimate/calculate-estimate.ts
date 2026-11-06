@@ -1,5 +1,9 @@
 import { calculateBathroom } from "@/lib/estimate/calculators/bathroom";
 import { calculateCladding } from "@/lib/estimate/calculators/cladding";
+import {
+  calculatePreliminaries,
+  PRELIMINARIES_WORK_AREA_TYPE,
+} from "@/lib/estimate/preliminaries";
 import { calculateDeck } from "@/lib/estimate/calculators/deck";
 import { calculateDemolition } from "@/lib/estimate/calculators/demolition";
 import { calculateExternalStairs } from "@/lib/estimate/calculators/external-stairs";
@@ -49,6 +53,7 @@ const CALCULATORS: Record<DetailedCalculatorWorkAreaType, WorkAreaCalculator> = 
   painting: calculatePainting,
   plastering: calculatePlastering,
   cladding: calculateCladding,
+  preliminaries: (context, workArea) => calculatePreliminaries(context, workArea),
 };
 
 export class EstimateEngineError extends Error {
@@ -73,7 +78,14 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
-  for (const workArea of confirmed) {
+  const ordered = [...confirmed].sort((left, right) => {
+    if (left.type === PRELIMINARIES_WORK_AREA_TYPE) return 1;
+    if (right.type === PRELIMINARIES_WORK_AREA_TYPE) return -1;
+    return left.sort_order - right.sort_order;
+  });
+
+  for (const workArea of ordered) {
+    if (workArea.type === PRELIMINARIES_WORK_AREA_TYPE) continue;
     const calculator = workAreaTypeHasDetailedCalculator(workArea.type)
       ? CALCULATORS[workArea.type]
       : undefined;
@@ -109,6 +121,20 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
       });
     }
 
+    assumptions.push(...result.assumptions);
+    missingInfo.push(...result.missingInfo);
+    exclusions.push(...result.exclusions);
+  }
+
+  const preliminaries = ordered.find(
+    (workArea) => workArea.type === PRELIMINARIES_WORK_AREA_TYPE
+  );
+  if (preliminaries) {
+    const result = calculatePreliminaries(context, preliminaries, lineItems);
+    calculatorResults.push(result);
+    for (const item of result.lineItems) {
+      lineItems.push({ ...item, sortOrder: sortOrder++ });
+    }
     assumptions.push(...result.assumptions);
     missingInfo.push(...result.missingInfo);
     exclusions.push(...result.exclusions);

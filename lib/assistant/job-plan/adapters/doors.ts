@@ -1,3 +1,4 @@
+import { jobPlanBoolean } from "@/lib/assistant/job-plan/facts";
 import { doorsSpecificationCountLabel } from "@/lib/assistant/presentation/mixed-project-summaries";
 import {
   summariseDoorPortion,
@@ -66,6 +67,8 @@ export const doorsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       });
     }
 
+    const doorPaintingExcluded =
+      jobPlanBoolean(context.facts, id, "doors.painting_included") === false;
     return {
       workAreaId: id,
       workAreaType: workArea.type,
@@ -77,7 +80,21 @@ export const doorsJobPlanAdapter: JobPlanWorkAreaAdapter = {
           : workArea.name,
       specChips: chips,
       included,
-      notIncluded: [],
+      notIncluded: doorPaintingExcluded
+        ? [
+            {
+              id: `${id}-painting-excluded`,
+              workAreaId: id,
+              label: "Door painting excluded",
+              presentation: "NOT_INCLUDED" as const,
+              kind: "specification" as const,
+              togglable: false,
+              write: null,
+              sourceFactKey: "doors.painting_included",
+              surfaceReason: "The brief excludes this work",
+            },
+          ]
+        : [],
       notConfirmed: [],
       confirmCount: 0,
     };

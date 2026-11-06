@@ -22,8 +22,10 @@ import {
   bathroomFixtureOwnershipFactKey,
   parseBathroomFixtureOwnership,
   parseBathroomSelectedFixtures,
+  resolveBathroomTradeLevel,
   type BathroomFixtureOwnership,
 } from "@/lib/estimate/bathroom-scope";
+import { bathroomVanitySpecificationMm } from "@/lib/estimate/bathroom-brief";
 import { getBooleanFact, getFact, getStringFact, round2 } from "@/lib/estimate/facts";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
@@ -253,6 +255,25 @@ export function buildBathroomFixtureEnvelope(params: {
         "bathroom.fixture.shower_enclosure.install_owner"
       )
     );
+    const tradeLevel =
+      installOwner === "plumber" || installOwner === "electrician"
+        ? resolveBathroomTradeLevel({
+            canonical: getStringFact(
+              facts as never,
+              workArea.id,
+              installOwner === "plumber"
+                ? "bathroom.plumbing.level"
+                : "bathroom.electrical.level"
+            ),
+            legacy: getStringFact(
+              facts as never,
+              workArea.id,
+              installOwner === "plumber"
+                ? "bathroom.plumbing_changes"
+                : "bathroom.electrical_changes"
+            ),
+          })
+        : null;
 
     if (ownsSupply(ownership) && pcBenchmark != null) {
       const unit = id === "accessories" || id === "tapware" ? "allowance" : "each";
@@ -318,13 +339,15 @@ export function buildBathroomFixtureEnvelope(params: {
               }),
               identitySummary: (() => {
                 const installNote =
-                  installOwner === "plumber"
-                    ? "Install: included in plumbing scope"
-                    : installOwner === "electrician"
-                      ? "Install: included in electrical scope"
-                      : ownsInstall(ownership)
-                        ? null
-                        : "Supply only — no install";
+                  tradeLevel === "none"
+                    ? `Install: ${installOwner} charge excluded from this estimate.`
+                    : installOwner === "plumber"
+                      ? "Install: included in plumbing scope"
+                      : installOwner === "electrician"
+                        ? "Install: included in electrical scope"
+                        : ownsInstall(ownership)
+                          ? null
+                          : "Supply only — no install";
                 return [
                   `${label} — PC allowance $${rate.costRate}`,
                   installNote,
@@ -374,12 +397,12 @@ export function buildBathroomFixtureEnvelope(params: {
       continue;
     }
 
-    if (installOwner === "plumber") {
-      assumptions.push(`${label} install is included in plumbing scope.`);
-      continue;
-    }
-    if (installOwner === "electrician") {
-      assumptions.push(`${label} install is included in electrical scope.`);
+    if (installOwner === "plumber" || installOwner === "electrician") {
+      assumptions.push(
+        tradeLevel === "none"
+          ? `${label} installation is a ${installOwner} charge and is excluded from this estimate.`
+          : `${label} install is included in ${installOwner === "plumber" ? "plumbing" : "electrical"} scope.`
+      );
       continue;
     }
     if (installOwner === "specialist") {
@@ -457,7 +480,16 @@ export function buildBathroomFixtureEnvelope(params: {
             labourSellRate: labourRate.sellRate,
             rateSource: labourRate.sourceLabel,
             itemKey: "labour.carpenter.hour",
-            notes: `Install: Builder, ${hours} hours. Finish level does not change hours.`,
+            notes: `Install: Builder, ${hours} hours. Finish level does not change hours.${
+              id === "vanity" &&
+              bathroomVanitySpecificationMm(
+                getStringFact(facts as never, workArea.id, "bathroom.coverage_note")
+              ) != null
+                ? ` Specification: ${bathroomVanitySpecificationMm(
+                    getStringFact(facts as never, workArea.id, "bathroom.coverage_note")
+                  )} mm vanity.`
+                : ""
+            }`,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
           }),

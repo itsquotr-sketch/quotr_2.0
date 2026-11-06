@@ -53,7 +53,10 @@ export function ProjectSectionHeader({
   const requestsCurrent = workflowInput.activeTab === "requests";
   const quoteColumnCurrent = workflowInput.activeTab === "quote" || workflowInput.activeTab === "variations";
   const pricingCanCreate =
-    !quantityConflict && !pricing.locked && pricing.href == null && pricing.status === "Ready";
+    !quantityConflict &&
+    !pricing.locked &&
+    pricing.href == null &&
+    (pricing.status === "Ready" || pricing.status === "Needs attention");
   const pricingNeedsUpdate = Boolean(quantityConflict) && pricing.href == null;
   const estimateLabel = conflictStatus
     ? estimate.viewing

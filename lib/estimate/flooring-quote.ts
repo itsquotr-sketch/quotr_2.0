@@ -396,7 +396,13 @@ function specialistSentence(portion: FlooringPortion): string {
       `${FLOORING_QUOTE_SPECIALIST_PENDING} ${FLOORING_QUOTE_STRUCTURAL_FRAMING_EXCLUDED}`
     );
   }
-  return prefixLabel(portion.label, FLOORING_QUOTE_SPECIALIST_PENDING);
+  const area = physicalNetAreaM2(portion);
+  const areaText =
+    area != null ? `${formatFlooringQuoteAreaM2(area)} remains in scope. ` : "";
+  return prefixLabel(
+    portion.label,
+    `${areaText}${FLOORING_QUOTE_SPECIALIST_PENDING} No recipe rate is applied. A manual allowance can be entered in Pricing.`
+  );
 }
 
 function specialistIncludedSentence(portion: FlooringPortion): string {

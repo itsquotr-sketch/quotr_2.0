@@ -66,7 +66,12 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "productivity";
   }
 
-  if (source.includes("missing rate") || source.includes("pricing required") || source === "rate missing") {
+  if (
+    source === "missing" ||
+    source.includes("missing rate") ||
+    source.includes("pricing required") ||
+    source === "rate missing"
+  ) {
     return "missing";
   }
 
@@ -76,6 +81,14 @@ export function classifyRateSource(raw: string): RateSourceType {
 
   if (source.includes("default allowance") || source === "default") {
     return "default";
+  }
+
+  if (source.includes("entered amount")) {
+    return "default";
+  }
+
+  if (source.includes("project hourly")) {
+    return "user_rate";
   }
 
   if (
@@ -95,7 +108,25 @@ export function normalizeRateSourceLabel(raw: string): string {
   if (/^this job$/i.test(raw.trim())) return "This job";
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
   return getRateSourceLabel(classifyRateSource(raw));
+}
+
+/** Labels that must stay word-for-word. A default type is not one of these. */
+export function explicitRateSourceLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (/entered amount/i.test(raw)) {
+    return /provisional/i.test(raw)
+      ? "Entered amount · provisional"
+      : "Entered amount";
+  }
+  if (/project hourly cost/i.test(raw)) return "Project hourly cost";
+  return null;
 }
 
 export function isUserRateSource(type: RateSourceType): boolean {

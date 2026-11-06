@@ -9,6 +9,10 @@
 import type { EstimateFact } from "@/lib/estimate/types";
 import { jobPlanBoolean, jobPlanString } from "@/lib/assistant/job-plan/facts";
 import type { JobPlanScopePresentation } from "@/lib/assistant/job-plan/types";
+import {
+  scopeTopicPolarity,
+  type ScopeTopic,
+} from "@/lib/estimate/scope-intent";
 
 export type ScopeExclusionProvenanceKind =
   | "absent"
@@ -71,6 +75,27 @@ const EXPLICIT_NEGATIVE: Record<string, readonly string[]> = {
     "without handrail",
     "handrail not required",
   ],
+  "deck.steps_included": [
+    "no stairs",
+    "without stairs",
+    "no steps",
+    "without steps",
+    "exclude stairs",
+    "exclude steps",
+  ],
+  "deck.painting_included": [
+    "exclude painting",
+    "no painting",
+    "without painting",
+  ],
+};
+
+const TOPIC_FOR_FACT: Record<string, ScopeTopic> = {
+  "deck.existing_deck_removal": "demolition",
+  "deck.balustrade_required": "balustrade",
+  "deck.access_type": "stairs",
+  "deck.steps_included": "stairs",
+  "deck.painting_included": "painting",
 };
 
 function normaliseBrief(text: string | null | undefined): string {
@@ -84,8 +109,10 @@ export function briefSupportsExplicitNegative(
   const brief = normaliseBrief(briefText);
   if (!brief) return false;
   const phrases = EXPLICIT_NEGATIVE[factKey];
-  if (!phrases) return false;
-  return phrases.some((phrase) => brief.includes(phrase));
+  if (phrases?.some((phrase) => brief.includes(phrase))) return true;
+  const topic = TOPIC_FOR_FACT[factKey];
+  if (!topic) return false;
+  return scopeTopicPolarity(brief, topic) === "excluded";
 }
 
 export function isUserSourcedFact(source: string | null | undefined): boolean {

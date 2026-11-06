@@ -84,6 +84,11 @@ export type LineItemMetadata = {
   costRate?: number;
   sellRate?: number;
   rateSourceType?: RateSourceType;
+  /**
+   * Kept only when the words themselves are the source, such as an entered
+   * amount or a project hourly cost. Absent on ordinary company rates.
+   */
+  rateSource?: string;
   /** Distinct from labour $/h rateSourceType — hours-per-unit authority. */
   productivitySourceType?: RateSourceType;
   sellDerivedFromMargin?: boolean;
@@ -98,6 +103,13 @@ export type LineItemMetadata = {
   includedInTotal?: boolean;
   clientVisible?: boolean;
   pricingSource?: PricingSource;
+  /**
+   * Set when Pricing deliberately shows or hides the row.
+   * Reconciliation keeps that choice instead of copying the estimate.
+   */
+  quoteVisibilityOverride?: boolean;
+  /** Provisional allowance. Separate from the cost category. */
+  provisional?: boolean;
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;
   allowanceMinimum?: AllowanceMinimumMeta;
@@ -247,6 +259,12 @@ export function buildPricingNotesFromEstimateLineItem(
   if (metadata.pricingSource) {
     metaToStore.pricingSource = metadata.pricingSource;
   }
+  if (metadata.quoteVisibilityOverride === true) {
+    metaToStore.quoteVisibilityOverride = true;
+  }
+  if (metadata.provisional === true) {
+    metaToStore.provisional = true;
+  }
   if (metadata.quantityBasis) {
     metaToStore.quantityBasis = metadata.quantityBasis;
   }
@@ -280,8 +298,14 @@ export function buildPricingNotesFromEstimateLineItem(
   if (metadata.sellRate != null) {
     metaToStore.sellRate = metadata.sellRate;
   }
+  if (metadata.itemKey) {
+    metaToStore.itemKey = metadata.itemKey;
+  }
   if (metadata.rateSourceType) {
     metaToStore.rateSourceType = metadata.rateSourceType;
+  }
+  if (metadata.rateSource) {
+    metaToStore.rateSource = metadata.rateSource;
   }
   if (metadata.productivitySourceType) {
     metaToStore.productivitySourceType = metadata.productivitySourceType;

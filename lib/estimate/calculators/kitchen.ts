@@ -17,10 +17,7 @@ import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, rateUnitsMatch } from "@/lib/estimate/rates";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { baseConfidence } from "@/lib/estimate/summary";
-import {
-  createAssumptionMetadata,
-  recordDefaultedNumber,
-} from "@/lib/estimate/assumption-metadata";
+import { createAssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import { rateFieldsFromResolved } from "@/lib/estimate/line-item-helpers";
 import type {
   CalculatorResult,
@@ -38,6 +35,34 @@ export const KITCHEN_RESOLVED_ALLOWANCE_KEYS = {
   splashback: "kitchen.splashback.allowance",
   rangehood: "kitchen.rangehood.allowance",
 } as const;
+
+export const KITCHEN_PACKAGE_SCOPE_CHOICE = "Full kitchen renovation";
+
+export const KITCHEN_PACKAGE_CHOICE_NOTE =
+  "These lines stay out of the known total until the kitchen scope is Full kitchen renovation.";
+
+export const KITCHEN_REPLACEMENT_VISIBLE =
+  "Kitchen replacement was requested. The area is not confirmed, so package labour and the materials allowance are not in the known total. Select Full kitchen renovation after the area is known to use that package. A selected component still prices when its own inputs are sufficient.";
+
+export const KITCHEN_SPLASHBACK_LUMP_BASIS =
+  "The splashback allowance is the existing lump. It is not a price per m². An unmeasured area is not assumed.";
+
+export function kitchenPackageLabourCoverage(area: number, hoursPerM2: number): string {
+  return `Kitchen labour covers ${hoursPerM2} hours per m² of the stated ${area} m². It is package labour and is used only when cabinetry, benchtop, splashback, rangehood, flooring, and demolition are not selected as their own lines.`;
+}
+
+export function kitchenPackageMaterialsCoverage(
+  area: number,
+  cost: number,
+  sell: number
+): string {
+  const money = (amount: number) => `$${Math.round(amount).toLocaleString("en-NZ")}`;
+  return `The materials allowance covers the stated ${area} m² at the existing per-m² benchmark, raised to the existing minimum package when that is higher: ${money(cost)} cost and ${money(sell)} sell. It is not a cabinetry, benchtop, or appliance takeoff.`;
+}
+
+export function kitchenSplashbackMeasuredBasis(area: number): string {
+  return `${area} m² was measured. The splashback allowance remains the existing lump and is not multiplied by that area.`;
+}
 
 /** Facts this calculator reads for scope, quantity, or allowance. */
 export const KITCHEN_CALCULATOR_CONSUMED_FACTS = [
@@ -123,18 +148,9 @@ export function calculateKitchen(
     assumptions.push(qualityNote);
   }
 
-  let effectiveArea = area;
-  if (!effectiveArea) {
-    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
-      key: "kitchen.area_m2",
-      label: "Kitchen area",
-      workAreaId: workArea.id,
-      assumedValue: 10,
-      unit: "m²",
-      reason: "No kitchen area provided",
-    });
-    assumptions.push("Using assumed kitchen area of 10 m² for rough estimate.");
-  }
+  const statedArea = area != null && area > 0 ? area : null;
+  const renovationType = getStringFact(facts, workArea.id, "kitchen.renovation_type");
+  const packageChosen = renovationType?.toLowerCase().includes("full") === true;
 
   const qualityFactor = getQualityFactor(
     context.project,
@@ -189,12 +205,16 @@ export function calculateKitchen(
     flooringIncluded === true ||
     demolitionRequired === true;
 
-  if (!hasComponentScope) {
+  if (!hasComponentScope && statedArea != null) {
     const packageProductivity = resolveProductivity({
       productivityKey: "kitchen.labour_hours_per_m2",
       unit: "m²",
       fallbackHoursPerUnit: 16,
     });
+    const labourCoverage = `${kitchenPackageLabourCoverage(
+      statedArea,
+      packageProductivity.hoursPerUnit
+    )} Finish level: ${finishLevel}.`;
 
     lineItems.push(
       withPricingOwnership(
@@ -202,13 +222,15 @@ export function calculateKitchen(
           workAreaId: workArea.id,
           workAreaName: workArea.name,
           label: "Kitchen labour",
-          quantity: effectiveArea,
+          quantity: statedArea,
           unit: "m²",
           productivityHoursPerUnit: packageProductivity.hoursPerUnit,
           labourCostRate: labourRate.costRate,
           labourSellRate: labourRate.sellRate,
           rateSource: labourRate.sourceLabel,
-          notes: `Finish level: ${finishLevel}`,
+          notes: packageChosen
+            ? labourCoverage
+            : `${labourCoverage} ${KITCHEN_PACKAGE_CHOICE_NOTE}`,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         }),
@@ -216,6 +238,7 @@ export function calculateKitchen(
           pricingOwner: "in_house_labour",
           scopeKey: "kitchen.package_labour",
           overlapGroup: "kitchen_coordination",
+          includedInTotal: packageChosen,
         }
       )
     );
@@ -438,13 +461,15 @@ export function calculateKitchen(
   }
 
   if (splashbackIncluded) {
-    const splashArea =
-      getNumberFact(facts, workArea.id, "kitchen.splashback_area_m2") ?? 3;
+    const measuredSplash = getNumberFact(facts, workArea.id, "kitchen.splashback_area_m2");
     const splashbackRates = kitchenAllowanceRates(
       context,
       KITCHEN_RESOLVED_ALLOWANCE_KEYS.splashback,
       KITCHEN_BENCHMARKS.splashback
     );
+    if (measuredSplash == null || measuredSplash <= 0) {
+      missingInfo.push(formatMissing("Splashback area"));
+    }
     lineItems.push(
       withPricingOwnership(
         createAllowanceLineItem({
@@ -454,7 +479,10 @@ export function calculateKitchen(
           recommendedCost: splashbackRates.costRate,
           recommendedSell: splashbackRates.sellRate,
           ...rateFieldsFromResolved(splashbackRates),
-          notes: splashArea ? `Approx. ${splashArea} m²` : undefined,
+          notes:
+            measuredSplash != null && measuredSplash > 0
+              ? kitchenSplashbackMeasuredBasis(measuredSplash)
+              : KITCHEN_SPLASHBACK_LUMP_BASIS,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -500,7 +528,10 @@ export function calculateKitchen(
   if (flooringIncluded) {
     const flooringArea =
       getNumberFact(facts, workArea.id, "kitchen.flooring_area_m2") ??
-      effectiveArea;
+      statedArea;
+    if (flooringArea == null) {
+      missingInfo.push(formatMissing("Kitchen flooring area"));
+    } else {
     lineItems.push(
       withPricingOwnership(
         createAllowanceLineItem({
@@ -524,6 +555,7 @@ export function calculateKitchen(
         }
       )
     );
+    }
   }
 
   const plumbingIncluded =
@@ -608,7 +640,6 @@ export function calculateKitchen(
     missingInfo.push(formatMissing("Electrical scope"));
   }
 
-  const renovationType = getStringFact(facts, workArea.id, "kitchen.renovation_type");
   if (renovationType?.toLowerCase().includes("install only")) {
     assumptions.push("Install-only scope — no demolition or supply allowances unless confirmed.");
   } else if (renovationType?.toLowerCase().includes("full")) {
@@ -625,9 +656,13 @@ export function calculateKitchen(
     electricalIncluded === true ||
     cabinetryClientSupplied === true;
 
-  if (!hasComponentFinishes) {
-    let materialsCost = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
-    let materialsSell = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.sell;
+  if (hasComponentFinishes) {
+    assumptions.push(
+      "Component-based kitchen pricing — broad package materials allowance not applied."
+    );
+  } else if (statedArea != null) {
+    let materialsCost = statedArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
+    let materialsSell = statedArea * KITCHEN_BENCHMARKS.materialsPerM2.sell;
     materialsCost = Math.max(
       materialsCost,
       KITCHEN_BENCHMARKS.minimumPackage.cost
@@ -636,6 +671,11 @@ export function calculateKitchen(
       materialsSell,
       KITCHEN_BENCHMARKS.minimumPackage.sell
     );
+    const materialsCoverage = `${kitchenPackageMaterialsCoverage(
+      statedArea,
+      materialsCost,
+      materialsSell
+    )} Finish level: ${finishLevel}.`;
 
     lineItems.push(
       withPricingOwnership(
@@ -647,7 +687,9 @@ export function calculateKitchen(
           recommendedCost: materialsCost,
           recommendedSell: materialsSell,
           rateSource: "Benchmark allowance",
-          notes: `Rough kitchen package allowance · Finish level: ${finishLevel}`,
+          notes: packageChosen
+            ? materialsCoverage
+            : `${materialsCoverage} ${KITCHEN_PACKAGE_CHOICE_NOTE}`,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -656,13 +698,39 @@ export function calculateKitchen(
           pricingOwner: "contractor_material",
           scopeKey: "kitchen.materials_package",
           overlapGroup: "kitchen_materials",
+          includedInTotal: packageChosen,
         }
       )
     );
-  } else {
-    assumptions.push(
-      "Component-based kitchen pricing — broad package materials allowance not applied."
+  } else if (!hasComponentScope) {
+    lineItems.push(
+      withPricingOwnership(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Kitchen replacement",
+          category: "allowance",
+          recommendedCost: 0,
+          recommendedSell: 0,
+          rateSource: "Scope request",
+          notes: KITCHEN_REPLACEMENT_VISIBLE,
+          quantity: 0,
+          unit: "each",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        }),
+        {
+          pricingOwner: "contractor_material",
+          scopeKey: "kitchen.replacement_request",
+          overlapGroup: "kitchen_replacement_request",
+          includedInTotal: false,
+        }
+      )
     );
+  }
+
+  if (!hasComponentScope && !packageChosen) {
+    missingInfo.push(formatMissing("Kitchen scope"));
   }
 
   return {

@@ -397,7 +397,7 @@ check(
   "7. Pricing row: Pricing required + Add price eligibility",
   specView.pricingRequired === true &&
     specPricing.cost_known === false &&
-    specPricing.client_label === "Specialist flooring supply and installation" &&
+    /supply$/i.test(specPricing.client_label) &&
     specPricing.quantity === 10 &&
     read("components/pricing/PricingItemRow.tsx").includes("Add price")
 );
@@ -428,7 +428,8 @@ const reviewText = JSON.stringify(review);
 check(
   "9. Builder Review human laminate copy",
   /Office — 10 m² laminate flooring/.test(reviewText) &&
-    /Specialist flooring supply and installation/.test(reviewText) &&
+    /supply/.test(reviewText) &&
+    /installation/.test(reviewText) &&
     /Pricing required/i.test(reviewText) &&
     /add a price/i.test(reviewText) &&
     !/Unsupported specialist flooring/.test(reviewText) &&

@@ -9,12 +9,15 @@ import {
   deckCountWriteKey,
   deckDetailGaps,
   deckDetailQueuePrompt,
+  deckPostsInScope,
   deckSpoilDestination,
 } from "@/lib/estimate/deck-detail-completeness";
 import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
+  typicalPostHoleSetupFacts,
+  typicalPostHoleSetupSummary,
   DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST,
   DECK_SPOIL_HAULAGE_SCOPE,
   DECK_SPOIL_HAULAGE_SHORT,
@@ -44,7 +47,6 @@ type HoleFactWrite = (
 ) => Promise<{ error?: string } | void> | void;
 
 const TYPICAL_POST = "125x125";
-const TYPICAL_SIGNATURE = "assumed:circular|350|600|125x125|full|600";
 const fieldClass =
   "h-11 min-h-11 w-full min-w-0 scroll-mb-40 rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:scroll-mb-24 md:text-sm";
 
@@ -120,6 +122,12 @@ export function DeckPostHolesSection({
       fact.key === "deck.concrete_to_supports" &&
       fact.work_area_id === workAreaId &&
       fact.value === true
+  );
+  const concreteExcluded = facts.some(
+    (fact) =>
+      fact.key === "deck.concrete_to_supports" &&
+      fact.work_area_id === workAreaId &&
+      fact.value === false
   );
   const fill = jobPlanString(facts, workAreaId, "deck.concrete_fill") ?? "";
   const fillDepth = jobPlanNumber(facts, workAreaId, "deck.concrete_fill_depth_mm");
@@ -265,31 +273,9 @@ export function DeckPostHolesSection({
     }
   }
 
-  const typicalFacts: FactWrite[] = [
-    { key: "deck.hole_shape", label: "Hole shape", value: "circular", valueType: "select" },
-    {
-      key: "deck.hole_diameter_mm",
-      label: "Hole diameter",
-      value: DECK_HOLE_ASSUMED_DIAMETER_MM,
-      valueType: "number",
-    },
-    {
-      key: "deck.hole_depth_mm",
-      label: "Hole depth",
-      value: DECK_HOLE_ASSUMED_DEPTH_MM,
-      valueType: "number",
-    },
-    { key: "deck.support_section", label: "Pile/post section", value: TYPICAL_POST, valueType: "select" },
-    { key: "deck.concrete_fill", label: "Concrete fill", value: "full", valueType: "select" },
-    {
-      key: "deck.post_embedment_mm",
-      label: "Post embedded depth",
-      value: DECK_HOLE_ASSUMED_DEPTH_MM,
-      valueType: "number",
-    },
-    { key: "deck.post_embedment_linked", label: "Post embedment link", value: "yes", valueType: "select" },
-    { key: "deck.hole_setup_signature", label: "Post hole setup", value: TYPICAL_SIGNATURE, valueType: "text" },
-  ];
+  const typicalFacts: FactWrite[] = typicalPostHoleSetupFacts({
+    concreteExcluded,
+  });
 
   async function applyTypicalSetup() {
     setSetupError(null);
@@ -326,6 +312,7 @@ export function DeckPostHolesSection({
         fillDepth,
         embedment,
         embedmentLink,
+        concreteExcluded,
       });
   const typicalStored = !usingProposal && setupChanges.length === 0;
   const outsideOrdinary =
@@ -352,6 +339,8 @@ export function DeckPostHolesSection({
   const answerSaving = savingKeys.length > 0 || savingSetup;
   const showSummary =
     unanswered === 0 && !manualEditing && !focusGapId && !forceOpen && !setupError;
+
+  if (!deckPostsInScope(facts, workAreaId)) return null;
 
   if (showSummary) {
     return (
@@ -470,7 +459,7 @@ export function DeckPostHolesSection({
         {usingProposal ? (
           <>
             <p className="text-sm text-foreground" data-hole-assumed="">
-              {typicalSummary(displayCount)}
+              {typicalPostHoleSetupSummary(displayCount, concreteExcluded)}
             </p>
             <Button
               type="button"
@@ -486,7 +475,7 @@ export function DeckPostHolesSection({
         ) : typicalStored && !showEditor ? (
           <div className="space-y-2">
             <p className="text-sm text-foreground" data-setup-applied="">
-              {typicalSummary(displayCount)}
+              {typicalPostHoleSetupSummary(displayCount, concreteExcluded)}
             </p>
             <Button
               type="button"
@@ -951,11 +940,6 @@ function recordedPostHoleSummary(input: {
     .join(" · ");
 }
 
-function typicalSummary(count: number | null): string {
-  const holes = count != null ? `${count} circular holes` : "Circular holes";
-  return `${holes} · ${DECK_HOLE_ASSUMED_DIAMETER_MM} × ${DECK_HOLE_ASSUMED_DEPTH_MM} mm · 125 × 125 mm posts · full concrete fill.`;
-}
-
 function typicalSetupChanges(input: {
   shape: string;
   diameter: number | null;
@@ -967,6 +951,7 @@ function typicalSetupChanges(input: {
   fillDepth: number | null;
   embedment: number | null;
   embedmentLink: string;
+  concreteExcluded: boolean;
 }): { label: string; before: string; after: string }[] {
   const changes: { label: string; before: string; after: string }[] = [];
   const shapeBefore =
@@ -996,7 +981,7 @@ function typicalSetupChanges(input: {
       after: "125 × 125 mm",
     });
   }
-  if (input.fill && input.fill !== "full") {
+  if (!input.concreteExcluded && input.fill && input.fill !== "full") {
     changes.push({
       label: "Concrete fill",
       before: input.fill === "partial" ? `Partial${input.fillDepth != null ? `, ${input.fillDepth} mm` : ""}` : input.fill,

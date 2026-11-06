@@ -19,16 +19,23 @@ import {
   formatProfitabilityDisplay,
   inferDisplayCostKnown,
 } from "@/lib/financial-presentation/format";
+import { flooringScopeDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
+import {
+  classifyReviewNotice,
+  formatMissingPriceNotice,
+  formatScopeCoverageGaps,
+  formatUnresolvedSpecifications,
+  formatWorkAreaPriceSummary,
+  priceCompletenessNextAction,
+  type EstimateIssueModel,
+} from "@/lib/assistant/presentation/estimate-issues";
 
 /** Visible estimate boundary. This is not a client document. */
 export const ESTIMATE_OVERVIEW_BOUNDARY_COPY =
   "Internal working estimate · not shown to the client";
 
 export function estimateMissingPriceNotice(count: number): string {
-  if (count === 1) {
-    return "1 item still needs a price. Complete this in Pricing.";
-  }
-  return `${count} items still need prices. Complete these in Pricing.`;
+  return formatMissingPriceNotice(count);
 }
 
 /** Shown when category dollars are rounded independently of the direct-cost dollar. */
@@ -124,13 +131,23 @@ export type EstimateOverviewModel = {
   readonly primaryLabel: string;
   readonly pricingCreationBlocked: boolean;
   readonly pricingEntry: "blocked" | "create" | "open";
+  readonly issues: EstimateIssueModel;
+  readonly scopeGapSummary: string | null;
+  readonly specificationSummary: string | null;
+};
+
+type OverviewLine = {
+  readonly id: string;
+  readonly label?: string;
+  readonly rateLabel?: string;
+  readonly category?: string;
 };
 
 type OverviewLineGroup = {
   readonly id: string;
   readonly label: string;
   readonly pricingRequired?: boolean;
-  readonly children: readonly { readonly id: string }[];
+  readonly children: readonly OverviewLine[];
 };
 
 type OverviewWorkArea = {
@@ -140,7 +157,7 @@ type OverviewWorkArea = {
   readonly categories: readonly {
     readonly id: string;
     readonly lineGroups: readonly OverviewLineGroup[];
-    readonly lines: readonly { readonly id: string; readonly label: string }[];
+    readonly lines: readonly OverviewLine[];
   }[];
   readonly sharedLineGroups?: readonly OverviewLineGroup[];
   readonly portionGroups?: readonly {
@@ -195,6 +212,8 @@ export type ProjectEstimateOverviewInput = {
   readonly statedCountConflictDetail?: string | null;
   /** Saved deck productivity still needs an explicit scope confirmation. */
   readonly productivityReviewDetail?: string | null;
+  /** Price-affecting conditions that are still unanswered or uncertain. */
+  readonly openCommercialConditions?: readonly string[];
 };
 
 const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
@@ -251,12 +270,21 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function workAreaSummaryLine(count: number, missing: number): string {
+function workAreaSummaryLine(
+  count: number,
+  missingPriceLineCount: number,
+  workAreasWithMissingPrices: number,
+  scopeCoverageGapCount: number,
+  unresolvedSpecificationCount: number
+): string {
   if (count === 0) return "No Work Areas yet";
-  const areas = count === 1 ? "1 Work Area" : `${count} Work Areas`;
-  if (missing <= 0) return `${areas} · All priced`;
-  if (missing === 1) return `${areas} · 1 needs a price`;
-  return `${areas} · ${missing} need prices`;
+  return formatWorkAreaPriceSummary({
+    workAreaCount: count,
+    missingPriceLineCount,
+    workAreasWithMissingPrices,
+    scopeCoverageGapCount,
+    unresolvedSpecificationCount,
+  });
 }
 
 function assumptionSummaryLine(items: readonly EstimateOverviewAction[]): string | null {
@@ -282,6 +310,11 @@ function benchmarkSummaryLine(count: number): string | null {
   return count === 1 ? "1 benchmark notice" : `${count} benchmark notices`;
 }
 
+function overviewLineNeedsPrice(line: OverviewLine): boolean {
+  if (line.category === "PRICING_REQUIRED") return true;
+  return /pricing required|rate required/i.test(line.rateLabel ?? "");
+}
+
 function collectPricingRequired(
   review: EstimateOverviewReview
 ): EstimateOverviewAction[] {
@@ -295,7 +328,7 @@ function collectPricingRequired(
     detail: string | null,
     workAreaId: string | null = null
   ) => {
-    const key = normalizeKey(`${workAreaName ?? ""}:${title}`);
+    const key = normalizeKey(id);
     if (!title.trim() || seen.has(key)) return;
     seen.add(key);
     items.push(
@@ -320,6 +353,24 @@ function collectPricingRequired(
     ];
     const countedChildren = new Set<string>();
     for (const group of groups) {
+      const children = group.children.filter(
+        (child) =>
+          !countedChildren.has(child.id) &&
+          (group.pricingRequired || overviewLineNeedsPrice(child))
+      );
+      if (children.length > 0) {
+        for (const child of children) {
+          countedChildren.add(child.id);
+          push(
+            `pricing:${child.id}`,
+            child.label?.trim() || group.label,
+            area.workAreaName,
+            "Pricing Required",
+            area.workAreaId ?? null
+          );
+        }
+        continue;
+      }
       if (!group.pricingRequired) continue;
       push(
         `pricing:${group.id}`,
@@ -328,7 +379,6 @@ function collectPricingRequired(
         "Pricing Required",
         area.workAreaId ?? null
       );
-      for (const child of group.children) countedChildren.add(child.id);
     }
     for (const category of area.categories) {
       if (category.id !== "PRICING_REQUIRED") continue;
@@ -336,7 +386,7 @@ function collectPricingRequired(
         if (countedChildren.has(line.id)) continue;
         push(
           `pricing:${line.id}`,
-          line.label,
+          line.label ?? "",
           area.workAreaName,
           "Pricing Required",
           area.workAreaId ?? null
@@ -517,7 +567,7 @@ function sellPresentation(input: {
     const gst = presentEstimateGst(amount, input.gstRate);
     return {
       presentation: "partial",
-      label: "Known sell, not the complete price",
+      label: "Priced work so far",
       exGst: formatCurrency(gst.exGst),
       gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
       inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
@@ -674,8 +724,49 @@ export function projectEstimateOverview(
   if (productivityReview) {
     for (const name of names) missingNames.add(name);
   }
+  const scopeDecisionOpen = (input.review?.checks ?? []).some((check) =>
+    flooringScopeDecisionOpen(check.label)
+  );
+  if (scopeDecisionOpen) {
+    for (const check of input.review?.checks ?? []) {
+      if (!flooringScopeDecisionOpen(check.label)) continue;
+      const named = names.find((name) =>
+        check.label.toLowerCase().includes(name.toLowerCase())
+      );
+      if (named) missingNames.add(named);
+      else if (names.length === 1 && names[0]) missingNames.add(names[0]);
+    }
+  }
 
-  const hasPricingRequired = pricingRequired.length > 0;
+  let scopeCoverageGapCount = 0;
+  let unresolvedSpecificationCount = 0;
+  for (const check of input.review?.checks ?? []) {
+    if (flooringScopeDecisionOpen(check.label)) continue;
+    const kind = classifyReviewNotice(check.label);
+    if (kind === "scope_gap") scopeCoverageGapCount += 1;
+    else if (kind === "specification") unresolvedSpecificationCount += 1;
+  }
+  for (const assumption of input.review?.assumptions ?? []) {
+    if (classifyReviewNotice(assumption.label) === "scope_gap") {
+      scopeCoverageGapCount += 1;
+    }
+  }
+  const issues: EstimateIssueModel = {
+    missingPriceLineCount: conflictStatus ? 0 : pricingRequired.length,
+    workAreasWithMissingPrices: conflictStatus
+      ? 0
+      : new Set(
+          pricingRequired
+            .map((item) => item.workAreaName)
+            .filter((name): name is string => Boolean(name))
+        ).size,
+    unresolvedSpecificationCount,
+    scopeCoverageGapCount,
+  };
+
+  const scopeOrSpecificationOpen =
+    scopeCoverageGapCount > 0 || unresolvedSpecificationCount > 0;
+  const hasPricingRequired = issues.missingPriceLineCount > 0;
   const estimate = input.estimate;
   const unresolvedSell =
     input.hasEstimate &&
@@ -687,10 +778,16 @@ export function projectEstimateOverview(
     input.hasEstimate &&
     estimate != null &&
     !hasPricingRequired &&
+    !scopeOrSpecificationOpen &&
     inferDisplayCostKnown(estimate.recommendedCost, estimate.recommendedSell) &&
     !unresolvedSell;
+  const openCommercialConditions = (input.openCommercialConditions ?? [])
+    .map((row) => row.trim())
+    .filter(Boolean);
   const knownSellPartial =
-    hasPricingRequired &&
+    (hasPricingRequired ||
+      scopeOrSpecificationOpen ||
+      openCommercialConditions.length > 0) &&
     estimate != null &&
     Number.isFinite(estimate.recommendedSell) &&
     estimate.recommendedSell > 0;
@@ -701,6 +798,9 @@ export function projectEstimateOverview(
   else if (input.isStale || conflictStatus === "Needs updating") status = "stale";
   else if (
     hasPricingRequired ||
+    scopeOrSpecificationOpen ||
+    openCommercialConditions.length > 0 ||
+    scopeDecisionOpen ||
     input.review?.overview.recommendedSellIsPartial ||
     productivityReview
   ) {
@@ -725,10 +825,28 @@ export function projectEstimateOverview(
           ? "This estimate needs updating."
           : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
-          ? pricingRequired.length > 0
-            ? productivityReview ?? estimateMissingPriceNotice(pricingRequired.length)
-            : productivityReview ?? "Some items still need prices. Complete these in Pricing."
+          ? openCommercialConditions.length > 0 && pricingRequired.length === 0
+            ? openCommercialConditions.join(" ")
+            : scopeDecisionOpen && pricingRequired.length === 0
+            ? "A flooring scope or waste choice is still open. A typed amount does not answer it."
+              : issues.missingPriceLineCount > 0
+              ? productivityReview ??
+                estimateMissingPriceNotice(issues.missingPriceLineCount)
+              : scopeOrSpecificationOpen
+                ? `Generated lines are priced. ${
+                    priceCompletenessNextAction({
+                      missingPriceLineCount: 0,
+                      scopeCoverageGapCount,
+                      unresolvedSpecificationCount,
+                    }) ?? "Requested scope still has no line."
+                  }`
+              : productivityReview ??
+                "Some lines still need prices. Complete these in Pricing."
           : "Estimate ready";
+  const pricedLinesNote =
+    knownSellPartial && issues.missingPriceLineCount === 0
+      ? " The amount shown is the priced-lines subtotal, not the complete job price."
+      : "";
 
   const primary: EstimateOverviewPrimary = !input.hasEstimate
     ? input.detailsOutstanding
@@ -764,7 +882,7 @@ export function projectEstimateOverview(
   return {
     status,
     statusLabel,
-    statusDetail,
+    statusDetail: `${statusDetail}${pricedLinesNote}`,
     sell: sellPresentation({
       hasEstimate: input.hasEstimate,
       isStale: input.isStale,
@@ -778,11 +896,21 @@ export function projectEstimateOverview(
     workAreas: {
       count: names.length,
       names,
-      missingPricingCount: missingNames.size,
-      summaryLine: workAreaSummaryLine(names.length, missingNames.size),
+      missingPricingCount: issues.workAreasWithMissingPrices,
+      summaryLine: workAreaSummaryLine(
+        names.length,
+        issues.missingPriceLineCount,
+        issues.workAreasWithMissingPrices,
+        issues.scopeCoverageGapCount,
+        issues.unresolvedSpecificationCount
+      ),
       rows: names.map((name) => ({
         name,
-        note: missingNames.has(name) ? "Pricing Required" : null,
+        note:
+          !conflictStatus &&
+          pricingRequired.some((item) => item.workAreaName === name)
+            ? "Pricing Required"
+            : null,
       })),
     },
     required,
@@ -803,5 +931,8 @@ export function projectEstimateOverview(
           : PRIMARY_LABELS[primary],
     pricingCreationBlocked,
     pricingEntry,
+    issues,
+    scopeGapSummary: formatScopeCoverageGaps(scopeCoverageGapCount),
+    specificationSummary: formatUnresolvedSpecifications(unresolvedSpecificationCount),
   };
 }

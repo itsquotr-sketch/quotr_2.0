@@ -436,3 +436,11 @@ html[data-contacts-nav="customers"] .contacts-nav-hide-customers,
 html[data-rfq-nav="new"] .rfq-nav-hide-new {
   display: none !important;
 }
+
+/* Preview feedback sits on the right edge of a phone and covers answer
+   controls. Inset the scrolling workspace only while that control is present. */
+@media (max-width: 767px) {
+  html:has(vercel-live-feedback) [data-workspace-scroll] {
+    padding-right: 3.25rem;
+  }
+}

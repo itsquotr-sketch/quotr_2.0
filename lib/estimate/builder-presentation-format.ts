@@ -46,7 +46,8 @@ export function formatAdjustmentPercent(factor: number): string {
 
 /**
  * Primary-row adjustment copy.
- * Combined access+carry is one modifier: "+15% access/carry".
+ * Access and carry are named only from their own addends.
+ * A factor without those parts is not described as access or carry.
  */
 export function formatLabourAdjustmentPrimary(
   factor: number,
@@ -62,15 +63,17 @@ export function formatLabourAdjustmentPrimary(
       bits.push(`+${Math.round(parts.slopeAddend * 100)}% slope`);
     }
     if (parts.occupiedAddend > 0) {
-      bits.push(`+${Math.round(parts.occupiedAddend * 100)}% occupied`);
+      bits.push(`+${Math.round(parts.occupiedAddend * 100)}% occupied site`);
     }
     if (parts.hoursAddend > 0) {
-      bits.push(`+${Math.round(parts.hoursAddend * 100)}% hours`);
+      bits.push(
+        `+${Math.round(parts.hoursAddend * 100)}% restricted hours/delivery windows`
+      );
     }
     if (bits.length > 0) return bits.join(" · ");
   }
   const pct = formatAdjustmentPercent(factor);
-  return pct ? `${pct} access/carry` : "";
+  return pct ? `${pct} site conditions` : "";
 }
 
 /** Expanded detail: Site access +10% / Carry +5%. */

@@ -84,7 +84,7 @@ export async function getEstimateContextWithContext(
   ] = await Promise.all([
     supabase
       .from("work_areas")
-      .select("id, type, name, summary, status, sort_order")
+      .select("id, type, name, summary, quote_description, status, sort_order")
       .eq("project_id", projectId)
       .eq("status", "confirmed")
       .order("sort_order", { ascending: true }),
@@ -94,7 +94,7 @@ export async function getEstimateContextWithContext(
       .eq("project_id", projectId),
     supabase
       .from("constraints")
-      .select("key, label, value")
+      .select("key, label, value, source")
       .eq("project_id", projectId),
     loadOrganisationSettingsRow(orgId),
     supabase
@@ -111,6 +111,7 @@ export async function getEstimateContextWithContext(
     type: workArea.type,
     name: workArea.name,
     summary: workArea.summary,
+    quoteDescription: workArea.quote_description,
     sort_order: workArea.sort_order ?? 0,
   }));
 
@@ -146,6 +147,7 @@ export async function getEstimateContextWithContext(
       key: constraint.key,
       label: constraint.label,
       value: constraint.value,
+      source: constraint.source ?? null,
     })),
     organisationSettings:
       (organisationSettings as OrganisationSettings | null) ??

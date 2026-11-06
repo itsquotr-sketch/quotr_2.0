@@ -34,6 +34,21 @@
  */
 
 import { getFact } from "@/lib/estimate/facts";
+import {
+  parseCarpetTileCoverage,
+  parseCarpetTileFixing,
+  parseCarpetTileKnown,
+  parseCarpetTilePattern,
+  parseCarpetTileSubstrate,
+  parseCarpetTileWasteDecision,
+  CARPET_TILE_PROPOSED_WASTE_PERCENT,
+} from "@/lib/estimate/flooring-carpet-tile";
+import {
+  parseLaminateMethod,
+  parseLaminateMoisture,
+  parseLaminatePackageCoverage,
+  parseLaminateSubstrate,
+} from "@/lib/estimate/flooring-laminate";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
   BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY,
@@ -65,6 +80,9 @@ export const FLOORING_NESTED_NOT_CALCULATED_MESSAGE =
 /** User-facing Estimate/Improve copy. Never expose the nested/legacy diagnostic. */
 export const FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE =
   "Specialist flooring pricing is required." as const;
+
+export const FLOORING_SPECIALIST_RECIPE_MESSAGE =
+  "This finish has no supported recipe. The requested area stays in scope. Supply and installation are unpriced. Enter a manual allowance. This is not a missing material price." as const;
 
 export const FLOORING_FINISH_TYPE_VALUES = [
   "carpet",
@@ -153,6 +171,7 @@ export const FLOORING_SPECIALIST_KIND_VALUES = [
   "waterproofing",
   "structural",
   "other_unsupported",
+  "carpet_tile",
 ] as const;
 export type FlooringSpecialistKind =
   (typeof FLOORING_SPECIALIST_KIND_VALUES)[number];
@@ -179,6 +198,69 @@ export type FlooringPortion = {
   finish_removal_required: boolean | null;
   existing_finish_type: FlooringExistingFinishType | null;
   substrate_removal_required: boolean | null;
+  /** Stated purchase waste. Absent means finish supply stays the net area. */
+  waste_percent?: number | null;
+  /** Customer-supplied finish: no contractor purchasing cost. */
+  finish_supplied_by?: "customer" | "contractor" | null;
+  /**
+   * Combined package keeps the supply-and-install rate.
+   * Separate supply prices a finish material rate and installation hours
+   * and does not also charge the package.
+   */
+  finish_pricing?: "combined_package" | "separate_supply" | null;
+  /**
+   * Explicit waste treatment. A combined package selection does not set this.
+   * package_covers_requested_waste is a confirmation, not a rate change.
+   * incremental_material charges only the extra quantity at a known material rate.
+   */
+  waste_treatment?:
+    | "package_covers_requested_waste"
+    | "incremental_material"
+    | null;
+  /**
+   * Laminate installation. User-confirmed, or extracted only when the brief
+   * names floating click-lock, glue-down, or nailing. Unstated stays null.
+   */
+  laminate_method?: "floating_click_lock" | "glued" | "fastened" | null;
+  laminate_method_authority?: FlooringFieldAuthority;
+  laminate_substrate?: "concrete" | "timber" | "other" | null;
+  laminate_substrate_authority?: FlooringFieldAuthority;
+  laminate_moisture?: "integrated" | "separate" | "excluded" | null;
+  laminate_moisture_authority?: FlooringFieldAuthority;
+  /**
+   * Explicit combined-package coverage. A saved subcontract rate does not
+   * set these. "included" means that component is inside the package and
+   * is not charged again. "separate" charges it once beside the package.
+   */
+  laminate_package_covers_underlay?: "included" | "separate" | null;
+  laminate_package_covers_moisture?: "included" | "separate" | null;
+  laminate_pack_coverage_m2?: number | null;
+  laminate_underlay_coverage_m2?: number | null;
+  laminate_moisture_coverage_m2?: number | null;
+  /**
+   * Carpet tiles. Straight lay on a ready substrate is the priced assembly.
+   * An unstated pattern or waste allowance stays unanswered. It is not stored
+   * as something the brief said, and unanswered waste is not zero.
+   */
+  carpet_tile_pattern?: "straight" | "other" | null;
+  carpet_tile_pattern_authority?: FlooringFieldAuthority;
+  carpet_tile_substrate?: "ready" | "preparation" | "other" | null;
+  carpet_tile_substrate_authority?: FlooringFieldAuthority;
+  carpet_tile_fixing?: "adhesive" | "tackifier" | "none" | "other" | null;
+  carpet_tile_fixing_authority?: FlooringFieldAuthority;
+  carpet_tile_waste?: "stated" | "zero" | "proposed" | "custom" | null;
+  carpet_tile_waste_authority?: FlooringFieldAuthority;
+  carpet_tile_size?: "known" | "unknown" | null;
+  carpet_tile_box?: "known" | "unknown" | null;
+  carpet_tile_box_coverage_m2?: number | null;
+  carpet_tile_tiles_per_box?: number | null;
+  carpet_tile_fixing_coverage_m2?: number | null;
+  carpet_tile_package_covers_fixing?: "included" | "separate" | null;
+  carpet_tile_disposal_requested?: boolean | null;
+  /** Requested transition strips. No priced recipe is implied. */
+  transitions_required?: boolean | null;
+  /** Explicit exclusion. Absence of a skirting work area is not this record. */
+  skirting_replacement_excluded?: boolean | null;
   other_description: string | null;
   specialist_kind: FlooringSpecialistKind | null;
   finish_authority?: FlooringFieldAuthority;
@@ -267,6 +349,33 @@ function normalisedText(value: string): string {
   return value.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 }
 
+export function parseFlooringFinishPricing(
+  value: unknown
+): "combined_package" | "separate_supply" | null {
+  if (value === "combined_package" || value === "separate_supply") return value;
+  if (typeof value !== "string") return null;
+  const normalised = normalisedText(value);
+  if (normalised.includes("separate")) return "separate_supply";
+  if (normalised.includes("combined")) return "combined_package";
+  return null;
+}
+
+export function parseFlooringWasteTreatment(
+  value: unknown
+): "package_covers_requested_waste" | "incremental_material" | null {
+  if (
+    value === "package_covers_requested_waste" ||
+    value === "incremental_material"
+  ) {
+    return value;
+  }
+  if (typeof value !== "string") return null;
+  const normalised = normalisedText(value);
+  if (normalised.includes("extra")) return "incremental_material";
+  if (normalised.includes("covers")) return "package_covers_requested_waste";
+  return null;
+}
+
 export function parseFlooringFinishType(
   value: unknown
 ): FlooringFinishType | null {
@@ -278,6 +387,9 @@ export function parseFlooringFinishType(
     return "other";
   }
   if (normalised.includes("sheet vinyl")) {
+    return "other";
+  }
+  if (normalised.includes("carpet tile")) {
     return "other";
   }
   if (
@@ -482,6 +594,7 @@ export function parseFlooringSpecialistKind(
   if (direct) return direct;
   if (typeof value !== "string") return null;
   const normalised = normalisedText(value);
+  if (normalised.includes("carpet tile")) return "carpet_tile";
   if (normalised.includes("laminate")) return "laminate";
   if (normalised.includes("engineered")) return "engineered_timber";
   if (normalised.includes("sheet vinyl")) return "sheet_vinyl";
@@ -612,10 +725,13 @@ export function sanitizeFlooringPortionInapplicableFields(
   }
   const finish = portion.finish_type;
   if (!finish) return portion;
-  if (!flooringFinishUsesUnderlay(finish)) {
+  if (
+    !flooringFinishUsesUnderlay(finish) &&
+    portion.specialist_kind !== "laminate"
+  ) {
     clearMachineOwnedField(portion, "underlay_required", "underlay_authority");
   }
-  if (!flooringFinishUsesPreparation(finish)) {
+  if (!flooringFinishUsesPreparation(finish) && portion.specialist_kind !== "laminate") {
     clearMachineOwnedField(
       portion,
       "floor_preparation_required",
@@ -642,6 +758,62 @@ export function sanitizeFlooringPortionInapplicableFields(
     clearMachineOwnedField(portion, "specialist_kind", "specialist_authority");
   }
   return portion;
+}
+
+export function flooringMeasuredAreaM2(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+}): number | null {
+  if (
+    portion.length_m == null ||
+    portion.width_m == null ||
+    !Number.isFinite(portion.length_m) ||
+    !Number.isFinite(portion.width_m) ||
+    portion.length_m <= 0 ||
+    portion.width_m <= 0
+  ) {
+    return null;
+  }
+  return portion.length_m * portion.width_m;
+}
+
+export function formatFlooringM2(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded} m²`;
+}
+
+/**
+ * Length × width and a separately stated area name different quantities.
+ * A user-chosen method is a resolution. An extracted method is not.
+ */
+export function flooringAreaMeasuresDisagree(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+  readonly area_m2: number | null;
+  readonly area_method_authority?: string;
+}): boolean {
+  if (portion.area_method_authority === "user") return false;
+  const measured = flooringMeasuredAreaM2(portion);
+  if (
+    measured == null ||
+    portion.area_m2 == null ||
+    !Number.isFinite(portion.area_m2) ||
+    portion.area_m2 <= 0
+  ) {
+    return false;
+  }
+  const tolerance = Math.max(0.05, measured * 0.005);
+  return Math.abs(measured - portion.area_m2) > tolerance;
+}
+
+export function flooringAreaConflictCopy(portion: {
+  readonly length_m: number | null;
+  readonly width_m: number | null;
+  readonly area_m2: number | null;
+}): string | null {
+  const measured = flooringMeasuredAreaM2(portion);
+  if (measured == null || portion.area_m2 == null) return null;
+  return `${portion.length_m} × ${portion.width_m} m measures ${formatFlooringM2(measured)}; stated area is ${formatFlooringM2(portion.area_m2)}`;
 }
 
 export function createEmptyFlooringPortion(params?: {
@@ -729,6 +901,82 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       value.existing_finish_type
     ),
     substrate_removal_required: parseTriBool(value.substrate_removal_required),
+    waste_percent:
+      typeof value.waste_percent === "number" &&
+      Number.isFinite(value.waste_percent) &&
+      value.waste_percent > 0
+        ? value.waste_percent
+        : null,
+    finish_supplied_by:
+      value.finish_supplied_by === "customer" ||
+      value.finish_supplied_by === "contractor"
+        ? value.finish_supplied_by
+        : null,
+    finish_pricing: parseFlooringFinishPricing(value.finish_pricing),
+    waste_treatment: parseFlooringWasteTreatment(value.waste_treatment),
+    laminate_method: parseLaminateMethod(value.laminate_method),
+    laminate_method_authority: parseFieldAuthority(value.laminate_method_authority),
+    laminate_substrate: parseLaminateSubstrate(value.laminate_substrate),
+    laminate_substrate_authority: parseFieldAuthority(value.laminate_substrate_authority),
+    laminate_moisture: parseLaminateMoisture(value.laminate_moisture),
+    laminate_moisture_authority: parseFieldAuthority(value.laminate_moisture_authority),
+    laminate_package_covers_underlay: parseLaminatePackageCoverage(
+      value.laminate_package_covers_underlay
+    ),
+    laminate_package_covers_moisture: parseLaminatePackageCoverage(
+      value.laminate_package_covers_moisture
+    ),
+    laminate_pack_coverage_m2:
+      typeof value.laminate_pack_coverage_m2 === "number" &&
+      value.laminate_pack_coverage_m2 > 0
+        ? value.laminate_pack_coverage_m2
+        : null,
+    laminate_underlay_coverage_m2:
+      typeof value.laminate_underlay_coverage_m2 === "number" &&
+      value.laminate_underlay_coverage_m2 > 0
+        ? value.laminate_underlay_coverage_m2
+        : null,
+    laminate_moisture_coverage_m2:
+      typeof value.laminate_moisture_coverage_m2 === "number" &&
+      value.laminate_moisture_coverage_m2 > 0
+        ? value.laminate_moisture_coverage_m2
+        : null,
+    carpet_tile_pattern: parseCarpetTilePattern(value.carpet_tile_pattern),
+    carpet_tile_pattern_authority: parseFieldAuthority(value.carpet_tile_pattern_authority),
+    carpet_tile_substrate: parseCarpetTileSubstrate(value.carpet_tile_substrate),
+    carpet_tile_substrate_authority: parseFieldAuthority(
+      value.carpet_tile_substrate_authority
+    ),
+    carpet_tile_fixing: parseCarpetTileFixing(value.carpet_tile_fixing),
+    carpet_tile_fixing_authority: parseFieldAuthority(value.carpet_tile_fixing_authority),
+    carpet_tile_waste: parseCarpetTileWasteDecision(value.carpet_tile_waste),
+    carpet_tile_waste_authority: parseFieldAuthority(value.carpet_tile_waste_authority),
+    carpet_tile_size: parseCarpetTileKnown(value.carpet_tile_size),
+    carpet_tile_box: parseCarpetTileKnown(value.carpet_tile_box),
+    carpet_tile_box_coverage_m2:
+      typeof value.carpet_tile_box_coverage_m2 === "number" &&
+      value.carpet_tile_box_coverage_m2 > 0
+        ? value.carpet_tile_box_coverage_m2
+        : null,
+    carpet_tile_tiles_per_box:
+      typeof value.carpet_tile_tiles_per_box === "number" &&
+      value.carpet_tile_tiles_per_box > 0
+        ? value.carpet_tile_tiles_per_box
+        : null,
+    carpet_tile_fixing_coverage_m2:
+      typeof value.carpet_tile_fixing_coverage_m2 === "number" &&
+      value.carpet_tile_fixing_coverage_m2 > 0
+        ? value.carpet_tile_fixing_coverage_m2
+        : null,
+    carpet_tile_package_covers_fixing: parseCarpetTileCoverage(
+      value.carpet_tile_package_covers_fixing
+    ),
+    ...(value.carpet_tile_disposal_requested === true
+      ? { carpet_tile_disposal_requested: true as const }
+      : {}),
+    transitions_required: parseTriBool(value.transitions_required),
+    skirting_replacement_excluded:
+      value.skirting_replacement_excluded === true ? true : null,
     other_description: parseFlooringOtherDescription(value.other_description),
     specialist_kind: parseFlooringSpecialistKind(value.specialist_kind),
     finish_authority: parseFieldAuthority(value.finish_authority),
@@ -871,6 +1119,23 @@ export const FLOORING_PORTION_FIELD_KEYS = [
   "flooring.portion.finish_removal_required",
   "flooring.portion.existing_finish_type",
   "flooring.portion.substrate_removal_required",
+  "flooring.portion.finish_pricing",
+  "flooring.portion.waste_treatment",
+  "flooring.portion.laminate_method",
+  "flooring.portion.laminate_substrate",
+  "flooring.portion.laminate_moisture",
+  "flooring.portion.laminate_package_covers_underlay",
+  "flooring.portion.laminate_package_covers_moisture",
+  "flooring.portion.carpet_tile_pattern",
+  "flooring.portion.carpet_tile_substrate",
+  "flooring.portion.carpet_tile_waste",
+  "flooring.portion.carpet_tile_waste_percent",
+  "flooring.portion.carpet_tile_size",
+  "flooring.portion.carpet_tile_box",
+  "flooring.portion.carpet_tile_box_coverage_m2",
+  "flooring.portion.carpet_tile_fixing",
+  "flooring.portion.carpet_tile_supply",
+  "flooring.portion.carpet_tile_package_covers_fixing",
   "flooring.portion.label",
   "flooring.portion.other_description",
   "flooring.portion.specialist_kind",
@@ -1050,6 +1315,17 @@ function overlayUserField<K extends keyof FlooringPortion>(
   }
 }
 
+function overlayDisclosedAssumption<K extends keyof FlooringPortion>(
+  next: FlooringPortion,
+  persisted: FlooringPortion,
+  field: K,
+  authorityField: keyof FlooringPortion
+): void {
+  if (persisted[authorityField] !== "assumed_disclosed") return;
+  next[field] = persisted[field];
+  (next as FlooringPortion)[authorityField] = "assumed_disclosed" as never;
+}
+
 const FLOORING_USER_AUTHORITY_FIELDS = [
   "finish_authority",
   "area_method_authority",
@@ -1072,6 +1348,13 @@ const FLOORING_USER_AUTHORITY_FIELDS = [
   "label_authority",
   "other_description_authority",
   "specialist_authority",
+  "laminate_method_authority",
+  "laminate_substrate_authority",
+  "laminate_moisture_authority",
+  "carpet_tile_pattern_authority",
+  "carpet_tile_substrate_authority",
+  "carpet_tile_fixing_authority",
+  "carpet_tile_waste_authority",
 ] as const;
 
 export function flooringPortionHasUserAuthority(
@@ -1103,22 +1386,6 @@ export function flooringPortionFieldsCompatible(
   return true;
 }
 
-function isConsistentProductSubset(
-  persisted: readonly FlooringPortion[],
-  extracted: readonly FlooringPortion[]
-): boolean {
-  const used = new Set<number>();
-  for (const row of persisted) {
-    const idx = extracted.findIndex(
-      (candidate, i) =>
-        !used.has(i) && flooringPortionFieldsCompatible(row, candidate)
-    );
-    if (idx < 0) return false;
-    used.add(idx);
-  }
-  return persisted.length > 0;
-}
-
 export function overlayUserAuthoritativeFlooringPortion(
   extracted: FlooringPortion,
   persisted: FlooringPortion
@@ -1143,6 +1410,61 @@ export function overlayUserAuthoritativeFlooringPortion(
     "floor_preparation_required",
     "preparation_authority"
   );
+  if (persisted.finish_pricing != null) next.finish_pricing = persisted.finish_pricing;
+  if (persisted.waste_treatment != null) next.waste_treatment = persisted.waste_treatment;
+  if (persisted.laminate_package_covers_underlay != null) {
+    next.laminate_package_covers_underlay = persisted.laminate_package_covers_underlay;
+  }
+  if (persisted.laminate_package_covers_moisture != null) {
+    next.laminate_package_covers_moisture = persisted.laminate_package_covers_moisture;
+  }
+  overlayUserField(next, persisted, "laminate_method", "laminate_method_authority");
+  overlayUserField(next, persisted, "laminate_substrate", "laminate_substrate_authority");
+  overlayUserField(next, persisted, "laminate_moisture", "laminate_moisture_authority");
+  if (persisted.laminate_method_authority === "extracted" && persisted.laminate_method) {
+    next.laminate_method = persisted.laminate_method;
+    next.laminate_method_authority = "extracted";
+  }
+  if (persisted.laminate_pack_coverage_m2 != null) {
+    next.laminate_pack_coverage_m2 = persisted.laminate_pack_coverage_m2;
+  }
+  if (persisted.laminate_underlay_coverage_m2 != null) {
+    next.laminate_underlay_coverage_m2 = persisted.laminate_underlay_coverage_m2;
+  }
+  if (persisted.laminate_moisture_coverage_m2 != null) {
+    next.laminate_moisture_coverage_m2 = persisted.laminate_moisture_coverage_m2;
+  }
+  overlayUserField(next, persisted, "carpet_tile_pattern", "carpet_tile_pattern_authority");
+  overlayDisclosedAssumption(next, persisted, "carpet_tile_pattern", "carpet_tile_pattern_authority");
+  overlayUserField(next, persisted, "carpet_tile_substrate", "carpet_tile_substrate_authority");
+  overlayUserField(next, persisted, "carpet_tile_fixing", "carpet_tile_fixing_authority");
+  overlayUserField(next, persisted, "carpet_tile_waste", "carpet_tile_waste_authority");
+  overlayDisclosedAssumption(next, persisted, "carpet_tile_waste", "carpet_tile_waste_authority");
+  if (persisted.carpet_tile_pattern_authority === "extracted" && persisted.carpet_tile_pattern) {
+    next.carpet_tile_pattern = persisted.carpet_tile_pattern;
+    next.carpet_tile_pattern_authority = "extracted";
+  }
+  if (persisted.carpet_tile_waste != null) next.carpet_tile_waste = persisted.carpet_tile_waste;
+  if (
+    persisted.carpet_tile_waste_authority === "user" ||
+    persisted.carpet_tile_waste_authority === "assumed_disclosed"
+  ) {
+    next.waste_percent = persisted.waste_percent ?? null;
+  }
+  if (persisted.carpet_tile_size != null) next.carpet_tile_size = persisted.carpet_tile_size;
+  if (persisted.carpet_tile_box != null) next.carpet_tile_box = persisted.carpet_tile_box;
+  if (persisted.carpet_tile_box_coverage_m2 != null) {
+    next.carpet_tile_box_coverage_m2 = persisted.carpet_tile_box_coverage_m2;
+  }
+  if (persisted.carpet_tile_tiles_per_box != null) {
+    next.carpet_tile_tiles_per_box = persisted.carpet_tile_tiles_per_box;
+  }
+  if (persisted.carpet_tile_package_covers_fixing != null) {
+    next.carpet_tile_package_covers_fixing = persisted.carpet_tile_package_covers_fixing;
+  }
+  if (persisted.finish_supplied_by != null) {
+    next.finish_supplied_by = persisted.finish_supplied_by;
+  }
   overlayUserField(next, persisted, "tile_width_mm", "tile_width_authority");
   overlayUserField(next, persisted, "tile_length_mm", "tile_length_authority");
   overlayUserField(
@@ -1223,61 +1545,88 @@ export function overlayUserAuthoritativeFlooringPortion(
   return sanitizeFlooringPortionInapplicableFields(next);
 }
 
-function takeExtractedMatch(
-  extracted: readonly FlooringPortion[],
-  used: Set<number>,
-  predicate: (row: FlooringPortion, index: number) => boolean
-): FlooringPortion | null {
-  const index = extracted.findIndex(
-    (row, i) => !used.has(i) && predicate(row, i)
-  );
-  if (index < 0) return null;
-  used.add(index);
-  return extracted[index] ?? null;
+export const FLOORING_IDENTITY_UNRESOLVED_MESSAGE =
+  "Reanalysis could not match these flooring areas safely. Saved areas were kept and nothing was merged." as const;
+
+function flooringMeasuredSignature(row: FlooringPortion): string | null {
+  if (
+    row.finish_type == null &&
+    row.specialist_kind == null &&
+    row.area_m2 == null &&
+    row.length_m == null &&
+    row.width_m == null
+  ) {
+    return null;
+  }
+  return [
+    row.finish_type ?? "",
+    row.specialist_kind ?? "",
+    row.area_input_method ?? "",
+    row.area_m2 ?? "",
+    row.length_m ?? "",
+    row.width_m ?? "",
+  ].join("|");
 }
 
-function matchReanalysePortion(
-  extracted: readonly FlooringPortion[],
-  persisted: FlooringPortion,
-  index: number,
-  used: Set<number>
-): FlooringPortion | null {
-  const byId = takeExtractedMatch(
-    extracted,
-    used,
-    (row) => row.id === persisted.id
-  );
-  if (byId) return byId;
-  if (persisted.clause_ordinal != null) {
-    const byOrdinal = takeExtractedMatch(
-      extracted,
-      used,
-      (row) =>
-        row.clause_ordinal === persisted.clause_ordinal &&
-        flooringPortionFieldsCompatible(row, persisted)
-    );
-    if (byOrdinal) return byOrdinal;
+function signatureIndexes(
+  rows: readonly FlooringPortion[],
+  signature: string
+): number[] {
+  const hits: number[] = [];
+  rows.forEach((row, index) => {
+    if (flooringMeasuredSignature(row) === signature) hits.push(index);
+  });
+  return hits;
+}
+
+function alignFlooringPortionsOnReanalyse(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+}): { readonly portions: FlooringPortion[]; readonly unresolved: boolean } {
+  const extracted = parseFlooringPortions(params.extracted);
+  const persisted = parseFlooringPortions(params.persisted);
+  if (persisted.length === 0) {
+    return { portions: extracted.map(cloneFlooringPortion), unresolved: false };
   }
-  const label = persisted.label?.trim().toLowerCase();
-  if (label) {
-    const byLabel = takeExtractedMatch(
-      extracted,
-      used,
-      (row) =>
-        row.label?.trim().toLowerCase() === label &&
-        flooringPortionFieldsCompatible(row, persisted)
-    );
-    if (byLabel) return byLabel;
+  if (extracted.length === 0) {
+    return { portions: persisted.map(cloneFlooringPortion), unresolved: false };
   }
-  const byIndex = takeExtractedMatch(
-    extracted,
-    used,
-    (row, i) => i === index && flooringPortionFieldsCompatible(row, persisted)
-  );
-  if (byIndex) return byIndex;
-  return takeExtractedMatch(extracted, used, (row) =>
-    flooringPortionFieldsCompatible(row, persisted)
-  );
+  const used = new Set<number>();
+  let unresolved = false;
+  const portions = persisted.map((portion) => {
+    const byId = extracted.findIndex(
+      (row, index) => !used.has(index) && row.id === portion.id
+    );
+    if (byId >= 0) {
+      used.add(byId);
+      return overlayUserAuthoritativeFlooringPortion(extracted[byId]!, portion);
+    }
+    const signature = flooringMeasuredSignature(portion);
+    const extractedHits = signature
+      ? signatureIndexes(extracted, signature).filter((index) => !used.has(index))
+      : [];
+    const persistedHits = signature ? signatureIndexes(persisted, signature) : [];
+    if (signature && extractedHits.length === 1 && persistedHits.length === 1) {
+      const index = extractedHits[0]!;
+      used.add(index);
+      return overlayUserAuthoritativeFlooringPortion(extracted[index]!, portion);
+    }
+    unresolved = true;
+    return cloneFlooringPortion(portion);
+  });
+  extracted.forEach((row, index) => {
+    if (used.has(index)) return;
+    const signature = flooringMeasuredSignature(row);
+    const persistedHits = signature ? signatureIndexes(persisted, signature) : [];
+    const extractedHits = signature ? signatureIndexes(extracted, signature) : [];
+    if (signature && persistedHits.length === 0 && extractedHits.length === 1) {
+      portions.push(cloneFlooringPortion(row));
+      used.add(index);
+      return;
+    }
+    unresolved = true;
+  });
+  return { portions, unresolved };
 }
 
 /**
@@ -1290,33 +1639,14 @@ export function mergePersistedFlooringPortionsOnReanalyse(params: {
   readonly extracted: unknown;
   readonly persisted: unknown;
 }): FlooringPortion[] {
-  const extracted = parseFlooringPortions(params.extracted);
-  const persisted = parseFlooringPortions(params.persisted);
-  if (persisted.length === 0) return extracted.map(cloneFlooringPortion);
-  if (extracted.length === 0) return persisted.map(cloneFlooringPortion);
-  const hasUser = persisted.some(flooringPortionHasUserAuthority);
-  const consistentSubset = isConsistentProductSubset(persisted, extracted);
-  if (!hasUser && extracted.length > persisted.length && !consistentSubset) {
-    return extracted.map((row, i) => {
-      const next = cloneFlooringPortion(row);
-      const previous = persisted[i];
-      if (previous) next.id = previous.id;
-      return next;
-    });
-  }
-  const used = new Set<number>();
-  const merged = persisted.map((portion, index) => {
-    const match = matchReanalysePortion(extracted, portion, index, used);
-    return match
-      ? overlayUserAuthoritativeFlooringPortion(match, portion)
-      : cloneFlooringPortion(portion);
-  });
-  if (!hasUser && !consistentSubset) {
-    extracted.forEach((row, index) => {
-      if (!used.has(index)) merged.push(cloneFlooringPortion(row));
-    });
-  }
-  return merged;
+  return alignFlooringPortionsOnReanalyse(params).portions;
+}
+
+export function flooringReanalysisIdentityUnresolved(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+}): boolean {
+  return alignFlooringPortionsOnReanalyse(params).unresolved;
 }
 
 function applyPortionField(
@@ -1364,6 +1694,96 @@ function applyPortionField(
   if (field === "floor_preparation_required") {
     portion.floor_preparation_required = parseTriBool(value);
     portion.preparation_authority = "user";
+    return;
+  }
+  if (field === "finish_pricing") {
+    portion.finish_pricing = parseFlooringFinishPricing(value);
+    return;
+  }
+  if (field === "waste_treatment") {
+    portion.waste_treatment = parseFlooringWasteTreatment(value);
+    return;
+  }
+  if (field === "laminate_method") {
+    portion.laminate_method = parseLaminateMethod(value);
+    portion.laminate_method_authority = "user";
+    return;
+  }
+  if (field === "laminate_substrate") {
+    portion.laminate_substrate = parseLaminateSubstrate(value);
+    portion.laminate_substrate_authority = "user";
+    return;
+  }
+  if (field === "laminate_moisture") {
+    portion.laminate_moisture = parseLaminateMoisture(value);
+    portion.laminate_moisture_authority = "user";
+    return;
+  }
+  if (field === "laminate_package_covers_underlay") {
+    portion.laminate_package_covers_underlay = parseLaminatePackageCoverage(value);
+    return;
+  }
+  if (field === "laminate_package_covers_moisture") {
+    portion.laminate_package_covers_moisture = parseLaminatePackageCoverage(value);
+    return;
+  }
+  if (field === "carpet_tile_pattern") {
+    const previousAuthority = portion.carpet_tile_pattern_authority;
+    portion.carpet_tile_pattern = parseCarpetTilePattern(value);
+    if (previousAuthority === "extracted" && portion.carpet_tile_pattern === "straight") {
+      portion.carpet_tile_pattern_authority = "extracted";
+      return;
+    }
+    portion.carpet_tile_pattern_authority =
+      portion.carpet_tile_pattern === "straight" ? "assumed_disclosed" : "user";
+    return;
+  }
+  if (field === "carpet_tile_substrate") {
+    portion.carpet_tile_substrate = parseCarpetTileSubstrate(value);
+    portion.carpet_tile_substrate_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_fixing") {
+    portion.carpet_tile_fixing = parseCarpetTileFixing(value);
+    portion.carpet_tile_fixing_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_waste") {
+    const decision = parseCarpetTileWasteDecision(value);
+    portion.carpet_tile_waste = decision;
+    portion.carpet_tile_waste_authority =
+      decision === "proposed" ? "assumed_disclosed" : "user";
+    if (decision === "proposed") portion.waste_percent = CARPET_TILE_PROPOSED_WASTE_PERCENT;
+    if (decision === "zero") portion.waste_percent = null;
+    return;
+  }
+  if (field === "carpet_tile_waste_percent") {
+    portion.waste_percent = parseFlooringPositiveMeasure(value);
+    portion.carpet_tile_waste = "custom";
+    portion.carpet_tile_waste_authority = "user";
+    return;
+  }
+  if (field === "carpet_tile_size") {
+    portion.carpet_tile_size = parseCarpetTileKnown(value);
+    return;
+  }
+  if (field === "carpet_tile_box") {
+    portion.carpet_tile_box = parseCarpetTileKnown(value);
+    return;
+  }
+  if (field === "carpet_tile_box_coverage_m2") {
+    portion.carpet_tile_box_coverage_m2 = parseFlooringPositiveMeasure(value);
+    portion.carpet_tile_box = "known";
+    return;
+  }
+  if (field === "carpet_tile_supply") {
+    const text = typeof value === "string" ? value.toLowerCase() : "";
+    portion.finish_supplied_by = text.includes("customer") ? "customer" : "contractor";
+    if (portion.finish_supplied_by === "customer") portion.finish_pricing = "separate_supply";
+    return;
+  }
+  if (field === "carpet_tile_package_covers_fixing") {
+    portion.carpet_tile_package_covers_fixing = parseCarpetTileCoverage(value);
     return;
   }
   if (field === "tile_width_mm") {

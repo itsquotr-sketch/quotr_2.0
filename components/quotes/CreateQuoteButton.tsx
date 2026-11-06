@@ -93,7 +93,8 @@ export function CreateQuoteButton({
         >
           {quoteBlockedReason}
         </p>
-      ) : !isReviewed ? (
+      ) : null}
+      {!isReviewed ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
           Mark pricing as reviewed before creating a quote.
         </p>
