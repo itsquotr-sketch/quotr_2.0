@@ -191,12 +191,16 @@ export function PricingWorkspace({
     () => unresolvedManualPricingQuoteBlock(items),
     [items]
   );
+  const excludedFromTotalBlock = useMemo(
+    () => quoteVisibleExcludedLineBlock(items),
+    [items]
+  );
   const scopeFinalisationBlock = useMemo(
     () =>
-      quoteVisibleExcludedLineBlock(items) ??
+      excludedFromTotalBlock ??
       (scopeReviewBlock ??
         (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null)),
-    [items, scopeReviewBlock, scopeStillOpen]
+    [excludedFromTotalBlock, scopeReviewBlock, scopeStillOpen]
   );
   const provisionalQuoteBlock = useMemo(
     () =>
@@ -790,7 +794,7 @@ export function PricingWorkspace({
             items={items}
             workAreas={workAreas}
             recommendedSell={latestEstimateRecommendedSell}
-            disabled={isSaving}
+            disabled={isSaving || excludedFromTotalBlock != null}
             readOnly={!canEditPricing}
             scopeUnresolved={scopeStillOpen}
             pricesUnresolved={unresolvedPriceCount > 0}

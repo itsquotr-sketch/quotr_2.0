@@ -28,6 +28,7 @@ import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial
 import {
   estimateLineIsQuoteVisible,
   missingGeneratedRateReviewBlock,
+  pricingLineIncludedInDocumentTotal,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
 } from "@/lib/pricing/scope-finalisation";
@@ -215,7 +216,7 @@ async function recalculateAndPersistDocumentTotals(
 ) {
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -226,11 +227,14 @@ async function recalculateAndPersistDocumentTotals(
     throw new Error(PRICING_SAVE_FAILED);
   }
 
-  const mappedItems = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const mappedItems = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
 
   let totals: {
     subtotalCost: number;
@@ -688,6 +692,7 @@ export async function createPricingFromEstimate(input: {
     total_cost: number;
     total_sell: number;
     cost_known: boolean;
+    included_in_total?: boolean;
   }> = [];
 
   if (lineItems && lineItems.length > 0) {
@@ -710,6 +715,7 @@ export async function createPricingFromEstimate(input: {
         total_cost: values.totalCost,
         total_sell: values.totalSell,
         cost_known: values.costKnown,
+        included_in_total: values.includedInTotal !== false,
       });
 
       pricingItemRows.push({
@@ -2683,6 +2689,8 @@ export async function applyPricingFinalSell(input: {
   }
 
   const items = (rows ?? []).map((row) => mapPricingItem(row));
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
+  if (excludedLineBlock) return { error: excludedLineBlock };
   const finalSellLocked = await lockedSupplierItemIds(supabase, orgId, items.map((row) => row.id));
   if (finalSellLocked === null) return { error: PRICING_SAVE_FAILED };
   if (finalSellLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };

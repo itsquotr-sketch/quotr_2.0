@@ -22,13 +22,16 @@ export type PricingSectionPresentationTotals = {
  * Work-area / section rollup for pricing UI (GST not applied at section level).
  */
 export function presentPricingSectionTotals(
-  items: readonly Pick<PricingItem, "total_cost" | "total_sell" | "cost_known">[]
+  items: readonly (Pick<PricingItem, "total_cost" | "total_sell" | "cost_known"> & {
+    notes_internal?: string | null;
+  })[]
 ): PricingSectionPresentationTotals {
   const result = calculateAuthoritativeDocumentTotals(
     items.map((item) => ({
       total_cost: item.total_cost,
       total_sell: item.total_sell,
       cost_known: item.cost_known,
+      notes_internal: item.notes_internal,
     })),
     0,
     "pricing-section-presentation"

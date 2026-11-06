@@ -12,6 +12,7 @@ import {
 } from "@/lib/commercial-engine";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { persistCommercialMetric } from "@/lib/pricing/commercial-engine-adapter";
+import { pricingLineIncludedInDocumentTotal } from "@/lib/pricing/scope-finalisation";
 import type { DocumentTotals } from "@/lib/pricing/calculations";
 
 export type AuthoritativeAggregateLine = {
@@ -20,6 +21,9 @@ export type AuthoritativeAggregateLine = {
   readonly visible?: boolean | null;
   /** When omitted, inferred: cost 0 + sell > 0 → unknown. */
   readonly cost_known?: boolean | null;
+  /** Explicit false, or notes metadata includedInTotal false, stays out of the total. */
+  readonly included_in_total?: boolean | null;
+  readonly notes_internal?: string | null;
 };
 
 export type AuthoritativeDocumentTotals = DocumentTotals & {
@@ -89,7 +93,7 @@ export function mapItemsToAggregateLines(
     total_cost: item.total_cost,
     total_sell: item.total_sell,
     visible: item.visible ?? true,
-    included_in_total: true,
+    included_in_total: pricingLineIncludedInDocumentTotal(item),
     cost_known: inferPersistedLineCostKnown(item),
   }));
 }

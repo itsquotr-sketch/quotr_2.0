@@ -46,6 +46,18 @@ export function estimateLineIsQuoteVisible(values: {
   return values.includedInTotal !== false && values.clientVisible !== false;
 }
 
+/**
+ * A saved allowance can carry a cost and sell while its estimate metadata
+ * keeps it outside the priced total. That money stays off the document total.
+ */
+export function pricingLineIncludedInDocumentTotal(item: {
+  notes_internal?: string | null;
+  included_in_total?: boolean | null;
+}): boolean {
+  if (item.included_in_total === false) return false;
+  return parseLineItemNotes(item.notes_internal).metadata.includedInTotal !== false;
+}
+
 type QuoteVisibilityItem = {
   visible_on_quote?: boolean | null;
   notes_internal?: string | null;
