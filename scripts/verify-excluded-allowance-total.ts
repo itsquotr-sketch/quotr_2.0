@@ -127,6 +127,44 @@ check(
     allocated.allocations[0]?.totalSell === RECOMMENDED_SELL
 );
 
+const scaled = allocateFinalSell(
+  [
+    {
+      id: "first",
+      total_sell: 10.01,
+      total_cost: 8,
+      cost_known: true,
+      notes_internal: null,
+    },
+    {
+      id: "allowance",
+      total_sell: ALLOWANCE_SELL,
+      total_cost: ALLOWANCE_COST,
+      cost_known: true,
+      notes_internal: excludedNotes,
+    },
+    {
+      id: "last",
+      total_sell: 10.01,
+      total_cost: 8,
+      cost_known: true,
+      notes_internal: null,
+    },
+  ],
+  30
+);
+const scaledSum = scaled.ok
+  ? Math.round(scaled.allocations.reduce((sum, row) => sum + row.totalSell, 0) * 100) / 100
+  : null;
+check(
+  "a hidden excluded row does not steal the rounding remainder",
+  scaled.ok &&
+    scaledSum === 30 &&
+    scaled.allocations.every((row) => row.itemId !== "allowance") &&
+    scaled.allocations.at(-1)?.itemId === "last",
+  scaled.ok ? `sum ${scaledSum} ids ${scaled.allocations.map((row) => row.itemId).join(",")}` : scaled.error
+);
+
 const blocked = quoteVisibleExcludedLineBlock([
   { visible_on_quote: true, notes_internal: excludedNotes },
 ]);

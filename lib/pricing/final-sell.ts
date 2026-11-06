@@ -154,7 +154,7 @@ export function allocateFinalSell(
   let allocated = 0;
   for (let index = 0; index < priced.length; index += 1) {
     const item = priced[index]!;
-    const isLast = index === items.length - 1;
+    const isLast = index === priced.length - 1;
     const nextSell = isLast
       ? roundMoneyCents(target - allocated)
       : roundMoneyCents(item.total_sell * scale);
