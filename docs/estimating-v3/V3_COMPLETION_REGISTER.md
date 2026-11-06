@@ -292,19 +292,19 @@ Capability labels come from `lib/work-areas/support-contract.ts`. Catalogue desc
 
 ### Preview to Production
 
-This is the evidence a later recommendation needs. It is not a deploy.
+Checked 6 November 2026 against `b3520440` and the live Production deployment. Nothing was deployed and migration 121 was not applied.
 
-- Website `release/website-estimating-stage-1` is `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`. It is not an ancestor of `estimating/v3`. The Preview line is 123 commits ahead. Production has three commits the Preview line does not contain. The code commit is `bc0a7667`, “Fix the four estimating completion blockers without changing prices.” A recommendation has to show those blocker fixes survive the merge.
-- Android `release/android-estimating-stage-1` is `ff39ba31`. It is 22 commits ahead of the Preview line, including the Play host, account deletion, and workspace layout. Promoting the website line must not replace that branch.
-- Migrations: `supabase/migrations/121_pricing_document_tax_basis.sql` is on the Preview line and not on `bc0a7667`. It adds nullable `pricing_documents.gst_tax_basis`. Existing drafts keep their stored GST rate. Issued quotes are separate snapshots and are not updated. No other migration file differs. Nothing is applied from this register.
-- Environment: Preview database `shhpjsoldmqtkdbgrbtm`, Production database `lxvnylhsbvudzzupxeqr`. Production env is not changed. Rollback target remains `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` until a proposal names another.
-- Preservation: regeneration can update an estimate. An explicit apply can update eligible draft rows. Issued quote snapshots stay immutable. Manual edits stay until that apply. Batch 3 local checks cover the pile line. The tax migration does not rewrite issued quotes. A recommendation still needs one same-brief comparison of today’s Production result and the Preview candidate.
-- Representative comparison: use one deck brief with unknown pile replacement and one “Replace the kitchen” brief. Record Production, then the accepted Preview candidate. Do not send a quote.
+- Website. Production is still `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`, target production, Ready, aliases `get-quotr.com` and `app.get-quotr.com`, branch `release/website-estimating-stage-1`. It is not an ancestor of `b3520440`, and `b3520440` is not an ancestor of it. Preview is 142 commits ahead. Production has three commits Preview does not: `4024e5da` and `1dee9fac` are Stage 0 documents, and `bc0a7667` is the four completion-blocker fixes. Those four behaviours are present on `b3520440`: `scripts/verify-estimating-v3-stage1.ts` passed 18 of 18. A Production move cannot be a fast-forward. It must be a reviewed merge, and it must not replace `release/android-estimating-stage-1`.
+- Android. `ff39ba31` is 22 commits ahead of `b3520440`. Those commits include the Play host, account deletion, and the project workspace layout, plus the same three website commits under different SHAs. Promoting Integration onto that branch would drop them.
+- Migration 121. `supabase/migrations/121_pricing_document_tax_basis.sql` is the only migration file that differs. It adds nullable `pricing_documents.gst_tax_basis`. Existing drafts keep their stored GST rate. Issued quotes are separate snapshots and are not updated. The new Pricing code writes that column, so the column has to exist before a Production promotion. The current Production code does not read it, so applying the column does not by itself require the new app, but this register does not apply it.
+- Environment. Preview and Production use separate values of the same Supabase and Stripe keys. Preview-only names are `BILLING_ENFORCEMENT_MODE`, `PLAN_CONFIRMATION_EMAIL_ENABLED`, `SCOPE_DISCOVERY_ENABLED`, and `VERCEL_PREVIEW_FEEDBACK_ENABLED`. Production-only names are `ACCOUNT_WELCOME_EMAIL_ENABLED`, `ACCOUNT_WELCOME_EMAIL_PRODUCTION`, and `LOOPS_WEBHOOK_SECRET`. Recorded databases stay Preview `shhpjsoldmqtkdbgrbtm` and Production `lxvnylhsbvudzzupxeqr`. No value was changed.
+- Rollback. Leave Production on `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`. After any later promotion, roll the website aliases back to that deployment. Do not roll the Android branch back with it. Migration 121 is additive, so an app rollback does not require dropping the column. Do not run that rollback now.
+- Preview sign-off. Not signed off. The Integration host is on the login page. The isolated session is still on the Batch 3 host, which does not serve `b3520440`. Fence and retaining mobile checks are not closed.
 
 ### Next three actions
 
-1. Integration serves `b3520440` / `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. Keep the review and quote gates on project `48a03529`. Do not mark it reviewed or create a quote.
-2. Development Lead. The locked quote on that project is the hosted evidence that no client document was rendered. `resolveQuoteItemDescription` is the code evidence: client description, then client notes, and not the internal basis.
-3. Development Lead. Production stays `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ`. The next work is the release-mechanics review, not a Production deploy.
+1. Jean-Luc. Sign in on https://quotr-2-0-git-estimating-v3-quotr1.vercel.app as the isolated QA account and confirm the dashboard says “V3 QA isolated mw2usno8”. Do not reset the password.
+2. Development Lead. After that sign-in, smoke the pile and kitchen paths on that host, then read the fence and retaining projects at phone width without editing them.
+3. Development Lead. Production stays `bc0a7667`. Do not deploy and do not apply migration 121.
 
 Decisions needed before the release boundary is final: ship the current disclosed benchmarks without new dollar values, and keep deferred families selectable without a new recipe. Bathroom may stay labelled Supported only as a partial estimate. Production deployment stays unauthorised.
