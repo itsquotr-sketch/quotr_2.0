@@ -494,6 +494,9 @@ export function WorkAreaBreakdown({
             <Stat label="Previous direct cost" value={model.previousDirectCost} />
           ) : null}
           {model.sell ? <Stat label="Recommended client sell" value={model.sell} /> : null}
+          {model.pricedWorkSoFar ? (
+            <Stat label="Priced work so far" value={model.pricedWorkSoFar} />
+          ) : null}
         </div>
         {model.staleWarning ? (
           <p
@@ -549,6 +552,11 @@ export function WorkAreaBreakdown({
                     <span className="min-w-0">
                       <span className="block text-xs text-foreground/70">Readiness</span>
                       <span className="block font-medium">{card.readiness}</span>
+                      {card.nextAction ? (
+                        <span className="mt-1 block text-sm" data-work-area-next-action={card.id}>
+                          {card.nextAction}
+                        </span>
+                      ) : null}
                     </span>
                     {card.attention.length > 0 ? (
                       <span className="min-w-0" data-work-area-pricing-count={card.id}>

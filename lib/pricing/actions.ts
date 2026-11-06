@@ -6,6 +6,10 @@ import { notFound, redirect } from "next/navigation";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { flooringManualAmountBlocked } from "@/lib/estimate/flooring-pricing-recovery";
 import {
+  PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK,
+  pileReplacementManualAmountBlocked,
+} from "@/lib/estimate/deck-scope-2c";
+import {
   deckStatedCountConflictFromPersisted,
   deckStatedCountPricingBlock,
 } from "@/lib/estimate/deck-stated-count-guard";
@@ -23,6 +27,8 @@ import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-gener
 import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial-gate";
 import {
   estimateLineIsQuoteVisible,
+  missingGeneratedRateReviewBlock,
+  pricingLineIncludedInDocumentTotal,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
 } from "@/lib/pricing/scope-finalisation";
@@ -210,7 +216,7 @@ async function recalculateAndPersistDocumentTotals(
 ) {
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -221,11 +227,14 @@ async function recalculateAndPersistDocumentTotals(
     throw new Error(PRICING_SAVE_FAILED);
   }
 
-  const mappedItems = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const mappedItems = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
 
   let totals: {
     subtotalCost: number;
@@ -683,6 +692,7 @@ export async function createPricingFromEstimate(input: {
     total_cost: number;
     total_sell: number;
     cost_known: boolean;
+    included_in_total?: boolean;
   }> = [];
 
   if (lineItems && lineItems.length > 0) {
@@ -705,6 +715,7 @@ export async function createPricingFromEstimate(input: {
         total_cost: values.totalCost,
         total_sell: values.totalSell,
         cost_known: values.costKnown,
+        included_in_total: values.includedInTotal !== false,
       });
 
       pricingItemRows.push({
@@ -1416,6 +1427,19 @@ export async function updatePricingItem(
       error:
         "A typed amount does not answer this flooring choice. Choose the waste treatment or package ownership first.",
     };
+  }
+  const replacementNotes = parseLineItemNotes(existing.notes_internal);
+  if (
+    pileReplacementManualAmountBlocked({
+      itemKey: replacementNotes.metadata.itemKey,
+      label: existing.client_label,
+      scope: item.client_description,
+      basis: item.internal_description,
+      totalCost: totals.totalCost,
+      totalSell: totals.totalSell,
+    })
+  ) {
+    return { error: PILE_REPLACEMENT_MANUAL_AMOUNT_BLOCK };
   }
 
   const nextNotes = originatedAsPricingRequired
@@ -2183,6 +2207,8 @@ export async function markPricingReviewed(
   if (taxBasisBlock) return { error: taxBasisBlock };
   const excludedLineBlock = quoteVisibleExcludedLineBlock(reviewItems ?? []);
   if (excludedLineBlock) return { error: excludedLineBlock };
+  const missingRateBlock = missingGeneratedRateReviewBlock(reviewItems ?? []);
+  if (missingRateBlock) return { error: missingRateBlock };
   const scopeBlock = await unresolvedScopeReviewBlockForEstimate(
     supabase,
     orgId,
@@ -2663,6 +2689,8 @@ export async function applyPricingFinalSell(input: {
   }
 
   const items = (rows ?? []).map((row) => mapPricingItem(row));
+  const excludedLineBlock = quoteVisibleExcludedLineBlock(items);
+  if (excludedLineBlock) return { error: excludedLineBlock };
   const finalSellLocked = await lockedSupplierItemIds(supabase, orgId, items.map((row) => row.id));
   if (finalSellLocked === null) return { error: PRICING_SAVE_FAILED };
   if (finalSellLocked.length > 0) return { error: SUPPLIER_PRICE_REVIEW };

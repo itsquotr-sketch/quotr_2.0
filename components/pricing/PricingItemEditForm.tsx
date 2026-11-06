@@ -26,6 +26,8 @@ import type {
   PricingItem,
   PricingItemInput,
 } from "@/lib/pricing/types";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { PILE_REPLACEMENT_ITEM_KEY } from "@/lib/estimate/deck-scope-2c";
 
 export function itemToForm(item: PricingItem): PricingItemInput {
   const resolved = resolvePricingItemCalculation(
@@ -482,6 +484,27 @@ export function PricingItemEditForm({
           </div>
         </div>
         )}
+
+        {parseLineItemNotes(form.notes_internal).metadata.itemKey ===
+          PILE_REPLACEMENT_ITEM_KEY ||
+        /replacement allowance/i.test(form.internal_label) ? (
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="text-xs">Internal pricing basis</Label>
+            <Textarea
+              rows={2}
+              value={form.internal_description ?? ""}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  internal_description: event.target.value || null,
+                }))
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Company rate, project rate, or subcontractor price. This is not printed on the customer quote and does not confirm coverage.
+            </p>
+          </div>
+        ) : null}
 
         <p className="text-xs font-medium text-muted-foreground sm:col-span-2">Quote</p>
         <div className="space-y-1.5 sm:col-span-2">

@@ -177,7 +177,7 @@ const pricingRequired = projectEstimateOverview(
 check("5 Pricing Required stays unresolved with no invented money", pricingRequired.status === "pricing_required" && pricingRequired.sell.presentation === "unresolved" && pricingRequired.sell.exGst == null && pricingRequired.composition.length === 0);
 check("5 Pricing Required needs attention and does not block Pricing", pricingRequired.requiredCount === 0 && pricingRequired.pricingAttentionCount === 1 && pricingRequired.pricingAttention[0]?.title === "Manufactured gate" && pricingRequired.pricingAttention[0]?.blocksPricing === false && pricingRequired.pricingAttention[0]?.money == null && pricingRequired.pricingAttention[0]?.group === "pricing_attention");
 check("5 Pricing Required does not add a new Pricing-creation block", !pricingRequired.pricingCreationBlocked && pricingRequired.pricingEntry === "create");
-check("5 missing prices stay Incomplete and name the count", pricingRequired.statusLabel === "Incomplete" && pricingRequired.statusDetail === "1 line still needs a price. Complete this in Pricing.");
+check("5 missing prices stay Incomplete and name the count", pricingRequired.statusLabel === "Incomplete" && pricingRequired.statusDetail === "1 line still needs a price. Add the missing rate.");
 
 const unpricedRateLabel = projectEstimateOverview(
   input({
@@ -252,7 +252,7 @@ const unpricedRateLabel = projectEstimateOverview(
 check(
   "5 a Pricing Required rate label is counted when the group flag is unset",
   unpricedRateLabel.pricingAttentionCount === 2 &&
-    unpricedRateLabel.statusDetail === "2 lines still need prices. Complete these in Pricing." &&
+    unpricedRateLabel.statusDetail === "2 lines still need prices. Add the missing rate." &&
     unpricedRateLabel.workAreas.summaryLine === "2 Work Areas · 2 lines need prices in 1 Work Area" &&
     unpricedRateLabel.issues.missingPriceLineCount === 2 &&
     unpricedRateLabel.issues.workAreasWithMissingPrices === 1 &&
@@ -298,7 +298,7 @@ check(
   knownBesideMissing.status === "pricing_required" &&
     knownBesideMissing.statusLabel === "Incomplete" &&
     knownBesideMissing.sell.presentation === "partial" &&
-    knownBesideMissing.sell.label === "Known sell, not the complete price" &&
+    knownBesideMissing.sell.label === "Priced work so far" &&
     knownBesideMissing.sell.exGst === "$1,000" &&
     knownBesideMissing.composition.some(
       (row) => row.id === "direct" && row.label === "Known cost" && row.value === "$800"

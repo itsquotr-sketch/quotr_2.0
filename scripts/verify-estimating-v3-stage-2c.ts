@@ -22,6 +22,8 @@ import {
 } from "../lib/estimate/deck-detail-completeness";
 import {
   PILE_ALLOWANCE_COVERAGE_GAP,
+  pileReplacementManualAmountBlocked,
+  replacementAllowanceQuantityUnknown,
   PILE_CONFIRMED_NEW_WHILE_RETAINED,
   PILE_INSPECTION_CONDITION_LABEL,
   PILE_LEFT_UNTIL_INSPECTION_LABEL,
@@ -31,6 +33,8 @@ import {
   shouldAskPileReplacement,
 } from "../lib/estimate/deck-scope-2c";
 import { scopeTopicPolarity } from "../lib/estimate/scope-intent";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import { resolveQuoteItemDescription } from "../lib/quotes/from-pricing";
 import {
   explicitJobExclusionLines,
   jobExclusionLine,
@@ -401,11 +405,61 @@ const openAllowance = assumedEstimate.lineItems.find((item) =>
   /pile\/post replacement/i.test(item.label)
 );
 check(
-  "replacement without a count stays an incomplete allowance",
-  openAllowance?.notes === "Count subject to confirmation" &&
-    openAllowance.recommendedCost === 1200 &&
-    openAllowance.includedInTotal !== false &&
-    assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price"))
+  "replacement without a count stays visible and unpriced",
+  openAllowance?.includedInTotal === false &&
+    openAllowance.recommendedCost === 0 &&
+    openAllowance.quantity === 0 &&
+    openAllowance.quantity !== 1 &&
+    /not a lump-sum scope/.test(openAllowance.notes ?? "") &&
+    /not zero piles requested/.test(openAllowance.notes ?? "") &&
+    replacementAllowanceQuantityUnknown({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      quantity: openAllowance.quantity,
+    }) &&
+    assumedEstimate.missingInfo.includes(PILE_ALLOWANCE_COVERAGE_GAP) &&
+    classifyReviewNotice(PILE_ALLOWANCE_COVERAGE_GAP) === "scope_gap" &&
+    pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
+    pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      scope: "Piles / posts and installation",
+      basis: "Company rate",
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
+    !pileReplacementManualAmountBlocked({
+      itemKey: openAllowance.itemKey,
+      label: openAllowance.label,
+      scope: "Removal of existing piles",
+      basis: "Subcontractor price",
+      totalCost: 500,
+      totalSell: 0,
+    }) &&
+    assumedEstimate.missingInfo.some((row) => row.includes("not a complete pile price")) &&
+    !assumedEstimate.lineItems.some(
+      (item) =>
+        item.label === "Pile/post replacement allowance" &&
+        item.includedInTotal !== false &&
+        item.recommendedCost > 0
+    )
+);
+const quoteDescription = resolveQuoteItemDescription({
+  client_description: "Removal of existing piles",
+  notes_client: null,
+  internal_description: "Subcontractor price",
+  client_label: "Pile/post replacement allowance",
+  internal_label: "Pile/post replacement allowance",
+} as never);
+check(
+  "the rate basis is not required quote text",
+  quoteDescription === "Removal of existing piles" &&
+    !/subcontractor|company rate|project rate|unit cost/i.test(quoteDescription ?? "")
 );
 const countedFacts: EstimateFact[] = [
   ...assumedFacts,
@@ -431,7 +485,9 @@ check(
   "an explicit count does not add the each rate on top of itemised supports",
   countedAllowance?.includedInTotal === false &&
     countedAllowance.recommendedCost === 0 &&
+    countedAllowance.quantity === 4 &&
     countedAllowance.rateSourceType === "missing" &&
+    /not priced at the each benchmark/.test(countedAllowance.notes ?? "") &&
     !countedEstimate.lineItems.some(
       (item) =>
         item.label === "Pile/post replacement allowance" &&

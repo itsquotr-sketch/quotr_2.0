@@ -225,11 +225,44 @@ export function deckExcludedConcreteLeavesSupportUnresolved(
   return newSubstructureIncluded(rows, workAreaId);
 }
 
+/**
+ * A blank replacement count stays visible and unresolved.
+ * Decking and framing do not wait for it, and the unpriced allowance
+ * stays out of the known total. A stated count, or a confirmed bearer
+ * layout, still has to finish the hole answers those measured supports use.
+ */
+export function blankPileReplacementLeavesSupportsUnpriced(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  const rows = [...facts];
+  if (
+    getBooleanFact(rows, workAreaId, "deck.pile_or_post_replacement_required") !==
+    true
+  ) {
+    return false;
+  }
+  const stated = getNumberFact(rows, workAreaId, "deck.pile_or_post_count");
+  if (stated != null && stated > 0) return false;
+  const bearerRows = getNumberFact(rows, workAreaId, "deck.bearer_row_count");
+  const perBearer = getNumberFact(rows, workAreaId, "deck.supports_per_bearer");
+  if (
+    bearerRows != null &&
+    perBearer != null &&
+    bearerRows > 0 &&
+    perBearer > 0
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function deckDetailGapsBlockingEstimate(
   facts: readonly EstimateFact[],
   workAreaId: string
 ): DeckDetailGap[] {
   if (deckExcludedConcreteLeavesSupportUnresolved(facts, workAreaId)) return [];
+  if (blankPileReplacementLeavesSupportsUnpriced(facts, workAreaId)) return [];
   return deckDetailGaps(facts, workAreaId);
 }
 

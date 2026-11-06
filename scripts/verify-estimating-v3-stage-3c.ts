@@ -478,7 +478,7 @@ const uncertainHazmatOverview = projectEstimateOverview({
 });
 check(
   "Not sure hazardous materials still keeps the client sell incomplete",
-  uncertainHazmatOverview.sell.label === "Known sell, not the complete price" &&
+  uncertainHazmatOverview.sell.label === "Priced work so far" &&
     uncertainHazmatOverview.statusLabel === "Incomplete" &&
     uncertainHazmatOverview.issues.unresolvedSpecificationCount === 0
 );

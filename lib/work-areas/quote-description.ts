@@ -257,7 +257,7 @@ function buildDeckDraft(
   if (isAffirmative(factValue(facts, "deck.pile_or_post_replacement_required"))) {
     draft = appendScopeClause(
       draft,
-      "Pile, post or substructure replacement is included where applicable."
+      "Pile or post replacement is requested and stays out of the known price until its operation is distinct from measured support work."
     );
   }
 

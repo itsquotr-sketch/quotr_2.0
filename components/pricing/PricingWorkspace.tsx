@@ -44,6 +44,8 @@ import {
   identityFromPricingItem,
   isPendingPricingItemId,
 } from "@/lib/pricing/manual-requirement-promotion";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { pileReplacementAllowanceSavesInPlace } from "@/lib/estimate/deck-scope-2c";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   UNKNOWN_MATERIAL_COST_QUOTE_BLOCK,
@@ -189,12 +191,16 @@ export function PricingWorkspace({
     () => unresolvedManualPricingQuoteBlock(items),
     [items]
   );
+  const excludedFromTotalBlock = useMemo(
+    () => quoteVisibleExcludedLineBlock(items),
+    [items]
+  );
   const scopeFinalisationBlock = useMemo(
     () =>
-      quoteVisibleExcludedLineBlock(items) ??
+      excludedFromTotalBlock ??
       (scopeReviewBlock ??
         (scopeStillOpen ? UNRESOLVED_SCOPE_REVIEW_BLOCK : null)),
-    [items, scopeReviewBlock, scopeStillOpen]
+    [excludedFromTotalBlock, scopeReviewBlock, scopeStillOpen]
   );
   const provisionalQuoteBlock = useMemo(
     () =>
@@ -378,7 +384,14 @@ export function PricingWorkspace({
         }
         return result;
       }
-      if (promote && currentItem) {
+      if (
+        promote &&
+        currentItem &&
+        !pileReplacementAllowanceSavesInPlace({
+          itemKey: parseLineItemNotes(currentItem.notes_internal).metadata.itemKey,
+          label: currentItem.internal_label,
+        })
+      ) {
         const identity = identityFromPricingItem(currentItem);
         if (!identity) {
           return {
@@ -781,7 +794,7 @@ export function PricingWorkspace({
             items={items}
             workAreas={workAreas}
             recommendedSell={latestEstimateRecommendedSell}
-            disabled={isSaving}
+            disabled={isSaving || excludedFromTotalBlock != null}
             readOnly={!canEditPricing}
             scopeUnresolved={scopeStillOpen}
             pricesUnresolved={unresolvedPriceCount > 0}

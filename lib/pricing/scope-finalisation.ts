@@ -14,12 +14,48 @@ export const UNRESOLVED_SCOPE_REVIEW_BLOCK =
 export const UNRESOLVED_SPECIFICATION_REVIEW_BLOCK =
   "Open specifications are still unresolved. This pricing cannot be marked reviewed as a complete price.";
 
+export const MISSING_GENERATED_RATE_REVIEW_BLOCK =
+  "Add the missing rate. This pricing cannot be marked reviewed as a complete price.";
+
+/**
+ * A generated line with no known cost and no sell is the same missing rate
+ * the estimate shows. Manual scope notes keep their own block. GST is not
+ * part of this decision.
+ */
+export function missingGeneratedRateReviewBlock(
+  items: readonly {
+    cost_known?: boolean | null;
+    total_sell?: number | null;
+    visible_on_quote?: boolean | null;
+    notes_internal?: string | null;
+  }[]
+): string | null {
+  const blocked = items.some((item) => {
+    if (item.visible_on_quote === false) return false;
+    const sell = Number(item.total_sell ?? 0);
+    return item.cost_known === false && (!Number.isFinite(sell) || sell <= 0);
+  });
+  return blocked ? MISSING_GENERATED_RATE_REVIEW_BLOCK : null;
+}
+
 /** Same rule for a new pricing row and a recalibrated row. */
 export function estimateLineIsQuoteVisible(values: {
   includedInTotal?: boolean;
   clientVisible?: boolean;
 }): boolean {
   return values.includedInTotal !== false && values.clientVisible !== false;
+}
+
+/**
+ * A saved allowance can carry a cost and sell while its estimate metadata
+ * keeps it outside the priced total. That money stays off the document total.
+ */
+export function pricingLineIncludedInDocumentTotal(item: {
+  notes_internal?: string | null;
+  included_in_total?: boolean | null;
+}): boolean {
+  if (item.included_in_total === false) return false;
+  return parseLineItemNotes(item.notes_internal).metadata.includedInTotal !== false;
 }
 
 type QuoteVisibilityItem = {

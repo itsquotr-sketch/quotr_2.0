@@ -26,6 +26,7 @@ import {
   formatScopeCoverageGaps,
   formatUnresolvedSpecifications,
   formatWorkAreaPriceSummary,
+  priceCompletenessNextAction,
   type EstimateIssueModel,
 } from "@/lib/assistant/presentation/estimate-issues";
 
@@ -566,7 +567,7 @@ function sellPresentation(input: {
     const gst = presentEstimateGst(amount, input.gstRate);
     return {
       presentation: "partial",
-      label: "Known sell, not the complete price",
+      label: "Priced work so far",
       exGst: formatCurrency(gst.exGst),
       gst: gst.showGst ? formatCurrencyCents(gst.gstAmount) : null,
       inclGst: gst.showGst ? formatCurrencyCents(gst.inclGst) : null,
@@ -833,11 +834,11 @@ export function projectEstimateOverview(
                 estimateMissingPriceNotice(issues.missingPriceLineCount)
               : scopeOrSpecificationOpen
                 ? `Generated lines are priced. ${
-                    scopeCoverageGapCount > 0
-                      ? formatScopeCoverageGaps(scopeCoverageGapCount) ??
-                        "Requested scope still has no line."
-                      : formatUnresolvedSpecifications(unresolvedSpecificationCount) ??
-                        "A specification is still open."
+                    priceCompletenessNextAction({
+                      missingPriceLineCount: 0,
+                      scopeCoverageGapCount,
+                      unresolvedSpecificationCount,
+                    }) ?? "Requested scope still has no line."
                   }`
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."

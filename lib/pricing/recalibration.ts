@@ -270,7 +270,7 @@ async function recalculateDocumentTotals(
 
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell, visible_on_quote")
+    .select("total_cost, total_sell, visible_on_quote, notes_internal")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -278,11 +278,17 @@ async function recalculateDocumentTotals(
     throw new Error(error.message);
   }
 
-  const mapped = (items ?? []).map((item) => ({
-    total_cost: Number(item.total_cost ?? 0),
-    total_sell: Number(item.total_sell ?? 0),
-    visible: item.visible_on_quote !== false,
-  }));
+  const { pricingLineIncludedInDocumentTotal } = await import(
+    "@/lib/pricing/scope-finalisation"
+  );
+  const mapped = (items ?? [])
+    .filter((item) => pricingLineIncludedInDocumentTotal(item))
+    .map((item) => ({
+      total_cost: Number(item.total_cost ?? 0),
+      total_sell: Number(item.total_sell ?? 0),
+      visible: item.visible_on_quote !== false,
+      notes_internal: item.notes_internal,
+    }));
 
   let totals: {
     subtotalCost: number;

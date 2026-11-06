@@ -473,8 +473,8 @@ const complete = clientPriceCopy(
 );
 check(
   "priced lines are not called the final price",
-  priced.heading === "Priced lines so far" &&
-    priced.totalLabel === "Priced lines so far" &&
+  priced.heading === "Priced work so far" &&
+    priced.totalLabel === "Priced work so far" &&
     /not the complete job price/i.test(priced.detail)
 );
 check(

@@ -296,6 +296,30 @@ check(
     !/3 m²/.test(splashQuote) &&
     !/cabinetry|benchtop|appliance/i.test(splashQuote)
 );
+function catalogueDescription(type: string): string | undefined {
+  return SCOPE_CATALOGUE.find((item) => item.type === type)?.description;
+}
+check(
+  "deck catalogue does not promise composite, stairs, balustrades, or pergolas",
+  catalogueDescription("deck") ===
+    "Measured timber decks. Composite, stairs, balustrades, and pergolas are not part of this price."
+);
+check(
+  "bathroom catalogue does not promise fixtures or a whole bathroom",
+  catalogueDescription("bathroom") ===
+    "Stated bathroom removals, disposal, vanity installation, floor tiling, and painting. Fixtures and a whole-bathroom package stay unresolved."
+);
+check(
+  "pergola, stairs, ceilings, and plaster do not claim a finished package",
+  catalogueDescription("pergola") ===
+    "Pergola questions only. No complete pergola price is claimed." &&
+    catalogueDescription("external_stairs") ===
+      "External stair components. A complete stair package is not claimed." &&
+    catalogueDescription("ceilings") ===
+      "Ceiling components. A finished ceiling package is not claimed." &&
+    catalogueDescription("plastering") ===
+      "Stopping and plaster components. A finished plaster package is not claimed."
+);
 check(
   "benchmark dollar values are unchanged",
   KITCHEN_BENCHMARKS.materialsPerM2.cost === 1500 &&

@@ -101,7 +101,7 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
               missingPriceLineCount > 0
                 ? formatMissingPriceLines(missingPriceLineCount)
                 : priceBasisIncomplete
-                  ? "Priced lines so far"
+                  ? "Priced work so far"
                   : "Final pricing"
             }
           />
