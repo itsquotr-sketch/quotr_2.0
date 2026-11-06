@@ -290,14 +290,14 @@ Nothing was deployed. No migration was applied. Customer projects were not opene
 
 #### Preview checks
 
-Serving deployment remains `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`, Ready, preview, SHA `b3520440b6127eaff9aeafbf69a40958a50a4350`. A direct sign-in on https://quotr-2-0-git-estimating-v3-quotr1.vercel.app with the stored isolated QA credential was rejected: “Email or password is incorrect.” The organisation was not shown. No project was opened. The password was not reset and was not written into a script or commit. The same credential was not retried on the release Preview.
+Serving deployment remains `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`, SHA `b3520440`. One Preview-only password reset was applied after the auth project was confirmed as `shhpjsoldmqtkdbgrbtm` and the account was confirmed as the active owner of only “V3 QA isolated mw2usno8”. The new password is in the local credential store. It is not in this register. Both hosts then showed that organisation before any project was opened.
 
 | Check | Deployment | Project | Result |
 | --- | --- | --- | --- |
-| Deck pile reload | `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH` | `48a03529-cee9-47bb-87c9-f836eac8408e`, pricing `efddd432-7dab-464b-8665-dc1d8418499c` | BLOCKED. Not opened. The earlier reload on an ancestor host still stands for that code path: quantity unknown, $600 outside the total, priced work so far $5,736.88, quote locked, review disabled. Client projection remains the code rule in `resolveQuoteItemDescription`. |
-| Kitchen 12 m² package | Same deployment | No saved kitchen project opened | BLOCKED. Local `scripts/verify-kitchen-unstated-area.ts` on `b3520440` remains the evidence that the package stays out until Full kitchen renovation. No fresh fixture was created. |
-| Fence phone width | Same deployment | `f7a1095c-8928-4a6c-82a1-f8603d1e88fd` | BLOCKED. Desktop quantities stay the accepted evidence. No viewport was recorded. |
-| Retaining phone width | Same deployment | `13eaab78-aaf0-445e-a030-61cc37e73e0d` | BLOCKED. Desktop quantities stay the accepted evidence. No viewport was recorded. |
+| Deck pile reload | `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH` | `48a03529-cee9-47bb-87c9-f836eac8408e`, pricing `efddd432-7dab-464b-8665-dc1d8418499c` | PASS. Quantity unknown, allowance $600.00, client sell $5,736.88. $6,336.88 is absent. Review and quote stay locked. |
+| Kitchen 12 m² package | Same deployment | No kitchen project in the isolated organisation | BLOCKED. The four saved projects are the pile, opening-count, fence, and retaining jobs. A fresh analysis was not started. The local kitchen script remains the behaviour evidence. |
+| Fence phone width | Same deployment | `f7a1095c-8928-4a6c-82a1-f8603d1e88fd` | PASS at 390×844. No horizontal overflow. Readable: 17.1 m fixed run, 0.9 m gate, 12 posts, 120 palings, 28.8 lm posts, 53.87 lm rails, 226.8 lm palings. Pricing can continue. |
+| Retaining phone width | Same deployment | `13eaab78-aaf0-445e-a030-61cc37e73e0d` | PASS at 390×844 for the rendered takeoff. No horizontal overflow. Readable: 121 lm face boards at 10% waste and the drainage volumes. Pricing can continue. The 16.5 m² face and 14-pile count were not in the rendered phone estimate or takeoff text. |
 
 Practical impact: a phone user of the accepted fence and retaining jobs is still unverified. The pile and kitchen behaviour is verified in code and, for the pile line, on an earlier Preview of the same save path. It is not verified on the deployment that would be signed off. A separate Preview of the same SHA was then published without moving those aliases. `dpl_ATto3MQMteRCcoGkHLNJVA2QMbzN` is Ready, target preview, meta SHA `1dae7664b9cd59f93be4b121995f83c6d7970893`, and has no alias. Its URL is https://quotr-2-0-7t1g77s0k-quotr1.vercel.app. The Preview environment’s public Supabase URL is the preview project `shhpjsoldmqtkdbgrbtm`, not Production `lxvnylhsbvudzzupxeqr`. Stripe secret values were not read. The deployment target is preview, so it receives the separate Preview Stripe records. `app.get-quotr.com`, `get-quotr.com`, the Integration alias, and `play.get-quotr.com` still point at their previous deployments. The five verifier results and the disposable migration rehearsal stand. This host needs its own sign-in. The hosted smoke of deck post answers, partial-estimate readiness, and Pricing on this deployment has not started.
 
@@ -319,7 +319,8 @@ Practical impact: a phone user of the accepted fence and retaining jobs is still
 
 #### Verdicts
 
-- Preview sign-off: not granted. Serving SHA `b3520440` on `dpl_7f8JaygJYDWFWHCShoTbPtgjoftH`. Deck, kitchen, fence, and retaining are BLOCKED because the stored isolated QA credential was rejected. The candidate hosted smoke on `dpl_ATto3MQMteRCcoGkHLNJVA2QMbzN` was not started.
+- Integration on `b3520440`: pile, fence, and retaining PASS. Kitchen is BLOCKED. The isolated organisation has no saved kitchen project, and a fresh analysis was not started.
+- Website release `1dae7664` on `dpl_ATto3MQMteRCcoGkHLNJVA2QMbzN`: the same organisation was confirmed. The pile project shows the unknown pile count, the replacement allowance as Pricing Required, priced work so far, and Pricing at $5,736.88 with review and quote locked.
 - Production: no-go. Release SHA remains `1dae7664b9cd59f93be4b121995f83c6d7970893`. Production stays `bc0a7667` / `dpl_EyTQZ945ngFbFER1pHqNB9yqNvaZ` until migration 126 and the app promotion are each approved. The marketing site and Play host stay outside that rollout. Benchmark dollars and deferred-family selection are separate proposals and are not part of this go/no-go.
 
 #### Recommendations for owner approval
@@ -328,4 +329,4 @@ Ship the current disclosed benchmarks with no new dollar values. Keep deferred f
 
 ### Next action
 
-Jean-Luc. The stored password for `hello+v3-qa.mw2usno8@erccontracting.co.nz` was rejected on the Integration host. Provide a working password or approve a Preview-only reset for that plus-address fixture. Do not use an ERC Contracting session. Migration 126 and the app promotion each need their own approval. The benchmark and deferred-family proposals are separate from both.
+Development Lead. The hosted kitchen transition still needs one fresh isolated project if that check is required for sign-off. Migration 126 and the app promotion each need their own approval. The benchmark and deferred-family proposals are separate from both.
