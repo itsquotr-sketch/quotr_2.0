@@ -169,6 +169,7 @@ import {
 } from "@/lib/assistant/job-plan/from-assistant-state";
 import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
 import { composeClarifyView } from "@/lib/assistant/clarify/compose";
+import { KITCHEN_RENOVATION_FACT_KEY } from "@/lib/assistant/clarify/kitchen-package-choice";
 import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
 import {
@@ -2993,6 +2994,13 @@ export function AssistantShell({
       ),
     [clarifyView.candidates]
   );
+  const kitchenPackageChoices = useMemo(
+    () =>
+      clarifyView.candidates.filter(
+        (candidate) => candidate.factKey === KITCHEN_RENOVATION_FACT_KEY
+      ),
+    [clarifyView.candidates]
+  );
 
   const deckDetailGaps = useMemo(
     () =>
@@ -3987,6 +3995,34 @@ export function AssistantShell({
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
+                  {kitchenPackageChoices.length > 0 ? (
+                    <section
+                      className="rounded-xl border border-border/60 bg-card px-4 py-4"
+                      data-kitchen-package-choice
+                    >
+                      {kitchenPackageChoices.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="space-y-2"
+                          data-clarify-fact-key={candidate.factKey ?? undefined}
+                        >
+                          <p className="text-sm font-medium leading-snug">{candidate.question}</p>
+                          {estimate?.missingInfo.includes("Kitchen scope not confirmed") ? (
+                            <p className="text-sm text-foreground/80" data-kitchen-scope-gap>
+                              Kitchen scope not confirmed
+                            </p>
+                          ) : null}
+                          <ClarifyAnswerControl
+                            candidate={candidate}
+                            value={candidate.currentValue}
+                            pending={pendingReadinessWrites > 0 || updatingEstimate}
+                            disabled={pendingReadinessWrites > 0 || updatingEstimate}
+                            onAnswerValue={handleClarifyValue}
+                          />
+                        </div>
+                      ))}
+                    </section>
+                  ) : null}
                   {liningProductClarifications.length > 0 ? (
                     <section
                       className="rounded-xl border border-border/60 bg-card px-4 py-4 max-md:pb-28"
