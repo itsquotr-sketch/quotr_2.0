@@ -288,7 +288,8 @@ check(
     extractedBrief[0]?.lengthLm === 6 &&
     extractedBrief[0]?.heightM === 2.4 &&
     extractedBrief[0]?.doorOpeningWidthM === 0.81 &&
-    extractedBrief[0]?.doorOpeningHeightM === 1.98
+    extractedBrief[0]?.doorOpeningHeightM === 1.98 &&
+    extractedBrief[0]?.sideA.thicknessMm === 13
 );
 
 const enriched = enrichExtractionFromBrief({
@@ -358,7 +359,8 @@ check(
     enrichedResolved.types[0]?.openings.length === 1 &&
     Boolean(enrichedOpening?.id) &&
     enrichedOpening?.width_m === 0.81 &&
-    enrichedOpening?.height_m === 1.98
+    enrichedOpening?.height_m === 1.98 &&
+    enrichedResolved.types[0]?.side_a.thickness_mm === 13
 );
 check(
   "the door set stays a separate identity",

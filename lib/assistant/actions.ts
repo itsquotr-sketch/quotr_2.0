@@ -1932,13 +1932,25 @@ async function runEstimateGeneration(
     })),
   });
 
+  const briefText =
+    contextResult.briefText ??
+    (typeof projectRow?.brief_text === "string" ? projectRow.brief_text : null);
+  const internalWallIds = contextResult.confirmedWorkAreas
+    .filter((area) => area.type === "internal_walls")
+    .map((area) => area.id);
+  const statedOpening = factsWithPersistedStatedDoorOpening({
+    facts: contextResult.facts,
+    internalWallWorkAreaIds: internalWallIds,
+    briefText,
+  });
+  const factsForEstimate = statedOpening.changed
+    ? statedOpening.facts
+    : contextResult.facts;
+
   if (CLARIFY_IS_PRIMARY) {
     const compose = composeClarifyInputFromEstimateContext({
       stage: stage as ComposeClarifyInput["stage"],
-      briefText:
-        typeof projectRow?.brief_text === "string"
-          ? projectRow.brief_text
-          : null,
+      briefText,
       qualityLevel: contextResult.project.qualityLevel,
       workAreas: contextResult.confirmedWorkAreas.map((wa) => ({
         id: wa.id,
@@ -1946,7 +1958,7 @@ async function runEstimateGeneration(
         name: wa.name,
         status: "confirmed",
       })),
-      facts: contextResult.facts,
+      facts: factsForEstimate,
       constraints: contextResult.constraints.map((row) => ({
         key: row.key,
         value: row.value,
@@ -1959,7 +1971,7 @@ async function runEstimateGeneration(
         type: wa.type,
         status: "confirmed",
       })),
-      facts: contextResult.facts,
+      facts: factsForEstimate,
       unresolvedRequiredProjectConditionKeys:
         filterEstimateBlockingProjectConditionKeys(
           projectConditions.unresolvedRequiredKeys
@@ -1975,20 +1987,7 @@ async function runEstimateGeneration(
     return { error: USER_ERRORS.projectConditionsIncomplete };
   }
 
-  const briefText =
-    contextResult.briefText ??
-    (typeof projectRow?.brief_text === "string" ? projectRow.brief_text : null);
-  const internalWallIds = contextResult.confirmedWorkAreas
-    .filter((area) => area.type === "internal_walls")
-    .map((area) => area.id);
-  const statedOpening = factsWithPersistedStatedDoorOpening({
-    facts: contextResult.facts,
-    internalWallWorkAreaIds: internalWallIds,
-    briefText,
-  });
-  const estimateContext = statedOpening.changed
-    ? { ...contextResult, facts: statedOpening.facts, briefText }
-    : { ...contextResult, briefText };
+  const estimateContext = { ...contextResult, facts: factsForEstimate, briefText };
   const prepared = await preparePreliminariesForEstimate({
     supabase,
     orgId,

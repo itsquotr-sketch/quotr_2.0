@@ -165,12 +165,30 @@ export function canonicalTimberSizeFromText(
   return parseInternalWallsTimberSize(text);
 }
 
+function liningThicknessMm(text: string): number | null {
+  const liningText = text
+    .replace(/\d{3,5}\s*mm\s+long/gi, " ")
+    .replace(/\d{3,5}\s*mm\s+high/gi, " ")
+    .replace(/\d{3,4}\s*[x×]\s*\d{3,4}\s*mm/gi, " ");
+  const product =
+    "standard\\s+gib|gib|plasterboard|aqualine|fyreline|braceline|noiseline|weatherline|barrierline|plywood|fibre cement|fiber cement";
+  const before = liningText.match(
+    new RegExp(`(\\d+(?:\\.\\d+)?)\\s*mm\\s+(?:${product})`, "i")
+  );
+  const after = liningText.match(
+    new RegExp(`(?:${product})\\s+(\\d+(?:\\.\\d+)?)\\s*mm`, "i")
+  );
+  const raw = before?.[1] ?? after?.[1];
+  if (!raw) return null;
+  const mm = Number(raw);
+  if (!Number.isFinite(mm) || mm <= 0 || mm > 30) return null;
+  return mm;
+}
+
 function liningFromPhrase(
   text: string
 ): { product: InternalWallsLiningProduct; thicknessMm: number | null } | null {
-  const thickness =
-    text.match(/(\d+(?:\.\d+)?)\s*mm/) ?? text.match(/(\d+(?:\.\d+)?)mm/);
-  const mm = thickness ? Number(thickness[1]) : null;
+  const mm = liningThicknessMm(text);
   const product = parseInternalWallsLiningProduct(
     text.includes("aqualine")
       ? "aqualine"
