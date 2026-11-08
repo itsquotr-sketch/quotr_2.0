@@ -370,7 +370,7 @@ No migration was run. Migration 126 remains in the release tree as `supabase/mig
 
 Checks: `app.get-quotr.com/login`, `quotr-2-0.vercel.app/login`, and the stage-1 branch alias return the app sign-in bundle, including “Welcome back”, “Sign in”, and “Forgot password”. `/app/health` answers with 307 to `/login?next=/app/health`. `get-quotr.com` still shows “Estimate. Price. Quote.” `play.get-quotr.com` still serves `dpl_98TSTQwHHcz2s1qw9o39CqFLYSZd`, Ready, `ff39ba31` on `release/android-estimating-stage-1`. No quote was created. Rollback was not used.
 
-No Production QA organisation was named. Estimate generation, Pricing writes, customer edits, and quote sending were not run.
+No Production QA organisation was named. Estimate generation, Pricing writes, customer edits, and quote sending were not run. Closed as published at `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` / `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. The partition smoke below is not authorised.
 
 #### Repeatable release method
 
@@ -389,7 +389,9 @@ The repeatable method for the next website release is:
 
 #### Proposed Production smoke
 
-No existing organisation is a dedicated Production estimating QA organisation.
+The fence table below is the earlier unrun proposal for `96beddeb`. It is not the smoke for `b9fcb0fb`. The partition smoke for this published SHA follows it and waits for approval.
+
+No existing organisation is a dedicated Production estimating QA organisation. The Preview owner `hello+v3-qa.mw2usno8@erccontracting.co.nz` is not assumed to exist in Production.
 
 | Organisation | Owner | Why it is not the smoke org |
 | --- | --- | --- |
@@ -428,6 +430,40 @@ Takeoff: fixed run 17.1 m, gate 0.9 m, face 32.4 m², 12 posts, 12 holes, 120 pa
 
 Steps after approval: sign in only as the new owner; open `/app/health` and confirm Production, host `lxvnylhsbvudzzupxeqr`, and commit `96beddeb`; create the job; Analyse; store the details; generate the estimate; compare takeoff, quantities, cost, and sell with the table; save an unsent Pricing draft; reload and confirm the draft persists. Quote count stays 0. Do not send a quote. A preliminaries line, if the product adds one, is reported separately and is not part of the fence total.
 
+#### Partition smoke proposed for `b9fcb0fb`
+
+This smoke is not authorised. It runs only after approval, only in the new organisation, and only on Production `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`.
+
+Organisation, proposed and not created: “V3 Production QA”, owned by a new plus-address created for this smoke and bound only to this organisation. It starts with no customers and no projects. The dashboard must show that name before a job is created. Stop if the organisation has company rates. Do not use ERC Contracting, a customer organisation, the Preview organisation, or the logins in the table above.
+
+No customer. One job. Brief, unchanged:
+
+“Build a non-loadbearing timber stud wall 6000mm long and 2400mm high. Use 90 × 45 framing, 13 mm Standard GIB both sides, one layer each side, with thermal cavity insulation. Include one door opening and one prehung hollow-core door set, 810 × 1980 mm, including jamb and standard hardware. Stop the plasterboard ready to paint; stopping level to be confirmed. Painting, electrical and skirting are excluded. Ground floor, easy access, carry under 10 m, unoccupied, unrestricted hours.”
+
+Frozen from the opening contract already checked at this SHA. Do not recalculate these during the smoke.
+
+| Fact or quantity | Expected |
+| --- | --- |
+| Wall | One wall, 6 m × 2.4 m, 90 × 45 timber, non-loadbearing |
+| Lining | 13 mm Standard GIB, both sides, one layer each side |
+| Opening | One door opening on that wall, 0.81 m × 1.98 m. Not asked again. |
+| Door set | Separate identity, quantity 1, 810 × 1980 mm. Not a second wall opening. |
+| Gross | 14.4 m² per face |
+| Deduction | 1.6038 m² once per face. 0.81 × 1.98 = 1.6038 |
+| Net | 12.7962 m² per face. Stored value may be 12.796199999999999. The materials column may show 12.8. |
+| Sheets | 5 installed and 6 purchased per face. 10 installed and 12 purchased combined. |
+| Lining note | 13 mm Standard GIB · 2400 × 1200 · 1 layer · Both sides · 10 sheets installed · 12 sheets incl. waste · 14.4 m² gross per face · 1.6038 m² opening deduction per face · 12.7962 m² net per face |
+| Lining labour | 2.5 h per face before access |
+| Insulation | Thermal cavity, 12.7962 m² once |
+| Exclusions | Painting, electrical, and skirting have no priced lines |
+| Conditions | Ground floor, easy access, carry under 10 m, unoccupied, unrestricted hours |
+| Stopping before a choice | Requested, level unset, no stopping lines |
+| Stopping after Level 4 | Both faces Level 4. Two lines, each 12.7962 m². Not multiplied by layers. Survives reload. |
+
+Path: sign in as the new owner; `/app/health` shows Production, host `lxvnylhsbvudzzupxeqr`, and commit `b9fcb0fb`; create the job; Analyse; confirm grouped Details does not re-ask the stated wall, opening, door, lining, insulation, exclusions, or site conditions; generate; read the materials note and the labour takeoff. Labour leads with Labour lines, Known labour hours, and Known labour cost, then the labour rows. Open stopping from Details, choose Level 4, regenerate, and reload. Change access from Easy to Moderate and confirm the estimate offers regeneration rather than changing by itself. Save one unsent Pricing draft, then change a condition again. Pricing status, items, and sell stay unchanged until the explicit Pricing update. Quote count stays 0. Do not mark Pricing reviewed and do not send a quote.
+
+Completed Preview evidence stays the source for the unchanged paths. This smoke does not repeat the new-member journey or the recovery project.
+
 ### Next action
 
-Development Lead. The website deployment record is closed at `b9fcb0fb` / `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. Rollback remains `96beddeb` / `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue`. Approve creation of “V3 Production QA” and the timber fence smoke before either is run. Do not use ERC Contracting, the Preview organisation, or the existing test organisations above.
+Development Lead. Published and closed at `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` / `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. Rollback remains `96beddeb` / `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue`. Approve creation of “V3 Production QA” and the partition smoke above before either is run.
