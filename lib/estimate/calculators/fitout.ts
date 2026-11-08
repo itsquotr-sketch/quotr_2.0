@@ -268,6 +268,7 @@ export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
   "internal_walls.opening.type",
   "internal_walls.opening.width_m",
   "internal_walls.opening.height_m",
+  "internal_walls.opening.formation_hours",
   "internal_walls.opening.label",
   "internal_walls.length_lm",
   "internal_walls.height_m",
