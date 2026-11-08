@@ -74,7 +74,7 @@ const GLOBAL_CONSTRAINT_TEMPLATES: ConstraintTemplateSeed[] = [
   },
   {
     key: "working_hours",
-    label: "Working hours",
+    label: "Working-hour restrictions",
     question_text: "Are there working-hour restrictions?",
     input_type: "select",
     options: ["No", "Yes", "Not sure"],

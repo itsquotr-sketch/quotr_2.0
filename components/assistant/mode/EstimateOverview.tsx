@@ -160,9 +160,10 @@ export function EstimateOverview({
 }: EstimateOverviewProps) {
   const sell = model.sell;
   const direct = model.composition.find((row) => row.id === "direct");
+  const profit = model.composition.find((row) => row.id === "profit");
   const margin = model.composition.find((row) => row.id === "margin");
   const categoryRows = model.composition.filter(
-    (row) => row.id !== "direct" && row.id !== "margin"
+    (row) => row.id !== "direct" && row.id !== "margin" && row.id !== "profit"
   );
   const readyForPricing =
     model.required.length === 0 && !model.pricingCreationBlocked;
@@ -265,18 +266,24 @@ export function EstimateOverview({
               </p>
             </Stat>
           ) : null}
-          {margin ? (
-            <Stat label="Effective gross margin">
-              <p className="text-lg font-medium tabular-nums" data-composition-id="margin">
-                {marginControl ? (
-                  <span className="inline-flex flex-wrap items-center gap-2">
+          {profit ? (
+            <Stat label="Profit">
+              <p className="text-lg font-medium tabular-nums" data-composition-id="profit">
+                <span>{profit.value}</span>
+                {margin ? (
+                  <span className="ml-2 text-sm font-medium text-foreground/75" data-composition-id="margin">
                     {margin.value}
-                    {marginControl}
                   </span>
-                ) : (
-                  margin.value
-                )}
+                ) : null}
+                {marginControl ? (
+                  <span className="ml-2 inline-flex">{marginControl}</span>
+                ) : null}
               </p>
+              {sell.presentation === "partial" ? (
+                <p className="mt-1 text-xs text-foreground/70" data-estimate-overview-profit-basis>
+                  Priced work only
+                </p>
+              ) : null}
             </Stat>
           ) : null}
         </div>

@@ -74,7 +74,7 @@ export type InternalWallsInsulationType =
 
 export const INTERNAL_WALLS_INSULATION_TYPE_OPTIONS = [
   "Acoustic",
-  "Thermal",
+  "Thermal wall insulation",
   "Fire / acoustic",
   "Other",
 ] as const;
@@ -268,6 +268,8 @@ const INSULATION_TYPE_BY_NORMALISED: Record<string, InternalWallsInsulationType>
   {
     acoustic: "acoustic",
     thermal: "thermal",
+    "thermal wall insulation": "thermal",
+    "thermal cavity insulation": "thermal",
     fire_acoustic: "fire_acoustic",
     "fire / acoustic": "fire_acoustic",
     "fire and acoustic": "fire_acoustic",
@@ -541,7 +543,7 @@ export function insulationTypeDisplay(
   value: InternalWallsInsulationType | null
 ): string | null {
   if (value === "acoustic") return "Acoustic";
-  if (value === "thermal") return "Thermal";
+  if (value === "thermal") return "Thermal wall insulation";
   if (value === "fire_acoustic") return "Fire / acoustic";
   if (value === "other") return "Other";
   return null;

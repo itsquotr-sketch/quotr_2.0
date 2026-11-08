@@ -3,21 +3,25 @@
  * Pure — no React. No fabricated percentages. No provider language.
  */
 
+export const ANALYSE_BRIEF_LABEL = "Analysing your brief" as const;
+
 export const ANALYSE_JOB_PROGRESS_STEPS = Object.freeze([
-  "Reading your job details",
-  "Finding the work involved",
-  "Still working — this can take a moment",
+  ANALYSE_BRIEF_LABEL,
 ] as const);
 
 /**
- * Setup is brief. The extraction call then occupies almost the whole wait,
- * so the label stays on finding the work instead of announcing later phases
- * that have not started. A slow run says it is still working.
+ * The extraction call is one wait. Later phases are not announced unless
+ * the application has actually moved to them.
  */
-export function analyseJobProgressLabel(elapsedMs: number): string {
-  if (elapsedMs < 2500) return ANALYSE_JOB_PROGRESS_STEPS[0];
-  if (elapsedMs < 20000) return ANALYSE_JOB_PROGRESS_STEPS[1];
-  return ANALYSE_JOB_PROGRESS_STEPS[2];
+export function analyseJobProgressLabel(_elapsedMs: number): string {
+  return ANALYSE_BRIEF_LABEL;
+}
+
+export function analyseJobElapsedLabel(elapsedMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 /**

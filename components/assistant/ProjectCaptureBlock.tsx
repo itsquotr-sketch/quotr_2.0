@@ -12,7 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
-import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
+import {
+  analyseJobElapsedLabel,
+  analyseJobProgressLabel,
+} from "@/lib/assistant/analyse-job-progress";
 import { NO_WORK_AREAS_ERROR } from "@/lib/ai/analyse-job-contract";
 import {
   ANALYSE_JOB_ROLE,
@@ -208,7 +211,10 @@ export function ProjectCaptureBlock({
       {!submitted && onAnalyse ? (
         <div className="space-y-3 pt-1">
           {isAnalysing ? (
-            <AnalysisProgressBanner label={progressLabel} />
+            <AnalysisProgressBanner
+              label={progressLabel}
+              elapsedLabel={analyseJobElapsedLabel(progressElapsedMs)}
+            />
           ) : null}
           {analyseError && !isAnalysing && !manualRecovery ? (
             <div
@@ -293,7 +299,7 @@ export function ProjectCaptureBlock({
             disabled={disabled || isAnalysing}
             className="h-11 min-h-11 w-full sm:w-auto"
           >
-            {isAnalysing ? "Analysing job…" : "Analyse job"}
+            {isAnalysing ? "Analysing your brief…" : "Analyse job"}
           </Button>
         </div>
       ) : null}

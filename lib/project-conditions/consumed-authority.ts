@@ -42,7 +42,7 @@ const LABELS: Record<(typeof SHARED_CONSUMED_CONSTRAINT_KEYS)[number], string> =
   site_access: "Site access",
   material_carry_distance: "Carry distance",
   occupied_site: "Occupied site",
-  working_hours: "Working hours",
+  working_hours: "Working-hour restrictions",
   high_level_access: "High-level access",
 };
 

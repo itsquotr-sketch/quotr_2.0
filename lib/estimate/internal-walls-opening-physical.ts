@@ -4,18 +4,26 @@
  *
  * Additive to IW-03/04 base framing. Opening timber feeds its own raw lm,
  * then waste once on that raw qty (not wasted again on a combined total).
- * Opening labour has no owner hours → Pricing Required; does not block
- * known base framing/lining money.
+ * Opening labour is formation only. Stud-grid framing labour and the door
+ * set stay on their own lines. Hours come from company productivity, a
+ * documented benchmark, or hours entered for this opening.
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
 import { round2 } from "@/lib/estimate/facts";
-import { buildAmounts, createRateLineItem } from "@/lib/estimate/line-items";
+import { buildAmounts, createFixedLabourLineItem, createRateLineItem } from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
-import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
+import { buildLabourRequirement, labourRequirementTotalCost } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
-import { resolveRate } from "@/lib/estimate/rates";
-import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import {
+  getQuotrProductivityBenchmark,
+  resolveProductivity,
+} from "@/lib/estimate/productivity";
+import {
+  getRateSourceLabel,
+  type RateSourceType,
+} from "@/lib/estimate/rate-source-labels";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import type {
@@ -47,6 +55,7 @@ import {
   INTERNAL_WALLS_OPENING_DIMENSIONS_REQUIRED_MESSAGE,
   INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
   INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE,
+  INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_OPENING_MAKE_GOOD_MESSAGE,
   INTERNAL_WALLS_OPENING_REQUIRED_MESSAGE,
   formatInternalWallsOpeningFramingTakeoff,
@@ -364,8 +373,71 @@ function emitLmMaterial(params: {
   return params.sortOrder + 1;
 }
 
+function openingFormationBasis(params: {
+  context: EstimateContext;
+  opening: InternalWallsOpening;
+}):
+  | {
+      ok: true;
+      hours: number;
+      hoursNote: string;
+      productivitySourceType: RateSourceType;
+    }
+  | { ok: false; message: string } {
+  const company = resolveProductivity({
+    productivityKey: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+    unit: "opening",
+    fallbackHoursPerUnit: 0,
+    rates: params.context.rates,
+  });
+  const companyHours =
+    (company.sourceType === "user_rate" ||
+      company.sourceType === "calibrated_productivity") &&
+    company.hoursPerUnit > 0
+      ? company.hoursPerUnit
+      : null;
+  const benchmark = getQuotrProductivityBenchmark(
+    INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY
+  );
+  const benchmarkHours =
+    benchmark && benchmark.hoursPerUnit > 0 ? benchmark.hoursPerUnit : null;
+  const entered =
+    params.opening.formation_hours != null && params.opening.formation_hours > 0
+      ? params.opening.formation_hours
+      : null;
+  const hours = companyHours ?? benchmarkHours ?? entered;
+  if (hours == null) {
+    return { ok: false, message: INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE };
+  }
+  const labourRate = resolveLabourRate({
+    rates: params.context.rates,
+    organisationSettings: params.context.organisationSettings,
+    trade: "carpenter",
+  });
+  if (labourRate.sourceType === "missing" || !(labourRate.costRate > 0)) {
+    return { ok: false, message: INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE };
+  }
+  const hoursNote = companyHours != null
+    ? "Company hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
+    : benchmarkHours != null
+      ? "Documented benchmark hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
+      : "Hours entered for this opening. Formation only — not stud-grid framing, and not door-set or hardware installation.";
+  return {
+    ok: true,
+    hours,
+    hoursNote,
+    productivitySourceType:
+      companyHours != null
+        ? company.sourceType
+        : benchmarkHours != null
+          ? "benchmark"
+          : "user_rate",
+  };
+}
+
 function emitOpeningLabour(params: {
   workArea: EstimateWorkArea;
+  context: EstimateContext;
   wallTypeId: string;
   opening: InternalWallsOpening;
   displayName: string;
@@ -375,7 +447,7 @@ function emitOpeningLabour(params: {
   sortOrder: number;
 }): number {
   const label = `${params.displayName} — opening labour`;
-  const identity = `${formatInternalWallsOpeningFramingTakeoff({
+  const dimensions = formatInternalWallsOpeningFramingTakeoff({
     typeLabel: openingTypeDisplay(params.opening.type) ?? "Opening",
     dimensions: formatOpeningDimensionsMm(
       params.opening.width_m,
@@ -383,7 +455,63 @@ function emitOpeningLabour(params: {
     ),
     trimmerStudCount: 2,
     headerLm: params.opening.width_m ?? 0,
-  })} · ${INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE}`;
+  });
+  const basis = openingFormationBasis({
+    context: params.context,
+    opening: params.opening,
+  });
+  if (!basis.ok) {
+    const identity = `${dimensions} · ${basis.message}`;
+    params.requirements.push(
+      buildLabourRequirement({
+        workAreaId: params.workArea.id,
+        workAreaType: "internal_walls",
+        componentKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
+        variantKey: `${params.wallTypeId}:${params.opening.id}`,
+        description: label,
+        confidence: "low",
+        assumptions: [],
+        provenance: {
+          calculatorSource: "internal-walls-openings",
+          factKeys: ["internal_walls.wall_types"],
+          constraintKeys: [],
+        },
+        priced: false,
+        trade: "carpenter",
+        baseHours: 0,
+        productivityBasis: {
+          key: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+          hoursPerUnit: 0,
+          unit: "opening",
+          quantity: 1,
+        },
+        adjustmentRef: { factors: [] },
+        adjustedHours: 0,
+        rateKey: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+        hourlyCost: null,
+        totalCost: null,
+        rateProvenance: "missing",
+      })
+    );
+    params.lineItems.push(
+      unpricedLabourLine({
+        workArea: params.workArea,
+        label,
+        identitySummary: identity,
+        notes: basis.message,
+        sortOrder: params.sortOrder,
+        overlapGroup: params.overlapGroup,
+        componentKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
+      })
+    );
+    return params.sortOrder + 1;
+  }
+  const labourRate = resolveLabourRate({
+    rates: params.context.rates,
+    organisationSettings: params.context.organisationSettings,
+    trade: "carpenter",
+  });
+  const identity = `${dimensions} · ${basis.hoursNote}`;
   params.requirements.push(
     buildLabourRequirement({
       workAreaId: params.workArea.id,
@@ -391,40 +519,63 @@ function emitOpeningLabour(params: {
       componentKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
       variantKey: `${params.wallTypeId}:${params.opening.id}`,
       description: label,
-      confidence: "low",
+      confidence: "high",
       assumptions: [],
       provenance: {
         calculatorSource: "internal-walls-openings",
         factKeys: ["internal_walls.wall_types"],
         constraintKeys: [],
       },
-      priced: false,
+      priced: true,
       trade: "carpenter",
-      baseHours: 0,
+      baseHours: basis.hours,
       productivityBasis: {
         key: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
-        hoursPerUnit: 0,
+        hoursPerUnit: basis.hours,
         unit: "opening",
         quantity: 1,
       },
       adjustmentRef: { factors: [] },
-      adjustedHours: 0,
-      rateKey: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
-      hourlyCost: null,
-      totalCost: null,
-      rateProvenance: "missing",
+      adjustedHours: basis.hours,
+      rateKey: labourRate.itemKey ?? INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+      hourlyCost: labourRate.costRate,
+      totalCost: labourRequirementTotalCost({
+        adjustedHours: basis.hours,
+        hourlyCost: labourRate.costRate,
+        hourlySell: labourRate.sellRate,
+      }),
+      rateProvenance: labourRate.sourceType === "user_rate" ? "company" : "hardcoded_legacy",
     })
   );
   params.lineItems.push(
-    unpricedLabourLine({
-      workArea: params.workArea,
-      label,
-      identitySummary: identity,
-      notes: INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE,
-      sortOrder: params.sortOrder,
-      overlapGroup: params.overlapGroup,
-      componentKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
-    })
+    withPricingOwnership(
+      {
+        ...createFixedLabourLineItem({
+          workAreaId: params.workArea.id,
+          workAreaName: params.workArea.name,
+          label,
+          labourHours: basis.hours,
+          labourCostRate: labourRate.costRate,
+          labourSellRate: labourRate.sellRate,
+          rateSource: labourRate.sourceLabel,
+          rateSourceType: labourRate.sourceType,
+          itemKey: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+          notes: basis.hoursNote,
+          sortOrder: params.sortOrder,
+          organisationSettings: params.context.organisationSettings,
+        }),
+        componentKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
+        identitySummary: identity,
+        productivityRate: basis.hours,
+        productivityUnit: "opening",
+        productivitySourceType: basis.productivitySourceType,
+      },
+      {
+        pricingOwner: "in_house_labour",
+        scopeKey: INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
+        overlapGroup: params.overlapGroup,
+      }
+    )
   );
   return params.sortOrder + 1;
 }
@@ -792,6 +943,7 @@ export function buildInternalWallsOpeningEnvelope(params: {
 
       sortOrder = emitOpeningLabour({
         workArea,
+        context,
         wallTypeId: type.id,
         opening,
         displayName,

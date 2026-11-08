@@ -303,7 +303,47 @@ check(
     knownBesideMissing.composition.some(
       (row) => row.id === "direct" && row.label === "Known cost" && row.value === "$800"
     ) &&
-    !knownBesideMissing.composition.some((row) => row.id === "profit" || row.id === "margin")
+    knownBesideMissing.composition.some(
+      (row) => row.id === "profit" && row.label === "Profit" && row.value === "$200"
+    ) &&
+    knownBesideMissing.composition.some(
+      (row) => row.id === "margin" && row.value === "20.0%"
+    )
+);
+
+const negativeProfit = projectEstimateOverview(
+  input({
+    estimate: money(800, 1000),
+  })
+);
+check(
+  "5b negative profit shows the loss and the margin",
+  negativeProfit.composition.some(
+    (row) => row.id === "profit" && row.value === "-$200"
+  ) &&
+    negativeProfit.composition.some(
+      (row) => row.id === "margin" && row.value === "-25.0%"
+    )
+);
+const zeroSell = projectEstimateOverview(
+  input({
+    estimate: money(0, 100),
+    review: review({
+      overview: {
+        workAreaNames: ["Deck"],
+        partialEstimateLabel: null,
+        recommendedSellIsPartial: false,
+      },
+      workAreas: [
+        { workAreaName: "Deck", partialEstimateLabel: null, categories: [] },
+      ],
+    }),
+  })
+);
+check(
+  "5c zero sell does not invent a margin percentage",
+  zeroSell.composition.some((row) => row.id === "profit") &&
+    !zeroSell.composition.some((row) => row.id === "margin")
 );
 
 const known = projectEstimateOverview(input({}));

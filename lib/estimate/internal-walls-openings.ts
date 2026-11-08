@@ -26,6 +26,7 @@ export const INTERNAL_WALLS_OPENING_FIELD_KEYS = [
   "internal_walls.opening.width_m",
   "internal_walls.opening.height_m",
   "internal_walls.opening.label",
+  "internal_walls.opening.formation_hours",
 ] as const;
 
 export const INTERNAL_WALLS_HAS_OPENINGS_KEY =
@@ -54,6 +55,8 @@ export type InternalWallsOpening = {
   width_m: number | null;
   height_m: number | null;
   label: string | null;
+  /** Hours to form this opening. Used only when no company or benchmark hours exist. */
+  formation_hours?: number | null;
 };
 
 export const INTERNAL_WALLS_OPENING_DIMENSIONS_REQUIRED_MESSAGE =
@@ -66,7 +69,10 @@ export const INTERNAL_WALLS_OPENING_REQUIRED_MESSAGE =
   "Add at least one opening." as const;
 
 export const INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE =
-  "Opening labour Pricing Required — no owner-approved hours per opening." as const;
+  "Opening formation is not priced. Wall framing labour already covers the stud grid. This line is the extra work to form the opening, and it stays separate from the door set and its hardware. No company hours and no documented benchmark exist. Enter the formation hours for this opening, then regenerate." as const;
+
+export const INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE =
+  "Opening formation hours are recorded, but the carpenter hourly cost is missing. Add a carpenter hourly rate, then regenerate." as const;
 
 export const INTERNAL_WALLS_DOOR_LEAF_NOT_INCLUDED_STATEMENT =
   "Door leaf / hardware: Not included" as const;
@@ -80,7 +86,7 @@ export const INTERNAL_WALLS_OPENING_MAKE_GOOD_MESSAGE =
 export const INTERNAL_WALLS_OPENING_CRIPPLES_DEFERRED_STATEMENT =
   "Cripple studs are not modelled. Opening framing is two full-height trimmers plus a header." as const;
 
-/** Future Company DNA task — no owner-approved hours/opening in IW-06. */
+/** Company productivity key. There is no documented hours-per-opening benchmark. */
 export const INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY =
   "internal_walls.opening.form.hours_each" as const;
 
@@ -113,6 +119,7 @@ export function createEmptyOpening(params?: {
     width_m: null,
     height_m: null,
     label: null,
+    formation_hours: null,
   };
 }
 
@@ -198,6 +205,7 @@ export function parseInternalWallsOpening(
       typeof row.label === "string" && row.label.trim()
         ? row.label.trim()
         : null,
+    formation_hours: parsePositiveNumber(row.formation_hours),
   };
 }
 
@@ -251,6 +259,7 @@ export function withStatedSingleDoorOpening<T extends InternalWallsOpeningHost>(
     width_m: stated.widthM,
     height_m: stated.heightM,
     label: null,
+    formation_hours: null,
   };
   return [
     {
@@ -335,6 +344,7 @@ function storedOpeningsFromRow(item: unknown, index: number): InternalWallsOpeni
       width_m: width,
       height_m: height,
       label,
+      formation_hours: parsePositiveNumber(item.formation_hours),
     });
   }
   return openings;

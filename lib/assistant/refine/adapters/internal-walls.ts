@@ -632,6 +632,22 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           ),
           wallTypeId,
           openingId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.opening.formation_hours",
+          label: "Opening formation hours",
+          question:
+            "How many hours to form this opening? Leave blank when you have no hours. Wall framing and the door set stay separate.",
+          inputType: "number",
+          unit: "hrs",
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.opening.formation_hours"
+          ),
+          wallTypeId,
+          openingId,
         })
       );
     }

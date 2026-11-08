@@ -55,12 +55,11 @@ console.log("\n=== Stage 3.1B.6R3 — Workflow Coherence Verification ===\n");
 
 // Analyse Job loading
 check(
-  "analyse progress stays on finding the work during the long wait",
-  analyseJobProgressLabel(0).includes("Reading your job details") &&
-    analyseJobProgressLabel(10000) === "Finding the work involved" &&
-    analyseJobProgressLabel(10000) !== analyseJobProgressLabel(0) &&
+  "analyse progress stays on the brief without a fake stage",
+  analyseJobProgressLabel(0) === "Analysing your brief" &&
+    analyseJobProgressLabel(10000) === "Analysing your brief" &&
+    analyseJobProgressLabel(25000) === analyseJobProgressLabel(0) &&
     !analyseJobProgressLabel(10000).includes("%") &&
-    analyseJobProgressLabel(25000).includes("Still working") &&
     !ANALYSE_JOB_PROGRESS_STEPS.some((step) =>
       /anthropic|claude|model|%/i.test(step)
     )

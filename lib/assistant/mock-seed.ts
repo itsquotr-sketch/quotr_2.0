@@ -161,7 +161,7 @@ export const STATIC_CONSTRAINT_SEEDS: StaticConstraintSeed[] = [
   },
   {
     key: "working_hours",
-    label: "Working hours",
+    label: "Working-hour restrictions",
     question_text: "Are there working-hour restrictions?",
     input_type: "boolean",
     options: ["No", "Yes", "Not sure"],

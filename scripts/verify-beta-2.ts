@@ -157,7 +157,7 @@ function main() {
 
   section("ANALYSE UX");
   assert("progress has no provider language", !ANALYSE_JOB_PROGRESS_STEPS.some((s) => /anthropic|claude|provider/i.test(s)));
-  assert("progress starts with reading job details", ANALYSE_JOB_PROGRESS_STEPS[0].includes("Reading your job details"));
+  assert("progress names the brief without a fake stage", ANALYSE_JOB_PROGRESS_STEPS[0] === "Analysing your brief");
   assert("retry CTA exists", capture.includes("data-analyse-retry") && capture.includes("Try again"));
   assert("brief retained on retry", capture.includes("Your job details are still here"));
   assert(

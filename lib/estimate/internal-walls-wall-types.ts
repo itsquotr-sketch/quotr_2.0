@@ -1840,6 +1840,8 @@ export function applyInternalWallsFactWrite(params: {
             typeof params.value === "string" && params.value.trim()
               ? params.value.trim()
               : null;
+        } else if (field === "formation_hours") {
+          next.formation_hours = parsePositiveNumber(params.value);
         }
         return next;
       });
@@ -2567,6 +2569,13 @@ export function wallTypeFieldCurrentValue(
         type.openings[0] ??
         null;
       return opening?.height_m ?? null;
+    }
+    case "internal_walls.opening.formation_hours": {
+      const opening =
+        type.openings.find((row) => row.id === type.active_opening_id) ??
+        type.openings[0] ??
+        null;
+      return opening?.formation_hours ?? null;
     }
     default:
       return null;

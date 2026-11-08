@@ -137,7 +137,7 @@ export const PROJECT_CONDITION_LIBRARY: readonly ProjectConditionLibraryDef[] = 
     key: "working_hours",
     group: "working_restrictions",
     groupLabel: "Working restrictions",
-    label: "Working hours",
+    label: "Working-hour restrictions",
     question: "Are there working-hour restrictions?",
     options: ["No", "Yes", "Not sure"],
     assumptionStatement: "Normal working hours",

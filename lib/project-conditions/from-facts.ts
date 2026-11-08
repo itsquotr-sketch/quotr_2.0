@@ -27,7 +27,7 @@ const PROJECT_FACT_TO_CONSTRAINT: Readonly<
   "project.floor_level": { key: "floor_level", label: "Floor level" },
   "project.occupancy_status": { key: "occupied_site", label: "Occupied site" },
   "project.occupied_site": { key: "occupied_site", label: "Occupied site" },
-  "project.working_hours": { key: "working_hours", label: "Working hours" },
+  "project.working_hours": { key: "working_hours", label: "Working-hour restrictions" },
 };
 
 const CONSTRAINT_LABEL: Record<CanonicalProjectConditionKey, string> = {
@@ -36,7 +36,7 @@ const CONSTRAINT_LABEL: Record<CanonicalProjectConditionKey, string> = {
   material_carry_distance: "Material carry distance",
   floor_level: "Floor level",
   occupied_site: "Occupied site",
-  working_hours: "Working hours",
+  working_hours: "Working-hour restrictions",
   parking_loading: "Parking / loading",
   waste_bin_access: "Waste access",
   hazardous_materials_risk: "Hazardous materials",

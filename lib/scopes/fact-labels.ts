@@ -215,6 +215,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "internal_walls.opening.type": "Opening type",
   "internal_walls.opening.width_m": "Opening width",
   "internal_walls.opening.height_m": "Opening height",
+  "internal_walls.opening.formation_hours": "Opening formation hours",
   "fence.post_spacing_m": "Post spacing",
   "fence.paling_or_panel_type": "Paling or panel type",
   "fence.gate_width_m": "Gate width",

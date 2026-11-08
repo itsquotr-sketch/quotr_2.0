@@ -26,12 +26,17 @@ import {
   INTERNAL_WALLS_DELETE_OPENING_KEY,
   INTERNAL_WALLS_HAS_OPENINGS_KEY,
   INTERNAL_WALLS_OPENING_EXCEEDS_WALL_MESSAGE,
+  INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+  INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE,
+  INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE,
   openingAreaM2,
   validateInternalWallsOpening,
   internalWallsTimberOpeningTakeoff,
 } from "../lib/estimate/internal-walls-openings";
+import { QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR } from "../lib/estimate/rates";
 import {
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT,
   INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
   INTERNAL_WALLS_OPENING_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_TIMBER_90_KEY,
@@ -342,15 +347,114 @@ check(
     aOpeningMat != null &&
     near(aBaseMat.purchaseQuantity + aOpeningMat.purchaseQuantity, (98.4 + 5.61) * 1.1, 0.02)
 );
+const aOpeningLabour = labs(aCalc).find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
+const aFramingLabour = labs(aCalc).find(
+  (row) => row.componentKey === INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT
+);
+const aOpeningLine = aCalc.lineItems.find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
 check(
-  "Fixture A opening labour Pricing Required",
-  labs(aCalc).some(
+  "Fixture A opening labour stays unresolved without hours",
+  aOpeningLabour?.priced === false &&
+    aOpeningLine?.notes === INTERNAL_WALLS_OPENING_LABOUR_OWNER_REQUIRED_MESSAGE &&
+    /stud grid/i.test(aOpeningLine?.notes ?? "") &&
+    /door set/i.test(aOpeningLine?.notes ?? "") &&
+    aOpeningLabour?.baseHours === 0
+);
+check(
+  "Fixture A wall framing labour stays separate and priced",
+  aFramingLabour?.priced === true && (aFramingLabour?.adjustedHours ?? 0) > 0
+);
+check("Fixture A no door money", !hasDoorMoney(aCalc));
+const enteredHours = 1.25;
+const aEnteredFacts = applyInternalWallsFactWrite({
+  facts: aFacts,
+  workAreaId: "w1",
+  key: "internal_walls.opening.formation_hours",
+  value: enteredHours,
+  wallTypeId: aType.id,
+  openingId: aOpeningId,
+});
+const aEntered = calculateInternalWalls(ctx([walls], aEnteredFacts), walls);
+const aEnteredLabour = labs(aEntered).find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
+const aEnteredLine = aEntered.lineItems.find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
+const aEnteredFraming = labs(aEntered).find(
+  (row) => row.componentKey === INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT
+);
+check(
+  "Entered formation hours price with the carpenter rate",
+  aEnteredLabour?.priced === true &&
+    near(aEnteredLabour?.adjustedHours, enteredHours) &&
+    near(
+      aEnteredLabour?.totalCost,
+      enteredHours * QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR
+    ) &&
+    near(aEnteredLine?.recommendedCost, enteredHours * QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR) &&
+    /not door-set/i.test(aEnteredLine?.notes ?? "")
+);
+check(
+  "Entered hours do not change wall framing labour",
+  near(aEnteredFraming?.adjustedHours, aFramingLabour?.adjustedHours)
+);
+const companyHours = 0.4;
+const aCompany = calculateInternalWalls(
+  ctx([walls], aEnteredFacts, {
+    rates: [
+      {
+        id: "opening-hours",
+        item_key: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+        rate_type: "productivity",
+        label: "Opening formation",
+        unit: "opening",
+        cost_rate: companyHours,
+        sell_rate: null,
+        active: true,
+        markup_percent: null,
+        trade: null,
+        work_area_type: null,
+      },
+    ],
+  } as Partial<EstimateContext>),
+  walls
+);
+const aCompanyLabour = labs(aCompany).find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
+check(
+  "Company opening hours win over hours entered for this opening",
+  aCompanyLabour?.priced === true &&
+    near(aCompanyLabour?.adjustedHours, companyHours) &&
+    near(aCompanyLabour?.totalCost, companyHours * QUOTR_CARPENTER_BENCHMARK_COST_PER_HOUR)
+);
+const aNoRate = calculateInternalWalls(
+  ctx([walls], aEnteredFacts, {
+    organisationSettings: {
+      allow_benchmark_rates: false,
+      default_margin_percent: 20,
+      premium_rate_factor: 1.15,
+    },
+    rates: [],
+  } as Partial<EstimateContext>),
+  walls
+);
+const aNoRateLine = aNoRate.lineItems.find(
+  (row) => row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT
+);
+check(
+  "Recorded hours stay unresolved when the carpenter rate is missing",
+  labs(aNoRate).some(
     (row) =>
       row.componentKey === INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT &&
       row.priced === false
-  )
+  ) && aNoRateLine?.notes === INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE
 );
-check("Fixture A no door money", !hasDoorMoney(aCalc));
 check("Fixture A no legacy package", !isLegacyPackage(aCalc));
 check(
   "Fixture A door leaf disclosure",

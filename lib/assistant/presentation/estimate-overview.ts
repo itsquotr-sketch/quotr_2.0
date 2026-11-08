@@ -8,6 +8,7 @@
  */
 
 import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
+import { formatPricingPercent } from "@/lib/pricing/format";
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
 import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { CommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
@@ -15,10 +16,7 @@ import {
   presentEstimateGst,
   usesQuotrBenchmarkRates,
 } from "@/lib/assistant/presentation/gst-display";
-import {
-  formatProfitabilityDisplay,
-  inferDisplayCostKnown,
-} from "@/lib/financial-presentation/format";
+import { inferDisplayCostKnown } from "@/lib/financial-presentation/format";
 import { flooringScopeDecisionOpen } from "@/lib/estimate/flooring-pricing-recovery";
 import {
   classifyReviewNotice,
@@ -233,6 +231,20 @@ function formatOverviewHours(hours: number): string {
 function knownAmount(value: number | null | undefined): number | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   return value;
+}
+
+/** Profit from the same stored sell and cost the overview already shows. Ex GST. */
+function profitFromStoredCents(
+  cost: number,
+  sell: number
+): { amount: string; percent: string | null } {
+  const costCents = Math.round(cost * 100);
+  const sellCents = Math.round(sell * 100);
+  const profitCents = sellCents - costCents;
+  const amount = formatCurrency(profitCents / 100);
+  if (sellCents <= 0) return { amount, percent: null };
+  const percent = Math.round((profitCents / sellCents) * 1000) / 10;
+  return { amount, percent: formatPricingPercent(percent) };
 }
 
 function normalizeKey(value: string): string {
@@ -508,15 +520,15 @@ function compositionRows(input: {
     heldHours == null ? null : formatOverviewHours(heldHours)
   );
 
-  if (input.costKnown) {
-    const profitability = formatProfitabilityDisplay({
-      costKnown: true,
-      grossProfit: input.estimate.grossProfit,
-      marginPercent: input.estimate.marginPercent,
-      markupPercent: input.estimate.markupPercent,
-    });
-    push("profit", "Gross profit", profitability.profitLabel);
-    push("margin", "Effective gross margin", profitability.marginLabel);
+  const sellForProfit = input.estimate.recommendedSell;
+  if (
+    (input.costKnown || input.knownCostOnly) &&
+    directAmount != null &&
+    Number.isFinite(sellForProfit)
+  ) {
+    const priced = profitFromStoredCents(directAmount, sellForProfit);
+    push("profit", "Profit", priced.amount);
+    push("margin", "Gross margin", priced.percent);
   }
   return {
     rows,

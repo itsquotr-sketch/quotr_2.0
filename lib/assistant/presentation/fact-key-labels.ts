@@ -58,6 +58,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "internal_walls.opening.type": "Opening type",
   "internal_walls.opening.width_m": "Opening width",
   "internal_walls.opening.height_m": "Opening height",
+  "internal_walls.opening.formation_hours": "Opening formation hours",
   "ceilings.portion.geometry_mode": "Ceiling geometry",
   "ceilings.portion.length_m": "Ceiling length",
   "ceilings.portion.width_m": "Ceiling width",
