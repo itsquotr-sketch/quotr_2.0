@@ -1694,7 +1694,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
                   safeFactQuestion(field, template?.questionText)
                 ),
             askClass:
-              stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
+              stoppingRequested || stoppingInclusionUnanswered
                 ? "ASSUME_IF_SKIPPED"
                 : field === "internal_walls.wall_type.height_m"
                   ? "ASSUME_IF_SKIPPED"
