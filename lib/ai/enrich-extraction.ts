@@ -2192,13 +2192,13 @@ export function extractConstraintsFromBrief(
   ) {
     constraints.push({
       key: "working_hours",
-      label: "Working hours",
+      label: "Working-hour restrictions",
       value: "No",
     });
   } else if (includesAny(brief, ["restricted hours", "restricted access hours"])) {
     constraints.push({
       key: "working_hours",
-      label: "Working hours",
+      label: "Working-hour restrictions",
       value: "Yes",
     });
   }
@@ -2309,7 +2309,7 @@ export function extractConstraintsFromBrief(
   ) {
     constraints.push({
       key: "working_hours",
-      label: "Working hours",
+      label: "Working-hour restrictions",
       value: "Yes",
     });
   }

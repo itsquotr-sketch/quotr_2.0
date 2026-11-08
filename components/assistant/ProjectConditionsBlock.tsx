@@ -27,6 +27,11 @@ import {
   visibleConditionCandidates,
 } from "@/lib/project-conditions/presentation";
 
+function conditionDisplayLabel(row: { key: string; label: string }): string {
+  if (row.key === "working_hours") return "Working-hour restrictions";
+  return row.label;
+}
+
 export type ProjectConditionsLocalAnswer = {
   kind: "answer" | "not_sure" | "assume" | "skip";
   value?: string | number | boolean;
@@ -331,7 +336,7 @@ export function ProjectConditionsBlock({
               key={row.key}
               className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
             >
-              <span className="font-medium text-foreground">{row.label}</span>
+              <span className="font-medium text-foreground">{conditionDisplayLabel(row)}</span>
               <span className="text-muted-foreground">
                 {formatKnownValue(row.value)}
               </span>
@@ -361,8 +366,8 @@ export function ProjectConditionsBlock({
                 question={{
                   id: row.key,
                   key: row.key,
-                  label: row.label,
-                  questionText: row.label,
+                  label: conditionDisplayLabel(row),
+                  questionText: conditionDisplayLabel(row),
                   inputType: "select",
                   required: false,
                   value: row.value,
@@ -373,7 +378,7 @@ export function ProjectConditionsBlock({
                 onSave={async (value) => {
                   await onConstraintSave({
                     key: row.key,
-                    label: row.label,
+                    label: conditionDisplayLabel(row),
                     value,
                     inputType: "select",
                   });
