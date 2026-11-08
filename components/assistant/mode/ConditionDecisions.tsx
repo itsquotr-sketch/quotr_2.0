@@ -113,7 +113,7 @@ const CONDITION_LABEL: Record<string, string> = {
   site_access: "Site access",
   material_carry_distance: "Carry",
   occupied_site: "Occupied site",
-  working_hours: "Working restrictions",
+  working_hours: "Working-hour restrictions",
   floor_level: "Floor",
   hazardous_materials_risk: "Hazardous materials",
   protection_dust_control: "Protection",
