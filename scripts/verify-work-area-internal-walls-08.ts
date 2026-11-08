@@ -1332,6 +1332,12 @@ removed = applyInternalWallsFactWrite({
 });
 const removedCalc = calculateInternalWalls(ctx([walls], removed), walls);
 check(
+  "explicit No is stored by the wall-type answer",
+  read("lib/assistant/scope-persistence.ts").includes(
+    'key: "internal_walls.stopping_included"'
+  )
+);
+check(
   "explicit No removes the request and the gap",
   getBooleanFact(removed, "w1", "internal_walls.stopping_included") === false &&
     !removedCalc.missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) &&

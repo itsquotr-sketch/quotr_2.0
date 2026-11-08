@@ -24,6 +24,10 @@ import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumpti
 import { pileTreatmentChoiceValue } from "@/lib/estimate/deck-scope-2c";
 import { isNotSureValue } from "@/lib/estimate/facts";
 import {
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+} from "@/lib/estimate/internal-walls-finish";
+import {
   INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
   INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
   applyInternalWallsFactWrite,
@@ -311,6 +315,29 @@ async function persistInternalWallsCollectionWrite(
         .eq("project_id", params.projectId);
       if (deleteError) {
         return { ok: false, error: deleteError.message };
+      }
+    }
+
+    if (
+      params.key === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
+      params.key === INTERNAL_WALLS_STOPPING_SIDE_B_KEY
+    ) {
+      const stoppingIncluded = next.find(
+        (row) =>
+          row.key === "internal_walls.stopping_included" &&
+          row.work_area_id === params.workAreaId
+      );
+      if (stoppingIncluded) {
+        const includedResult = await upsertScopedFact(supabase, {
+          orgId: params.orgId,
+          projectId: params.projectId,
+          workAreaId: params.workAreaId,
+          key: "internal_walls.stopping_included",
+          label: "Stopping/plastering",
+          value: stoppingIncluded.value,
+          source: "user",
+        });
+        if (!includedResult.ok) return includedResult;
       }
     }
 
