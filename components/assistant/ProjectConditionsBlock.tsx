@@ -27,7 +27,7 @@ import {
   visibleConditionCandidates,
 } from "@/lib/project-conditions/presentation";
 
-function conditionDisplayLabel(row: { key: string; label: string }): string {
+export function conditionDisplayLabel(row: { key: string; label: string }): string {
   if (row.key === "working_hours") return "Working-hour restrictions";
   return row.label;
 }

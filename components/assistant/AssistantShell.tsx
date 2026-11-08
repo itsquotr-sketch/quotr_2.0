@@ -16,7 +16,7 @@ import { StepperNav } from "@/components/assistant/StepperNav";
 import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
 import type { ProjectDocumentCentreModel } from "@/lib/projects/document-model";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
-import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
+import { conditionDisplayLabel, ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
@@ -4307,7 +4307,7 @@ export function AssistantShell({
                                 key={row.id}
                                 className="grid gap-1 py-2 sm:grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)] sm:gap-4"
                               >
-                                <dt className="text-sm font-medium text-foreground/80">{row.label}</dt>
+                                <dt className="text-sm font-medium text-foreground/80">{conditionDisplayLabel(row)}</dt>
                                 <dd className="whitespace-pre-wrap text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
                                   {String(row.value)}
                                 </dd>
