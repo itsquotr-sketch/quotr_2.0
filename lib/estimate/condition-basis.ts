@@ -473,6 +473,36 @@ export function commercialConditionBlock(input: {
   return messages.length > 0 ? messages.join(" ") : null;
 }
 
+function yesNoSentence(
+  value: string | null,
+  label: string
+): { state: ConditionDecision["state"]; sentence: string } {
+  if (!value) {
+    return {
+      state: "unanswered",
+      sentence: `${label} is unanswered.`,
+    };
+  }
+  if (isNotSureValue(value)) {
+    return {
+      state: "uncertain",
+      sentence: `${label} is Not sure. Not sure stays unresolved.`,
+    };
+  }
+  return {
+    state: "resolved",
+    sentence: `${label} is ${value}.`,
+  };
+}
+
+function occupiedSentence(value: string | null) {
+  return yesNoSentence(value, "Occupied site");
+}
+
+function workingHoursSentence(value: string | null) {
+  return yesNoSentence(value, "Working-hour restrictions");
+}
+
 export function listConditionDecisions(input: {
   readonly constraints: readonly ConditionConstraint[];
   readonly workAreaTypes: readonly string[];
@@ -541,6 +571,34 @@ export function listConditionDecisions(input: {
       informational: !described.blocks,
       assumption,
       detail: described.sentence,
+    });
+  }
+  if (types.some((type) => FLOOR_LEVEL_TYPES.has(type)) || demolition) {
+    const occupied = constraintValue(input.constraints, "occupied_site");
+    const occupiedDescribed = occupiedSentence(occupied.value);
+    decisions.push({
+      key: "occupied_site",
+      question: "Is the site occupied during works?",
+      options: ["Yes", "No", "Not sure"],
+      state: occupiedDescribed.state,
+      storedValue: occupied.value,
+      blocksCommercial: false,
+      informational: occupiedDescribed.state !== "resolved",
+      assumption: null,
+      detail: occupiedDescribed.sentence,
+    });
+    const hours = constraintValue(input.constraints, "working_hours");
+    const hoursDescribed = workingHoursSentence(hours.value);
+    decisions.push({
+      key: "working_hours",
+      question: "Are there working-hour restrictions?",
+      options: ["No", "Yes", "Not sure"],
+      state: hoursDescribed.state,
+      storedValue: hours.value,
+      blocksCommercial: false,
+      informational: hoursDescribed.state !== "resolved",
+      assumption: null,
+      detail: hoursDescribed.sentence,
     });
   }
   if (types.some((type) => PROTECTION_TYPES.has(type))) {

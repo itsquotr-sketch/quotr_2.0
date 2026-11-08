@@ -84,6 +84,8 @@ import {
 } from "@/lib/estimate/cladding-brief";
 import { createEmptyCladdingPortion } from "@/lib/estimate/cladding-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
+import { resolveCanonicalProjectConditionKey } from "@/lib/project-conditions/canonical";
+import { mergeProjectConditionWrites, projectConditionWritesFromFacts } from "@/lib/project-conditions/from-facts";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
 
@@ -2178,13 +2180,7 @@ export function extractConstraintsFromBrief(
     });
   }
 
-  if (includesAny(brief, ["restricted hours", "restricted access hours"])) {
-    constraints.push({
-      key: "working_hours",
-      label: "Working hours",
-      value: "Yes",
-    });
-  } else if (
+  if (
     includesAny(brief, [
       "unrestricted hours",
       "hours are unrestricted",
@@ -2195,6 +2191,12 @@ export function extractConstraintsFromBrief(
       key: "working_hours",
       label: "Working hours",
       value: "No",
+    });
+  } else if (includesAny(brief, ["restricted hours", "restricted access hours"])) {
+    constraints.push({
+      key: "working_hours",
+      label: "Working hours",
+      value: "Yes",
     });
   }
 
@@ -2245,6 +2247,9 @@ export function extractConstraintsFromBrief(
       "not occupied",
       "site is unoccupied",
       "unoccupied site",
+      "unoccupied",
+      "vacant site",
+      "site is vacant",
     ])
   ) {
     constraints.push({
@@ -2292,6 +2297,7 @@ export function extractConstraintsFromBrief(
   }
 
   if (
+    !constraints.some((row) => row.key === "working_hours") &&
     includesAny(brief, [
       "booked delivery",
       "delivery windows",
@@ -2313,10 +2319,10 @@ function applyConstraintFactsToWorkAreas(
   extraction: AIExtractionOutput
 ): void {
   // FOUNDATION-R1: do not dual-write project logistics onto WA Facts.
-  // Constraints extracted in extractConstraintsFromBrief are the authority.
+  // The canonical constraint is kept. A duplicate fact is not a second store.
   void brief;
   extraction.facts = extraction.facts.filter(
-    (fact) => !shouldDropDuplicateFactOnIngest(fact.key)
+    (fact) => !shouldDropDuplicateFactOnIngest(fact.key) && !fact.key.startsWith("project.")
   );
 }
 
@@ -2646,7 +2652,23 @@ export function enrichExtractionFromBrief(params: {
   }
 
   const qualityLevel = extractQualityFromBrief(params.briefText);
-  const constraints = extractConstraintsFromBrief(params.briefText);
+  const extractedConstraints = extractConstraintsFromBrief(params.briefText);
+  const mergedConditions = mergeProjectConditionWrites({
+    authoritative: extractedConstraints.flatMap((row) => {
+      const key = resolveCanonicalProjectConditionKey(row.key);
+      if (!key) return [];
+      return [{ key, label: row.label, value: String(row.value) }];
+    }),
+    fromFacts: projectConditionWritesFromFacts(params.extraction.facts),
+  });
+  for (const warning of mergedConditions.warnings) {
+    if (!extraction.warnings.includes(warning)) extraction.warnings.push(warning);
+  }
+  const constraints = mergedConditions.constraints.map((row) => ({
+    key: row.key,
+    label: row.label,
+    value: row.value,
+  }));
   mergePossibleConstraints(extraction, constraints);
 
   recordRequestedCoverageGaps(brief, extraction);

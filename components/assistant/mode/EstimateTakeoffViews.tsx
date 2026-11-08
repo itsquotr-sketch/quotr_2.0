@@ -673,7 +673,6 @@ export function LabourTakeoff({
   if (model.knownCost) facts.push({ label: model.knownCostLabel, value: model.knownCost });
   return (
     <div className="min-w-0 space-y-4">
-      {decisions}
     <TakeoffBoard
       title={model.title}
       marker="labour"
@@ -688,6 +687,7 @@ export function LabourTakeoff({
       emptyMessage="No labour lines in this estimate."
       actions={actions}
     />
+      {decisions}
     </div>
   );
 }

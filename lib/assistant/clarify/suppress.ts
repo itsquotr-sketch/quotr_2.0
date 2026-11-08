@@ -168,7 +168,8 @@ export function briefImpliesConstraint(
     return /waste bin|skip bin|waste handling/i.test(text);
   }
   if (key === "occupied_site") {
-    return /occupied|live.?in|residents remain/i.test(text);
+    if (/\bunoccupied\b|\bnot occupied\b|\bvacant\b/i.test(text)) return false;
+    return /\boccupied\b|live.?in|residents remain/i.test(text);
   }
   if (key === "working_hours") {
     return /working hours|after hours|weekend work/i.test(text);

@@ -22,6 +22,10 @@ import { startPreviewPerf } from "@/lib/assistant/preview-performance";
 import type { AssistantMutationResult, ConstraintRow } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
 import { explicitAssumptionFor } from "@/lib/estimate/condition-basis";
+import {
+  groupConditionCandidates,
+  visibleConditionCandidates,
+} from "@/lib/project-conditions/presentation";
 
 export type ProjectConditionsLocalAnswer = {
   kind: "answer" | "not_sure" | "assume" | "skip";
@@ -139,6 +143,27 @@ export function ProjectConditionsBlock({
       return !isNotSureOption(String(r.value));
     });
   }, [knownConstraints]);
+  const uncertainKeys = useMemo(() => {
+    return new Set(
+      knownConstraints
+        .filter((row) => row.value != null && isNotSureOption(String(row.value)))
+        .map((row) => row.key)
+    );
+  }, [knownConstraints]);
+  const visibleCandidates = useMemo(
+    () =>
+      visibleConditionCandidates(
+        candidates,
+        Object.entries(drafts)
+          .filter(([, draft]) => draft.kind === "answer" || draft.kind === "not_sure" || draft.kind === "assume")
+          .map(([questionKey]) => questionKey)
+      ),
+    [candidates, drafts]
+  );
+  const candidateGroups = useMemo(
+    () => groupConditionCandidates(visibleCandidates),
+    [visibleCandidates]
+  );
 
   const setAnswer = useCallback(
     (questionKey: string, value: string | number | boolean | string[]) => {
@@ -382,17 +407,21 @@ export function ProjectConditionsBlock({
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">
-          {remainingCount === 1
+          {visibleCandidates.length === 1
             ? "1 quick question remaining"
-            : `${Math.min(remainingCount, candidates.length)} quick questions remaining`}
+            : `${visibleCandidates.length} quick questions remaining`}
         </p>
         <p className="text-xs text-muted-foreground">
           Answer a few quick questions to improve this estimate.
         </p>
       </div>
 
-      <ul className="space-y-5">
-        {candidates.map((candidate) => {
+      <div className="space-y-5">
+        {candidateGroups.map((group) => (
+        <section key={group.group} className="space-y-3" data-condition-group={group.group}>
+          <h3 className="text-sm font-semibold leading-5">{group.label}</h3>
+        <ul className="space-y-5">
+        {group.items.map((candidate) => {
           const q = candidateToQuestion(candidate);
           const draft = drafts[candidate.questionKey];
           const conflict = conflicts.find(
@@ -409,11 +438,19 @@ export function ProjectConditionsBlock({
               className="space-y-2.5 rounded-lg border border-border/40 bg-muted/25 px-3 py-2.5 sm:px-3.5"
               data-project-condition-key={candidate.questionKey}
               data-question-key={candidate.targetKey}
+              data-condition-state={
+                uncertainKeys.has(candidate.targetKey) ? "uncertain" : "unanswered"
+              }
             >
               <div className="space-y-1">
                 <p className="text-sm font-semibold leading-snug text-foreground">
                   {candidate.question}
                 </p>
+                {uncertainKeys.has(candidate.targetKey) ? (
+                  <p className="text-xs font-medium" data-condition-not-sure="true">
+                    Saved as Not sure. This is still open.
+                  </p>
+                ) : null}
                 {candidate.reasonForAsking ? (
                   <p className="text-xs text-muted-foreground">
                     {candidate.reasonForAsking}
@@ -545,7 +582,10 @@ export function ProjectConditionsBlock({
             </li>
           );
         })}
-      </ul>
+        </ul>
+        </section>
+        ))}
+      </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button

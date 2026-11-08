@@ -25,6 +25,7 @@ import {
   CONFIRMED_ANSWER_CONFLICT,
   reanalysisFactWrite,
 } from "@/lib/ai/mappers";
+import { factKeysForCondition } from "@/lib/project-conditions/from-facts";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
 import {
@@ -902,6 +903,22 @@ export async function saveBriefAndSeedWorkAreas(
       const existing = existingByKey.get(constraint.key);
       if (existing?.source === "user") {
         // User-confirmed constraints remain authoritative.
+        if (JSON.stringify(existing.value) !== JSON.stringify(constraint.value)) {
+          const factKeys = factKeysForCondition(constraint.key);
+          if (factKeys.length > 0) {
+            const { error: conflictError } = await supabase
+              .from("project_facts")
+              .update({ conflict_warning: CONFIRMED_ANSWER_CONFLICT })
+              .eq("project_id", projectId)
+              .in("key", factKeys);
+            if (conflictError) {
+              return failPersist(
+                "persist_constraints",
+                `constraint conflict note failed: ${conflictError.message}`
+              );
+            }
+          }
+        }
         continue;
       }
       if (existing) {

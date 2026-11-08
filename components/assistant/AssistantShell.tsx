@@ -43,7 +43,7 @@ import {
   LabourTakeoff,
   MaterialsTakeoff,
 } from "@/components/assistant/mode/EstimateTakeoffViews";
-import { ConditionDecisions } from "@/components/assistant/mode/ConditionDecisions";
+import { ConditionBasisSummary } from "@/components/assistant/mode/ConditionDecisions";
 import {
   commercialConditionMessages,
   conditionAnswerAffectsEstimateBasis,
@@ -3686,7 +3686,8 @@ export function AssistantShell({
     workAreaTypes: conditionWorkAreaTypes,
   });
   const conditionDecisionPanel = (
-    <ConditionDecisions
+    <ConditionBasisSummary
+      placement={estimateView === "checks" ? "checks" : "labour"}
       decisions={conditionDecisions}
       stale={displayEstimateStale}
       savingKey={savingConstraintKey}

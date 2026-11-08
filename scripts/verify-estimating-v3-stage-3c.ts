@@ -217,9 +217,9 @@ const openDecisions = listConditionDecisions({
   workAreaTypes: flooringTypes,
 });
 check(
-  "the laminate job asks access, carry, hazardous materials, floor level and protection",
+  "the laminate job asks access, carry, hazardous materials, floor level, occupancy, hours and protection",
   openDecisions.map((row) => row.key).join(",") ===
-    "site_access,material_carry_distance,hazardous_materials_risk,floor_level,protection_dust_control" &&
+    "site_access,material_carry_distance,hazardous_materials_risk,floor_level,occupied_site,working_hours,protection_dust_control" &&
     openDecisions.find((row) => row.key === "hazardous_materials_risk")?.informational ===
       true &&
     openDecisions.find((row) => row.key === "floor_level")?.blocksCommercial === false &&
@@ -677,7 +677,8 @@ check(
   shell.includes("canRunEstimates && displayEstimateStale ? handleRegenerateEstimate") &&
     shell.includes("conditionAnswerAffectsEstimateBasis(input.key)") &&
     shell.includes("setLocalEstimateStale(true)") &&
-    shell.includes("ConditionDecisions")
+    shell.includes("ConditionBasisSummary") &&
+    shell.includes("handleConstraintSave")
 );
 check(
   "registration does not rewrite drafts, and review blocks a stale tax basis",
