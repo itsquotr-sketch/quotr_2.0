@@ -17,7 +17,7 @@
  * later phase can prove a whole bay is eliminated.
  */
 
-import { round2 } from "@/lib/estimate/facts";
+import { presentAreaM2, round2 } from "@/lib/estimate/facts";
 import {
   INTERNAL_WALLS_AQUALINE_13_2400_KEY,
   INTERNAL_WALLS_BRACELINE_13_2400_KEY,
@@ -345,11 +345,11 @@ export function formatInternalWallsLiningTakeoff(
     `${takeoff.lengthLm} × ${takeoff.heightM} m`,
     `${takeoff.installedSheets} sheets installed`,
     `${takeoff.purchaseSheets} sheets incl. waste`,
-    `${round2(takeoff.grossFaceAreaM2)} m² gross`,
+    `${presentAreaM2(takeoff.grossFaceAreaM2)} m² gross`,
     takeoff.openingDeductionM2 > 0
-      ? `${round2(takeoff.openingDeductionM2)} m² opening deduction`
+      ? `${presentAreaM2(takeoff.openingDeductionM2)} m² opening deduction`
       : null,
-    `${round2(takeoff.netFaceAreaM2)} m² net`,
+    `${presentAreaM2(takeoff.netFaceAreaM2)} m² net`,
   ]
     .filter(Boolean)
     .join(" · ");

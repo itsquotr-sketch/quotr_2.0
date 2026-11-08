@@ -100,6 +100,7 @@ export type ComposeRefineInput = {
     readonly value: unknown;
     readonly source?: string | null;
   }[];
+  readonly focusKey?: string | null;
   readonly jobPlan: {
     readonly cards: readonly {
       readonly workAreaId: string;

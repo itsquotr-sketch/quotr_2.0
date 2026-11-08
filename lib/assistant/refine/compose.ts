@@ -2,6 +2,7 @@ import { getRefineAdapter } from "@/lib/assistant/refine/adapters/registry";
 import { internalWallsRefinePanel } from "@/lib/assistant/refine/adapters/internal-walls";
 import { ceilingsRefinePanel } from "@/lib/assistant/refine/adapters/ceilings";
 import {
+  candidateMatchesFocus,
   identityFromCaptureRow,
   isNestedRefineIdentity,
   questionSemanticKey,
@@ -250,6 +251,7 @@ function shouldOmitUnresolvedRefineRow(
   row: RefineCandidate,
   input: ComposeRefineInput
 ): boolean {
+  if (candidateMatchesFocus(row, input.focusKey)) return false;
   if (isNestedRefineIdentity(row)) {
     if (
       isUnresolvedCaptureValue(row.currentValue) &&

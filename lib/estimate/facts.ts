@@ -187,6 +187,12 @@ export function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** Keep a measured area visible to 0.0001 m². 1.6038 and 12.7962 must not collapse. */
+export function presentAreaM2(value: number): string {
+  const rounded = Math.round((value + Number.EPSILON) * 10000) / 10000;
+  return String(rounded);
+}
+
 export function round3(value: number): number {
   return Math.round(value * 1000) / 1000;
 }

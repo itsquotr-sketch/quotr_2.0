@@ -12,7 +12,7 @@
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
-import { getBooleanFact, round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, presentAreaM2, round2 } from "@/lib/estimate/facts";
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
 import {
   buildAmounts,
@@ -666,7 +666,7 @@ export function buildInternalWallsFinishEnvelope(params: {
           const overlap = internalWallsInsulationOverlapGroup(type.id);
           const typeLabel =
             insulationTypeDisplay(type.insulation_type) ?? "Wall insulation";
-          const specification = `${typeLabel} · ${presentFinishQty(area.areaM2)} m² net cavity`;
+          const specification = `${typeLabel} · ${presentAreaM2(area.areaM2)} m² net cavity`;
           assumptions.push(INTERNAL_WALLS_INSULATION_WASTE_DECISION);
           sortOrder = emitQtyMaterial({
             workArea,

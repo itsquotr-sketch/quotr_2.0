@@ -3038,7 +3038,7 @@ export function AssistantShell({
                 estimate?.missingInfo.includes("Kitchen scope not confirmed")
               ? "Kitchen scope not confirmed"
               : null,
-        focusKey: candidate.factKey ?? candidate.id,
+        focusKey: candidate.id,
         actionLabel: undefined as string | undefined,
       }));
       if (!statedOpeningRecovery) return questions;
@@ -3145,6 +3145,7 @@ export function AssistantShell({
           source: row.source,
         })),
         jobPlan,
+        focusKey: refineAfterEstimateFocusKey,
       }),
     [
       briefText,
@@ -3155,6 +3156,7 @@ export function AssistantShell({
       project.briefText,
       project.qualityLevel,
       qualityLevel,
+      refineAfterEstimateFocusKey,
     ]
   );
 

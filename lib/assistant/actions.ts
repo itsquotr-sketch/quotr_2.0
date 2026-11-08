@@ -1947,7 +1947,7 @@ async function runEstimateGeneration(
     ? statedOpening.facts
     : contextResult.facts;
 
-  if (CLARIFY_IS_PRIMARY) {
+  if (CLARIFY_IS_PRIMARY && !statedOpening.changed) {
     const compose = composeClarifyInputFromEstimateContext({
       stage: stage as ComposeClarifyInput["stage"],
       briefText,

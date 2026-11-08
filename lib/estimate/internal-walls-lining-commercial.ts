@@ -11,7 +11,7 @@
  */
 
 import { aggregateSameIdentityCommercialLines } from "@/lib/estimate/commercial-aggregation";
-import { round2 } from "@/lib/estimate/facts";
+import { presentAreaM2, round2 } from "@/lib/estimate/facts";
 import { isInternalWallsLiningComponentKey } from "@/lib/estimate/internal-walls-identities";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
 
@@ -125,21 +125,19 @@ function mergeLiningSupporting(
     (sum, text) => sum + firstMatch(text, /(\d+) sheets incl\. waste/),
     0
   );
-  const gross = round2(
-    texts.reduce(
-      (sum, text) => sum + firstMatch(text, /([\d.]+) m² gross/),
-      0
-    )
+  const faceGross = texts.map((text) => firstMatch(text, /([\d.]+) m² gross/));
+  const faceNet = texts.map((text) => firstMatch(text, /([\d.]+) m² net/));
+  const faceOpening = texts.map((text) =>
+    firstMatch(text, /([\d.]+) m² opening deduction/)
   );
-  const net = round2(
-    texts.reduce((sum, text) => sum + firstMatch(text, /([\d.]+) m² net/), 0)
-  );
-  const opening = round2(
-    texts.reduce(
-      (sum, text) => sum + firstMatch(text, /([\d.]+) m² opening deduction/),
-      0
-    )
-  );
+  const sameFaces =
+    texts.length > 1 &&
+    faceGross.every((value) => value === faceGross[0]) &&
+    faceNet.every((value) => value === faceNet[0]) &&
+    faceOpening.every((value) => value === faceOpening[0]);
+  const gross = faceGross.reduce((sum, value) => sum + value, 0);
+  const net = faceNet.reduce((sum, value) => sum + value, 0);
+  const opening = faceOpening.reduce((sum, value) => sum + value, 0);
   const hours = round2(
     members.reduce((sum, item) => sum + Number(item.labourHours ?? 0), 0)
   );
@@ -170,9 +168,21 @@ function mergeLiningSupporting(
     "Both sides",
     installed > 0 ? `${installed} sheets installed` : null,
     purchase > 0 ? `${purchase} sheets incl. waste` : null,
-    gross > 0 ? `${gross} m² gross` : null,
-    opening > 0 ? `${opening} m² opening deduction` : null,
-    net > 0 ? `${net} m² net` : null,
+    sameFaces && (faceGross[0] ?? 0) > 0
+      ? `${presentAreaM2(faceGross[0]!)} m² gross per face`
+      : gross > 0
+        ? `${presentAreaM2(gross)} m² gross`
+        : null,
+    sameFaces && (faceOpening[0] ?? 0) > 0
+      ? `${presentAreaM2(faceOpening[0]!)} m² opening deduction per face`
+      : opening > 0
+        ? `${presentAreaM2(opening)} m² opening deduction`
+        : null,
+    sameFaces && (faceNet[0] ?? 0) > 0
+      ? `${presentAreaM2(faceNet[0]!)} m² net per face`
+      : net > 0
+        ? `${presentAreaM2(net)} m² net`
+        : null,
   ]
     .filter(Boolean)
     .join(" · ");

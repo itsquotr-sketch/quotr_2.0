@@ -12,7 +12,11 @@ import {
   extractInternalWallsTypesFromBrief,
 } from "@/lib/estimate/internal-walls-brief";
 import { insulationNetAreaM2, stoppingTakeoff } from "@/lib/estimate/internal-walls-finish";
-import { internalWallsLiningFaceTakeoff } from "@/lib/estimate/internal-walls-lining";
+import { aggregateInternalWallsLiningCommercialLines } from "@/lib/estimate/internal-walls-lining-commercial";
+import {
+  formatInternalWallsLiningTakeoff,
+  internalWallsLiningFaceTakeoff,
+} from "@/lib/estimate/internal-walls-lining";
 import {
   openingsEligibleForTakeoff,
   openingsFromStoredWallTypeBlob,
@@ -27,7 +31,9 @@ import {
   groupConditionCandidates,
   visibleConditionCandidates,
 } from "@/lib/project-conditions/presentation";
-import type { EstimateFact } from "@/lib/estimate/types";
+import { composeRefineView } from "@/lib/assistant/refine/compose";
+import { questionSemanticKey } from "@/lib/assistant/question-identity";
+import type { EstimateFact, EstimateLineItemInput } from "@/lib/estimate/types";
 
 const WALL_ID = "wall-qt009";
 const OTHER_WALL_ID = "wall-other";
@@ -147,8 +153,97 @@ if (sideA?.ok && sideB?.ok) {
   check("each face deducts the opening once", sideA.openingDeductionM2 === deduction && sideB.openingDeductionM2 === deduction);
   check("each face net is 12.7962 m²", sideA.netFaceAreaM2 === expectedNet && sideB.netFaceAreaM2 === expectedNet);
   check("sheet purchase stays on the full-height run", sideA.installedSheets === 5 && sideA.purchaseSheets === 6 && sideB.installedSheets === 5 && sideB.purchaseSheets === 6);
+  const sideAText = formatInternalWallsLiningTakeoff(sideA);
+  const sideBText = formatInternalWallsLiningTakeoff(sideB);
+  check(
+    "each face states 14.4, 1.6038, and 12.7962",
+    sideAText.includes("14.4 m² gross") &&
+      sideAText.includes("1.6038 m² opening deduction") &&
+      sideAText.includes("12.7962 m² net") &&
+      sideBText.includes("12.7962 m² net")
+  );
+  const combined = aggregateInternalWallsLiningCommercialLines([
+    {
+      workAreaId: WALL_ID,
+      overlapGroup: "lining",
+      scopeKey: "internal_walls.lining.standard_gib.material",
+      componentKey: "internal_walls.lining.standard_gib.material",
+      includedInTotal: true,
+      quantity: 6,
+      notes: sideAText,
+      identitySummary: sideAText,
+      label: "Side A lining",
+    },
+    {
+      workAreaId: WALL_ID,
+      overlapGroup: "lining",
+      scopeKey: "internal_walls.lining.standard_gib.material",
+      componentKey: "internal_walls.lining.standard_gib.material",
+      includedInTotal: true,
+      quantity: 6,
+      notes: sideBText,
+      identitySummary: sideBText,
+      label: "Side B lining",
+    },
+  ] as EstimateLineItemInput[]);
+  const combinedNote = combined[0]?.notes ?? "";
+  check(
+    "the combined lining states the deduction per face",
+    combinedNote.includes("14.4 m² gross per face") &&
+      combinedNote.includes("1.6038 m² opening deduction per face") &&
+      combinedNote.includes("12.7962 m² net per face"),
+    combinedNote
+  );
   check("lining labour stays 2.5 h per face", sideA.labourHours === 2.5 && sideB.labourHours === 2.5);
 }
+
+const stoppingFacts: EstimateFact[] = [
+  ...reproductionFacts,
+  fact(WALL_ID, "internal_walls.stopping_included", true),
+];
+const stoppingWall = resolveInternalWallsWallTypes({
+  facts: stoppingFacts,
+  workAreaId: WALL_ID,
+  briefText: QT009_BRIEF,
+}).types[0];
+const stoppingFocus = questionSemanticKey({
+  workAreaId: WALL_ID,
+  factKey: "internal_walls.wall_type.stopping_side_a",
+  nestedItemId: stoppingWall?.id ?? null,
+});
+const refineBase = {
+  briefText: QT009_BRIEF,
+  qualityLevel: "standard",
+  workAreas: [
+    {
+      id: WALL_ID,
+      type: "internal_walls",
+      name: "Internal walls",
+      status: "confirmed",
+    },
+  ],
+  facts: stoppingFacts,
+  constraints: [],
+  jobPlan: { cards: [] },
+};
+const refineHidden = composeRefineView(refineBase);
+const refineShown = composeRefineView({ ...refineBase, focusKey: stoppingFocus });
+const stoppingRows = (view: typeof refineShown) =>
+  [...view.highValue, ...view.advanced].filter((row) =>
+    row.factKey?.endsWith("stopping_side_a")
+  );
+const shownStopping = stoppingRows(refineShown)[0];
+check(
+  "the stopping notice keeps Level 4, Level 5, Custom, and No",
+  shownStopping?.options?.includes("No") === true &&
+    shownStopping.options.includes("Level 4") &&
+    shownStopping.options.includes("Level 5") &&
+    shownStopping.options.includes("Custom")
+);
+check(
+  "stopping is not a first ask on the estimate editor",
+  stoppingRows(refineHidden).length === 0
+);
 
 const unsetStopping = wall ? stoppingTakeoff({ type: wall, jobScope: "new_partition" }) : null;
 check("unconfirmed stopping level is not invented", unsetStopping == null);
