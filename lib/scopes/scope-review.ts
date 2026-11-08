@@ -25,6 +25,13 @@ import {
   isInheritedFinishLevelKey,
 } from "@/lib/scopes/finish-level";
 import { getDerivedFactNote, resolveFactEditMeta } from "@/lib/scopes/fact-edit-meta";
+import {
+  INTERNAL_WALLS_STOPPING_OPTIONS,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+  stoppingLevelDisplay,
+} from "@/lib/estimate/internal-walls-finish";
+import { resolveInternalWallsWallTypes } from "@/lib/estimate/internal-walls-wall-types";
 import { deckDetailGaps } from "@/lib/estimate/deck-detail-completeness";
 import { isQuickEstimateAskQuestion } from "@/lib/scopes/estimate-priority";
 import { blocksLevel1Estimate } from "@/lib/scopes/level1-blocking";
@@ -451,6 +458,24 @@ function buildWorkAreaFacts(params: {
     qualityLevel: params.qualityLevel,
   });
 
+  const stoppingRequested = [...candidates.values()].some(
+    (candidate) =>
+      candidate.canonicalKey === "internal_walls.stopping_included" &&
+      (candidate.rawValue === true || candidate.value === "Yes")
+  );
+  const stoppingWall =
+    params.workArea.type === "internal_walls" && stoppingRequested
+      ? resolveInternalWallsWallTypes({
+          facts: [...params.lookup.values()].map((row) => ({
+            key: row.key,
+            work_area_id: row.work_area_id,
+            value: row.value,
+          })),
+          workAreaId: params.workArea.id,
+        }).types
+      : [];
+  const stoppingType = stoppingWall.length === 1 ? stoppingWall[0] : null;
+
   const facts = [...candidates.values()]
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((candidate) => {
@@ -463,24 +488,61 @@ function buildWorkAreaFacts(params: {
         candidate.sourceLabel === "calculated" ||
         (candidate.source === "project_quality" &&
           isInheritedFinishLevelKey(candidate.canonicalKey));
+      const replaceStopping =
+        stoppingType != null &&
+        candidate.canonicalKey === "internal_walls.stopping_included";
+      const shared = stoppingType?.same_lining_both_sides === true;
+      const sideA = stoppingLevelDisplay(stoppingType?.stopping_side_a ?? null);
 
       return {
-        key: candidate.canonicalKey,
-        label: candidate.label,
-        value: candidate.value,
-        rawValue: candidate.rawValue,
+        key: replaceStopping
+          ? INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+          : candidate.canonicalKey,
+        label: replaceStopping
+          ? shared
+            ? "Stopping level"
+            : "Stopping level — Side A"
+          : candidate.label,
+        value: replaceStopping ? (sideA ?? "Not set") : candidate.value,
+        rawValue: replaceStopping ? sideA : candidate.rawValue,
         unit: candidate.unit ?? editMeta.unit,
         sourceLabel: candidate.sourceLabel,
         sourcePriority: candidate.sourcePriority,
         readOnly,
-        derivedNote: readOnly
-          ? getDerivedFactNote(params.workArea.type, candidate.canonicalKey)
-          : undefined,
+        derivedNote: replaceStopping && stoppingType?.stopping_side_a === "custom"
+          ? "Custom stopping is unresolved until a rate is set."
+          : readOnly
+            ? getDerivedFactNote(params.workArea.type, candidate.canonicalKey)
+            : undefined,
         conflictWarning: candidate.conflictWarning,
-        inputType: editMeta.inputType,
-        options: editMeta.options,
+        inputType: replaceStopping ? "select" : editMeta.inputType,
+        options: replaceStopping
+          ? [...INTERNAL_WALLS_STOPPING_OPTIONS]
+          : editMeta.options,
       };
     });
+
+  if (
+    stoppingType &&
+    stoppingType.same_lining_both_sides !== true &&
+    !facts.some((fact) => fact.key === INTERNAL_WALLS_STOPPING_SIDE_B_KEY)
+  ) {
+    const sideB = stoppingLevelDisplay(stoppingType.stopping_side_b);
+    facts.push({
+      key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+      label: "Stopping level — Side B",
+      value: sideB ?? "Not set",
+      rawValue: sideB,
+      sourceLabel: "brief",
+      sourcePriority: 3,
+      derivedNote:
+        stoppingType.stopping_side_b === "custom"
+          ? "Custom stopping is unresolved until a rate is set."
+          : undefined,
+      inputType: "select",
+      options: [...INTERNAL_WALLS_STOPPING_OPTIONS],
+    });
+  }
 
   return { facts, assumptions };
 }

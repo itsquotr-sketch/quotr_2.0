@@ -219,6 +219,9 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
         surfaceReason: "Requested work has no priced recipe",
       });
     }
+    const customStopping = resolved.types.some(
+      (type) => type.stopping_side_a === "custom" || type.stopping_side_b === "custom"
+    );
     if (stoppingLevelOpen) {
       notConfirmed.push({
         id: `${id}-stopping-level`,
@@ -228,8 +231,21 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
         kind: "specification",
         togglable: false,
         write: null,
-        sourceFactKey: null,
+        sourceFactKey: "internal_walls.wall_type.stopping_side_a",
         surfaceReason: "The brief requests stopping and does not state a level",
+      });
+    }
+    if (customStopping) {
+      notConfirmed.push({
+        id: `${id}-stopping-custom`,
+        workAreaId: id,
+        label: "Custom stopping is unresolved",
+        presentation: "NOT_CONFIRMED",
+        kind: "specification",
+        togglable: false,
+        write: null,
+        sourceFactKey: "internal_walls.wall_type.stopping_side_a",
+        surfaceReason: "Custom stopping stays Pricing Required until a rate is set",
       });
     }
 

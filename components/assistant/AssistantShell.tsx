@@ -236,7 +236,10 @@ import {
 } from "@/lib/assistant/mode";
 import type { OrganisationRate } from "@/components/setup/types";
 import type { EstimateFact } from "@/lib/estimate/types";
-import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  factsWithPersistedStatedDoorOpening,
+  isInternalWallsWallTypeWriteKey,
+} from "@/lib/estimate/internal-walls-wall-types";
 import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
 import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
@@ -3001,9 +3004,28 @@ export function AssistantShell({
       ),
     [clarifyView.candidates]
   );
+  const statedOpeningRecovery = useMemo(() => {
+    if (!estimate) return false;
+    const ids = displayWorkAreas
+      .filter((area) => area.type === "internal_walls" && area.status !== "excluded")
+      .map((area) => area.id);
+    return factsWithPersistedStatedDoorOpening({
+      facts: jobPlanFacts,
+      internalWallWorkAreaIds: ids,
+      briefText: project.briefText,
+    }).changed;
+  }, [displayWorkAreas, estimate, jobPlanFacts, project.briefText]);
   const takeoffDecisionItems = useMemo(
-    () =>
-      [...kitchenPackageChoices, ...liningProductClarifications].map((candidate) => ({
+    () => {
+      const questions = [...kitchenPackageChoices, ...liningProductClarifications]
+        .filter(
+          (candidate) =>
+            !(
+              statedOpeningRecovery &&
+              candidate.factKey?.endsWith("has_openings")
+            )
+        )
+        .map((candidate) => ({
         id: candidate.id,
         prompt: candidate.question,
         kind: candidate.factKey === KITCHEN_RENOVATION_FACT_KEY
@@ -3017,8 +3039,28 @@ export function AssistantShell({
               ? "Kitchen scope not confirmed"
               : null,
         focusKey: candidate.factKey ?? candidate.id,
-      })),
-    [estimate?.missingInfo, kitchenPackageChoices, liningProductClarifications]
+        actionLabel: undefined as string | undefined,
+      }));
+      if (!statedOpeningRecovery) return questions;
+      return [
+        {
+          id: "stated-opening-quantity",
+          prompt: "This estimate does not deduct the stated wall opening.",
+          kind: "lining" as const,
+          detail:
+            "Update the estimate to store that opening and recalculate. Opening this estimate does not change it. Pricing still needs its own update.",
+          focusKey: "stated-opening-quantity",
+          actionLabel: "Update estimate",
+        },
+        ...questions,
+      ];
+    },
+    [
+      estimate?.missingInfo,
+      kitchenPackageChoices,
+      liningProductClarifications,
+      statedOpeningRecovery,
+    ]
   );
 
   const deckDetailGaps = useMemo(
@@ -3216,7 +3258,7 @@ export function AssistantShell({
   // router.refresh() race. Successful regenerate clears localEstimateStale.
   const displayEstimateStale =
     Boolean(estimate) &&
-    (Boolean(estimate?.isStale) || localEstimateStale);
+    (Boolean(estimate?.isStale) || localEstimateStale || statedOpeningRecovery);
   const updatingEstimate = isRegenerating;
 
   const activeDisclosureStage = resolveActiveDisclosureStage({
@@ -3726,6 +3768,10 @@ export function AssistantShell({
       data-kitchen-scope-gap="true"
       data-lining-clarification="true"
       onOpen={(id) => {
+        if (id === "stated-opening-quantity") {
+          void handleRegenerateEstimate();
+          return;
+        }
         const item = takeoffDecisionItems.find((row) => row.id === id);
         openRefineAfterEstimate(item?.focusKey ?? id);
       }}

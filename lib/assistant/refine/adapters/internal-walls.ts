@@ -818,7 +818,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             factKey: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
             label: "Stopping — Side A",
             question: stoppingRequested
-              ? requestedStoppingLevelQuestion("A")
+              ? active?.same_lining_both_sides === true
+                ? "What stopping level is required on both faces? Custom stays unresolved until a rate is set."
+                : `${requestedStoppingLevelQuestion("A")} Custom stays unresolved until a rate is set.`
               : "Include stopping to Side A?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
@@ -830,7 +832,10 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           })
         );
       }
-      if (faceEligibleForStopping(active?.side_b)) {
+      if (
+        active?.same_lining_both_sides !== true &&
+        faceEligibleForStopping(active?.side_b)
+      ) {
         out.push(
           candidate({
             workAreaId,
@@ -838,7 +843,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             factKey: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
             label: "Stopping — Side B",
             question: stoppingRequested
-              ? requestedStoppingLevelQuestion("B")
+              ? `${requestedStoppingLevelQuestion("B")} Custom stays unresolved until a rate is set.`
               : "Include stopping to Side B?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,

@@ -64,6 +64,13 @@ import { workAreaTypeHasDetailedCalculator } from "@/lib/estimate/calculator-ava
 import { MANUAL_ESTIMATE_SKIPPED_MESSAGE } from "@/lib/work-areas/manual-pricing-route";
 import { loadProjectStage } from "@/lib/assistant/load-project-stage";
 import { getEstimateContextWithContext } from "@/lib/estimate/context";
+import {
+  factsWithPersistedStatedDoorOpening,
+  INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+  parseInternalWallsCollectionEnvelope,
+  parseInternalWallsWallTypes,
+} from "@/lib/estimate/internal-walls-wall-types";
+import type { EstimateFact } from "@/lib/estimate/types";
 import { preparePreliminariesForEstimate } from "@/lib/estimate/preliminaries-store";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
@@ -77,6 +84,7 @@ import { isInternalProjectNote } from "@/lib/project-notes/types";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
@@ -1797,6 +1805,53 @@ export async function saveConstraints(
   return { success: true };
 }
 
+async function storeStatedDoorOpeningFact(params: {
+  supabase: SupabaseClient;
+  orgId: string;
+  projectId: string;
+  workAreaId: string;
+  facts: readonly EstimateFact[];
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const next = params.facts.find(
+    (fact) =>
+      fact.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
+      fact.work_area_id === params.workAreaId
+  );
+  if (!next) return { ok: false, error: "The stated opening could not be stored." };
+  const { data: row, error: readError } = await params.supabase
+    .from("project_facts")
+    .select("id, value, source")
+    .eq("project_id", params.projectId)
+    .eq("work_area_id", params.workAreaId)
+    .eq("key", INTERNAL_WALLS_WALL_TYPES_FACT_KEY)
+    .maybeSingle();
+  if (readError) return { ok: false, error: readError.message };
+  const envelope = parseInternalWallsCollectionEnvelope(row?.value);
+  const value = {
+    v: envelope.v + 1,
+    types: parseInternalWallsWallTypes(next.value),
+  };
+  if (row) {
+    const { error } = await params.supabase
+      .from("project_facts")
+      .update({ label: "Wall types", value })
+      .eq("id", row.id)
+      .eq("project_id", params.projectId);
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }
+  const { error } = await params.supabase.from("project_facts").insert({
+    org_id: params.orgId,
+    project_id: params.projectId,
+    work_area_id: params.workAreaId,
+    key: INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+    label: "Wall types",
+    value,
+    source: "ai_extracted",
+    confidence: 1,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 async function runEstimateGeneration(
   projectId: string,
   options: { allowRegenerate: boolean }
@@ -1924,11 +1979,22 @@ async function runEstimateGeneration(
   const briefText =
     contextResult.briefText ??
     (typeof projectRow?.brief_text === "string" ? projectRow.brief_text : null);
+  const internalWallIds = contextResult.confirmedWorkAreas
+    .filter((area) => area.type === "internal_walls")
+    .map((area) => area.id);
+  const statedOpening = factsWithPersistedStatedDoorOpening({
+    facts: contextResult.facts,
+    internalWallWorkAreaIds: internalWallIds,
+    briefText,
+  });
+  const estimateContext = statedOpening.changed
+    ? { ...contextResult, facts: statedOpening.facts, briefText }
+    : { ...contextResult, briefText };
   const prepared = await preparePreliminariesForEstimate({
     supabase,
     orgId,
     projectId,
-    context: { ...contextResult, briefText },
+    context: estimateContext,
   });
   if ("error" in prepared) {
     return { error: prepared.error };
@@ -2014,6 +2080,22 @@ async function runEstimateGeneration(
 
   if ("error" in persistResult) {
     return { error: persistResult.error };
+  }
+
+  if (statedOpening.changed) {
+    const workAreaId = internalWallIds[0];
+    if (workAreaId) {
+      const storedOpening = await storeStatedDoorOpeningFact({
+        supabase,
+        orgId,
+        projectId,
+        workAreaId,
+        facts: statedOpening.facts,
+      });
+      if (!storedOpening.ok) {
+        return { error: storedOpening.error };
+      }
+    }
   }
 
   if (stage !== "estimate_ready") {

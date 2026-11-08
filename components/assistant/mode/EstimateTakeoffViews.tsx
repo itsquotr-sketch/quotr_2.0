@@ -653,6 +653,7 @@ export function TakeoffDecisionNotice({
     prompt: string;
     detail?: string | null;
     kind?: "kitchen" | "lining" | "other";
+    actionLabel?: string;
   }[];
   onOpen: (id: string) => void;
   "data-kitchen-package-choice"?: string;
@@ -693,7 +694,7 @@ export function TakeoffDecisionNotice({
             data-takeoff-decision-open={item.id}
             onClick={() => onOpen(item.id)}
           >
-            Answer in Details
+            {item.actionLabel ?? "Answer in Details"}
           </button>
         </div>
       ))}

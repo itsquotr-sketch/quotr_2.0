@@ -112,7 +112,10 @@ export function RefineEstimatePanel({
 
   const isEditing = (row: RefineCandidate) => {
     if (editingId === undefined) {
-      return Boolean(focusKey && candidateMatchesFocus(row, focusKey));
+      return Boolean(
+        focusKey &&
+          (candidateMatchesFocus(row, focusKey) || row.factKey === focusKey)
+      );
     }
     if (typeof editingId === "string" && !candidateIds.has(editingId)) {
       return false;

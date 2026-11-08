@@ -23,7 +23,10 @@ import {
   isExternalStairsFactKey,
   shouldSuggestExternalStairs,
 } from "@/lib/scopes/deck-stairs-boundary";
-import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  applyInternalWallsFactWrite,
+  factsWithPersistedStatedDoorOpening,
+} from "@/lib/estimate/internal-walls-wall-types";
 import {
   applyExtractedInternalWallsToFacts,
   classifyInternalWallsJobScopeFromBrief,
@@ -2529,6 +2532,45 @@ function recordRequestedCoverageGaps(
   });
 }
 
+function storeStatedDoorOpeningOnExtraction(
+  extraction: AIExtractionOutput,
+  briefText: string
+): void {
+  const wallAreas = extraction.workAreas.filter((row) => row.type === "internal_walls");
+  if (wallAreas.length !== 1) return;
+  const workAreaId = "extract";
+  const stored = factsWithPersistedStatedDoorOpening({
+    facts: extraction.facts
+      .filter((fact) => fact.key.startsWith("internal_walls."))
+      .map((fact) => ({
+        key: fact.key,
+        work_area_id: workAreaId,
+        value: fact.value,
+        source: "ai_extracted",
+      })),
+    internalWallWorkAreaIds: [workAreaId],
+    briefText,
+  });
+  if (!stored.changed) return;
+  const wallTypes = stored.facts.find((fact) => fact.key === "internal_walls.wall_types");
+  if (!wallTypes || !Array.isArray(wallTypes.value)) return;
+  const existing = extraction.facts.find(
+    (fact) =>
+      fact.key === "internal_walls.wall_types" &&
+      fact.work_area_type === "internal_walls"
+  );
+  if (existing) {
+    existing.value = wallTypes.value as typeof existing.value;
+    return;
+  }
+  addFact(extraction, {
+    workAreaType: "internal_walls",
+    key: "internal_walls.wall_types",
+    label: "Wall types",
+    value: wallTypes.value as Record<string, unknown>[],
+  });
+}
+
 export function enrichExtractionFromBrief(params: {
   briefText: string;
   extraction: AIExtractionOutput;
@@ -2565,6 +2607,7 @@ export function enrichExtractionFromBrief(params: {
   applyDiscoveredWorkAreaInstances(params.briefText, extraction, params.allowedTypes);
   applyConstraintFactsToWorkAreas(brief, extraction);
   stripInventedInternalWallsFacts(extraction, params.briefText);
+  storeStatedDoorOpeningOnExtraction(extraction, params.briefText);
   const deckIntent = /\bdeck(?:ing)?\b/i.test(params.briefText)
     ? deckScopeIntent(params.briefText, explicitDeckPostCount(params.briefText))
     : null;

@@ -5,6 +5,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { enrichExtractionFromBrief } from "@/lib/ai/enrich-extraction";
 import {
   applyExtractedInternalWallsToFacts,
   explicitInternalWallsOpenings,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/estimate/internal-walls-openings";
 import {
   createEmptyWallType,
+  factsWithPersistedStatedDoorOpening,
   resolveInternalWallsWallTypes,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
@@ -289,9 +291,168 @@ check(
     extractedBrief[0]?.doorOpeningHeightM === 1.98
 );
 
+const enriched = enrichExtractionFromBrief({
+  briefText: QT009_BRIEF,
+  allowedTypes: ["internal_walls", "doors"],
+  extraction: {
+    workAreas: [{ type: "internal_walls", confidence: 0.9, rationale: "model" }],
+    facts: [
+      {
+        work_area_type: "internal_walls",
+        work_area_name: "Wall",
+        key: "internal_walls.length_lm",
+        label: "Length",
+        value: 6,
+        confidence: 0.9,
+      },
+      {
+        work_area_type: "internal_walls",
+        work_area_name: "Wall",
+        key: "internal_walls.height_m",
+        label: "Height",
+        value: 2.4,
+        confidence: 0.9,
+      },
+      {
+        work_area_type: "internal_walls",
+        work_area_name: "Wall",
+        key: "internal_walls.wall_types",
+        label: "Wall types",
+        value: [{ wall_type_id: "wt-model", length_lm: 6, height_m: 2.4 }],
+        confidence: 0.4,
+      },
+      {
+        work_area_type: "doors",
+        work_area_name: "Door",
+        key: "doors.portions",
+        label: "Door sets",
+        value: [{ id: "portion-1", width_mm: 810, height_mm: 1980, quantity: 1 }],
+        confidence: 0.9,
+      },
+    ],
+    assumptions: [],
+    possibleConstraints: [],
+    confidence: 0.5,
+    warnings: [],
+  },
+});
+const enrichedWall = enriched.extraction.facts.find(
+  (fact) => fact.key === "internal_walls.wall_types"
+);
+const enrichedResolved = resolveInternalWallsWallTypes({
+  facts: enriched.extraction.facts
+    .filter((fact) => fact.key.startsWith("internal_walls."))
+    .map((fact) => ({
+      key: fact.key,
+      work_area_id: WALL_ID,
+      value: fact.value,
+    })),
+  workAreaId: WALL_ID,
+});
+const enrichedOpening = enrichedResolved.types[0]?.openings[0];
+const enrichedDoor = enriched.extraction.facts.find((fact) => fact.key === "doors.portions");
+check(
+  "analysis stores one stable opening without rereading at calculation time",
+  enrichedWall != null &&
+    enrichedResolved.types.length === 1 &&
+    enrichedResolved.types[0]?.openings.length === 1 &&
+    Boolean(enrichedOpening?.id) &&
+    enrichedOpening?.width_m === 0.81 &&
+    enrichedOpening?.height_m === 1.98
+);
+check(
+  "the door set stays a separate identity",
+  Array.isArray(enrichedDoor?.value) &&
+    enrichedDoor.value.length === 1 &&
+    enrichedDoor.value[0]?.quantity === 1
+);
+const persisted = factsWithPersistedStatedDoorOpening({
+  facts: omittedOpeningFacts,
+  internalWallWorkAreaIds: [WALL_ID],
+  briefText: QT009_BRIEF,
+});
+const persistedAgain = factsWithPersistedStatedDoorOpening({
+  facts: persisted.facts,
+  internalWallWorkAreaIds: [WALL_ID],
+  briefText: QT009_BRIEF,
+});
+const storedOnly = resolveInternalWallsWallTypes({
+  facts: persisted.facts,
+  workAreaId: WALL_ID,
+});
+check("an explicit refresh stores the opening", persisted.changed);
+check("storing the opening does not duplicate it", persistedAgain.changed === false);
+check(
+  "generation can deduct from the stored opening alone",
+  storedOnly.types[0]?.openings.length === 1 &&
+    storedOnly.types[0]?.openings[0]?.width_m === 0.81 &&
+    storedOnly.types[0]?.openings[0]?.height_m === 1.98
+);
+const refused = factsWithPersistedStatedDoorOpening({
+  facts: reproductionFacts.map((row) =>
+    row.key === "internal_walls.wall_types"
+      ? { ...row, value: [{ ...(Array.isArray(row.value) ? row.value[0] : {}), has_openings: false, openings: [] }] }
+      : row
+  ),
+  internalWallWorkAreaIds: [WALL_ID],
+  briefText: QT009_BRIEF,
+});
+check("a refused opening stays unresolved", refused.changed === false);
+const ambiguousWalls = factsWithPersistedStatedDoorOpening({
+  facts: omittedOpeningFacts,
+  internalWallWorkAreaIds: [WALL_ID, OTHER_WALL_ID],
+  briefText: QT009_BRIEF,
+});
+check("two walls do not receive the single opening", ambiguousWalls.changed === false);
+const confirmed = factsWithPersistedStatedDoorOpening({
+  facts: reproductionFacts,
+  internalWallWorkAreaIds: [WALL_ID],
+  briefText: QT009_BRIEF,
+});
+check("a stored opening is kept", confirmed.changed === false);
+const noStopping = wall
+  ? stoppingTakeoff({
+      type: { ...wall, stopping_side_a: "none", stopping_side_b: "none" },
+      jobScope: "new_partition",
+    })
+  : undefined;
+check("No suppresses stopping lines", noStopping == null);
+const customStopping = wall
+  ? stoppingTakeoff({
+      type: { ...wall, stopping_side_a: "custom", stopping_side_b: "none" },
+      jobScope: "new_partition",
+    })
+  : null;
+check(
+  "Custom stays one unresolved face at the net area",
+  customStopping?.sideA?.level === "custom" &&
+    customStopping.sideA.areaM2 === expectedNet &&
+    customStopping.sideB == null
+);
+
 const shell = readFileSync("components/assistant/AssistantShell.tsx", "utf8");
 const takeoff = readFileSync("components/assistant/mode/EstimateTakeoffViews.tsx", "utf8");
 const details = readFileSync("components/assistant/clarify/ClarifyPanel.tsx", "utf8");
+const compose = readFileSync("lib/assistant/clarify/compose.ts", "utf8");
+const generation = readFileSync("lib/assistant/actions.ts", "utf8");
+const wallTypes = readFileSync("lib/estimate/internal-walls-wall-types.ts", "utf8");
+check(
+  "Details offers the stopping levels once stopping is requested",
+  compose.includes("[...INTERNAL_WALLS_STOPPING_OPTIONS]") &&
+    compose.includes("What stopping level is required on both faces?")
+);
+check(
+  "a shared lining copies the stopping level to the other face",
+  wallTypes.includes("type.same_lining_both_sides === true") &&
+    wallTypes.includes("type.stopping_side_b = type.stopping_side_a")
+);
+check(
+  "opening recovery is explicit and viewing does not store it",
+  shell.includes("stated-opening-quantity") &&
+    shell.includes("Update estimate") &&
+    !shell.includes("storeStatedDoorOpeningFact") &&
+    generation.includes("storeStatedDoorOpeningFact")
+);
 check("the takeoff no longer mounts the answer control", !shell.includes("ClarifyAnswerControl"));
 const labourTakeoff = takeoff.slice(takeoff.indexOf("export function LabourTakeoff"));
 check(

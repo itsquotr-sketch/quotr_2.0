@@ -137,6 +137,7 @@ import {
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_OPTIONS,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   corniceProductOptionsForType,
@@ -1640,6 +1641,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_A_KEY);
           }
           if (
+            type.same_lining_both_sides !== true &&
             faceEligibleForStopping(type.side_b) &&
             type.stopping_side_b == null &&
             !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_B_KEY)
@@ -1678,9 +1680,14 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             questionKey: field,
             label: `${displayName} · ${safeFactPresentationLabel(field)}`,
             question: stoppingRequested
-              ? requestedStoppingLevelQuestion(
-                  field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
-                )
+              ? `${
+                  type?.same_lining_both_sides === true &&
+                  field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+                    ? "What stopping level is required on both faces?"
+                    : requestedStoppingLevelQuestion(
+                        field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
+                      )
+                } Custom stays unresolved until a rate is set.`
               : internalWallsUnresolvedCopy(
                   displayName,
                   field,
@@ -1696,8 +1703,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
                     : "ASK_NOW",
             inputType: clarifyInputTypeFromTemplate(template),
             unit: template?.unit,
-            options:
-              field === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
+            options: stoppingField
+              ? [...INTERNAL_WALLS_STOPPING_OPTIONS]
+              : field === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
                 ? internalWallsPaintingOptions(type)
                 : field === INTERNAL_WALLS_CORNICE_PRODUCT_KEY && type
                   ? corniceProductOptionsForType(type.cornice_type) ??
