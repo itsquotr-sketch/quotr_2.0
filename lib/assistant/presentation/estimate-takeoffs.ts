@@ -31,6 +31,17 @@ import {
 export const TAKEOFF_PRICING_EXPLANATION =
   "This price is completed in Pricing.";
 
+function openingFormationReviewNote(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  if (
+    notes.includes("Opening formation is not priced") ||
+    notes.includes("carpenter hourly cost is missing")
+  ) {
+    return notes;
+  }
+  return null;
+}
+
 type PlacedLine = {
   readonly line: BuilderReviewPricedLine;
   readonly group: BuilderReviewLineGroup | null;
@@ -285,7 +296,9 @@ function spoilTakeoffCopy(line: BuilderReviewPricedLine): {
 function presentRow(placed: PlacedLine): TakeoffRow {
   const { line, group } = placed;
   const required = pricingRequired(line, group);
-  const reviewNote = scopeReviewDisplay(line.sourceLine.notes);
+  const reviewNote =
+    scopeReviewDisplay(line.sourceLine.notes) ??
+    openingFormationReviewNote(line.sourceLine.notes);
   const held = Boolean(parseScopeReview(line.sourceLine.notes));
   const cost = group?.costHidden || held ? null : knownAmount(line, required);
   const hours =

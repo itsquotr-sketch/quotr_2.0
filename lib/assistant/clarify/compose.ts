@@ -1649,6 +1649,19 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_B_KEY);
           }
         }
+        const formationOpening =
+          type?.openings.find((row) => row.id === type.active_opening_id) ??
+          type?.openings[0] ??
+          null;
+        if (
+          formationOpening &&
+          formationOpening.width_m != null &&
+          formationOpening.height_m != null &&
+          !(formationOpening.formation_hours != null && formationOpening.formation_hours > 0) &&
+          !fields.includes("internal_walls.opening.formation_hours")
+        ) {
+          fields.push("internal_walls.opening.formation_hours");
+        }
         for (const field of fields) {
           const template = getQuestionTemplateByKey(field);
           const displayName = type
@@ -1663,6 +1676,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           const stoppingInclusionUnanswered = stoppingField && !stoppingRequested;
           const openingsUnanswered =
             field === "internal_walls.wall_type.has_openings";
+          const formationHours =
+            field === "internal_walls.opening.formation_hours";
           out.push({
             id: internalWallsClarifyId(
               "fact",
@@ -1679,7 +1694,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             constraintKey: null,
             questionKey: field,
             label: `${displayName} · ${safeFactPresentationLabel(field)}`,
-            question: stoppingRequested
+            question: formationHours
+              ? `${displayName}: How many hours to form this opening? Leave this blank when you have no hours. Wall framing and the door set stay separate.`
+              : stoppingRequested
               ? `${
                   type?.same_lining_both_sides === true &&
                   field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
@@ -1694,15 +1711,18 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
                   safeFactQuestion(field, template?.questionText)
                 ),
             askClass:
-              stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
+              stoppingRequested ||
+              stoppingInclusionUnanswered ||
+              openingsUnanswered ||
+              formationHours
                 ? "ASSUME_IF_SKIPPED"
                 : field === "internal_walls.wall_type.height_m"
                   ? "ASSUME_IF_SKIPPED"
                   : isOptionalInternalWallsClarifyKey(field)
                     ? "REFINEMENT"
                     : "ASK_NOW",
-            inputType: clarifyInputTypeFromTemplate(template),
-            unit: template?.unit,
+            inputType: formationHours ? "number" : clarifyInputTypeFromTemplate(template),
+            unit: formationHours ? "hrs" : template?.unit,
             options: stoppingField
               ? [...INTERNAL_WALLS_STOPPING_OPTIONS]
               : field === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
@@ -1719,6 +1739,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               !stoppingRequested &&
               !stoppingInclusionUnanswered &&
               !openingsUnanswered &&
+              !formationHours &&
               (field === "internal_walls.wall_type.height_m" ||
                 isOptionalInternalWallsClarifyKey(field)),
             rankScore: (CHECK_SCORES[field] ?? 70) - index,
