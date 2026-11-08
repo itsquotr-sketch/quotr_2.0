@@ -533,12 +533,15 @@ function buildWorkAreaFacts(params: {
       label: "Stopping level — Side B",
       value: sideB ?? "Not set",
       rawValue: sideB,
+      unit: undefined,
       sourceLabel: "brief",
       sourcePriority: 3,
+      readOnly: false,
       derivedNote:
         stoppingType.stopping_side_b === "custom"
           ? "Custom stopping is unresolved until a rate is set."
           : undefined,
+      conflictWarning: undefined,
       inputType: "select",
       options: [...INTERNAL_WALLS_STOPPING_OPTIONS],
     });
