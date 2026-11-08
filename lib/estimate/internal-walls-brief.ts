@@ -65,6 +65,9 @@ export type ExtractedInternalWallsType = {
   hasOpenings: boolean | null;
   /** Explicit door-opening count. Null when the brief did not count them. */
   doorOpeningCount: number | null;
+  /** Size stated in the same sentence as the single door opening. */
+  doorOpeningWidthM?: number | null;
+  doorOpeningHeightM?: number | null;
   insulationIncluded: boolean | null;
   insulationType: "acoustic" | "thermal" | "fire_acoustic" | "other" | null;
   skirting: InternalWallsSideSelection | null;
@@ -222,6 +225,25 @@ const OPENING_COUNT_WORDS: Record<string, number> = {
   five: 5,
   six: 6,
 };
+
+function sameSentenceDoorOpeningSizeM(
+  text: string
+): { widthM: number; heightM: number } | null {
+  const sentences = text.split(/[.!?;]/);
+  const found: { widthM: number; heightM: number }[] = [];
+  for (const sentence of sentences) {
+    if (!/\bdoor\s+openings?\b/i.test(sentence)) continue;
+    const pairs = [
+      ...sentence.matchAll(/(\d{3,4})\s*[x×]\s*(\d{3,4})\s*mm/gi),
+    ];
+    if (pairs.length !== 1) continue;
+    found.push({
+      widthM: Number(pairs[0]?.[1]) / 1000,
+      heightM: Number(pairs[0]?.[2]) / 1000,
+    });
+  }
+  return found.length === 1 ? (found[0] ?? null) : null;
+}
 
 function openingCountToken(token: string): number | null {
   const word = OPENING_COUNT_WORDS[token];
@@ -446,6 +468,8 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
   const heightM = parseHeightM(text);
   if (!timber && !lining.sideA.product && lengthLm == null) return null;
   const openings = explicitInternalWallsOpenings(text);
+  const statedSize =
+    openings.doorOpeningCount === 1 ? sameSentenceDoorOpeningSizeM(text) : null;
   return {
     wallCount: parseWallCount(text, fallbackCount),
     lengthLm,
@@ -455,6 +479,8 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
     sameLiningBothSides: lining.sameBoth,
     hasOpenings: openings.hasOpenings,
     doorOpeningCount: openings.doorOpeningCount,
+    doorOpeningWidthM: statedSize?.widthM ?? null,
+    doorOpeningHeightM: statedSize?.heightM ?? null,
     insulationIncluded: null,
     insulationType: null,
     skirting: null,
@@ -699,6 +725,7 @@ export function internalWallsScopeText(briefText: string): string {
       "140×45",
       "both sides",
       "no openings",
+      "door opening",
     ]);
   });
   return relevant.length > 0 ? relevant.join(" ") : briefText;
@@ -1094,7 +1121,14 @@ export function applyExtractedInternalWallsToFacts(params: {
       existingType?.openings.filter((row) => row.type === "door" || row.type == null)
         .length ?? 0;
     // A stated count is one row per opening. One saved door opening is left
-    // as the user stored it. Dimensions are not invented.
+    // as the user stored it. A door set alone does not create a row. A size
+    // in the same sentence as the single door opening is that opening's size.
+    const statedSize =
+      statedDoorOpenings === 1 &&
+      spec.doorOpeningWidthM != null &&
+      spec.doorOpeningHeightM != null
+        ? { widthM: spec.doorOpeningWidthM, heightM: spec.doorOpeningHeightM }
+        : null;
     if (statedDoorOpenings > 0 && savedDoorOpenings === 0) {
       for (let index = 0; index < statedDoorOpenings; index += 1) {
         const openingId = createOpeningId();
@@ -1114,6 +1148,24 @@ export function applyExtractedInternalWallsToFacts(params: {
           key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}type`,
           value: "Door opening",
         });
+        if (statedSize) {
+          facts = applyInternalWallsFactWrite({
+            facts,
+            workAreaId: params.workAreaId,
+            wallTypeId,
+            openingId,
+            key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}width_m`,
+            value: statedSize.widthM,
+          });
+          facts = applyInternalWallsFactWrite({
+            facts,
+            workAreaId: params.workAreaId,
+            wallTypeId,
+            openingId,
+            key: `${INTERNAL_WALLS_OPENING_FIELD_PREFIX}height_m`,
+            value: statedSize.heightM,
+          });
+        }
       }
     }
     if (spec.insulationIncluded === true && existingType?.insulation_included == null) {

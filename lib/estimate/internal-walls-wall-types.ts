@@ -37,6 +37,7 @@ import {
   isInternalWallsOpeningWriteKey,
   openingTypeDisplay,
   parseInternalWallsOpeningType,
+  openingsFromStoredWallTypeBlob,
   parseInternalWallsOpenings,
   resolveActiveOpeningId,
   summariseOpeningsLine,
@@ -1463,6 +1464,31 @@ export function resolveInternalWallsActiveWallTypeId(
   return types[0]?.id ?? null;
 }
 
+function attachStoredOpenings(
+  type: InternalWallsWallType,
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): InternalWallsWallType {
+  if (type.has_openings === false || type.openings.length > 0) return type;
+  const raw = getFact(
+    facts as EstimateFact[],
+    workAreaId,
+    INTERNAL_WALLS_WALL_TYPES_FACT_KEY
+  )?.value;
+  const openings = openingsFromStoredWallTypeBlob({
+    raw,
+    lengthLm: type.length_lm,
+    heightM: type.height_m,
+  });
+  if (openings.length === 0) return type;
+  return {
+    ...type,
+    has_openings: true,
+    active_opening_id: openings[0]?.id ?? null,
+    openings,
+  };
+}
+
 export function resolveInternalWallsWallTypes(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -1488,10 +1514,11 @@ export function resolveInternalWallsWallTypes(params: {
   }
   const legacy = legacyWallTypeFromFlatFacts(params);
   if (legacy) {
+    const withOpenings = attachStoredOpenings(legacy, params.facts, params.workAreaId);
     return {
-      types: [legacy],
+      types: [withOpenings],
       source: "legacy_dual_read",
-      activeId: legacy.id,
+      activeId: withOpenings.id,
     };
   }
   return { types: [], source: "canonical", activeId: null };

@@ -528,6 +528,7 @@ function TakeoffBoard({
   kind,
   actions,
   leadingNote = null,
+  trailingNote = null,
 }: {
   title: string;
   marker: "materials" | "labour";
@@ -542,6 +543,7 @@ function TakeoffBoard({
   kind: "materials" | "labour";
   actions: TakeoffActions;
   leadingNote?: ReactNode;
+  trailingNote?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [workArea, setWorkArea] = useState("all");
@@ -634,14 +636,76 @@ function TakeoffBoard({
           </p>
         </div>
       )}
+      {trailingNote}
     </div>
+  );
+}
+
+export function TakeoffDecisionNotice({
+  items,
+  onOpen,
+  "data-kitchen-package-choice": kitchenChoice,
+  "data-kitchen-scope-gap": kitchenGap,
+  "data-lining-clarification": liningClarification,
+}: {
+  items: readonly {
+    id: string;
+    prompt: string;
+    detail?: string | null;
+    kind?: "kitchen" | "lining" | "other";
+  }[];
+  onOpen: (id: string) => void;
+  "data-kitchen-package-choice"?: string;
+  "data-kitchen-scope-gap"?: string;
+  "data-lining-clarification"?: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      className="space-y-2"
+      data-takeoff-decision-notice
+      {...(kitchenChoice ? { "data-kitchen-package-choice": kitchenChoice } : {})}
+      {...(liningClarification ? { "data-lining-clarification": liningClarification } : {})}
+    >
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          data-takeoff-decision={item.id}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-snug">{item.prompt}</p>
+            {item.detail ? (
+              <p
+                className="mt-1 text-sm text-foreground/75"
+                data-takeoff-decision-detail={item.id}
+                {...(item.kind === "kitchen" && kitchenGap
+                  ? { "data-kitchen-scope-gap": kitchenGap }
+                  : {})}
+              >
+                {item.detail}
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="h-11 min-h-11 shrink-0 rounded-md border border-border px-3 text-sm font-medium"
+            data-takeoff-decision-open={item.id}
+            onClick={() => onOpen(item.id)}
+          >
+            Answer in Details
+          </button>
+        </div>
+      ))}
+    </section>
   );
 }
 
 export function MaterialsTakeoff({
   view,
+  decisionNotice = null,
   ...actions
-}: TakeoffActions & { view: BuilderReviewView }) {
+}: TakeoffActions & { view: BuilderReviewView; decisionNotice?: ReactNode }) {
   const model = projectMaterialsTakeoff(view);
   return (
     <TakeoffBoard
@@ -661,6 +725,7 @@ export function MaterialsTakeoff({
       groups={model.groups}
       emptyMessage="No material lines in this estimate."
       actions={actions}
+      trailingNote={decisionNotice}
     />
   );
 }
@@ -668,8 +733,13 @@ export function MaterialsTakeoff({
 export function LabourTakeoff({
   view,
   decisions = null,
+  decisionNotice = null,
   ...actions
-}: TakeoffActions & { view: BuilderReviewView; decisions?: ReactNode }) {
+}: TakeoffActions & {
+  view: BuilderReviewView;
+  decisions?: ReactNode;
+  decisionNotice?: ReactNode;
+}) {
   const model = projectLabourTakeoff(view);
   const facts: { label: string; value: string }[] = [];
   if (model.knownHours) facts.push({ label: model.knownHoursLabel, value: model.knownHours });
@@ -691,6 +761,7 @@ export function LabourTakeoff({
       emptyMessage="No labour lines in this estimate."
       actions={actions}
       leadingNote={decisions}
+      trailingNote={decisionNotice}
     />
     </div>
   );
@@ -730,8 +801,13 @@ function ReviewList({
 export function AssumptionsChecks({
   view,
   decisions = null,
+  decisionNotice = null,
   ...actions
-}: TakeoffActions & { view: BuilderReviewView; decisions?: ReactNode }) {
+}: TakeoffActions & {
+  view: BuilderReviewView;
+  decisions?: ReactNode;
+  decisionNotice?: ReactNode;
+}) {
   const model = projectAssumptionsReview(view);
   return (
     <div className="min-w-0 space-y-4 overflow-x-hidden" data-estimate-takeoff="checks">
@@ -782,6 +858,7 @@ export function AssumptionsChecks({
           ))}
         </div>
       )}
+      {decisionNotice}
     </div>
   );
 }

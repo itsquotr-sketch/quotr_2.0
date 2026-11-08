@@ -42,6 +42,7 @@ import {
   AssumptionsChecks,
   LabourTakeoff,
   MaterialsTakeoff,
+  TakeoffDecisionNotice,
 } from "@/components/assistant/mode/EstimateTakeoffViews";
 import { ConditionBasisSummary } from "@/components/assistant/mode/ConditionDecisions";
 import {
@@ -83,7 +84,6 @@ import type {
 } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
-import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { QuotrLoader } from "@/components/brand/QuotrLoader";
@@ -3001,6 +3001,25 @@ export function AssistantShell({
       ),
     [clarifyView.candidates]
   );
+  const takeoffDecisionItems = useMemo(
+    () =>
+      [...kitchenPackageChoices, ...liningProductClarifications].map((candidate) => ({
+        id: candidate.id,
+        prompt: candidate.question,
+        kind: candidate.factKey === KITCHEN_RENOVATION_FACT_KEY
+          ? ("kitchen" as const)
+          : ("lining" as const),
+        detail:
+          candidate.factKey?.endsWith("has_openings")
+            ? "Lining currently uses gross area."
+            : candidate.factKey === KITCHEN_RENOVATION_FACT_KEY &&
+                estimate?.missingInfo.includes("Kitchen scope not confirmed")
+              ? "Kitchen scope not confirmed"
+              : null,
+        focusKey: candidate.factKey ?? candidate.id,
+      })),
+    [estimate?.missingInfo, kitchenPackageChoices, liningProductClarifications]
+  );
 
   const deckDetailGaps = useMemo(
     () =>
@@ -3700,6 +3719,18 @@ export function AssistantShell({
       }}
     />
   );
+  const takeoffDecisionNotice = (
+    <TakeoffDecisionNotice
+      items={takeoffDecisionItems}
+      data-kitchen-package-choice="true"
+      data-kitchen-scope-gap="true"
+      data-lining-clarification="true"
+      onOpen={(id) => {
+        const item = takeoffDecisionItems.find((row) => row.id === id);
+        openRefineAfterEstimate(item?.focusKey ?? id);
+      }}
+    />
+  );
 
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
@@ -3996,57 +4027,6 @@ export function AssistantShell({
                 />
               ) : (
                 <div data-estimate-view={estimateView} data-estimate-content-gap="12-16" className={cn("min-w-0 space-y-4 overflow-x-hidden", estimateView === "overview" && "max-md:has-[[data-estimate-overview-docked]]:pb-16")}>
-                  {kitchenPackageChoices.length > 0 ? (
-                    <section
-                      className="rounded-xl border border-border/60 bg-card px-4 py-4"
-                      data-kitchen-package-choice
-                    >
-                      {kitchenPackageChoices.map((candidate) => (
-                        <div
-                          key={candidate.id}
-                          className="space-y-2"
-                          data-clarify-fact-key={candidate.factKey ?? undefined}
-                        >
-                          <p className="text-sm font-medium leading-snug">{candidate.question}</p>
-                          {estimate?.missingInfo.includes("Kitchen scope not confirmed") ? (
-                            <p className="text-sm text-foreground/80" data-kitchen-scope-gap>
-                              Kitchen scope not confirmed
-                            </p>
-                          ) : null}
-                          <ClarifyAnswerControl
-                            candidate={candidate}
-                            value={candidate.currentValue}
-                            pending={pendingReadinessWrites > 0 || updatingEstimate}
-                            disabled={pendingReadinessWrites > 0 || updatingEstimate}
-                            onAnswerValue={handleClarifyValue}
-                          />
-                        </div>
-                      ))}
-                    </section>
-                  ) : null}
-                  {liningProductClarifications.length > 0 ? (
-                    <section
-                      className="rounded-xl border border-border/60 bg-card px-4 py-4 max-md:pb-28"
-                      data-lining-clarification
-                    >
-                      {liningProductClarifications.map((candidate) => (
-                        <div
-                          key={candidate.id}
-                          className="space-y-2"
-                          data-clarify-fact-key={candidate.factKey ?? undefined}
-                        >
-                          <p className="text-sm font-medium leading-snug">{candidate.question}</p>
-                          <ClarifyAnswerControl
-                            candidate={candidate}
-                            value={candidate.currentValue}
-                            pending={pendingReadinessWrites > 0 || updatingEstimate}
-                            disabled={pendingReadinessWrites > 0 || updatingEstimate}
-                            onAnswerValue={handleClarifyValue}
-                          />
-                        </div>
-                      ))}
-                    </section>
-                  ) : null}
                   {productivityProgress && estimateView !== "overview" ? (
                     <p
                       className="text-sm font-medium text-foreground"
@@ -4130,6 +4110,7 @@ export function AssistantShell({
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
+                      decisionNotice={takeoffDecisionNotice}
                     />
                   ) : estimateView === "labour" && builderReviewView ? (
                     <LabourTakeoff
@@ -4144,6 +4125,7 @@ export function AssistantShell({
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
+                      decisionNotice={takeoffDecisionNotice}
                     />
                   ) : estimateView === "checks" && builderReviewView ? (
                     <AssumptionsChecks
@@ -4157,6 +4139,7 @@ export function AssistantShell({
                       onRegenerate={estimateRegenerate}
                       regenerateLabel={estimateRegenerateLabel}
                       pricing={estimatePricing}
+                      decisionNotice={takeoffDecisionNotice}
                     />
                   ) : (
                 <>

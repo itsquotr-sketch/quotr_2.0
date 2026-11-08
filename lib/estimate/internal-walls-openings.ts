@@ -170,6 +170,18 @@ export function openingTypeDisplay(
   return null;
 }
 
+function metresFromStoredDimension(
+  row: Record<string, unknown>,
+  metreKey: string,
+  millimetreKey: string
+): number | null {
+  const metres = parsePositiveNumber(row[metreKey]);
+  if (metres != null) return metres;
+  const millimetres = parsePositiveNumber(row[millimetreKey]);
+  if (millimetres == null) return null;
+  return millimetres / 1000;
+}
+
 export function parseInternalWallsOpening(
   value: unknown
 ): InternalWallsOpening | null {
@@ -179,14 +191,99 @@ export function parseInternalWallsOpening(
   if (!id) return null;
   return {
     id,
-    type: parseInternalWallsOpeningType(row.type),
-    width_m: parsePositiveNumber(row.width_m),
-    height_m: parsePositiveNumber(row.height_m),
+    type: parseInternalWallsOpeningType(row.type ?? row.opening_type),
+    width_m: metresFromStoredDimension(row, "width_m", "width_mm"),
+    height_m: metresFromStoredDimension(row, "height_m", "height_mm"),
     label:
       typeof row.label === "string" && row.label.trim()
         ? row.label.trim()
         : null,
   };
+}
+
+function isOpeningRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Stored analysis rows may use width_mm / height_mm and opening_type, and may
+ * omit the canonical opening id. A door set is never read here.
+ * Returns no openings when more than one stored wall could own them.
+ */
+export function openingsFromStoredWallTypeBlob(params: {
+  raw: unknown;
+  lengthLm: number | null;
+  heightM: number | null;
+}): InternalWallsOpening[] {
+  if (!Array.isArray(params.raw)) return [];
+  const walls = params.raw.filter(isOpeningRecord);
+  const withOpenings = walls.filter(
+    (wall) => Array.isArray(wall.openings) && wall.openings.length > 0
+  );
+  const matched = withOpenings.filter((wall) =>
+    storedWallMatchesHost(wall, params.lengthLm, params.heightM)
+  );
+  const chosen =
+    matched.length === 1
+      ? matched[0]
+      : withOpenings.length === 1 && walls.length === 1
+        ? withOpenings[0]
+        : null;
+  if (!chosen || !Array.isArray(chosen.openings)) return [];
+  return parseStoredOpenings(chosen.openings);
+}
+
+function storedWallMatchesHost(
+  wall: Record<string, unknown>,
+  lengthLm: number | null,
+  heightM: number | null
+): boolean {
+  const length = parsePositiveNumber(wall.length_lm);
+  const height = parsePositiveNumber(wall.height_m);
+  if (lengthLm == null || length == null) return false;
+  if (Math.abs(length - lengthLm) > 0.01) return false;
+  if (heightM != null && height != null && Math.abs(height - heightM) > 0.01) {
+    return false;
+  }
+  return true;
+}
+
+function storedOpeningsFromRow(item: unknown, index: number): InternalWallsOpening[] {
+  if (!isOpeningRecord(item)) return [];
+  const width = metresFromStoredDimension(item, "width_m", "width_mm");
+  const height = metresFromStoredDimension(item, "height_m", "height_mm");
+  if (width == null || height == null) return [];
+  const quantityRaw = parsePositiveNumber(item.quantity);
+  const quantity =
+    quantityRaw != null && Number.isInteger(quantityRaw)
+      ? Math.min(quantityRaw, 12)
+      : 1;
+  const type = parseInternalWallsOpeningType(item.type ?? item.opening_type);
+  const label =
+    typeof item.label === "string" && item.label.trim() ? item.label.trim() : null;
+  const explicitId =
+    typeof item.id === "string" && item.id.trim() ? item.id.trim() : null;
+  const openings: InternalWallsOpening[] = [];
+  for (let copy = 0; copy < quantity; copy += 1) {
+    const id =
+      explicitId && quantity === 1
+        ? explicitId
+        : explicitId
+          ? `${explicitId}-${copy + 1}`
+          : `stored-opening-${index + 1}-${copy + 1}`;
+    openings.push({
+      id,
+      type,
+      width_m: width,
+      height_m: height,
+      label,
+    });
+  }
+  return openings;
+}
+
+function parseStoredOpenings(value: unknown[]): InternalWallsOpening[] {
+  return value.flatMap((item, index) => storedOpeningsFromRow(item, index));
 }
 
 export function parseInternalWallsOpenings(
@@ -195,12 +292,15 @@ export function parseInternalWallsOpenings(
   if (!Array.isArray(value)) return [];
   const openings: InternalWallsOpening[] = [];
   const seen = new Set<string>();
-  for (const row of value) {
+  value.forEach((row, index) => {
     const parsed = parseInternalWallsOpening(row);
-    if (!parsed || seen.has(parsed.id)) continue;
-    seen.add(parsed.id);
-    openings.push(parsed);
-  }
+    const rows = parsed ? [parsed] : storedOpeningsFromRow(row, index);
+    for (const item of rows) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      openings.push(item);
+    }
+  });
   return openings;
 }
 
