@@ -12,6 +12,7 @@
 
 import { aggregateSameIdentityCommercialLines } from "@/lib/estimate/commercial-aggregation";
 import { presentAreaM2, round2 } from "@/lib/estimate/facts";
+import { INTERNAL_WALLS_OPENING_AREA_PROVISIONAL } from "@/lib/estimate/internal-walls-scope";
 import { isInternalWallsLiningComponentKey } from "@/lib/estimate/internal-walls-identities";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
 
@@ -163,6 +164,9 @@ function mergeLiningSupporting(
       .filter(Boolean)
       .join(" · ");
   }
+  const provisional = texts.some((text) =>
+    text.includes(INTERNAL_WALLS_OPENING_AREA_PROVISIONAL)
+  );
   return [
     ...productParts.slice(0, 3),
     "Both sides",
@@ -183,6 +187,7 @@ function mergeLiningSupporting(
       : net > 0
         ? `${presentAreaM2(net)} m² net`
         : null,
+    provisional ? INTERNAL_WALLS_OPENING_AREA_PROVISIONAL : null,
   ]
     .filter(Boolean)
     .join(" · ");

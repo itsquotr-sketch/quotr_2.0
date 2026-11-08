@@ -7,6 +7,7 @@
  */
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { isDetailsOwnedWhenUnresolved } from "../lib/assistant/question-ownership";
 import { evaluateClarifyEstimateReadiness } from "../lib/assistant/readiness/clarify-estimate";
@@ -39,8 +40,12 @@ import {
 import { INTERNAL_WALLS_HAS_OPENINGS_KEY } from "../lib/estimate/internal-walls-openings";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+  INTERNAL_WALLS_OPENINGS_UNRESOLVED,
+  INTERNAL_WALLS_OPENING_AREA_PROVISIONAL,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
 } from "../lib/estimate/internal-walls-scope";
+import { clientPriceBasis, clientPriceCopy } from "../lib/pricing/incomplete-price-label";
+import { unresolvedScopeReviewBlock } from "../lib/pricing/scope-finalisation";
 import {
   applyInternalWallsFactWrite,
   nextInternalWallsWallTypeField,
@@ -273,12 +278,47 @@ const ACCESSORY_PARENTS = [
 console.log("=== EST-CORRECT-04 accessory Details contract ===\n");
 
 const unresolvedParents = composeSurfaces({ facts: fixtureBase() });
+const openingQuestions = [
+  ...unresolvedParents.clarify.candidates,
+  ...unresolvedParents.clarify.deferred,
+].filter((row) => row.factKey === INTERNAL_WALLS_HAS_OPENINGS_KEY);
+const unresolvedTypes = resolveInternalWallsWallTypes({
+  facts: fixtureBase(),
+  workAreaId: "w1",
+  briefText: BRIEF,
+}).types;
 check(
-  "P unresolved accessory parents block Ready",
-  unresolvedParents.readiness.ready === false &&
-    initialFactKeys(unresolvedParents.clarify).includes(
-      INTERNAL_WALLS_HAS_OPENINGS_KEY
-    )
+  "P unresolved openings stay a clarification and allow a partial estimate",
+  unresolvedParents.readiness.ready === true &&
+    openingQuestions.length === 2 &&
+    openingQuestions.every(
+      (row) =>
+        !isInitialCaptureQuestion(row) &&
+        row.assumable === false &&
+        row.blocksEstimate === false &&
+        row.inputType !== "number"
+    ) &&
+    unresolvedTypes.every((type) => type.has_openings == null)
+);
+const partialWalls = calculateInternalWalls(
+  ctx([IW as EstimateWorkArea], fixtureBase()),
+  IW as EstimateWorkArea
+);
+const liningNotes = partialWalls.lineItems
+  .filter((item) => item.componentKey?.includes("lining") && item.category === "materials")
+  .map((item) => item.identitySummary ?? item.notes ?? "");
+check(
+  "P gross lining stays provisional and does not claim a complete price",
+  partialWalls.missingInfo.includes(INTERNAL_WALLS_OPENINGS_UNRESOLVED) &&
+    classifyReviewNotice(INTERNAL_WALLS_OPENINGS_UNRESOLVED) === "scope_gap" &&
+    liningNotes.length > 0 &&
+    liningNotes.every((note) => note.includes(INTERNAL_WALLS_OPENING_AREA_PROVISIONAL)) &&
+    clientPriceCopy(clientPriceBasis({
+      scopeUnresolved: true,
+      pricesUnresolved: false,
+      enteredOverride: false,
+    })).totalLabel !== "Your final price" &&
+    unresolvedScopeReviewBlock([INTERNAL_WALLS_OPENINGS_UNRESOLVED]) != null
 );
 check(
   "R unresolved openings/skirting/cornice/stopping/insulation/painting do not first-ask in Refine",

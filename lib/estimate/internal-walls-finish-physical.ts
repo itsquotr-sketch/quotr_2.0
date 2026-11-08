@@ -44,7 +44,10 @@ import type {
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
-import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
+import {
+  labelProvisionalOpeningArea,
+  type InternalWallsJobScope,
+} from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
   INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY,
@@ -666,7 +669,10 @@ export function buildInternalWallsFinishEnvelope(params: {
           const overlap = internalWallsInsulationOverlapGroup(type.id);
           const typeLabel =
             insulationTypeDisplay(type.insulation_type) ?? "Wall insulation";
-          const specification = `${typeLabel} · ${presentAreaM2(area.areaM2)} m² net cavity`;
+          const specification = labelProvisionalOpeningArea(
+            `${typeLabel} · ${presentAreaM2(area.areaM2)} m² net cavity`,
+            type.has_openings
+          );
           assumptions.push(INTERNAL_WALLS_INSULATION_WASTE_DECISION);
           sortOrder = emitQtyMaterial({
             workArea,
@@ -929,7 +935,10 @@ export function buildInternalWallsFinishEnvelope(params: {
           for (const face of faces) {
             const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
             const levelLabel = stoppingLevelDisplay(face.level) ?? "Stopping";
-            const specification = `${sideLabel} · ${levelLabel} · ${face.areaM2} m² visible face`;
+            const specification = labelProvisionalOpeningArea(
+              `${sideLabel} · ${levelLabel} · ${face.areaM2} m² visible face`,
+              type.has_openings
+            );
             sortOrder = emitServiceM2({
               workArea,
               context,
@@ -972,7 +981,10 @@ export function buildInternalWallsFinishEnvelope(params: {
           }
           for (const face of faces) {
             const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
-            const specification = `${sideLabel} · ${face.areaM2} m² wall face`;
+            const specification = labelProvisionalOpeningArea(
+              `${sideLabel} · ${face.areaM2} m² wall face`,
+              type.has_openings
+            );
             emittedWallPainting = true;
             sortOrder = emitServiceM2({
               workArea,

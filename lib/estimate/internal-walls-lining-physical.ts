@@ -40,7 +40,10 @@ import type {
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
-import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
+import {
+  labelProvisionalOpeningArea,
+  type InternalWallsJobScope,
+} from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
   INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION,
@@ -715,7 +718,10 @@ function emitLiningFace(params: {
 }): void {
   const { workArea, context, type, displayName, overlapGroup, takeoff } = params;
   const faceHeading = sideLabel(takeoff.side);
-  const supporting = formatInternalWallsLiningTakeoff(takeoff);
+  const supporting = labelProvisionalOpeningArea(
+    formatInternalWallsLiningTakeoff(takeoff),
+    type.has_openings
+  );
   const materialComponent = internalWallsLiningMaterialComponent(takeoff.product);
   const labourComponent = internalWallsLiningLabourComponent(takeoff.product);
   const variantKey = `${type.id}:${takeoff.side}`;

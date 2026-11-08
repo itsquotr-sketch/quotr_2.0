@@ -38,6 +38,20 @@ export const INTERNAL_WALLS_SCOPE_UNRESOLVED =
 export const INTERNAL_WALLS_OPENINGS_UNRESOLVED =
   "Openings in these new walls stay unresolved and are not deducted. They do not establish a complete or structurally adequate opening allowance.";
 
+export const INTERNAL_WALLS_OPENING_AREA_PROVISIONAL =
+  "provisional until openings are confirmed";
+
+export function labelProvisionalOpeningArea(
+  specification: string,
+  hasOpenings: boolean | null
+): string {
+  if (hasOpenings != null) return specification;
+  if (specification.includes(INTERNAL_WALLS_OPENING_AREA_PROVISIONAL)) {
+    return specification;
+  }
+  return `${specification} · ${INTERNAL_WALLS_OPENING_AREA_PROVISIONAL}`;
+}
+
 export const INTERNAL_WALLS_JOB_SCOPE_OPTIONS = [
   "New partition",
   "Extend partition",
