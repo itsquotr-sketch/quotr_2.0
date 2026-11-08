@@ -202,6 +202,8 @@ function liningFromPhrase(
 }
 
 function parseLengthLm(text: string): number | null {
+  const mmLong = text.match(/(\d{3,5})\s*mm\s+long/);
+  if (mmLong) return Number(mmLong[1]) / 1000;
   const total = text.match(/total(?:ling)?\s+(\d+(?:\.\d+)?)\s*m/);
   if (total) return Number(total[1]);
   const linear = text.match(
@@ -420,6 +422,8 @@ function notePartitionFinishConflict(
 }
 
 function parseHeightM(text: string): number | null {
+  const mmHigh = text.match(/(\d{3,5})\s*mm\s+high/);
+  if (mmHigh) return Number(mmHigh[1]) / 1000;
   const match =
     text.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+high/) ??
     text.match(/(\d+(?:\.\d+)?)\s*high/);
@@ -712,6 +716,7 @@ export function internalWallsScopeText(briefText: string): string {
       "rebuild the walls",
       "rebuild walls",
       "new partition",
+      "stud wall",
       "plasterboard",
       "skirting",
       "painting",
@@ -744,6 +749,7 @@ export function extractInternalWallsTypesFromBrief(
       "partition wall",
       "framed timber",
       "timber framed",
+      "stud wall",
       "rebuild the walls",
       "new partition",
     ])

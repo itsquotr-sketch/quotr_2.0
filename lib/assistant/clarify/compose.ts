@@ -140,6 +140,7 @@ import {
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   corniceProductOptionsForType,
+  faceEligibleForStopping,
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
   requestedStoppingLevelQuestion,
@@ -1602,6 +1603,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       const resolved = resolveInternalWallsWallTypes({
         facts,
         workAreaId: wa.id,
+        briefText: input.briefText,
       });
       const omitProgressive = internalWallsNestedFinishOmit({
         confirmedTypes: input.workAreas
@@ -1623,86 +1625,104 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           omitPainting: omitProgressive.omitPainting,
           omitElectrical: true,
         });
-        if (
-          !nextField ||
-          isInternalWallsHardMinimumProgressiveField(nextField)
-        ) {
-          return;
+        const fields: string[] = [];
+        if (nextField && !isInternalWallsHardMinimumProgressiveField(nextField)) {
+          fields.push(nextField);
         }
-        const template = getQuestionTemplateByKey(nextField);
-        const displayName = type
-          ? wallTypeDisplayName(type, index)
-          : "Wall type";
-        const stoppingField =
-          nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
-          nextField === INTERNAL_WALLS_STOPPING_SIDE_B_KEY;
-        const stoppingRequested =
-          stoppingField &&
+        const stoppingIncluded =
           getBooleanFact(facts, wa.id, "internal_walls.stopping_included") === true;
-        const stoppingInclusionUnanswered = stoppingField && !stoppingRequested;
-        const openingsUnanswered =
-          nextField === "internal_walls.wall_type.has_openings";
-        out.push({
-          id: internalWallsClarifyId(
-            "fact",
-            wa.id,
-            nextField,
-            type?.id,
-            type?.active_opening_id ?? type?.openings[0]?.id
-          ),
-          source: "scope_fact",
-          workAreaId: wa.id,
-          workAreaName: wa.name,
-          workAreaType: wa.type,
-          factKey: nextField,
-          constraintKey: null,
-          questionKey: nextField,
-          label: `${displayName} · ${safeFactPresentationLabel(nextField)}`,
-          question: stoppingRequested
-            ? requestedStoppingLevelQuestion(
-                nextField === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
-              )
-            : internalWallsUnresolvedCopy(
-                displayName,
-                nextField,
-                safeFactQuestion(nextField, template?.questionText)
-              ),
-          askClass:
-            stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
-              ? "ASSUME_IF_SKIPPED"
-              : nextField === "internal_walls.wall_type.height_m"
+        if (type && stoppingIncluded && omitProgressive.omitStopping !== true) {
+          if (
+            faceEligibleForStopping(type.side_a) &&
+            type.stopping_side_a == null &&
+            !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_A_KEY)
+          ) {
+            fields.push(INTERNAL_WALLS_STOPPING_SIDE_A_KEY);
+          }
+          if (
+            faceEligibleForStopping(type.side_b) &&
+            type.stopping_side_b == null &&
+            !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_B_KEY)
+          ) {
+            fields.push(INTERNAL_WALLS_STOPPING_SIDE_B_KEY);
+          }
+        }
+        for (const field of fields) {
+          const template = getQuestionTemplateByKey(field);
+          const displayName = type
+            ? wallTypeDisplayName(type, index)
+            : "Wall type";
+          const stoppingField =
+            field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
+            field === INTERNAL_WALLS_STOPPING_SIDE_B_KEY;
+          const stoppingRequested =
+            stoppingField &&
+            getBooleanFact(facts, wa.id, "internal_walls.stopping_included") === true;
+          const stoppingInclusionUnanswered = stoppingField && !stoppingRequested;
+          const openingsUnanswered =
+            field === "internal_walls.wall_type.has_openings";
+          out.push({
+            id: internalWallsClarifyId(
+              "fact",
+              wa.id,
+              field,
+              type?.id,
+              type?.active_opening_id ?? type?.openings[0]?.id
+            ),
+            source: "scope_fact",
+            workAreaId: wa.id,
+            workAreaName: wa.name,
+            workAreaType: wa.type,
+            factKey: field,
+            constraintKey: null,
+            questionKey: field,
+            label: `${displayName} · ${safeFactPresentationLabel(field)}`,
+            question: stoppingRequested
+              ? requestedStoppingLevelQuestion(
+                  field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
+                )
+              : internalWallsUnresolvedCopy(
+                  displayName,
+                  field,
+                  safeFactQuestion(field, template?.questionText)
+                ),
+            askClass:
+              stoppingRequested || stoppingInclusionUnanswered || openingsUnanswered
                 ? "ASSUME_IF_SKIPPED"
-                : isOptionalInternalWallsClarifyKey(nextField)
-                  ? "REFINEMENT"
-                  : "ASK_NOW",
-          inputType: clarifyInputTypeFromTemplate(template),
-          unit: template?.unit,
-          options:
-            nextField === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
-              ? internalWallsPaintingOptions(type)
-              : nextField === INTERNAL_WALLS_CORNICE_PRODUCT_KEY && type
-                ? corniceProductOptionsForType(type.cornice_type) ??
-                  template?.options
-                : template?.options,
-          currentValue: wallTypeFieldCurrentValue(type, nextField),
-          writeTarget: "FACT",
-          write: null,
-          blocksEstimate: false,
-          assumable:
-            !stoppingRequested &&
-            !stoppingInclusionUnanswered &&
-            !openingsUnanswered &&
-            (nextField === "internal_walls.wall_type.height_m" ||
-              isOptionalInternalWallsClarifyKey(nextField)),
-          rankScore: (CHECK_SCORES[nextField] ?? 70) - index,
-          rankReason: "Progressive wall type configuration",
-          assumptionStatement:
-            nextField === "internal_walls.wall_type.height_m"
-              ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
-              : null,
-          wallTypeId: type?.id ?? null,
-          openingId: type?.active_opening_id ?? type?.openings[0]?.id ?? null,
-        });
+                : field === "internal_walls.wall_type.height_m"
+                  ? "ASSUME_IF_SKIPPED"
+                  : isOptionalInternalWallsClarifyKey(field)
+                    ? "REFINEMENT"
+                    : "ASK_NOW",
+            inputType: clarifyInputTypeFromTemplate(template),
+            unit: template?.unit,
+            options:
+              field === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
+                ? internalWallsPaintingOptions(type)
+                : field === INTERNAL_WALLS_CORNICE_PRODUCT_KEY && type
+                  ? corniceProductOptionsForType(type.cornice_type) ??
+                    template?.options
+                  : template?.options,
+            currentValue: wallTypeFieldCurrentValue(type, field),
+            writeTarget: "FACT",
+            write: null,
+            blocksEstimate: false,
+            assumable:
+              !stoppingRequested &&
+              !stoppingInclusionUnanswered &&
+              !openingsUnanswered &&
+              (field === "internal_walls.wall_type.height_m" ||
+                isOptionalInternalWallsClarifyKey(field)),
+            rankScore: (CHECK_SCORES[field] ?? 70) - index,
+            rankReason: "Progressive wall type configuration",
+            assumptionStatement:
+              field === "internal_walls.wall_type.height_m"
+                ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
+                : null,
+            wallTypeId: type?.id ?? null,
+            openingId: type?.active_opening_id ?? type?.openings[0]?.id ?? null,
+          });
+        }
       });
       continue;
     }

@@ -39,6 +39,7 @@ import {
   parseInternalWallsOpeningType,
   openingsFromStoredWallTypeBlob,
   parseInternalWallsOpenings,
+  withStatedSingleDoorOpening,
   resolveActiveOpeningId,
   summariseOpeningsLine,
   type InternalWallsOpening,
@@ -1492,6 +1493,7 @@ function attachStoredOpenings(
 export function resolveInternalWallsWallTypes(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
+  briefText?: string | null;
 }): {
   types: InternalWallsWallType[];
   source: InternalWallsWallTypeSource;
@@ -1502,23 +1504,25 @@ export function resolveInternalWallsWallTypes(params: {
     const types = stored.map((type) =>
       withExplicitFinishExclusions(type, params.facts, params.workAreaId)
     );
+    const withBrief = withStatedSingleDoorOpening(types, params.briefText);
     return {
-      types,
+      types: withBrief,
       source: "canonical",
       activeId: resolveInternalWallsActiveWallTypeId(
         params.facts,
         params.workAreaId,
-        types
+        withBrief
       ),
     };
   }
   const legacy = legacyWallTypeFromFlatFacts(params);
   if (legacy) {
     const withOpenings = attachStoredOpenings(legacy, params.facts, params.workAreaId);
+    const withBrief = withStatedSingleDoorOpening([withOpenings], params.briefText);
     return {
-      types: [withOpenings],
+      types: withBrief,
       source: "legacy_dual_read",
-      activeId: withOpenings.id,
+      activeId: withBrief[0]?.id ?? withOpenings.id,
     };
   }
   return { types: [], source: "canonical", activeId: null };

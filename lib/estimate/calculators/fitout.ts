@@ -302,6 +302,7 @@ function calculateInternalWallsMature(
   const resolved = resolveInternalWallsWallTypes({
     facts,
     workAreaId: workArea.id,
+    briefText: context.briefText,
   });
 
   if (!jobScope) {
@@ -469,6 +470,7 @@ export function calculateInternalWalls(
   const canonicalTypes = resolveInternalWallsWallTypes({
     facts,
     workAreaId: workArea.id,
+    briefText: context.briefText,
   }).types;
   const length = getNumberFact(facts, workArea.id, "internal_walls.length_lm");
   const height = getNumberFact(facts, workArea.id, "internal_walls.height_m");

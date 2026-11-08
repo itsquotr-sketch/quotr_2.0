@@ -210,6 +210,64 @@ function isOpeningRecord(value: unknown): value is Record<string, unknown> {
  * omit the canonical opening id. A door set is never read here.
  * Returns no openings when more than one stored wall could own them.
  */
+/**
+ * One stated door opening, with its size in the same sentence, belongs to
+ * the single wall. A door set alone does not. Two walls leave the choice open.
+ */
+export function statedSingleDoorOpeningMetres(
+  briefText: string | null | undefined
+): { widthM: number; heightM: number } | null {
+  if (!briefText?.trim()) return null;
+  if (/\bthe other wall\b/i.test(briefText)) return null;
+  const counted = briefText.match(
+    /\b(one|two|three|four|five|six|\d{1,2})\s+(?:door\s+)?openings?\b/i
+  );
+  if (!counted || counted[1]?.toLowerCase() !== "one") return null;
+  const sentences = briefText.split(/[.!?;]/);
+  const found: { widthM: number; heightM: number }[] = [];
+  for (const sentence of sentences) {
+    if (!/\bdoor\s+openings?\b/i.test(sentence)) continue;
+    const pairs = [...sentence.matchAll(/(\d{3,4})\s*[x×]\s*(\d{3,4})\s*mm/gi)];
+    if (pairs.length !== 1) continue;
+    found.push({
+      widthM: Number(pairs[0]?.[1]) / 1000,
+      heightM: Number(pairs[0]?.[2]) / 1000,
+    });
+  }
+  return found.length === 1 ? (found[0] ?? null) : null;
+}
+
+export function withStatedSingleDoorOpening<T extends InternalWallsOpeningHost>(
+  types: readonly T[],
+  briefText: string | null | undefined
+): T[] {
+  const stated = statedSingleDoorOpeningMetres(briefText);
+  if (!stated || types.length !== 1) return [...types];
+  const type = types[0]!;
+  if (type.has_openings === false || type.openings.length > 0) return [...types];
+  const opening: InternalWallsOpening = {
+    id: "brief-door-opening-1",
+    type: "door",
+    width_m: stated.widthM,
+    height_m: stated.heightM,
+    label: null,
+  };
+  return [
+    {
+      ...type,
+      has_openings: true,
+      active_opening_id: opening.id,
+      openings: [opening],
+    },
+  ];
+}
+
+type InternalWallsOpeningHost = {
+  has_openings: boolean | null;
+  active_opening_id: string | null;
+  openings: InternalWallsOpening[];
+};
+
 export function openingsFromStoredWallTypeBlob(params: {
   raw: unknown;
   lengthLm: number | null;

@@ -85,9 +85,13 @@ const reproductionFacts: EstimateFact[] = [
   fact(DOOR_ID, "doors.portions", [DOOR_SET]),
 ];
 
+const QT009_BRIEF =
+  "Build a non-loadbearing timber stud wall 6000mm long and 2400mm high. Use 90 × 45 framing, 13 mm Standard GIB both sides, one layer each side, with thermal cavity insulation. Include one door opening and one prehung hollow-core door set, 810 × 1980 mm, including jamb and standard hardware. Stop the plasterboard ready to paint; stopping level to be confirmed. Painting, electrical and skirting are excluded. Ground floor, easy access, carry under 10 m, unoccupied, unrestricted hours.";
+
 const resolved = resolveInternalWallsWallTypes({
   facts: reproductionFacts,
   workAreaId: WALL_ID,
+  briefText: QT009_BRIEF,
 });
 const wall = resolved.types[0];
 const opening = wall?.openings[0];
@@ -249,6 +253,40 @@ const doorOnlyWall = resolveInternalWallsWallTypes({
 check(
   "the door-set wall has no opening row",
   (doorOnlyWall?.openings.length ?? 0) === 0 && doorOnlyWall?.has_openings !== true
+);
+
+const omittedOpeningFacts = reproductionFacts.map((row) =>
+  row.key === "internal_walls.wall_types"
+    ? {
+        ...row,
+        value: [
+          {
+            ...(Array.isArray(row.value) ? row.value[0] : {}),
+            openings: undefined,
+          },
+        ],
+      }
+    : row
+);
+const fromBrief = resolveInternalWallsWallTypes({
+  facts: omittedOpeningFacts,
+  workAreaId: WALL_ID,
+  briefText: QT009_BRIEF,
+}).types[0];
+check(
+  "the brief opening is used when the stored wall omits it",
+  fromBrief?.openings.length === 1 &&
+    fromBrief.openings[0]?.width_m === 0.81 &&
+    fromBrief.openings[0]?.height_m === 1.98
+);
+const extractedBrief = extractInternalWallsTypesFromBrief(QT009_BRIEF);
+check(
+  "the stud-wall brief stores 6 m, 2.4 m, and the stated opening",
+  extractedBrief.length === 1 &&
+    extractedBrief[0]?.lengthLm === 6 &&
+    extractedBrief[0]?.heightM === 2.4 &&
+    extractedBrief[0]?.doorOpeningWidthM === 0.81 &&
+    extractedBrief[0]?.doorOpeningHeightM === 1.98
 );
 
 const shell = readFileSync("components/assistant/AssistantShell.tsx", "utf8");
