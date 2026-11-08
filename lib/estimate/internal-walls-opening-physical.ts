@@ -422,16 +422,19 @@ function openingFormationBasis(params: {
     : benchmarkHours != null
       ? "Documented benchmark hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
       : "Hours entered for this opening. Formation only — not stud-grid framing, and not door-set or hardware installation.";
+  const productivitySourceType: RateSourceType =
+    companyHours != null
+      ? company.sourceType === "calibrated_productivity"
+        ? "calibrated_productivity"
+        : "user_rate"
+      : benchmarkHours != null
+        ? "benchmark"
+        : "user_rate";
   return {
     ok: true,
     hours,
     hoursNote,
-    productivitySourceType:
-      companyHours != null
-        ? company.sourceType
-        : benchmarkHours != null
-          ? "benchmark"
-          : "user_rate",
+    productivitySourceType,
   };
 }
 
