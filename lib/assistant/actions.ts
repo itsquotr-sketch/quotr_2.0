@@ -89,7 +89,6 @@ import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { mergePersistedInternalWallTypesOnReanalyse } from "@/lib/estimate/internal-walls-brief";
-import { INTERNAL_WALLS_WALL_TYPES_FACT_KEY } from "@/lib/estimate/internal-walls-wall-types";
 import { mergePersistedCeilingPortionsOnReanalyse } from "@/lib/estimate/ceilings-brief";
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import {
