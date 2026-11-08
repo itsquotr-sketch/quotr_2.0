@@ -146,6 +146,7 @@ import {
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
   requestedStoppingLevelQuestion,
+  stoppingLevelDisplay,
 } from "@/lib/estimate/internal-walls-finish";
 import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
@@ -1636,7 +1637,6 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         if (type && stoppingIncluded && omitProgressive.omitStopping !== true) {
           if (
             faceEligibleForStopping(type.side_a) &&
-            type.stopping_side_a == null &&
             !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_A_KEY)
           ) {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_A_KEY);
@@ -1644,7 +1644,6 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           if (
             type.same_lining_both_sides !== true &&
             faceEligibleForStopping(type.side_b) &&
-            type.stopping_side_b == null &&
             !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_B_KEY)
           ) {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_B_KEY);
@@ -1709,12 +1708,27 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               ? `${displayName}: Describe this custom stopping. It stays unresolved until this specification and a pricing basis are both sufficient.`
               : stoppingRequested
               ? `${
-                  type?.same_lining_both_sides === true &&
-                  field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
-                    ? "What stopping level is required on both faces?"
-                    : requestedStoppingLevelQuestion(
-                        field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
-                      )
+                  stoppingLevelDisplay(
+                    field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+                      ? type?.stopping_side_a ?? null
+                      : type?.stopping_side_b ?? null
+                  )
+                    ? `Stopping is ${stoppingLevelDisplay(
+                        field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+                          ? type?.stopping_side_a ?? null
+                          : type?.stopping_side_b ?? null
+                      )}${
+                        type?.same_lining_both_sides === true &&
+                        field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+                          ? " on both faces"
+                          : ""
+                      }. Choose a different level, Custom, or No.`
+                    : type?.same_lining_both_sides === true &&
+                        field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+                      ? "What stopping level is required on both faces?"
+                      : requestedStoppingLevelQuestion(
+                          field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
+                        )
                 } Custom stays unresolved until its specification and pricing basis are sufficient.`
               : internalWallsUnresolvedCopy(
                   displayName,
