@@ -36,6 +36,9 @@ import {
   INTERNAL_WALLS_INSULATION_TYPE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED,
+  INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED,
+  INTERNAL_WALLS_STOPPING_NOTE_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   paintingTakeoff,
@@ -63,6 +66,16 @@ import {
   isPlusAddressFixture,
 } from "./lib/preview-auth-fixture";
 import { buildWorkAreaQuoteDescriptionDraft } from "../lib/work-areas/quote-description";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
+import { getBooleanFact } from "../lib/estimate/facts";
+import { INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY } from "../lib/estimate/internal-walls-openings";
+import { productivityProvenanceLabel } from "../lib/company-dna/provenance-display";
+import {
+  UNRESOLVED_SCOPE_REVIEW_BLOCK,
+  unresolvedScopeReviewBlock,
+} from "../lib/pricing/scope-finalisation";
+import { openingFormationProductivityKey } from "../lib/rates/opening-productivity-stale";
 import { getCatalogueEntry } from "../lib/rates/catalogue";
 import { FITOUT_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import type {
@@ -1115,6 +1128,233 @@ check(
     read("lib/estimate/calculate-estimate.ts").includes(
       "applyRegisteredComponentCommercialAuthority"
     )
+);
+
+console.log("\n--- Requested stopping stays unresolved ---\n");
+const quietFinish = finishExtras({
+  insulation: false,
+  skirting: false,
+  cornice: false,
+  electrical: false,
+  painting: "No",
+}).filter(
+  (row) =>
+    row.key !== INTERNAL_WALLS_STOPPING_SIDE_A_KEY &&
+    row.key !== INTERNAL_WALLS_STOPPING_SIDE_B_KEY
+);
+const requestedFacts = [
+  fact("internal_walls.stopping_included", "w1", true),
+  ...fixtureBase(quietFinish, { openings: false }),
+];
+const requestedCalc = calculateInternalWalls(ctx([walls], requestedFacts), walls);
+check(
+  "requested stopping with no level is one stable scope gap",
+  requestedCalc.missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) &&
+    requestedCalc.missingInfo.filter(
+      (row) => row === INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED
+    ).length === 1
+);
+check(
+  "requested stopping with no level emits no stopping line",
+  !requestedCalc.lineItems.some(
+    (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+  )
+);
+check(
+  "the stopping gap is unresolved scope",
+  classifyReviewNotice(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) === "scope_gap" &&
+    unresolvedScopeReviewBlock(requestedCalc.missingInfo) ===
+      UNRESOLVED_SCOPE_REVIEW_BLOCK
+);
+const stoppingOverview = projectEstimateOverview({
+  hasEstimate: true,
+  isStale: false,
+  detailsOutstanding: false,
+  estimate: {
+    recommendedSell: 2845.73,
+    recommendedCost: 2276.58,
+    grossProfit: 569.15,
+    marginPercent: 20,
+  },
+  gstRate: 0.15,
+  breakdown: null,
+  review: {
+    overview: { workAreaNames: ["Internal walls"] },
+    workAreas: [],
+    assumptions: [],
+    checks: [{ id: "stopping", label: INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED }],
+    improvements: [],
+  },
+  readinessBlockers: [],
+  rateSourceSummary: null,
+  pricingDocumentExists: false,
+  specialistPricingNotice: null,
+  workAreaNames: ["Internal walls"],
+});
+check(
+  "requested stopping keeps priced work so far",
+  stoppingOverview.sell.presentation === "partial" &&
+    stoppingOverview.sell.label === "Priced work so far" &&
+    stoppingOverview.composition.some((row) => row.id === "profit")
+);
+check(
+  "profit on a partial overview is priced work only",
+  read("components/assistant/mode/EstimateOverview.tsx").includes(
+    'data-estimate-overview-profit-basis'
+  ) &&
+    read("components/assistant/mode/EstimateOverview.tsx").includes(
+      "Priced work only"
+    )
+);
+const level4Facts = [
+  fact("internal_walls.stopping_included", "w1", true),
+  ...fixtureBase(
+    finishExtras({
+      insulation: false,
+      skirting: false,
+      cornice: false,
+      electrical: false,
+      painting: "No",
+      stopping: "Level 4",
+    }),
+    { openings: false }
+  ),
+];
+const level4Calc = calculateInternalWalls(ctx([walls], level4Facts), walls);
+const level4Faces = level4Calc.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+);
+check(
+  "Level 4 resolves the gap and prices each face once",
+  !level4Calc.missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) &&
+    level4Faces.length === 2 &&
+    new Set(level4Faces.map((row) => row.overlapGroup)).size === 2
+);
+const level5Calc = calculateInternalWalls(
+  ctx(
+    [walls],
+    [
+      fact("internal_walls.stopping_included", "w1", true),
+      ...fixtureBase(
+        finishExtras({
+          insulation: false,
+          skirting: false,
+          cornice: false,
+          electrical: false,
+          painting: "No",
+          stopping: "Level 5",
+        }),
+        { openings: false }
+      ),
+    ]
+  ),
+  walls
+);
+const level5Faces = level5Calc.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+);
+check(
+  "Level 5 resolves the gap and generates each face once",
+  !level5Calc.missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) &&
+    level5Faces.length === 2
+);
+let customFacts = fixtureBase(
+  finishExtras({
+    insulation: false,
+    skirting: false,
+    cornice: false,
+    electrical: false,
+    painting: "No",
+    stopping: "Custom",
+  }),
+  { openings: false }
+);
+const customCalc = calculateInternalWalls(ctx([walls], customFacts), walls);
+check(
+  "Custom without a specification and rate stays unresolved",
+  customCalc.missingInfo.includes(INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED) &&
+    !customCalc.lineItems.some(
+      (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+    )
+);
+const customType = resolveInternalWallsWallTypes({
+  facts: customFacts,
+  workAreaId: "w1",
+}).types[0]!;
+customFacts = applyInternalWallsFactWrite({
+  facts: customFacts,
+  workAreaId: "w1",
+  wallTypeId: customType.id,
+  key: INTERNAL_WALLS_STOPPING_NOTE_KEY,
+  value: "Skim coat ready for paint",
+});
+const customPriced = calculateInternalWalls(
+  ctx([walls], customFacts, [
+    {
+      id: "stop-custom",
+      active: true,
+      rate_type: "subcontractor",
+      item_key: internalWallsStoppingItemKey("custom"),
+      label: "Custom stopping",
+      unit: "m2",
+      cost_rate: 45,
+      sell_rate: 60,
+      markup_percent: null,
+      trade: "plastering",
+      work_area_type: "internal_walls",
+    },
+  ]),
+  walls
+);
+const customFaces = customPriced.lineItems.filter(
+  (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+);
+check(
+  "Custom with a specification and rate generates each face once",
+  !customPriced.missingInfo.includes(INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED) &&
+    customFaces.length === 2 &&
+    customFaces.every((row) => (row.recommendedCost ?? 0) > 0)
+);
+let removed = [
+  fact("internal_walls.stopping_included", "w1", true),
+  ...fixtureBase(quietFinish, { openings: false }),
+];
+const removedType = resolveInternalWallsWallTypes({
+  facts: removed,
+  workAreaId: "w1",
+}).types[0]!;
+removed = applyInternalWallsFactWrite({
+  facts: removed,
+  workAreaId: "w1",
+  wallTypeId: removedType.id,
+  key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  value: "No",
+});
+const removedCalc = calculateInternalWalls(ctx([walls], removed), walls);
+check(
+  "explicit No removes the request and the gap",
+  getBooleanFact(removed, "w1", "internal_walls.stopping_included") === false &&
+    !removedCalc.missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED) &&
+    !removedCalc.lineItems.some(
+      (row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT
+    )
+);
+check(
+  "opening formation hours are a company productivity with no benchmark",
+  openingFormationProductivityKey(INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY) &&
+    getCatalogueEntry(INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY)?.defaultCostRate ==
+      null &&
+    read("lib/rates/actions.ts").includes(
+      "flagEstimatesForOpeningFormationProductivity"
+    )
+);
+check(
+  "project-entered opening hours are not labelled as a company rate",
+  productivityProvenanceLabel({
+    notes:
+      "Productivity source: Hours entered for this opening\nHours entered for this opening.",
+    productivitySourceType: "user_rate",
+  }) === "Hours entered for this opening"
 );
 
 console.log("\n--- Hosted policy / migrations ---\n");

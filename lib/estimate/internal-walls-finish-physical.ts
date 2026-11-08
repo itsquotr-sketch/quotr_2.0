@@ -100,7 +100,11 @@ import {
   INTERNAL_WALLS_SKIRTING_OPENING_RULE,
   INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_STOPPING_AREA_RULE,
+  INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED,
+  INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED,
   INTERNAL_WALLS_STOPPING_RATE_REQUIRED_MESSAGE,
+  faceEligibleForStopping,
+  stoppingAsksForScope,
   corniceIsIncluded,
   corniceLabourUsesOrdinaryProductivity,
   corniceProductDisplay,
@@ -125,6 +129,18 @@ import type { InternalWallsWallType } from "@/lib/estimate/internal-walls-wall-t
 function wallTypeDisplayName(type: InternalWallsWallType, index: number): string {
   if (type.label && type.label.trim()) return type.label.trim();
   return `Wall Type ${index + 1}`;
+}
+
+function customStoppingBasisSufficient(
+  type: InternalWallsWallType,
+  context: EstimateContext
+): boolean {
+  const note = type.stopping_note?.trim() ?? "";
+  if (!note) return false;
+  return resolveExactServiceM2Rate({
+    itemKey: internalWallsStoppingItemKey("custom"),
+    context,
+  }).priced;
 }
 
 function catalogueBenchmarkCost(itemKey: string): number | null {
@@ -918,14 +934,15 @@ export function buildInternalWallsFinishEnvelope(params: {
             level: "level_4" | "level_5" | "custom";
             areaM2: number;
           }> = [];
-          if (stopping.sideA) {
+          const customReady = customStoppingBasisSufficient(type, context);
+          if (stopping.sideA && (stopping.sideA.level !== "custom" || customReady)) {
             faces.push({
               side: "side_a",
               level: stopping.sideA.level,
               areaM2: stopping.sideA.areaM2,
             });
           }
-          if (stopping.sideB) {
+          if (stopping.sideB && (stopping.sideB.level !== "custom" || customReady)) {
             faces.push({
               side: "side_b",
               level: stopping.sideB.level,
@@ -935,8 +952,12 @@ export function buildInternalWallsFinishEnvelope(params: {
           for (const face of faces) {
             const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
             const levelLabel = stoppingLevelDisplay(face.level) ?? "Stopping";
+            const customNote =
+              face.level === "custom" && type.stopping_note?.trim()
+                ? ` · ${type.stopping_note.trim()}`
+                : "";
             const specification = labelProvisionalOpeningArea(
-              `${sideLabel} · ${levelLabel} · ${face.areaM2} m² visible face`,
+              `${sideLabel} · ${levelLabel}${customNote} · ${face.areaM2} m² visible face`,
               type.has_openings
             );
             sortOrder = emitServiceM2({
@@ -958,6 +979,37 @@ export function buildInternalWallsFinishEnvelope(params: {
             });
           }
         }
+      }
+    }
+
+    if (!omit.omitStopping && stoppingAsksForScope(jobScope)) {
+      const stoppingRequested =
+        getBooleanFact(
+          context.facts,
+          workArea.id,
+          "internal_walls.stopping_included"
+        ) === true;
+      const customReady = customStoppingBasisSufficient(type, context);
+      const levels: Array<string | null> = [];
+      if (faceEligibleForStopping(type.side_a)) {
+        levels.push(type.stopping_side_a ?? null);
+      }
+      if (faceEligibleForStopping(type.side_b)) {
+        levels.push(type.stopping_side_b ?? null);
+      }
+      if (
+        stoppingRequested &&
+        levels.some((level) => level == null) &&
+        !missingInfo.includes(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED)
+      ) {
+        missingInfo.push(INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED);
+      }
+      if (
+        levels.some((level) => level === "custom") &&
+        !customReady &&
+        !missingInfo.includes(INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED)
+      ) {
+        missingInfo.push(INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED);
       }
     }
 

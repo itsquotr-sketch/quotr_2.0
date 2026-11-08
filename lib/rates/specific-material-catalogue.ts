@@ -65,6 +65,7 @@ import {
   INTERNAL_WALLS_STEEL_STUD_QUOTR_COST,
   INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST,
 } from "@/lib/estimate/internal-walls-identities";
+import { INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY } from "@/lib/estimate/internal-walls-openings";
 import {
   CEILING_INSULATION_THERMAL_KEY,
   ORDINARY_THERMAL_INSULATION_COST,
@@ -3163,6 +3164,19 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     description:
       "Person-hours per installed ordinary straight wall cornice/scotia LM. Quotr benchmark · 0.20 person-hours/lm. Company hours/lm win. Not ornate, curved, high-access, removal, or specialist profiles.",
     defaultCostRate: INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY,
+    label: "Internal wall opening formation (hours/opening)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "opening",
+    description:
+      "Company hours to form one opening. There is no documented benchmark. Company hours win over hours entered on the opening. Saved estimates stay unchanged until regenerated.",
     calculatorSupport: "used_now",
     recommended: true,
   }),

@@ -26,6 +26,10 @@ import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-setting
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { toUserError } from "@/lib/errors/user-message";
 import { z } from "zod";
+import {
+  flagEstimatesForOpeningFormationProductivity,
+  openingFormationProductivityKey,
+} from "@/lib/rates/opening-productivity-stale";
 
 function ratesDbError(error: unknown): RatesActionResult {
   return { error: toUserError(error, "rates") };
@@ -275,6 +279,12 @@ const rateInputSchema = z
   .superRefine((data, ctx) => {
     if (data.rate_type !== "productivity") return;
     if (
+      openingFormationProductivityKey(data.item_key) &&
+      (data.active === false || data.cost_rate == null)
+    ) {
+      return;
+    }
+    if (
       data.cost_rate == null ||
       !Number.isFinite(data.cost_rate) ||
       !(data.cost_rate > 0)
@@ -300,6 +310,20 @@ async function verifyRateOwnership(
     .maybeSingle();
 
   return Boolean(data);
+}
+
+async function rateItemKey(
+  supabase: AuthOrgContext["supabase"],
+  orgId: string,
+  rateId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("rates")
+    .select("item_key")
+    .eq("id", rateId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  return data?.item_key ?? null;
 }
 
 export async function createRate(input: RateInput): Promise<RatesActionResult> {
@@ -349,6 +373,10 @@ export async function createRate(input: RateInput): Promise<RatesActionResult> {
     return ratesDbError(error);
   }
 
+  if (openingFormationProductivityKey(created.item_key)) {
+    await flagEstimatesForOpeningFormationProductivity(loaded.context);
+  }
+
   return { success: true, rate: normalizeRate(created) };
 }
 
@@ -374,6 +402,7 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
   if (!owned) {
     return { error: "Rate not found." };
   }
+  const previousKey = await rateItemKey(supabase, orgId, data.id!);
 
   const { data: updated, error } = await supabase
     .from("rates")
@@ -402,6 +431,13 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
 
   if (error) {
     return ratesDbError(error);
+  }
+
+  if (
+    openingFormationProductivityKey(updated.item_key) ||
+    openingFormationProductivityKey(previousKey)
+  ) {
+    await flagEstimatesForOpeningFormationProductivity(loaded.context);
   }
 
   return { success: true, rate: normalizeRate(updated) };
@@ -456,6 +492,10 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
     return ratesDbError(error);
   }
 
+  if (openingFormationProductivityKey(upserted.item_key)) {
+    await flagEstimatesForOpeningFormationProductivity(loaded.context);
+  }
+
   return { success: true, rate: normalizeRate(upserted) };
 }
 
@@ -485,6 +525,10 @@ export async function deactivateRate(rateId: string): Promise<RatesActionResult>
     return ratesDbError(error);
   }
 
+  if (openingFormationProductivityKey(updated.item_key)) {
+    await flagEstimatesForOpeningFormationProductivity(loaded.context);
+  }
+
   return { success: true, rate: normalizeRate(updated) };
 }
 
@@ -512,6 +556,10 @@ export async function reactivateRate(rateId: string): Promise<RatesActionResult>
 
   if (error) {
     return ratesDbError(error);
+  }
+
+  if (openingFormationProductivityKey(updated.item_key)) {
+    await flagEstimatesForOpeningFormationProductivity(loaded.context);
   }
 
   return { success: true, rate: normalizeRate(updated) };

@@ -37,6 +37,8 @@ export function productivityProvenanceLabel(params: {
   notes?: string | null;
   productivitySourceType?: RateSourceType;
 }): string | null {
+  const stated = /Productivity source:\s*([^\n]+)/.exec(params.notes ?? "");
+  if (stated?.[1]?.trim()) return stated[1].trim();
   const type =
     params.productivitySourceType ??
     inferProductivitySourceType(params.notes);

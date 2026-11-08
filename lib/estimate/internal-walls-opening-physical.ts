@@ -418,10 +418,12 @@ function openingFormationBasis(params: {
     return { ok: false, message: INTERNAL_WALLS_OPENING_LABOUR_RATE_REQUIRED_MESSAGE };
   }
   const hoursNote = companyHours != null
-    ? "Company hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
+    ? company.sourceType === "calibrated_productivity"
+      ? "Productivity source: Your calibrated productivity\nCompany hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
+      : "Productivity source: Company hours\nCompany hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
     : benchmarkHours != null
-      ? "Documented benchmark hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
-      : "Hours entered for this opening. Formation only — not stud-grid framing, and not door-set or hardware installation.";
+      ? "Productivity source: Quotr benchmark\nDocumented benchmark hours per opening. Formation only — not stud-grid framing, and not door-set or hardware installation."
+      : "Productivity source: Hours entered for this opening\nHours entered for this opening. Formation only — not stud-grid framing, and not door-set or hardware installation.";
   const productivitySourceType: RateSourceType =
     companyHours != null
       ? company.sourceType === "calibrated_productivity"

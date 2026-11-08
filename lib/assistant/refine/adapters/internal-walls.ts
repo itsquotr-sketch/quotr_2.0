@@ -49,6 +49,7 @@ import {
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_NOTE_KEY,
   INTERNAL_WALLS_STOPPING_OPTIONS,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
@@ -835,8 +836,8 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             label: "Stopping — Side A",
             question: stoppingRequested
               ? active?.same_lining_both_sides === true
-                ? "What stopping level is required on both faces? Custom stays unresolved until a rate is set."
-                : `${requestedStoppingLevelQuestion("A")} Custom stays unresolved until a rate is set.`
+                ? "What stopping level is required on both faces? Custom stays unresolved until its specification and pricing basis are sufficient."
+                : `${requestedStoppingLevelQuestion("A")} Custom stays unresolved until its specification and pricing basis are sufficient.`
               : "Include stopping to Side A?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
@@ -859,13 +860,34 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             factKey: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
             label: "Stopping — Side B",
             question: stoppingRequested
-              ? `${requestedStoppingLevelQuestion("B")} Custom stays unresolved until a rate is set.`
+              ? `${requestedStoppingLevelQuestion("B")} Custom stays unresolved until its specification and pricing basis are sufficient.`
               : "Include stopping to Side B?",
             inputType: "select",
             options: INTERNAL_WALLS_STOPPING_OPTIONS,
             currentValue: wallTypeFieldCurrentValue(
               active,
               INTERNAL_WALLS_STOPPING_SIDE_B_KEY
+            ),
+            wallTypeId,
+          })
+        );
+      }
+      if (
+        active?.stopping_side_a === "custom" ||
+        active?.stopping_side_b === "custom"
+      ) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_STOPPING_NOTE_KEY,
+            label: "Custom stopping specification",
+            question:
+              "Describe this custom stopping. It stays unresolved until this specification and a pricing basis are both sufficient.",
+            inputType: "text",
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_STOPPING_NOTE_KEY
             ),
             wallTypeId,
           })

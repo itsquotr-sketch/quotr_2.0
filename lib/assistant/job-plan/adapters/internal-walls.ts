@@ -245,7 +245,8 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
         togglable: false,
         write: null,
         sourceFactKey: "internal_walls.wall_type.stopping_side_a",
-        surfaceReason: "Custom stopping stays Pricing Required until a rate is set",
+        surfaceReason:
+          "Custom stopping stays unresolved until its specification and pricing basis are sufficient",
       });
     }
 

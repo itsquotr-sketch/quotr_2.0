@@ -45,6 +45,7 @@ import {
   formatRateUnit,
 } from "@/lib/rates/catalogue";
 import { upsertRate } from "@/lib/rates/actions";
+import { INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY } from "@/lib/estimate/internal-walls-openings";
 import {
   buildProductivityRegistry,
   filterProductivityGroups,
@@ -200,9 +201,11 @@ export function ProductivityByWorkArea({
         : [...rates, result.rate];
       onRatesChange(nextRates);
       setNotice(
-        returnHref
-          ? COMPANY_RATE_SAVED_NOTICE
-          : "Regenerate an estimate to apply updated rates."
+        editingItem.productivityKey === INTERNAL_WALLS_OPENING_FORM_HOURS_EACH_KEY
+          ? "Company opening hours are saved. Regenerate the estimate to apply them. Saved estimate and Pricing amounts stay until you update them."
+          : returnHref
+            ? COMPANY_RATE_SAVED_NOTICE
+            : "Regenerate an estimate to apply updated rates."
       );
       setOpenAreas((prev) => ({
         ...prev,

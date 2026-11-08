@@ -201,6 +201,7 @@ export type InternalWallsFinishHost = {
   electrical_note: string | null;
   stopping_side_a?: InternalWallsStoppingLevel | null;
   stopping_side_b?: InternalWallsStoppingLevel | null;
+  stopping_note?: string | null;
   painting?: InternalWallsSideSelection | null;
   side_a?: { lined: boolean; product: string | null } | null;
   side_b?: { lined: boolean; product: string | null } | null;
@@ -238,6 +239,17 @@ export const INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_REQUIRED_MESSAGE =
 
 export const INTERNAL_WALLS_STOPPING_RATE_REQUIRED_MESSAGE =
   "Level 5 / custom stopping — Pricing Required. Ordinary Level 4 uses the Quotr COST fallback." as const;
+
+/** Requested stopping with no level. Stable scope gap; partial generation continues. */
+export const INTERNAL_WALLS_STOPPING_LEVEL_UNRESOLVED =
+  "Stopping requested on these faces stay unresolved and are not priced. They do not establish a complete finish." as const;
+
+/** Custom is not a finish until a written specification and a pricing basis both exist. */
+export const INTERNAL_WALLS_STOPPING_CUSTOM_UNRESOLVED =
+  "Custom stopping on these faces stay unresolved and are not priced until the specification and pricing basis are both sufficient." as const;
+
+export const INTERNAL_WALLS_STOPPING_NOTE_KEY =
+  "internal_walls.wall_type.stopping_note" as const;
 
 export const INTERNAL_WALLS_PAINTING_RATE_REQUIRED_MESSAGE =
   "Wall painting — Pricing Required. No owner-approved Internal Walls paint rate or coverage model." as const;

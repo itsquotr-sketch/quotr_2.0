@@ -510,7 +510,7 @@ function buildWorkAreaFacts(params: {
         sourcePriority: candidate.sourcePriority,
         readOnly,
         derivedNote: replaceStopping && stoppingType?.stopping_side_a === "custom"
-          ? "Custom stopping is unresolved until a rate is set."
+          ? "Custom stopping stays unresolved until its specification and pricing basis are sufficient."
           : readOnly
             ? getDerivedFactNote(params.workArea.type, candidate.canonicalKey)
             : undefined,
@@ -539,7 +539,7 @@ function buildWorkAreaFacts(params: {
       readOnly: false,
       derivedNote:
         stoppingType.stopping_side_b === "custom"
-          ? "Custom stopping is unresolved until a rate is set."
+          ? "Custom stopping stays unresolved until its specification and pricing basis are sufficient."
           : undefined,
       conflictWarning: undefined,
       inputType: "select",

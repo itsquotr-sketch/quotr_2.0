@@ -67,6 +67,7 @@ import {
   parseInternalWallsElectricalTier,
   parseInternalWallsInsulationType,
   parseInternalWallsSideSelection,
+  faceEligibleForStopping,
   parseInternalWallsStoppingLevel,
   parseYesNo,
   sideSelectionDisplay,
@@ -121,6 +122,7 @@ export const INTERNAL_WALLS_WALL_TYPE_FIELD_KEYS = [
   "internal_walls.wall_type.electrical_note",
   "internal_walls.wall_type.stopping_side_a",
   "internal_walls.wall_type.stopping_side_b",
+  "internal_walls.wall_type.stopping_note",
   "internal_walls.wall_type.painting",
 ] as const;
 
@@ -308,6 +310,7 @@ export type InternalWallsWallType = {
   electrical_note: string | null;
   stopping_side_a: InternalWallsStoppingLevel | null;
   stopping_side_b: InternalWallsStoppingLevel | null;
+  stopping_note?: string | null;
   painting: InternalWallsSideSelection | null;
 };
 
@@ -494,6 +497,7 @@ export function duplicateWallType(
     electrical_note: source.electrical_note,
     stopping_side_a: source.stopping_side_a,
     stopping_side_b: source.stopping_side_b,
+    stopping_note: source.stopping_note ?? null,
     painting: source.painting,
   };
 }
@@ -876,6 +880,10 @@ export function parseInternalWallsWallType(
         : null,
     stopping_side_a: parseInternalWallsStoppingLevel(value.stopping_side_a),
     stopping_side_b: parseInternalWallsStoppingLevel(value.stopping_side_b),
+    stopping_note:
+      typeof value.stopping_note === "string" && value.stopping_note.trim()
+        ? value.stopping_note.trim()
+        : null,
     painting: parseInternalWallsSideSelection(value.painting),
   };
 }
@@ -2206,10 +2214,23 @@ export function applyInternalWallsFactWrite(params: {
         if (type.same_lining_both_sides === true) {
           type.stopping_side_b = type.stopping_side_a;
         }
+        if (type.stopping_side_a !== "custom" && type.stopping_side_b !== "custom") {
+          type.stopping_note = null;
+        }
         return;
       }
       if (field === "stopping_side_b") {
         type.stopping_side_b = parseInternalWallsStoppingLevel(params.value);
+        if (type.stopping_side_a !== "custom" && type.stopping_side_b !== "custom") {
+          type.stopping_note = null;
+        }
+        return;
+      }
+      if (field === "stopping_note") {
+        type.stopping_note =
+          typeof params.value === "string" && params.value.trim()
+            ? params.value.trim()
+            : null;
         return;
       }
       if (field === "painting") {
@@ -2245,6 +2266,32 @@ export function applyInternalWallsFactWrite(params: {
           row.work_area_id === params.workAreaId
         )
     );
+  }
+  const answeredStopping =
+    params.key === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ||
+    params.key === INTERNAL_WALLS_STOPPING_SIDE_B_KEY;
+  if (answeredStopping) {
+    const levels = types.flatMap((type) => {
+      const rows: Array<InternalWallsStoppingLevel | null> = [];
+      if (faceEligibleForStopping(type.side_a)) rows.push(type.stopping_side_a ?? null);
+      if (faceEligibleForStopping(type.side_b)) rows.push(type.stopping_side_b ?? null);
+      return rows;
+    });
+    if (levels.length > 0 && levels.every((level) => level === "none")) {
+      next = upsertFact(
+        next,
+        params.workAreaId,
+        "internal_walls.stopping_included",
+        false
+      );
+    } else if (levels.some((level) => level != null && level !== "none")) {
+      next = upsertFact(
+        next,
+        params.workAreaId,
+        "internal_walls.stopping_included",
+        true
+      );
+    }
   }
   return next;
 }
@@ -2547,6 +2594,8 @@ export function wallTypeFieldCurrentValue(
       return stoppingLevelDisplay(type.stopping_side_a);
     case INTERNAL_WALLS_STOPPING_SIDE_B_KEY:
       return stoppingLevelDisplay(type.stopping_side_b);
+    case "internal_walls.wall_type.stopping_note":
+      return type.stopping_note ?? null;
     case INTERNAL_WALLS_PAINTING_SIDES_KEY:
       return sideSelectionDisplay(type.painting);
     case "internal_walls.opening.type": {

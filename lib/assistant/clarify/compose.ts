@@ -137,6 +137,7 @@ import {
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_NOTE_KEY,
   INTERNAL_WALLS_STOPPING_OPTIONS,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
@@ -1648,6 +1649,13 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           ) {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_B_KEY);
           }
+          if (
+            (type.stopping_side_a === "custom" || type.stopping_side_b === "custom") &&
+            !type.stopping_note?.trim() &&
+            !fields.includes(INTERNAL_WALLS_STOPPING_NOTE_KEY)
+          ) {
+            fields.push(INTERNAL_WALLS_STOPPING_NOTE_KEY);
+          }
         }
         const formationOpening =
           type?.openings.find((row) => row.id === type.active_opening_id) ??
@@ -1678,6 +1686,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             field === "internal_walls.wall_type.has_openings";
           const formationHours =
             field === "internal_walls.opening.formation_hours";
+          const stoppingNote = field === INTERNAL_WALLS_STOPPING_NOTE_KEY;
           out.push({
             id: internalWallsClarifyId(
               "fact",
@@ -1696,6 +1705,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             label: `${displayName} · ${safeFactPresentationLabel(field)}`,
             question: formationHours
               ? `${displayName}: How many hours to form this opening? Leave this blank when you have no hours. Wall framing and the door set stay separate.`
+              : stoppingNote
+              ? `${displayName}: Describe this custom stopping. It stays unresolved until this specification and a pricing basis are both sufficient.`
               : stoppingRequested
               ? `${
                   type?.same_lining_both_sides === true &&
@@ -1704,7 +1715,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
                     : requestedStoppingLevelQuestion(
                         field === INTERNAL_WALLS_STOPPING_SIDE_A_KEY ? "A" : "B"
                       )
-                } Custom stays unresolved until a rate is set.`
+                } Custom stays unresolved until its specification and pricing basis are sufficient.`
               : internalWallsUnresolvedCopy(
                   displayName,
                   field,
@@ -1714,14 +1725,19 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               stoppingRequested ||
               stoppingInclusionUnanswered ||
               openingsUnanswered ||
-              formationHours
+              formationHours ||
+              stoppingNote
                 ? "ASSUME_IF_SKIPPED"
                 : field === "internal_walls.wall_type.height_m"
                   ? "ASSUME_IF_SKIPPED"
                   : isOptionalInternalWallsClarifyKey(field)
                     ? "REFINEMENT"
                     : "ASK_NOW",
-            inputType: formationHours ? "number" : clarifyInputTypeFromTemplate(template),
+            inputType: formationHours
+              ? "number"
+              : stoppingNote
+                ? "text"
+                : clarifyInputTypeFromTemplate(template),
             unit: formationHours ? "hrs" : template?.unit,
             options: stoppingField
               ? [...INTERNAL_WALLS_STOPPING_OPTIONS]
@@ -1740,6 +1756,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               !stoppingInclusionUnanswered &&
               !openingsUnanswered &&
               !formationHours &&
+              !stoppingNote &&
               (field === "internal_walls.wall_type.height_m" ||
                 isOptionalInternalWallsClarifyKey(field)),
             rankScore: (CHECK_SCORES[field] ?? 70) - index,
