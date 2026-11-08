@@ -527,6 +527,7 @@ function TakeoffBoard({
   emptyMessage,
   kind,
   actions,
+  leadingNote = null,
 }: {
   title: string;
   marker: "materials" | "labour";
@@ -540,6 +541,7 @@ function TakeoffBoard({
   emptyMessage: string;
   kind: "materials" | "labour";
   actions: TakeoffActions;
+  leadingNote?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [workArea, setWorkArea] = useState("all");
@@ -571,6 +573,8 @@ function TakeoffBoard({
       </section>
 
       <Actions {...actions} />
+
+      {leadingNote}
 
       {lineCount === 0 ? (
         <p className="rounded-xl border border-border/60 bg-card px-4 py-4 text-sm" data-takeoff-empty>
@@ -686,8 +690,8 @@ export function LabourTakeoff({
       groups={model.groups}
       emptyMessage="No labour lines in this estimate."
       actions={actions}
+      leadingNote={decisions}
     />
-      {decisions}
     </div>
   );
 }

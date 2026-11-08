@@ -43,6 +43,7 @@ type ProjectConditionsBlockProps = {
   candidates: readonly InterviewCandidate[];
   remainingCount: number;
   complete: boolean;
+  summaryOnly?: boolean;
   readiness: InterviewReadiness;
   /** Canonical known constraints (same records Site Constraints used). */
   knownConstraints?: readonly ConstraintRow[];
@@ -106,6 +107,7 @@ export function ProjectConditionsBlock({
   candidates,
   remainingCount,
   complete,
+  summaryOnly = false,
   readiness,
   knownConstraints = [],
   onConstraintSave,
@@ -387,6 +389,15 @@ export function ProjectConditionsBlock({
         ) : null}
       </div>
     ) : null;
+
+  if (summaryOnly) {
+    return (
+      <div className="space-y-3" data-project-conditions-summary="true">
+        {knownSection}
+        {editSection}
+      </div>
+    );
+  }
 
   if (complete && candidates.length === 0) {
     return (

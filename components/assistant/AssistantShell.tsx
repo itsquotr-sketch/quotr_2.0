@@ -4629,6 +4629,21 @@ export function AssistantShell({
               canCollapse={false}
               isActive={activeDisclosureStage === "clarify"}
             >
+              {liveConstraints.length > 0 && projectConditionsSnapshot ? (
+                <ProjectConditionsBlock
+                  summaryOnly
+                  projectId={project.id}
+                  candidates={[]}
+                  remainingCount={0}
+                  complete
+                  knownConstraints={liveConstraints}
+                  onConstraintSave={handleConstraintSave}
+                  savingConstraintKey={savingConstraintKey}
+                  constraintError={constraintError}
+                  readiness={projectConditionsSnapshot.readiness}
+                  onSnapshotUpdate={() => undefined}
+                />
+              ) : null}
               <ClarifyPanel
                 view={clarifyView}
                 readiness={estimateReadiness}

@@ -185,8 +185,9 @@ const labour = readFileSync(
 const labourStart = labour.indexOf("export function LabourTakeoff");
 const labourBody = labour.slice(labourStart, labour.indexOf("function ReviewList"));
 check(
-  "labour rows render before the condition summary",
-  labourBody.indexOf("<TakeoffBoard") < labourBody.indexOf("{decisions}")
+  "labour hours lead and the compact basis sits above the rows",
+  labourBody.includes("leadingNote={decisions}") &&
+    labour.indexOf("{leadingNote}") < labour.indexOf("data-takeoff-search")
 );
 const summary = readFileSync(
   join(process.cwd(), "components/assistant/mode/ConditionDecisions.tsx"),
