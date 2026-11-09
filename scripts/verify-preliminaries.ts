@@ -321,13 +321,15 @@ const splitReview = composeBuilderReview({
 });
 const materialsTakeoff = projectMaterialsTakeoff(splitReview);
 const labourTakeoff = projectLabourTakeoff(splitReview);
+const splitLabourRow = labourTakeoff.groups.flatMap((group) => group.rows)[0];
 check(
   "a split preliminary contributes each part to its takeoff once",
   materialsTakeoff.knownCost === "$400" &&
     labourTakeoff.knownCost === "$600" &&
     materialsTakeoff.lineCount === 1 &&
-    labourTakeoff.lineCount === 1,
-  { materials: materialsTakeoff.knownCost, labour: labourTakeoff.knownCost, materialLines: materialsTakeoff.lineCount, labourLines: labourTakeoff.lineCount }
+    labourTakeoff.lineCount === 1 &&
+    splitLabourRow?.hourlyCost == null,
+  { materials: materialsTakeoff.knownCost, labour: labourTakeoff.knownCost, materialLines: materialsTakeoff.lineCount, labourLines: labourTakeoff.lineCount, hourly: splitLabourRow?.hourlyCost }
 );
 
 const noRate = calculatePreliminaries(
