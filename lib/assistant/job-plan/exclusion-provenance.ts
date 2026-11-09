@@ -10,6 +10,7 @@ import type { EstimateFact } from "@/lib/estimate/types";
 import { jobPlanBoolean, jobPlanString } from "@/lib/assistant/job-plan/facts";
 import type { JobPlanScopePresentation } from "@/lib/assistant/job-plan/types";
 import {
+  fasciaPolarity,
   scopeTopicPolarity,
   type ScopeTopic,
 } from "@/lib/estimate/scope-intent";
@@ -108,6 +109,11 @@ export function briefSupportsExplicitNegative(
 ): boolean {
   const brief = normaliseBrief(briefText);
   if (!brief) return false;
+  if (factKey === "deck.vertical_face_boards_required") {
+    const polarity = fasciaPolarity(brief);
+    if (polarity === "excluded") return true;
+    if (polarity === "contradiction") return false;
+  }
   const phrases = EXPLICIT_NEGATIVE[factKey];
   if (phrases?.some((phrase) => brief.includes(phrase))) return true;
   const topic = TOPIC_FOR_FACT[factKey];

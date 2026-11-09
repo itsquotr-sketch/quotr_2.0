@@ -132,6 +132,36 @@ export function briefPaintsSeparateAssembly(briefText: string): boolean {
   return false;
 }
 
+const FASCIA_PATTERN = /\bfascia\b/i;
+const FASCIA_NEGATED =
+  /\bfascia\b[^.]{0,24}\b(?:not required|excluded|not included)\b/i;
+
+/**
+ * Whole-deck fascia polarity.
+ * A no-list such as "No stairs, balustrades, fascia" is excluded.
+ * Fascia required on some edges and excluded on others is a contradiction,
+ * not a whole-deck exclusion.
+ */
+export function fasciaPolarity(briefText: string): ScopePolarity {
+  let included = false;
+  let excluded = false;
+  for (const raw of sentences(briefText)) {
+    const sentence = sentenceForTopic(raw);
+    if (FASCIA_NEGATED.test(sentence)) {
+      excluded = true;
+      continue;
+    }
+    if (!FASCIA_PATTERN.test(sentence)) continue;
+    const signals = sentenceTopicSignals(sentence, FASCIA_PATTERN);
+    if (signals.excluded) excluded = true;
+    if (signals.included) included = true;
+  }
+  if (included && excluded) return "contradiction";
+  if (excluded) return "excluded";
+  if (included) return "included";
+  return null;
+}
+
 export function scopeTopicPolarity(
   briefText: string,
   topic: ScopeTopic

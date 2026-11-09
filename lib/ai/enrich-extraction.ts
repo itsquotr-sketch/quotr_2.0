@@ -15,7 +15,7 @@ import {
   explicitDeckStepWidthM,
 } from "@/lib/estimate/deck-brief-facts";
 import { interpretBathroomBrief } from "@/lib/estimate/bathroom-brief";
-import { deckScopeIntent } from "@/lib/estimate/scope-intent";
+import { deckScopeIntent, fasciaPolarity } from "@/lib/estimate/scope-intent";
 import { ambiguousMaterialWasteWarning } from "@/lib/estimate/explicit-material-waste";
 import {
   briefHasIntegralDeckStepLanguage,
@@ -1286,17 +1286,19 @@ function inferDeck(
     "vertical boards down the side",
     "vertical face",
   ]);
-  const fasciaExcluded =
-    /\b(?:no|without|exclud\w*)\b[^.]{0,48}\bfascia\b/.test(brief) ||
-    /\bfascia\b[^.]{0,24}\b(?:not required|excluded)\b/.test(brief);
-  if (fasciaExcluded) {
+  const fasciaStance = fasciaPolarity(brief);
+  if (fasciaStance === "excluded") {
     upsertFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
       label: "Fascia / edge boards",
       value: false,
     });
-  } else if (fasciaRequested && !fullHeightSkirting) {
+  } else if (
+    fasciaStance !== "contradiction" &&
+    fasciaRequested &&
+    !fullHeightSkirting
+  ) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
@@ -1566,6 +1568,45 @@ function inferFence(
         unit: "m",
       });
     }
+  }
+
+  if (/\bpost centres\b[^.]{0,80}\bnot been checked\b/i.test(brief)) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.post_centres_unconfirmed",
+      label: "Post centres checked",
+      value: true,
+    });
+  }
+  if (/\bbracket clearances\b[^.]{0,80}\bnot been checked\b/i.test(brief)) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.bracket_clearances_unconfirmed",
+      label: "Bracket clearances checked",
+      value: true,
+    });
+  }
+  if (
+    /\bpaving\b/i.test(brief) &&
+    /\b(?:thickness|suitability)\b[^.]{0,40}\bunknown\b/i.test(brief)
+  ) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.paving_suitability_unknown",
+      label: "Paving suitability",
+      value: true,
+    });
+  }
+  if (
+    /\bcustomer-supplied\b[^.]{0,48}\bpedestrian gate\b/i.test(brief) &&
+    /\bsupply its hardware\b/i.test(brief)
+  ) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.gate_hardware_if_compatible",
+      label: "Gate hardware if compatible",
+      value: true,
+    });
   }
 
   const lengthMatch = brief.match(/(\d+(?:\.\d+)?)\s*lm/i);

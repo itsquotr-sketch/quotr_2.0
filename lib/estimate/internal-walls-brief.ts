@@ -295,7 +295,7 @@ export function explicitInternalWallsOpenings(text: string): {
     return { hasOpenings: false, doorOpeningCount: null };
   }
   const counted = brief.match(
-    /\b(one|two|three|four|five|six|\d{1,2})\s+(?:door\s+)?openings?\b/
+    /\b(one|two|three|four|five|six|\d{1,2})(?:\s+\d{3,4}\s*[x×]\s*\d{3,4}\s*mm)?\s+(?:door\s+)?openings?\b/
   );
   const countedDoor = brief.match(
     /\b(one|two|three|four|five|six|\d{1,2})\s+doors?\b(?!\s+(?:assembly|sets?)\b)/

@@ -1,6 +1,7 @@
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
 import type { AIExtractionOutput } from "../lib/ai/schema";
+import { stripImplicitScopeExclusions } from "../lib/scopes/strip-implicit-scope-exclusions";
 import { buildFencePhysicalModel } from "../lib/estimate/fence-physical";
 import { commercializeFence } from "../lib/estimate/fence-commercial";
 import { FENCE_SECTIONS_COMPONENT, FENCE_POSTS_EA_COMPONENT, FENCE_SECTION_LABOUR_COMPONENT, FENCE_FIXINGS_MODULAR_COMPONENT } from "../lib/estimate/fence-identities";
@@ -66,6 +67,16 @@ check(
     rooms.some((row) => row.label === "Hallway" && row.finish_type === "vinyl_plank" && row.length_m === 8)
 );
 check(
+  "QT-003 recognises existing carpet removal on every room",
+  rooms.length === 3 &&
+    rooms.every(
+      (row) =>
+        row.finish_removal_required === true &&
+        row.existing_finish_type === "carpet" &&
+        row.substrate_removal_required !== true
+    )
+);
+check(
   "QT-003 underlay stays on the bedrooms",
   rooms.filter((row) => String(row.label).startsWith("Bedroom") && row.underlay_required === true).length === 2 &&
     rooms.find((row) => row.label === "Hallway")?.underlay_required !== true
@@ -101,6 +112,18 @@ check(
   "QT-005 exclusion overrides a fascia fact that was already true",
   fact(fasciaCorrected, "deck.vertical_face_boards_required") === false
 );
+const fasciaKept = stripImplicitScopeExclusions(
+  fasciaCorrected,
+  `Two separate areas at the same house:
+1. Inside lounge: 5 m × 4 m, supply and install hardwood flooring over the existing prepared plywood.
+2. Outside: 4 m × 3 m timber deck, finished height 450 mm above ground, hardwood decking on new timber framing.
+
+Allow 10% finish waste on each area. No floor removal inside. No stairs, balustrades, fascia, demolition or painting on the deck. Deck support design and footing details are not yet available. Do not use the flooring installation rate for the deck.`
+);
+check(
+  "QT-005 explicit fascia exclusion is kept",
+  fact(fasciaKept, "deck.vertical_face_boards_required") === false
+);
 const floor = portions(qt005, "flooring.portions");
 check(
   "QT-005 lounge flooring keeps 5 by 4",
@@ -121,6 +144,18 @@ check(
   "QT-010 distinguishes timber and steel",
   walls.some((row) => row.frame_system === "timber" && row.length_lm === 6 && row.has_openings === true) &&
     walls.some((row) => row.frame_system === "steel" && row.length_lm === 3 && row.has_openings === false)
+);
+const timberWall = walls.find((row) => row.frame_system === "timber");
+const timberOpenings = Array.isArray(timberWall?.openings)
+  ? (timberWall.openings as Array<Record<string, unknown>>)
+  : [];
+check(
+  "QT-010 keeps the sized door opening and does not create a door set",
+  timberOpenings.length === 1 &&
+    timberOpenings[0]?.type === "door" &&
+    timberOpenings[0]?.width_m === 0.81 &&
+    timberOpenings[0]?.height_m === 1.98 &&
+    !areas(qt010).includes("doors")
 );
 
 const plaster = run("Level 4 stopping to the existing lounge walls, about 18 m2. Sand ready for paint.");
@@ -163,12 +198,24 @@ check(
 check("QT-026 panel purchase cost is zero", section?.totalCost === 0 && section?.rateSource === "customer_supplied");
 check("QT-026 posts remain", (posts && "purchaseQuantity" in posts ? posts.purchaseQuantity : 0) > 0);
 check("QT-026 fixings remain", (fixings && "purchaseQuantity" in fixings ? fixings.purchaseQuantity : 0) > 0);
+const fenceNotes = commercial.missingInfo.join(" ");
+check(
+  "QT-026 keeps unchecked centres, clearances, paving and gate hardware visible",
+  fenceNotes.includes("post centres have not been checked") &&
+    fenceNotes.includes("Bracket clearances have not been checked") &&
+    fenceNotes.includes("paving thickness and suitability are unknown") &&
+    fenceNotes.includes("Supply its hardware only if compatible")
+);
 
 const qt008 = run(`New rectangular deck 6 m × 4 m, 600 mm high. The customer supplies the decking boards only. We supply framing, supports, fixings and labour.
 
 Fascia is required on the front 6 m edge only. The other three edges have no fascia. Do not use the full perimeter. No stairs, demolition, balustrade or coating. Board size and support details still need confirming.`);
 check("QT-008 deck is still recognised", areas(qt008).includes("deck"));
 check("QT-008 does not mark fence panels customer-supplied", fact(qt008, "fence.sections_client_supplied") == null);
+check(
+  "QT-008 partial fascia is not forced off",
+  fact(qt008, "deck.vertical_face_boards_required") !== false
+);
 
 const deckOnly = run("Build a new timber deck, 6 m × 4 m, 450 mm above ground. Include fascia. No stairs.");
 check("a single deck still uses its own dimensions", fact(deckOnly, "deck.length_m") === 6 && fact(deckOnly, "deck.width_m") === 4);

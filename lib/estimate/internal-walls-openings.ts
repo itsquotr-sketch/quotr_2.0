@@ -228,7 +228,7 @@ export function statedSingleDoorOpeningMetres(
   if (!briefText?.trim()) return null;
   if (/\bthe other wall\b/i.test(briefText)) return null;
   const counted = briefText.match(
-    /\b(one|two|three|four|five|six|\d{1,2})\s+(?:door\s+)?openings?\b/i
+    /\b(one|two|three|four|five|six|\d{1,2})(?:\s+\d{3,4}\s*[x×]\s*\d{3,4}\s*mm)?\s+(?:door\s+)?openings?\b/i
   );
   if (!counted || counted[1]?.toLowerCase() !== "one") return null;
   const sentences = briefText.split(/[.!?;]/);
@@ -250,9 +250,12 @@ export function withStatedSingleDoorOpening<T extends InternalWallsOpeningHost>(
   briefText: string | null | undefined
 ): T[] {
   const stated = statedSingleDoorOpeningMetres(briefText);
-  if (!stated || types.length !== 1) return [...types];
-  const type = types[0]!;
-  if (type.has_openings === false || type.openings.length > 0) return [...types];
+  if (!stated) return [...types];
+  const openHosts = types.filter(
+    (type) => type.has_openings !== false && type.openings.length === 0
+  );
+  if (openHosts.length !== 1) return [...types];
+  const host = openHosts[0]!;
   const opening: InternalWallsOpening = {
     id: "brief-door-opening-1",
     type: "door",
@@ -261,14 +264,16 @@ export function withStatedSingleDoorOpening<T extends InternalWallsOpeningHost>(
     label: null,
     formation_hours: null,
   };
-  return [
-    {
-      ...type,
-      has_openings: true,
-      active_opening_id: opening.id,
-      openings: [opening],
-    },
-  ];
+  return types.map((type) =>
+    type === host
+      ? {
+          ...type,
+          has_openings: true,
+          active_opening_id: opening.id,
+          openings: [opening],
+        }
+      : type
+  );
 }
 
 type InternalWallsOpeningHost = {

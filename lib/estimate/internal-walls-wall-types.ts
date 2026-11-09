@@ -1552,42 +1552,26 @@ export function factsWithPersistedStatedDoorOpening(params: {
     return { facts, changed: false };
   }
   const workAreaId = params.internalWallWorkAreaIds[0]!;
-  const rawWallTypes = facts.find(
-    (fact) =>
-      fact.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
-      fact.work_area_id === workAreaId
-  )?.value;
-  const rawRows = Array.isArray(rawWallTypes)
-    ? rawWallTypes
-    : rawWallTypes &&
-        typeof rawWallTypes === "object" &&
-        Array.isArray((rawWallTypes as { types?: unknown }).types)
-      ? (rawWallTypes as { types: unknown[] }).types
-      : [];
-  const rawWall = rawRows.length === 1 ? rawRows[0] : null;
-  if (
-    rawWall &&
-    typeof rawWall === "object" &&
-    ((rawWall as { has_openings?: unknown }).has_openings === false ||
-      (rawWall as { has_openings?: unknown }).has_openings === "No")
-  ) {
-    return { facts, changed: false };
-  }
   const stored = resolveInternalWallsWallTypes({ facts, workAreaId });
-  if (stored.types.length !== 1) return { facts, changed: false };
+  if (stored.types.length === 0) return { facts, changed: false };
   const nextTypes = withStatedSingleDoorOpening(stored.types, params.briefText);
-  const before = stored.types[0]!;
-  const after = nextTypes[0]!;
   const sameOpening =
-    before.has_openings === after.has_openings &&
-    before.openings.length === after.openings.length &&
-    before.openings.every((opening, index) => {
-      const next = after.openings[index];
+    stored.types.length === nextTypes.length &&
+    stored.types.every((before, typeIndex) => {
+      const after = nextTypes[typeIndex];
+      if (!after) return false;
       return (
-        next != null &&
-        next.id === opening.id &&
-        next.width_m === opening.width_m &&
-        next.height_m === opening.height_m
+        before.has_openings === after.has_openings &&
+        before.openings.length === after.openings.length &&
+        before.openings.every((opening, index) => {
+          const next = after.openings[index];
+          return (
+            next != null &&
+            next.id === opening.id &&
+            next.width_m === opening.width_m &&
+            next.height_m === opening.height_m
+          );
+        })
       );
     });
   if (sameOpening) return { facts, changed: false };

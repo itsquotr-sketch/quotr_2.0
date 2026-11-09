@@ -785,6 +785,31 @@ function finishFenceCommercial(params: {
   };
 }
 
+function appendUnconfirmedFenceNotes(
+  facts: readonly EstimateFact[],
+  workAreaId: string,
+  missingInfo: string[]
+): void {
+  if (getBooleanFact([...facts], workAreaId, "fence.post_centres_unconfirmed") === true) {
+    missingInfo.push(
+      "Manufacturer post centres have not been checked. Panel width is not a confirmed centre."
+    );
+  }
+  if (getBooleanFact([...facts], workAreaId, "fence.bracket_clearances_unconfirmed") === true) {
+    missingInfo.push("Bracket clearances have not been checked.");
+  }
+  if (getBooleanFact([...facts], workAreaId, "fence.paving_suitability_unknown") === true) {
+    missingInfo.push(
+      "Existing paving thickness and suitability are unknown. Core drilling is not confirmed."
+    );
+  }
+  if (getBooleanFact([...facts], workAreaId, "fence.gate_hardware_if_compatible") === true) {
+    missingInfo.push(
+      "The pedestrian gate is customer-supplied and is not purchased. Supply its hardware only if compatible."
+    );
+  }
+}
+
 function commercializeModularFence(params: {
   physical: FencePhysicalModel;
   facts: readonly EstimateFact[];
@@ -844,6 +869,8 @@ function commercializeModularFence(params: {
       priceMaterial(row, params.rates, params.organisationSettings, inherited)
     );
   }
+
+  appendUnconfirmedFenceNotes(params.facts, params.workAreaId, missingInfo);
 
   assumptions.push(FENCE_MODULAR_GENERIC_DISCLOSURE);
   assumptions.push(FENCE_MODULAR_POST_LABOUR_REUSE);

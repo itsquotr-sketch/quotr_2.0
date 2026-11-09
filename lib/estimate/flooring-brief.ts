@@ -552,7 +552,7 @@ function finishRemovalFromSnippet(text: string): boolean | null {
   const fromPhrases = triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
   if (fromPhrases != null) return fromPhrases;
   if (
-    /\b(?:remove|uplift|dispose of)\b[^.]{0,80}\b(?:existing\s+)?(?:carpet|vinyl|tiles?|hardwood|timber|flooring|floor finish)\b/i.test(
+    /\b(?:pull(?:\s+out)?|remove|uplift|dispose of)\b[^.]{0,80}\b(?:existing\s+)?(?:carpet|vinyl|tiles?|hardwood|timber|flooring|floor finish)\b/i.test(
       text
     )
   ) {
@@ -565,7 +565,7 @@ function existingFinishFromSnippet(
   text: string
 ): FlooringExistingFinishType | null {
   const match = text.match(
-    /\b(?:remove|uplift|dispose of)(?:\s+and\s+dispose\s+of)?\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
+    /\b(?:pull(?:\s+out)?|remove|uplift|dispose of)(?:\s+and\s+dispose(?:\s+of)?)?\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
   );
   if (!match) return null;
   return parseFlooringExistingFinishType(match[1]);
@@ -607,6 +607,14 @@ function clauseAppliesToPortion(
   clause: string,
   portion: FlooringPortion
 ): boolean {
+  if (
+    finishRemovalFromSnippet(clause) != null &&
+    /\b(?:all\s+\d+|all\s+three|all\s+(?:rooms?|areas?)|each(?:\s+of\s+the)?\s+(?:rooms?|areas?)|every\s+(?:room|area))\b/i.test(
+      clause
+    )
+  ) {
+    return true;
+  }
   const clauseLocation = locationFromSnippet(clause);
   if (!clauseLocation) return true;
   return locationTokensMatch(portion.label, clause);
