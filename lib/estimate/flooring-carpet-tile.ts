@@ -25,7 +25,10 @@
  */
 
 import { round2 } from "@/lib/estimate/facts";
-import type { FlooringPortion } from "@/lib/estimate/flooring-portions";
+import {
+  briefRequestsSeparateSupplyPricing,
+  type FlooringPortion,
+} from "@/lib/estimate/flooring-portions";
 
 export const CARPET_TILE_PROPOSED_WASTE_PERCENT = 5;
 
@@ -263,6 +266,12 @@ export function applyCarpetTileBriefFacts(
     portion.finish_supplied_by == null
   ) {
     portion.finish_supplied_by = "customer";
+  }
+  if (
+    portion.finish_pricing == null &&
+    briefRequestsSeparateSupplyPricing(briefText)
+  ) {
+    portion.finish_pricing = "separate_supply";
   }
   if (portion.tile_width_mm != null && portion.tile_length_mm != null) {
     portion.carpet_tile_size = portion.carpet_tile_size ?? "known";

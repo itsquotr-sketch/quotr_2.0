@@ -445,6 +445,33 @@ export function flooringFinishUsesTileDimensions(
   return finish === "tile";
 }
 
+/** Specialist carpet tile stores its size in the same millimetre fields as ceramic tile. */
+export function flooringPortionKeepsTileDimensions(portion: {
+  readonly finish_type: FlooringFinishType | null;
+  readonly specialist_kind?: string | null;
+}): boolean {
+  return (
+    flooringFinishUsesTileDimensions(portion.finish_type) ||
+    portion.specialist_kind === "carpet_tile"
+  );
+}
+
+export function briefRequestsSeparateSupplyPricing(text: string): boolean {
+  const raw = text.toLowerCase().replace(/\s+/g, " ");
+  if (
+    /\b(?:do not|don't|without)\b[^.]{0,48}\b(?:price supply separately|separate supply)\b/.test(
+      raw
+    )
+  ) {
+    return false;
+  }
+  return (
+    /\bprice supply separately\b/.test(raw) ||
+    /\bsupply separately from installation\b/.test(raw) ||
+    /\bseparate supply and installation\b/.test(raw)
+  );
+}
+
 export function flooringFinishUsesHardwoodWidth(
   finish: FlooringFinishType | null
 ): boolean {
@@ -738,7 +765,7 @@ export function sanitizeFlooringPortionInapplicableFields(
       "preparation_authority"
     );
   }
-  if (!flooringFinishUsesTileDimensions(finish)) {
+  if (!flooringPortionKeepsTileDimensions(portion)) {
     clearMachineOwnedField(portion, "tile_width_mm", "tile_width_authority");
     clearMachineOwnedField(portion, "tile_length_mm", "tile_length_authority");
   }

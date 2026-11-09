@@ -22,7 +22,10 @@
  */
 
 import { round2 } from "@/lib/estimate/facts";
-import type { FlooringPortion } from "@/lib/estimate/flooring-portions";
+import {
+  briefRequestsSeparateSupplyPricing,
+  type FlooringPortion,
+} from "@/lib/estimate/flooring-portions";
 
 export const FLOORING_LAMINATE_CLICK_LOCK_SUPPLY_M2 =
   "flooring.laminate.click_lock.supply.m2" as const;
@@ -344,13 +347,19 @@ export function applyLaminateBriefFacts(
   if (
     !options?.skipUnderlay &&
     portion.underlay_required == null &&
-    /\b(?:include|including|with) underlay\b/.test(raw)
+    /\b(?:include|including|with)(?:\s+[a-z]+){0,2}\s+underlay\b/.test(raw)
   ) {
     portion.underlay_required = true;
     portion.underlay_authority = "extracted";
   }
   if (/\b(?:customer|client)[-\s]supplied\b/.test(raw)) {
     portion.finish_supplied_by = portion.finish_supplied_by ?? "customer";
+  }
+  if (
+    portion.finish_pricing == null &&
+    briefRequestsSeparateSupplyPricing(text)
+  ) {
+    portion.finish_pricing = "separate_supply";
   }
   const negated = laminateNegatedScope(text);
   if (negated.preparation) {
