@@ -519,19 +519,17 @@ QT-019’s sheet observation columns stay empty. The hosted identity check on `3
 
 #### Next implementation order
 
-After tomorrow’s evidence pass, and only where the sheet has a new or changed observation:
+The 10 November re-read found no new Test or General Notes observations. QDR-004 onwards remain blank. The next batch is bounded:
 
-1. Flooring package and labour: QT-001, QT-002, QT-004.
-2. Work-area identity: QT-003, QT-005, QT-010, and QT-020 if a note appears.
-3. Door count and stated answers reaching Details: QT-011, QT-012.
-4. Supply ownership: QT-008, QT-026.
-5. Ceiling labels: QT-015.
-6. Fence exclusion questions: QT-021, QT-022.
-7. Deck allowances and retaining excavation: QT-007, QT-030.
+1. Diagnose flooring output on QT-001, QT-002, and QT-004 (V3-007). Separate missing lines from package questions and missing rates before changing a calculator.
+2. Lost scope (V3-008): QT-003 rooms, QT-005 deck omitted, and QT-010 walls recognised as plastering. Fix only a shared identity cause.
+3. Incorrect charge (V3-010): QT-026 customer-supplied aluminium panels must not be purchased. Check QT-008 only so customer-supplied decking is not regressed.
+
+V3-006 cladding and V3-017 daily tidy stay deferred. Doors, ceiling, fence questions, deck allowances, and retaining excavation stay deferred until this batch has a diagnosis.
 
 ### Next action
 
-Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `3ced1a2bbbf610422cf54a54ae54ff348afebc2f` to Production. Creation of “V3 Production QA” and the partition smoke above stay unauthorised.
+Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. That live deployment is the rollback target. Release Review recommends Production publication of `3ced1a2bbbf610422cf54a54ae54ff348afebc2f`. No migration is required. Publication still needs a separate approval. Creation of “V3 Production QA” and the partition smoke above stay unauthorised.
 
 `estimating/v3` is fast-forwarded to `3ced1a2bbbf610422cf54a54ae54ff348afebc2f`. Release Review approved that SHA for Preview integration. Hosted evidence is `qa-evidence/scenario-qa-3ced1a2b/results.json` on Preview `https://quotr-2-0-h5ijvkm55-quotr1.vercel.app`, deployment `dpl_2FTbDd3jSAew4yk1RbXZFevwmGxp`. The earlier full pass on `8f2e1bc5` covers the unchanged analysis, compact-card, removal, unresolved-generation, bathroom, and QT-016 capture paths. Criteria 5 and 7 were retested on `3ced1a2b`. A split preliminary is stored as a materials line and a labour line that sum once. Ambiguous final-clean wording stays one cleaning identity review. QT-016 remains deferred: the hosted result was an incomplete specialist estimate, not the mixed-category save failure. The deferred test-sheet triage is above.
 
