@@ -2,7 +2,7 @@
 
 This is the only product direction for finishing V3. Stage notes, the capability matrix, and the coordinator handoff do not add another plan. The handoff keeps the session, the QA organisation, and the publish rules. The copy of this file inside `68c5760c` is the register as it stood at that product commit.
 
-Restarted 5 November 2026. Progress recorded 6 November 2026. Website Production `b9fcb0fb` was released on 9 November 2026. Rollback remains `96beddeb` / `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue`. Further Production writes still need a named Production QA organisation. Routine development and bounded Preview repairs toward this finish line stay authorised. Ask Jean-Luc only for a material product decision or a protected operation. This register does not reopen an accepted slice without contrary evidence. A missing company rate is not a defect. Passing arithmetic is not proof that a benchmark or company rate is the right market price. A deferred row is a proposed scope decision. It is not an owner-approved exclusion from V3.
+Restarted 5 November 2026. Progress recorded 6 November 2026. Website Production `b9fcb0fb` was released on 9 November 2026. The immediate rollback target is that live deployment, `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. Further Production writes still need a named Production QA organisation. Routine development and bounded Preview repairs toward this finish line stay authorised. Ask Jean-Luc only for a material product decision or a protected operation. This register does not reopen an accepted slice without contrary evidence. A missing company rate is not a defect. Passing arithmetic is not proof that a benchmark or company rate is the right market price. A deferred row is a proposed scope decision. It is not an owner-approved exclusion from V3.
 
 Support means a demonstrated assembly path. A recognised work-area label is not support. V3 does not promise every variant of a family.
 
@@ -42,7 +42,7 @@ Software correctness and rate calibration are separate rows.
 | Preview database | `quotr_preview` / `shhpjsoldmqtkdbgrbtm` |
 | QA organisation | `0767b04e-31c2-4679-a275-16201135df02`, “V3 QA isolated mw2usno8” |
 | Production database | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` |
-| Website Production | `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`, Ready, target production, `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` on `release/website-estimating-stage-1`. Rollback `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue` (`96beddeb`). |
+| Website Production | `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`, Ready, target production, `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` on `release/website-estimating-stage-1`. Immediate rollback target is this live deployment. Re-verified 9 November 2026: target production, Ready, commit `b9fcb0fb`. |
 | Android release line | `ff39ba31` on `release/android-estimating-stage-1`. Not this Preview. |
 
 The local `estimating/v3` worktree at `C:/Users/Admin/Desktop/quotr-estimating-v3-integration` remains `af4a388b` with unrelated uncommitted files. It was not updated or cleaned. That checkout is not the integration tip. `origin/estimating/v3-preliminaries` is `a0479ef0`, and that commit is an ancestor of `68c5760c`. A branch deployment shares the Preview database. Website Production is the deployment in the table above.
@@ -385,7 +385,7 @@ The repeatable method for the next website release is:
 5. Create a Git deployment of that exact commit and ref with target `production`. That build uses the Production environment records. Do not promote a Preview deployment, do not upload a Production build from a laptop, and do not copy Preview values.
 6. Before the aliases are treated as released, confirm target `production`, `githubCommitSha` equal to the reviewed SHA, and public Supabase host `lxvnylhsbvudzzupxeqr`.
 7. Check `app.get-quotr.com`, `quotr-2-0.vercel.app`, and the stage-1 branch alias. Confirm `get-quotr.com` still shows the marketing page and `play.get-quotr.com` still serves its own deployment.
-8. On a blocking fault, point `app.get-quotr.com`, `quotr-2-0.vercel.app`, and the website branch alias back to `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue`. Leave migration 126 and `gst_tax_basis` in place.
+8. On a blocking fault, point `app.get-quotr.com`, `quotr-2-0.vercel.app`, and the website branch alias back to the live deployment `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5` (`b9fcb0fb`). Leave migration 126 and `gst_tax_basis` in place.
 
 #### Proposed Production smoke
 
@@ -466,4 +466,4 @@ Completed Preview evidence stays the source for the unchanged paths. This smoke 
 
 ### Next action
 
-Development Lead. Published and closed at `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` / `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. Rollback remains `96beddeb` / `dpl_5KxnUEhLzT6MJUj4mpGSKSYP6oue`. Approve creation of “V3 Production QA” and the partition smoke above before either is run.
+Development Lead. Published and closed at `b9fcb0fb920cd327a5ed0ecc6b63d4d8819d97bc` / `dpl_CDLvLqtf75nyaSZVGvDpsaXU7eV5`. The immediate rollback target is that live deployment. Approve creation of “V3 Production QA” and the partition smoke above before either is run.
