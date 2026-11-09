@@ -68,6 +68,12 @@ function includesAny(text: string, phrases: readonly string[]): boolean {
 
 export function briefHasIndependentPlastering(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
+  const framedWall =
+    /\b(?:90|45|140)\s*[x×]\s*(?:45|90|140)\b/.test(brief) &&
+    /\b(?:timber|steel)\s+framing\b/.test(brief) &&
+    /\b(?:plasterboard|plywood|gib)\b/.test(brief) &&
+    /\bwalls?\b/.test(brief);
+  if (framedWall) return false;
   return includesAny(brief, [
     "skim coat",
     "skim-coat",
@@ -193,6 +199,15 @@ function briefHasCeilingConstructionLanguage(brief: string): boolean {
   ]);
 }
 
+function ceilingStructureSignal(brief: string): boolean {
+  if (/\b(gib|fyreline|plasterboard|existing framing)\b/.test(brief)) return true;
+  if (!/\btimber framing\b/.test(brief)) return false;
+  return brief.split(/(?<=[.!?])\s+/).some(
+    (sentence) =>
+      /\btimber framing\b/.test(sentence) && !/\bdeck(?:ing)?\b/.test(sentence)
+  );
+}
+
 export function briefHasExplicitCeilings(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
   if (briefHasPaintOrStopCeilingOnly(briefText)) return false;
@@ -206,7 +221,7 @@ export function briefHasExplicitCeilings(briefText: string): boolean {
   }
   const roomPackage =
     /\b(main room|lounge|hallway|hall|living room)\b/.test(brief) &&
-    /\b(gib|fyreline|plasterboard|existing framing|timber framing)\b/.test(brief);
+    ceilingStructureSignal(brief);
   if (roomPackage && !briefHasExplicitInternalWalls(briefText)) return true;
   return false;
 }
@@ -866,7 +881,10 @@ export function briefHasExplicitInternalWalls(briefText: string): boolean {
       "plasterboard wall",
     ]) ||
     /\binternal\b[^.]{0,40}\bpartition\b/.test(brief) ||
-    /\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+    /\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief) ||
+    (/\b(?:90|45|140)\s*[x×]\s*(?:45|90|140)\b/.test(brief) &&
+      /\b(?:timber|steel)\s+framing\b/.test(brief) &&
+      /\b(?:plasterboard|plywood|gib)\b/.test(brief))
   );
 }
 

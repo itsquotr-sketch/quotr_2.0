@@ -487,7 +487,8 @@ function inferInternalWalls(
   if (
     !includesAny(brief, patterns) &&
     !/\bpartition/.test(brief) &&
-    !/\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief)
+    !/\bnon[-\s]?loadbearing\b[^.]{0,48}\b(?:stud\s+)?walls?\b/.test(brief) &&
+    !framedWallOwnsStopping(brief)
   ) {
     return;
   }
@@ -1084,13 +1085,21 @@ function inferBathroom(
 }
 
 function matchDeckPlanMetres(brief: string): { length: number; width: number } | null {
-  const metres = brief.match(
+  const deckSentence = brief
+    .split(/(?<=[.!?])\s+/)
+    .find(
+      (sentence) =>
+        /\bdeck(?:ing)?\b/.test(sentence) &&
+        /\d+(?:\.\d+)?\s*m/.test(sentence)
+    );
+  const source = deckSentence ?? brief;
+  const metres = source.match(
     /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s*(?:[x×]|by)\s*(\d+(?:\.\d+)?)\s*m(?:etres?)?/i
   );
   if (metres) {
     return { length: Number(metres[1]), width: Number(metres[2]) };
   }
-  const millimetres = brief.match(
+  const millimetres = source.match(
     /(\d{1,2},\d{3}|\d{3,5})\s*mm\s*(?:[x×]|by)\s*(\d{1,2},\d{3}|\d{3,5})\s*mm/i
   );
   if (!millimetres) return null;
@@ -1268,18 +1277,26 @@ function inferDeck(
     });
   }
 
-  if (
-    includesAny(brief, [
-      "fascia",
-      "include fascia",
-      "edge boards",
-      "edge-board",
-      "face boards",
-      "vertical boards down the side",
-      "vertical face",
-    ]) &&
-    !fullHeightSkirting
-  ) {
+  const fasciaRequested = includesAny(brief, [
+    "fascia",
+    "include fascia",
+    "edge boards",
+    "edge-board",
+    "face boards",
+    "vertical boards down the side",
+    "vertical face",
+  ]);
+  const fasciaExcluded =
+    /\b(?:no|without|exclud\w*)\b[^.]{0,48}\bfascia\b/.test(brief) ||
+    /\bfascia\b[^.]{0,24}\b(?:not required|excluded)\b/.test(brief);
+  if (fasciaExcluded) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.vertical_face_boards_required",
+      label: "Fascia / edge boards",
+      value: false,
+    });
+  } else if (fasciaRequested && !fullHeightSkirting) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
@@ -1287,7 +1304,7 @@ function inferDeck(
       value: true,
     });
   } else if (
-    includesAny(brief, ["fascia", "include fascia", "edge boards", "edge-board"])
+    includesAny(brief, ["include fascia", "edge boards", "edge-board"])
   ) {
     addFact(extraction, {
       workAreaType: "deck",
@@ -1432,6 +1449,37 @@ function inferDeck(
   }
 }
 
+const FENCE_PANEL_COUNT_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+function fencePanelsAreCustomerSupplied(brief: string): boolean {
+  return (
+    /(?:customer|client)[-\s]supplied[^.]{0,80}\bpanels?\b/.test(brief) ||
+    /\bpanels?\b[^.]{0,40}\bnot to be purchased\b/.test(brief)
+  );
+}
+
+function fenceCustomerSuppliedPanelCount(brief: string): number | null {
+  const match = brief.match(
+    /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:customer|client)[-\s]supplied\b[^.]{0,80}\bpanels?\b/
+  );
+  if (!match) return null;
+  const raw = match[1] ?? "";
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  return FENCE_PANEL_COUNT_WORDS[raw] ?? null;
+}
+
 function inferFence(
   brief: string,
   extraction: AIExtractionOutput,
@@ -1446,6 +1494,18 @@ function inferFence(
     "Fence mentioned in brief",
     allowedTypes
   );
+
+  if (
+    includesAny(brief, ["aluminium", "aluminum"]) &&
+    !extraction.facts.some((fact) => fact.key === "fence.material")
+  ) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.material",
+      label: "Fence material",
+      value: "Aluminium",
+    });
+  }
 
   if (includesAny(brief, ["remove existing fence"])) {
     addFact(extraction, {
@@ -1469,6 +1529,43 @@ function inferFence(
       label: "Gate included",
       value: true,
     });
+  }
+
+  if (fencePanelsAreCustomerSupplied(brief)) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.sections_client_supplied",
+      label: "Panels customer supplied",
+      value: true,
+    });
+    const count = fenceCustomerSuppliedPanelCount(brief);
+    const width = brief.match(/\b(\d+(?:\.\d+)?)\s*m\s+wide\b/);
+    if (count != null) {
+      addFact(extraction, {
+        workAreaType: "fence",
+        key: "fence.section_count",
+        label: "Panel count",
+        value: count,
+      });
+    }
+    if (width) {
+      addFact(extraction, {
+        workAreaType: "fence",
+        key: "fence.section_width_m",
+        label: "Panel width",
+        value: Number(width[1]),
+        unit: "m",
+      });
+    }
+    if (count != null && width && !brief.match(/(\d+(?:\.\d+)?)\s*lm\b/)) {
+      addFact(extraction, {
+        workAreaType: "fence",
+        key: "fence.length_m",
+        label: "Fence length",
+        value: Math.round(count * Number(width[1]) * 100) / 100,
+        unit: "m",
+      });
+    }
   }
 
   const lengthMatch = brief.match(/(\d+(?:\.\d+)?)\s*lm/i);
@@ -1769,11 +1866,41 @@ function applyDeckExternalStairsBoundary(
   );
 }
 
+function framedWallOwnsStopping(brief: string): boolean {
+  const framed =
+    /\b(?:90|45|140)\s*[x×]\s*(?:45|90|140)\b/.test(brief) ||
+    /\b(?:timber|steel)\s+framing\b/.test(brief);
+  const lining = /\b(?:plasterboard|plywood|gib)\b/.test(brief);
+  const independent = includesAny(brief, [
+    "skim coat",
+    "plaster the existing",
+    "plaster existing",
+    "stop all existing",
+    "plaster ceilings",
+    "patch repair",
+    "stop the ceiling",
+    "stop ceiling",
+    "stop new ceiling",
+  ]);
+  return framed && lining && /\bwalls?\b/.test(brief) && !independent;
+}
+
 function inferPlastering(
   brief: string,
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
+  if (framedWallOwnsStopping(brief)) {
+    extraction.workAreas = extraction.workAreas.filter(
+      (area) => area.type !== "plastering"
+    );
+    extraction.facts = extraction.facts.filter(
+      (fact) =>
+        fact.work_area_type !== "plastering" &&
+        !fact.key.startsWith("plastering.")
+    );
+    return;
+  }
   const patterns = [
     "level 4 stop",
     "level 5 skim",

@@ -61,6 +61,7 @@ Fact key rules:
 - For retaining walls, use retaining_wall.length_m, retaining_wall.height_m for uniform walls; use retaining_wall.is_raking=true with retaining_wall.height_high_m and retaining_wall.height_low_m for raking walls.
 - "2m timber fence with a gate" → fence.height_m=2, fence.material=Timber, fence.gate_included=true.
 - "18m aluminium slat fence with one gate" / steel slat / plastic composite fence with a gate → set the modular system plus fence.modular_gate_requested=true. Do not treat that as a timber gate. Do not copy a leftover timber gate into fence.modular_gate_requested unless the current brief is a modular fence that itself requests a gate.
+- "customer-supplied panels" / "panels are not to be purchased" → fence.sections_client_supplied=true. Posts, brackets, fixings, and installation stay contractor-supplied. A customer-supplied gate is not a customer-supplied panel.
 - "kwila deck" / "140mm hardwood decking" → deck.board_material=Kwila or Hardwood, deck.board_width_mm=140.
 - "step down" / "step down included" / "single step" / "deck steps" / "two steps to ground" → deck.steps_included=true and deck.access_type="Single step or step-down". Do NOT suggest a separate external_stairs work area.
 - "stairs" / "stair set" on a deck, without independent stair-assembly language → deck.access_type="Stair set". Do NOT suggest external_stairs.
@@ -141,7 +142,7 @@ Fact key rules:
 - "minor prep" → painting.prep_level=Light.
 - "full prep" → painting.prep_level=Heavy.
 - "client supplied paint" → painting.paint_client_supplied=true.
-- "Level 4 stopping" → plastering.level=Level 4.
+- "Level 4 stopping" on an existing surface or an independent stopping job → plastering.level=Level 4. Level 4 stopping on a new framed wall stays on that Internal Wall and is not a Plastering Work Area.
 - "Level 5 skim coat" → plastering.level=Level 5.
 - "patch repairs" → plastering.level=Patching only, plastering.surface_type=Patch repairs.
 - "stop new GIB" → plastering.surface_type=New plasterboard.

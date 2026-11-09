@@ -8,7 +8,7 @@
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { approvedMaterialCostExGst } from "@/lib/rates/approved-material-costs";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
-import { round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, round2 } from "@/lib/estimate/facts";
 import {
   FENCE_BOARDS_COMPONENT,
   FENCE_BOARD_LABOUR_COMPONENT,
@@ -797,7 +797,6 @@ function commercializeModularFence(params: {
   const missingInfo: string[] = [];
   const inherited: string[] = [];
   const modular = params.physical.modular!;
-  void params.facts;
   void params.constraints;
 
   const fromPhysical = params.physical.requirements.filter(
@@ -807,6 +806,24 @@ function commercializeModularFence(params: {
   for (const row of fromPhysical) {
     if (row.componentKey === FENCE_FACE_AREA_COMPONENT) {
       pricedMaterials.push(row);
+      continue;
+    }
+    if (
+      row.componentKey === FENCE_SECTIONS_COMPONENT &&
+      getBooleanFact(params.facts, params.workAreaId, "fence.sections_client_supplied")
+    ) {
+      pricedMaterials.push({
+        ...row,
+        purchaseQuantity: 0,
+        priced: true,
+        unitCost: 0,
+        totalCost: 0,
+        rateSource: "Customer supplied",
+        specification: `Customer-supplied panels. Not purchased. ${row.specification}`,
+      });
+      assumptions.push(
+        "The fence panels are customer-supplied. Posts, brackets, fixings, and installation stay in this estimate."
+      );
       continue;
     }
     if (

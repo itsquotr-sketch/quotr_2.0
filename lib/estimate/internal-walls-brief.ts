@@ -282,9 +282,14 @@ export function explicitInternalWallsOpenings(text: string): {
   doorOpeningCount: number | null;
 } {
   const brief = normalise(text);
+  if (/\bno\b[^.]{0,40}\bopenings?\b/.test(brief)) {
+    return { hasOpenings: false, doorOpeningCount: null };
+  }
+  const doorSupplyExcluded =
+    /\bno door supply\b/.test(brief) || /\bno door installation\b/.test(brief);
   if (
     briefStatesExplicitInternalWallsNoOpenings(text) ||
-    /\bno doors?\b/.test(brief) ||
+    (/\bno doors?\b/.test(brief) && !doorSupplyExcluded) ||
     /\bwithout (?:a |any )?doors?\b/.test(brief)
   ) {
     return { hasOpenings: false, doorOpeningCount: null };
@@ -471,6 +476,10 @@ function parseLiningSides(text: string): {
     const sideB = liningFromPhrase(mixed[2] ?? "") ?? empty;
     return { sameBoth: false, sideA, sideB };
   }
+  if (/\bone side only\b|\bon one side only\b|\bsingle side\b/.test(text)) {
+    const lining = liningFromPhrase(text) ?? empty;
+    return { sameBoth: false, sideA: lining, sideB: empty };
+  }
   if (includesAny(text, ["both sides", "either side"])) {
     const lining = liningFromPhrase(text) ?? empty;
     return { sameBoth: true, sideA: lining, sideB: lining };
@@ -486,6 +495,7 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
   const lining = parseLiningSides(text);
   const frameSize = canonicalTimberSizeFromText(text);
   const timber = Boolean(frameSize) || includesAny(text, ["timber", "framed timber"]);
+  const steel = /\bsteel\s+(?:framing|stud)\b/.test(text);
   const lengthLm = parseLengthLm(text);
   const heightM = parseHeightM(text);
   if (!timber && !lining.sideA.product && lengthLm == null) return null;
@@ -496,7 +506,7 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
     wallCount: parseWallCount(text, fallbackCount),
     lengthLm,
     heightM,
-    frameSystem: timber ? "timber" : null,
+    frameSystem: steel ? "steel" : timber ? "timber" : null,
     frameSize,
     sameLiningBothSides: lining.sameBoth,
     hasOpenings: openings.hasOpenings,
@@ -749,7 +759,10 @@ export function internalWallsScopeText(briefText: string): string {
       "both sides",
       "no openings",
       "door opening",
-    ]);
+      "timber framing",
+      "steel framing",
+      "plywood",
+    ]) || /\bwall\s+[a-z]\b/.test(brief);
   });
   return relevant.length > 0 ? relevant.join(" ") : briefText;
 }
@@ -759,23 +772,43 @@ export function extractInternalWallsTypesFromBrief(
 ): ExtractedInternalWallsType[] {
   const scoped = internalWallsScopeText(briefText);
   const brief = normalise(scoped);
-  if (
-    !includesAny(brief, [
-      "internal wall",
-      "internal partition",
-      "timber partition",
-      "partition wall",
-      "framed timber",
-      "timber framed",
-      "stud wall",
-      "rebuild the walls",
-      "new partition",
-    ])
-  ) {
-    return [];
-  }
+    if (
+      !includesAny(brief, [
+        "internal wall",
+        "internal partition",
+        "timber partition",
+        "partition wall",
+        "framed timber",
+        "timber framed",
+        "stud wall",
+        "rebuild the walls",
+        "new partition",
+        "timber framing",
+        "steel framing",
+      ]) &&
+      !/\b(?:90|45|140)\s*[x×]\s*(?:45|90|140)\b/.test(brief) &&
+      !/\bwall\s+[a-z]\b/.test(brief)
+    ) {
+      return [];
+    }
 
-  const split = brief.split(
+    const labeled = brief
+      .split(/(?=\bwall\s+[a-z]\b)/)
+      .map((part) => part.trim())
+      .filter((part) => /\bwall\s+[a-z]\b/.test(part));
+    if (labeled.length >= 2) {
+      const types = labeled
+        .map((part) => parseSegment(part, 1))
+        .filter((row): row is ExtractedInternalWallsType => row != null);
+      if (types.length >= 2) {
+        const cornice = extractInternalWallsCorniceFromBrief(scoped);
+        return types.map((row) =>
+          withBriefFinish(withExtractedCornice(row, cornice), briefText)
+        );
+      }
+    }
+
+    const split = brief.split(
     /(?:,\s*and the other wall|,?\s+and the other wall|the other wall is)/
   );
   const segments = split.map((part) => part.trim()).filter(Boolean);
@@ -1053,6 +1086,14 @@ export function applyExtractedInternalWallsToFacts(params: {
           value: "90 mm timber framing — 90×45",
         });
       }
+    } else if (spec.frameSystem === "steel") {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: "internal_walls.wall_type.frame_system",
+        value: "Steel framing",
+      });
     }
     if (spec.lengthLm != null) {
       facts = applyInternalWallsFactWrite({

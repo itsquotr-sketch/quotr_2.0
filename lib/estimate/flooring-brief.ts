@@ -148,7 +148,7 @@ function finishFromSnippet(text: string): FlooringFinishType | null {
 }
 
 function locationFromSnippet(text: string): string | null {
-  const bedroom = text.match(/\bbedroom\s+(\d+)\b/i);
+  const bedroom = text.match(/\b(?:bedroom|bed)\s*(\d+)\b/i);
   if (bedroom) return `Bedroom ${bedroom[1]}`;
   if (/\bbedrooms?\b/i.test(text)) return "Bedrooms";
   if (/\bmeeting rooms?\b/i.test(text)) return "Meeting room";
@@ -224,7 +224,25 @@ function roomDimensionsFromSnippet(text: string): {
   const trailing = stripped.match(
     /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(?:[x×]|by)\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(mm|m(?:etres?|eters?)?)\b/i
   );
-  if (!trailing) return { length_m: null, width_m: null };
+  if (!trailing) {
+    const bare = stripped.match(
+      /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\b/i
+    );
+    if (!bare) return { length_m: null, width_m: null };
+    const length = Number(bare[1]);
+    const width = Number(bare[2]);
+    if (
+      !Number.isFinite(length) ||
+      !Number.isFinite(width) ||
+      length <= 0 ||
+      width <= 0 ||
+      length > 30 ||
+      width > 30
+    ) {
+      return { length_m: null, width_m: null };
+    }
+    return { length_m: length, width_m: width };
+  }
   return {
     length_m: measureTokenToMetres(trailing[1]!, trailing[3]!),
     width_m: measureTokenToMetres(trailing[2]!, trailing[3]!),
@@ -784,7 +802,8 @@ function applyGlobalConstraints(
       if (
         location != null &&
         portion.label != null &&
-        location !== portion.label
+        location !== portion.label &&
+        !(location === "Bedrooms" && portion.label.startsWith("Bedroom"))
       ) {
         continue;
       }
@@ -966,6 +985,16 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
   }
 }
 
+function splitCompactMeasuredRooms(briefText: string): string[] {
+  const matches = [
+    ...briefText.matchAll(
+      /\b(bed\s*\d+|bedroom\s*\d+|hall(?:way)?|lounge|office)\b[^.;]{0,60}?\b\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?(?:\s*m(?:etres?)?)?\s*(?:carpet(?:\s+tiles?)?|vinyl(?:\s+planks?)?|hardwood|laminate)\b/gi
+    ),
+  ];
+  if (matches.length < 2) return [];
+  return matches.map((match) => match[0]);
+}
+
 function splitMeasuredRooms(snippet: string): string[] {
   const parts = snippet
     .split(/\s*,?\s+\band\b\s+/i)
@@ -990,7 +1019,11 @@ export function extractFlooringPortionsFromBrief(briefText: string): FlooringPor
   if (!briefHasIndependentFlooring(briefText)) {
     return [];
   }
-  const snippets = splitFlooringSnippets(briefText).flatMap(splitMeasuredRooms);
+  const compact = splitCompactMeasuredRooms(briefText);
+  const snippets =
+    compact.length >= 2
+      ? compact
+      : splitFlooringSnippets(briefText).flatMap(splitMeasuredRooms);
   const portions: FlooringPortion[] = [];
   for (const [index, snippet] of snippets.entries()) {
     if (clauseIsBathroomOwnedFloor(snippet)) continue;
