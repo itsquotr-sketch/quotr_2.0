@@ -80,6 +80,27 @@ check("QT-005 keeps the deck and the floor", areas(qt005).includes("deck") && ar
 check("QT-005 does not invent a ceiling from deck framing", !areas(qt005).includes("ceilings"), areas(qt005).join(","));
 check("QT-005 deck uses its own 4 by 3", fact(qt005, "deck.length_m") === 4 && fact(qt005, "deck.width_m") === 3);
 check("QT-005 excluded fascia stays off", fact(qt005, "deck.vertical_face_boards_required") === false);
+const fasciaAlreadyOn = empty();
+fasciaAlreadyOn.facts.push({
+  work_area_type: "deck",
+  key: "deck.vertical_face_boards_required",
+  label: "Fascia / edge boards",
+  value: true,
+  confidence: 0.9,
+});
+const fasciaCorrected = enrichExtractionFromBrief({
+  briefText: `Two separate areas at the same house:
+1. Inside lounge: 5 m × 4 m, supply and install hardwood flooring over the existing prepared plywood.
+2. Outside: 4 m × 3 m timber deck, finished height 450 mm above ground, hardwood decking on new timber framing.
+
+Allow 10% finish waste on each area. No floor removal inside. No stairs, balustrades, fascia, demolition or painting on the deck. Deck support design and footing details are not yet available. Do not use the flooring installation rate for the deck.`,
+  extraction: fasciaAlreadyOn,
+  allowedTypes: allowed,
+}).extraction;
+check(
+  "QT-005 exclusion overrides a fascia fact that was already true",
+  fact(fasciaCorrected, "deck.vertical_face_boards_required") === false
+);
 const floor = portions(qt005, "flooring.portions");
 check(
   "QT-005 lounge flooring keeps 5 by 4",

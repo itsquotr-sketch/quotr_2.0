@@ -68,7 +68,7 @@ Fact key rules:
 - Only suggest external_stairs for a genuine independent stair assembly: "external staircase", "stair flight", "stairs between levels", "stringer stairs", "landing and stairs", "access stair", "separate external stairs", "replace external stairs".
 - "balustrade" → deck.balustrade_required=true.
 - "no balustrade" / "balustrade not required" → deck.balustrade_required=false.
-- "fascia" / "edge boards" / "fascia around the deck" → deck.vertical_face_boards_required=true.
+- "fascia" / "edge boards" / "fascia around the deck" → deck.vertical_face_boards_required=true. "no fascia", "without fascia", or fascia named in an explicit no-list such as "No stairs, balustrades, fascia" → deck.vertical_face_boards_required=false. Do not set it true as well.
 - "close in underneath the deck" / "screen under deck" / "vertical boards from deck to ground" / "full-height deck skirt" / "clad the face below the deck" → deck.skirting_included=true.
 - Ambiguous "vertical boards down the side" without ground / under / full-height context → deck.vertical_face_boards_required=true. Do NOT set deck.skirting_included. Prefer fascia + Improve, not silent full-height cladding.
 - "remove existing deck" → deck.existing_deck_removal=true.

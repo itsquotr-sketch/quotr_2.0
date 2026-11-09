@@ -1290,7 +1290,7 @@ function inferDeck(
     /\b(?:no|without|exclud\w*)\b[^.]{0,48}\bfascia\b/.test(brief) ||
     /\bfascia\b[^.]{0,24}\b(?:not required|excluded)\b/.test(brief);
   if (fasciaExcluded) {
-    addFact(extraction, {
+    upsertFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
       label: "Fascia / edge boards",
