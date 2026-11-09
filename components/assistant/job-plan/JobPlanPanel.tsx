@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { OrganisationRate } from "@/components/setup/types";
-import type { EstimateFact, EstimateLineItemInput } from "@/lib/estimate/types";
+import type { EstimateFact } from "@/lib/estimate/types";
 import type { JobPlanConstraintWrite } from "@/components/assistant/job-plan/quick-spec-editors";
 
 type JobPlanPanelProps = {
@@ -86,7 +86,7 @@ type JobPlanPanelProps = {
   projectId?: string;
   briefText?: string | null;
   labourRates?: readonly OrganisationRate[];
-  siblingLines?: readonly EstimateLineItemInput[];
+  siblingLines?: readonly { scopeKey?: string | null; componentKey?: string | null }[];
 };
 
 export function JobPlanPanel({

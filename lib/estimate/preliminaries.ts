@@ -709,7 +709,7 @@ function money(value: number): string {
 
 export function overlappingIdentity(
   item: PreliminaryItem,
-  siblingLines: readonly EstimateLineItemInput[]
+  siblingLines: readonly { scopeKey?: string | null; componentKey?: string | null }[]
 ): string | null {
   const keys = OVERLAP_IDENTITIES[item.id] ?? [];
   if (keys.length === 0) return null;

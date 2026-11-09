@@ -19,7 +19,7 @@ import {
   type PreliminaryTreatment,
   type PreliminariesPlan,
 } from "@/lib/estimate/preliminaries";
-import type { EstimateFact, EstimateLineItemInput } from "@/lib/estimate/types";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 type PreliminariesSectionProps = {
   projectId: string;
@@ -27,7 +27,7 @@ type PreliminariesSectionProps = {
   facts: readonly EstimateFact[];
   tradeDescriptions?: readonly string[];
   labourRates?: readonly OrganisationRate[];
-  siblingLines?: readonly EstimateLineItemInput[];
+  siblingLines?: readonly { scopeKey?: string | null; componentKey?: string | null }[];
 };
 
 const BASES: { value: PreliminaryBasis; label: string }[] = [
