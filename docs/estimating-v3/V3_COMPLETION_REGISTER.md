@@ -513,25 +513,26 @@ QT-017, QT-018, QT-027, QT-028, QT-032, QT-035, QT-036, QT-038, QT-039, QT-040.
 
 The prompt exists and the observation columns are empty or too thin to score. Do not mark these passed or failed.
 
-QT-017, QT-019, QT-020, QT-023, QT-024, QT-025, QT-027, QT-028, QT-029, QT-031, QT-032, QT-033, QT-034, QT-035, QT-036, QT-037, QT-038, QT-039, QT-040.
+QT-017, QT-020, QT-023, QT-024, QT-025, QT-027, QT-028, QT-029, QT-031, QT-032, QT-033, QT-034, QT-035, QT-036, QT-037, QT-038, QT-039, QT-040.
 
-QT-019 is the first retest for the new preliminaries overlap rule.
+QT-019’s sheet observation columns stay empty. The hosted identity check on `3ced1a2b` is recorded below and is not a score on the Tests tab.
 
 #### Next implementation order
 
 After tomorrow’s evidence pass, and only where the sheet has a new or changed observation:
 
-1. Re-test QT-011, QT-013, QT-014, and QT-016 on this Preview. Fix only a newly captured request or server error.
-2. Flooring package and labour: QT-001, QT-002, QT-004.
-3. Work-area identity: QT-003, QT-005, QT-010, and QT-020 if a note appears.
-4. Door count and stated answers reaching Details: QT-011, QT-012.
-5. Supply ownership: QT-008, QT-026.
-6. Ceiling labels: QT-015.
-7. Fence exclusion questions: QT-021, QT-022.
-8. Deck allowances and retaining excavation: QT-007, QT-030.
+1. Flooring package and labour: QT-001, QT-002, QT-004.
+2. Work-area identity: QT-003, QT-005, QT-010, and QT-020 if a note appears.
+3. Door count and stated answers reaching Details: QT-011, QT-012.
+4. Supply ownership: QT-008, QT-026.
+5. Ceiling labels: QT-015.
+6. Fence exclusion questions: QT-021, QT-022.
+7. Deck allowances and retaining excavation: QT-007, QT-030.
 
 ### Next action
 
-Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `4707d819f224f51ff8a632fc98b7f68fee6a50b3` to Production, and do not fast-forward `estimating/v3`. Creation of “V3 Production QA” and the partition smoke above stay unauthorised.
+Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `3ced1a2bbbf610422cf54a54ae54ff348afebc2f` to Production. Creation of “V3 Production QA” and the partition smoke above stay unauthorised.
 
-Preview integration of `4707d819` is BLOCKED. Scenario QA on parent `0c366f35` matched deployment `dpl_3Dkuoquu3jJXmk34CavMYZY9wvvt`, and the local preliminaries verifier passed. Hosted checks did not run: creating a job returned HTTP 500 because the Preview service-role key is not a service_role JWT. Release Review blocked the parent for removal not surviving reload and for overlap lines never reaching the card, then blocked `5eaf561e` because that QA report was for the parent SHA, the hosted checks were still missing, and the overlap prop did not typecheck. `4707d819` narrows that prop to the line fields the job card already holds. `tsc --noEmit` reports no product error. The hosted gap remains. The deferred test-sheet triage is above.
+`estimating/v3` is fast-forwarded to `3ced1a2bbbf610422cf54a54ae54ff348afebc2f`. Release Review approved that SHA for Preview integration. Hosted evidence is `qa-evidence/scenario-qa-3ced1a2b/results.json` on Preview `https://quotr-2-0-h5ijvkm55-quotr1.vercel.app`, deployment `dpl_2FTbDd3jSAew4yk1RbXZFevwmGxp`. The earlier full pass on `8f2e1bc5` covers the unchanged analysis, compact-card, removal, unresolved-generation, bathroom, and QT-016 capture paths. Criteria 5 and 7 were retested on `3ced1a2b`. A split preliminary is stored as a materials line and a labour line that sum once. Ambiguous final-clean wording stays one cleaning identity review. QT-016 remains deferred: the hosted result was an incomplete specialist estimate, not the mixed-category save failure. The deferred test-sheet triage is above.
+
+Earlier block, kept as history: Preview integration of `4707d819` was blocked. Scenario QA on parent `0c366f35` matched deployment `dpl_3Dkuoquu3jJXmk34CavMYZY9wvvt`. Creating a job returned HTTP 500 because the shared Preview service-role key was not a service_role JWT. Release Review blocked that parent for removal not surviving reload and for overlap lines never reaching the card, then blocked `5eaf561e` because that QA report was for the parent SHA and the overlap prop did not typecheck. Those defects are fixed on the integrated SHA.
