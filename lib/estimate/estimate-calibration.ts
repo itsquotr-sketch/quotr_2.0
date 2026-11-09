@@ -46,6 +46,7 @@ export function countRateSources(
     calibrated_productivity: 0,
     fallback: 0,
     missing: 0,
+    customer_supplied: 0,
     default: 0,
   };
 

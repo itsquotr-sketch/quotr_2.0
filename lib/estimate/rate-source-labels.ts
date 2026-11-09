@@ -9,6 +9,7 @@ export type RateSourceType =
   | "calibrated_productivity"
   | "fallback"
   | "missing"
+  | "customer_supplied"
   | "default";
 
 export const RATE_SOURCE_FRIENDLY_LABELS: Record<RateSourceType, string> = {
@@ -20,6 +21,7 @@ export const RATE_SOURCE_FRIENDLY_LABELS: Record<RateSourceType, string> = {
   calibrated_productivity: "Your calibrated productivity",
   fallback: "Allowance used",
   missing: "Pricing required",
+  customer_supplied: "Customer supplied",
   default: "Default allowance",
 };
 
@@ -85,6 +87,14 @@ export function classifyRateSource(raw: string): RateSourceType {
 
   if (source.includes("entered amount")) {
     return "default";
+  }
+
+  if (
+    source === "customer_supplied" ||
+    source.includes("customer supplied") ||
+    source.includes("client supplied")
+  ) {
+    return "customer_supplied";
   }
 
   if (source.includes("project hourly")) {

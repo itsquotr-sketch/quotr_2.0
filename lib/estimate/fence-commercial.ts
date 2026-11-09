@@ -810,7 +810,7 @@ function commercializeModularFence(params: {
     }
     if (
       row.componentKey === FENCE_SECTIONS_COMPONENT &&
-      getBooleanFact(params.facts, params.workAreaId, "fence.sections_client_supplied")
+      getBooleanFact([...params.facts], params.workAreaId, "fence.sections_client_supplied")
     ) {
       pricedMaterials.push({
         ...row,
@@ -818,7 +818,7 @@ function commercializeModularFence(params: {
         priced: true,
         unitCost: 0,
         totalCost: 0,
-        rateSource: "Customer supplied",
+        rateSource: "customer_supplied",
         specification: `Customer-supplied panels. Not purchased. ${row.specification}`,
       });
       assumptions.push(

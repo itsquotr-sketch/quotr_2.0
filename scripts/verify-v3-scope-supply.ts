@@ -139,7 +139,7 @@ check(
   "QT-026 section installation remains",
   labour?.kind === "labour" && labour.productivityBasis.quantity === 6
 );
-check("QT-026 panel purchase cost is zero", section?.totalCost === 0 && section?.rateSource === "Customer supplied");
+check("QT-026 panel purchase cost is zero", section?.totalCost === 0 && section?.rateSource === "customer_supplied");
 check("QT-026 posts remain", (posts && "purchaseQuantity" in posts ? posts.purchaseQuantity : 0) > 0);
 check("QT-026 fixings remain", (fixings && "purchaseQuantity" in fixings ? fixings.purchaseQuantity : 0) > 0);
 

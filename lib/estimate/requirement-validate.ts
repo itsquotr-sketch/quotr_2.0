@@ -34,6 +34,7 @@ const RATE_SOURCES: readonly RequirementRateSource[] = [
   "supplier",
   "benchmark",
   "hardcoded_legacy",
+  "customer_supplied",
   "missing",
 ];
 

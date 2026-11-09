@@ -38,6 +38,8 @@ export function mapLabourRateSourceToRequirement(
     case "calibrated_productivity":
     case "derived_from_margin":
       return "company";
+    case "customer_supplied":
+      return "customer_supplied";
   }
 }
 

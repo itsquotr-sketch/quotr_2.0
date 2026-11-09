@@ -44,6 +44,7 @@ export type RequirementRateSource =
   | "supplier"
   | "benchmark"
   | "hardcoded_legacy"
+  | "customer_supplied"
   | "missing";
 
 /** Alias — same semantics as RequirementRateSource. */

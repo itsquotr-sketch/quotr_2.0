@@ -48,6 +48,11 @@ function mapRequirementRateSource(source: RequirementRateSource): {
         rateSource: getRateSourceLabel("fallback"),
         rateSourceType: "fallback",
       };
+    case "customer_supplied":
+      return {
+        rateSource: getRateSourceLabel("customer_supplied"),
+        rateSourceType: "customer_supplied",
+      };
     default:
       return {
         rateSource: getRateSourceLabel("benchmark"),
