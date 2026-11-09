@@ -476,7 +476,7 @@ Completed Preview evidence stays the source for the unchanged paths. This smoke 
 
 Source: Testing 1 November 2026, both tabs. QDR-004 through QDR-023 are blank and are neither passed nor failed. Rows after QT-040 are empty. An empty score cell is not a result.
 
-Candidate `0c366f35cab86e7acdd7d644e53805a87327d890` on `estimating/v3-analysis-preliminaries` covers QDR-001, QDR-002, and QDR-003, plus the confirmed preliminaries save failure. The other rows stay deferred until the next sheet review. That review re-reads both tabs, keeps unchanged accepted evidence, and does not rerun it.
+Candidate `4707d819f224f51ff8a632fc98b7f68fee6a50b3` on `estimating/v3-analysis-preliminaries` covers QDR-001, QDR-002, and QDR-003, plus the confirmed preliminaries save failure. It is `0c366f35` plus the removal and overlap fixes. The other rows stay deferred until the next sheet review. That review re-reads both tabs, keeps unchanged accepted evidence, and does not rerun it.
 
 #### Confirmed on this candidate
 
@@ -532,4 +532,6 @@ After tomorrow’s evidence pass, and only where the sheet has a new or changed 
 
 ### Next action
 
-Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `0c366f35cab86e7acdd7d644e53805a87327d890` to Production. Creation of “V3 Production QA” and the partition smoke above stay unauthorised. The next product candidate is `0c366f35cab86e7acdd7d644e53805a87327d890` on `estimating/v3-analysis-preliminaries`. Preview integration waits for Scenario QA and Release Review. The deferred test-sheet triage is above.
+Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `4707d819f224f51ff8a632fc98b7f68fee6a50b3` to Production, and do not fast-forward `estimating/v3`. Creation of “V3 Production QA” and the partition smoke above stay unauthorised.
+
+Preview integration of `4707d819` is BLOCKED. Scenario QA on parent `0c366f35` matched deployment `dpl_3Dkuoquu3jJXmk34CavMYZY9wvvt`, and the local preliminaries verifier passed. Hosted checks did not run: creating a job returned HTTP 500 because the Preview service-role key is not a service_role JWT. Release Review blocked the parent for removal not surviving reload and for overlap lines never reaching the card, then blocked `5eaf561e` because that QA report was for the parent SHA, the hosted checks were still missing, and the overlap prop did not typecheck. `4707d819` narrows that prop to the line fields the job card already holds. `tsc --noEmit` reports no product error. The hosted gap remains. The deferred test-sheet triage is above.
