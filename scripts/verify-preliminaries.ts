@@ -12,7 +12,9 @@ import { mapEstimateCategoryToItemType } from "../lib/pricing/calculations";
 import { classifyRateSource, getRateSourceLabel } from "../lib/estimate/rate-source-labels";
 import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-briefs";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
-import { persistLineCategory } from "../lib/estimate/persist-estimate-generation";
+import { persistLineCategory, persistLineViolation } from "../lib/estimate/persist-estimate-generation";
+import { createGenerationId } from "../lib/estimate/requirement-snapshot-persist";
+import { toUserError } from "../lib/errors/user-message";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import { parseLineItemNotes } from "../lib/estimate/line-item-metadata";
 import {
@@ -340,6 +342,55 @@ check(
     hourly: splitLabourRow?.hourlyCost,
     hourlySource: splitLabourRow?.hourlyRateSource,
   }
+);
+check(
+  "a fixed labour amount is not hours-based labour",
+  labourPart?.labourHours == null &&
+    labourPart.itemKey == null &&
+    labourPart.quantity === 1 &&
+    labourPart.unit === "allow" &&
+    labourPart.rateSource === "Entered amount" &&
+    supervision?.labourHours === 8 &&
+    supervision.quantity === 8 &&
+    supervision.unit === "h" &&
+    supervision.itemKey === "labour.carpenter.hour" &&
+    supervision.rateSource === "Your company rate" &&
+    supervision.recommendedCost === 600
+);
+const besideHours = run({
+  items: [
+    item("site_establishment", {
+      treatment: "included",
+      basis: "fixed",
+      materialCost: 400,
+      labourCost: 600,
+    }),
+    item("supervision", {
+      treatment: "included",
+      basis: "labour_hours",
+      hours: 8,
+      role: "carpenter",
+    }),
+  ],
+  deliveryWindow: null,
+});
+const besideSupervision = besideHours.lineItems.filter((line) => line.label === "Supervision");
+const besideFixedLabour = besideHours.lineItems.find(
+  (line) => line.category === "labour" && line.label.includes("Site establishment")
+);
+check(
+  "hours-based supervision stays one hourly line beside the fixed split",
+  besideHours.lineItems.filter((line) => line.label.startsWith("Site establishment")).length === 2 &&
+    besideSupervision.length === 1 &&
+    besideSupervision[0]?.labourHours === 8 &&
+    besideSupervision[0].quantity === 8 &&
+    besideSupervision[0].unit === "h" &&
+    besideSupervision[0].recommendedCost === 600 &&
+    besideSupervision[0].rateSource === "Your company rate" &&
+    besideFixedLabour?.recommendedCost === 600 &&
+    besideFixedLabour.labourHours == null &&
+    besideFixedLabour.unit === "allow" &&
+    besideFixedLabour.rateSource === "Entered amount"
 );
 
 const noRate = calculatePreliminaries(
@@ -1037,6 +1088,18 @@ const jobPlanUi = readFileSync(
   join(process.cwd(), "components/assistant/job-plan/JobPlanPanel.tsx"),
   "utf8"
 );
+const shellUi = readFileSync(
+  join(process.cwd(), "components/assistant/AssistantShell.tsx"),
+  "utf8"
+);
+const persistUi = readFileSync(
+  join(process.cwd(), "lib/estimate/persist-estimate.ts"),
+  "utf8"
+);
+const txnSql = readFileSync(
+  join(process.cwd(), "supabase/migrations/036_persist_estimate_generation_v1.sql"),
+  "utf8"
+);
 const officePlan = planFromFacts([], STAGE_2A_OFFICE_FITOUT_BRIEF);
 const removedPlan = mergePreliminaries(
   {
@@ -1079,12 +1142,61 @@ check(
   "a real overlap is passed into the preliminaries editor",
   jobPlanUi.includes("siblingLines={siblingLines}")
 );
+const analysingSlice = captureUi.slice(
+  captureUi.indexOf("data-analysis-submitted"),
+  captureUi.indexOf("data-analyse-error")
+);
+const restoredForm = captureUi.indexOf("{!isAnalysing ? (");
+const restoredError = captureUi.indexOf("data-analyse-error");
 check(
   "analysis shows the submitted brief and restores the controls afterwards",
   captureUi.includes("data-analysis-submitted-brief") &&
     captureUi.includes("AnalysisProgressBanner") &&
-    captureUi.includes("Your job details are still here.") &&
-    captureUi.includes("disabled={disabled || isAnalysing}")
+    captureUi.includes("disabled={disabled || isAnalysing}") &&
+    restoredForm >= 0 &&
+    captureUi.indexOf("value={briefText}") > restoredForm &&
+    restoredError > restoredForm &&
+    captureUi.indexOf("Your job details are still here.") > restoredError &&
+    captureUi.indexOf("data-analyse-retry") > restoredError &&
+    analysingSlice.includes("data-analysis-submitted-brief") &&
+    !analysingSlice.includes("Your job details are still here.") &&
+    shellUi.includes("if (pendingAction != null || actionLockRef.current)") &&
+    shellUi.includes("setPendingAction(null)") &&
+    !shellUi.includes("setBriefText(")
+);
+const illegalReturn = persistUi.indexOf("Your answers are still here. Try again.");
+const rpcCall = persistUi.indexOf("await persistEstimateGenerationViaRpc");
+const rejectedAttempt = createGenerationId();
+const retryAttempt = createGenerationId();
+check(
+  "a rejected estimate save keeps the answers and does not write a duplicate generation",
+  persistLineViolation({
+    workAreaName: "Preliminaries",
+    label: "Site establishment",
+    category: "mixed",
+  }) != null &&
+    persistLineViolation({
+      workAreaName: "Preliminaries",
+      label: "Site establishment · materials",
+      category: "materials",
+      componentKey: "preliminaries.site_establishment.materials",
+    }) == null &&
+    persistLineViolation({
+      workAreaName: "Preliminaries",
+      label: "Site establishment · labour",
+      category: "labour",
+      componentKey: "preliminaries.site_establishment.labour",
+    }) == null &&
+    toUserError("REQ_TXN:INVALID_LINE") ===
+      "Quotr could not save this estimate. Your answers are still here. Try again." &&
+    toUserError("REQ_TXN:DUPLICATE_GENERATION") ===
+      "Quotr could not save this estimate. Your answers are still here. Try again." &&
+    persistUi.includes("const generationId = createGenerationId();") &&
+    illegalReturn >= 0 &&
+    rpcCall > illegalReturn &&
+    txnSql.includes("raise exception 'REQ_TXN:DUPLICATE_GENERATION'") &&
+    txnSql.includes("Failed call rolls back; previous ready generation remains.") &&
+    rejectedAttempt !== retryAttempt
 );
 
 if (process.exitCode) {
