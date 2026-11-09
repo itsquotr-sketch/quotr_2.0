@@ -357,16 +357,23 @@ function familyNeedsReview(
   return false;
 }
 
+function ambiguousFinalClean(text: string): boolean {
+  return /\bfinal clean\b(?!ing)/.test(text) || /\bclean finished rooms\b/.test(text);
+}
+
 function identityReview(
-  id: "cleaning_identity" | "protection_identity"
+  id: "cleaning_identity" | "protection_identity",
+  detail?: string
 ): PreliminaryIdentityReview {
   const cleaning = id === "cleaning_identity";
   return {
     id,
     label: cleaning ? "Cleaning identity" : "Protection identity",
-    detail: cleaning
-      ? "Cleaning is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both."
-      : "Protection is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both.",
+    detail:
+      detail ??
+      (cleaning
+        ? "Cleaning is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both."
+        : "Protection is mentioned in the project and in a trade description, and it is not clear they are the same service. Confirm it is different before charging both."),
     separate: false,
   };
 }
@@ -416,6 +423,21 @@ export function planFromDescriptions(
   }
   if (familyNeedsReview("protection", specific, uncertain)) {
     reviews.push(identityReview("protection_identity"));
+  }
+  const projectText = sources
+    .filter((source) => source.role === "project")
+    .map((source) => normaliseBrief(source.text))
+    .join(" ");
+  if (
+    ambiguousFinalClean(projectText) &&
+    !reviews.some((review) => review.id === "cleaning_identity")
+  ) {
+    reviews.push(
+      identityReview(
+        "cleaning_identity",
+        "Final clean is mentioned in more than one way, and it is not clear those mentions are the same service. Confirm it is different before charging both."
+      )
+    );
   }
   return { items, reviews, deliveryWindow };
 }
@@ -790,50 +812,94 @@ export function calculatePreliminaries(
     const sell = quotrFallbackSellFromCost(cost, context.organisationSettings);
     const status = item.provisional ? "Provisional." : "Included.";
     const notes = [item.description, quote.formula, status].join(" ");
-    lineItems.push({
-      workAreaId: workArea.id,
-      workAreaName: workArea.name,
-      label: item.label,
-      category: quote.category,
-      quantity: quote.quantity ?? 1,
-      unit: quote.unit ?? "allow",
-      labourHours: quote.hours ?? undefined,
-      itemKey: quote.itemKey ?? undefined,
-      productivityRate:
-        item.basis === "recurring_labour" ? item.hoursPerOccurrence ?? undefined : undefined,
-      productivityUnit: item.basis === "recurring_labour" ? quote.unit ?? undefined : undefined,
-      costRate: quote.hourlyCost ?? (quote.quantity ? round2(cost / quote.quantity) : cost),
-      sellRate: quote.quantity ? round2(sell / quote.quantity) : sell,
-      rateSource: item.provisional
-        ? `${quote.sourceLabel} · provisional`
-        : quote.sourceLabel,
-      rateSourceType: quote.sourceLabel === "Entered amount" ? "default" : "user_rate",
-      sellDerivedFromMargin: true,
-      sellAuthority: "derived_from_gross_margin",
-      notes,
-      identitySummary: `${item.label}. ${quote.formula}`,
-      scopeKey: `preliminaries.${item.id}`,
-      componentKey: `preliminaries.${item.id}`,
-      includedInTotal: true,
-      clientVisible: true,
-      provisional: item.provisional,
-      quantityBasis: {
-        sourceFact: `preliminaries.${item.id}`,
-        sourceLabel: item.label,
-        quantity: quote.quantity ?? 1,
-        unit: quote.unit ?? "allow",
-        formula: quote.formula,
-        confidence: item.provisional ? "assumed" : "confirmed",
+    const splitParts =
+      quote.category === "mixed" && quote.materialCost != null && quote.labourCost != null
+        ? [
+            {
+              category: "materials" as LineItemCategory,
+              cost: quote.materialCost,
+              label: `${item.label} · materials`,
+              suffix: "materials",
+            },
+            {
+              category: "labour" as LineItemCategory,
+              cost: quote.labourCost,
+              label: `${item.label} · labour`,
+              suffix: "labour",
+            },
+          ]
+        : null;
+    const portions = splitParts ?? [
+      {
+        category: quote.category,
+        cost,
+        label: item.label,
+        suffix: item.id,
       },
-      costComponents:
-        quote.materialCost != null || quote.labourCost != null
-          ? {
-              materialCost: quote.materialCost ?? undefined,
-              labourCost: quote.labourCost ?? undefined,
-            }
-          : undefined,
-      sortOrder: sortOrder++,
-      ...buildAmounts(cost, sell, context.organisationSettings),
+    ];
+    let sellRemaining = sell;
+    portions.forEach((portion, index) => {
+      const portionSell =
+        index === portions.length - 1
+          ? sellRemaining
+          : round2(cost > 0 ? (sell * portion.cost) / cost : 0);
+      sellRemaining = round2(sellRemaining - portionSell);
+      const quantity = quote.quantity ?? 1;
+      const identity = splitParts ? `${item.id}.${portion.suffix}` : item.id;
+      lineItems.push({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: portion.label,
+        category: portion.category,
+        quantity,
+        unit: quote.unit ?? "allow",
+        labourHours: splitParts ? undefined : quote.hours ?? undefined,
+        itemKey: quote.itemKey ?? undefined,
+        productivityRate:
+          item.basis === "recurring_labour" ? item.hoursPerOccurrence ?? undefined : undefined,
+        productivityUnit: item.basis === "recurring_labour" ? quote.unit ?? undefined : undefined,
+        costRate: splitParts
+          ? portion.cost
+          : quote.hourlyCost ?? (quote.quantity ? round2(cost / quote.quantity) : cost),
+        sellRate: splitParts
+          ? portionSell
+          : quote.quantity
+            ? round2(sell / quote.quantity)
+            : sell,
+        rateSource: item.provisional
+          ? `${quote.sourceLabel} · provisional`
+          : quote.sourceLabel,
+        rateSourceType: quote.sourceLabel === "Entered amount" ? "default" : "user_rate",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
+        notes,
+        identitySummary: `${portion.label}. ${quote.formula}`,
+        scopeKey: `preliminaries.${identity}`,
+        componentKey: `preliminaries.${identity}`,
+        includedInTotal: true,
+        clientVisible: true,
+        provisional: item.provisional,
+        quantityBasis: {
+          sourceFact: `preliminaries.${item.id}`,
+          sourceLabel: portion.label,
+          quantity,
+          unit: quote.unit ?? "allow",
+          formula: quote.formula,
+          confidence: item.provisional ? "assumed" : "confirmed",
+        },
+        costComponents: splitParts
+          ? portion.category === "materials"
+            ? { materialCost: portion.cost }
+            : { labourCost: portion.cost }
+          : quote.materialCost != null || quote.labourCost != null
+            ? {
+                materialCost: quote.materialCost ?? undefined,
+                labourCost: quote.labourCost ?? undefined,
+              }
+            : undefined,
+        sortOrder: sortOrder++,
+        ...buildAmounts(portion.cost, portionSell, context.organisationSettings),
+      });
     });
     if (item.provisional) {
       assumptions.push(`${item.label} is a provisional allowance. ${quote.formula}`);

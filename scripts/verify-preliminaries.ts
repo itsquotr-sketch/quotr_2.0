@@ -7,7 +7,8 @@ import { join } from "node:path";
 import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationRate } from "../components/setup/types";
 import { composeBuilderReview, mapRateLabel } from "../lib/assistant/builder-review/compose";
-import { projectLabourTakeoff } from "../lib/assistant/presentation/estimate-takeoffs";
+import { projectLabourTakeoff, projectMaterialsTakeoff } from "../lib/assistant/presentation/estimate-takeoffs";
+import { mapEstimateCategoryToItemType } from "../lib/pricing/calculations";
 import { classifyRateSource, getRateSourceLabel } from "../lib/estimate/rate-source-labels";
 import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-briefs";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
@@ -256,22 +257,77 @@ const split = run({
   ],
   deliveryWindow: null,
 });
-const splitLine = split.lineItems[0];
+const materialPart = split.lineItems.find((line) => line.category === "materials");
+const labourPart = split.lineItems.find((line) => line.category === "labour");
+const reloadedMaterial = materialPart
+  ? parseLineItemNotes(buildLineItemNotes(materialPart)).metadata.costComponents
+  : null;
+const reloadedLabour = labourPart
+  ? parseLineItemNotes(buildLineItemNotes(labourPart)).metadata.costComponents
+  : null;
 check(
-  "a supplied split stays materials plus labour",
-  splitLine?.category === "mixed" &&
-    splitLine.recommendedCost === 1000 &&
-    splitLine.costComponents?.materialCost === 400 &&
-    splitLine.costComponents.labourCost === 600 &&
-    persistLineCategory(splitLine.category) === "allowance"
+  "a supplied split stays materials plus labour and is not stored as one allowance",
+  split.lineItems.length === 2 &&
+    materialPart?.recommendedCost === 400 &&
+    labourPart?.recommendedCost === 600 &&
+    materialPart.recommendedCost + labourPart.recommendedCost === 1000 &&
+    materialPart.recommendedSell === 500 &&
+    labourPart.recommendedSell === 750 &&
+    persistLineCategory(materialPart.category) === "materials" &&
+    persistLineCategory(labourPart.category) === "labour" &&
+    !split.lineItems.some((line) => line.category === "allowance" || line.category === "mixed") &&
+    materialPart.rateSource === "Entered amount" &&
+    labourPart.rateSource === "Entered amount" &&
+    reloadedMaterial?.materialCost === 400 &&
+    reloadedLabour?.labourCost === 600 &&
+    (reloadedMaterial.materialCost ?? 0) + (reloadedLabour.labourCost ?? 0) === 1000 &&
+    mapEstimateCategoryToItemType(materialPart.category) === "material" &&
+    mapEstimateCategoryToItemType(labourPart.category) === "labour"
 );
-const reloadedSplit = splitLine ? parseLineItemNotes(buildLineItemNotes(splitLine)).metadata.costComponents : null;
+const splitReviewLine = (line: NonNullable<typeof materialPart>, id: string): EstimateLineItem => ({
+  id,
+  workAreaId: area.id,
+  workAreaName: area.name,
+  label: line.label,
+  category: line.category,
+  costLow: line.recommendedCost,
+  costHigh: line.recommendedCost,
+  sellLow: line.recommendedSell,
+  sellHigh: line.recommendedSell,
+  recommendedCost: line.recommendedCost,
+  recommendedSell: line.recommendedSell,
+  grossProfit: line.recommendedSell - line.recommendedCost,
+  marginPercent: 20,
+  rateSource: line.rateSource ?? "",
+  quantity: line.quantity,
+  unit: line.unit,
+  includedInTotal: true,
+  costComponents: line.costComponents,
+});
+const splitReview = composeBuilderReview({
+  estimate: {
+    recommendedCost: 1000,
+    recommendedSell: 1250,
+    marginPercent: 20,
+    confidence: 70,
+    assumptions: [],
+    missingInfo: [],
+    lineItems: [
+      splitReviewLine(materialPart!, "split-materials"),
+      splitReviewLine(labourPart!, "split-labour"),
+    ],
+  },
+  workAreas: [{ id: area.id, name: area.name, type: area.type, status: "confirmed" }],
+});
+const materialsTakeoff = projectMaterialsTakeoff(splitReview);
+const labourTakeoff = projectLabourTakeoff(splitReview);
 check(
-  "a saved split keeps both parts once when the row is stored as an allowance",
-  splitLine != null &&
-    reloadedSplit?.materialCost === 400 &&
-    reloadedSplit.labourCost === 600 &&
-    reloadedSplit.materialCost + reloadedSplit.labourCost === splitLine.recommendedCost
+  "a split preliminary contributes each part to its takeoff once",
+  materialsTakeoff.knownCost === "$400" &&
+    labourTakeoff.knownCost === "$600" &&
+    materialsTakeoff.lineCount === 1 &&
+    labourTakeoff.lineCount === 1,
+  { materials: materialsTakeoff.knownCost, labour: labourTakeoff.knownCost, materialLines: materialsTakeoff.lineCount, labourLines: labourTakeoff.lineCount }
 );
 
 const noRate = calculatePreliminaries(
@@ -556,6 +612,22 @@ check(
   repeated.items.filter((row) => row.id === "daily_cleaning").length === 1 &&
     repeated.items.filter((row) => row.id === "common_area_protection").length === 1 &&
     (repeated.reviews ?? []).length === 0
+);
+const sameBriefFinalClean = planFromDescriptions([
+  {
+    role: "project",
+    text: "Include daily cleaning: clean the work area at the end of each working day. Also keep the common areas protected throughout. The site notes repeat daily clean and protect common areas; that is the same work, not extra. Separately include one final clean at handover. There is also a note clean finished rooms; check whether that duplicates the final clean before charging it.",
+  },
+]);
+check(
+  "an explicit repeat stays one item and ambiguous final clean stays a review",
+  sameBriefFinalClean.items.filter((row) => row.id === "daily_cleaning").length === 1 &&
+    sameBriefFinalClean.items.filter((row) => row.id === "common_area_protection").length === 1 &&
+    !sameBriefFinalClean.items.some((row) => row.id === "final_cleaning") &&
+    sameBriefFinalClean.reviews?.some(
+      (row) => row.id === "cleaning_identity" && row.separate === false
+    ) === true &&
+    (sameBriefFinalClean.reviews ?? []).every((row) => row.id === "cleaning_identity")
 );
 const different = planFromDescriptions([
   { role: "project", text: "Include daily cleaning and protection of common areas." },
