@@ -472,6 +472,64 @@ Path: sign in as the new owner; `/app/health` shows Production, host `lxvnylhsbv
 
 Completed Preview evidence stays the source for the unchanged paths. This smoke does not repeat the new-member journey or the recovery project.
 
+### Test sheet triage, 9 November 2026
+
+Source: Testing 1 November 2026, both tabs. QDR-004 through QDR-023 are blank and are neither passed nor failed. Rows after QT-040 are empty. An empty score cell is not a result.
+
+Candidate `0c366f35cab86e7acdd7d644e53805a87327d890` on `estimating/v3-analysis-preliminaries` covers QDR-001, QDR-002, and QDR-003, plus the confirmed preliminaries save failure. The other rows stay deferred until the next sheet review. That review re-reads both tabs, keeps unchanged accepted evidence, and does not rerun it.
+
+#### Confirmed on this candidate
+
+- QDR-001. During analysis the initial Job details controls collapse. The submitted brief stays with the existing loading status and timer. A failure restores the controls and the entered brief.
+- QDR-002 and QDR-003. Preliminaries are a summary card with one editor. Exclusion stays distinct from removal, and removal can be undone. Overlap acknowledgement appears only when a matching line exists.
+- Isolated Preview persistence, in the QA organisation only, then deleted:
+  - The office brief with every recognised preliminary unresolved saved six lines.
+  - The same brief with site establishment priced as materials plus labour saved. The stored category is allowance. The calculator line remains mixed.
+  - The same payload sent with category `mixed` is rejected by `persist_estimate_generation_v1` as `REQ_TXN:INVALID_LINE`.
+- That database code is the TXN message a builder can see. The save now returns “Quotr could not save this estimate. Your answers are still here. Try again.” The failed transaction rolls back, so retry does not add a second estimate.
+- A booked delivery window stays an assumption and does not create a charge. Confirming Work does not require every preliminary to be priced.
+- The QT-016 raw brief produces no lines. That is not this TXN path. Its hosted note of a specialist materials sentence and a cladding removal labour line comes after Details answers and stays deferred.
+
+#### Observed defects, grouped
+
+1. Estimate save and Details after generate — QT-011, QT-013, QT-014. Observed: after Create estimate the page moves, a white area appears, and Details becomes empty. QT-014 recorded a TXN message. QT-013 mentioned site conditions. Confirmed cause when a preliminary is priced as materials plus labour: illegal category `mixed`. Not confirmed for unresolved preliminaries: those lines save. QT-016 blank Details after cladding answers is a separate observation. Suspected remaining client path: the generate notice scrolls into view and the ready or error state replaces the question list. Re-test these four rows on this Preview before changing that path again.
+2. Flooring package and labour — QT-001, QT-002, QT-004. Observed: generated flooring is incomplete, package questions are excessive or wrong, and finish-install labour or the material name is wrong. Suspected shared cause: flooring package recognition and its pricing lines.
+3. Area identity — QT-003, QT-005, QT-010. Observed: rooms are not split, a deck is not recognised, and office alterations are recognised as plastering. Suspected shared cause: work-area classification. QT-020 is the same family and is untested.
+4. Doors — QT-011, QT-012. Observed: a stated door height is asked again, and one bedroom is counted as two doors with no way to correct the count. Suspected shared cause: door identity and count are not editable after recognition.
+5. Ceiling — QT-015. Observed: productivity is too slow and recognition labels are missing.
+6. Customer-supplied materials still costed — QT-008 and QT-026. Observed in part for decking and for aluminium panels. Suspected shared cause: supply ownership is read from the brief and then still priced.
+7. Fence questions and unsupported fence types — QT-018, QT-021, QT-022, QT-026. Observed: exclusion questions stay required when No is already selected, customer-supplied panels stay in the cost, and demolition or a glass fence needs a blank work area rather than another model call. QT-023, QT-024, and QT-025 are untested prompts in the same family.
+8. Deck allowances — QT-006, QT-007, QT-008. Observed: the deck calculates, while the stair-set allowance, pile allowance, fascia, skirting, and concrete confirmation need attention. QT-037 is the untested stairs prompt.
+9. Retaining excavation — QT-030. Observed: bulk excavation is marked completed in Pricing. QT-029, QT-031, QT-033, and QT-034 are untested retaining or concrete prompts.
+10. Cladding partial result — QT-016. Observed: Details went blank after the cladding answers, then Create estimate produced a materials line whose note says to continue to Pricing and one labour line for custom cladding removal. Suspected cause: the specialist unpriced note plus removal labour, not the preliminaries TXN.
+
+#### Expected unsupported behaviour
+
+These prompts ask for work the current calculators do not price. The expected result is a visible unresolved area or an actionable gap, not an invented rate. They are not failures unless a sheet note says the product hid the work or invented a price.
+
+QT-017, QT-018, QT-027, QT-028, QT-032, QT-035, QT-036, QT-038, QT-039, QT-040.
+
+#### Untested
+
+The prompt exists and the observation columns are empty or too thin to score. Do not mark these passed or failed.
+
+QT-017, QT-019, QT-020, QT-023, QT-024, QT-025, QT-027, QT-028, QT-029, QT-031, QT-032, QT-033, QT-034, QT-035, QT-036, QT-037, QT-038, QT-039, QT-040.
+
+QT-019 is the first retest for the new preliminaries overlap rule.
+
+#### Next implementation order
+
+After tomorrow’s evidence pass, and only where the sheet has a new or changed observation:
+
+1. Re-test QT-011, QT-013, QT-014, and QT-016 on this Preview. Fix only a newly captured request or server error.
+2. Flooring package and labour: QT-001, QT-002, QT-004.
+3. Work-area identity: QT-003, QT-005, QT-010, and QT-020 if a note appears.
+4. Door count and stated answers reaching Details: QT-011, QT-012.
+5. Supply ownership: QT-008, QT-026.
+6. Ceiling labels: QT-015.
+7. Fence exclusion questions: QT-021, QT-022.
+8. Deck allowances and retaining excavation: QT-007, QT-030.
+
 ### Next action
 
-Development Lead. Published and closed at `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Approve creation of “V3 Production QA” and the partition smoke above before either is run.
+Development Lead. Website Production remains `bf1c88ef6881e6b7c007720c93d9421ee43cddf8` / `dpl_6gQQpo7zk7biYemXCKfq5rLsnMLw`. The immediate rollback target is that live deployment. Do not publish `0c366f35cab86e7acdd7d644e53805a87327d890` to Production. Creation of “V3 Production QA” and the partition smoke above stay unauthorised. The next product candidate is `0c366f35cab86e7acdd7d644e53805a87327d890` on `estimating/v3-analysis-preliminaries`. Preview integration waits for Scenario QA and Release Review. The deferred test-sheet triage is above.
