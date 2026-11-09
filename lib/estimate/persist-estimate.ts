@@ -6,6 +6,7 @@ import {
   buildPersistEstimateGenerationV1,
   isAtomicPersistRpcUnavailable,
   persistEstimateGenerationViaRpc,
+  persistLineViolation,
 } from "@/lib/estimate/persist-estimate-generation";
 import {
   buildSnapshotPayloadForEstimate,
@@ -357,6 +358,13 @@ export async function persistEstimateResult(
     generationId,
     estimateResult,
   });
+
+  const illegal = payload.lineItems
+    .map((line) => persistLineViolation(line))
+    .find((reason) => reason != null);
+  if (illegal) {
+    return { error: `${illegal} Your answers are still here. Try again.` };
+  }
 
   const rpc = await persistEstimateGenerationViaRpc(supabase, payload);
   if (rpc.ok) {

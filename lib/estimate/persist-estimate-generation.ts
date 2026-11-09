@@ -17,6 +17,46 @@ export const PERSIST_ESTIMATE_GENERATION_CONTRACT_VERSION =
 
 export const PERSIST_ESTIMATE_GENERATION_RPC = "persist_estimate_generation_v1";
 
+const PERSIST_LINE_CATEGORIES = new Set([
+  "labour",
+  "materials",
+  "subcontractor",
+  "allowance",
+  "contingency",
+]);
+
+/**
+ * A split fixed preliminary is commercially mixed, but the estimate line
+ * check only accepts the five stored categories. Keep the split in the
+ * line's cost components and store the row as an allowance.
+ */
+export function persistLineCategory(category: string): string {
+  if (category === "mixed") return "allowance";
+  return category;
+}
+
+export function persistLineViolation(line: {
+  workAreaName?: string | null;
+  label?: string | null;
+  category?: string | null;
+  componentKey?: string | null;
+  workAreaId?: string | null;
+}): string | null {
+  if (!line.workAreaName?.trim() || !line.label?.trim() || !line.category?.trim()) {
+    return "The estimate line is missing its name.";
+  }
+  if (!PERSIST_LINE_CATEGORIES.has(line.category)) {
+    return `“${line.label.trim()}” cannot be saved as an estimate line.`;
+  }
+  if (line.componentKey && line.componentKey.length > 128) {
+    return `“${line.label.trim()}” cannot be saved as an estimate line.`;
+  }
+  if (line.workAreaId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(line.workAreaId)) {
+    return `“${line.label.trim()}” cannot be saved as an estimate line.`;
+  }
+  return null;
+}
+
 export type PersistEstimateGenerationLineV1 = {
   workAreaId: string | null;
   workAreaName: string;
@@ -133,7 +173,7 @@ export function buildPersistEstimateGenerationV1(params: {
       workAreaId: item.workAreaId ?? null,
       workAreaName: item.workAreaName,
       label: item.label,
-      category: item.category,
+      category: persistLineCategory(item.category),
       costLow: item.costLow,
       costHigh: item.costHigh,
       sellLow: item.sellLow,

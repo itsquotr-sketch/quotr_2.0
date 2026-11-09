@@ -117,6 +117,7 @@ export function ProjectCaptureBlock({
 
   return (
     <div className="space-y-4">
+      {!isAnalysing ? (
       <section
         aria-labelledby="project-brief-heading"
         className="space-y-3 rounded-xl border border-border/60 bg-card px-4 py-4"
@@ -155,7 +156,9 @@ export function ProjectCaptureBlock({
           className="min-h-36 w-full bg-background text-base leading-6"
         />
       </section>
+      ) : null}
 
+      {!isAnalysing ? (
       <section
         aria-labelledby="site-notes-heading"
         className="space-y-3 rounded-xl border border-border/60 bg-card px-4 py-4"
@@ -184,9 +187,10 @@ export function ProjectCaptureBlock({
             showHeading={false}
           />
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      {documents || submitted ? (
+      {!isAnalysing && (documents || submitted) ? (
         <section aria-labelledby="supporting-inputs-heading" className="space-y-3">
           <h4 id="supporting-inputs-heading" className="text-sm font-semibold text-foreground">
             Supporting information
@@ -208,15 +212,39 @@ export function ProjectCaptureBlock({
         </section>
       ) : null}
 
-      {!submitted && onAnalyse ? (
+      {!submitted && onAnalyse && isAnalysing ? (
+        <div className="space-y-3" data-analysis-submitted>
+          <section
+            aria-labelledby="project-brief-heading"
+            className="space-y-2 rounded-xl border border-border/60 bg-card px-4 py-4"
+          >
+            <h4 id="project-brief-heading" className="text-sm font-semibold text-foreground">
+              Job description
+            </h4>
+            <p
+              className="whitespace-pre-wrap break-words text-base leading-6 text-foreground"
+              data-analysis-submitted-brief
+            >
+              {briefText.trim() || "No written brief"}
+            </p>
+            {(totalNoteCount ?? initialNotes.length) > 0 ? (
+              <p className="text-sm text-muted-foreground" data-analysis-submitted-notes>
+                {(totalNoteCount ?? initialNotes.length) === 1
+                  ? "1 site note included"
+                  : `${totalNoteCount ?? initialNotes.length} site notes included`}
+              </p>
+            ) : null}
+          </section>
+          <AnalysisProgressBanner
+            label={progressLabel}
+            elapsedLabel={analyseJobElapsedLabel(progressElapsedMs)}
+          />
+        </div>
+      ) : null}
+
+      {!submitted && onAnalyse && !isAnalysing ? (
         <div className="space-y-3 pt-1">
-          {isAnalysing ? (
-            <AnalysisProgressBanner
-              label={progressLabel}
-              elapsedLabel={analyseJobElapsedLabel(progressElapsedMs)}
-            />
-          ) : null}
-          {analyseError && !isAnalysing && !manualRecovery ? (
+          {analyseError && !manualRecovery ? (
             <div
               className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-3"
               role="alert"

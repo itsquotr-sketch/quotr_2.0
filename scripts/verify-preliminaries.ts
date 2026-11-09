@@ -2,6 +2,8 @@
  * Project preliminaries. Deterministic. No network.
  * Run: npx tsx scripts/verify-preliminaries.ts
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationRate } from "../components/setup/types";
 import { composeBuilderReview, mapRateLabel } from "../lib/assistant/builder-review/compose";
@@ -9,6 +11,7 @@ import { projectLabourTakeoff } from "../lib/assistant/presentation/estimate-tak
 import { classifyRateSource, getRateSourceLabel } from "../lib/estimate/rate-source-labels";
 import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-briefs";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { persistLineCategory } from "../lib/estimate/persist-estimate-generation";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   calculatePreliminaries,
@@ -258,7 +261,8 @@ check(
   splitLine?.category === "mixed" &&
     splitLine.recommendedCost === 1000 &&
     splitLine.costComponents?.materialCost === 400 &&
-    splitLine.costComponents.labourCost === 600
+    splitLine.costComponents.labourCost === 600 &&
+    persistLineCategory(splitLine.category) === "allowance"
 );
 
 const noRate = calculatePreliminaries(
@@ -926,6 +930,32 @@ check(
     presentPricingLine(defaultOnly).source === "Default allowance" &&
     classifyRateSource("Entered amount") === "default" &&
     mapRateLabel("Entered amount") === "Entered amount"
+);
+
+const preliminariesUi = readFileSync(
+  join(process.cwd(), "components/assistant/job-plan/PreliminariesSection.tsx"),
+  "utf8"
+);
+const captureUi = readFileSync(
+  join(process.cwd(), "components/assistant/ProjectCaptureBlock.tsx"),
+  "utf8"
+);
+check(
+  "preliminaries open one editor and keep exclusion distinct from removal",
+  preliminariesUi.includes("data-preliminary-editor") &&
+    preliminariesUi.includes("data-preliminary-exclude") &&
+    preliminariesUi.includes("data-preliminary-remove") &&
+    preliminariesUi.includes("data-preliminary-undo-removal") &&
+    preliminariesUi.includes("data-preliminary-unsaved") &&
+    preliminariesUi.includes("overlappingIdentity") &&
+    !preliminariesUi.includes("same requirement")
+);
+check(
+  "analysis shows the submitted brief and restores the controls afterwards",
+  captureUi.includes("data-analysis-submitted-brief") &&
+    captureUi.includes("AnalysisProgressBanner") &&
+    captureUi.includes("Your job details are still here.") &&
+    captureUi.includes("disabled={disabled || isAnalysing}")
 );
 
 if (process.exitCode) {

@@ -79,6 +79,13 @@ export function toUserError(
     return SESSION_ERROR;
   }
 
+  if (/^REQ_TXN:/i.test(message.trim())) {
+    if (process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview") {
+      console.error(context ? `[${context}]` : "[user-error]", message);
+    }
+    return "Quotr could not save this estimate. Your answers are still here. Try again.";
+  }
+
   if (isTechnicalErrorText(message)) {
     if (process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview") {
       console.error(context ? `[${context}]` : "[user-error]", message);
