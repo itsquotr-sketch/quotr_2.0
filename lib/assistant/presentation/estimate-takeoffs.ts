@@ -335,9 +335,10 @@ function presentRow(placed: PlacedLine): TakeoffRow {
     activity: labour ? line.label : null,
     productivityBasis: labour ? storedProductivityBasis(line) : null,
     productivitySource,
-    hourlyRateSource: labour
-      ? line.labourRateLabel ?? sourceLabel(line, required)
-      : null,
+    hourlyRateSource:
+      labour && hours != null
+        ? line.labourRateLabel ?? sourceLabel(line, required)
+        : null,
     workArea: placed.workArea,
     workAreaId: placed.workAreaId,
     portion: placed.portion,

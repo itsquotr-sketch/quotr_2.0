@@ -859,7 +859,9 @@ export function calculatePreliminaries(
           item.basis === "recurring_labour" ? item.hoursPerOccurrence ?? undefined : undefined,
         productivityUnit: item.basis === "recurring_labour" ? quote.unit ?? undefined : undefined,
         costRate: splitParts
-          ? undefined
+          ? portion.category === "materials"
+            ? portion.cost
+            : undefined
           : quote.hourlyCost ?? (quote.quantity ? round2(cost / quote.quantity) : cost),
         sellRate: splitParts
           ? undefined

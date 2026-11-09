@@ -299,6 +299,7 @@ const splitReviewLine = (line: NonNullable<typeof materialPart>, id: string): Es
   grossProfit: line.recommendedSell - line.recommendedCost,
   marginPercent: 20,
   rateSource: line.rateSource ?? "",
+  costRate: line.costRate,
   quantity: line.quantity,
   unit: line.unit,
   includedInTotal: true,
@@ -322,14 +323,23 @@ const splitReview = composeBuilderReview({
 const materialsTakeoff = projectMaterialsTakeoff(splitReview);
 const labourTakeoff = projectLabourTakeoff(splitReview);
 const splitLabourRow = labourTakeoff.groups.flatMap((group) => group.rows)[0];
+const splitMaterialRow = materialsTakeoff.groups.flatMap((group) => group.rows)[0];
 check(
   "a split preliminary contributes each part to its takeoff once",
   materialsTakeoff.knownCost === "$400" &&
     labourTakeoff.knownCost === "$600" &&
     materialsTakeoff.lineCount === 1 &&
     labourTakeoff.lineCount === 1 &&
-    splitLabourRow?.hourlyCost == null,
-  { materials: materialsTakeoff.knownCost, labour: labourTakeoff.knownCost, materialLines: materialsTakeoff.lineCount, labourLines: labourTakeoff.lineCount, hourly: splitLabourRow?.hourlyCost }
+    splitMaterialRow?.unitCost === "$400" &&
+    splitLabourRow?.hourlyCost == null &&
+    splitLabourRow?.hourlyRateSource == null,
+  {
+    materials: materialsTakeoff.knownCost,
+    labour: labourTakeoff.knownCost,
+    materialUnit: splitMaterialRow?.unitCost,
+    hourly: splitLabourRow?.hourlyCost,
+    hourlySource: splitLabourRow?.hourlyRateSource,
+  }
 );
 
 const noRate = calculatePreliminaries(
