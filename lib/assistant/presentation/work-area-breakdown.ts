@@ -28,6 +28,7 @@ import {
   ADD_MISSING_RATE,
   classifyReviewNotice,
   GENERATED_LINES_PRICED,
+  missingRateLabel,
   priceCompletenessNextAction,
 } from "@/lib/assistant/presentation/estimate-issues";
 
@@ -452,10 +453,14 @@ function presentCard(
     if (kind === "scope_gap") scopeCoverageGapCount += 1;
     else if (kind === "specification") unresolvedSpecificationCount += 1;
   }
+  const pricedLines = lines.filter((row) =>
+    lineIsPricingRequired(row.line, row.group)
+  );
   const nextAction = priceCompletenessNextAction({
-    missingPriceLineCount: lines.filter((row) =>
-      lineIsPricingRequired(row.line, row.group)
-    ).length,
+    missingPriceLineCount: pricedLines.length,
+    rateLabels: pricedLines
+      .map((row) => missingRateLabel(row.line.itemKey))
+      .filter((label): label is string => Boolean(label)),
     scopeCoverageGapCount,
     unresolvedSpecificationCount,
   });
@@ -542,6 +547,10 @@ function presentCard(
   };
 }
 
+function isMissingRateRecovery(action: string | null): boolean {
+  return action === ADD_MISSING_RATE || (action?.startsWith("Add the ") ?? false);
+}
+
 export function projectWorkAreaBreakdown(
   view: BuilderReviewView,
   scope: readonly WorkAreaBreakdownScope[] = []
@@ -601,7 +610,7 @@ export function projectWorkAreaBreakdown(
           .map((item) => item.label)
           .filter((label) => !assignedChecks.has(label)),
     nextAction:
-      cards.find((card) => card.nextAction === ADD_MISSING_RATE)?.nextAction ??
+      cards.find((card) => isMissingRateRecovery(card.nextAction))?.nextAction ??
       cards.find((card) => card.nextAction)?.nextAction ??
       null,
   };

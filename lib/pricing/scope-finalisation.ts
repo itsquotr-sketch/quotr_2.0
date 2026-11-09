@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  missingRateReviewBlockFromLines,
   scopeGapCountFromNotices,
   specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -99,4 +100,21 @@ export async function unresolvedScopeReviewBlockForEstimate(
     .eq("org_id", orgId)
     .maybeSingle();
   return unresolvedScopeReviewBlock(data?.missing_info);
+}
+
+/** The latest estimate can name a missing rate before Pricing is recalibrated. */
+export async function missingRateReviewBlockForProject(
+  supabase: SupabaseClient,
+  orgId: string,
+  projectId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("estimate_line_items")
+    .select("rate_source, notes")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .or(
+      "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
+    );
+  return missingRateReviewBlockFromLines(data ?? []);
 }

@@ -1,3 +1,4 @@
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { classifyRateSource } from "@/lib/estimate/rate-source-labels";
 
 /**
@@ -27,9 +28,62 @@ export function formatMissingPriceLines(count: number): string {
 export const ADD_MISSING_RATE = "Add the missing rate.";
 export const CONFIRM_OPEN_SPECIFICATION = "Confirm the open specification.";
 
-export function formatMissingPriceNotice(count: number): string {
-  if (count === 1) return `1 line still needs a price. ${ADD_MISSING_RATE}`;
-  return `${count} lines still need prices. ${ADD_MISSING_RATE}`;
+/** Catalogue names for generated rates that have no Quotr cost. */
+const MISSING_RATE_LABELS: Record<string, string> = {
+  "stopping.plasterboard.level5.m2": "Level 5 plasterboard stopping",
+};
+
+export function missingRateLabel(itemKey: string | null | undefined): string | null {
+  if (!itemKey) return null;
+  return MISSING_RATE_LABELS[itemKey] ?? null;
+}
+
+export function namedMissingRateAction(labels: readonly string[]): string {
+  const unique = [
+    ...new Set(labels.map((label) => label.trim()).filter((label) => label.length > 0)),
+  ];
+  if (unique.length === 1) return `Add the ${unique[0]} rate.`;
+  if (unique.length > 1) return `Add the missing rates: ${unique.join(", ")}.`;
+  return ADD_MISSING_RATE;
+}
+
+function missingRateFace(notes: string | null | undefined): string | null {
+  const parsed = parseLineItemNotes(notes);
+  const quantity = parsed.metadata.quantity;
+  if (quantity == null || !Number.isFinite(quantity) || quantity <= 0) return null;
+  const unit = parsed.metadata.unit === "m2" ? "m²" : parsed.metadata.unit?.trim();
+  if (!unit) return null;
+  const shown = Number.isInteger(quantity) ? String(quantity) : quantity.toFixed(1);
+  const side = parsed.displayNotes?.match(/Side [A-Z]/)?.[0];
+  return side ? `${side} is ${shown} ${unit}.` : `${shown} ${unit} is not priced.`;
+}
+
+/**
+ * Pricing review copy for generated lines that still have no rate.
+ * A known catalogue rate is named. Quantities stay visible and are not a price.
+ */
+export function missingRateReviewBlockFromLines(
+  lines: readonly { rate_source?: string | null; notes?: string | null }[]
+): string | null {
+  const missing = lines.filter((line) => lineNeedsPriceFromRateSource(line.rate_source));
+  if (missing.length === 0) return null;
+  const labels = missing
+    .map((line) => missingRateLabel(parseLineItemNotes(line.notes).metadata.itemKey))
+    .filter((label): label is string => Boolean(label));
+  const faces = missing
+    .map((line) => missingRateFace(line.notes))
+    .filter((face): face is string => Boolean(face));
+  const faceCopy = faces.length > 0 ? ` ${faces.join(" ")}` : "";
+  return `${namedMissingRateAction(labels)}${faceCopy} This pricing cannot be marked reviewed as a complete price.`;
+}
+
+export function formatMissingPriceNotice(
+  count: number,
+  rateLabels: readonly string[] = []
+): string {
+  const action = namedMissingRateAction(rateLabels);
+  if (count === 1) return `1 line still needs a price. ${action}`;
+  return `${count} lines still need prices. ${action}`;
 }
 
 /**
@@ -39,10 +93,11 @@ export function formatMissingPriceNotice(count: number): string {
  */
 export function priceCompletenessNextAction(input: {
   readonly missingPriceLineCount: number;
+  readonly rateLabels?: readonly string[];
   readonly scopeCoverageGapCount?: number;
   readonly unresolvedSpecificationCount?: number;
 }): string | null {
-  if (input.missingPriceLineCount > 0) return ADD_MISSING_RATE;
+  if (input.missingPriceLineCount > 0) return namedMissingRateAction(input.rateLabels ?? []);
   if ((input.unresolvedSpecificationCount ?? 0) > 0) return CONFIRM_OPEN_SPECIFICATION;
   if ((input.scopeCoverageGapCount ?? 0) > 0) {
     return formatScopeCoverageGaps(input.scopeCoverageGapCount ?? 0);

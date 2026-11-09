@@ -24,6 +24,7 @@ import {
   formatScopeCoverageGaps,
   formatUnresolvedSpecifications,
   formatWorkAreaPriceSummary,
+  missingRateLabel,
   priceCompletenessNextAction,
   type EstimateIssueModel,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -32,8 +33,11 @@ import {
 export const ESTIMATE_OVERVIEW_BOUNDARY_COPY =
   "Internal working estimate · not shown to the client";
 
-export function estimateMissingPriceNotice(count: number): string {
-  return formatMissingPriceNotice(count);
+export function estimateMissingPriceNotice(
+  count: number,
+  rateLabels: readonly string[] = []
+): string {
+  return formatMissingPriceNotice(count, rateLabels);
 }
 
 /** Shown when category dollars are rounded independently of the direct-cost dollar. */
@@ -139,6 +143,7 @@ type OverviewLine = {
   readonly label?: string;
   readonly rateLabel?: string;
   readonly category?: string;
+  readonly itemKey?: string | null;
 };
 
 type OverviewLineGroup = {
@@ -327,6 +332,26 @@ function overviewLineNeedsPrice(line: OverviewLine): boolean {
   return /pricing required|rate required/i.test(line.rateLabel ?? "");
 }
 
+function collectMissingRateLabels(review: EstimateOverviewReview): string[] {
+  if (!review) return [];
+  const labels: string[] = [];
+  for (const area of review.workAreas) {
+    const groups = [
+      ...area.categories.flatMap((category) => category.lineGroups),
+      ...(area.sharedLineGroups ?? []),
+      ...(area.portionGroups ?? []).flatMap((portion) => portion.lineGroups),
+    ];
+    for (const group of groups) {
+      for (const child of group.children) {
+        if (!group.pricingRequired && !overviewLineNeedsPrice(child)) continue;
+        const label = missingRateLabel(child.itemKey);
+        if (label) labels.push(label);
+      }
+    }
+  }
+  return [...new Set(labels)];
+}
+
 function collectPricingRequired(
   review: EstimateOverviewReview
 ): EstimateOverviewAction[] {
@@ -373,11 +398,12 @@ function collectPricingRequired(
       if (children.length > 0) {
         for (const child of children) {
           countedChildren.add(child.id);
+          const rateName = missingRateLabel(child.itemKey);
           push(
             `pricing:${child.id}`,
             child.label?.trim() || group.label,
             area.workAreaName,
-            "Pricing Required",
+            rateName ? `${rateName} · Pricing Required` : "Pricing Required",
             area.workAreaId ?? null
           );
         }
@@ -611,6 +637,7 @@ export function projectEstimateOverview(
   input: ProjectEstimateOverviewInput
 ): EstimateOverviewModel {
   const pricingRequired = collectPricingRequired(input.review);
+  const missingRateLabels = collectMissingRateLabels(input.review);
   if (
     input.specialistPricingNotice &&
     input.hasEstimate &&
@@ -843,7 +870,10 @@ export function projectEstimateOverview(
             ? "A flooring scope or waste choice is still open. A typed amount does not answer it."
               : issues.missingPriceLineCount > 0
               ? productivityReview ??
-                estimateMissingPriceNotice(issues.missingPriceLineCount)
+                estimateMissingPriceNotice(
+                  issues.missingPriceLineCount,
+                  missingRateLabels
+                )
               : scopeOrSpecificationOpen
                 ? `Generated lines are priced. ${
                     priceCompletenessNextAction({

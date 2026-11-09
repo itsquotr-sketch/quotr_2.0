@@ -3,6 +3,7 @@ import "server-only";
 import { notFound } from "next/navigation";
 import {
   aggregateMissingPriceLineCounts,
+  missingRateReviewBlockFromLines,
   scopeGapCountFromNotices,
   specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -74,6 +75,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   quantityConflictDetail: string | null;
   pricingSummary: PricingSummary | null;
   missingPriceLineCount: number | null;
+  missingRateReviewBlock: string | null;
   scopeCoverageGapCount: number | null;
   unresolvedSpecificationCount: number | null;
 }> {
@@ -85,6 +87,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       quantityConflictDetail: null,
       pricingSummary: null,
       missingPriceLineCount: null,
+      missingRateReviewBlock: null,
       scopeCoverageGapCount: null,
       unresolvedSpecificationCount: null,
     };
@@ -106,7 +109,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       .maybeSingle(),
     auth.supabase
       .from("estimate_line_items")
-      .select("project_id, rate_source")
+      .select("project_id, rate_source, notes")
       .eq("project_id", projectId)
       .eq("org_id", auth.orgId)
       .or(
@@ -137,6 +140,9 @@ export async function getProjectWorkspaceTabContextWithContext(
       ? null
       : (aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []).get(projectId) ??
         0),
+    missingRateReviewBlock: missingPriceLinesResult.error
+      ? null
+      : missingRateReviewBlockFromLines(missingPriceLinesResult.data ?? []),
     scopeCoverageGapCount: estimateResult.error
       ? null
       : scopeGapCountFromNotices(estimateResult.data?.missing_info),
@@ -301,6 +307,9 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       quantityConflictDetail: null,
       pricingSummary: null as PricingSummary | null,
       missingPriceLineCount: null,
+      missingRateReviewBlock: null,
+      scopeCoverageGapCount: null,
+      unresolvedSpecificationCount: null,
     };
   }
   return getProjectWorkspaceTabContextWithContext(auth, projectId);

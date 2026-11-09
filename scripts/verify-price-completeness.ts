@@ -11,6 +11,8 @@ import {
   ADD_MISSING_RATE,
   CONFIRM_OPEN_SPECIFICATION,
   formatWorkAreaPriceSummary,
+  missingRateReviewBlockFromLines,
+  namedMissingRateAction,
 } from "../lib/assistant/presentation/estimate-issues";
 import { projectWorkAreaBreakdown } from "../lib/assistant/presentation/work-area-breakdown";
 import { PRICING_TAX_BASIS_MISMATCH_BLOCK } from "../lib/pricing/gst-source";
@@ -202,6 +204,21 @@ check(
     readFileSync(join(__dirname, "../lib/quotes/build-from-pricing.ts"), "utf8").includes(
       "missingGeneratedRateReviewBlock"
     )
+);
+
+check(
+  "Level 5 names its rate and keeps the face quantity out of the price",
+  namedMissingRateAction(["Level 5 plasterboard stopping"]) ===
+    "Add the Level 5 plasterboard stopping rate." &&
+    missingRateReviewBlockFromLines([
+      {
+        rate_source: "Pricing required",
+        notes:
+          'Side A · Level 5 · 12.8 m² visible face.\n__quotr_meta__:{"quantity":12.8,"unit":"m2","itemKey":"stopping.plasterboard.level5.m2","rateSourceType":"missing"}',
+      },
+    ]) ===
+      "Add the Level 5 plasterboard stopping rate. Side A is 12.8 m². This pricing cannot be marked reviewed as a complete price." &&
+    namedMissingRateAction([]) === ADD_MISSING_RATE
 );
 
 if (failed > 0) {

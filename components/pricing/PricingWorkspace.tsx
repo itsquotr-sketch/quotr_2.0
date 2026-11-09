@@ -625,7 +625,7 @@ export function PricingWorkspace({
         items={items}
         quoteSummary={quoteSummary}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
-        scopeQuoteBlock={scopeReview?.blocking ?? null}
+        scopeQuoteBlock={scopeFinalisationBlock ?? scopeReview?.blocking ?? null}
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}
         defaultGstRate={defaultGstRate}
@@ -873,7 +873,7 @@ export function PricingWorkspace({
           quoteSummary={quoteSummary}
           pricingChangedAfterQuote={pricingChangedAfterQuote}
           canEdit={canEditPricing}
-          scopeQuoteBlock={scopeReview?.blocking ?? null}
+          scopeQuoteBlock={scopeFinalisationBlock ?? scopeReview?.blocking ?? null}
           estimateUpdateRequired={estimateUpdateRequired}
           gstRegistered={gstRegistered}
           defaultGstRate={defaultGstRate}
@@ -893,7 +893,7 @@ export function PricingWorkspace({
         hasUnsavedChanges={hasUnsavedChanges}
         needsRecalibration={document.needs_recalibration || meaningDrift}
         canEdit={canEditPricing}
-        scopeQuoteBlock={scopeReview?.blocking ?? null}
+        scopeQuoteBlock={scopeFinalisationBlock ?? scopeReview?.blocking ?? null}
         extraReviewBlock={scopeFinalisationBlock}
         estimateUpdateRequired={estimateUpdateRequired}
         gstRegistered={gstRegistered}

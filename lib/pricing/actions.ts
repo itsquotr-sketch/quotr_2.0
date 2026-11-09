@@ -28,6 +28,7 @@ import { materialConditionQuoteBlock } from "@/lib/estimate/condition-commercial
 import {
   estimateLineIsQuoteVisible,
   missingGeneratedRateReviewBlock,
+  missingRateReviewBlockForProject,
   pricingLineIncludedInDocumentTotal,
   quoteVisibleExcludedLineBlock,
   unresolvedScopeReviewBlockForEstimate,
@@ -476,6 +477,9 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       quantityConflictDetail: null,
       pricingSummary: null,
       missingPriceLineCount: null,
+      missingRateReviewBlock: null,
+      scopeCoverageGapCount: null,
+      unresolvedSpecificationCount: null,
     };
   }
 
@@ -2207,6 +2211,12 @@ export async function markPricingReviewed(
   if (taxBasisBlock) return { error: taxBasisBlock };
   const excludedLineBlock = quoteVisibleExcludedLineBlock(reviewItems ?? []);
   if (excludedLineBlock) return { error: excludedLineBlock };
+  const estimateRateBlock = await missingRateReviewBlockForProject(
+    supabase,
+    orgId,
+    document.project_id as string
+  );
+  if (estimateRateBlock) return { error: estimateRateBlock };
   const missingRateBlock = missingGeneratedRateReviewBlock(reviewItems ?? []);
   if (missingRateBlock) return { error: missingRateBlock };
   const scopeBlock = await unresolvedScopeReviewBlockForEstimate(

@@ -76,9 +76,13 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
   const { data, project, tabContext, quoteSummaryForDoc, quoteSummary, access, rateReconciliation, supplierReview, scopeReview } =
     pageData;
 
-  const missingPriceLineCount = data.items.filter(
+  const documentMissingPriceLineCount = data.items.filter(
     (item) => pricingItemViewModel(item).pricingRequired
   ).length;
+  const missingPriceLineCount = Math.max(
+    documentMissingPriceLineCount,
+    tabContext.missingPriceLineCount ?? 0
+  );
   const scopeStillOpen =
     (tabContext.scopeCoverageGapCount ?? 0) > 0 ||
     (tabContext.unresolvedSpecificationCount ?? 0) > 0;
@@ -154,11 +158,12 @@ export default async function PricingPage({ params, searchParams }: PricingPageP
         defaultGstRate={access.defaultGstRate}
         scopeStillOpen={scopeStillOpen}
         scopeReviewBlock={
-          (tabContext.scopeCoverageGapCount ?? 0) > 0
+          tabContext.missingRateReviewBlock ??
+          ((tabContext.scopeCoverageGapCount ?? 0) > 0
             ? UNRESOLVED_SCOPE_REVIEW_BLOCK
             : (tabContext.unresolvedSpecificationCount ?? 0) > 0
               ? UNRESOLVED_SPECIFICATION_REVIEW_BLOCK
-              : null
+              : null)
         }
       />
     </WorkspacePage>
