@@ -35,3 +35,21 @@ Routine development and bounded repairs toward the V3 finish line stay authorise
 ## Workflow
 
 Freeze criteria, use a clean feature worktree, commit, invoke `quotr-scenario-qa`, fix failures yourself, invoke `quotr-release-review`, then fast-forward Preview. One QA worker. Browser use stays sequential. No recursive delegation. Verify each worker’s checkout, serving SHA, and test-data boundary. Subagent files do not isolate the database or the browser.
+
+## User-facing progress record
+
+Jean-Luc’s spreadsheet is the user-facing V3 progress record: https://docs.google.com/spreadsheets/d/1ADe_0lYE5jnapViIgH4XT1kRfxVy6Ni_XrJE51VSQHY/edit
+
+Read Tracking Guide before writing. Tests and General Notes stay his original observations. Development Tracker is the current state. Progress Log preserves every change. Repository documents, including [V3_COMPLETION_REGISTER.md](V3_COMPLETION_REGISTER.md), stay technical evidence and are linked from the tracker.
+
+For every material discovery, fix, QA result, blocker and publication:
+
+1. Update the existing Development Tracker issue, or create the next stable `V3-###` ID when the cause is distinct. Reuse an issue for the same cause and link every relevant QT and QDR ID.
+2. Record the owner, next action, exact SHA, evidence and environment.
+3. Append a dated Progress Log entry. Preserve earlier entries. A same-status event is still logged.
+4. Keep implemented, QA passed, published and verified resolved apart. Local tests do not establish hosted acceptance. A parent-SHA test is not acceptance of a later commit. Published is not verified resolved.
+5. End each report with the issue IDs updated and any remaining blockers.
+
+Before each new testing review, re-read Tests and General Notes. Reconcile new or changed observations with existing issues. Do not rerun unchanged accepted evidence. A blank row or an empty score is untested. Do not mark it passed or failed.
+
+If spreadsheet access fails, report “Spreadsheet update pending”, retain the proposed tracker and log rows in this handoff, and continue independent authorised work. Never claim the sheet was updated without reading the written cells back. Keep passwords, tokens, service keys and private recovery URLs out of the workbook.
