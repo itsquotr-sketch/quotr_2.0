@@ -4386,6 +4386,7 @@ export function AssistantShell({
                   projectId={project.id}
                   briefText={briefText}
                   labourRates={labourRates}
+                  siblingLines={estimate?.lineItems ?? []}
                 />
               }
               projectConditions={
@@ -4636,6 +4637,7 @@ export function AssistantShell({
               projectId={project.id}
               briefText={briefText}
               labourRates={labourRates}
+              siblingLines={estimate?.lineItems ?? []}
             />
             </CollapsibleStageCard>
           ) : null}

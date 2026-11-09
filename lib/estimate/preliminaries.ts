@@ -115,6 +115,8 @@ export type PreliminariesPlan = {
   /** Absent on plans saved before identity review. */
   reviews?: PreliminaryIdentityReview[];
   deliveryWindow: string | null;
+  /** Ids the builder removed. Recognition must not put those items back. */
+  removedIds?: string[];
 };
 
 const CATALOGUE_BY_ID = new Map(
@@ -240,7 +242,20 @@ export function parsePreliminariesPlan(value: unknown): PreliminariesPlan | null
     items,
     reviews: parseIdentityReviews(row.reviews),
     deliveryWindow: textOrNull(row.deliveryWindow),
+    removedIds: parseRemovedIds(row.removedIds),
   };
+}
+
+function parseRemovedIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const ids: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const id = entry.trim();
+    if (!id || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  return ids;
 }
 
 function parseIdentityReviews(value: unknown): PreliminaryIdentityReview[] {
@@ -409,10 +424,12 @@ export function mergePreliminaries(
   saved: PreliminariesPlan | null,
   recognised: PreliminariesPlan
 ): PreliminariesPlan {
-  const items = [...(saved?.items ?? [])];
+  const removedIds = saved?.removedIds ?? [];
+  const removed = new Set(removedIds);
+  const items = (saved?.items ?? []).filter((item) => !removed.has(item.id));
   const seen = new Set(items.map((row) => row.id));
   for (const item of recognised.items) {
-    if (seen.has(item.id)) continue;
+    if (seen.has(item.id) || removed.has(item.id)) continue;
     seen.add(item.id);
     items.push(item);
   }
@@ -426,6 +443,7 @@ export function mergePreliminaries(
     items,
     reviews: reviews.filter((review) => review.separate || recognisedIds.has(review.id)),
     deliveryWindow: saved?.deliveryWindow ?? recognised.deliveryWindow,
+    removedIds,
   };
 }
 

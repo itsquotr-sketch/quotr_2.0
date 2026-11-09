@@ -214,6 +214,7 @@ export function PreliminariesSection({
                     setRemoved((current) => [...current, item]);
                     setPlan((current) => ({
                       ...current,
+                      removedIds: [...(current.removedIds ?? []).filter((id) => id !== item.id), item.id],
                       items: current.items.filter((row) => row.id !== item.id),
                     }));
                     setEditingId(null);
@@ -239,7 +240,13 @@ export function PreliminariesSection({
               const last = removed[removed.length - 1];
               if (!last) return;
               setRemoved((current) => current.slice(0, -1));
-              setPlan((current) => ({ ...current, items: [...current.items, last] }));
+              setPlan((current) => ({
+                ...current,
+                removedIds: (current.removedIds ?? []).filter((id) => id !== last.id),
+                items: current.items.some((row) => row.id === last.id)
+                  ? current.items
+                  : [...current.items, last],
+              }));
               setStatus("idle");
             }}
           >

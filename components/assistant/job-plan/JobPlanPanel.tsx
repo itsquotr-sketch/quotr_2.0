@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { OrganisationRate } from "@/components/setup/types";
-import type { EstimateFact } from "@/lib/estimate/types";
+import type { EstimateFact, EstimateLineItemInput } from "@/lib/estimate/types";
 import type { JobPlanConstraintWrite } from "@/components/assistant/job-plan/quick-spec-editors";
 
 type JobPlanPanelProps = {
@@ -86,6 +86,7 @@ type JobPlanPanelProps = {
   projectId?: string;
   briefText?: string | null;
   labourRates?: readonly OrganisationRate[];
+  siblingLines?: readonly EstimateLineItemInput[];
 };
 
 export function JobPlanPanel({
@@ -119,6 +120,7 @@ export function JobPlanPanel({
   projectId,
   briefText,
   labourRates = [],
+  siblingLines = [],
 }: JobPlanPanelProps) {
   const cardsToRender = focusWorkAreaId
     ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
@@ -157,6 +159,7 @@ export function JobPlanPanel({
             facts={facts}
             tradeDescriptions={tradeDescriptions}
             labourRates={labourRates}
+            siblingLines={siblingLines}
           />
         ) : null}
         <p className="text-sm text-muted-foreground">
@@ -228,6 +231,7 @@ export function JobPlanPanel({
           facts={facts}
           tradeDescriptions={tradeDescriptions}
           labourRates={labourRates}
+          siblingLines={siblingLines}
         />
       ) : null}
       <div className="flex flex-col gap-3 max-md:pb-36">

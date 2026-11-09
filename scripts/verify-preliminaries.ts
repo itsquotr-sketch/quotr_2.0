@@ -940,6 +940,37 @@ const captureUi = readFileSync(
   join(process.cwd(), "components/assistant/ProjectCaptureBlock.tsx"),
   "utf8"
 );
+const jobPlanUi = readFileSync(
+  join(process.cwd(), "components/assistant/job-plan/JobPlanPanel.tsx"),
+  "utf8"
+);
+const officePlan = planFromFacts([], STAGE_2A_OFFICE_FITOUT_BRIEF);
+const removedPlan = mergePreliminaries(
+  {
+    ...officePlan,
+    items: officePlan.items.filter((item) => item.id !== "daily_cleaning"),
+    removedIds: ["daily_cleaning"],
+  },
+  officePlan
+);
+check(
+  "removing a preliminary keeps it out when the brief is recognised again",
+  !removedPlan.items.some((item) => item.id === "daily_cleaning") &&
+    removedPlan.removedIds?.includes("daily_cleaning") === true
+);
+const excludedPlan = mergePreliminaries(
+  {
+    ...officePlan,
+    items: officePlan.items.map((item) =>
+      item.id === "daily_cleaning" ? { ...item, treatment: "excluded" as const } : item
+    ),
+  },
+  officePlan
+);
+check(
+  "excluding a preliminary keeps that item and does not remove it",
+  excludedPlan.items.find((item) => item.id === "daily_cleaning")?.treatment === "excluded"
+);
 check(
   "preliminaries open one editor and keep exclusion distinct from removal",
   preliminariesUi.includes("data-preliminary-editor") &&
@@ -948,7 +979,12 @@ check(
     preliminariesUi.includes("data-preliminary-undo-removal") &&
     preliminariesUi.includes("data-preliminary-unsaved") &&
     preliminariesUi.includes("overlappingIdentity") &&
+    preliminariesUi.includes("removedIds") &&
     !preliminariesUi.includes("same requirement")
+);
+check(
+  "a real overlap is passed into the preliminaries editor",
+  jobPlanUi.includes("siblingLines={siblingLines}")
 );
 check(
   "analysis shows the submitted brief and restores the controls afterwards",
