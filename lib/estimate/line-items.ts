@@ -5,7 +5,7 @@ import {
   formatLabourHours,
 } from "@/lib/estimate/builder-presentation-format";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
-import { buildPersistedLineItemNotes, inferProductivitySourceType } from "@/lib/estimate/line-item-metadata";
+import { buildPersistedLineItemNotes, inferProductivitySourceType, type PersistedCostComponents } from "@/lib/estimate/line-item-metadata";
 import {
   explicitRateSourceLabel,
   normalizeRateSourceLabel,
@@ -365,6 +365,18 @@ export function createAllowanceLineItem(params: {
   );
 }
 
+function persistedCostComponents(
+  components: EstimateLineItemInput["costComponents"]
+): PersistedCostComponents | undefined {
+  if (!components) return undefined;
+  const saved: PersistedCostComponents = {};
+  for (const key of ["labourCost", "materialCost", "subcontractorCost", "allowanceCost"] as const) {
+    const value = components[key];
+    if (typeof value === "number" && Number.isFinite(value)) saved[key] = value;
+  }
+  return Object.keys(saved).length > 0 ? saved : undefined;
+}
+
 export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
   return buildPersistedLineItemNotes({
     notes: item.notes,
@@ -390,6 +402,7 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       pricingOwner: item.pricingOwner,
       scopeKey: item.scopeKey,
       overlapGroup: item.overlapGroup,
+      costComponents: persistedCostComponents(item.costComponents),
       includedInTotal: item.includedInTotal,
       clientVisible: item.clientVisible,
       provisional: item.provisional,

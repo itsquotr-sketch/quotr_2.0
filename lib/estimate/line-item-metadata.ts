@@ -64,6 +64,13 @@ export type DeckHoleDraftStamp = {
   readonly concreteProductKey?: string | null;
 };
 
+export type PersistedCostComponents = {
+  labourCost?: number;
+  materialCost?: number;
+  subcontractorCost?: number;
+  allowanceCost?: number;
+};
+
 export type AllowanceMinimumMeta = {
   minimumApplied: boolean;
   reason: string;
@@ -100,6 +107,8 @@ export type LineItemMetadata = {
   pricingOwner?: PricingOwner;
   scopeKey?: string;
   overlapGroup?: string;
+  /** Materials and labour parts of one line. The stored category can be allowance. */
+  costComponents?: PersistedCostComponents;
   includedInTotal?: boolean;
   clientVisible?: boolean;
   pricingSource?: PricingSource;

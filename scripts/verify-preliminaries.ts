@@ -13,6 +13,7 @@ import { STAGE_2A_OFFICE_FITOUT_BRIEF } from "./fixtures/stage-2a-original-brief
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { persistLineCategory } from "../lib/estimate/persist-estimate-generation";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
+import { parseLineItemNotes } from "../lib/estimate/line-item-metadata";
 import {
   calculatePreliminaries,
   mergePreliminaries,
@@ -263,6 +264,14 @@ check(
     splitLine.costComponents?.materialCost === 400 &&
     splitLine.costComponents.labourCost === 600 &&
     persistLineCategory(splitLine.category) === "allowance"
+);
+const reloadedSplit = splitLine ? parseLineItemNotes(buildLineItemNotes(splitLine)).metadata.costComponents : null;
+check(
+  "a saved split keeps both parts once when the row is stored as an allowance",
+  splitLine != null &&
+    reloadedSplit?.materialCost === 400 &&
+    reloadedSplit.labourCost === 600 &&
+    reloadedSplit.materialCost + reloadedSplit.labourCost === splitLine.recommendedCost
 );
 
 const noRate = calculatePreliminaries(

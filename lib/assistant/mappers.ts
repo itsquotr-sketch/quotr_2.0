@@ -397,6 +397,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     pricingOwner: metadata.pricingOwner,
     scopeKey: metadata.scopeKey,
     overlapGroup: metadata.overlapGroup,
+    costComponents: metadata.costComponents,
     includedInTotal: metadata.includedInTotal,
     clientVisible: metadata.clientVisible,
     quantityBasis: metadata.quantityBasis,

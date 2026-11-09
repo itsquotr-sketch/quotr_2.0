@@ -113,6 +113,7 @@ export type EstimateLineItem = {
   sellRate?: number;
   itemKey?: string;
   componentKey?: string;
+  costComponents?: import("@/lib/estimate/line-item-metadata").PersistedCostComponents;
   nestedItemId?: string;
   componentId?: string;
   contributingNestedItemIds?: string[];
