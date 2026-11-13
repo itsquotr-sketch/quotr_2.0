@@ -87,6 +87,15 @@ function normalise(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function briefBuysIndividualCarpetTiles(raw: string): boolean {
+  return (
+    /\bindividual tiles\b/.test(raw) ||
+    /\bno box rounding\b/.test(raw) ||
+    /\bwithout box rounding\b/.test(raw) ||
+    /\b(?:do not|don't) round(?:\s+up)? to (?:a |whole )?box/.test(raw)
+  );
+}
+
 function presentM2(value: number): string {
   const rounded = round2(value);
   return Number.isInteger(rounded) ? rounded.toFixed(2) : String(rounded);
@@ -288,6 +297,14 @@ export function applyCarpetTileBriefFacts(
   if (perBox && portion.carpet_tile_tiles_per_box == null) {
     portion.carpet_tile_box = "known";
     portion.carpet_tile_tiles_per_box = Number(perBox[1]);
+  }
+  if (
+    portion.carpet_tile_box == null &&
+    portion.carpet_tile_box_coverage_m2 == null &&
+    portion.carpet_tile_tiles_per_box == null &&
+    briefBuysIndividualCarpetTiles(raw)
+  ) {
+    portion.carpet_tile_box = "unknown";
   }
   if (
     /\bdispos/.test(raw) &&

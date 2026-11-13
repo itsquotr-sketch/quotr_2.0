@@ -1,6 +1,10 @@
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
 import type { AIExtractionOutput } from "../lib/ai/schema";
+import {
+  carpetTileWastePercent,
+  planCarpetTileAssembly,
+} from "../lib/estimate/flooring-carpet-tile";
 import { parseFlooringPortions } from "../lib/estimate/flooring-portions";
 
 const allowed = getAnalysisCapableWorkAreaTypes();
@@ -60,6 +64,35 @@ check(
 check(
   "QT-002 separate supply reaches the package decision",
   office?.finish_pricing === "separate_supply"
+);
+const officeWaste = office ? carpetTileWastePercent(office) : null;
+check(
+  "QT-002 explicit zero waste survives persistence",
+  office?.carpet_tile_waste === "zero" && officeWaste === 0
+);
+check(
+  "QT-002 keeps box coverage unknown when tiles are bought individually",
+  office?.carpet_tile_box === "unknown" &&
+    office.carpet_tile_box_coverage_m2 == null &&
+    office.carpet_tile_tiles_per_box == null
+);
+const officeAssembly = office
+  ? planCarpetTileAssembly({ portion: office, netM2: 12, owner: "Office" })
+  : null;
+const officeSupply =
+  officeAssembly?.status === "ready"
+    ? officeAssembly.lines.find((line) => line.role === "supply")
+    : null;
+check(
+  "QT-002 4 m by 3 m at 500 mm generates 48 tiles with box coverage unknown",
+  office?.length_m === 4 &&
+    office.width_m === 3 &&
+    officeAssembly?.status === "ready" &&
+    officeSupply?.quantity === 48 &&
+    officeSupply.unit === "tile",
+  officeAssembly?.status === "needs_answers"
+    ? officeAssembly.missing.join(",")
+    : `status=${officeAssembly?.status ?? "none"} qty=${officeSupply?.quantity ?? "none"}`
 );
 
 const qt004 = storedPortions(
