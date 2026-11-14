@@ -7,6 +7,7 @@ import {
   scopeGapCountFromNotices,
   specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
+import { namedUnresolvedScopeReviewBlock } from "@/lib/pricing/scope-finalisation";
 import {
   mapPricingDocument,
   mapPricingItem,
@@ -76,6 +77,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   pricingSummary: PricingSummary | null;
   missingPriceLineCount: number | null;
   missingRateReviewBlock: string | null;
+  namedScopeReviewBlock: string | null;
   scopeCoverageGapCount: number | null;
   unresolvedSpecificationCount: number | null;
 }> {
@@ -88,6 +90,7 @@ export async function getProjectWorkspaceTabContextWithContext(
       pricingSummary: null,
       missingPriceLineCount: null,
       missingRateReviewBlock: null,
+      namedScopeReviewBlock: null,
       scopeCoverageGapCount: null,
       unresolvedSpecificationCount: null,
     };
@@ -143,6 +146,9 @@ export async function getProjectWorkspaceTabContextWithContext(
     missingRateReviewBlock: missingPriceLinesResult.error
       ? null
       : missingRateReviewBlockFromLines(missingPriceLinesResult.data ?? []),
+    namedScopeReviewBlock: estimateResult.error
+      ? null
+      : namedUnresolvedScopeReviewBlock(estimateResult.data?.missing_info),
     scopeCoverageGapCount: estimateResult.error
       ? null
       : scopeGapCountFromNotices(estimateResult.data?.missing_info),
@@ -308,6 +314,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
       pricingSummary: null as PricingSummary | null,
       missingPriceLineCount: null,
       missingRateReviewBlock: null,
+      namedScopeReviewBlock: null,
       scopeCoverageGapCount: null,
       unresolvedSpecificationCount: null,
     };

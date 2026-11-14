@@ -303,7 +303,11 @@ function statedFlooringExtras(portion: FlooringPortion): string {
     notes.push(`${portion.waste_percent}% waste on finish supply`);
   }
   if (portion.transitions_required === true) {
-    notes.push("transition strips requested, unpriced");
+    notes.push(
+      portion.transitions_count != null
+        ? "included in the shared transition quantity"
+        : "transition strips requested, unpriced"
+    );
   }
   return notes.length > 0 ? ` · ${notes.join(" · ")}` : "";
 }
@@ -1994,6 +1998,30 @@ export function rollupFlooringPhysicalCompleteness(
   return FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL;
 }
 
+function transitionScopeNotice(portions: readonly FlooringPortion[]): string {
+  const labels = portions
+    .map((portion) => portion.label?.trim())
+    .filter((label): label is string => Boolean(label));
+  const counts = [
+    ...new Set(
+      portions
+        .map((portion) => portion.transitions_count)
+        .filter((count): count is number => typeof count === "number")
+    ),
+  ];
+  const where = labels.length > 0 ? ` for ${labels.join(" and ")}` : "";
+  const bothBedroomDoors =
+    counts.length === 1 &&
+    labels.length === 2 &&
+    labels.every((label) => label.startsWith("Bedroom"));
+  const quantity = bothBedroomDoors
+    ? ` Stated quantity is ${counts[0]} across both doors. Count it once.`
+    : counts.length === 1
+      ? ` Stated quantity is ${counts[0]}${labels.length > 0 ? ` across ${labels.join(" and ")}` : ""}. Count it once.`
+      : " The strip count was not stated, so no quantity is included.";
+  return `Transition strips${where} are requested and not priced.${quantity} No company rate can be attached, and a manual Pricing line does not resolve this. Change the estimate before review. No rate is invented.`;
+}
+
 export function calculateFlooringPhysical(params: {
   readonly facts: readonly EstimateFact[];
   readonly workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
@@ -2080,24 +2108,7 @@ export function calculateFlooringPhysical(params: {
     (portion) => portion.transitions_required === true
   );
   if (requestedTransitions.length > 0) {
-    const labels = requestedTransitions
-      .map((portion) => portion.label?.trim())
-      .filter((label): label is string => Boolean(label));
-    const counts = [
-      ...new Set(
-        requestedTransitions
-          .map((portion) => portion.transitions_count)
-          .filter((count): count is number => typeof count === "number")
-      ),
-    ];
-    const where = labels.length > 0 ? ` for ${labels.join(" and ")}` : "";
-    const quantity =
-      counts.length === 1
-        ? ` Stated quantity is ${counts[0]}.`
-        : " The strip count was not stated, so no quantity is included.";
-    missingInfo.push(
-      `Transition strips${where} are requested and not priced.${quantity} Add a company rate. No rate is invented.`
-    );
+    missingInfo.push(transitionScopeNotice(requestedTransitions));
   }
 
   return {

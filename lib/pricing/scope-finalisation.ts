@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  classifyReviewNotice,
   missingRateReviewBlockFromLines,
   scopeGapCountFromNotices,
   specificationCountFromNotices,
@@ -85,6 +86,21 @@ export function unresolvedScopeReviewBlock(missingInfo: unknown): string | null 
     return UNRESOLVED_SPECIFICATION_REVIEW_BLOCK;
   }
   return null;
+}
+
+/**
+ * Pricing names each unresolved requested task. A manual Pricing line does
+ * not remove the estimate notice, so the task text is the next step.
+ */
+export function namedUnresolvedScopeReviewBlock(missingInfo: unknown): string | null {
+  const block = unresolvedScopeReviewBlock(missingInfo);
+  if (block !== UNRESOLVED_SCOPE_REVIEW_BLOCK || !Array.isArray(missingInfo)) return block;
+  const named = missingInfo.filter(
+    (item): item is string =>
+      typeof item === "string" && classifyReviewNotice(item) === "scope_gap"
+  );
+  if (named.length === 0) return block;
+  return `${named.join(" ")} ${block}`;
 }
 
 export async function unresolvedScopeReviewBlockForEstimate(

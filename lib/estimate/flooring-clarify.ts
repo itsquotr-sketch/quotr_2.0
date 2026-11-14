@@ -517,7 +517,11 @@ export function summariseFlooringPortion(
     extras.push(`${portion.waste_percent}% waste on finish supply`);
   }
   if (portion.transitions_required === true) {
-    extras.push("Transition strips requested, unpriced");
+    extras.push(
+      portion.transitions_count != null
+        ? "Included in the shared transition quantity"
+        : "Transition strips requested, unpriced"
+    );
   }
   if (portion.skirting_replacement_excluded === true) {
     extras.push("Skirting replacement excluded");

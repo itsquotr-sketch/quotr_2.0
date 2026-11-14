@@ -8,6 +8,10 @@ import {
 import { parseFlooringPortions } from "../lib/estimate/flooring-portions";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import {
+  namedUnresolvedScopeReviewBlock,
+  unresolvedScopeReviewBlock,
+} from "../lib/pricing/scope-finalisation";
 
 const allowed = getAnalysisCapableWorkAreaTypes();
 let failed = 0;
@@ -147,8 +151,14 @@ check(
   "QT-003 states one quantity and does not invent a transition line",
   requested.requirements.every((row) => !/transition/i.test(row.description ?? "")) &&
     requestedNotice?.includes("requested and not priced") === true &&
-    requestedNotice.includes("Stated quantity is 2.") &&
-    classifyReviewNotice(requestedNotice) === "scope_gap"
+    requestedNotice.includes("Stated quantity is 2 across both doors. Count it once.") &&
+    requestedNotice.includes("No company rate can be attached") &&
+    requestedNotice.includes("a manual Pricing line does not resolve this") &&
+    requestedNotice.includes("Change the estimate before review.") &&
+    classifyReviewNotice(requestedNotice) === "scope_gap" &&
+    namedUnresolvedScopeReviewBlock([requestedNotice])?.startsWith(requestedNotice) === true &&
+    unresolvedScopeReviewBlock([requestedNotice]) ===
+      "Requested tasks still have no priced line. This pricing cannot be marked reviewed as a complete price."
 );
 const excluded = transitionGap(qt001);
 check(
