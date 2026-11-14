@@ -259,6 +259,11 @@ export type FlooringPortion = {
   carpet_tile_disposal_requested?: boolean | null;
   /** Requested transition strips. No priced recipe is implied. */
   transitions_required?: boolean | null;
+  /**
+   * Stated strip count for the whole request, repeated on each matching room.
+   * Generation uses one copy. It is not a per-room quantity.
+   */
+  transitions_count?: number | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
   skirting_replacement_excluded?: boolean | null;
   other_description: string | null;
@@ -1002,6 +1007,12 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       ? { carpet_tile_disposal_requested: true as const }
       : {}),
     transitions_required: parseTriBool(value.transitions_required),
+    transitions_count:
+      typeof value.transitions_count === "number" &&
+      Number.isFinite(value.transitions_count) &&
+      value.transitions_count > 0
+        ? value.transitions_count
+        : null,
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
     other_description: parseFlooringOtherDescription(value.other_description),

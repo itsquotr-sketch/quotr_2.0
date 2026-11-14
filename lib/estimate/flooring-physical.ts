@@ -2049,9 +2049,6 @@ export function calculateFlooringPhysical(params: {
     ) {
       missingInfo.push(CARPET_TILE_SPECIFICATION_UNRESOLVED);
     }
-    if (portion.transitions_required === true) {
-      missingInfo.push("Transition strips are requested and have no priced rate.");
-    }
     const purchasing = calculated.portion.purchasing;
     const wastePercent = portion.waste_percent;
     const laminateWasteApplied =
@@ -2077,6 +2074,30 @@ export function calculateFlooringPhysical(params: {
         `${portion.waste_percent}% waste is stated for the new floor covering and applies to finish supply once this area can be priced.`
       );
     }
+  }
+
+  const requestedTransitions = resolved.portions.filter(
+    (portion) => portion.transitions_required === true
+  );
+  if (requestedTransitions.length > 0) {
+    const labels = requestedTransitions
+      .map((portion) => portion.label?.trim())
+      .filter((label): label is string => Boolean(label));
+    const counts = [
+      ...new Set(
+        requestedTransitions
+          .map((portion) => portion.transitions_count)
+          .filter((count): count is number => typeof count === "number")
+      ),
+    ];
+    const where = labels.length > 0 ? ` for ${labels.join(" and ")}` : "";
+    const quantity =
+      counts.length === 1
+        ? ` Stated quantity is ${counts[0]}.`
+        : " The strip count was not stated, so no quantity is included.";
+    missingInfo.push(
+      `Transition strips${where} are requested and not priced.${quantity} Add a company rate. No rate is invented.`
+    );
   }
 
   return {

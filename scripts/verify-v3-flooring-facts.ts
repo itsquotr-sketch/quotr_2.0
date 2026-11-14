@@ -6,6 +6,8 @@ import {
   planCarpetTileAssembly,
 } from "../lib/estimate/flooring-carpet-tile";
 import { parseFlooringPortions } from "../lib/estimate/flooring-portions";
+import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 
 const allowed = getAnalysisCapableWorkAreaTypes();
 let failed = 0;
@@ -107,6 +109,51 @@ check(
 check(
   "QT-004 still requires an explicit pricing basis",
   lounge?.area_input_method == null && lounge?.finish_pricing == null
+);
+
+const qt003 = storedPortions(`rental floors:
+bed1 3.6x3.2 carpet
+bed2 4.2x3.5 carpet
+hall 8x1.2 vinyl plank
+all measurements metres
+
+pull existing carpet out of all 3 and dispose. new underlay in bedrooms only. 10 percent material waste on new finishes. transitions at the 2 bedroom doors. keep skirtings.`);
+const bedroomTransitions = qt003.filter((row) => row.label?.startsWith("Bedroom"));
+const hall = qt003.find((row) => row.label === "Hallway");
+check(
+  "QT-003 keeps the two bedroom-door transitions off the hall",
+  bedroomTransitions.length === 2 &&
+    bedroomTransitions.every((row) => row.transitions_required === true && row.transitions_count === 2) &&
+    hall?.transitions_required == null
+);
+check(
+  "QT-001 comma-list exclusion is not stored as a transition request",
+  meeting?.transitions_required === false
+);
+check(
+  "QT-002 comma-list exclusion is not stored as a transition request",
+  office?.transitions_required === false
+);
+
+function transitionGap(rows: ReturnType<typeof storedPortions>) {
+  return calculateFlooringPhysical({
+    facts: [{ key: "flooring.portions", work_area_id: "floor", value: rows }],
+    workArea: { id: "floor", type: "flooring", name: "Flooring" },
+  });
+}
+const requested = transitionGap(qt003);
+const requestedNotice = requested.missingInfo.find((row) => row.includes("Transition strips"));
+check(
+  "QT-003 states one quantity and does not invent a transition line",
+  requested.requirements.every((row) => !/transition/i.test(row.description ?? "")) &&
+    requestedNotice?.includes("requested and not priced") === true &&
+    requestedNotice.includes("Stated quantity is 2.") &&
+    classifyReviewNotice(requestedNotice) === "scope_gap"
+);
+const excluded = transitionGap(qt001);
+check(
+  "QT-001 exclusion creates no transition gap",
+  excluded.missingInfo.every((row) => !/transition/i.test(row))
 );
 
 if (failed > 0) {

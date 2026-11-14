@@ -732,20 +732,53 @@ function splitFlooringSeparators(briefText: string): string[] {
       : [trimmed];
 }
 
-function transitionsRequiredFromBrief(raw: string): boolean | null {
-  const mention = /\btransition strips?\b|\btransitions\b/;
-  if (!mention.test(raw)) return null;
-  const negated =
-    /\b(?:no|without|not|exclud\w*)\b(?:\s+\w+){0,6}\s+(?:transition strips?|transitions)\b/;
-  let positive = false;
-  let negative = false;
-  for (const sentence of raw.split(/;|(?<=[.!?])\s+/)) {
-    if (!mention.test(sentence)) continue;
-    if (negated.test(sentence)) negative = true;
-    else positive = true;
+const TRANSITION_MENTION = /\btransition strips?\b|\btransitions\b/i;
+
+function sentenceExcludesTransitions(sentence: string): boolean {
+  return /\b(?:no|without|not|exclud\w*)\b[^.]{0,120}\b(?:transition strips?|transitions)\b/i.test(
+    sentence
+  );
+}
+
+function statedTransitionCount(sentence: string): number | null {
+  const match =
+    sentence.match(/\b(\d+)\s+bedroom\s+doors?\b/i) ??
+    sentence.match(/\b(\d+)\s+(?:transition strips?|transitions)\b/i);
+  if (!match) return null;
+  const count = Number(match[1]);
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
+
+function transitionSentenceApplies(sentence: string, label: string | null): boolean {
+  const location = locationFromSnippet(sentence);
+  if (!location || !label) return true;
+  if (location === label) return true;
+  return location === "Bedrooms" && label.startsWith("Bedroom");
+}
+
+/** A comma-separated exclusion list still excludes transitions. A located sentence stays on that room. */
+function applyTransitionSentences(portion: FlooringPortion, text: string): void {
+  if (portion.transitions_required != null) return;
+  let include = false;
+  let exclude = false;
+  let count: number | null = null;
+  for (const sentence of text.split(/;|(?<=[.!?])\s+/)) {
+    if (!TRANSITION_MENTION.test(sentence)) continue;
+    if (!transitionSentenceApplies(sentence, portion.label)) continue;
+    if (sentenceExcludesTransitions(sentence)) {
+      exclude = true;
+      continue;
+    }
+    include = true;
+    count = statedTransitionCount(sentence) ?? count;
   }
-  if (positive === negative) return null;
-  return positive;
+  if (include === exclude) return;
+  if (exclude) {
+    portion.transitions_required = false;
+    return;
+  }
+  portion.transitions_required = true;
+  if (count != null) portion.transitions_count = count;
 }
 
 function applyGlobalConstraints(
@@ -785,12 +818,7 @@ function applyGlobalConstraints(
   ) {
     portion.finish_supplied_by = "customer";
   }
-  if (portion.transitions_required == null) {
-    const transitions = transitionsRequiredFromBrief(raw);
-    if (transitions != null) {
-      portion.transitions_required = transitions;
-    }
-  }
+  applyTransitionSentences(portion, raw);
   if (
     /\b(?:exclud\w*|no|without)\b[^.]{0,80}\b(?:major\s+)?subfloor\b/.test(raw) &&
     portion.framing_required == null
@@ -987,10 +1015,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
   }
 
   applyClauseLocalRemoval(portion, snippet, true);
-  const transitions = transitionsRequiredFromBrief(normalise(snippet));
-  if (transitions != null) {
-    portion.transitions_required = transitions;
-  }
+  applyTransitionSentences(portion, normalise(snippet));
 }
 
 function splitCompactMeasuredRooms(briefText: string): string[] {
