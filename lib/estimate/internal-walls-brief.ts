@@ -44,6 +44,7 @@ import {
   type InternalWallsCorniceProduct,
   type InternalWallsCorniceType,
   type InternalWallsSideSelection,
+  type InternalWallsStoppingLevel,
 } from "@/lib/estimate/internal-walls-finish";
 
 export const COORDINATION_ORIGINAL_BRIEF =
@@ -74,6 +75,11 @@ export type ExtractedInternalWallsType = {
   painting: InternalWallsSideSelection | null;
   /** True when stopping is named and no level is named. False when excluded. */
   stoppingRequested: boolean | null;
+  /** Level named for a face. Null when that face was not allocated. */
+  stoppingSideA: InternalWallsStoppingLevel | null;
+  stoppingSideB: InternalWallsStoppingLevel | null;
+  /** "One side only" allocates the other face as unlined. */
+  sideBExplicitlyUnlined: boolean;
   sideA: ExtractedInternalWallsFace;
   sideB: ExtractedInternalWallsFace;
   corniceIncluded?: boolean | null;
@@ -466,6 +472,7 @@ function parseLiningSides(text: string): {
   sameBoth: boolean | null;
   sideA: ExtractedInternalWallsFace;
   sideB: ExtractedInternalWallsFace;
+  sideBExplicitlyUnlined: boolean;
 } {
   const empty = { product: null, thicknessMm: null };
   const mixed = text.match(
@@ -474,21 +481,21 @@ function parseLiningSides(text: string): {
   if (mixed) {
     const sideA = liningFromPhrase(mixed[1] ?? "") ?? empty;
     const sideB = liningFromPhrase(mixed[2] ?? "") ?? empty;
-    return { sameBoth: false, sideA, sideB };
+    return { sameBoth: false, sideA, sideB, sideBExplicitlyUnlined: false };
   }
   if (/\bone side only\b|\bon one side only\b|\bsingle side\b/.test(text)) {
     const lining = liningFromPhrase(text) ?? empty;
-    return { sameBoth: false, sideA: lining, sideB: empty };
+    return { sameBoth: false, sideA: lining, sideB: empty, sideBExplicitlyUnlined: true };
   }
   if (includesAny(text, ["both sides", "either side"])) {
     const lining = liningFromPhrase(text) ?? empty;
-    return { sameBoth: true, sideA: lining, sideB: lining };
+    return { sameBoth: true, sideA: lining, sideB: lining, sideBExplicitlyUnlined: false };
   }
   const lining = liningFromPhrase(text);
   if (lining) {
-    return { sameBoth: null, sideA: lining, sideB: empty };
+    return { sameBoth: null, sideA: lining, sideB: empty, sideBExplicitlyUnlined: false };
   }
-  return { sameBoth: null, sideA: empty, sideB: empty };
+  return { sameBoth: null, sideA: empty, sideB: empty, sideBExplicitlyUnlined: false };
 }
 
 function parseSegment(text: string, fallbackCount: number): ExtractedInternalWallsType | null {
@@ -518,6 +525,9 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
     skirting: null,
     painting: null,
     stoppingRequested: null,
+    stoppingSideA: null,
+    stoppingSideB: null,
+    sideBExplicitlyUnlined: lining.sideBExplicitlyUnlined,
     sideA: lining.sideA,
     sideB: lining.sideB,
   };
@@ -562,6 +572,88 @@ function finishSideFromBrief(
   return null;
 }
 
+function stoppingLevelsFromBrief(
+  text: string,
+  stance: FinishTopicStance
+): {
+  sideA: InternalWallsStoppingLevel | null;
+  sideB: InternalWallsStoppingLevel | null;
+} {
+  if (stance === "excluded") return { sideA: "none", sideB: "none" };
+  if (stance !== "included") return { sideA: null, sideB: null };
+  const brief = normalise(text);
+  const level: InternalWallsStoppingLevel | null = /\blevel\s*5\b/.test(brief)
+    ? "level_5"
+    : /\blevel\s*4\b/.test(brief)
+      ? "level_4"
+      : null;
+  if (!level) return { sideA: null, sideB: null };
+  const both =
+    /\bstopping\b[^.]{0,48}\bboth sides\b/.test(brief) ||
+    /\bboth sides\b[^.]{0,48}\bstopping\b/.test(brief);
+  if (both) return { sideA: level, sideB: level };
+  if (/\bstopping\b[^.]{0,48}\bone side\b/.test(brief)) {
+    return { sideA: level, sideB: "none" };
+  }
+  return { sideA: null, sideB: null };
+}
+
+function labeledWallParts(briefText: string): string[] {
+  const brief = normalise(internalWallsScopeText(briefText));
+  const labeled = brief
+    .split(/(?=\bwall\s+[a-z]\b)/)
+    .map((part) => part.trim())
+    .filter((part) => /\bwall\s+[a-z]\b/.test(part));
+  return labeled.length >= 2 ? labeled : [];
+}
+
+function sentenceNamesEveryWall(sentence: string): boolean {
+  return /\beither wall\b|\bboth walls\b|\ball walls\b|\beach wall\b/.test(sentence);
+}
+
+/** Finish instructions for one wall, plus sentences that apply to every wall. */
+function finishScopeForSegment(segment: string, briefText: string): string {
+  const parts = labeledWallParts(briefText);
+  if (parts.length < 2) return briefText;
+  const letter = segment.match(/\bwall\s+([a-z])\b/)?.[1];
+  const shared = finishSentences(briefText).filter((sentence) => {
+    if (segment.includes(sentence)) return false;
+    if (sentenceNamesEveryWall(sentence)) return true;
+    if (!/\bwall\s+[a-z]\b/.test(sentence)) return true;
+    return letter != null && new RegExp(`\\bwall\\s+${letter}\\b`).test(sentence);
+  });
+  return `${segment} ${shared.join(" ")}`.trim();
+}
+
+function finishScopeForStoredWall(
+  row: Record<string, unknown>,
+  briefText: string
+): string {
+  const parts = labeledWallParts(briefText);
+  if (parts.length < 2) return briefText;
+  const length = typeof row.length_lm === "number" ? row.length_lm : null;
+  const frame =
+    row.frame_system === "steel" || row.frame_system === "timber"
+      ? row.frame_system
+      : null;
+  const segment = parts.find((part) => {
+    const parsed = parseSegment(part, 1);
+    if (!parsed) return false;
+    if (length != null && parsed.lengthLm !== length) return false;
+    if (frame && parsed.frameSystem !== frame) return false;
+    return true;
+  });
+  if (!segment) {
+    return finishSentences(briefText)
+      .filter(
+        (sentence) =>
+          sentenceNamesEveryWall(sentence) || !/\bwall\s+[a-z]\b/.test(sentence)
+      )
+      .join(" ");
+  }
+  return finishScopeForSegment(segment, briefText);
+}
+
 function withBriefFinish(
   type: ExtractedInternalWallsType,
   briefText: string
@@ -571,6 +663,7 @@ function withBriefFinish(
   const painting = internalWallsTopicStance(briefText, "painting");
   const skirting = internalWallsTopicStance(briefText, "skirting");
   const stopping = internalWallsTopicStance(briefText, "stopping");
+  const levels = stoppingLevelsFromBrief(briefText, stopping);
   const brief = normalise(briefText);
   return {
     ...type,
@@ -586,6 +679,8 @@ function withBriefFinish(
     painting: finishSideFromBrief(briefText, "painting", painting),
     stoppingRequested:
       stopping === "included" ? true : stopping === "excluded" ? false : null,
+    stoppingSideA: levels.sideA,
+    stoppingSideB: levels.sideB,
   };
 }
 
@@ -797,13 +892,19 @@ export function extractInternalWallsTypesFromBrief(
       .map((part) => part.trim())
       .filter((part) => /\bwall\s+[a-z]\b/.test(part));
     if (labeled.length >= 2) {
-      const types = labeled
-        .map((part) => parseSegment(part, 1))
-        .filter((row): row is ExtractedInternalWallsType => row != null);
-      if (types.length >= 2) {
+      const paired = labeled
+        .map((part) => ({ part, row: parseSegment(part, 1) }))
+        .filter(
+          (item): item is { part: string; row: ExtractedInternalWallsType } =>
+            item.row != null
+        );
+      if (paired.length >= 2) {
         const cornice = extractInternalWallsCorniceFromBrief(scoped);
-        return types.map((row) =>
-          withBriefFinish(withExtractedCornice(row, cornice), briefText)
+        return paired.map((item) =>
+          withBriefFinish(
+            withExtractedCornice(item.row, cornice),
+            finishScopeForSegment(item.part, briefText)
+          )
         );
       }
     }
@@ -813,13 +914,24 @@ export function extractInternalWallsTypesFromBrief(
   );
   const segments = split.map((part) => part.trim()).filter(Boolean);
   if (segments.length >= 2) {
-    const types = segments
-      .map((part, index) => parseSegment(part, index === 0 ? 2 : 1))
-      .filter((row): row is ExtractedInternalWallsType => row != null);
-    if (types.length >= 2) {
+    const paired = segments
+      .map((part, index) => ({
+        part,
+        row: parseSegment(part, index === 0 ? 2 : 1),
+      }))
+      .filter(
+        (item): item is { part: string; row: ExtractedInternalWallsType } =>
+          item.row != null
+      );
+    if (paired.length >= 2) {
       const cornice = extractInternalWallsCorniceFromBrief(scoped);
-      return types.map((row) =>
-        withBriefFinish(withExtractedCornice(row, cornice), briefText)
+      return paired.map((item) =>
+        withBriefFinish(
+          withExtractedCornice(item.row, cornice),
+          `${item.part} ${finishSentences(briefText)
+            .filter((sentence) => !segments.some((part) => part.includes(sentence)))
+            .join(" ")}`.trim()
+        )
       );
     }
   }
@@ -1233,6 +1345,15 @@ export function applyExtractedInternalWallsToFacts(params: {
         }
       }
     }
+    if (spec.sideBExplicitlyUnlined) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: "internal_walls.wall_type.side_b_lined",
+        value: "Not lined",
+      });
+    }
     if (spec.insulationIncluded === true && existingType?.insulation_included == null) {
       facts = applyInternalWallsFactWrite({
         facts,
@@ -1283,6 +1404,24 @@ export function applyExtractedInternalWallsToFacts(params: {
         wallTypeId,
         key: INTERNAL_WALLS_PAINTING_SIDES_KEY,
         value: spec.painting === "both" ? "Both sides" : "No",
+      });
+    }
+    if (spec.stoppingSideA && existingType?.stopping_side_a == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+        value: spec.stoppingSideA === "none" ? "No" : spec.stoppingSideA === "level_5" ? "Level 5" : "Level 4",
+      });
+    }
+    if (spec.stoppingSideB && existingType?.stopping_side_b == null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+        value: spec.stoppingSideB === "none" ? "No" : spec.stoppingSideB === "level_5" ? "Level 5" : "Level 4",
       });
     }
     if (spec.stoppingRequested === false && existingType?.stopping_side_a == null) {
@@ -1457,16 +1596,21 @@ export function stripInventedInternalWallsFacts(
       if (!Array.isArray(fact.value)) return true;
       fact.value = (fact.value as Record<string, unknown>[]).map((row) => {
         const next = { ...row };
-        if (briefStatesExplicitInternalWallsNoOpenings(briefText)) {
+        const scope = finishScopeForStoredWall(next, briefText);
+        const scopeOpenings = explicitInternalWallsOpenings(scope);
+        if (
+          briefStatesExplicitInternalWallsNoOpenings(scope) ||
+          scopeOpenings.hasOpenings === false
+        ) {
           next.has_openings = false;
           next.openings = [];
           next.active_opening_id = null;
-        } else if (explicitInternalWallsOpenings(briefText).hasOpenings == null) {
+        } else if (scopeOpenings.hasOpenings == null) {
           next.has_openings = null;
           next.openings = [];
           next.active_opening_id = null;
         }
-        const insulationStance = internalWallsTopicStance(briefText, "insulation");
+        const insulationStance = internalWallsTopicStance(scope, "insulation");
         if (insulationStance === "contradiction" || insulationStance == null) {
           next.insulation_included = null;
           next.insulation_type = null;
@@ -1476,10 +1620,10 @@ export function stripInventedInternalWallsFacts(
         } else if (insulationStance === "excluded") {
           next.insulation_included = false;
           next.insulation_type = null;
-        } else if (!normalise(briefText).includes("acoustic") && !normalise(briefText).includes("thermal")) {
+        } else if (!normalise(scope).includes("acoustic") && !normalise(scope).includes("thermal")) {
           next.insulation_type = null;
         }
-        const skirtingStance = internalWallsTopicStance(briefText, "skirting");
+        const skirtingStance = internalWallsTopicStance(scope, "skirting");
         if (skirtingStance === "excluded") next.skirting = "none";
         else if (skirtingStance === "contradiction" || skirtingStance == null) {
           next.skirting = null;
@@ -1488,30 +1632,30 @@ export function stripInventedInternalWallsFacts(
           }
         } else if (
           next.skirting === "both" &&
-          !explicitFinishBothSides(briefText, "skirting")
+          !explicitFinishBothSides(scope, "skirting")
         ) {
           next.skirting = null;
         } else if (next.skirting === "none") {
           next.skirting = null;
         }
-        if (!includesAny(normalise(briefText), ["cornice", "cove", "scotia"])) {
+        if (!includesAny(normalise(scope), ["cornice", "cove", "scotia"])) {
           next.cornice_included = null;
           next.cornice = null;
           next.cornice_type = null;
           next.cornice_product = null;
           next.cornice_note = null;
-        } else if (briefHasSpecialistCorniceLanguage(briefText)) {
+        } else if (briefHasSpecialistCorniceLanguage(scope)) {
           next.cornice_type = "other_custom";
           if (next.cornice_product === "gib_cove_classic_55mm_3600") {
             next.cornice_product = null;
           }
         } else if (
-          !briefHasGibCoveClassicLanguage(briefText) &&
+          !briefHasGibCoveClassicLanguage(scope) &&
           next.cornice_product === "gib_cove_classic_55mm_3600"
         ) {
           next.cornice_product = null;
         }
-        const electricalStance = internalWallsTopicStance(briefText, "electrical");
+        const electricalStance = internalWallsTopicStance(scope, "electrical");
         if (electricalStance === "excluded") {
           next.electrical = "none";
         } else if (electricalStance === "contradiction") {
@@ -1519,20 +1663,20 @@ export function stripInventedInternalWallsFacts(
           notePartitionFinishConflict(extraction, "electrical");
         } else if (
           electricalStance == null &&
-          !includesAny(normalise(briefText), ["electrical", "power point"])
+          !includesAny(normalise(scope), ["electrical", "power point"])
         ) {
           next.electrical = null;
         } else if (electricalStance === "included" && next.electrical === "none") {
           next.electrical = null;
         }
-        const stoppingStance = internalWallsTopicStance(briefText, "stopping");
+        const stoppingStance = internalWallsTopicStance(scope, "stopping");
         if (stoppingStance === "excluded") {
           next.stopping_side_a = "none";
           next.stopping_side_b = "none";
         } else if (
           stoppingStance === "contradiction" ||
           stoppingStance == null ||
-          !includesAny(normalise(briefText), ["level 4", "level 5"])
+          !includesAny(normalise(scope), ["level 4", "level 5"])
         ) {
           next.stopping_side_a = null;
           next.stopping_side_b = null;
@@ -1540,7 +1684,7 @@ export function stripInventedInternalWallsFacts(
             notePartitionFinishConflict(extraction, "stopping");
           }
         }
-        const paintingStance = internalWallsTopicStance(briefText, "painting");
+        const paintingStance = internalWallsTopicStance(scope, "painting");
         if (paintingStance === "excluded") next.painting = "none";
         else if (paintingStance === "contradiction" || paintingStance == null) {
           next.painting = null;
@@ -1549,7 +1693,7 @@ export function stripInventedInternalWallsFacts(
           }
         } else if (
           next.painting === "both" &&
-          !explicitFinishBothSides(briefText, "painting")
+          !explicitFinishBothSides(scope, "painting")
         ) {
           next.painting = null;
         } else if (next.painting === "none") {
@@ -1571,17 +1715,6 @@ export function stripInventedInternalWallsFacts(
     }
     return !optionalInternalWallsFactIsInvented(fact.key, briefText);
   });
-  for (const topic of [
-    "painting",
-    "skirting",
-    "electrical",
-    "insulation",
-    "stopping",
-  ] as const) {
-    if (internalWallsTopicStance(briefText, topic) === "contradiction") {
-      notePartitionFinishConflict(extraction, topic);
-    }
-  }
 }
 
 /**
@@ -1626,6 +1759,17 @@ export function mergePersistedInternalWallTypesOnReanalyse(params: {
         opening.type === "door" ? { ...savedDoor } : opening
       );
       next.active_opening_id = savedDoor.id;
+    }
+    if (sole.item.insulation_authority === "user") {
+      next.insulation_included = sole.item.insulation_included;
+      next.insulation_type = sole.item.insulation_type;
+      next.insulation_authority = "user";
+    }
+    if (sole.item.stopping_authority === "user") {
+      next.stopping_side_a = sole.item.stopping_side_a;
+      next.stopping_side_b = sole.item.stopping_side_b;
+      next.stopping_note = sole.item.stopping_note ?? null;
+      next.stopping_authority = "user";
     }
     return next;
   });

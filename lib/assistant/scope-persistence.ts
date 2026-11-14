@@ -226,6 +226,7 @@ async function persistInternalWallsCollectionWrite(
       value: params.value,
       wallTypeId: params.wallTypeId,
       openingId: params.openingId,
+      authority: "user",
     });
 
     const wallTypes = next.find(

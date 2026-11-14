@@ -300,6 +300,8 @@ export type InternalWallsWallType = {
   openings: InternalWallsOpening[];
   insulation_included: boolean | null;
   insulation_type: InternalWallsInsulationType | null;
+  /** A builder confirmation. Reanalysis does not replace it. */
+  insulation_authority?: "user";
   skirting: InternalWallsSideSelection | null;
   cornice_included: boolean | null;
   cornice: InternalWallsSideSelection | null;
@@ -311,6 +313,10 @@ export type InternalWallsWallType = {
   stopping_side_a: InternalWallsStoppingLevel | null;
   stopping_side_b: InternalWallsStoppingLevel | null;
   stopping_note?: string | null;
+  /** A builder confirmation. Reanalysis does not replace it. */
+  stopping_authority?: "user";
+  /** The brief or the builder allocated Side B as unlined. */
+  side_b_explicitly_unlined?: boolean;
   painting: InternalWallsSideSelection | null;
 };
 
@@ -859,6 +865,7 @@ export function parseInternalWallsWallType(
           ? false
           : parseYesNo(value.insulation_included),
     insulation_type: parseInternalWallsInsulationType(value.insulation_type),
+    insulation_authority: value.insulation_authority === "user" ? "user" : undefined,
     skirting: parseInternalWallsSideSelection(value.skirting),
     cornice_included:
       value.cornice_included === true
@@ -884,6 +891,8 @@ export function parseInternalWallsWallType(
       typeof value.stopping_note === "string" && value.stopping_note.trim()
         ? value.stopping_note.trim()
         : null,
+    stopping_authority: value.stopping_authority === "user" ? "user" : undefined,
+    side_b_explicitly_unlined: value.side_b_explicitly_unlined === true,
     painting: parseInternalWallsSideSelection(value.painting),
   };
 }
@@ -1644,6 +1653,7 @@ export function applyInternalWallsFactWrite(params: {
   value: unknown;
   wallTypeId?: string | null;
   openingId?: string | null;
+  authority?: "user";
 }): EstimateFact[] {
   const facts = params.facts.map((row) => ({ ...row })) as EstimateFact[];
   if (params.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY) {
@@ -1929,6 +1939,7 @@ export function applyInternalWallsFactWrite(params: {
         type.same_lining_both_sides = yes ? true : no ? false : null;
         if (type.same_lining_both_sides === true) {
           type.side_b = cloneFace(type.side_a);
+          type.side_b_explicitly_unlined = false;
         }
         return;
       }
@@ -2005,6 +2016,7 @@ export function applyInternalWallsFactWrite(params: {
         if (lined != null) {
           type.side_b.lined = lined;
           type.same_lining_both_sides = false;
+          type.side_b_explicitly_unlined = lined === false;
         }
         return;
       }
@@ -2014,6 +2026,7 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
+        if (product != null) type.side_b_explicitly_unlined = false;
         const keptThicknessB = isLiningThicknessSupported(
           product,
           previous.thickness_mm
@@ -2096,11 +2109,13 @@ export function applyInternalWallsFactWrite(params: {
         const included = parseYesNo(params.value);
         type.insulation_included = included;
         if (included !== true) type.insulation_type = null;
+        if (params.authority === "user") type.insulation_authority = "user";
         return;
       }
       if (field === "insulation") {
         type.insulation_type = parseInternalWallsInsulationType(params.value);
         if (type.insulation_type != null) type.insulation_included = true;
+        if (params.authority === "user") type.insulation_authority = "user";
         return;
       }
       if (field === "skirting") {
@@ -2201,6 +2216,7 @@ export function applyInternalWallsFactWrite(params: {
         if (type.stopping_side_a !== "custom" && type.stopping_side_b !== "custom") {
           type.stopping_note = null;
         }
+        if (params.authority === "user") type.stopping_authority = "user";
         return;
       }
       if (field === "stopping_side_b") {
@@ -2208,6 +2224,7 @@ export function applyInternalWallsFactWrite(params: {
         if (type.stopping_side_a !== "custom" && type.stopping_side_b !== "custom") {
           type.stopping_note = null;
         }
+        if (params.authority === "user") type.stopping_authority = "user";
         return;
       }
       if (field === "stopping_note") {
@@ -2408,7 +2425,7 @@ export function nextInternalWallsWallTypeField(params: {
     if (type.same_lining_both_sides == null && type.side_a.lined) {
       return "internal_walls.wall_type.same_lining_both_sides";
     }
-    if (type.same_lining_both_sides === false && !type.side_b.lined) {
+    if (type.same_lining_both_sides === false && !type.side_b.lined && type.side_b_explicitly_unlined !== true) {
       return "internal_walls.wall_type.side_b_product";
     }
     return nextInternalWallsFinishField({
@@ -2462,7 +2479,7 @@ export function nextInternalWallsWallTypeField(params: {
   if (type.same_lining_both_sides == null && type.side_a.lined) {
     return "internal_walls.wall_type.same_lining_both_sides";
   }
-  if (type.same_lining_both_sides === false && !type.side_b.lined) {
+  if (type.same_lining_both_sides === false && !type.side_b.lined && type.side_b_explicitly_unlined !== true) {
     return "internal_walls.wall_type.side_b_product";
   }
   if (type.has_openings == null) return INTERNAL_WALLS_HAS_OPENINGS_KEY;

@@ -1637,6 +1637,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         if (type && stoppingIncluded && omitProgressive.omitStopping !== true) {
           if (
             faceEligibleForStopping(type.side_a) &&
+            type.stopping_side_a == null &&
             !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_A_KEY)
           ) {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_A_KEY);
@@ -1644,6 +1645,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           if (
             type.same_lining_both_sides !== true &&
             faceEligibleForStopping(type.side_b) &&
+            type.stopping_side_b == null &&
             !fields.includes(INTERNAL_WALLS_STOPPING_SIDE_B_KEY)
           ) {
             fields.push(INTERNAL_WALLS_STOPPING_SIDE_B_KEY);
