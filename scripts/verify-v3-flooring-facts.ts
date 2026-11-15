@@ -282,7 +282,7 @@ check(
     beforeLine[0]?.quantity === 2 &&
     beforeLine[0]?.unit === "each" &&
     (beforeLine[0]?.recommendedCost ?? 0) === 0 &&
-    beforeLine[0]?.notes?.includes("Enter a company cost per strip.") === true &&
+    beforeLine[0]?.notes?.includes("Enter a company cost per strip, then update the estimate.") === true &&
     beforeLine[0]?.notes?.includes("A manual Pricing line does not clear this.") === true &&
     beforeBlock?.includes("Add the transition strip rate.") === true &&
     beforeBlock.includes("2 each is not priced.") &&

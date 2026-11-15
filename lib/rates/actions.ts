@@ -30,6 +30,26 @@ import {
   flagEstimatesForOpeningFormationProductivity,
   openingFormationProductivityKey,
 } from "@/lib/rates/opening-productivity-stale";
+import {
+  flagEstimatesForTransitionStripRate,
+  transitionStripRateKey,
+} from "@/lib/rates/transition-strip-stale";
+
+async function flagRateDependentEstimates(
+  context: AuthOrgContext,
+  itemKey: string | null | undefined,
+  previousKey?: string | null
+): Promise<void> {
+  if (
+    openingFormationProductivityKey(itemKey) ||
+    openingFormationProductivityKey(previousKey)
+  ) {
+    await flagEstimatesForOpeningFormationProductivity(context);
+  }
+  if (transitionStripRateKey(itemKey) || transitionStripRateKey(previousKey)) {
+    await flagEstimatesForTransitionStripRate(context);
+  }
+}
 
 function ratesDbError(error: unknown): RatesActionResult {
   return { error: toUserError(error, "rates") };
@@ -373,9 +393,7 @@ export async function createRate(input: RateInput): Promise<RatesActionResult> {
     return ratesDbError(error);
   }
 
-  if (openingFormationProductivityKey(created.item_key)) {
-    await flagEstimatesForOpeningFormationProductivity(loaded.context);
-  }
+  await flagRateDependentEstimates(loaded.context, created.item_key);
 
   return { success: true, rate: normalizeRate(created) };
 }
@@ -433,12 +451,7 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
     return ratesDbError(error);
   }
 
-  if (
-    openingFormationProductivityKey(updated.item_key) ||
-    openingFormationProductivityKey(previousKey)
-  ) {
-    await flagEstimatesForOpeningFormationProductivity(loaded.context);
-  }
+  await flagRateDependentEstimates(loaded.context, updated.item_key, previousKey);
 
   return { success: true, rate: normalizeRate(updated) };
 }
@@ -492,9 +505,7 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
     return ratesDbError(error);
   }
 
-  if (openingFormationProductivityKey(upserted.item_key)) {
-    await flagEstimatesForOpeningFormationProductivity(loaded.context);
-  }
+  await flagRateDependentEstimates(loaded.context, upserted.item_key);
 
   return { success: true, rate: normalizeRate(upserted) };
 }
@@ -525,9 +536,7 @@ export async function deactivateRate(rateId: string): Promise<RatesActionResult>
     return ratesDbError(error);
   }
 
-  if (openingFormationProductivityKey(updated.item_key)) {
-    await flagEstimatesForOpeningFormationProductivity(loaded.context);
-  }
+  await flagRateDependentEstimates(loaded.context, updated.item_key);
 
   return { success: true, rate: normalizeRate(updated) };
 }
@@ -558,9 +567,7 @@ export async function reactivateRate(rateId: string): Promise<RatesActionResult>
     return ratesDbError(error);
   }
 
-  if (openingFormationProductivityKey(updated.item_key)) {
-    await flagEstimatesForOpeningFormationProductivity(loaded.context);
-  }
+  await flagRateDependentEstimates(loaded.context, updated.item_key);
 
   return { success: true, rate: normalizeRate(updated) };
 }

@@ -2036,7 +2036,7 @@ function transitionStripSpecification(
       : labels.length > 0
         ? ` across ${labels.join(" and ")}`
         : "";
-  return `Stated quantity is ${count}${where}. Count it once. Enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented.`;
+  return `Stated quantity is ${count}${where}. Count it once. Enter a company cost per strip, then update the estimate. A manual Pricing line does not clear this. No rate is invented.`;
 }
 
 export function calculateFlooringPhysical(params: {

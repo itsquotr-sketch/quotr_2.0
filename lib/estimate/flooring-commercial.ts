@@ -1069,7 +1069,7 @@ function materialOrAllowanceLine(params: {
                 : FLOORING_SPECIALIST_RECIPE_MESSAGE
               : params.requirement.componentKey === FLOORING_TRANSITION_STRIP_KEY
                 ? params.requirement.specification ||
-                  "Enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented."
+                  "Enter a company cost per strip, then update the estimate. A manual Pricing line does not clear this. No rate is invented."
                 : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
       identitySummary: params.requirement.specification,
     });
@@ -1520,7 +1520,7 @@ export function commercializeFlooring(params: {
         requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
           ? FLOORING_SPECIALIST_RECIPE_MESSAGE
           : requirement.componentKey === FLOORING_TRANSITION_STRIP_KEY
-            ? "Pricing required: enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented."
+            ? "Pricing required: enter a company cost per strip, then update the estimate. A manual Pricing line does not clear this. No rate is invented."
             : `Pricing required: ${requirement.description}`;
       if (
         /canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST|unsupported specialist/i.test(
