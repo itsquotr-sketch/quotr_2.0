@@ -1504,6 +1504,18 @@ export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = 
 
 export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
+    item_key: "flooring.transition.strip",
+    label: "Transition strip",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring",
+    unit: "each",
+    description:
+      "Company cost per doorway transition strip. The estimate uses the stated count once across the rooms that asked for it. No Quotr fallback. A manual Pricing amount does not replace this rate.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
     item_key: "flooring.material.m2",
     label: "Flooring materials (general)",
     rate_type: "material",

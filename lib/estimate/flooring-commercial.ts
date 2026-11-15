@@ -92,6 +92,7 @@ import {
   FLOORING_TILE_REMOVE_LABOUR,
   FLOORING_TILE_SUPPLY_INSTALL_LABEL,
   FLOORING_TILE_SUPPLY_INSTALL_M2,
+  FLOORING_TRANSITION_STRIP_KEY,
   FLOORING_VINYL_PLANK_REMOVE_HOURS_LABEL,
   FLOORING_VINYL_PLANK_REMOVE_LABOUR,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_LABEL,
@@ -532,6 +533,48 @@ export function priceFlooringMaterial(params: {
       unitCost: resolved.costRate,
       totalCost: round2(requirement.purchaseQuantity * resolved.costRate),
       rateSource: resolved.source === "company" ? "company" : "benchmark",
+    };
+  }
+  if (requirement.materialKey === FLOORING_TRANSITION_STRIP_KEY) {
+    if (
+      !params.allowPricing ||
+      !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
+    ) {
+      return {
+        ...requirement,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      };
+    }
+    const resolved = resolveMaterialRate({
+      orgRates: [...params.rates],
+      materialKey: FLOORING_TRANSITION_STRIP_KEY,
+      workAreaType: "flooring",
+      unit: "each",
+      benchmarkCostRate: 0,
+      organisationSettings: params.organisationSettings,
+    });
+    if (
+      resolved.materialRateSource === "missing" ||
+      !Number.isFinite(resolved.costRate) ||
+      resolved.costRate <= 0
+    ) {
+      return {
+        ...requirement,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      };
+    }
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: resolved.costRate,
+      totalCost: round2(requirement.purchaseQuantity * resolved.costRate),
+      rateSource: "company",
     };
   }
   const key = requirement.materialKey;
@@ -1024,7 +1067,10 @@ function materialOrAllowanceLine(params: {
               ? params.requirement.specification?.includes("floating click-lock")
                 ? params.requirement.specification
                 : FLOORING_SPECIALIST_RECIPE_MESSAGE
-              : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
+              : params.requirement.componentKey === FLOORING_TRANSITION_STRIP_KEY
+                ? params.requirement.specification ||
+                  "Enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented."
+                : `Pricing Required. Quantity ${params.requirement.purchaseQuantity} ${unit} remains visible.`,
       identitySummary: params.requirement.specification,
     });
   }
@@ -1473,7 +1519,9 @@ export function commercializeFlooring(params: {
       const human =
         requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
           ? FLOORING_SPECIALIST_RECIPE_MESSAGE
-          : `Pricing required: ${requirement.description}`;
+          : requirement.componentKey === FLOORING_TRANSITION_STRIP_KEY
+            ? "Pricing required: enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented."
+            : `Pricing required: ${requirement.description}`;
       if (
         /canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST|unsupported specialist/i.test(
           human

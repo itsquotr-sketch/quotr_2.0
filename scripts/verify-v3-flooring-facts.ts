@@ -7,11 +7,16 @@ import {
 } from "../lib/estimate/flooring-carpet-tile";
 import { parseFlooringPortions } from "../lib/estimate/flooring-portions";
 import { calculateFlooringPhysical } from "../lib/estimate/flooring-physical";
-import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import { commercializeFlooring } from "../lib/estimate/flooring-commercial";
+import { FLOORING_TRANSITION_STRIP_KEY } from "../lib/estimate/flooring-identities";
+import type { FlooringPortion } from "../lib/estimate/flooring-portions";
+import { classifyReviewNotice, missingRateReviewBlockFromLines } from "../lib/assistant/presentation/estimate-issues";
+import { buildLineItemNotes } from "../lib/estimate/line-items";
 import {
   namedUnresolvedScopeReviewBlock,
   unresolvedScopeReviewBlock,
 } from "../lib/pricing/scope-finalisation";
+import type { OrganisationRate } from "../components/setup/types";
 
 const allowed = getAnalysisCapableWorkAreaTypes();
 let failed = 0;
@@ -146,24 +151,157 @@ function transitionGap(rows: ReturnType<typeof storedPortions>) {
   });
 }
 const requested = transitionGap(qt003);
-const requestedNotice = requested.missingInfo.find((row) => row.includes("Transition strips"));
+const requestedStrips = requested.requirements.filter(
+  (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY
+);
+const requestedMaterial = requestedStrips[0];
 check(
-  "QT-003 states one quantity and does not invent a transition line",
-  requested.requirements.every((row) => !/transition/i.test(row.description ?? "")) &&
-    requestedNotice?.includes("requested and not priced") === true &&
-    requestedNotice.includes("Stated quantity is 2 across both doors. Count it once.") &&
-    requestedNotice.includes("No company rate can be attached") &&
-    requestedNotice.includes("a manual Pricing line does not resolve this") &&
-    requestedNotice.includes("Change the estimate before review.") &&
-    classifyReviewNotice(requestedNotice) === "scope_gap" &&
-    namedUnresolvedScopeReviewBlock([requestedNotice])?.startsWith(requestedNotice) === true &&
-    unresolvedScopeReviewBlock([requestedNotice]) ===
+  "QT-003 counts two strips once and leaves the hall out",
+  requestedStrips.length === 1 &&
+    requestedMaterial?.kind === "material" &&
+    requestedMaterial.purchaseQuantity === 2 &&
+    requestedMaterial.purchaseUnit === "each" &&
+    requestedMaterial.specification?.includes("across both doors") === true &&
+    requestedMaterial.specification.includes("Count it once.") &&
+    !requested.requirements.some(
+      (row) =>
+        row.componentKey === FLOORING_TRANSITION_STRIP_KEY &&
+        row.variantKey === hall?.id
+    )
+);
+const uncountedPhysical = calculateFlooringPhysical({
+  facts: [{
+    key: "flooring.portions",
+    work_area_id: "floor",
+    value: qt003.map((row) =>
+      row.transitions_required === true ? { ...row, transitions_count: null } : row
+    ),
+  }],
+  workArea: { id: "floor", type: "flooring", name: "Flooring" },
+});
+const countNotice = uncountedPhysical.missingInfo.find((row) => row.includes("Transition strips"));
+check(
+  "A missing strip count stays visible and creates no line",
+  uncountedPhysical.requirements.every((row) => row.componentKey !== FLOORING_TRANSITION_STRIP_KEY) &&
+    countNotice?.includes("Enter one strip count.") === true &&
+    countNotice.includes("No quantity is invented.") &&
+    classifyReviewNotice(countNotice) === "scope_gap" &&
+    namedUnresolvedScopeReviewBlock([countNotice])?.startsWith(countNotice) === true &&
+    unresolvedScopeReviewBlock([countNotice]) ===
       "Requested tasks still have no priced line. This pricing cannot be marked reviewed as a complete price."
 );
 const excluded = transitionGap(qt001);
 check(
   "QT-001 exclusion creates no transition gap",
-  excluded.missingInfo.every((row) => !/transition/i.test(row))
+  excluded.requirements.every((row) => row.componentKey !== FLOORING_TRANSITION_STRIP_KEY) &&
+    excluded.missingInfo.every((row) => !/transition/i.test(row))
+);
+
+function pricedRoom(
+  id: string,
+  label: string,
+  finish: FlooringPortion["finish_type"],
+  length: number,
+  width: number,
+  transitions: boolean
+): FlooringPortion {
+  return {
+    id,
+    label,
+    finish_type: finish,
+    area_input_method: "length_width",
+    length_m: length,
+    width_m: width,
+    area_m2: null,
+    underlay_required: finish === "carpet" ? true : null,
+    floor_preparation_required: finish === "vinyl_plank" ? false : null,
+    tile_width_mm: null,
+    tile_length_mm: null,
+    hardwood_board_width_mm: null,
+    substrate_required: false,
+    substrate_family: null,
+    substrate_item_key: null,
+    framing_required: false,
+    framing_allowance_level: null,
+    finish_removal_required: false,
+    existing_finish_type: null,
+    substrate_removal_required: false,
+    waste_percent: null,
+    finish_pricing: "combined_package",
+    transitions_required: transitions ? true : null,
+    transitions_count: transitions ? 2 : null,
+    other_description: null,
+    specialist_kind: null,
+  };
+}
+
+function transitionRate(cost: number): OrganisationRate {
+  return {
+    id: "transition-test",
+    item_key: FLOORING_TRANSITION_STRIP_KEY,
+    rate_type: "material",
+    trade: null,
+    work_area_type: "flooring",
+    label: "Transition strip",
+    unit: "each",
+    cost_rate: cost,
+    sell_rate: null,
+    markup_percent: null,
+    active: true,
+  };
+}
+
+function priceTransitions(rates: OrganisationRate[]) {
+  const rooms = [
+    pricedRoom("bed-1", "Bedroom 1", "carpet", 3.6, 3.2, true),
+    pricedRoom("bed-2", "Bedroom 2", "carpet", 4.2, 3.5, true),
+    pricedRoom("hall", "Hallway", "vinyl_plank", 8, 1.2, false),
+  ];
+  const physical = calculateFlooringPhysical({
+    facts: [{ key: "flooring.portions", work_area_id: "floor", value: rooms }],
+    workArea: { id: "floor", type: "flooring", name: "Flooring" },
+  });
+  return commercializeFlooring({
+    physical,
+    workArea: { id: "floor", type: "flooring", name: "Flooring" },
+    rates,
+    organisationSettings: null,
+  });
+}
+
+const beforeRate = priceTransitions([]);
+const beforeLine = beforeRate.lineItems.filter(
+  (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY
+);
+const beforeBlock = missingRateReviewBlockFromLines(
+  beforeLine.map((row) => ({ rate_source: row.rateSource, notes: buildLineItemNotes(row) }))
+);
+check(
+  "A stated count without a company cost stays one unpriced line",
+  beforeLine.length === 1 &&
+    beforeLine[0]?.quantity === 2 &&
+    beforeLine[0]?.unit === "each" &&
+    (beforeLine[0]?.recommendedCost ?? 0) === 0 &&
+    beforeLine[0]?.notes?.includes("Enter a company cost per strip.") === true &&
+    beforeLine[0]?.notes?.includes("A manual Pricing line does not clear this.") === true &&
+    beforeBlock?.includes("Add the transition strip rate.") === true &&
+    beforeBlock.includes("2 each is not priced.") &&
+    beforeRate.missingInfo.some((row) => row.includes("enter a company cost per strip"))
+);
+const afterRate = priceTransitions([transitionRate(12.5)]);
+const afterLine = afterRate.lineItems.filter(
+  (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY
+);
+check(
+  "A company cost prices the two strips once",
+  afterLine.length === 1 &&
+    afterLine[0]?.quantity === 2 &&
+    afterLine[0]?.recommendedCost === 25 &&
+    afterLine[0]?.rateSourceType === "user_rate" &&
+    !afterRate.missingInfo.some((row) => /transition|company cost per strip/i.test(row)) &&
+    missingRateReviewBlockFromLines(
+      afterLine.map((row) => ({ rate_source: row.rateSource, notes: buildLineItemNotes(row) }))
+    ) == null
 );
 
 if (failed > 0) {

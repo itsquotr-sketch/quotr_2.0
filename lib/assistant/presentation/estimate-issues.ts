@@ -31,6 +31,7 @@ export const CONFIRM_OPEN_SPECIFICATION = "Confirm the open specification.";
 /** Catalogue names for generated rates that have no Quotr cost. */
 const MISSING_RATE_LABELS: Record<string, string> = {
   "stopping.plasterboard.level5.m2": "Level 5 plasterboard stopping",
+  "flooring.transition.strip": "transition strip",
 };
 
 export function missingRateLabel(itemKey: string | null | undefined): string | null {

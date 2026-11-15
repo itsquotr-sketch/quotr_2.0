@@ -168,6 +168,13 @@ export const FLOORING_SPECIALIST_COMPONENT =
   "flooring.specialist.unsupported" as const;
 
 /**
+ * One company cost per doorway strip. The stated count is the quantity.
+ * There is no Quotr fallback, and a manual Pricing amount does not replace it.
+ */
+export const FLOORING_TRANSITION_STRIP_KEY =
+  "flooring.transition.strip" as const;
+
+/**
  * Existing carpenter hourly COST path. FLOORING-04C does not hardcode $60.
  * Nested Flooring does not emit labour COST until FLOORING-05.
  */

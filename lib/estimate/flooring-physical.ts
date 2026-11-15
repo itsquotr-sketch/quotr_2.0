@@ -40,6 +40,7 @@ import {
   FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2,
   FLOORING_SUBSTRATE_REMOVE_LABOUR,
   FLOORING_TILE_SUPPLY_INSTALL_M2,
+  FLOORING_TRANSITION_STRIP_KEY,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
   flooringFinishPackageKey,
   flooringFinishRemovalHoursKey,
@@ -1998,28 +1999,44 @@ export function rollupFlooringPhysicalCompleteness(
   return FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL;
 }
 
-function transitionScopeNotice(portions: readonly FlooringPortion[]): string {
-  const labels = portions
+function transitionLabels(portions: readonly FlooringPortion[]): string[] {
+  return portions
     .map((portion) => portion.label?.trim())
     .filter((label): label is string => Boolean(label));
-  const counts = [
-    ...new Set(
-      portions
-        .map((portion) => portion.transitions_count)
-        .filter((count): count is number => typeof count === "number")
-    ),
-  ];
+}
+
+/** One stated total. Different or missing counts are not averaged. */
+function sharedTransitionCount(portions: readonly FlooringPortion[]): number | null {
+  if (portions.length === 0) return null;
+  const first = portions[0]?.transitions_count;
+  if (typeof first !== "number" || !Number.isFinite(first) || first <= 0) return null;
+  return portions.every((portion) => portion.transitions_count === first) ? first : null;
+}
+
+function transitionCountNotice(portions: readonly FlooringPortion[]): string {
+  const labels = transitionLabels(portions);
   const where = labels.length > 0 ? ` for ${labels.join(" and ")}` : "";
-  const bothBedroomDoors =
-    counts.length === 1 &&
-    labels.length === 2 &&
-    labels.every((label) => label.startsWith("Bedroom"));
-  const quantity = bothBedroomDoors
-    ? ` Stated quantity is ${counts[0]} across both doors. Count it once.`
-    : counts.length === 1
-      ? ` Stated quantity is ${counts[0]}${labels.length > 0 ? ` across ${labels.join(" and ")}` : ""}. Count it once.`
-      : " The strip count was not stated, so no quantity is included.";
-  return `Transition strips${where} are requested and not priced.${quantity} No company rate can be attached, and a manual Pricing line does not resolve this. Change the estimate before review. No rate is invented.`;
+  const counts = portions.map((portion) => portion.transitions_count);
+  const stated = counts.filter((count): count is number => typeof count === "number");
+  const reason =
+    stated.length > 0 && new Set(stated).size > 1
+      ? "The stated strip counts do not match."
+      : "The strip count was not stated.";
+  return `Transition strips${where} are requested and not priced. ${reason} Enter one strip count. No quantity is invented.`;
+}
+
+function transitionStripSpecification(
+  portions: readonly FlooringPortion[],
+  count: number
+): string {
+  const labels = transitionLabels(portions);
+  const where =
+    labels.length === 2 && labels.every((label) => label.startsWith("Bedroom"))
+      ? " across both doors"
+      : labels.length > 0
+        ? ` across ${labels.join(" and ")}`
+        : "";
+  return `Stated quantity is ${count}${where}. Count it once. Enter a company cost per strip. A manual Pricing line does not clear this. No rate is invented.`;
 }
 
 export function calculateFlooringPhysical(params: {
@@ -2107,8 +2124,25 @@ export function calculateFlooringPhysical(params: {
   const requestedTransitions = resolved.portions.filter(
     (portion) => portion.transitions_required === true
   );
-  if (requestedTransitions.length > 0) {
-    missingInfo.push(transitionScopeNotice(requestedTransitions));
+  const transitionCount = sharedTransitionCount(requestedTransitions);
+  const transitionOwner = requestedTransitions[0];
+  if (requestedTransitions.length > 0 && transitionCount != null && transitionOwner) {
+    requirements.push(
+      materialCountRow({
+        workArea: params.workArea,
+        portion: transitionOwner,
+        componentKey: FLOORING_TRANSITION_STRIP_KEY,
+        materialKey: FLOORING_TRANSITION_STRIP_KEY,
+        category: "MATERIALS",
+        description: "Transition strips",
+        specification: transitionStripSpecification(requestedTransitions, transitionCount),
+        quantity: transitionCount,
+        unit: "each",
+        areaM2: physicalNetAreaM2(transitionOwner) ?? 0,
+      })
+    );
+  } else if (requestedTransitions.length > 0) {
+    missingInfo.push(transitionCountNotice(requestedTransitions));
   }
 
   return {

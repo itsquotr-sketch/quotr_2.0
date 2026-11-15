@@ -257,7 +257,7 @@ export type FlooringPortion = {
   carpet_tile_fixing_coverage_m2?: number | null;
   carpet_tile_package_covers_fixing?: "included" | "separate" | null;
   carpet_tile_disposal_requested?: boolean | null;
-  /** Requested transition strips. No priced recipe is implied. */
+  /** Requested transition strips. A company cost per strip prices the shared count. */
   transitions_required?: boolean | null;
   /**
    * Stated strip count for the whole request, repeated on each matching room.
