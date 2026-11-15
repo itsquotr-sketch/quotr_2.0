@@ -749,6 +749,23 @@ function statedTransitionCount(sentence: string): number | null {
   return Number.isFinite(count) && count > 0 ? count : null;
 }
 
+/** A count tied to one room. It does not use another room's number in the same sentence. */
+function roomSpecificTransitionCount(text: string, label: string | null): number | null {
+  const bedroom = label?.match(/^Bedroom (\d+)$/);
+  if (!bedroom) return null;
+  const room = `(?:bedroom|bed)\\s*${bedroom[1]}\\b`;
+  const strips = "(?:transition strips?|transitions)";
+  const patterns = [
+    new RegExp(`\\b${room}.{0,80}?\\b(\\d+)\\s+${strips}\\b`, "i"),
+    new RegExp(`\\b(\\d+)\\s+${strips}\\b.{0,50}?\\b(?:at|for|to|in)\\s+(?:the\\s+)?${room}`, "i"),
+  ];
+  for (const pattern of patterns) {
+    const count = Number(text.match(pattern)?.[1]);
+    if (Number.isFinite(count) && count > 0) return count;
+  }
+  return null;
+}
+
 function transitionSentenceApplies(sentence: string, label: string | null): boolean {
   const location = locationFromSnippet(sentence);
   if (!location || !label) return true;
@@ -762,6 +779,7 @@ function applyTransitionSentences(portion: FlooringPortion, text: string): void 
   let include = false;
   let exclude = false;
   let count: number | null = null;
+  let shared = false;
   for (const sentence of text.split(/;|(?<=[.!?])\s+/)) {
     if (!TRANSITION_MENTION.test(sentence)) continue;
     if (!transitionSentenceApplies(sentence, portion.label)) continue;
@@ -770,15 +788,31 @@ function applyTransitionSentences(portion: FlooringPortion, text: string): void 
       continue;
     }
     include = true;
-    count = statedTransitionCount(sentence) ?? count;
+    const stated = statedTransitionCount(sentence);
+    if (stated != null) {
+      count = stated;
+      const location = locationFromSnippet(sentence);
+      shared = location === "Bedrooms" || /\b\d+\s+bedroom\s+doors?\b/i.test(sentence);
+    }
   }
-  if (include === exclude) return;
-  if (exclude) {
+  if (exclude && !include) {
     portion.transitions_required = false;
     return;
   }
+  if (include && exclude) return;
+  const ownCount = roomSpecificTransitionCount(text, portion.label);
+  if (ownCount != null) {
+    portion.transitions_required = true;
+    portion.transitions_count = ownCount;
+    portion.transitions_count_is_shared = false;
+    return;
+  }
+  if (!include) return;
   portion.transitions_required = true;
-  if (count != null) portion.transitions_count = count;
+  if (count != null) {
+    portion.transitions_count = count;
+    portion.transitions_count_is_shared = shared;
+  }
 }
 
 function applyGlobalConstraints(

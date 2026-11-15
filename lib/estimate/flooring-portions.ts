@@ -257,13 +257,15 @@ export type FlooringPortion = {
   carpet_tile_fixing_coverage_m2?: number | null;
   carpet_tile_package_covers_fixing?: "included" | "separate" | null;
   carpet_tile_disposal_requested?: boolean | null;
-  /** Requested transition strips. A company cost per strip prices the shared count. */
+  /** Requested transition strips. A company cost per strip prices the resulting quantity. */
   transitions_required?: boolean | null;
   /**
-   * Stated strip count for the whole request, repeated on each matching room.
-   * Generation uses one copy. It is not a per-room quantity.
+   * Stated strip count. A shared total is repeated on each matching room and
+   * charged once. A count stated for one room is that room's quantity.
    */
   transitions_count?: number | null;
+  /** False when this count belongs to this room. True when it is the shared total. */
+  transitions_count_is_shared?: boolean | null;
   /** Explicit exclusion. Absence of a skirting work area is not this record. */
   skirting_replacement_excluded?: boolean | null;
   other_description: string | null;
@@ -1013,6 +1015,12 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
       value.transitions_count > 0
         ? value.transitions_count
         : null,
+    transitions_count_is_shared:
+      value.transitions_count_is_shared === true
+        ? true
+        : value.transitions_count_is_shared === false
+          ? false
+          : null,
     skirting_replacement_excluded:
       value.skirting_replacement_excluded === true ? true : null,
     other_description: parseFlooringOtherDescription(value.other_description),

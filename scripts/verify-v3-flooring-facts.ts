@@ -12,6 +12,8 @@ import { FLOORING_TRANSITION_STRIP_KEY } from "../lib/estimate/flooring-identiti
 import type { FlooringPortion } from "../lib/estimate/flooring-portions";
 import { classifyReviewNotice, missingRateReviewBlockFromLines } from "../lib/assistant/presentation/estimate-issues";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
+import { deriveSellFromCost } from "../lib/commercial-engine/core/sell-from-margin";
+import { requireEstimateQuantityRateMoney } from "../lib/estimate/estimate-commercial-engine-adapter";
 import {
   namedUnresolvedScopeReviewBlock,
   unresolvedScopeReviewBlock,
@@ -302,6 +304,73 @@ check(
     missingRateReviewBlockFromLines(
       afterLine.map((row) => ({ rate_source: row.rateSource, notes: buildLineItemNotes(row) }))
     ) == null
+);
+
+function transitionFromBrief(brief: string) {
+  const rows = storedPortions(brief);
+  const physical = calculateFlooringPhysical({
+    facts: [{ key: "flooring.portions", work_area_id: "floor", value: rows }],
+    workArea: { id: "floor", type: "flooring", name: "Flooring" },
+  });
+  const line = physical.requirements.find(
+    (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY
+  );
+  return { rows, line, physical };
+}
+
+const separateBrief = transitionFromBrief(
+  "Bedroom 1 is 3.6 m by 3.2 m carpet. Include 1 transition strip at bedroom 1. Bedroom 2 is 4.2 m by 3.5 m carpet. Include 2 transition strips at bedroom 2. Hallway is 8 m by 1.2 m vinyl plank."
+);
+const equalSeparateBrief = transitionFromBrief(
+  "Bedroom 1 is 3.6 m by 3.2 m carpet. Include 1 transition strip at bedroom 1. Bedroom 2 is 4.2 m by 3.5 m carpet. Include 1 transition strip at bedroom 2. Hallway is 8 m by 1.2 m vinyl plank."
+);
+const compactSeparateBrief = transitionFromBrief(
+  "rental floors: bed1 3.6x3.2 carpet with 1 transition strip, bed2 4.2x3.5 carpet with 2 transition strips, hall 8x1.2 vinyl plank."
+);
+const separateRooms = [
+  { ...pricedRoom("bed-1", "Bedroom 1", "carpet", 3.6, 3.2, true), transitions_count: 1, transitions_count_is_shared: false },
+  { ...pricedRoom("bed-2", "Bedroom 2", "carpet", 4.2, 3.5, true), transitions_count: 2, transitions_count_is_shared: false },
+  pricedRoom("hall", "Hallway", "vinyl_plank", 8, 1.2, false),
+];
+const separateCommercial = commercializeFlooring({
+  physical: calculateFlooringPhysical({
+    facts: [{ key: "flooring.portions", work_area_id: "floor", value: separateRooms }],
+    workArea: { id: "floor", type: "flooring", name: "Flooring" },
+  }),
+  workArea: { id: "floor", type: "flooring", name: "Flooring" },
+  rates: [transitionRate(12.5)],
+  organisationSettings: null,
+});
+const separatePriced = separateCommercial.lineItems.filter(
+  (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY
+);
+const separateUnitSell = deriveSellFromCost(12.5, 20);
+const separateMoney = requireEstimateQuantityRateMoney({
+  quantity: 3,
+  unitCost: 12.5,
+  unitSell: separateUnitSell,
+});
+const sharedLine = transitionFromBrief(
+  "rental floors: bed1 3.6x3.2 carpet, bed2 4.2x3.5 carpet, hall 8x1.2 vinyl plank. transitions at the 2 bedroom doors."
+);
+check(
+  "Separate room counts are added and a shared count is charged once",
+  separateBrief.rows.filter((row) => row.transitions_required === true).map((row) => row.transitions_count).join() === "1,2" &&
+    separateBrief.line?.purchaseQuantity === 3 &&
+    separateBrief.line.specification?.includes("Added to 3.") === true &&
+    !separateBrief.physical.requirements.some(
+      (row) => row.componentKey === FLOORING_TRANSITION_STRIP_KEY && row.variantKey === separateBrief.rows.find((portion) => portion.label === "Hallway")?.id
+    ) &&
+    equalSeparateBrief.line?.purchaseQuantity === 2 &&
+    compactSeparateBrief.line?.purchaseQuantity === 3 &&
+    sharedLine.line?.purchaseQuantity === 2 &&
+    sharedLine.line.specification?.includes("Count it once.") === true &&
+    separatePriced.length === 1 &&
+    separatePriced[0]?.quantity === 3 &&
+    separatePriced[0]?.recommendedCost === 37.5 &&
+    separatePriced[0]?.recommendedSell === separateMoney.recommendedSell &&
+    separatePriced[0]?.sellAuthority === "derived_from_gross_margin" &&
+    separatePriced[0]?.sellDerivedFromMargin === true
 );
 
 if (failed > 0) {

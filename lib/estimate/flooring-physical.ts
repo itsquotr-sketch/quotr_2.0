@@ -2005,30 +2005,39 @@ function transitionLabels(portions: readonly FlooringPortion[]): string[] {
     .filter((label): label is string => Boolean(label));
 }
 
-/** One stated total. Different or missing counts are not averaged. */
-function sharedTransitionCount(portions: readonly FlooringPortion[]): number | null {
+/** Room counts are added. One repeated shared total is charged once. A missing count stays a gap. */
+function transitionQuantity(portions: readonly FlooringPortion[]): number | null {
   if (portions.length === 0) return null;
-  const first = portions[0]?.transitions_count;
-  if (typeof first !== "number" || !Number.isFinite(first) || first <= 0) return null;
-  return portions.every((portion) => portion.transitions_count === first) ? first : null;
+  const counts: number[] = [];
+  for (const portion of portions) {
+    const count = portion.transitions_count;
+    if (typeof count !== "number" || !Number.isFinite(count) || count <= 0) return null;
+    counts.push(count);
+  }
+  const perRoom = portions.every((portion) => portion.transitions_count_is_shared === false);
+  if (perRoom) return counts.reduce((sum, count) => sum + count, 0);
+  if (counts.every((count) => count === counts[0])) return counts[0];
+  return counts.reduce((sum, count) => sum + count, 0);
 }
 
 function transitionCountNotice(portions: readonly FlooringPortion[]): string {
   const labels = transitionLabels(portions);
   const where = labels.length > 0 ? ` for ${labels.join(" and ")}` : "";
-  const counts = portions.map((portion) => portion.transitions_count);
-  const stated = counts.filter((count): count is number => typeof count === "number");
-  const reason =
-    stated.length > 0 && new Set(stated).size > 1
-      ? "The stated strip counts do not match."
-      : "The strip count was not stated.";
-  return `Transition strips${where} are requested and not priced. ${reason} Enter one strip count. No quantity is invented.`;
+  return `Transition strips${where} are requested and not priced. The strip count was not stated. Enter one strip count. No quantity is invented.`;
 }
 
 function transitionStripSpecification(
   portions: readonly FlooringPortion[],
   count: number
 ): string {
+  const perRoom = portions.every((portion) => portion.transitions_count_is_shared === false);
+  const shared = portions.every((portion) => portion.transitions_count === count);
+  if (perRoom || !shared) {
+    const parts = portions.map(
+      (portion) => `${portion.label?.trim() || "Room"} ${portion.transitions_count}`
+    );
+    return `Stated quantities are ${parts.join(" and ")}. Added to ${count}. Enter a company cost per strip, then update the estimate. A manual Pricing line does not clear this. No rate is invented.`;
+  }
   const labels = transitionLabels(portions);
   const where =
     labels.length === 2 && labels.every((label) => label.startsWith("Bedroom"))
@@ -2124,7 +2133,7 @@ export function calculateFlooringPhysical(params: {
   const requestedTransitions = resolved.portions.filter(
     (portion) => portion.transitions_required === true
   );
-  const transitionCount = sharedTransitionCount(requestedTransitions);
+  const transitionCount = transitionQuantity(requestedTransitions);
   const transitionOwner = requestedTransitions[0];
   if (requestedTransitions.length > 0 && transitionCount != null && transitionOwner) {
     requirements.push(
