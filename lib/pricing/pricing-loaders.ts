@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   aggregateMissingPriceLineCounts,
   missingRateReviewBlockFromLines,
+  omitFenceScopesClearedByManualPrice,
   scopeGapCountFromNotices,
   specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -134,6 +135,20 @@ export async function getProjectWorkspaceTabContextWithContext(
       ))
     : null;
 
+  const pricedFenceNotes = pricingSummary
+    ? await auth.supabase
+        .from("pricing_items")
+        .select("notes_internal")
+        .eq("pricing_document_id", pricingSummary.id)
+        .eq("org_id", auth.orgId)
+    : { data: [] as { notes_internal: string | null }[], error: null };
+  const openMissingLines = pricedFenceNotes.error
+    ? (missingPriceLinesResult.data ?? [])
+    : omitFenceScopesClearedByManualPrice(
+        missingPriceLinesResult.data ?? [],
+        (pricedFenceNotes.data ?? []).map((row) => row.notes_internal)
+      );
+
   return {
     hasEstimate: Boolean(estimateResult.data),
     estimateIsStale: estimateResult.data?.is_stale ?? false,
@@ -141,11 +156,10 @@ export async function getProjectWorkspaceTabContextWithContext(
     pricingSummary,
     missingPriceLineCount: missingPriceLinesResult.error
       ? null
-      : (aggregateMissingPriceLineCounts(missingPriceLinesResult.data ?? []).get(projectId) ??
-        0),
+      : (aggregateMissingPriceLineCounts(openMissingLines).get(projectId) ?? 0),
     missingRateReviewBlock: missingPriceLinesResult.error
       ? null
-      : missingRateReviewBlockFromLines(missingPriceLinesResult.data ?? []),
+      : missingRateReviewBlockFromLines(openMissingLines),
     namedScopeReviewBlock: estimateResult.error
       ? null
       : namedUnresolvedScopeReviewBlock(estimateResult.data?.missing_info),

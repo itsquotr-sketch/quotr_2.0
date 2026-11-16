@@ -1,3 +1,4 @@
+import { FENCE_MANUAL_SCOPE_COMPONENT } from "@/lib/estimate/fence-manual";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { classifyRateSource } from "@/lib/estimate/rate-source-labels";
 
@@ -76,6 +77,31 @@ export function missingRateReviewBlockFromLines(
     .filter((face): face is string => Boolean(face));
   const faceCopy = faces.length > 0 ? ` ${faces.join(" ")}` : "";
   return `${namedMissingRateAction(labels)}${faceCopy} This pricing cannot be marked reviewed as a complete price.`;
+}
+
+/**
+ * A saved manual price is the rate for a glass fence. Other missing rates,
+ * including a fence that is still unpriced, stay in the review.
+ */
+export function omitFenceScopesClearedByManualPrice<T extends { notes?: string | null }>(
+  lines: readonly T[],
+  pricingNotes: readonly (string | null | undefined)[]
+): T[] {
+  const cleared = new Set<string>();
+  for (const notes of pricingNotes) {
+    const metadata = parseLineItemNotes(notes).metadata;
+    if (metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT) continue;
+    if (metadata.pricingSource !== "user_override") continue;
+    const scopeKey = metadata.scopeKey?.trim();
+    if (scopeKey) cleared.add(scopeKey);
+  }
+  if (cleared.size === 0) return [...lines];
+  return lines.filter((line) => {
+    const metadata = parseLineItemNotes(line.notes).metadata;
+    if (metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT) return true;
+    const scopeKey = metadata.scopeKey?.trim();
+    return !scopeKey || !cleared.has(scopeKey);
+  });
 }
 
 export function formatMissingPriceNotice(

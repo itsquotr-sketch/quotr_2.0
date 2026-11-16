@@ -4,6 +4,10 @@
  * Run: npx --yes tsx scripts/verify-fence-manual-scope.ts
  */
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import {
+  missingRateReviewBlockFromLines,
+  omitFenceScopesClearedByManualPrice,
+} from "../lib/assistant/presentation/estimate-issues";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { evaluatePackageQuickEstimateReadiness } from "../lib/assistant/readiness/package-quick-estimate";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
@@ -242,6 +246,35 @@ check(
   "stored notes keep the description",
   buildLineItemNotes(glassLine!).includes("Glass (pool fencing)") &&
     (pricedNotes ?? "").includes("user_override")
+);
+const glassStored = {
+  rate_source: "missing",
+  notes: buildLineItemNotes(glassLine!),
+  project_id: "qt018",
+};
+const otherMissing = {
+  rate_source: "missing",
+  notes: buildLineItemNotes({
+    ...glassLine!,
+    componentKey: "retaining_wall.excavation.bulk.labour",
+    componentId: "retaining_wall.excavation.bulk.labour",
+    scopeKey: "wall:excavation",
+    quantity: 5.4,
+    unit: "m2",
+    label: "Unmeasured bulk excavation",
+  }),
+  project_id: "qt018",
+};
+const beforePrice = missingRateReviewBlockFromLines([glassStored, otherMissing]);
+const afterPrice = missingRateReviewBlockFromLines(
+  omitFenceScopesClearedByManualPrice([glassStored, otherMissing], [pricedNotes])
+);
+check(
+  "the saved fence price leaves the other unpriced line",
+  beforePrice?.includes("8 m is not priced.") === true &&
+    beforePrice.includes("5.4 m² is not priced.") &&
+    afterPrice?.includes("8 m is not priced.") === false &&
+    afterPrice?.includes("5.4 m² is not priced.") === true
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

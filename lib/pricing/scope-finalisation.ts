@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   classifyReviewNotice,
   missingRateReviewBlockFromLines,
+  omitFenceScopesClearedByManualPrice,
   scopeGapCountFromNotices,
   specificationCountFromNotices,
 } from "@/lib/assistant/presentation/estimate-issues";
@@ -132,5 +133,27 @@ export async function missingRateReviewBlockForProject(
     .or(
       "rate_source.eq.missing,rate_source.ilike.%pricing required%,rate_source.ilike.%rate required%"
     );
-  return missingRateReviewBlockFromLines(data ?? []);
+  const { data: documents } = await supabase
+    .from("pricing_documents")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .neq("status", "archived")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const documentId = documents?.[0]?.id ?? null;
+  const priced = documentId
+    ? await supabase
+        .from("pricing_items")
+        .select("notes_internal")
+        .eq("pricing_document_id", documentId)
+        .eq("org_id", orgId)
+    : { data: [] as { notes_internal: string | null }[], error: null };
+  const openLines = priced.error
+    ? (data ?? [])
+    : omitFenceScopesClearedByManualPrice(
+        data ?? [],
+        (priced.data ?? []).map((row) => row.notes_internal)
+      );
+  return missingRateReviewBlockFromLines(openLines);
 }
