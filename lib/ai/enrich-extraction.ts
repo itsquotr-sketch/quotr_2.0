@@ -2672,7 +2672,6 @@ function inferStatedOutdoorScope(
 ): void {
   const pathArea = concretePathRemovalM2(brief);
   if (pathArea != null) {
-    const existed = hasWorkAreaType(extraction, "demolition");
     addWorkAreaIfMissing(
       extraction,
       "demolition",
@@ -2681,7 +2680,7 @@ function inferStatedOutdoorScope(
       allowedTypes
     );
     const demolition = extraction.workAreas.find((row) => row.type === "demolition");
-    if (demolition && !existed) demolition.name = "Concrete path removal";
+    if (demolition) demolition.name = "Concrete path removal";
     addFact(extraction, {
       workAreaType: "demolition",
       key: "demolition.area_m2",

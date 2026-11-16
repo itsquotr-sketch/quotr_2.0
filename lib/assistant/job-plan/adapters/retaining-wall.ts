@@ -54,6 +54,19 @@ function compactSummary(
       advanced: false,
     });
   }
+  const drainageLength = jobPlanNumber(
+    context.facts,
+    workAreaId,
+    "retaining_wall.drainage_length_m"
+  );
+  if (drainageLength != null) {
+    chips.push({
+      key: "drainage",
+      label: "Drainage",
+      value: `${drainageLength}m drainage`,
+      advanced: false,
+    });
+  }
 
   const height = jobPlanNumber(context.facts, workAreaId, "retaining_wall.height_m");
   const high = jobPlanNumber(context.facts, workAreaId, "retaining_wall.height_high_m");
