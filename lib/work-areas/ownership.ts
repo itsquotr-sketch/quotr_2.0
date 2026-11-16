@@ -7,6 +7,7 @@
  */
 
 import { briefPaintsSeparateAssembly } from "@/lib/estimate/scope-intent";
+import { concretePathRemovalM2 } from "@/lib/estimate/stated-outdoor-scope";
 
 export const WORK_AREA_OWNERSHIP_CLASS = {
   EXPLICIT: "EXPLICIT",
@@ -844,6 +845,7 @@ export function staleSuggestedOwnedWorkAreasToDrop(params: {
 
 export function briefHasExplicitDemolition(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
+  if (concretePathRemovalM2(briefText) != null) return true;
   return includesAny(brief, [
     "removing internal wall",
     "removing 3 internal",

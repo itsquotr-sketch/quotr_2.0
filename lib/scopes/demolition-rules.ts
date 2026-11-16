@@ -28,12 +28,29 @@ export function shouldDropStandaloneDemolitionWorkArea(
   );
 }
 
+function keepsExplicitConcretePath(
+  facts: readonly { key?: string; value?: unknown }[]
+): boolean {
+  return facts.some((fact) => {
+    if (fact.key !== "demolition.scope_items" || !Array.isArray(fact.value)) return false;
+    return fact.value.some(
+      (item) => typeof item === "string" && /concrete path/i.test(item)
+    );
+  });
+}
+
 export function filterEmbeddedDemolitionWorkAreas<
   T extends { type: string }
->(workAreas: T[]): T[] {
+>(
+  workAreas: T[],
+  facts: readonly { key?: string; value?: unknown }[] = []
+): T[] {
   const types = workAreas.map((wa) => wa.type);
 
-  if (!shouldDropStandaloneDemolitionWorkArea(types)) {
+  if (
+    keepsExplicitConcretePath(facts) ||
+    !shouldDropStandaloneDemolitionWorkArea(types)
+  ) {
     return workAreas;
   }
 

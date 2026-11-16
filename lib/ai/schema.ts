@@ -182,7 +182,8 @@ export function validateAndFilterExtraction(
   }
 
   const dedupedWorkAreas = filterEmbeddedDemolitionWorkAreas(
-    Array.from(byInstance.values())
+    Array.from(byInstance.values()),
+    parsed.data.facts
   );
 
   if (dedupedWorkAreas.length === 0) {

@@ -1,4 +1,8 @@
 import { FENCE_MANUAL_SCOPE_COMPONENT } from "@/lib/estimate/fence-manual";
+import {
+  CONCRETE_PATH_MANUAL_COMPONENT,
+  PAVING_MANUAL_COMPONENT,
+} from "@/lib/estimate/stated-outdoor-scope";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { classifyRateSource } from "@/lib/estimate/rate-source-labels";
 
@@ -90,7 +94,13 @@ export function omitFenceScopesClearedByManualPrice<T extends { notes?: string |
   const cleared = new Set<string>();
   for (const notes of pricingNotes) {
     const metadata = parseLineItemNotes(notes).metadata;
-    if (metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT) continue;
+    if (
+      metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT &&
+      metadata.componentId !== CONCRETE_PATH_MANUAL_COMPONENT &&
+      metadata.componentId !== PAVING_MANUAL_COMPONENT
+    ) {
+      continue;
+    }
     if (metadata.pricingSource !== "user_override") continue;
     const scopeKey = metadata.scopeKey?.trim();
     if (scopeKey) cleared.add(scopeKey);
@@ -98,7 +108,13 @@ export function omitFenceScopesClearedByManualPrice<T extends { notes?: string |
   if (cleared.size === 0) return [...lines];
   return lines.filter((line) => {
     const metadata = parseLineItemNotes(line.notes).metadata;
-    if (metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT) return true;
+    if (
+      metadata.componentId !== FENCE_MANUAL_SCOPE_COMPONENT &&
+      metadata.componentId !== CONCRETE_PATH_MANUAL_COMPONENT &&
+      metadata.componentId !== PAVING_MANUAL_COMPONENT
+    ) {
+      return true;
+    }
     const scopeKey = metadata.scopeKey?.trim();
     return !scopeKey || !cleared.has(scopeKey);
   });

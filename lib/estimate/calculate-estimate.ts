@@ -17,6 +17,7 @@ import {
   calculatePlastering,
 } from "@/lib/estimate/calculators/fitout";
 import { calculateKitchen } from "@/lib/estimate/calculators/kitchen";
+import { calculatePaving } from "@/lib/estimate/calculators/paving";
 import { calculatePergola } from "@/lib/estimate/calculators/pergola";
 import { calculateRetainingWall } from "@/lib/estimate/calculators/retaining-wall";
 import { createAssumptionMetadata, mergeAssumptionMetadata } from "@/lib/estimate/assumption-metadata";
@@ -53,6 +54,7 @@ const CALCULATORS: Record<DetailedCalculatorWorkAreaType, WorkAreaCalculator> = 
   painting: calculatePainting,
   plastering: calculatePlastering,
   cladding: calculateCladding,
+  paving: calculatePaving,
   preliminaries: (context, workArea) => calculatePreliminaries(context, workArea),
 };
 

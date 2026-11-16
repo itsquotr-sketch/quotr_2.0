@@ -144,6 +144,16 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     suggestedRateTypes: ["labour", "material"],
   },
   {
+    type: "paving",
+    label: "Paved patio",
+    category: "External",
+    description:
+      "A stated paved area kept for a manual price. No paving assembly is calculated.",
+    estimateSupport: "calculator",
+    defaultEnabled: false,
+    suggestedRateTypes: ["allowance"],
+  },
+  {
     type: "plastering",
     label: "Plastering",
     category: "Finishes",

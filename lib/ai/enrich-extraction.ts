@@ -18,6 +18,11 @@ import { interpretBathroomBrief } from "@/lib/estimate/bathroom-brief";
 import { deckScopeIntent, fasciaPolarity } from "@/lib/estimate/scope-intent";
 import { ambiguousMaterialWasteWarning } from "@/lib/estimate/explicit-material-waste";
 import {
+  concretePathRemovalM2,
+  pavedPatioAreaM2,
+  statedDrainageLengthM,
+} from "@/lib/estimate/stated-outdoor-scope";
+import {
   briefHasIntegralDeckStepLanguage,
   filterIntegralDeckExternalStairsWorkAreas,
   isExternalStairsFactKey,
@@ -1487,7 +1492,7 @@ function inferFence(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (!includesAny(brief, ["fence", "boundary"])) return;
+  if (!/\bfenc(?:e|ing)\b|\bboundary\b/.test(brief)) return;
 
   addWorkAreaIfMissing(
     extraction,
@@ -1606,6 +1611,25 @@ function inferFence(
       key: "fence.gate_hardware_if_compatible",
       label: "Gate hardware if compatible",
       value: true,
+    });
+  }
+
+  const glassFence = brief.match(
+    /(\d+(?:\.\d+)?)\s*m(?:etres?)?\s+of\s+glass\s+pool\s+fencing\b/i
+  );
+  if (glassFence) {
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.length_m",
+      label: "Fence length",
+      value: Number(glassFence[1]),
+      unit: "m",
+    });
+    addFact(extraction, {
+      workAreaType: "fence",
+      key: "fence.material",
+      label: "Fence material",
+      value: "Glass",
     });
   }
 
@@ -2641,6 +2665,95 @@ function inferCeilings(
   }
 }
 
+function inferStatedOutdoorScope(
+  brief: string,
+  extraction: AIExtractionOutput,
+  allowedTypes: string[]
+): void {
+  const pathArea = concretePathRemovalM2(brief);
+  if (pathArea != null) {
+    const existed = hasWorkAreaType(extraction, "demolition");
+    addWorkAreaIfMissing(
+      extraction,
+      "demolition",
+      0.9,
+      "Concrete path removal stated in the brief",
+      allowedTypes
+    );
+    const demolition = extraction.workAreas.find((row) => row.type === "demolition");
+    if (demolition && !existed) demolition.name = "Concrete path removal";
+    addFact(extraction, {
+      workAreaType: "demolition",
+      key: "demolition.area_m2",
+      label: "Concrete path area",
+      value: pathArea,
+      unit: "m²",
+    });
+    addFact(extraction, {
+      workAreaType: "demolition",
+      key: "demolition.scope_items",
+      label: "Scope items",
+      value: ["Concrete path"],
+    });
+  }
+
+  const patioArea = pavedPatioAreaM2(brief);
+  if (patioArea != null) {
+    addWorkAreaIfMissing(
+      extraction,
+      "paving",
+      0.9,
+      "Paved patio stated in the brief",
+      allowedTypes
+    );
+    const paving = extraction.workAreas.find((row) => row.type === "paving");
+    if (paving && !paving.name) paving.name = "Paved patio";
+    addFact(extraction, {
+      workAreaType: "paving",
+      key: "paving.area_m2",
+      label: "Paved patio area",
+      value: patioArea,
+      unit: "m²",
+    });
+  }
+
+  const drainageLength = statedDrainageLengthM(brief);
+  if (
+    drainageLength != null &&
+    (hasWorkAreaType(extraction, "retaining_wall") || brief.includes("retaining wall"))
+  ) {
+    addWorkAreaIfMissing(
+      extraction,
+      "retaining_wall",
+      0.9,
+      "Drainage stated behind a retaining wall",
+      allowedTypes
+    );
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.drainage_length_m",
+      label: "Stated drainage length",
+      value: drainageLength,
+      unit: "m",
+    });
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.drainage_required",
+      label: "Drainage required",
+      value: true,
+    });
+  }
+
+  if (pathArea == null && patioArea == null && drainageLength == null) return;
+  extraction.facts = extraction.facts.filter((fact) => {
+    if (fact.work_area_type != null) return true;
+    const key = fact.key.toLowerCase();
+    if (patioArea != null && key.includes("patio")) return false;
+    if (drainageLength != null && key.includes("drainage_length")) return false;
+    return true;
+  });
+}
+
 function recordRequestedCoverageGaps(
   brief: string,
   extraction: AIExtractionOutput
@@ -2841,6 +2954,8 @@ export function enrichExtractionFromBrief(params: {
       }
     }
   }
+  inferStatedOutdoorScope(brief, extraction, params.allowedTypes);
+
   const owned = filterTopLevelWorkAreas({
     briefText: params.briefText,
     workAreas: extraction.workAreas,

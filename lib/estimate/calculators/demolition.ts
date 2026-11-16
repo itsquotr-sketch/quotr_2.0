@@ -34,6 +34,12 @@ import {
 } from "@/lib/estimate/pricing-ownership";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  CONCRETE_PATH_MANUAL_COMPONENT,
+  CONCRETE_PATH_NESTED_ID,
+  isConcretePathScope,
+} from "@/lib/estimate/stated-outdoor-scope";
 import { baseConfidence } from "@/lib/estimate/summary";
 import {
   createAssumptionMetadata,
@@ -104,6 +110,47 @@ export function calculateDemolition(
 
   const scopeItems = getArrayFact(facts, workArea.id, "demolition.scope_items");
   const area = getNumberFact(facts, workArea.id, "demolition.area_m2");
+  if (isConcretePathScope(scopeItems) && area != null && area > 0) {
+    const line = createRateLineItem({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: "Concrete path removal",
+      category: "labour",
+      quantity: area,
+      unit: "m2",
+      costRate: 0,
+      sellRate: 0,
+      rateSource: getRateSourceLabel("missing"),
+      rateSourceType: "missing",
+      componentKey: CONCRETE_PATH_MANUAL_COMPONENT,
+      notes: `Concrete path removal. ${area} m² retained for a manual price. Thickness is not stated, so disposal quantity is not calculated.`,
+      sortOrder: 1,
+      organisationSettings: context.organisationSettings,
+    });
+    return {
+      lineItems: [
+        {
+          ...line,
+          nestedItemId: CONCRETE_PATH_NESTED_ID,
+          scopeKey: `demolition.manual:${workArea.id}:${CONCRETE_PATH_MANUAL_COMPONENT}`,
+          componentId: CONCRETE_PATH_MANUAL_COMPONENT,
+          includedInTotal: false,
+          pricingOwner: "subcontractor_allowance",
+          identitySummary: "Concrete path removal",
+          recommendedCost: 0,
+          recommendedSell: 0,
+        },
+      ],
+      assumptions: [],
+      missingInfo: [
+        "Concrete path thickness is not stated.",
+        "Concrete path disposal quantity is not calculated.",
+      ],
+      exclusions: [],
+      confidence: baseConfidence(2),
+      assumptionMetadata,
+    };
+  }
   const wallLength = getNumberFact(facts, workArea.id, "demolition.wall_length_m");
   const floorArea = getNumberFact(facts, workArea.id, "demolition.floor_area_m2");
   const ceilingArea = getNumberFact(facts, workArea.id, "demolition.ceiling_area_m2");

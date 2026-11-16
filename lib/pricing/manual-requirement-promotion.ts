@@ -21,6 +21,11 @@ import {
   FENCE_MANUAL_SCOPE_COMPONENT,
   fenceLineIsManualPricingEligible,
 } from "@/lib/estimate/fence-manual";
+import {
+  CONCRETE_PATH_MANUAL_COMPONENT,
+  PAVING_MANUAL_COMPONENT,
+  statedOutdoorLineIsManualPricingEligible,
+} from "@/lib/estimate/stated-outdoor-scope";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import {
   buildPersistedLineItemNotes,
@@ -106,7 +111,11 @@ export function notesWithManualPricingProvenance(
   const metadata = { ...parsed.metadata };
   if (costKnown) {
     metadata.pricingSource = "user_override";
-    if (metadata.componentId === FENCE_MANUAL_SCOPE_COMPONENT) {
+    if (
+      metadata.componentId === FENCE_MANUAL_SCOPE_COMPONENT ||
+      metadata.componentId === CONCRETE_PATH_MANUAL_COMPONENT ||
+      metadata.componentId === PAVING_MANUAL_COMPONENT
+    ) {
       metadata.includedInTotal = true;
     }
   } else {
@@ -205,6 +214,13 @@ export function evaluateManualPricingEligibility(
     }
   } else if (componentKey === FENCE_MANUAL_SCOPE_COMPONENT) {
     if (!fenceLineIsManualPricingEligible(line)) {
+      return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
+    }
+  } else if (
+    componentKey === CONCRETE_PATH_MANUAL_COMPONENT ||
+    componentKey === PAVING_MANUAL_COMPONENT
+  ) {
+    if (!statedOutdoorLineIsManualPricingEligible(line)) {
       return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
     }
   } else if (!flooringLineIsManualPricingEligible(line)) {

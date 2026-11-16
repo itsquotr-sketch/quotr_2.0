@@ -200,6 +200,17 @@ export function buildRetainingWallPhysicalModel(params: {
     assumptions.push(RW_DRAINAGE_STANDARD_ASSUMPTION);
   }
   if (drainage.included) {
+    const statedDrainage = getNumberFact(
+      facts,
+      workAreaId,
+      "retaining_wall.drainage_length_m"
+    );
+    const drainageLength =
+      statedDrainage != null && statedDrainage > 0 ? statedDrainage : geometry.lengthM;
+    const statedDiffers =
+      statedDrainage != null &&
+      statedDrainage > 0 &&
+      statedDrainage !== geometry.lengthM;
     requirements.push(
       planningMaterial({
         workAreaId,
@@ -208,11 +219,13 @@ export function buildRetainingWallPhysicalModel(params: {
         materialKey: RW_NOVACOIL_KEY,
         identity: NOVACOIL_IDENTITY,
         category: "DRAINAGE",
-        specification: `${geometry.lengthM} lm punched/slotted drainage coil along the wall heel.`,
-        baseQuantity: geometry.lengthM,
+        specification: statedDiffers
+          ? `Stated drainage length ${statedDrainage} m behind the ${geometry.lengthM} m wall. Priced once at the stated length. The wall length is not charged again. Drainage outlet is not confirmed.`
+          : `${drainageLength} lm punched/slotted drainage coil along the wall heel.`,
+        baseQuantity: drainageLength,
         baseUnit: "lm",
         wasteFactor: 0,
-        purchaseQuantity: geometry.lengthM,
+        purchaseQuantity: drainageLength,
         purchaseUnit: "lm",
         factKeys: keys,
         source: "retaining_wall.drainage",
@@ -227,11 +240,11 @@ export function buildRetainingWallPhysicalModel(params: {
           description: "Drainage coil sock / filter sock",
           materialKey: RW_DRAINAGE_SOCK_KEY,
           category: "DRAINAGE",
-          specification: `${geometry.lengthM} lm filter sock matching installed drainage coil length.`,
-          baseQuantity: geometry.lengthM,
+          specification: `${drainageLength} lm filter sock matching installed drainage coil length.`,
+          baseQuantity: drainageLength,
           baseUnit: "lm",
           wasteFactor: 0,
-          purchaseQuantity: geometry.lengthM,
+          purchaseQuantity: drainageLength,
           purchaseUnit: "lm",
           factKeys: keys,
           source: "retaining_wall.drainage.sock",
