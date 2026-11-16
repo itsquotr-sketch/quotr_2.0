@@ -38,9 +38,13 @@ export function DoorsQuickSpecEditor({
               step={1}
               defaultValue={portion.quantity ?? ""}
               data-door-quantity={portion.id}
+              onFocus={(event) => {
+                event.currentTarget.dataset.doorQuantityStart = event.currentTarget.value;
+              }}
               onBlur={(event) => {
                 const next = Number(event.target.value);
                 if (!Number.isInteger(next) || next < 1) return;
+                if (event.currentTarget.dataset.doorQuantityStart === String(next)) return;
                 onSpecFact?.({
                   workAreaId,
                   key: "doors.portion.quantity",
