@@ -4655,12 +4655,15 @@ export function AssistantShell({
               }
               statusLabel={detailsStatusLabel}
               statusVariant="current"
-              preferredExpanded={stagePrefersExpanded(
-                "clarify",
-                activeDisclosureStage
-              )}
+              preferredExpanded={
+                clarifyView.visibleCount > 0 ||
+                stagePrefersExpanded("clarify", activeDisclosureStage)
+              }
               canCollapse={false}
-              isActive={activeDisclosureStage === "clarify"}
+              isActive={
+                clarifyView.visibleCount > 0 ||
+                activeDisclosureStage === "clarify"
+              }
             >
               {liveConstraints.length > 0 && projectConditionsSnapshot ? (
                 <ProjectConditionsBlock
