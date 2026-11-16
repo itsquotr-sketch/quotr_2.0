@@ -5,6 +5,7 @@ import {
   DeckQuickSpecEditor,
   type QuickSpecFactWrite,
 } from "@/components/assistant/job-plan/DeckQuickSpecEditor";
+import { DoorsQuickSpecEditor } from "@/components/assistant/job-plan/DoorsQuickSpecEditor";
 import { FenceQuickSpecEditor } from "@/components/assistant/job-plan/FenceQuickSpecEditor";
 import { FlooringQuickSpecEditor } from "@/components/assistant/job-plan/FlooringQuickSpecEditor";
 import { RetainingWallQuickSpecEditor } from "@/components/assistant/job-plan/RetainingWallQuickSpecEditor";
@@ -39,6 +40,7 @@ const QUICK_SPEC_EDITORS: Record<
   ComponentType<JobPlanQuickSpecEditorProps>
 > = {
   deck: DeckQuickSpecEditor,
+  doors: DoorsQuickSpecEditor,
   retaining_wall: RetainingWallQuickSpecEditor,
   fence: FenceQuickSpecEditor,
   flooring: FlooringQuickSpecEditor,

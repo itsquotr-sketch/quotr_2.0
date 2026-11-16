@@ -5,6 +5,7 @@
  *
  * No paid AI. No Production. No COST rates. No productivity hours.
  */
+import { getJobPlanQuickSpecEditor } from "../components/assistant/job-plan/quick-spec-editors";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
@@ -39,6 +40,7 @@ import {
   summariseDoorPhysicalPortion,
 } from "../lib/estimate/doors-physical";
 import {
+  applyDoorsFactWrite,
   createEmptyDoorPortion,
   DOORS_NESTED_NOT_CALCULATED_MESSAGE,
   DOORS_PORTIONS_FACT_KEY,
@@ -1211,6 +1213,62 @@ check(
     qt009Portions[0]?.installation_type === "prehung_internal" &&
     qt009Portions[0]?.width_mm === 810 &&
     qt009Portions[0]?.hardware_included === true
+);
+
+const doorWorkAreaId = "qt012-doors";
+const seededDoorFacts = qt012Extraction.facts.map((row) =>
+  row.key === DOORS_PORTIONS_FACT_KEY
+    ? { ...row, work_area_id: doorWorkAreaId }
+    : row
+);
+const wrongQuantityFacts = applyDoorsFactWrite({
+  facts: seededDoorFacts,
+  workAreaId: doorWorkAreaId,
+  key: "doors.portion.quantity",
+  value: 2,
+  nestedItemId: qt012Bedroom?.id,
+  factSource: "user",
+});
+const wrongPortions = parseDoorsPortions(
+  wrongQuantityFacts.find((row) => row.key === DOORS_PORTIONS_FACT_KEY)?.value
+);
+const wrongBedroom = wrongPortions.find((row) => row.id === qt012Bedroom?.id);
+const wrongLaundry = wrongPortions.find((row) => row.id === qt012Laundry?.id);
+const correctedFacts = applyDoorsFactWrite({
+  facts: wrongQuantityFacts,
+  workAreaId: doorWorkAreaId,
+  key: "doors.portion.quantity",
+  value: 1,
+  nestedItemId: qt012Bedroom?.id,
+  factSource: "user",
+});
+const correctedPortions = parseDoorsPortions(
+  correctedFacts.find((row) => row.key === DOORS_PORTIONS_FACT_KEY)?.value
+);
+const correctedBedroom = correctedPortions.find((row) => row.id === qt012Bedroom?.id);
+const correctedLaundry = correctedPortions.find((row) => row.id === qt012Laundry?.id);
+const correctedPhysical = physical(correctedPortions);
+const correctedBedroomSet = correctedPhysical.requirements.find(
+  (row) =>
+    row.variantKey === qt012Bedroom?.id &&
+    row.componentKey === DOORS_PREHUNG_SET_COMPONENT
+);
+check(
+  "QT-012 quantity edit changes one door and restores its charge",
+  wrongBedroom?.quantity === 2 &&
+    wrongBedroom.quantity_authority === "user" &&
+    wrongLaundry?.quantity === 1 &&
+    wrongLaundry.leaf_supply === "customer" &&
+    wrongLaundry.hardware_supply === "contractor" &&
+    wrongLaundry.hardware_note === "privacy handle" &&
+    correctedBedroom?.quantity === 1 &&
+    correctedBedroom.quantity_authority === "user" &&
+    correctedLaundry?.quantity === 1 &&
+    correctedLaundry.leaf_supply === "customer" &&
+    correctedLaundry.hardware_supply === "contractor" &&
+    correctedBedroomSet?.kind === "material" &&
+    correctedBedroomSet.purchaseQuantity === 1 &&
+    getJobPlanQuickSpecEditor("doors") != null
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);
