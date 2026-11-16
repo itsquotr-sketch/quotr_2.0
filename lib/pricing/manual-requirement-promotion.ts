@@ -17,6 +17,10 @@ import { deriveSellFromCost } from "@/lib/commercial-engine/core/sell-from-margi
 import { calculateEstimate } from "@/lib/estimate/calculate-estimate";
 import { claddingLineIsManualPricingEligible } from "@/lib/estimate/cladding-quote";
 import { flooringLineIsManualPricingEligible } from "@/lib/estimate/flooring-commercial";
+import {
+  FENCE_MANUAL_SCOPE_COMPONENT,
+  fenceLineIsManualPricingEligible,
+} from "@/lib/estimate/fence-manual";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import {
   buildPersistedLineItemNotes,
@@ -102,6 +106,9 @@ export function notesWithManualPricingProvenance(
   const metadata = { ...parsed.metadata };
   if (costKnown) {
     metadata.pricingSource = "user_override";
+    if (metadata.componentId === FENCE_MANUAL_SCOPE_COMPONENT) {
+      metadata.includedInTotal = true;
+    }
   } else {
     metadata.rateSourceType = "missing";
     if (metadata.pricingSource === "user_override") {
@@ -194,6 +201,10 @@ export function evaluateManualPricingEligibility(
   const componentKey = line.componentKey ?? "";
   if (componentKey.startsWith("cladding.")) {
     if (!claddingLineIsManualPricingEligible(line)) {
+      return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
+    }
+  } else if (componentKey === FENCE_MANUAL_SCOPE_COMPONENT) {
+    if (!fenceLineIsManualPricingEligible(line)) {
       return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
     }
   } else if (!flooringLineIsManualPricingEligible(line)) {

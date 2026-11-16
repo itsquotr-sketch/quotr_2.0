@@ -26,6 +26,13 @@ import {
 } from "@/lib/estimate/material-buildup-meta";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  FENCE_MANUAL_SCOPE_COMPONENT,
+  FENCE_MANUAL_SCOPE_NESTED_ID,
+  fenceManualScopeKey,
+  glassPoolFenceManualScope,
+} from "@/lib/estimate/fence-manual";
 import { baseConfidence } from "@/lib/estimate/summary";
 import {
   createAssumptionMetadata,
@@ -216,9 +223,14 @@ export function calculateFence(
   const material = getStringFact(facts, workArea.id, "fence.material");
   const systemRaw = getStringFact(facts, workArea.id, "fence.system");
 
+  const glassManual = glassPoolFenceManualScope({
+    material,
+    system: systemRaw,
+    lengthM: length,
+  });
   if (!length) missingInfo.push(formatMissing("Fence length"));
-  if (!height) missingInfo.push(formatMissing("Fence height"));
-  if (!material && !systemRaw) missingInfo.push(formatMissing("Fence type"));
+  if (!glassManual && !height) missingInfo.push(formatMissing("Fence height"));
+  if (!glassManual && !material && !systemRaw) missingInfo.push(formatMissing("Fence type"));
 
   const physical = buildFencePhysicalModel({
     context,
@@ -306,7 +318,35 @@ export function calculateFence(
     missingInfo.push(...commercial.missingInfo);
   }
 
-  if (!detailed) {
+  if (glassManual) {
+    const line = createRateLineItem({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: glassManual.description,
+      category: "materials",
+      quantity: glassManual.quantity,
+      unit: "m",
+      costRate: 0,
+      sellRate: 0,
+      rateSource: getRateSourceLabel("missing"),
+      rateSourceType: "missing",
+      componentKey: FENCE_MANUAL_SCOPE_COMPONENT,
+      notes: `${glassManual.description}. ${glassManual.quantity} m retained for a manual price. No modelled fence rate.`,
+      sortOrder: sortOrder++,
+      organisationSettings: context.organisationSettings,
+    });
+    lineItems.push({
+      ...line,
+      nestedItemId: FENCE_MANUAL_SCOPE_NESTED_ID,
+      scopeKey: fenceManualScopeKey(workArea.id),
+      componentId: FENCE_MANUAL_SCOPE_COMPONENT,
+      includedInTotal: false,
+      pricingOwner: "subcontractor_allowance",
+      identitySummary: glassManual.description,
+      recommendedCost: 0,
+      recommendedSell: 0,
+    });
+  } else if (!detailed) {
   const fenceProductivity = resolveProductivity({
     productivityKey: "fence.labour_hours_per_lm",
     unit: "lm",

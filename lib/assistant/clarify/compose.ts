@@ -88,6 +88,7 @@ import {
   FENCE_UNSUPPORTED_SYSTEM_MESSAGE,
 } from "@/lib/estimate/calculators/fence";
 import { classifyFenceSystem, fenceGateScopeApplies, isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
+import { glassPoolFenceManualScope } from "@/lib/estimate/fence-manual";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
 import {
   DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
@@ -645,6 +646,11 @@ function missingHardMinimum(
         inputType: ClarifyCandidate["inputType"];
         rankScore: number;
       }[] = [];
+      const glassManual = glassPoolFenceManualScope({
+        material: getStringFact(facts, card.workAreaId, "fence.material"),
+        system: getStringFact(facts, card.workAreaId, "fence.system"),
+        lengthM: getNumberFact(facts, card.workAreaId, "fence.length_m"),
+      });
       if (!fenceHasCoreLength(facts, card.workAreaId)) {
         missing.push({
           key: "fence.length_m",
@@ -652,7 +658,7 @@ function missingHardMinimum(
           rankScore: 1000,
         });
       }
-      if (!fenceHasCoreHeight(facts, card.workAreaId)) {
+      if (!glassManual && !fenceHasCoreHeight(facts, card.workAreaId)) {
         missing.push({
           key: "fence.height_m",
           inputType: "number",
@@ -660,7 +666,7 @@ function missingHardMinimum(
         });
       }
       const systemState = fenceSystemReadiness(facts, card.workAreaId);
-      if (systemState !== "SUPPORTED") {
+      if (!glassManual && systemState !== "SUPPORTED") {
         missing.push({
           key: "fence.system",
           inputType: "select",

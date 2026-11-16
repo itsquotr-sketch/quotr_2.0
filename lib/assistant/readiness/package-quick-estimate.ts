@@ -19,6 +19,7 @@ import {
   fenceHasCoreLength,
   fenceSystemReadiness,
 } from "@/lib/estimate/calculators/fence";
+import { glassPoolFenceManualScope } from "@/lib/estimate/fence-manual";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
@@ -157,7 +158,15 @@ function fenceHardMinimumBlockers(
       category: "length",
     });
   }
-  if (!fenceHasCoreHeight(facts as EstimateFact[], workAreaId)) {
+  const materialText = factValue(facts, workAreaId, "fence.material");
+  const systemText = factValue(facts, workAreaId, "fence.system");
+  const lengthText = factValue(facts, workAreaId, "fence.length_m");
+  const glassManual = glassPoolFenceManualScope({
+    material: typeof materialText === "string" ? materialText : null,
+    system: typeof systemText === "string" ? systemText : null,
+    lengthM: typeof lengthText === "number" ? lengthText : null,
+  });
+  if (!glassManual && !fenceHasCoreHeight(facts as EstimateFact[], workAreaId)) {
     out.push({
       key: "fence.height_m",
       requiredness: "HARD_MINIMUM",
@@ -171,7 +180,7 @@ function fenceHardMinimumBlockers(
     });
   }
   const system = fenceSystemReadiness(facts as EstimateFact[], workAreaId);
-  if (system !== "SUPPORTED") {
+  if (!glassManual && system !== "SUPPORTED") {
     out.push({
       key: "fence.system",
       requiredness: "HARD_MINIMUM",
