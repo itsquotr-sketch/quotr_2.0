@@ -124,7 +124,7 @@ function retainingWallHardMinimumBlockers(
     });
   }
   const material = retainingWallMaterialReadiness(facts, workAreaId);
-  if (material !== "SUPPORTED") {
+  if (material === "MISSING" || material === "UNSUPPORTED_EXPLICIT") {
     out.push({
       key: "retaining_wall.material",
       requiredness: "HARD_MINIMUM",

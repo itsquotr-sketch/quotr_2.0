@@ -5,9 +5,10 @@
 import { buildMinimalExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { validateAndFilterExtraction } from "../lib/ai/schema";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { CONCRETE_PATH_MANUAL_COMPONENT, PAVING_MANUAL_COMPONENT } from "../lib/estimate/stated-outdoor-scope";
 import { FENCE_MANUAL_SCOPE_COMPONENT } from "../lib/estimate/fence-manual";
-import { RW_NOVACOIL_COMPONENT } from "../lib/estimate/retaining-wall-identities";
+import { RW_DRAINAGE_LABOUR_COMPONENT, RW_NOVACOIL_COMPONENT } from "../lib/estimate/retaining-wall-identities";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import { getAnalysisCapableWorkAreaTypes } from "../lib/scopes/capability";
 import {
@@ -118,11 +119,47 @@ check(
     concrete[0]?.notes?.includes("Thickness is not stated") === true &&
     patio[0]?.notes?.includes("No modelled paving rate") === true
 );
+const drainageLabour = estimate.lineItems.filter(
+  (row) => row.componentKey === RW_DRAINAGE_LABOUR_COMPONENT
+);
 check(
   "stated drainage is priced once on the wall",
   coil[0]?.quantity === 12 &&
     coil[0]?.notes?.includes("Stated drainage length 12 m") === true &&
+    coil[0]?.notes?.includes("outlet is not confirmed") === true &&
+    drainageLabour.length === 1 &&
+    drainageLabour[0]?.quantity === 12 &&
     !estimate.lineItems.some((row) => row.componentKey === RW_NOVACOIL_COMPONENT && row.quantity === 6)
+);
+const notSureFacts = facts.map((row) =>
+  row.key === "retaining_wall.material" ? { ...row, value: "Not sure" } : row
+);
+const notSureEstimate = calculateEstimate({
+  project: { id: "qt018-not-sure", qualityLevel: "standard" },
+  confirmedWorkAreas: areas,
+  facts: notSureFacts,
+  constraints: [],
+  materialWastageSettings: { sheetMaterialWastagePercent: 10, defaultMaterialWastagePercent: 10 },
+  rates: [],
+  organisationSettings: {
+    allow_benchmark_rates: true,
+    default_margin_percent: 20,
+    budget_rate_factor: 0.9,
+    premium_rate_factor: 1.15,
+  },
+} as unknown as EstimateContext);
+const notSureWallLines = notSureEstimate.lineItems.filter((row) =>
+  String(row.componentKey ?? "").startsWith("retaining_wall.")
+);
+check(
+  "Not sure keeps the independent scope and leaves the wall uncharged",
+  notSureEstimate.lineItems.filter((row) => row.componentKey === CONCRETE_PATH_MANUAL_COMPONENT).length === 1 &&
+    notSureEstimate.lineItems.filter((row) => row.componentKey === PAVING_MANUAL_COMPONENT).length === 1 &&
+    notSureEstimate.lineItems.filter((row) => row.componentKey === FENCE_MANUAL_SCOPE_COMPONENT).length === 1 &&
+    notSureWallLines.length === 0 &&
+    notSureEstimate.missingInfo.includes("Wall material not confirmed") &&
+    classifyReviewNotice("Wall material not confirmed") === "scope_gap" &&
+    !notSureEstimate.assumptions.some((row) => /timber|H5|sleeper/i.test(row))
 );
 check(
   "the glass fence can still take a manual price",

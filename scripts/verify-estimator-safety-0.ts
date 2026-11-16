@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { composeEstimateReadiness } from "../lib/assistant/readiness/compose";
+import { evaluatePackageQuickEstimateReadiness } from "../lib/assistant/readiness/package-quick-estimate";
 import { composeRefineView } from "../lib/assistant/refine/compose";
 import { listRefineAdapters } from "../lib/assistant/refine/adapters/registry";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
@@ -254,10 +255,25 @@ const notSureMaterial = composeRw([
   fact("retaining_wall.height_m", RW, 1),
   fact("retaining_wall.material", RW, "Not sure"),
 ]);
+const notSureCandidate = notSureMaterial.clarify.candidates.find(
+  (c) => c.factKey === "retaining_wall.material"
+);
+const notSurePackage = evaluatePackageQuickEstimateReadiness({
+  workAreas: [{ id: RW, type: "retaining_wall", status: "confirmed" }],
+  facts: [
+    fact("retaining_wall.length_m", RW, 8),
+    fact("retaining_wall.height_m", RW, 1),
+    fact("retaining_wall.material", RW, "Not sure"),
+  ],
+});
 check(
-  "9d Not sure material still blocks",
-  notSureMaterial.readiness.blocksEstimate &&
-    notSureMaterial.clarify.candidates.some((c) => c.factKey === "retaining_wall.material") &&
+  "9d Not sure material stays visible without blocking the estimate",
+  notSureCandidate?.blocksEstimate === false &&
+    notSureCandidate?.assumable === false &&
+    notSureCandidate?.assumptionStatement == null &&
+    !notSureMaterial.readiness.blocksEstimate &&
+    notSurePackage.ready &&
+    !notSurePackage.blockers.some((row) => row.key === "retaining_wall.material") &&
     retainingWallMaterialReadiness(
       [
         fact("retaining_wall.length_m", RW, 8),
@@ -302,11 +318,16 @@ check(
     RW
   ) === "MISSING"
 );
+const gabionPackage = evaluatePackageQuickEstimateReadiness({
+  workAreas: [{ id: RW, type: "retaining_wall", status: "confirmed" }],
+  facts: gabionFacts,
+});
 check(
   "R1 explicit unsupported blocks Estimate Ready",
   gabionUi.readiness.blocksEstimate &&
     !gabionUi.readiness.canEstimateNow &&
     !gabionUi.readiness.enoughToEstimate &&
+    !gabionPackage.ready &&
     retainingWallMaterialReadiness(gabionFacts, RW) === "UNSUPPORTED_EXPLICIT"
 );
 check(

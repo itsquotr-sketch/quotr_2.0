@@ -597,11 +597,37 @@ function missingHardMinimum(
         });
       }
       const materialState = retainingWallMaterialReadiness(facts, card.workAreaId);
-      if (materialState !== "SUPPORTED") {
+      if (materialState === "MISSING" || materialState === "UNSUPPORTED_EXPLICIT") {
         missing.push({
           key: "retaining_wall.material",
           inputType: "select",
           rankScore: 998,
+        });
+      }
+      if (materialState === "NOT_SURE") {
+        const template = getQuestionTemplateByKey("retaining_wall.material");
+        out.push({
+          id: `open:${card.workAreaId}:retaining_wall.material`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: "retaining_wall.material",
+          constraintKey: null,
+          questionKey: "retaining_wall.material",
+          label: safeFactPresentationLabel("retaining_wall.material"),
+          question: safeFactQuestion("retaining_wall.material", template?.questionText),
+          askClass: "ASSUME_IF_SKIPPED",
+          inputType: "select",
+          unit: template?.unit,
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: false,
+          rankScore: 998,
+          rankReason: "Retaining wall material is not confirmed",
+          assumptionStatement: null,
         });
       }
       for (const row of missing) {
