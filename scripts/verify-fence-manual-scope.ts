@@ -87,6 +87,21 @@ const wallFacts = [
   fact("retaining_wall.surcharge", "wall-1", "No"),
 ];
 
+const storedGlass = calculateFence(
+  ctx([fence], [fact("fence.length_m", "fence-1", 8), fact("fence.material", "fence-1", "Glass")]),
+  fence
+);
+check(
+  "stored Glass material keeps the 8 m manual scope",
+  storedGlass.lineItems.some(
+    (line) =>
+      line.componentKey === FENCE_MANUAL_SCOPE_COMPONENT &&
+      line.label === "Glass" &&
+      line.quantity === 8 &&
+      line.recommendedCost === 0
+  )
+);
+
 const glass = calculateFence(ctx([fence], glassFacts), fence);
 const glassLine = glass.lineItems.find(
   (line) => line.componentKey === FENCE_MANUAL_SCOPE_COMPONENT

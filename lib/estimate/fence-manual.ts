@@ -10,8 +10,10 @@ export function fenceManualScopeKey(workAreaId: string): string {
 }
 
 export function isGlassPoolFenceRequest(value: string | null | undefined): boolean {
-  const text = (value ?? "").toLowerCase();
-  return text.includes("glass") && (text.includes("pool") || text.includes("fenc"));
+  const text = (value ?? "").trim().toLowerCase();
+  if (!text.includes("glass")) return false;
+  if (text === "glass") return true;
+  return text.includes("pool") || text.includes("fenc");
 }
 
 export function glassPoolFenceManualScope(params: {
