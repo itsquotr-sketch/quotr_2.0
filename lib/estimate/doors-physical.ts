@@ -336,6 +336,54 @@ function labourRow(params: {
   });
 }
 
+function buysDoorProduct(portion: DoorPortion): boolean {
+  return portion.leaf_supply !== "customer";
+}
+
+function buysHardware(portion: DoorPortion): boolean {
+  if (portion.hardware_supply === "customer" || portion.hardware_supply === "existing") {
+    return false;
+  }
+  if (portion.hardware_supply === "contractor") return true;
+  return portion.hardware_included === true;
+}
+
+function installsHardware(portion: DoorPortion): boolean {
+  if (portion.hardware_supply === "existing") return false;
+  if (portion.hardware_supply === "customer" || portion.hardware_supply === "contractor") {
+    return true;
+  }
+  return portion.hardware_included === true;
+}
+
+function customerSuppliedRow(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type">;
+  portion: DoorPortion;
+  componentKey: string;
+  materialKey: string | null;
+  description: string;
+  specification: string;
+  quantity: number;
+}): MaterialRequirement {
+  return {
+    ...materialRow({
+      workArea: params.workArea,
+      portion: params.portion,
+      componentKey: params.componentKey,
+      materialKey: params.materialKey,
+      category: "CLIENT_SUPPLIED",
+      description: params.description,
+      specification: params.specification,
+      quantity: params.quantity,
+      confidence: "high",
+    }),
+    priced: true,
+    rateSource: "customer_supplied",
+    unitCost: 0,
+    totalCost: 0,
+  };
+}
+
 function hardwareRequirements(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type">;
   portion: DoorPortion;
@@ -353,7 +401,12 @@ function hardwareRequirements(params: {
       description: `${owner} · ${quantity} standard internal door hardware set${
         quantity === 1 ? "" : "s"
       }`,
-      specification: specText(portion, "standard internal door hardware set"),
+      specification: specText(
+        portion,
+        portion.hardware_note
+          ? `${portion.hardware_note}, ordinary internal latch/lever allowance`
+          : "standard internal door hardware set"
+      ),
       quantity,
       confidence: "high",
     }),
@@ -392,18 +445,28 @@ function ordinaryPrehungRequirements(params: {
         ? DOORS_PREHUNG_HOLLOW_CORE_SET_KEY
         : DOORS_PREHUNG_SOLID_CORE_SET_KEY;
     rows.push(
-      materialRow({
-        workArea,
-        portion,
-        componentKey: DOORS_PREHUNG_SET_COMPONENT,
-        materialKey,
-        category: "DOOR_SET",
-        description: summariseDoorPhysicalPortion(portion),
-        specification: specText(portion, "prehung internal door set"),
-        quantity,
-        extraAssumptions: included,
-        confidence: "high",
-      })
+      buysDoorProduct(portion)
+        ? materialRow({
+            workArea,
+            portion,
+            componentKey: DOORS_PREHUNG_SET_COMPONENT,
+            materialKey,
+            category: "DOOR_SET",
+            description: summariseDoorPhysicalPortion(portion),
+            specification: specText(portion, "prehung internal door set"),
+            quantity,
+            extraAssumptions: included,
+            confidence: "high",
+          })
+        : customerSuppliedRow({
+            workArea,
+            portion,
+            componentKey: DOORS_PREHUNG_SET_COMPONENT,
+            materialKey,
+            description: `${owner} · customer-supplied prehung door set`,
+            specification: "Customer-supplied door and jamb. No purchase charge.",
+            quantity,
+          })
     );
   } else if (construction === "other") {
     rows.push(
@@ -437,9 +500,7 @@ function ordinaryPrehungRequirements(params: {
     })
   );
 
-  if (portion.hardware_included === true) {
-    rows.push(...hardwareRequirements({ workArea, portion, quantity, owner }));
-  }
+  rows.push(...hardwareRows({ workArea, portion, quantity, owner }));
 
   return rows;
 }
@@ -474,18 +535,28 @@ function ordinaryReplacementRequirements(params: {
         ? DOORS_LEAF_HOLLOW_CORE_KEY
         : DOORS_LEAF_SOLID_CORE_KEY;
     rows.push(
-      materialRow({
-        workArea,
-        portion,
-        componentKey: DOORS_REPLACEMENT_LEAF_COMPONENT,
-        materialKey,
-        category: "DOOR_LEAF",
-        description: summariseDoorPhysicalPortion(portion),
-        specification: specText(portion, "replacement door leaf"),
-        quantity,
-        extraAssumptions: retained,
-        confidence: "high",
-      })
+      buysDoorProduct(portion)
+        ? materialRow({
+            workArea,
+            portion,
+            componentKey: DOORS_REPLACEMENT_LEAF_COMPONENT,
+            materialKey,
+            category: "DOOR_LEAF",
+            description: summariseDoorPhysicalPortion(portion),
+            specification: specText(portion, "replacement door leaf"),
+            quantity,
+            extraAssumptions: retained,
+            confidence: "high",
+          })
+        : customerSuppliedRow({
+            workArea,
+            portion,
+            componentKey: DOORS_REPLACEMENT_LEAF_COMPONENT,
+            materialKey,
+            description: `${owner} · customer-supplied door leaf`,
+            specification: "Customer-supplied door leaf. Existing jamb retained. No purchase charge.",
+            quantity,
+          })
     );
   } else if (construction === "other") {
     rows.push(
@@ -519,11 +590,42 @@ function ordinaryReplacementRequirements(params: {
     })
   );
 
-  if (portion.hardware_included === true) {
-    rows.push(...hardwareRequirements({ workArea, portion, quantity, owner }));
-  }
+  rows.push(...hardwareRows({ workArea, portion, quantity, owner }));
 
   return rows;
+}
+
+function hardwareRows(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type">;
+  portion: DoorPortion;
+  quantity: number;
+  owner: string;
+}): EstimateRequirement[] {
+  const { workArea, portion, quantity, owner } = params;
+  if (!installsHardware(portion)) return [];
+  if (buysHardware(portion)) {
+    return hardwareRequirements({ workArea, portion, quantity, owner });
+  }
+  return [
+    customerSuppliedRow({
+      workArea,
+      portion,
+      componentKey: DOORS_HARDWARE_STANDARD_COMPONENT,
+      materialKey: DOORS_HARDWARE_STANDARD_KEY,
+      description: `${owner} · customer-supplied handle and latch`,
+      specification: "Customer-supplied handle and latch. No purchase charge.",
+      quantity,
+    }),
+    labourRow({
+      workArea,
+      portion,
+      componentKey: DOORS_HARDWARE_INSTALL_LABOUR,
+      hoursKey: DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY,
+      unit: "set",
+      description: `${owner} · customer-supplied hardware installation`,
+      quantity,
+    }),
+  ];
 }
 
 function specialistRequirement(params: {

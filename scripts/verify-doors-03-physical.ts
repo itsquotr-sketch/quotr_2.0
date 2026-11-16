@@ -42,10 +42,12 @@ import {
   createEmptyDoorPortion,
   DOORS_NESTED_NOT_CALCULATED_MESSAGE,
   DOORS_PORTIONS_FACT_KEY,
+  parseDoorsPortions,
   parseDoorHeightMm,
   parseDoorWidthMm,
   type DoorPortion,
 } from "../lib/estimate/doors-portions";
+import { priceDoorsMaterial } from "../lib/estimate/doors-commercial";
 import { looksLikeDoorProductMoney } from "../lib/estimate/internal-walls-identities";
 import {
   applyInternalWallsFactWrite,
@@ -1118,6 +1120,97 @@ check(
     ) &&
     !/hours_per/.test(summaryPrehung) &&
     !/hours_per/.test(summaryRep)
+);
+
+const QT012 = `Two internal doors:
+Bedroom: replace one complete prehung door set, hollow-core, 810 × 1980 mm. We supply the door and jamb. Customer supplies the handle and latch only; we install them.
+
+Laundry: install one customer-supplied solid-core door leaf into the existing jamb. Leaf is 760 × 1980 mm. Keep the jamb, reuse existing hinges, fit a new contractor-supplied privacy handle.
+
+No painting, wall alterations or new openings. Check any missing details that affect labour.`;
+const qt012Extraction = enrichExtractionFromBrief({
+  briefText: QT012,
+  extraction: emptyExtraction(),
+  allowedTypes: allowed,
+}).extraction;
+const qt012Portions = parseDoorsPortions(
+  qt012Extraction.facts.find((row) => row.key === DOORS_PORTIONS_FACT_KEY)?.value
+);
+const qt012Physical = physical(qt012Portions);
+const qt012Bedroom = qt012Portions.find((row) => row.label === "Bedroom");
+const qt012Laundry = qt012Portions.find((row) => row.label === "Laundry");
+const bedroomReqs = qt012Physical.requirements.filter(
+  (row) => row.variantKey === qt012Bedroom?.id
+);
+const laundryReqs = qt012Physical.requirements.filter(
+  (row) => row.variantKey === qt012Laundry?.id
+);
+const bedroomSet = bedroomReqs.find((row) => row.componentKey === DOORS_PREHUNG_SET_COMPONENT);
+const bedroomHardware = bedroomReqs.find((row) => row.componentKey === DOORS_HARDWARE_STANDARD_COMPONENT);
+const laundryLeaf = laundryReqs.find((row) => row.componentKey === DOORS_REPLACEMENT_LEAF_COMPONENT);
+const laundryHardware = laundryReqs.find((row) => row.componentKey === DOORS_HARDWARE_STANDARD_COMPONENT);
+const pricedLaundryHardware = laundryHardware
+  ? priceDoorsMaterial({
+      requirement: laundryHardware as Extract<EstimateRequirement, { kind: "material" }>,
+      rates: [],
+      organisationSettings: null,
+      allowPricing: true,
+    })
+  : null;
+const QT009 = `Build a non-loadbearing timber stud wall 6000mm long and 2400mm high. Use 90 × 45 framing, 13 mm Standard GIB both sides, one layer each side, with thermal cavity insulation.
+
+Include one door opening and one prehung hollow-core door set, 810 × 1980 mm, including jamb and standard hardware. Stop the plasterboard ready to paint; stopping level to be confirmed.
+
+Painting, electrical and skirting are excluded. Ground floor, easy access, carry under 10 m, unoccupied, unrestricted hours.`;
+const qt009Extraction = enrichExtractionFromBrief({
+  briefText: QT009,
+  extraction: emptyExtraction(),
+  allowedTypes: allowed,
+}).extraction;
+const qt009Portions = parseDoorsPortions(
+  qt009Extraction.facts.find((row) => row.key === DOORS_PORTIONS_FACT_KEY)?.value
+);
+check(
+  "QT-012 keeps two owned doors and QT-009 keeps one opening plus one door set",
+  qt012Extraction.workAreas.map((row) => row.type).join() === "doors" &&
+    qt012Extraction.facts.some((row) => row.key === "doors.painting_included" && row.value === false) &&
+    qt012Portions.length === 2 &&
+    qt012Bedroom?.quantity === 1 &&
+    qt012Bedroom.installation_type === "prehung_internal" &&
+    qt012Bedroom.leaf_construction === "hollow_core" &&
+    qt012Bedroom.width_mm === 810 &&
+    qt012Bedroom.height_mm === 1980 &&
+    qt012Bedroom.leaf_supply === "contractor" &&
+    qt012Bedroom.hardware_supply === "customer" &&
+    qt012Laundry?.quantity === 1 &&
+    qt012Laundry.installation_type === "replacement_leaf" &&
+    qt012Laundry.leaf_construction === "solid_core" &&
+    qt012Laundry.width_mm === 760 &&
+    qt012Laundry.leaf_supply === "customer" &&
+    qt012Laundry.hardware_supply === "contractor" &&
+    qt012Laundry.hardware_note === "privacy handle" &&
+    bedroomSet?.kind === "material" &&
+    bedroomSet.category !== "CLIENT_SUPPLIED" &&
+    bedroomSet.purchaseQuantity === 1 &&
+    bedroomHardware?.category === "CLIENT_SUPPLIED" &&
+    bedroomHardware.purchaseQuantity === 1 &&
+    bedroomReqs.some((row) => row.componentKey === DOORS_PREHUNG_INSTALL_LABOUR && row.kind === "labour") &&
+    bedroomReqs.some((row) => row.componentKey === DOORS_HARDWARE_INSTALL_LABOUR) &&
+    laundryLeaf?.category === "CLIENT_SUPPLIED" &&
+    laundryLeaf.purchaseQuantity === 1 &&
+    laundryLeaf.totalCost === 0 &&
+    laundryHardware?.category !== "CLIENT_SUPPLIED" &&
+    laundryHardware?.purchaseQuantity === 1 &&
+    pricedLaundryHardware?.totalCost === 55 &&
+    laundryReqs.some((row) => row.componentKey === DOORS_REPLACEMENT_LEAF_INSTALL_LABOUR) &&
+    !laundryReqs.some((row) => row.componentKey === DOORS_PREHUNG_SET_COMPONENT) &&
+    qt009Extraction.workAreas.some((row) => row.type === "internal_walls") &&
+    qt009Extraction.workAreas.some((row) => row.type === "doors") &&
+    qt009Portions.length === 1 &&
+    qt009Portions[0]?.quantity === 1 &&
+    qt009Portions[0]?.installation_type === "prehung_internal" &&
+    qt009Portions[0]?.width_mm === 810 &&
+    qt009Portions[0]?.hardware_included === true
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

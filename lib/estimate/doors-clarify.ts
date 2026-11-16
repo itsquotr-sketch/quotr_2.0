@@ -193,23 +193,33 @@ export function summariseDoorPortion(
   const install = installLine(portion);
   const size = `${qty} × ${height} × ${width} mm`;
   const core = [size, leaf, install].filter(Boolean).join(" ");
-  const hardware =
-    portion.hardware_included === true
-      ? "Standard latch/lever hardware included"
-      : portion.hardware_included === false
-        ? portion.installation_type === "replacement_leaf"
-          ? "Existing frame retained · existing hardware reused"
-          : "No new hardware allowance"
-        : null;
+  const ownership = [
+    portion.leaf_supply === "customer"
+      ? "Customer-supplied door leaf. No purchase charge."
+      : portion.leaf_supply === "contractor"
+        ? "Contractor-supplied door and jamb."
+        : null,
+    portion.hardware_supply === "customer"
+      ? "Customer-supplied handle and latch. No purchase charge. Contractor installs them."
+      : portion.hardware_note
+        ? `Contractor-supplied ${portion.hardware_note}.`
+        : portion.hardware_included === true
+          ? "Standard latch/lever hardware included"
+          : portion.hardware_included === false
+            ? portion.installation_type === "replacement_leaf"
+              ? "Existing hardware reused"
+              : "No new hardware allowance"
+            : null,
+  ].filter(Boolean);
   const frame =
     portion.installation_type === "replacement_leaf" &&
-    portion.hardware_included !== false
+    portion.hardware_supply !== "customer"
       ? "Existing frame retained"
       : null;
   return {
     id: portion.id,
     displayName: portionDisplayName(portion, index),
-    summary: [core, hardware, frame].filter(Boolean).join(" · "),
+    summary: [core, ...ownership, frame].filter(Boolean).join(" · "),
     complete: doorPortionIsInformationComplete(portion),
     specialistRequired: doorPortionMaterialPricingRequired(portion),
   };

@@ -170,6 +170,15 @@ export function priceDoorsMaterial(params: {
   allowPricing: boolean;
 }): MaterialRequirement {
   const { requirement } = params;
+  if (requirement.category === "CLIENT_SUPPLIED") {
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: 0,
+      totalCost: 0,
+      rateSource: "customer_supplied",
+    };
+  }
   if (
     !params.allowPricing ||
     !hasTrustedPhysicalQuantity(requirement.purchaseQuantity)
@@ -306,6 +315,43 @@ function materialLine(params: {
     ? getCatalogueEntry(params.requirement.materialKey)?.unit
     : undefined;
   const unit = catalogueUnit ?? params.requirement.purchaseUnit;
+  if (params.requirement.category === "CLIENT_SUPPLIED") {
+    const line = createRateLineItem({
+      workAreaId: params.requirement.workAreaId,
+      workAreaName: params.workAreaName,
+      label,
+      category: "materials",
+      quantity: params.requirement.purchaseQuantity,
+      unit,
+      costRate: 0,
+      sellRate: 0,
+      rateSource: "Customer supplied",
+      rateSourceType: "user_rate",
+      itemKey: params.requirement.materialKey ?? undefined,
+      componentKey: params.requirement.componentKey,
+      sellDerivedFromMargin: false,
+      sellAuthority: "explicit_sell_override",
+      sortOrder: params.sortOrder,
+      organisationSettings: params.organisationSettings,
+      notes: params.requirement.specification,
+    });
+    return withPricingOwnership(
+      {
+        ...line,
+        nestedItemId,
+        identitySummary: params.requirement.specification,
+        recommendedCost: 0,
+        recommendedSell: 0,
+        includedInTotal: false,
+      },
+      {
+        pricingOwner: "client_supplied",
+        scopeKey,
+        overlapGroup: `doors.set:${nestedItemId}`,
+        includedInTotal: false,
+      }
+    );
+  }
   if (
     !params.requirement.priced ||
     params.requirement.unitCost == null ||

@@ -77,6 +77,7 @@ const REPLACEMENT_PHRASES = [
 const HARDWARE_INCLUDED_PHRASES = [
   "include standard hardware",
   "including standard hardware",
+  "standard hardware",
   "with standard hardware",
   "standard latch",
   "standard lever",
@@ -244,10 +245,44 @@ export function leafConstructionFromSnippet(
   return null;
 }
 
-function hardwareFromSnippet(text: string): boolean | null {
+function hardwareSupplyFromSnippet(
+  text: string
+): "contractor" | "customer" | "existing" | null {
   const raw = normalise(text);
-  if (includesAny(raw, HARDWARE_EXCLUDED_PHRASES)) return false;
-  if (includesAny(raw, HARDWARE_INCLUDED_PHRASES)) return true;
+  const customerHandle =
+    /\b(?:customer|client)(?:-|\s+)supplie[sd]\b[^.]{0,60}\b(?:handle|latch)\b/.test(raw) ||
+    /\b(?:customer|client) supplies the handle\b/.test(raw);
+  const contractorHandle =
+    /\bcontractor-supplied\b[^.]{0,40}\b(?:privacy\s+)?handle\b/.test(raw) ||
+    /\bnew\b[^.]{0,40}\bprivacy handle\b/.test(raw);
+  if (customerHandle && !contractorHandle) return "customer";
+  if (contractorHandle) return "contractor";
+  const existingHinges = /\b(?:reuse existing hinges|existing hinges|keep the hinges)\b/.test(raw);
+  if (includesAny(raw, HARDWARE_EXCLUDED_PHRASES) || existingHinges) return "existing";
+  const included = HARDWARE_INCLUDED_PHRASES.filter((phrase) => phrase !== "hinges");
+  if (includesAny(raw, included)) return "contractor";
+  return null;
+}
+
+function hardwareFromSnippet(text: string): boolean | null {
+  const supply = hardwareSupplyFromSnippet(text);
+  if (supply === "existing") return false;
+  if (supply === "contractor") return true;
+  if (supply === "customer") return false;
+  return null;
+}
+
+function leafSupplyFromSnippet(text: string): "contractor" | "customer" | null {
+  const raw = normalise(text);
+  if (
+    /\b(?:customer|client)(?:-|\s+)supplied\b[^.]{0,50}\bdoor leaf\b/.test(raw) ||
+    /\b(?:customer|client) supplies the door leaf\b/.test(raw)
+  ) {
+    return "customer";
+  }
+  if (/\bwe supply the door and jamb\b/.test(raw) || /\bcontractor supplies the door\b/.test(raw)) {
+    return "contractor";
+  }
   return null;
 }
 
@@ -258,18 +293,33 @@ function stripOpeningQuantityClauses(text: string): string {
   );
 }
 
+function quantityToken(token: string): number | null {
+  const fromWord = QUANTITY_WORDS[token];
+  if (fromWord != null) return fromWord;
+  const numeric = Number(token);
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric < 100) return numeric;
+  return null;
+}
+
 function quantityFromSnippet(text: string): number | null {
   const raw = stripOpeningQuantityClauses(normalise(text));
+  const word = Object.keys(QUANTITY_WORDS)
+    .sort((a, b) => b.length - a.length)
+    .join("|");
+  const tokenGroup = `(\\d{1,2}|${word})`;
+  const specific = raw.match(
+    new RegExp(
+      `\\b${tokenGroup}\\b(?:\\s+[\\w-]+){0,8}\\s+(?:door sets?|door leaves|door leaf)\\b`
+    )
+  );
+  const specificQuantity = specific ? quantityToken(specific[1] ?? "") : null;
+  if (specificQuantity != null) return specificQuantity;
   if (
     /\bdoor assembly\b/.test(raw) &&
     !/\b(?:one|two|three|four|five|six|\d{1,2})\s+door assembly\b/.test(raw)
   ) {
     return 1;
   }
-  const word = Object.keys(QUANTITY_WORDS)
-    .sort((a, b) => b.length - a.length)
-    .join("|");
-  const tokenGroup = `(\\d{1,2}|${word})`;
   const notAMeasure = "(?!\\.\\d|\\s*m(?:m|etre|2|²)?\\b)";
   const patterned = raw.match(
     new RegExp(
@@ -294,17 +344,15 @@ function quantityFromSnippet(text: string): number | null {
   if (!token && raw.includes("door assembly")) return 1;
   if (!token && /\bdoor\b/.test(raw) && !/\bdoors\b/.test(raw)) return 1;
   if (!token) return null;
-  const fromWord = QUANTITY_WORDS[token];
-  if (fromWord != null) return fromWord;
-  const numeric = Number(token);
-  if (Number.isInteger(numeric) && numeric >= 1 && numeric < 100) return numeric;
-  return null;
+  return quantityToken(token);
 }
 
 function locationFromSnippet(text: string): string | null {
+  if (/\blaundry\b/i.test(text)) return "Laundry";
   const bedroomDoors = text.match(/\bbedroom doors?\b/i);
   if (bedroomDoors) return "Bedroom doors";
-  if (/\bbedrooms?\b/i.test(text)) return "Bedrooms";
+  if (/\bbedrooms\b/i.test(text)) return "Bedrooms";
+  if (/\bbedroom\b/i.test(text)) return "Bedroom";
   const ensuite = text.match(/\bensuite\b/i);
   if (ensuite) return "Ensuite";
   const level = text.match(/\blevel\s+(\d+)\b/i);
@@ -591,6 +639,8 @@ function applySnippetToPortion(portion: DoorPortion, snippet: string): void {
   const dims = dimensionsFromSnippet(snippet);
   const quantity = quantityFromSnippet(snippet);
   const hardware = hardwareFromSnippet(snippet);
+  const hardwareSupply = hardwareSupplyFromSnippet(snippet);
+  const leafSupply = leafSupplyFromSnippet(snippet);
   const label = locationFromSnippet(snippet);
   const leaf = leafConstructionFromSnippet(snippet);
   const installation = installationTypeFromSnippet(snippet);
@@ -645,6 +695,11 @@ function applySnippetToPortion(portion: DoorPortion, snippet: string): void {
     portion.hardware_included = hardware;
     portion.hardware_authority = "extracted";
   }
+  if (hardwareSupply != null) {
+    portion.hardware_supply = hardwareSupply;
+    if (/\bprivacy handle\b/i.test(snippet)) portion.hardware_note = "privacy handle";
+  }
+  if (leafSupply != null) portion.leaf_supply = leafSupply;
   if (label) {
     portion.label = label;
     portion.label_authority = "extracted";

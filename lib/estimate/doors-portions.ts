@@ -74,6 +74,14 @@ export const DOORS_FIELD_AUTHORITY_VALUES = [
 export type DoorFieldAuthority =
   (typeof DOORS_FIELD_AUTHORITY_VALUES)[number];
 
+export const DOOR_COMPONENT_SUPPLY_VALUES = [
+  "contractor",
+  "customer",
+  "existing",
+] as const;
+export type DoorComponentSupply =
+  (typeof DOOR_COMPONENT_SUPPLY_VALUES)[number];
+
 export const DOORS_SPECIALIST_KIND_VALUES = [
   "fire_rated",
   "acoustic",
@@ -102,6 +110,11 @@ export type DoorPortion = {
   width_mm: DoorWidthMm | null;
   quantity: number | null;
   hardware_included: boolean | null;
+  /** Who buys the door or leaf. Absent keeps the ordinary purchase. */
+  leaf_supply?: DoorComponentSupply | null;
+  /** Who buys the handle or latch. Existing means reuse, with no new install. */
+  hardware_supply?: DoorComponentSupply | null;
+  hardware_note?: string | null;
   other_description: string | null;
   installation_authority?: DoorFieldAuthority;
   leaf_authority?: DoorFieldAuthority;
@@ -350,6 +363,12 @@ export function parseDoorPortion(value: unknown): DoorPortion | null {
     width_mm: parseDoorWidthMm(value.width_mm),
     quantity: parseDoorQuantity(value.quantity),
     hardware_included: parseTriBool(value.hardware_included),
+    leaf_supply: parseEnum(value.leaf_supply, DOOR_COMPONENT_SUPPLY_VALUES),
+    hardware_supply: parseEnum(value.hardware_supply, DOOR_COMPONENT_SUPPLY_VALUES),
+    hardware_note:
+      typeof value.hardware_note === "string" && value.hardware_note.trim()
+        ? value.hardware_note.trim()
+        : null,
     other_description: parseDoorOtherDescription(value.other_description),
     installation_authority: parseFieldAuthority(value.installation_authority),
     leaf_authority: parseFieldAuthority(value.leaf_authority),
