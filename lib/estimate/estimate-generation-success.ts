@@ -5,13 +5,24 @@
  * Enforced in runEstimateGeneration before persist / estimate_ready.
  */
 
+import { FENCE_MANUAL_SCOPE_COMPONENT } from "@/lib/estimate/fence-manual";
 import { isMatureInternalWallsPath } from "@/lib/estimate/internal-walls-scope";
+import {
+  CONCRETE_PATH_MANUAL_COMPONENT,
+  PAVING_MANUAL_COMPONENT,
+} from "@/lib/estimate/stated-outdoor-scope";
 import type {
   EstimateFact,
   EstimateLineItemInput,
   EstimateResult,
 } from "@/lib/estimate/types";
 import { isMatureSupportedWorkAreaType } from "@/lib/work-areas/support-contract";
+
+const REQUESTED_MANUAL_SCOPE_KEYS = new Set<string>([
+  CONCRETE_PATH_MANUAL_COMPONENT,
+  PAVING_MANUAL_COMPONENT,
+  FENCE_MANUAL_SCOPE_COMPONENT,
+]);
 
 export const ESTIMATE_UNUSABLE_USER_MESSAGE =
   "Quotr couldn't create a usable estimate from the current job details. Review the job details and try again.";
@@ -76,6 +87,20 @@ export function hasMeaningfulEstimateOutput(
   return result.lineItems.some(isIncludedCommercialLine);
 }
 
+function hasRequestedManualScope(
+  result: Pick<EstimateResult, "lineItems">
+): boolean {
+  return result.lineItems.some((item) => {
+    const quantity = item.quantity;
+    return (
+      REQUESTED_MANUAL_SCOPE_KEYS.has(item.componentKey ?? "") &&
+      quantity != null &&
+      Number.isFinite(quantity) &&
+      quantity > 0
+    );
+  });
+}
+
 export function hasPricingRequiredRepresentation(
   result: Pick<EstimateResult, "lineItems">
 ): boolean {
@@ -103,7 +128,10 @@ export function evaluateEstimateGenerationSuccess(params: {
   ) {
     return { ok: true, reason: "guard_not_applicable" };
   }
-  if (hasMeaningfulEstimateOutput(params.result)) {
+  if (
+    hasMeaningfulEstimateOutput(params.result) ||
+    hasRequestedManualScope(params.result)
+  ) {
     return { ok: true, reason: "meaningful_output" };
   }
   return {

@@ -5,6 +5,7 @@
 import { buildMinimalExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { validateAndFilterExtraction } from "../lib/ai/schema";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { evaluateEstimateGenerationSuccess } from "../lib/estimate/estimate-generation-success";
 import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
 import { CONCRETE_PATH_MANUAL_COMPONENT, PAVING_MANUAL_COMPONENT } from "../lib/estimate/stated-outdoor-scope";
 import { FENCE_MANUAL_SCOPE_COMPONENT } from "../lib/estimate/fence-manual";
@@ -160,6 +161,15 @@ check(
     notSureEstimate.missingInfo.includes("Wall material not confirmed") &&
     classifyReviewNotice("Wall material not confirmed") === "scope_gap" &&
     !notSureEstimate.assumptions.some((row) => /timber|H5|sleeper/i.test(row))
+);
+const notSureSaved = evaluateEstimateGenerationSuccess({
+  confirmedWorkAreas: areas,
+  facts: notSureFacts,
+  result: notSureEstimate,
+});
+check(
+  "Not sure still produces a usable estimate for the independent scope",
+  notSureSaved.ok === true
 );
 check(
   "the glass fence can still take a manual price",
