@@ -79,9 +79,10 @@ check(
 );
 const sidebar = read("components/app-sidebar.tsx");
 check(
-  "expanded sidebar uses wordmark on light backing",
+  "expanded sidebar centres the dark-surface wordmark",
   sidebar.includes('variant="wordmark"') &&
-    sidebar.includes("bg-white") &&
+    sidebar.includes("mx-auto flex w-fit items-center justify-center") &&
+    sidebar.includes("filter:url(#quotr-sidebar-wordmark)") &&
     /w-56/.test(sidebar)
 );
 const appShell = read("components/layout/app-shell.tsx");

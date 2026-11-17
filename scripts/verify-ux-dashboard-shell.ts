@@ -158,7 +158,8 @@ check(
     sidebar.includes('label="Organisation"') &&
     sidebar.includes("whitespace-nowrap") &&
     sidebar.includes('variant="wordmark"') &&
-    sidebar.includes("bg-white") &&
+    sidebar.includes("mx-auto flex w-fit items-center justify-center") &&
+    sidebar.includes("filter:url(#quotr-sidebar-wordmark)") &&
     sidebar.includes("Notifications") &&
     sidebar.includes("FeedbackLink") &&
     sidebar.includes("SidebarAccount")

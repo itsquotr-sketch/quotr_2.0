@@ -98,9 +98,10 @@ check(
 
 console.log("\n--- BRAND ---\n");
 check(
-  "sidebar uses official wordmark in a light chip",
+  "sidebar centres the official wordmark with dark-surface colours",
   sidebar.includes('variant="wordmark"') &&
-    sidebar.includes("bg-white") &&
+    sidebar.includes("mx-auto flex w-fit items-center justify-center") &&
+    sidebar.includes("filter:url(#quotr-sidebar-wordmark)") &&
     /h-\[22px\]/.test(sidebar) &&
     !sidebar.includes("object-fill") &&
     /w-56/.test(sidebar)
