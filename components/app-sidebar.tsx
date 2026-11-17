@@ -115,9 +115,20 @@ export function AppSidebarNav({
   return (
     <aside className="hidden h-dvh w-56 shrink-0 flex-col overflow-hidden bg-[#141311] text-[#f3f3f1] print:hidden md:flex">
       <div className="px-5 pt-6 pb-5">
+        <svg aria-hidden="true" className="absolute size-0">
+          <defs>
+            <filter id="quotr-sidebar-wordmark" colorInterpolationFilters="sRGB">
+              {/* Map black to white, retaining the original orange and alpha. */}
+              <feColorMatrix
+                type="matrix"
+                values="-0.040816 0 0 0 1  -0.395918 0 0 0 1  -0.995918 0 0 0 1  0 0 0 1 0"
+              />
+            </filter>
+          </defs>
+        </svg>
         <Link
           href="/app/dashboard"
-          className="inline-flex rounded-sm bg-white px-2 py-1 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141311]"
+          className="mx-auto flex w-fit items-center justify-center rounded-sm px-2 py-1 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141311]"
           aria-label="Quotr"
         >
           <QuotrLogo
@@ -125,7 +136,7 @@ export function AppSidebarNav({
             height={22}
             href={null}
             decorative
-            className="h-[22px] w-auto max-w-none object-contain"
+            className="h-[22px] w-auto max-w-none object-contain [filter:url(#quotr-sidebar-wordmark)]"
           />
         </Link>
         {deploymentLabel ? (
