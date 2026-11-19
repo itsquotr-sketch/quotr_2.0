@@ -8,6 +8,11 @@ import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { PERGOLA_MEASURED_RATE_CATALOGUE } from "../lib/rates/pergola-catalogue";
 import { pergolaFrameKey, pergolaPostKey } from "../lib/estimate/pergola-specification";
 import { hidePergolaQuestion } from "../lib/scopes/pergola-questions";
+import { normaliseAIExtraction } from "../lib/scopes/normalise-extracted-facts";
+import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { detailsSectionForCandidate } from "../lib/assistant/clarify/details-groups";
+import { parseClarifyNumber, parsePositiveClarifyNumber } from "../lib/assistant/clarify/numeric";
+import type { ClarifyCandidate } from "../lib/assistant/clarify/types";
 import { pergolaScope } from "../lib/scopes/templates/pergola";
 import { classifyReviewNotice, issuesFromEstimateRecord } from "../lib/assistant/presentation/estimate-issues";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
@@ -110,6 +115,8 @@ check("gutters use measured length, not perimeter", task(run({ gutters_included:
 check("gutter material does not imply downpipe and installation price", run({ gutters_included: true, gutter_lm: 4, gutter_scope_resolved: true }).missingInfo.some(text => /downpipes/.test(text)));
 const missingScope = run({ finish_required: true });
 check("requested finish cannot silently disappear", missingScope.missingInfo.some(text => /painting \/ staining/.test(text)));
+check("finish acknowledgement does not price the finish", run({ finish_required: true, finish_scope_resolved: true }).missingInfo.some(text => /painting \/ staining/.test(text)));
+check("explicit zero fixings is a complete answer", !run({ fixings_count: 0 }).missingInfo.some(text => /fixing sets/.test(text)) && !task(run({ fixings_count: 0 }), "fixings.each"));
 check("every unpriced scope message participates in completeness", missingScope.missingInfo.every(text => classifyReviewNotice(text) === "scope_gap"));
 check("complete priced lines do not hide scope gap", issuesFromEstimateRecord({ lineItems: missingScope.lineItems, notices: missingScope.missingInfo }).scopeCoverageGapCount > 0);
 const hidden = (name: string, values: Record<string, unknown>) => hidePergolaQuestion(`pergola.${name}`, key => values[key]);
@@ -134,5 +141,67 @@ for (const entry of PERGOLA_MEASURED_RATE_CATALOGUE) {
   const visible = entry.rate_type === "productivity" ? listRegisteredProductivityCatalogueEntries() : entry.rate_type === "subcontractor" ? subcontractRatesCatalogue() : listMaterialsPageCatalogueEntries();
   check(`Rates exposes ${entry.item_key} in its editable section`, visible.some(row => row.item_key === entry.item_key));
 }
+function detailsFor(values: Record<string, unknown>) {
+  return composeClarifyView({
+    stage: "quality",
+    briefText: null,
+    qualityLevel: "standard",
+    workAreas: [{ id: area.id, type: "pergola", name: "Pergola", status: "active" }],
+    facts: Object.entries(values).filter(([, value]) => value !== undefined).map(([key, value]) => ({
+      key: key.startsWith("pergola.") ? key : `pergola.${key}`,
+      work_area_id: area.id,
+      value,
+    })),
+    constraints: [],
+    jobPlan: { cards: [] },
+  });
+}
+const known = detailsFor(base);
+const row = (view: ReturnType<typeof detailsFor>, name: string) => view.candidates.find(candidate => candidate.factKey === `pergola.${name}`);
+const sectionLabels = (view: ReturnType<typeof detailsFor>) => view.groups.flatMap(group => group.sections.map(section => section.label));
+check("known length stays visible and editable", row(known, "length_m")?.currentValue === 4 && row(known, "length_m")?.retainAnswered === true);
+check("applicable hole questions stay visible for embedded posts", Boolean(row(known, "hole_depth_m")) && Boolean(row(known, "hole_diameter_m")));
+check("fixed bases hide hole questions in Details", !row(detailsFor({ ...base, ...fixed }), "hole_depth_m") && Boolean(row(detailsFor({ ...base, ...fixed }), "base_confirmed")));
+check("supplier packages hide timber component questions", !row(detailsFor({ material: "Aluminium", roof_type: "Louvred", package_mode: "Supply only", length_m: 4, width_m: 3, fixings_count: 0 }), "post_section") && Boolean(row(detailsFor({ material: "Aluminium", roof_type: "Louvred", package_mode: "Supply only", length_m: 4, width_m: 3, fixings_count: 0 }), "package_mode")));
+const unresolved = detailsFor({ ...base, engineering_or_consent_status: "Not sure", length_m: undefined });
+check("Not sure design basis stays unresolved and visible", row(unresolved, "engineering_or_consent_status")?.currentValue === "Not sure" && row(unresolved, "engineering_or_consent_status")?.assumable === false && row(unresolved, "engineering_or_consent_status")?.blocksEstimate === false);
+check("missing applicable length stays in Details", row(unresolved, "length_m")?.currentValue == null);
+check("explicit No stays visible", row(known, "removal_included")?.currentValue === "No");
+check("explicit zero fixings stays visible", row(detailsFor({ ...base, fixings_count: 0 }), "fixings_count")?.currentValue === 0 && row(detailsFor({ ...base, fixings_count: 0 }), "fixings_count")?.allowZero === true);
+check("enclosed layout can answer enclosure scope", Boolean(row(detailsFor({ ...base, attached: "Semi-enclosed or enclosed" }), "enclosure_confirmed")));
+check("freestanding layout hides enclosure scope", !row(known, "enclosure_confirmed"));
+check("removal Yes exposes disposal acknowledgement", Boolean(row(detailsFor({ ...base, removal_included: true }), "removal_disposal_resolved")));
+check("gutter Yes exposes installation acknowledgement", Boolean(row(detailsFor({ ...base, gutters_included: true }), "gutter_scope_resolved")));
+check("finish Yes exposes finish acknowledgement", Boolean(row(detailsFor({ ...base, finish_required: true }), "finish_scope_resolved")));
+check("pergola questions do not block a partial estimate", known.candidates.filter(candidate => candidate.factKey?.startsWith("pergola.")).every(candidate => candidate.blocksEstimate === false && candidate.askClass === "ASSUME_IF_SKIPPED") && known.canEstimateNow === true && known.enoughToEstimate === true);
+check("pergola Details are grouped", ["Dimensions", "Materials", "Structure", "Scope"].every(label => sectionLabels(known).includes(label)));
+check("positive number parser still rejects zero", parsePositiveClarifyNumber("0").ok === false && parsePositiveClarifyNumber("4").ok === true);
+check("fixing count parser accepts explicit zero", parseClarifyNumber("0", { allowZero: true }).ok === true && parseClarifyNumber("-1", { allowZero: true }).ok === false);
+const deckOnly = composeClarifyView({
+  stage: "quality",
+  briefText: null,
+  qualityLevel: "standard",
+  workAreas: [{ id: "deck-1", type: "deck", name: "Deck", status: "active" }],
+  facts: [],
+  constraints: [],
+  jobPlan: { cards: [] },
+});
+check("shared Details composition does not add pergola questions to a deck", deckOnly.candidates.every(candidate => !candidate.factKey?.startsWith("pergola.")));
+check("deck length remains a dimensions question", detailsSectionForCandidate({ factKey: "deck.length_m", workAreaType: "deck", source: "scope_fact", writeTarget: "FACT", constraintKey: null } as ClarifyCandidate) === "dimensions");
+const stripped = normaliseAIExtraction({
+  workAreas: [{ type: "pergola", confidence: 0.9, rationale: "test" }],
+  facts: [
+    { work_area_type: "pergola", key: "pergola.post_section", label: "Post section", value: "100x100", confidence: 0.9 },
+    { work_area_type: "pergola", key: "pergola.post_specification", label: "Custom post", value: "Yes", confidence: 0.9 },
+    { work_area_type: "pergola", key: "pergola.frame_section", label: "Frame", value: "Custom", confidence: 0.9 },
+    { work_area_type: "pergola", key: "pergola.frame_specification", label: "Custom frame", value: "Yes", confidence: 0.9 },
+  ],
+  assumptions: [],
+  possibleConstraints: [],
+  confidence: 0.9,
+  warnings: [],
+});
+check("standard post does not keep a custom confirmation", !stripped.facts.some(fact => fact.key === "pergola.post_specification"));
+check("custom frame confirmation is kept", stripped.facts.some(fact => fact.key === "pergola.frame_specification" && fact.value === "Yes"));
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

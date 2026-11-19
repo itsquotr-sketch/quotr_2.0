@@ -13,6 +13,7 @@ import { isAssumableProjectConditionKey } from "@/lib/scopes/level1-blocking";
 import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
 import { sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
 import { groupDetailsCandidates } from "@/lib/assistant/clarify/details-groups";
+import { pergolaClarifyCandidates } from "@/lib/estimate/pergola-details";
 import {
   questionPresentationId,
   wallTypeQuestionIdentity,
@@ -2508,6 +2509,7 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
   raw.push(...extraCommercialFacts(input));
   raw.push(...projectConditionCandidates(input));
   raw.push(...kitchenPackageChoiceCandidates(input));
+  raw.push(...pergolaClarifyCandidates(input));
 
   const filtered = raw.filter((c) => c.askClass !== "ADVANCED");
   const ranked = sortClarifyCandidates(filtered);
@@ -2569,6 +2571,7 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
   const withCurrent = (rows: readonly ClarifyCandidate[]): ClarifyCandidate[] =>
     rows.map((candidate) => {
       const aliased = withNestedIdentityAliases(candidate);
+      if (aliased.factKey?.startsWith("pergola.")) return aliased;
       const key = aliased.constraintKey ?? aliased.factKey;
       if (!key) return aliased;
       if (

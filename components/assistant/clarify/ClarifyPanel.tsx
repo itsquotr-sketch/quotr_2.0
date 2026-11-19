@@ -20,6 +20,7 @@ import {
   mobileActionDockClass,
   mobileActionInnerClass,
 } from "@/components/layout/mobile-nav-metrics";
+import { isNotSureValue } from "@/lib/estimate/facts";
 import { cn } from "@/lib/utils";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 import {
@@ -167,6 +168,11 @@ function ClarifyQuestion({
       >
         {candidate.question}
       </p>
+      {isNotSureValue(value) ? (
+        <p className="text-xs text-muted-foreground" data-clarify-unresolved="not-sure">
+          Not sure is saved. Choose an answer when you have one. This does not confirm the work.
+        </p>
+      ) : null}
       {showWhy && whyText ? (
         <p className="text-xs text-muted-foreground" data-why-this-matters>
           {whyText}
@@ -381,7 +387,7 @@ export function ClarifyPanel({
     });
     if (hold) {
       setHeldPendingId(candidate.id);
-    } else {
+    } else if (!candidate.retainAnswered) {
       advance(candidate);
     }
     let failed = false;
@@ -395,7 +401,7 @@ export function ClarifyPanel({
             presentation,
           };
           rollbackFailedClarifyPersist(candidate);
-        } else if (hold) {
+        } else if (hold && !candidate.retainAnswered) {
           lastFailedAnswerRef.current = null;
           advance(candidate);
         } else {
@@ -437,7 +443,7 @@ export function ClarifyPanel({
     });
     if (hold) {
       setHeldPendingId(candidate.id);
-    } else if (!unknownStaysOpen) {
+    } else if (!unknownStaysOpen && !candidate.retainAnswered) {
       advance(candidate);
     }
     let failed = false;
@@ -447,7 +453,7 @@ export function ClarifyPanel({
         if (failed) {
           lastFailedAnswerRef.current = { mode: "value", candidate, value };
           rollbackFailedClarifyPersist(candidate);
-        } else if (hold && !unknownStaysOpen) {
+        } else if (hold && !unknownStaysOpen && !candidate.retainAnswered) {
           lastFailedAnswerRef.current = null;
           advance(candidate);
         } else {

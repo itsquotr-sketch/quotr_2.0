@@ -56,6 +56,12 @@ export type ClarifyCandidate = {
   readonly nestedItemId?: string | null;
   /** Generic nested component (Bulkhead; Internal Walls alias of openingId). */
   readonly componentId?: string | null;
+  /** Number fields that accept an explicit zero, such as fixing sets. */
+  readonly allowZero?: boolean;
+  /** Number fields that can record Not sure without treating it as an assumption. */
+  readonly allowNotSure?: boolean;
+  /** Keep the answered row visible so a known fact stays editable. */
+  readonly retainAnswered?: boolean;
 };
 
 export type NestedItemPanelItem = {

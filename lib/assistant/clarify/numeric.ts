@@ -28,16 +28,29 @@ export function resolveClarifyUnit(input: {
   return getQuestionTemplateByKey(key)?.unit;
 }
 
-export function parsePositiveClarifyNumber(
-  raw: string
+export function parseClarifyNumber(
+  raw: string,
+  options?: { allowZero?: boolean }
 ): { ok: true; value: number } | { ok: false; error: string } {
   const trimmed = raw.trim();
   if (!trimmed) {
     return { ok: false, error: "Enter a number." };
   }
   const value = Number(trimmed);
-  if (!Number.isFinite(value) || value <= 0) {
-    return { ok: false, error: "Enter a number greater than zero." };
+  const allowed = options?.allowZero ? value >= 0 : value > 0;
+  if (!Number.isFinite(value) || !allowed) {
+    return {
+      ok: false,
+      error: options?.allowZero
+        ? "Enter zero or a number greater than zero."
+        : "Enter a number greater than zero.",
+    };
   }
   return { ok: true, value };
+}
+
+export function parsePositiveClarifyNumber(
+  raw: string
+): { ok: true; value: number } | { ok: false; error: string } {
+  return parseClarifyNumber(raw);
 }

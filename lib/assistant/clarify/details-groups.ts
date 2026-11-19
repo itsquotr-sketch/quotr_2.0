@@ -22,6 +22,10 @@ import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 import { DOORS_CONTRACT_FACT_ORDER } from "@/lib/estimate/doors-information-contract";
 import { CLADDING_CONTRACT_FACT_ORDER } from "@/lib/estimate/cladding-information-contract";
+import {
+  PERGOLA_DETAILS_FACT_ORDER,
+  pergolaDetailsSectionId,
+} from "@/lib/estimate/pergola-details";
 
 export type DetailsSectionId =
   | "dimensions"
@@ -118,6 +122,8 @@ export function detailsSectionForCandidate(
     }
     const descriptor = getDeckQuestionDescriptor(candidate.factKey);
     if (descriptor) return DECK_SECTION_TO_GROUP[descriptor.section];
+    const pergolaSection = pergolaDetailsSectionId(candidate.factKey);
+    if (pergolaSection) return pergolaSection;
   }
   return "details";
 }
@@ -153,6 +159,9 @@ function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
   if (aCladding != null && bCladding != null && aCladding !== bCladding) {
     return aCladding - bCladding;
   }
+  const aPergola = a.factKey ? PERGOLA_DETAILS_FACT_ORDER.get(a.factKey) : undefined;
+  const bPergola = b.factKey ? PERGOLA_DETAILS_FACT_ORDER.get(b.factKey) : undefined;
+  if (aPergola != null && bPergola != null && aPergola !== bPergola) return aPergola - bPergola;
   return a.questionKey.localeCompare(b.questionKey);
 }
 

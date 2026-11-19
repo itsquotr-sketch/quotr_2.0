@@ -30,3 +30,29 @@ export function hidePergolaQuestion(key: string, value: (name: string) => unknow
   if (name === "finish_scope_resolved") return !yes("finish_required");
   return false;
 }
+
+type ExtractedPergolaFact = {
+  key: string;
+  value: unknown;
+  work_area_id?: string | null;
+  work_area_type?: string | null;
+};
+
+/** A standard section is not a custom specification. Drop a Yes that the extractor attached to one. */
+export function dropUngroundedPergolaConfirmations<T extends ExtractedPergolaFact>(
+  facts: readonly T[]
+): T[] {
+  const customPost = new Set<string>();
+  const customFrame = new Set<string>();
+  for (const fact of facts) {
+    const bucket = fact.work_area_id ?? fact.work_area_type ?? "";
+    if (fact.key === "pergola.post_section" && fact.value === "Custom") customPost.add(bucket);
+    if (fact.key === "pergola.frame_section" && fact.value === "Custom") customFrame.add(bucket);
+  }
+  return facts.filter((fact) => {
+    const bucket = fact.work_area_id ?? fact.work_area_type ?? "";
+    if (fact.key === "pergola.post_specification" && !customPost.has(bucket)) return false;
+    if (fact.key === "pergola.frame_specification" && !customFrame.has(bucket)) return false;
+    return true;
+  });
+}

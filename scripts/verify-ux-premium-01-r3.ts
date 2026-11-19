@@ -265,7 +265,8 @@ check(
     parsePositiveClarifyNumber("-1").ok === false &&
     parsePositiveClarifyNumber("abc").ok === false &&
     parsePositiveClarifyNumber("10").ok === true &&
-    valueField.includes("parsePositiveClarifyNumber")
+    valueField.includes("parseClarifyNumber") &&
+    valueField.includes("allowZero: candidate.allowZero === true")
 );
 check(
   16,

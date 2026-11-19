@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import {
   clarifyFieldIdentity,
-  parsePositiveClarifyNumber,
+  parseClarifyNumber,
   resolveClarifyUnit,
 } from "@/lib/assistant/clarify/numeric";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
@@ -26,8 +26,14 @@ type LocalField = {
   lastSubmitted: string | null;
 };
 
-function emptyLocal(identity: string): LocalField {
-  return { identity, draft: "", error: null, lastSubmitted: null };
+function seedDraft(candidate: ClarifyCandidate): string {
+  const value = candidate.currentValue;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function emptyLocal(identity: string, draft = ""): LocalField {
+  return { identity, draft, error: null, lastSubmitted: null };
 }
 
 export function ClarifyValueField({
@@ -46,12 +52,14 @@ export function ClarifyValueField({
         factKey: candidate.factKey,
       })
     : undefined;
-  const [local, setLocal] = useState<LocalField>(() => emptyLocal(fieldKey));
+  const [local, setLocal] = useState<LocalField>(() =>
+    emptyLocal(fieldKey, seedDraft(candidate))
+  );
 
   // Reset draft when the asked fact changes without unmounting. A React `key`
   // remount would abort an in-flight Save server action started from this field.
   if (local.identity !== fieldKey) {
-    setLocal(emptyLocal(fieldKey));
+    setLocal(emptyLocal(fieldKey, seedDraft(candidate)));
   }
   const active = local.identity === fieldKey ? local : emptyLocal(fieldKey);
   const draft = active.draft;
@@ -61,7 +69,9 @@ export function ClarifyValueField({
   const commit = () => {
     if (isSaving) return;
     if (isNumber) {
-      const parsed = parsePositiveClarifyNumber(draft);
+      const parsed = parseClarifyNumber(draft, {
+        allowZero: candidate.allowZero === true,
+      });
       if (!parsed.ok) {
         setLocal({ ...active, error: parsed.error });
         return;
@@ -87,6 +97,7 @@ export function ClarifyValueField({
     <div
       className="space-y-2"
       data-clarify-value-field="true"
+      data-clarify-allow-zero={candidate.allowZero ? "true" : undefined}
       data-clarify-field-key={fieldKey}
       data-clarify-fact-key={candidate.factKey ?? undefined}
       data-clarify-input-type={candidate.inputType}
@@ -148,6 +159,21 @@ export function ClarifyValueField({
       >
         {ASSISTANT_ACTION_LABELS.save}
       </Button>
+      {candidate.allowNotSure ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 w-full sm:w-auto"
+          disabled={isSaving || disabled}
+          data-clarify-not-sure="true"
+          onClick={() => {
+            if (isSaving || disabled) return;
+            onSubmit("Not sure");
+          }}
+        >
+          Not sure
+        </Button>
+      ) : null}
       {candidate.assumable && !candidate.blocksEstimate ? (
         <Button
           type="button"

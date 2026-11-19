@@ -6,6 +6,7 @@ import {
   normalizeCanonicalFactKey,
 } from "@/lib/scopes/fact-keys";
 import { roundToTwoDecimals, toPositiveNumber } from "@/lib/scopes/fact-values";
+import { dropUngroundedPergolaConfirmations } from "@/lib/scopes/pergola-questions";
 
 const FORBIDDEN_PRICING_KEY_FRAGMENTS = [
   "price",
@@ -1077,7 +1078,7 @@ export function normaliseAIExtraction(
 
   return {
     ...extraction,
-    facts,
+    facts: dropUngroundedPergolaConfirmations(facts),
   };
 }
 
