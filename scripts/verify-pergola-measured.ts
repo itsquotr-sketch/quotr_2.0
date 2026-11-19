@@ -253,5 +253,20 @@ check(
   "an existing estimate can change structural confirmation in Refine",
   structural?.currentValue === "Confirmed" && structural.options?.includes("Not sure") === true
 );
+const unresolvedStructural = composeRefineView({
+  briefText: null,
+  qualityLevel: null,
+  workAreas: [{ id: "pergola-1", type: "pergola", name: "Pergola", status: "included" }],
+  facts: [{ key: "pergola.engineering_or_consent_status", work_area_id: "pergola-1", value: "Not Sure", source: "user" }],
+  constraints: [],
+  jobPlan: { cards: [] },
+});
+const recoverable = [...unresolvedStructural.highValue, ...unresolvedStructural.advanced].find(
+  (row) => row.factKey === "pergola.engineering_or_consent_status"
+);
+check(
+  "Not sure structural confirmation stays editable in Refine",
+  recoverable?.currentValue === "Not Sure" && recoverable.options?.includes("Confirmed") === true
+);
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

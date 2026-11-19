@@ -208,7 +208,7 @@ function answeredConsumedEditCandidates(
       const row = input.facts.find(
         (fact) => fact.key === factKey && fact.work_area_id === wa.id
       );
-      if (!row || !isResolvedValue(row.value)) continue;
+      if (!row || (!isResolvedValue(row.value) && !isNotSureValue(row.value))) continue;
       const template = getQuestionTemplateByKey(factKey);
       const priority = template ? getEstimatePriorityClass(template) : null;
       out.push({
