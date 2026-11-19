@@ -65,6 +65,7 @@ check("concrete deducts post displacement and rounds bags once", task(result, "c
 check("concreting hours follow bags", task(result, "concrete_place.hours_per_bag")?.labourHours === 1.8);
 check("beams and rafters keep distinct commercial identities", frames[0]?.componentKey !== frames[1]?.componentKey);
 check("all emitted component identities are distinct", new Set(result.lineItems.map(item => item.componentKey)).size === result.lineItems.length);
+check("every pergola line keeps a stable requirement identity", result.lineItems.every(item => item.scopeKey && item.scopeKey === item.componentKey));
 check("integrated estimator retains both timber components", calculateEstimate(context()).lineItems.filter(item => item.itemKey === pergolaFrameKey("Treated Pine", "140x45 H3.2")).length === 2);
 check("spacing exact multiple has no extra rafter", task(run({ length_m: 4.5 }), "frame_install.hours_per_lm")?.quantity === 42);
 check("alternate span direction changes rafter quantities", run({ rafter_direction: "Span length" }).lineItems.find(item => item.componentKey === "pergola.rafter_timber")?.quantity === 26.4);

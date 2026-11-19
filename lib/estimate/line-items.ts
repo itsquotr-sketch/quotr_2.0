@@ -106,6 +106,8 @@ export function createLabourLineItem(params: {
   rateSourceType?: RateSourceType;
   itemKey?: string;
   componentKey?: string;
+  /** Stable requirement identity. Regeneration replaces estimate line ids. */
+  scopeKey?: string;
   sellDerivedFromMargin?: boolean;
   sellAuthority?: SellAuthority;
   notes?: string;
@@ -165,6 +167,7 @@ export function createLabourLineItem(params: {
       identitySummary,
       sortOrder: params.sortOrder,
       componentKey: params.componentKey,
+      scopeKey: params.scopeKey,
       productivitySourceType,
       ...buildAmounts(
         money.recommendedCost,
@@ -255,6 +258,8 @@ export function createRateLineItem(params: {
   rateSourceType?: RateSourceType;
   itemKey?: string;
   componentKey?: string;
+  /** Stable requirement identity. Regeneration replaces estimate line ids. */
+  scopeKey?: string;
   sellDerivedFromMargin?: boolean;
   sellAuthority?: SellAuthority;
   notes?: string;
@@ -285,6 +290,7 @@ export function createRateLineItem(params: {
         `${params.quantity} ${params.unit} × $${params.costRate}/${params.unit} cost`,
       sortOrder: params.sortOrder,
       componentKey: params.componentKey,
+      scopeKey: params.scopeKey,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,
@@ -314,6 +320,8 @@ export function createAllowanceLineItem(params: {
   rateSourceType?: RateSourceType;
   itemKey?: string;
   componentKey?: string;
+  /** Stable requirement identity. Regeneration replaces estimate line ids. */
+  scopeKey?: string;
   sellDerivedFromMargin?: boolean;
   sellAuthority?: SellAuthority;
   notes?: string;
@@ -347,6 +355,7 @@ export function createAllowanceLineItem(params: {
       notes: params.notes,
       sortOrder: params.sortOrder,
       componentKey: params.componentKey,
+      scopeKey: params.scopeKey,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,

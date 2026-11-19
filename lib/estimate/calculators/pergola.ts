@@ -47,7 +47,7 @@ export function calculatePergola(context: EstimateContext, workArea: EstimateWor
     lineItems.push(createRateLineItem({ workAreaId: workArea.id, workAreaName: workArea.name, label, category,
       quantity, unit, costRate: priced ? rate.costRate : 0, sellRate: priced ? rate.sellRate : 0,
       rateSource: priced ? rate.sourceLabel : "Pricing required", rateSourceType: priced ? "user_rate" : "missing",
-      itemKey: key, componentKey: component, notes: `${notes}${priced ? "" : " Pricing required. No component cost is assumed."}`.trim(),
+      itemKey: key, componentKey: component, scopeKey: component, notes: `${notes}${priced ? "" : " Pricing required. No component cost is assumed."}`.trim(),
       sortOrder: lineItems.length + 1, organisationSettings: context.organisationSettings }));
   };
   const labour = (task: string, label: string, quantity: number, unit: string, notes = "") => {
@@ -64,7 +64,7 @@ export function calculatePergola(context: EstimateContext, workArea: EstimateWor
       labourCostRate: hourly.costRate, labourSellRate: hourly.sellRate, adjustmentFactor: labourAdjustment,
       rateSource: valid && hourly.costRate > 0 ? hourly.sourceLabel : "Pricing required",
       rateSourceType: valid && hourly.costRate > 0 ? hourly.sourceType : "missing",
-      productivitySourceType: valid ? "user_rate" : "missing", itemKey: key, componentKey: key,
+      productivitySourceType: valid ? "user_rate" : "missing", itemKey: key, componentKey: key, scopeKey: key,
       notes: `${notes} ${valid ? "Company productivity." : "Pricing required: formation / installation hours are not assumed."}`.trim(),
       sortOrder: lineItems.length + 1, organisationSettings: context.organisationSettings }));
   };
