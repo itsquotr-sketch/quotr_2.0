@@ -38,6 +38,7 @@ export type MaterialCategoryId =
   | "paint_stopping"
   | "trim"
   | "bathroom"
+  | "pergola"
   | "deck"
   | "fence"
   | "retaining"
@@ -82,6 +83,7 @@ export const MATERIAL_CATEGORY_ORDER: readonly MaterialCategoryId[] = [
   "paint_stopping",
   "trim",
   "bathroom",
+  "pergola",
   "deck",
   "fence",
   "retaining",
@@ -101,6 +103,7 @@ export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
   paint_stopping: "Paint & stopping",
   trim: "Trim",
   bathroom: "Bathroom finishes",
+  pergola: "Pergola",
   deck: "Deck",
   fence: "Fence",
   retaining: "Retaining walls",
@@ -110,6 +113,7 @@ export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
 };
 
 export const MATERIAL_WORK_AREA_LABELS: Record<string, string> = {
+  pergola: "Pergola",
   deck: "Deck",
   fence: "Fence",
   retaining_wall: "Retaining Wall",
@@ -319,6 +323,15 @@ export function classifyMaterialPresentation(
 ): MaterialPresentation {
   const key = entry.item_key;
   const leftover = entry.calculatorSupport === "leftover";
+
+  if (key.startsWith("pergola.measured.")) {
+    const family = key.split(".")[2] ?? "components";
+    const names: Record<string, string> = { post: "Pergola posts", frame: "Pergola framing", roof: "Pergola coverings", anchor: "Pergola anchors", concrete: "Pergola concrete", fixings: "Pergola fixings" };
+    return base({ categoryId: "pergola", familyId: `pergola-${family}`, familyName: names[family] ?? "Pergola components",
+      familyDescription: "Exact measured component cost. No historical m² allowance or assumed company rate.",
+      variantLayout: "generic", thickness: null, sheetSize: null, section: null, gradeTreatment: null,
+      colourType: entry.label, usedInWorkAreaTypes: ["pergola"], ordinary: true, legacyKind: null, aliasOfKey: null });
+  }
 
   const genericPb = LEGACY_PLASTERBOARD_GENERIC[key];
   if (genericPb) {

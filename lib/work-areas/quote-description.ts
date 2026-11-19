@@ -288,70 +288,16 @@ function buildPergolaDraft(
   facts: WorkAreaQuoteFact[] | undefined,
   pricingItems?: WorkAreaQuotePricingItem[]
 ): string {
-  const area = factValue(facts, "pergola.area_m2");
   const material = factValue(facts, "pergola.material");
-
-  let draft =
-    "Supply and install pergola works to the agreed project scope, including frame and material allowance, fixings and associated installation works.";
-
-  if (area) {
-    draft = `Supply and install approximately ${area} m² of pergola works to the agreed project scope, including frame and material allowance, fixings and associated installation works.`;
-  } else if (material) {
-    draft = `Supply and install ${material.toLowerCase()} pergola works to the agreed project scope, including frame and material allowance, fixings and associated installation works.`;
-  }
-
-  if (isAffirmative(factValue(facts, "pergola.roofing_included"))) {
-    draft = appendScopeClause(
-      draft,
-      "Roof or covering allowance is included where applicable."
-    );
-  }
-
-  const attachment = factValue(facts, "pergola.attached");
-  if (attachment && attachment.toLowerCase() !== "not sure") {
-    draft = appendScopeClause(
-      draft,
-      `Pergola is intended as ${attachment.toLowerCase()} construction within the agreed scope.`
-    );
-  }
-
-  const roofingType = factValue(facts, "pergola.roofing_type");
-  if (roofingType && isAffirmative(factValue(facts, "pergola.roofing_included"))) {
-    draft = appendScopeClause(
-      draft,
-      `${roofingType} roof or covering is included where applicable.`
-    );
-  }
-
-  if (isAffirmative(factValue(facts, "pergola.gutters_included"))) {
-    draft = appendScopeClause(
-      draft,
-      "Gutter or drainage allowance is included where applicable."
-    );
-  }
-
-  if (isAffirmative(factValue(facts, "pergola.footings_required"))) {
-    draft = appendScopeClause(
-      draft,
-      "Post footings or concrete pads are included where applicable."
-    );
-  }
-
-  const finishType = factValue(facts, "pergola.finish_type");
-  if (isAffirmative(factValue(facts, "pergola.finish_required"))) {
-    draft = appendScopeClause(
-      draft,
-      finishType
-        ? `${finishType.replace(/_/g, " ")} finish is included where applicable.`
-        : "Painting or staining finish is included where applicable."
-    );
-  }
-
-  draft = enrichFromPricingItems(draft, pricingItems);
-
-  return finalizeDraft(
-    `${draft} Final material selections, fixing details, drainage, access and any required consenting or engineering requirements are subject to confirmation.`
-  );
+  const length = factValue(facts, "pergola.length_m");
+  const width = factValue(facts, "pergola.width_m");
+  const layout = factValue(facts, "pergola.attached");
+  const roof = factValue(facts, "pergola.roof_type");
+  const parts = [material ? `${material} pergola` : "Pergola works"];
+  if (length && width) parts.push(`${length} m × ${width} m`);
+  if (layout && layout !== "Not sure") parts.push(layout);
+  if (roof && roof !== "Not sure") parts.push(roof);
+  return finalizeDraft(enrichFromPricingItems(`${parts.join(". ")}. Work is limited to the priced items and stated specifications. Foundation, house attachment, enclosure and design requirements are subject to the recorded confirmations.`, pricingItems));
 }
 
 function buildFenceDraft(

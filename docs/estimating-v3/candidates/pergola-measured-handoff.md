@@ -1,0 +1,45 @@
+# V3-020 — measured pergola candidate
+
+Status: local implementation and deterministic checks, awaiting exact-SHA hosted Preview QA and independent release review. Not integrated or published. Baseline: `2252045b10e161bfd9bd0db3f6983f15d29bd565`. No migration. No company rates or customer data were changed.
+
+## Product contract
+
+- Explicit material: Timber / Aluminium / Steel. Layout: attached / freestanding / semi-enclosed or enclosed. Roof: louvred / fixed / open-rafter or slat. Length, width, above-ground height and integer upright count stay separate; no 15 m² default or borrowing a deck's area.
+- Timber species uses Quotr's existing species vocabulary. Standard post sections are 100×100 and 125×125. Treatment, support detail and suitability are confirmed inputs, not structural design defaults. H4 is available when specified; it is not automatically selected for structural in-ground supports. The H3.2 140×45 framing option and 450 mm centres are choices, not span certification.
+- Post supply = count × (above-ground height + specified embedment) × one supply-waste factor, in lm. Post installation = above-ground installed lm × company h/lm. Excavation / concreting handle below-ground setting separately. Fixed bases have no holes, embedment or concrete and use separately counted anchor sets.
+- Circular-hole concrete = count × (π × diameter² / 4 × hole depth − square-post area × embedment). Divide by selected bag yield and round up once across the job. An explicitly specified total bag count overrides this calculation. No hole dimensions, bag yield or concrete waste are invented. Excavation h/hole and concrete placement h/bag are separate productivity keys; company productivity must suit the nominated dimensions, ground and method.
+- Confirmed rectangular layout = nominal perimeter 2 × (length + width), plus internal infill. Infill count = max(0, ceil(run / maximum centres) − 1), multiplied by the perpendicular span. End members and the attached ledger are already in the perimeter, never added again as infill. This is a nominal linear takeoff, not a cut/joint, stock-length, splice or structural schedule. Use measured beam and rafter totals for a different arrangement. Supply waste affects timber purchase once; framing h/lm uses net installed lm. Distinct component identities prevent perimeter and infill from merging.
+- Additional top slats are separate from structural infill: measured m² covering and installation h/m². Fixed covering supports Polycarbonate, Acrylic, Shade fabric, Slats, Colorsteel or a specified Other product. Actual covering area, pitch/overhang/product coverage and waste must be confirmed; no automatic footprint substitution or waterproofing claim for slats/fabric.
+- Aluminium, steel and any louvred roof use one complete supplier package in m². Supply-only removes individual post/frame/covering/footing materials and keeps contractor kit installation h/m². Supply-and-install suppresses that installation. Contractor fixing sets are separately specified (0 is valid when included). The supplier package must cover the selected roof, frame and supports; other package boundaries require further modelling rather than silently adding component charges.
+- House attachment has a confirmation and measured flashing/attachment cost in lm for self-performed timber. Ledger timber is already in the frame. Enclosures, removal disposal/hazardous work, gutter installation/downpipes and painting remain explicit unpriced scope unless separately modelled. Requested extras cannot disappear through a Yes acknowledgement. Removal labour and gutter material can generate independently; they do not establish a complete price for those extras.
+- No new component prices or productivity benchmarks were fabricated. Rates exposes material components under Pergola, packages under Subcontracts and hours under Productivity. Missing prices/hours remain missing; the existing hourly labour benchmark is disclosed only when the company allows it. Saved component/productivity/hourly changes flag pergola estimates stale, with org-scoped pagination. Builders explicitly regenerate. Pricing edits and issued snapshots retain their existing protections.
+- All new question templates allow partial generation; irrelevant timber, hole, roof and optional-extra questions are hidden by the selected path. Unresolved pergola facts enter the shared scope-gap classification, keeping complete review and quote creation blocked even when generated lines are priced.
+
+## Local evidence
+
+Local result: 179 passed, 0 failed. Typecheck and focused ESLint passed (no product errors). Partial-estimate readiness passed 30/30; pricing ownership, recalculation preservation and pricing-draft reconciliation passed. No live model calls, Preview database writes or Production operations were performed.
+
+Run `npx tsx scripts/verify-pergola-measured.ts`. Test rates are deliberately synthetic (cost 10 per component, productivity 0.1 h/unit, carpenter 60/h, labourer 40/h). They are not pricing recommendations and must not become company defaults.
+
+Also run typecheck and the existing partial-estimate, pricing ownership, recalculation preservation and pricing-draft reconciliation verifiers. Broader Rates suites have four baseline failures: Materials (derived plasterboard / approved 10 mm Standard) and Productivity (cornice benchmark / company override). These fail identically on baseline 2252045b and this candidate; do not call those suites passing.
+
+## Frozen hosted Preview acceptance
+
+Use only Preview Supabase `shhpjsoldmqtkdbgrbtm` and the existing isolated organisation `0767b04e-31c2-4679-a275-16201135df02`. Verify deployment SHA, valid service role and organisation before creating a job. Do not read secrets into evidence. New branches may inherit the known invalid shared Preview service-role setting: fix only the candidate Preview configuration through the established secure path if needed. Do not touch Production variables.
+
+1. Analyse a fresh, dedicated timber brief with 4×3 m footprint, 2.4 m height, four posts, confirmed H5 100×100, concrete embedment 0.6 m, holes Ø0.3×0.7 m, soil/hand digging, spoil retained, bag yield 0.01 m³, 140×45 H3.2 frame, rectangular internal infill at 450 mm spanning width, 10% timber waste, 8 fixing sets, no extra top slats/removal/gutters/finish. Confirm the actual design basis through Details; extraction must not invent that confirmation. Before tester answers, inspect stated facts and ensure they are not re-asked. With synthetic rates, expect posts 13.2 lm, perimeter 15.4 lm purchased, infill 26.4 lm purchased, frame installation 38 net lm, four holes, 18 concrete bags, concreting 1.8 h. Reload keeps the facts and lines.
+2. Fixed-base control: no holes/concrete, posts 10.56 lm purchased, four anchors. Unconfirmed base keeps a scope gap without removing independent framing.
+3. Aluminium and steel: compare supply-only with supply-and-install. Exactly one supplier package, 12 m². No separately purchased post/frame/roof/concrete components. Supply-only has kit installation, full package does not. Louvred timber selection uses the louvred package, never both timber framing and a kit.
+4. Actual fixed-roof area 14 m² remains 14, not footprint 12. Separate top slats remain distinct from structural framing.
+5. Missing count, support detail, company component cost and productivity: independent work can generate, missing work stays visible, no old pergola m² cost appears, and unresolved scope blocks complete Pricing review / quote creation.
+6. Attached / semi-enclosed / removal / gutters / finish controls: show appropriate questions and explicit missing scope; no inferred structural compliance, disposal cost or drainage charge. Desktop and 390 px must show only applicable groups without a large pricing questionnaire.
+7. Save a company component cost and productivity in the QA organisation, confirm stale status, explicitly regenerate, compare totals and sources. Restore test-only rate changes after the test. Confirm unrelated manual Pricing edits remain, draft recalibration is offered and no issued snapshot changes. No quote is sent.
+8. Existing estimate recovery: viewing an old pergola estimate must not rewrite it. Explicit regeneration can require new facts and must clearly present the new breakdown; do not silently replace a commercial draft total. Check one existing deck+pergola brief to ensure facts remain on the correct work area.
+
+Production publication requires exact-SHA hosted acceptance, independent review and separate user approval. This handoff does not approve it.
+
+## References for treatment / classification review
+
+BRANZ hazard-class guidance: https://www.branz.co.nz/design-build/articles/choosing-the-right-hazard-class-cheat-sheet
+
+MBIE pergola guidance (unroofed pergolas versus roofed structures): https://www.building.govt.nz/projects-and-consents/planning-a-successful-build/scope-and-design/check-if-you-need-consents/building-work-that-doesnt-need-a-building-consent/technical-requirements-for-exempt-building-work/6-porches-verandas-and-pergolas/6-5-pergolas

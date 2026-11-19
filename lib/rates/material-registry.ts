@@ -138,6 +138,7 @@ const WASTE_KEYS = getWasteKeys();
 
 export function isMaterialsPageCatalogueEntry(entry: RateCatalogueEntry): boolean {
   if (!isMaterialRatesCatalogueEntry(entry)) return false;
+  if (entry.item_key.startsWith("pergola.measured.") && entry.rate_type === "subcontractor") return false;
   if ((FLOORING_SUBCONTRACT_RATE_KEYS as readonly string[]).includes(entry.item_key)) {
     return false;
   }

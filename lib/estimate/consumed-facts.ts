@@ -1,3 +1,4 @@
+import { PERGOLA_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/pergola";
 /**
  * ESTIMATOR-SAFETY-0 — Calculator-owned consumed-fact contract.
  *
@@ -26,6 +27,7 @@ export type CalculatorConsumedFactKey = string;
 
 const CONTRACTS: Readonly<Record<string, readonly string[]>> = {
   deck: DECK_CALCULATOR_CONSUMED_FACTS,
+  pergola: PERGOLA_CALCULATOR_CONSUMED_FACTS,
   bathroom: BATHROOM_CALCULATOR_CONSUMED_FACTS,
   painting: PAINTING_CALCULATOR_CONSUMED_FACTS,
   retaining_wall: RETAINING_WALL_CALCULATOR_CONSUMED_FACTS,

@@ -1,3 +1,4 @@
+import { PERGOLA_MEASURED_RATE_CATALOGUE } from "@/lib/rates/pergola-catalogue";
 import {
   BATHROOM_BENCHMARKS,
   DECK_BENCHMARKS,
@@ -582,7 +583,7 @@ export const ALL_RATE_CATALOGUE: RateCatalogueEntry[] = [
 ];
 
 export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
-  ...ALL_RATE_CATALOGUE,
+  ...ALL_RATE_CATALOGUE.map(item => item.work_area_type === "pergola" ? { ...item, calculatorSupport: "inactive" as const, recommended: false, description: `Legacy pergola rate retained for historical records. New measured estimates do not consume it. ${item.description ?? ""}` } : item),
   ...SPECIFIC_MATERIAL_RATE_CATALOGUE,
   ...BATHROOM_FIXTURE_PC_CATALOGUE,
   ...BATHROOM_TRADE_ALLOWANCE_CATALOGUE,
@@ -596,10 +597,11 @@ export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DOORS_PRODUCTIVITY_RATE_CATALOGUE,
   ...FLOORING_PRODUCTIVITY_RATE_CATALOGUE,
   ...CLADDING_PRODUCTIVITY_RATE_CATALOGUE,
+  ...PERGOLA_MEASURED_RATE_CATALOGUE.filter(entry => entry.rate_type === "productivity"),
 ];
 
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
-  (entry) => entry.recommended
+  (entry) => entry.recommended && entry.work_area_type !== "pergola"
 );
 
 const CATALOGUE_ITEM_ALIASES: Record<string, string> = {

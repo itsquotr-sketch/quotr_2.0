@@ -1,3 +1,4 @@
+import { hidePergolaQuestion } from "@/lib/scopes/pergola-questions";
 import {
   factHasValue,
   getFactValue,
@@ -115,6 +116,8 @@ export function shouldHideConditionalQuestion(
   confirmedTypes?: Set<string>
 ): boolean {
   const key = template.factKey;
+  const pergolaHidden = hidePergolaQuestion(key, name => lookupValue(lookup, workAreaId, `pergola.${name}`));
+  if (pergolaHidden !== undefined) return pergolaHidden;
 
   if (key.startsWith("internal_walls.")) {
     const jobScope = parseInternalWallsJobScope(
@@ -424,30 +427,6 @@ export function shouldHideConditionalQuestion(
     if (key === "fence.metal_material" && tokens.includes("plastic")) {
       return true;
     }
-  }
-
-  if (key === "pergola.roofing_type") {
-    const roofing = boolFact(lookup, workAreaId, "pergola.roofing_included");
-    if (roofing !== true) return true;
-    return false;
-  }
-
-  if (key === "pergola.footings_required") {
-    const attached = strFact(lookup, workAreaId, "pergola.attached");
-    if (attached?.toLowerCase().includes("attach")) return true;
-    return false;
-  }
-
-  if (key === "pergola.finish_type") {
-    const finish = boolFact(lookup, workAreaId, "pergola.finish_required");
-    if (finish !== true) return true;
-    return false;
-  }
-
-  if (key === "pergola.length_m" || key === "pergola.width_m") {
-    const area = numFact(lookup, workAreaId, "pergola.area_m2");
-    if (area !== null) return true;
-    return false;
   }
 
   if (key === "retaining_wall.height_m") {

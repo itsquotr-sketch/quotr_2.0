@@ -64,7 +64,7 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     type: "pergola",
     label: "Pergola",
     category: "External",
-    description: "Pergola questions only. No complete pergola price is claimed.",
+    description: "Measured timber posts and framing, selected covering, or a defined supplier package. Foundation, attachment and design details require confirmation.",
     estimateSupport: "calculator",
     defaultEnabled: true,
     suggestedRateTypes: ["scope", "labour", "material", "allowance"],

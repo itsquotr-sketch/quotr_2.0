@@ -1,5 +1,6 @@
 "use server";
 
+import { measuredPergolaRateKey, flagEstimatesForMeasuredPergolaRate } from "@/lib/rates/pergola-stale";
 import {
   MAX_MARGIN_PERCENT,
   MIN_MARGIN_PERCENT,
@@ -45,6 +46,9 @@ async function flagRateDependentEstimates(
     openingFormationProductivityKey(previousKey)
   ) {
     await flagEstimatesForOpeningFormationProductivity(context);
+  }
+  if (measuredPergolaRateKey(itemKey) || measuredPergolaRateKey(previousKey)) {
+    await flagEstimatesForMeasuredPergolaRate(context);
   }
   if (transitionStripRateKey(itemKey) || transitionStripRateKey(previousKey)) {
     await flagEstimatesForTransitionStripRate(context);

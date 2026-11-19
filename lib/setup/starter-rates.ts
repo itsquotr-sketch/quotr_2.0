@@ -1,3 +1,4 @@
+import { PERGOLA_MEASURED_RATE_CATALOGUE } from "@/lib/rates/pergola-catalogue";
 /**
  * Setup / onboarding starter rate rows (Stage 3.1C.3-R2C).
  *
@@ -236,6 +237,11 @@ export function getComponentStarterRatesForWorkType(
   workAreaType: string,
   limit = 3
 ): StarterRateRowDefinition[] {
+  if (workAreaType === "pergola") {
+    // New work never seeds the historical square-metre frame allowance.
+    const keys = ["pergola.measured.post.treated_pine.100x100.h5.lm", "pergola.measured.frame.treated_pine.140x45_h3.2.lm", "pergola.measured.fixings.each"];
+    return PERGOLA_MEASURED_RATE_CATALOGUE.filter(entry => keys.includes(entry.item_key)).slice(0, limit).map(entry => ({ ...catalogueToComponentRow(entry), authorityHint: "explicit" as const }));
+  }
   return MATERIAL_RATE_CATALOGUE.filter(
     (entry) =>
       entry.work_area_type === workAreaType &&

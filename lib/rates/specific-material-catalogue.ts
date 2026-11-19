@@ -1,4 +1,5 @@
-﻿import {
+import { PERGOLA_MEASURED_RATE_CATALOGUE } from "@/lib/rates/pergola-catalogue";
+import {
   DECK_BENCHMARKS,
   FITOUT_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
@@ -4028,6 +4029,7 @@ export const CLADDING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] =
   );
 
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  ...PERGOLA_MEASURED_RATE_CATALOGUE.filter(entry => entry.rate_type !== "productivity"),
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
@@ -4053,6 +4055,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
+  { title: "Measured pergola", description: "Measured component and complete supplier package costs. Company costs required; historical pergola area allowances are not used.", entries: PERGOLA_MEASURED_RATE_CATALOGUE.filter(entry => entry.rate_type !== "productivity") },
   {
     title: "Decking",
     description:

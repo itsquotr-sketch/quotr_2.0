@@ -1671,38 +1671,19 @@ function inferPergola(
     allowedTypes
   );
 
-  if (includesAny(brief, ["attached", "aluminium"])) {
-    addFact(extraction, {
-      workAreaType: "pergola",
-      key: "pergola.attached",
-      label: "Attachment",
-      value: "Attached",
-    });
-    addFact(extraction, {
-      workAreaType: "pergola",
-      key: "pergola.material",
-      label: "Material",
-      value: "Aluminium",
-    });
+  // An aluminium mention does not imply attachment, and attachment does not imply aluminium.
+  // Leave detailed dimensions/specifications to the structured extractor; never infer a package.
+  if (extraction.workAreas.filter(area => area.type === "pergola").length > 1) return;
+  const clauses = brief.split(/[.\n;]/).filter(clause => /pergola/i.test(clause) && !/\b(?:no|not|without)\b/i.test(clause));
+  const pergolaText = clauses.join(" ");
+  const materials = new Set([...pergolaText.matchAll(/\b(timber|aluminium|steel)\s+pergola\b/gi)].map(match => match[1]!.toLowerCase()));
+  const chosen = materials.size === 1 ? [...materials][0] : null;
+  const material = chosen === "timber" ? "Timber" : chosen === "steel" ? "Steel" : chosen === "aluminium" ? "Aluminium" : null;
+  const layout = /\bfreestanding\b|\bfree-standing\b/i.test(pergolaText) ? "Freestanding" : /\battached\b|\bwall-mounted\b/i.test(pergolaText) ? "Wall-mounted (attached)" : null;
+  for (const [key, value] of [["material", material], ["attached", layout]] as const) {
+    if (value) addFact(extraction, { workAreaType: "pergola", key: `pergola.${key}`, label: key, value });
   }
 
-  if (includesAny(brief, ["colorsteel", "roof", "roofing"])) {
-    addFact(extraction, {
-      workAreaType: "pergola",
-      key: "pergola.roofing_included",
-      label: "Roofing included",
-      value: true,
-    });
-  }
-
-  if (includesAny(brief, ["gutter"])) {
-    addFact(extraction, {
-      workAreaType: "pergola",
-      key: "pergola.gutters_included",
-      label: "Gutters included",
-      value: true,
-    });
-  }
 }
 
 function inferRetainingWall(
