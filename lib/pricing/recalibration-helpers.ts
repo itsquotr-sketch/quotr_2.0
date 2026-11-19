@@ -5,6 +5,7 @@ import {
   stampSellAuthorityOnNotes,
 } from "@/lib/estimate/line-item-metadata";
 import { pricingOwnerToDeliveryMethod } from "@/lib/estimate/pricing-ownership";
+import { isLegacyAreaPricedPergolaLine } from "@/lib/estimate/pergola-legacy";
 import {
   cleanClientLabel,
   mapEstimateCategoryToItemType,
@@ -233,6 +234,15 @@ export function generatedRowLostItsRequirement(
   const sourceLive = sourceId != null && estimateIds.has(sourceId);
   if (sourceLive) return false;
   if (scope && estimateScopes.has(scope)) return false;
+  if (
+    isLegacyAreaPricedPergolaLine({
+      label: item.internal_label,
+      notes: item.notes_internal,
+      componentKey: item.component_key,
+    })
+  ) {
+    return true;
+  }
   return Boolean(scope) || sourceId != null;
 }
 

@@ -269,6 +269,7 @@ import {
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import { projectEstimateOverview } from "@/lib/assistant/presentation/estimate-overview";
+import { isLegacyAreaPricedPergolaLine } from "@/lib/estimate/pergola-legacy";
 import {
   DECK_CONCRETE_CALIBRATION_REASON,
   DECK_CONCRETE_CALIBRATION_TASK,
@@ -3780,6 +3781,16 @@ export function AssistantShell({
     />
   );
 
+  const legacyAreaPergola = Boolean(
+    estimate?.lineItems.some((line) =>
+      isLegacyAreaPricedPergolaLine({
+        label: line.label,
+        notes: line.notes,
+        componentKey: line.componentKey,
+        materialBuildUps: line.materialBuildUps,
+      })
+    )
+  );
   const estimateOverview = projectEstimateOverview({
         hasEstimate: Boolean(estimate),
         isStale: displayEstimateStale,
@@ -3813,6 +3824,7 @@ export function AssistantShell({
         statedCountConflictDetail: deckCountConflict?.summary ?? null,
         productivityReviewDetail,
         openCommercialConditions,
+        legacyAreaPergola,
       });
 
   const estimateReviewActionable =
@@ -3862,7 +3874,9 @@ export function AssistantShell({
     excluded: card.notIncluded.map((item) => item.label),
   }));
   const estimateRegenerate =
-    canRunEstimates && displayEstimateStale ? handleRegenerateEstimate : undefined;
+    canRunEstimates && (displayEstimateStale || legacyAreaPergola)
+      ? handleRegenerateEstimate
+      : undefined;
   const estimateRegenerateLabel =
     estimateOverview.primary === "regenerate" ? estimateOverview.primaryLabel : undefined;
   const estimatePricing =

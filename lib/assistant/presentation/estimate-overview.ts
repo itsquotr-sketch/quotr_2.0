@@ -10,6 +10,7 @@
 import { formatCurrency, formatCurrencyCents } from "@/components/assistant/format";
 import { formatPricingPercent } from "@/lib/pricing/format";
 import { STALE_ESTIMATE_EXPLANATION } from "@/lib/assistant/mode/derive";
+import { MEASURED_PERGOLA_UPGRADE_EXPLANATION } from "@/lib/estimate/pergola-legacy";
 import { quantityConflictStageStatus } from "@/lib/estimate/deck-detail-completeness";
 import type { CommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import {
@@ -217,6 +218,8 @@ export type ProjectEstimateOverviewInput = {
   readonly productivityReviewDetail?: string | null;
   /** Price-affecting conditions that are still unanswered or uncertain. */
   readonly openCommercialConditions?: readonly string[];
+  /** Saved area-priced pergola. Derived on read; viewing does not rewrite it. */
+  readonly legacyAreaPergola?: boolean;
 };
 
 const PRIMARY_LABELS: Record<EstimateOverviewPrimary, string> = {
@@ -884,7 +887,9 @@ export function projectEstimateOverview(
                   }`
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."
-          : "Estimate ready";
+          : input.legacyAreaPergola && !input.isStale
+            ? MEASURED_PERGOLA_UPGRADE_EXPLANATION
+            : "Estimate ready";
   const pricedLinesNote =
     knownSellPartial && issues.missingPriceLineCount === 0
       ? " The amount shown is the priced-lines subtotal, not the complete job price."
@@ -900,7 +905,9 @@ export function projectEstimateOverview(
         ? "review_productivity"
         : input.isStale || conflictStatus === "Needs updating"
           ? "regenerate"
-          : "continue_pricing";
+          : input.legacyAreaPergola
+            ? "regenerate"
+            : "continue_pricing";
 
   const pricingCreationBlocked =
     !input.hasEstimate || input.isStale || Boolean(statedCountConflict) || Boolean(productivityReview);
@@ -970,7 +977,9 @@ export function projectEstimateOverview(
         ? "Complete Deck details"
         : conflictStatus === "Needs updating"
           ? "Update estimate"
-          : PRIMARY_LABELS[primary],
+          : input.legacyAreaPergola && !input.isStale
+            ? "Update to measured pricing"
+            : PRIMARY_LABELS[primary],
     pricingCreationBlocked,
     pricingEntry,
     issues,

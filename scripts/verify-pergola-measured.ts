@@ -15,6 +15,8 @@ import { parseClarifyNumber, parsePositiveClarifyNumber } from "../lib/assistant
 import type { ClarifyCandidate } from "../lib/assistant/clarify/types";
 import { pergolaScope } from "../lib/scopes/templates/pergola";
 import { classifyReviewNotice, issuesFromEstimateRecord } from "../lib/assistant/presentation/estimate-issues";
+import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
+import { MEASURED_PERGOLA_UPGRADE_EXPLANATION } from "../lib/estimate/pergola-legacy";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { getComponentStarterRatesForWorkType } from "../lib/setup/starter-rates";
 import type { EstimateContext, EstimateWorkArea } from "../lib/estimate/types";
@@ -65,7 +67,15 @@ check("concrete deducts post displacement and rounds bags once", task(result, "c
 check("concreting hours follow bags", task(result, "concrete_place.hours_per_bag")?.labourHours === 1.8);
 check("beams and rafters keep distinct commercial identities", frames[0]?.componentKey !== frames[1]?.componentKey);
 check("all emitted component identities are distinct", new Set(result.lineItems.map(item => item.componentKey)).size === result.lineItems.length);
-check("every pergola line keeps a stable requirement identity", result.lineItems.every(item => item.scopeKey && item.scopeKey === item.componentKey));
+check("every pergola line keeps a stable requirement identity", result.lineItems.every(item => item.scopeKey === `pergola:${area.id}:${item.componentKey}`));
+{
+  const secondArea: EstimateWorkArea = { id: "pergola-2", type: "pergola", name: "Second pergola", sort_order: 2 };
+  const secondFacts = context().facts.map(fact => ({ ...fact, work_area_id: secondArea.id }));
+  const second = calculatePergola({ ...context(), confirmedWorkAreas: [area, secondArea], facts: secondFacts }, secondArea);
+  const identities = [...result.lineItems, ...second.lineItems].map(item => item.scopeKey);
+  check("two pergolas keep separate posts, framing and labour", new Set(identities).size === identities.length);
+  check("second pergola posts are not the first pergola posts", second.lineItems.some(item => item.scopeKey === `pergola:pergola-2:${item.componentKey}`) && result.lineItems.every(item => item.scopeKey?.startsWith("pergola:pergola-1:")));
+}
 check("integrated estimator retains both timber components", calculateEstimate(context()).lineItems.filter(item => item.itemKey === pergolaFrameKey("Treated Pine", "140x45 H3.2")).length === 2);
 check("spacing exact multiple has no extra rafter", task(run({ length_m: 4.5 }), "frame_install.hours_per_lm")?.quantity === 42);
 check("alternate span direction changes rafter quantities", run({ rafter_direction: "Span length" }).lineItems.find(item => item.componentKey === "pergola.rafter_timber")?.quantity === 26.4);
@@ -204,5 +214,20 @@ const stripped = normaliseAIExtraction({
 });
 check("standard post does not keep a custom confirmation", !stripped.facts.some(fact => fact.key === "pergola.post_specification"));
 check("custom frame confirmation is kept", stripped.facts.some(fact => fact.key === "pergola.frame_specification" && fact.value === "Yes"));
+const legacyOverview = projectEstimateOverview({
+  hasEstimate: true, isStale: false, detailsOutstanding: false,
+  estimate: { recommendedSell: 4170, recommendedCost: 2808, grossProfit: 1362, marginPercent: 32.66 },
+  gstRate: 15, breakdown: null, review: null, readinessBlockers: [], rateSourceSummary: null,
+  pricingDocumentExists: true, specialistPricingNotice: null, workAreaNames: ["Pergola"],
+  legacyAreaPergola: true,
+});
+check("an area-priced pergola offers the measured update without blocking the draft", legacyOverview.primaryLabel === "Update to measured pricing" && legacyOverview.statusDetail === MEASURED_PERGOLA_UPGRADE_EXPLANATION && legacyOverview.pricingCreationBlocked === false && legacyOverview.pricingEntry === "open");
+const currentOverview = projectEstimateOverview({
+  hasEstimate: true, isStale: false, detailsOutstanding: false,
+  estimate: { recommendedSell: 2565.95, recommendedCost: 2052.7, grossProfit: 513.25, marginPercent: 20 },
+  gstRate: 15, breakdown: null, review: null, readinessBlockers: [], rateSourceSummary: null,
+  pricingDocumentExists: true, specialistPricingNotice: null, workAreaNames: ["Pergola"],
+});
+check("a measured pergola keeps Continue to Pricing", currentOverview.primary === "continue_pricing");
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

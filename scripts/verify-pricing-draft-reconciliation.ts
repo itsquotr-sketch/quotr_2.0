@@ -214,6 +214,85 @@ check(
   pricingRowsToRetire(pricedRows, matchedIds, estimateIds, scopes).join() === "waste"
 );
 
+const measuredPost = line({
+  id: "post-new",
+  label: "Posts · Treated Pine",
+  scope: "pergola:wa:pergola.measured.post",
+  component: "pergola.measured.post",
+  quantity: 13.2,
+  cost: 231,
+  sell: 288.82,
+  specification: "Measured posts",
+});
+const legacyRows = [
+  item({
+    id: "area-frame",
+    label: "Pergola frame/materials",
+    scope: null,
+    component: null,
+    quantity: 12,
+    cost: 2160,
+    sell: 3360,
+    specification: "Timber pergola allowance",
+    source: null,
+  }),
+  item({
+    id: "area-labour",
+    label: "Pergola labour",
+    scope: null,
+    component: null,
+    quantity: 12,
+    cost: 648,
+    sell: 810,
+    specification: "Area labour",
+    source: null,
+  }),
+  item({
+    id: "area-edited",
+    label: "Pergola labour",
+    scope: null,
+    component: null,
+    quantity: 12,
+    cost: 700,
+    sell: 900,
+    specification: "Edited hours",
+    source: null,
+    manuallyEdited: true,
+  }),
+  item({
+    id: "manual-sign",
+    label: "Site sign",
+    scope: null,
+    component: null,
+    quantity: 1,
+    cost: 40,
+    sell: 50,
+    specification: "Manual",
+    source: null,
+    pricingSource: "user_override",
+  }),
+];
+const legacyMatched = matchPricingToEstimateLines([measuredPost], legacyRows);
+const legacyRetired = pricingRowsToRetire(
+  legacyRows,
+  new Set([...legacyMatched.values()].map((row) => row.id)),
+  new Set(["post-new"]),
+  estimateRequirementScopes([measuredPost])
+).sort();
+check(
+  "an area-priced pergola update retires untouched generated rows once",
+  legacyRetired.join() === "area-frame,area-labour"
+);
+check(
+  "repeating the update keeps the edited row and the manual row",
+  pricingRowsToRetire(
+    legacyRows.filter((row) => !legacyRetired.includes(row.id)),
+    new Set(),
+    new Set(["post-new"]),
+    estimateRequirementScopes([measuredPost])
+  ).length === 0
+);
+
 const removedHundred = item({
   id: "old-extra",
   label: "Old extra",
