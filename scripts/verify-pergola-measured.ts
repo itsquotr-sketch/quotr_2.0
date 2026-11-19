@@ -17,6 +17,7 @@ import { pergolaScope } from "../lib/scopes/templates/pergola";
 import { classifyReviewNotice, issuesFromEstimateRecord } from "../lib/assistant/presentation/estimate-issues";
 import { projectEstimateOverview } from "../lib/assistant/presentation/estimate-overview";
 import { MEASURED_PERGOLA_UPGRADE_EXPLANATION } from "../lib/estimate/pergola-legacy";
+import { composeRefineView } from "../lib/assistant/refine/compose";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { getComponentStarterRatesForWorkType } from "../lib/setup/starter-rates";
 import type { EstimateContext, EstimateWorkArea } from "../lib/estimate/types";
@@ -237,5 +238,20 @@ const currentOverview = projectEstimateOverview({
   pricingDocumentExists: true, specialistPricingNotice: null, workAreaNames: ["Pergola"],
 });
 check("a measured pergola keeps Continue to Pricing", currentOverview.primary === "continue_pricing");
+const structuralRefine = composeRefineView({
+  briefText: null,
+  qualityLevel: null,
+  workAreas: [{ id: "pergola-1", type: "pergola", name: "Pergola", status: "included" }],
+  facts: [{ key: "pergola.engineering_or_consent_status", work_area_id: "pergola-1", value: "Confirmed", source: "user" }],
+  constraints: [],
+  jobPlan: { cards: [] },
+});
+const structural = [...structuralRefine.highValue, ...structuralRefine.advanced].find(
+  (row) => row.factKey === "pergola.engineering_or_consent_status"
+);
+check(
+  "an existing estimate can change structural confirmation in Refine",
+  structural?.currentValue === "Confirmed" && structural.options?.includes("Not sure") === true
+);
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

@@ -31,6 +31,7 @@ type EstimateOverviewProps = {
   onRegenerate?: () => void;
   onReviewProductivity?: () => void;
   onReviewEstimate?: () => void;
+  onRefineEstimate?: () => void;
   onEditJob?: () => void;
   onViewBreakdown?: () => void;
   onViewWorkArea?: (workAreaId: string) => void;
@@ -151,6 +152,7 @@ export function EstimateOverview({
   onRegenerate,
   onReviewProductivity,
   onReviewEstimate,
+  onRefineEstimate,
   onEditJob,
   onViewBreakdown,
   onViewWorkArea,
@@ -508,6 +510,17 @@ export function EstimateOverview({
             onClick={onReviewEstimate}
           >
             {VIEW_WORK_AREA_BREAKDOWN}
+          </Button>
+        ) : null}
+        {onRefineEstimate ? (
+          <Button
+            type="button"
+            variant="outline"
+            className={actionButtonClassName}
+            data-estimate-overview-secondary="refine"
+            onClick={onRefineEstimate}
+          >
+            {ASSISTANT_ACTION_LABELS.refineEstimate}
           </Button>
         ) : null}
         {onEditJob ? (

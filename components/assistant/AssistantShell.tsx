@@ -4233,6 +4233,11 @@ export function AssistantShell({
                     }}
                     onViewWorkArea={openWorkArea}
                     onEditJob={canRunEstimates ? () => openEditJob(null) : undefined}
+                    onRefineEstimate={
+                      canRunEstimates && refineView.hasCandidates
+                        ? () => openRefineAfterEstimate("pergola.engineering_or_consent_status")
+                        : undefined
+                    }
                     marginControl={
                       canRunEstimates && !displayEstimateStale ? (
                         <span data-mobile-margin-edit="true">
