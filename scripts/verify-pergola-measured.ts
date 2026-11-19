@@ -222,6 +222,14 @@ const legacyOverview = projectEstimateOverview({
   legacyAreaPergola: true,
 });
 check("an area-priced pergola offers the measured update without blocking the draft", legacyOverview.primaryLabel === "Update to measured pricing" && legacyOverview.statusDetail === MEASURED_PERGOLA_UPGRADE_EXPLANATION && legacyOverview.pricingCreationBlocked === false && legacyOverview.pricingEntry === "open");
+const staleLegacy = projectEstimateOverview({
+  hasEstimate: true, isStale: true, detailsOutstanding: false,
+  estimate: { recommendedSell: 4170, recommendedCost: 2808, grossProfit: 1362, marginPercent: 32.66 },
+  gstRate: 15, breakdown: null, review: null, readinessBlockers: [], rateSourceSummary: null,
+  pricingDocumentExists: true, specialistPricingNotice: null, workAreaNames: ["Pergola"],
+  legacyAreaPergola: true,
+});
+check("a stale area-priced pergola still explains the measured update", staleLegacy.primaryLabel === "Update to measured pricing" && staleLegacy.statusDetail === MEASURED_PERGOLA_UPGRADE_EXPLANATION && staleLegacy.pricingCreationBlocked === true);
 const currentOverview = projectEstimateOverview({
   hasEstimate: true, isStale: false, detailsOutstanding: false,
   estimate: { recommendedSell: 2565.95, recommendedCost: 2052.7, grossProfit: 513.25, marginPercent: 20 },

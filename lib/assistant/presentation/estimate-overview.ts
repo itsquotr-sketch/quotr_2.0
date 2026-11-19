@@ -863,7 +863,9 @@ export function projectEstimateOverview(
           ? "Required Details are still open."
           : "Job information is still being entered."
       : status === "stale"
-        ? conflictStatus === "Needs updating"
+        ? input.legacyAreaPergola
+          ? MEASURED_PERGOLA_UPGRADE_EXPLANATION
+          : conflictStatus === "Needs updating"
           ? "This estimate needs updating."
           : STALE_ESTIMATE_EXPLANATION
         : status === "pricing_required"
@@ -887,7 +889,7 @@ export function projectEstimateOverview(
                   }`
               : productivityReview ??
                 "Some lines still need prices. Complete these in Pricing."
-          : input.legacyAreaPergola && !input.isStale
+          : input.legacyAreaPergola
             ? MEASURED_PERGOLA_UPGRADE_EXPLANATION
             : "Estimate ready";
   const pricedLinesNote =
@@ -977,7 +979,7 @@ export function projectEstimateOverview(
         ? "Complete Deck details"
         : conflictStatus === "Needs updating"
           ? "Update estimate"
-          : input.legacyAreaPergola && !input.isStale
+          : input.legacyAreaPergola
             ? "Update to measured pricing"
             : PRIMARY_LABELS[primary],
     pricingCreationBlocked,
