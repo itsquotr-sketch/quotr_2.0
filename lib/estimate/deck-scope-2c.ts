@@ -194,6 +194,14 @@ export function pileReplacementUnpricedNotes(input: {
 export const DECK_SUPPORT_DESIGN_UNRESOLVED =
   "Footings are excluded. The support method, post count and associated excavation stay unresolved and are not priced. Decking, framing and fixings do not establish a complete or structurally adequate support design.";
 
+export const DECK_SUPPORT_METHOD_UNCONFIRMED =
+  "Support method is not confirmed. Post, excavation and concrete quantities stay unresolved and are not priced. This is not a decision that footings are excluded or that an existing slab is used.";
+
+export const DECK_BOARDS_CLIENT_SUPPLIED_FACT = "deck.boards_client_supplied";
+
+export const DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE =
+  "The decking boards are customer-supplied. Framing, fixings, fascia and installation stay contractor work.";
+
 export const PILE_SUPPORTS_UNRESOLVED_PENDING =
   "New support material, pile installation, hole excavation and concrete stay unresolved while existing piles are left until inspection. New framing is priced separately and does not decide those piles.";
 

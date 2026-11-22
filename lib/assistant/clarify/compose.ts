@@ -478,19 +478,18 @@ function candidateFromJobPlanCheck(
   const template = getQuestionTemplateByKey(key);
   const waterproofingOpen = key === "bathroom.waterproofing_included";
   const openingsOpen = key === "internal_walls.wall_type.has_openings";
-  const askClass = waterproofingOpen || openingsOpen
-    ? "ASSUME_IF_SKIPPED"
-    : askClassForScopeKey(key);
-  if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
-    return null;
-  }
   const pilePending =
     key === "deck.pile_or_post_replacement_required" &&
     pileRetentionPending({
       facts: input.facts as EstimateFact[],
       workAreaId: card.workAreaId,
     });
-
+  const askClass = waterproofingOpen || openingsOpen || pilePending
+    ? "ASSUME_IF_SKIPPED"
+    : askClassForScopeKey(key);
+  if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
+    return null;
+  }
   return {
     id: `check:${card.workAreaId}:${item.id}`,
     source: "job_plan_check",
@@ -514,12 +513,15 @@ function candidateFromJobPlanCheck(
     options: pilePending ? [...PILE_TREATMENT_OPTIONS] : template?.options,
     writeTarget: "FACT",
     write: pilePending ? null : item.write,
-    blocksEstimate: waterproofingOpen || openingsOpen
+    blocksEstimate: waterproofingOpen || openingsOpen || pilePending
       ? false
-      : askClass === "HARD_MINIMUM" || pilePending,
-    assumable: waterproofingOpen || openingsOpen
+      : askClass === "HARD_MINIMUM",
+    assumable: waterproofingOpen ||
+      openingsOpen ||
+      pilePending ||
+      key === "deck.boards_client_supplied"
       ? false
-      : askClass !== "HARD_MINIMUM" && !pilePending,
+      : askClass !== "HARD_MINIMUM",
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:
@@ -1963,7 +1965,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           writeTarget: "FACT",
           write: null,
           blocksEstimate: askClass === "HARD_MINIMUM",
-          assumable: askClass !== "HARD_MINIMUM",
+          assumable:
+            askClass !== "HARD_MINIMUM" && key !== "deck.boards_client_supplied",
           rankScore: CHECK_SCORES[key] ?? 50,
           rankReason: `${descriptor.askClass} · ${descriptor.section}`,
           assumptionStatement: deckClarifyAssumptionStatement(key),
@@ -2021,13 +2024,13 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           questionKey: fasciaCandidate.factKey,
           label: fasciaCandidate.label,
           question: fasciaCandidate.question,
-          askClass: "ASK_NOW",
+          askClass: "ASSUME_IF_SKIPPED",
           inputType: fasciaCandidate.inputType,
           unit: fasciaCandidate.unit,
           options: fasciaCandidate.options ? [...fasciaCandidate.options] : undefined,
           writeTarget: "FACT",
           write: null,
-          blocksEstimate: fasciaCandidate.blocksEstimate,
+          blocksEstimate: false,
           assumable: false,
           rankScore: 70,
           rankReason: "Fascia length",

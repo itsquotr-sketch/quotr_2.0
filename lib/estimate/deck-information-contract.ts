@@ -79,6 +79,15 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     reason: "Physical board coverage for lineal takeoff. 140 mm disclosed if skipped.",
   },
   {
+    factKey: "deck.boards_client_supplied",
+    questionClass: "ASSUME_IF_SKIPPED",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason:
+      "Deck board purchase ownership only. Customer-supplied boards have no contractor purchase cost. Framing, fixings and fascia stay contractor-supplied. Unanswered means the contractor purchases the boards.",
+  },
+  {
     factKey: "deck.board_waste_percent",
     questionClass: "REFINE",
     calculatorConsumed: true,

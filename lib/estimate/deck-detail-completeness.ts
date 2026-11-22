@@ -257,11 +257,44 @@ export function blankPileReplacementLeavesSupportsUnpriced(
   return true;
 }
 
+/**
+ * An unconfirmed footing decision is not an exclusion and not a confirmed
+ * foundation. Decking, framing and fixings can still be priced. Post,
+ * excavation and concrete quantities stay visible and unpriced.
+ */
+export function unconfirmedSupportLeavesDependentWorkUnpriced(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  const rows = [...facts];
+  const concrete = getBooleanFact(rows, workAreaId, "deck.concrete_to_supports");
+  if (concrete != null) return false;
+  if (
+    getBooleanFact(rows, workAreaId, "deck.pile_or_post_replacement_required") ===
+    true
+  ) {
+    return false;
+  }
+  const bearerRows = getNumberFact(rows, workAreaId, "deck.bearer_row_count");
+  const perBearer = getNumberFact(rows, workAreaId, "deck.supports_per_bearer");
+  if (
+    bearerRows != null &&
+    perBearer != null &&
+    bearerRows > 0 &&
+    perBearer > 0
+  ) {
+    return false;
+  }
+  if (pileRetentionPending({ facts: rows, workAreaId })) return false;
+  return newSubstructureIncluded(rows, workAreaId);
+}
+
 export function deckDetailGapsBlockingEstimate(
   facts: readonly EstimateFact[],
   workAreaId: string
 ): DeckDetailGap[] {
   if (deckExcludedConcreteLeavesSupportUnresolved(facts, workAreaId)) return [];
+  if (unconfirmedSupportLeavesDependentWorkUnpriced(facts, workAreaId)) return [];
   if (blankPileReplacementLeavesSupportsUnpriced(facts, workAreaId)) return [];
   return deckDetailGaps(facts, workAreaId);
 }

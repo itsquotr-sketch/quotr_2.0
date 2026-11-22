@@ -163,7 +163,7 @@ export function fasciaLengthDetailCandidates(params: {
         "How much fascia length is exposed? A partial edge is enough. Leaving this blank does not price the full perimeter.",
       inputType: "number",
       unit: "lm",
-      blocksEstimate: true,
+      blocksEstimate: false,
     },
   ];
   if (edge.rectangularChoiceAvailable) {

@@ -14,14 +14,19 @@ import { INTERNAL_WALLS_SCOPE_UNRESOLVED } from "../lib/estimate/internal-walls-
 import { provisionalLabourBasisSentences } from "../lib/estimate/condition-basis";
 import {
   deckDetailGaps,
+  deckDetailGaps,
   deckDetailGapsBlockingEstimate,
   deckExcludedConcreteLeavesSupportUnresolved,
+  unconfirmedSupportLeavesDependentWorkUnpriced,
 } from "../lib/estimate/deck-detail-completeness";
 import {
   typicalPostHoleSetupFacts,
   typicalPostHoleSetupSummary,
 } from "../lib/estimate/deck-hole-excavation";
-import { DECK_SUPPORT_DESIGN_UNRESOLVED } from "../lib/estimate/deck-scope-2c";
+import {
+  DECK_SUPPORT_DESIGN_UNRESOLVED,
+  DECK_SUPPORT_METHOD_UNCONFIRMED,
+} from "../lib/estimate/deck-scope-2c";
 import {
   calculateDeckStepsQuantities,
   estimateDeckRiseCount,
@@ -191,6 +196,32 @@ check(
     ) &&
     typicalPostHoleSetupSummary(null, true).includes("concrete footings excluded") &&
     !typicalPostHoleSetupSummary(null, true).includes("full concrete fill")
+);
+const openSupportFacts = lowFacts.filter(
+  (row) => row.key !== "deck.concrete_to_supports"
+);
+check(
+  "unconfirmed footings stay visible and do not block decking",
+  unconfirmedSupportLeavesDependentWorkUnpriced(openSupportFacts, "d1") &&
+    deckDetailGaps(openSupportFacts, "d1").some((gap) => gap.id === "posts") &&
+    deckDetailGapsBlockingEstimate(openSupportFacts, "d1").length === 0
+);
+check(
+  "an unconfirmed footing proposal does not claim full concrete fill",
+  !typicalPostHoleSetupSummary(null, "unconfirmed").includes("full concrete fill") &&
+    typicalPostHoleSetupSummary(null, "unconfirmed").includes("350 × 600") &&
+    !typicalPostHoleSetupFacts({ footingScope: "unconfirmed" }).some(
+      (row) => row.key === "deck.concrete_fill"
+    )
+);
+const openSupportEstimate = calculateDeck(deckContext(openSupportFacts), deckArea);
+check(
+  "unconfirmed supports price decking without calling footings excluded",
+  openSupportEstimate.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED) &&
+    !openSupportEstimate.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    !openSupportEstimate.lineItems.some(
+      (item) => item.label === "Concrete" || /concrete bag/i.test(item.label)
+    )
 );
 const lowEstimate = calculateDeck(deckContext(lowFacts), deckArea);
 check(

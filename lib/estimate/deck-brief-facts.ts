@@ -45,6 +45,14 @@ export function explicitDeckPostCount(brief: string): number | null {
   return value;
 }
 
+export function explicitCustomerSuppliedDeckBoards(brief: string): boolean {
+  const text = normalise(brief);
+  return (
+    /\b(?:customer|client)\s+supplies?\s+the\s+decking\s+boards?\b/.test(text) ||
+    /\b(?:customer|client)[-\s]supplied\s+decking\s+boards?\b/.test(text)
+  );
+}
+
 export function explicitNewSubstructure(brief: string): boolean {
   return /\bnew substructure\b/.test(normalise(brief));
 }
@@ -91,6 +99,13 @@ export function explicitDeckBriefFacts(brief: string): DeckBriefFact[] {
       key: "deck.pile_or_post_count",
       label: "Piles/posts count",
       value: posts,
+    });
+  }
+  if (explicitCustomerSuppliedDeckBoards(brief)) {
+    facts.push({
+      key: "deck.boards_client_supplied",
+      label: "Customer-supplied decking boards",
+      value: true,
     });
   }
   if (explicitNewSubstructure(brief)) {

@@ -64,13 +64,37 @@ export type TypicalPostHoleSetupFact = {
   readonly valueType: "select" | "number" | "text";
 };
 
-/** Excluded concrete footings are not written back as full concrete fill. */
-export function typicalPostHoleSetupFacts(input: {
+export type DeckFootingScope = "included" | "excluded" | "unconfirmed";
+
+export function deckFootingScope(input: {
+  readonly concreteIncluded: boolean;
   readonly concreteExcluded: boolean;
+}): DeckFootingScope {
+  if (input.concreteExcluded) return "excluded";
+  if (input.concreteIncluded) return "included";
+  return "unconfirmed";
+}
+
+function resolveFootingScope(input: {
+  readonly concreteExcluded?: boolean;
+  readonly footingScope?: DeckFootingScope;
+}): DeckFootingScope {
+  if (input.footingScope) return input.footingScope;
+  return input.concreteExcluded ? "excluded" : "included";
+}
+
+/** Excluded or unconfirmed footings are not written back as full concrete fill. */
+export function typicalPostHoleSetupFacts(input: {
+  readonly concreteExcluded?: boolean;
+  readonly footingScope?: DeckFootingScope;
 }): TypicalPostHoleSetupFact[] {
-  const signature = input.concreteExcluded
-    ? "assumed:circular|350|600|125x125|concrete-excluded|600"
-    : "assumed:circular|350|600|125x125|full|600";
+  const scope = resolveFootingScope(input);
+  const signature =
+    scope === "excluded"
+      ? "assumed:circular|350|600|125x125|concrete-excluded|600"
+      : scope === "unconfirmed"
+        ? "assumed:circular|350|600|125x125|footings-unconfirmed|600"
+        : "assumed:circular|350|600|125x125|full|600";
   const facts: TypicalPostHoleSetupFact[] = [
     { key: "deck.hole_shape", label: "Hole shape", value: "circular", valueType: "select" },
     {
@@ -92,7 +116,7 @@ export function typicalPostHoleSetupFacts(input: {
       valueType: "select",
     },
   ];
-  if (!input.concreteExcluded) {
+  if (scope === "included") {
     facts.push({
       key: "deck.concrete_fill",
       label: "Concrete fill",
@@ -125,14 +149,31 @@ export function typicalPostHoleSetupFacts(input: {
 
 export function typicalPostHoleSetupSummary(
   count: number | null,
-  concreteExcluded: boolean
+  concreteExcludedOrScope: boolean | DeckFootingScope
 ): string {
-  const holes = count != null ? `${count} circular holes` : "Circular holes";
-  const concrete = concreteExcluded
-    ? "concrete footings excluded"
-    : "full concrete fill";
+  const scope =
+    concreteExcludedOrScope === true
+      ? "excluded"
+      : concreteExcludedOrScope === false
+        ? "included"
+        : concreteExcludedOrScope;
+  const holes =
+    scope === "unconfirmed"
+      ? count != null
+        ? `Proposed ${count} circular holes`
+        : "Proposed circular holes"
+      : count != null
+        ? `${count} circular holes`
+        : "Circular holes";
+  const concrete =
+    scope === "excluded"
+      ? "concrete footings excluded"
+      : scope === "unconfirmed"
+        ? "footings are not confirmed"
+        : "full concrete fill";
   return `${holes} · ${DECK_HOLE_ASSUMED_DIAMETER_MM} × ${DECK_HOLE_ASSUMED_DEPTH_MM} mm · 125 × 125 mm posts · ${concrete}.`;
 }
+
 /** One person for 30 minutes. Approved 14 October 2026, ordinary scope only. */
 export const DECK_HOLE_PROVISIONAL_HOURS = 0.5;
 export const DECK_HOLE_HOURS_STATUS_FACT = "deck.hole_hours_status" as const;

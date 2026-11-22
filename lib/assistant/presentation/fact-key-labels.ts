@@ -18,6 +18,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "deck.height_m": "Deck height",
   "deck.board_material": "Decking material",
   "deck.board_width_mm": "Decking board width",
+  "deck.boards_client_supplied": "Customer-supplied decking boards",
   "deck.hole_diameter_mm": "Hole diameter",
   "deck.hole_depth_mm": "Hole depth",
   "deck.hole_ground": "Hole ground",

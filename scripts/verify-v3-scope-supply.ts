@@ -216,6 +216,19 @@ check(
   "QT-008 partial fascia is not forced off",
   fact(qt008, "deck.vertical_face_boards_required") !== false
 );
+check(
+  "QT-008 records customer-supplied decking boards",
+  fact(qt008, "deck.boards_client_supplied") === true
+);
+check(
+  "QT-008 keeps the requested front-edge fascia length",
+  fact(qt008, "deck.vertical_face_board_length_lm") === 6
+);
+check(
+  "QT-008 does not mark framing or fascia as customer-supplied",
+  fact(qt008, "deck.substructure_client_supplied") == null &&
+    fact(qt008, "deck.fascia_client_supplied") == null
+);
 
 const deckOnly = run("Build a new timber deck, 6 m × 4 m, 450 mm above ground. Include fascia. No stairs.");
 check("a single deck still uses its own dimensions", fact(deckOnly, "deck.length_m") === 6 && fact(deckOnly, "deck.width_m") === 4);

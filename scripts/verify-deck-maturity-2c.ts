@@ -514,8 +514,8 @@ const stepsDeck = calculateDeck(ctx(stepFacts), wa(kwilaId));
 check(
   "37 explicit Step scope activates",
   deckStepsCommerciallyIncluded({ facts: stepFacts, workAreaId: kwilaId }) &&
-    (hasLabel(stepsDeck.lineItems, /Step decking|Step framing|Step installation/) ||
-      hasLabel(stepsDeck.lineItems, /Step-down|Stair set/))
+    !hasLabel(stepsDeck.lineItems, /Step-down|Stair set/) &&
+    stepsDeck.missingInfo.some((row) => /step width required/i.test(row))
 );
 check(
   "37b Stair set commercially includes Steps",
@@ -539,9 +539,10 @@ const stairSetOnly = calculateDeck(
   wa(kwilaId)
 );
 check(
-  "37d Stair set without steps_included keeps allowance, not forced detailed promotion",
-  hasLabel(stairSetOnly.lineItems, /Stair set allowance/) &&
-    !hasLabel(stairSetOnly.lineItems, /Step decking|Step framing|Step installation/)
+  "37d Stair set without measured width does not buy the allowance",
+  !hasLabel(stairSetOnly.lineItems, /Stair set allowance/) &&
+    !hasLabel(stairSetOnly.lineItems, /Step decking|Step framing|Step installation/) &&
+    stairSetOnly.missingInfo.some((row) => /step width required/i.test(row))
 );
 check(
   "38 rise count derives from height",
@@ -553,9 +554,12 @@ const wideSteps = calculateDeck(
 );
 const stepQtyA = stepsDeck.lineItems.find((item) => item.label === "Step decking")?.quantity;
 const stepQtyB = wideSteps.lineItems.find((item) => item.label === "Step decking")?.quantity;
-const allowanceXorDetail =
-  hasLabel(stepsDeck.lineItems, /Step decking/) !==
-  hasLabel(stepsDeck.lineItems, /Step-down allowance|Stair set allowance/);
+const detailedSteps = hasLabel(stepsDeck.lineItems, /Step decking/);
+const stepAllowance = hasLabel(
+  stepsDeck.lineItems,
+  /Step-down allowance|Stair set allowance/
+);
+const allowanceXorDetail = !(detailedSteps && stepAllowance);
 check(
   "39 width/depth affect material when detailed",
   !hasLabel(stepsDeck.lineItems, /Step decking/) ||

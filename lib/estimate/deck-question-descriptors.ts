@@ -64,6 +64,7 @@ const SECTIONS: Record<string, DeckQuestionSection> = {
   "deck.level": "geometry",
   "deck.board_material": "boarding",
   "deck.board_width_mm": "boarding",
+  "deck.boards_client_supplied": "boarding",
   "deck.board_direction": "boarding",
   "deck.ground_clearance_m": "boarding",
   "deck.fascia_material": "boarding",

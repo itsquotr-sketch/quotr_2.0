@@ -283,7 +283,7 @@ export function classifyReviewNotice(
   if (ASSUMABLE_NONCONSUMED_CONDITION_QUESTION.test(text)) return null;
   if (/pricing required|rate required/i.test(text)) return "missing_price";
   if (
-    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope|coverage is unresolved|not a complete pile price|stay unresolved while existing piles|does not assume they are replaced|stay unresolved and are not priced|do not establish a complete or structurally adequate|wall material not confirmed/i.test(
+    /add a lining product|requested and not priced|cannot be calculated|no priced line|coverage not specified|unsupported scope|coverage is unresolved|not a complete pile price|stay unresolved while existing piles|does not assume they are replaced|stay unresolved and are not priced|do not establish a complete or structurally adequate|wall material not confirmed|step width required|tread depth required|support method is not confirmed|fascia materials and labour are not priced/i.test(
       text
     )
   ) {

@@ -16,6 +16,7 @@ import { deckPostHoleControlId } from "@/lib/estimate/deck-detail-completeness";
 import {
   DECK_HOLE_ASSUMED_DEPTH_MM,
   DECK_HOLE_ASSUMED_DIAMETER_MM,
+  deckFootingScope,
   typicalPostHoleSetupFacts,
   typicalPostHoleSetupSummary,
   DECK_SPOIL_HAULAGE_ALLOWANCE_EX_GST,
@@ -273,8 +274,12 @@ export function DeckPostHolesSection({
     }
   }
 
-  const typicalFacts: FactWrite[] = typicalPostHoleSetupFacts({
+  const footingScope = deckFootingScope({
+    concreteIncluded: concreteOn,
     concreteExcluded,
+  });
+  const typicalFacts: FactWrite[] = typicalPostHoleSetupFacts({
+    footingScope,
   });
 
   async function applyTypicalSetup() {
@@ -312,7 +317,7 @@ export function DeckPostHolesSection({
         fillDepth,
         embedment,
         embedmentLink,
-        concreteExcluded,
+        concreteExcluded: footingScope === "included" ? false : true,
       });
   const typicalStored = !usingProposal && setupChanges.length === 0;
   const outsideOrdinary =
@@ -459,7 +464,7 @@ export function DeckPostHolesSection({
         {usingProposal ? (
           <>
             <p className="text-sm text-foreground" data-hole-assumed="">
-              {typicalPostHoleSetupSummary(displayCount, concreteExcluded)}
+              {typicalPostHoleSetupSummary(displayCount, footingScope)}
             </p>
             <Button
               type="button"
@@ -475,7 +480,7 @@ export function DeckPostHolesSection({
         ) : typicalStored && !showEditor ? (
           <div className="space-y-2">
             <p className="text-sm text-foreground" data-setup-applied="">
-              {typicalPostHoleSetupSummary(displayCount, concreteExcluded)}
+              {typicalPostHoleSetupSummary(displayCount, footingScope)}
             </p>
             <Button
               type="button"

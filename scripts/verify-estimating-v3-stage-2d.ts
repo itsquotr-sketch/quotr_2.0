@@ -75,7 +75,7 @@ const questions = fasciaLengthDetailCandidates({
 });
 check(
   "a rectangular deck asks for a length and offers the perimeter as a choice",
-  questions.some((row) => row.factKey === "deck.vertical_face_board_length_lm" && row.blocksEstimate) &&
+  questions.some((row) => row.factKey === "deck.vertical_face_board_length_lm" && row.blocksEstimate === false) &&
     questions.some((row) =>
       row.options?.includes(DECK_FASCIA_RECTANGULAR_PERIMETER_LABEL)
     )

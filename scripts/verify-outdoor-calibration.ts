@@ -65,8 +65,10 @@ const deck1HasStepDetail = labels(deck1.lineItems).some((label) =>
   /Step (decking|framing|installation)/i.test(label)
 );
 assert(
-  (deck1HasStairLump || deck1HasStepDetail) && !(deck1HasStairLump && deck1HasStepDetail),
-  "Deck 1: stairs commercial XOR (allowance or detailed Steps, not both)"
+  !deck1HasStairLump &&
+    !deck1HasStepDetail &&
+    deck1.missingInfo.some((row) => /step width required/i.test(row)),
+  "Deck 1: unmeasured stairs stay unresolved and do not buy the allowance"
 );
 assert(labels(deck1.lineItems).includes("Balustrade allowance"), "Deck 1: balustrade");
 assert(

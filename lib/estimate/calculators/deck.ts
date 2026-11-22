@@ -140,7 +140,10 @@ import {
   formatDeckIdentityLine,
   formatMaterialIdentityDisplay,
   formatPilePurchaseIdentity,
+  DECK_BOARDS_CLIENT_SUPPLIED_FACT,
+  DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
+  DECK_SUPPORT_METHOD_UNCONFIRMED,
   PILE_ALLOWANCE_COVERAGE_GAP,
   PILE_REPLACEMENT_ITEM_KEY,
   pileReplacementUnpricedNotes,
@@ -529,9 +532,43 @@ export function calculateDeck(
     });
   }
 
-  lineItems.push(
-    withMaterialRateResolution(deckingItem, deckingPricing.resolution)
+  const boardsClientSupplied =
+    getBooleanFact(facts, workArea.id, DECK_BOARDS_CLIENT_SUPPLIED_FACT) === true;
+  let pricedDecking = withMaterialRateResolution(
+    deckingItem,
+    deckingPricing.resolution
   );
+  if (boardsClientSupplied) {
+    const installedLm = deckingBoardResult?.baseLm ?? null;
+    const installedCopy =
+      installedLm != null
+        ? `Installed quantity ${formatLm(installedLm)} lm remains. Purchase quantity is zero.`
+        : "Installed quantity stays unresolved until the board specification can be measured. Purchase quantity is zero.";
+    pricedDecking = {
+      ...pricedDecking,
+      quantity: installedLm ?? pricedDecking.quantity,
+      unit: installedLm != null ? "lm" : pricedDecking.unit,
+      costRate: 0,
+      sellRate: 0,
+      recommendedCost: 0,
+      recommendedSell: 0,
+      costLow: 0,
+      costHigh: 0,
+      sellLow: 0,
+      sellHigh: 0,
+      grossProfit: 0,
+      marginPercent: 0,
+      markupPercent: 0,
+      rateSource: getRateSourceLabel("customer_supplied"),
+      rateSourceType: "customer_supplied",
+      includedInTotal: true,
+      notes: `${DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE} ${installedCopy}${
+        boardWidthAssumed ? ` ${DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT}` : ""
+      }`,
+    };
+    assumptions.push(DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE);
+  }
+  lineItems.push(pricedDecking);
 
   const substructureIncluded =
     getBooleanFact(facts, workArea.id, "deck.substructure_included") ?? true;
@@ -594,8 +631,13 @@ export function calculateDeck(
     supportCountSource: structural.quantities?.supportCountSource ?? "spacing_layout",
     statedSupportCount: structural.quantities?.statedSupportCount ?? null,
   });
-  const concreteFootingsExcluded =
-    getBooleanFact(facts, workArea.id, "deck.concrete_to_supports") === false;
+  const concreteDecision = getBooleanFact(
+    facts,
+    workArea.id,
+    "deck.concrete_to_supports"
+  );
+  const concreteFootingsExcluded = concreteDecision === false;
+  const concreteFootingsUnconfirmed = concreteDecision == null;
   const derivedSupportsUnresolved =
     supportTreatment === "derived_new" && concreteFootingsExcluded;
   const priceSupports =
@@ -1303,6 +1345,13 @@ export function calculateDeck(
   if (derivedSupportsUnresolved) {
     missingInfo.push(DECK_SUPPORT_DESIGN_UNRESOLVED);
   }
+  if (
+    supportTreatment === "derived_new" &&
+    concreteFootingsUnconfirmed &&
+    getNumberFact(facts, workArea.id, "deck.hole_diameter_mm") == null
+  ) {
+    missingInfo.push(DECK_SUPPORT_METHOD_UNCONFIRMED);
+  }
   if (supportTreatment === "withheld_retained") {
     assumptions.push(PILE_SUPPORTS_RETAINED);
   }
@@ -1906,7 +1955,7 @@ export function calculateDeck(
         : null,
   ].filter((key): key is string => key != null);
 
-  const surfaceRequirement = maybeBuildDeckSurfaceRequirement({
+  const builtSurface = maybeBuildDeckSurfaceRequirement({
     workArea,
     material,
     materialLabel,
@@ -1918,6 +1967,18 @@ export function calculateDeck(
     materialWastageSettings: context.materialWastageSettings,
     factKeys: surfaceFactKeys,
   });
+  const surfaceRequirement =
+    builtSurface && boardsClientSupplied
+      ? {
+          ...builtSurface,
+          purchaseQuantity: 0,
+          priced: true,
+          unitCost: 0,
+          totalCost: 0,
+          rateSource: "customer_supplied" as const,
+          specification: `Customer-supplied boards. Not purchased. Installed ${builtSurface.baseQuantity} ${builtSurface.baseUnit}. ${builtSurface.specification}`,
+        }
+      : builtSurface;
 
   const labourFactKeys = [
     areaFact != null ? "deck.area_m2" : null,
@@ -1944,6 +2005,8 @@ export function calculateDeck(
       workAreaId: workArea.id,
       deckHeightM: deckHeight,
       wastePercent: wastagePercent,
+      assumeWidthIfMissing: false,
+      assumeGoingIfMissing: false,
     });
     const explicitStepsIncluded =
       getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
@@ -2002,13 +2065,23 @@ export function calculateDeck(
         );
       }
       if (!stepGeometryReady) {
-        if (explicitStepsIncluded) {
+        if (explicitStepsIncluded || stepsIncluded) {
           if (!detailedMoneyAllowed(steps.widthResolution)) {
             missingInfo.push("Step width required");
           }
           if (!detailedMoneyAllowed(steps.goingResolution)) {
             missingInfo.push("Tread depth required");
           }
+        }
+      } else if (
+        steps.widthResolution !== "KNOWN" ||
+        steps.goingResolution !== "KNOWN"
+      ) {
+        if (!detailedMoneyAllowed(steps.widthResolution) || steps.widthResolution !== "KNOWN") {
+          missingInfo.push("Step width required");
+        }
+        if (!detailedMoneyAllowed(steps.goingResolution) || steps.goingResolution !== "KNOWN") {
+          missingInfo.push("Tread depth required");
         }
       } else {
       const stepFramingIdentity = defaultStepFramingIdentity();
@@ -2095,6 +2168,28 @@ export function calculateDeck(
           ...withMaterialRateResolution(treadLine, treadPricing.resolution),
           identitySummary: treadIdentity,
         };
+        if (boardsClientSupplied) {
+          treadLine = {
+            ...treadLine,
+            quantity: treadLm?.baseLm ?? treadLine.quantity,
+            unit: treadLm != null ? "lm" : treadLine.unit,
+            costRate: 0,
+            sellRate: 0,
+            recommendedCost: 0,
+            recommendedSell: 0,
+            costLow: 0,
+            costHigh: 0,
+            sellLow: 0,
+            sellHigh: 0,
+            grossProfit: 0,
+            marginPercent: 0,
+            markupPercent: 0,
+            rateSource: getRateSourceLabel("customer_supplied"),
+            rateSourceType: "customer_supplied",
+            includedInTotal: true,
+            notes: `${DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE} Step tread purchase quantity is zero. ${treadTakeoff}`,
+          };
+        }
         lineItems.push(treadLine);
 
         const framingUnitSell =

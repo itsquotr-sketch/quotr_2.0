@@ -256,10 +256,23 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const id = workArea.id;
     const { summary, chips } = compactSummary(facts, id, context.briefText);
 
+    const customerBoards = booleanItem({
+      id: "customer-boards",
+      workAreaId: id,
+      label: "Customer-supplied decking boards",
+      factKey: "deck.boards_client_supplied",
+      facts,
+      briefText: context.briefText,
+      surfaceReason:
+        "Board purchase ownership only. Framing, fixings and fascia stay contractor-supplied.",
+    });
     const decking: JobPlanScopeItem = {
       id: "decking",
       workAreaId: id,
-      label: "Decking",
+      label:
+        customerBoards.presentation === "INCLUDED"
+          ? "Decking — customer supplied"
+          : "Decking",
       presentation: "INCLUDED",
       kind: "user_scope",
       togglable: false,
@@ -395,6 +408,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
 
     const items = [
       decking,
+      customerBoards,
       substructure,
       removal,
       fascia,
