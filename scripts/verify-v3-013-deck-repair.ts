@@ -112,19 +112,46 @@ check(
   deckDetailGaps(qt006, "d1").some((gap) => gap.id === "posts") &&
     deckDetailGapsBlockingEstimate(qt006, "d1").length === 0
 );
-const qt006Concrete = qt006Estimate.lineItems.filter((item) =>
-  /concrete/i.test(item.label)
-);
-const qt006Excavation = qt006Estimate.lineItems.find((item) => item.label === "Hole excavation");
 check(
-  "QT-006 prices decking and framing and does not charge unconfirmed concrete",
+  "QT-006 prices decking and framing and withholds unconfirmed support charges",
   qt006Estimate.lineItems.some((item) => /decking/i.test(item.label)) &&
     qt006Estimate.lineItems.some((item) => /joist|bearer|framing/i.test(item.label)) &&
-    qt006Concrete.every((item) => (item.recommendedCost ?? 0) === 0) &&
-    (qt006Excavation == null ||
-      qt006Excavation.includedInTotal === false ||
-      (qt006Excavation.recommendedCost ?? 0) === 0) &&
+    !qt006Estimate.lineItems.some((item) =>
+      /pile|post|concrete|hole excavation/i.test(item.label)
+    ) &&
     qt006Estimate.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED)
+);
+const qt006AcceptedHole = calculateDeck(
+  context([
+    ...qt006,
+    fact("deck.hole_shape", "circular"),
+    fact("deck.hole_diameter_mm", 350),
+    fact("deck.hole_depth_mm", 600),
+    fact("deck.support_section", "125x125"),
+  ]),
+  area
+);
+const qt006LaidOut = calculateDeck(
+  context([
+    ...qt006,
+    fact("deck.bearer_row_count", 2),
+    fact("deck.supports_per_bearer", 3),
+  ]),
+  area
+);
+check(
+  "QT-006 a confirmed support layout stays priced without calling footings excluded",
+  qt006LaidOut.lineItems.some((item) => item.label === "Piles / posts") &&
+    !qt006LaidOut.lineItems.some((item) => /concrete/i.test(item.label)) &&
+    !qt006LaidOut.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED)
+);
+check(
+  "QT-006 accepting the proposed hole does not confirm footings",
+  qt006AcceptedHole.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED) &&
+    unresolvedScopeReviewBlock(qt006AcceptedHole.missingInfo) != null &&
+    !qt006AcceptedHole.lineItems.some((item) =>
+      /pile|post|concrete|hole excavation/i.test(item.label)
+    )
 );
 check(
   "QT-006 does not convert the open support into excluded footings",
@@ -220,10 +247,10 @@ check(
     (fascia.quantity ?? 0) < 10
 );
 check(
-  "QT-008 does not charge unconfirmed concrete",
-  qt008Estimate.lineItems
-    .filter((item) => /concrete/i.test(item.label))
-    .every((item) => (item.recommendedCost ?? 0) === 0) &&
+  "QT-008 does not charge unconfirmed supports or concrete",
+  !qt008Estimate.lineItems.some((item) =>
+    /pile|post|concrete|hole excavation/i.test(item.label)
+  ) &&
     qt008Estimate.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED)
 );
 

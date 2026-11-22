@@ -639,7 +639,8 @@ export function calculateDeck(
   const concreteFootingsExcluded = concreteDecision === false;
   const concreteFootingsUnconfirmed = concreteDecision == null;
   const derivedSupportsUnresolved =
-    supportTreatment === "derived_new" && concreteFootingsExcluded;
+    supportTreatment === "derived_new" &&
+    (concreteFootingsExcluded || concreteFootingsUnconfirmed);
   const priceSupports =
     deckSupportsArePriced(supportTreatment) && !derivedSupportsUnresolved;
   const supportCount = priceSupports ? derivedSupportCount : 0;
@@ -667,7 +668,9 @@ export function calculateDeck(
     ),
     hasTrustedPostProductivity:
       isTrustedProductivityHours(postsInstallProductivity.hoursPerUnit) &&
-      (!substructureIncluded || supportCount > 0),
+      (!substructureIncluded ||
+        supportCount > 0 ||
+        concreteFootingsUnconfirmed),
     substructureIncluded,
   });
   assumptions.push(
@@ -1342,14 +1345,10 @@ export function calculateDeck(
   if (supportTreatment === "withheld_pending") {
     missingInfo.push(PILE_SUPPORTS_UNRESOLVED_PENDING);
   }
-  if (derivedSupportsUnresolved) {
+  if (derivedSupportsUnresolved && concreteFootingsExcluded) {
     missingInfo.push(DECK_SUPPORT_DESIGN_UNRESOLVED);
   }
-  if (
-    supportTreatment === "derived_new" &&
-    concreteFootingsUnconfirmed &&
-    getNumberFact(facts, workArea.id, "deck.hole_diameter_mm") == null
-  ) {
+  if (derivedSupportsUnresolved && concreteFootingsUnconfirmed) {
     missingInfo.push(DECK_SUPPORT_METHOD_UNCONFIRMED);
   }
   if (supportTreatment === "withheld_retained") {

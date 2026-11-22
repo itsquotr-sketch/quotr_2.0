@@ -23,6 +23,7 @@ import {
   DECK_NORMAL_HANDLING_CONTRACT,
   DECK_STEPS_INCLUDED_FACT_KEY,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
+  DECK_SUPPORT_METHOD_UNCONFIRMED,
   DECKING_LINE_LABEL,
   DECKING_PACKAGE_LINE_LABEL,
   concreteBagsPerHole,
@@ -262,8 +263,15 @@ const subBoost = calculateDeck(
   ]),
   wa(kwilaId)
 );
+const confirmedFootingFacts = [
+  ...kwilaFacts,
+  fact(DECK_CONCRETE_TO_SUPPORTS_FACT_KEY, kwilaId, true),
+];
+const confirmedFootingDeck = calculateDeck(ctx(confirmedFootingFacts), wa(kwilaId));
 const pileBoost = calculateDeck(
-  ctx(kwilaFacts, [productivityOrgRate("deck.posts.install.hours_per_ea", "ea", 1.5)]),
+  ctx(confirmedFootingFacts, [
+    productivityOrgRate("deck.posts.install.hours_per_ea", "ea", 1.5),
+  ]),
   wa(kwilaId)
 );
 check(
@@ -277,7 +285,7 @@ check(
     hoursByLabel(subBoost.lineItems, "Decking installation") ===
       hoursByLabel(kwilaDeck.lineItems, "Decking installation") &&
     hoursByLabel(pileBoost.lineItems, "Pile/post installation") >
-      hoursByLabel(kwilaDeck.lineItems, "Pile/post installation") &&
+      hoursByLabel(confirmedFootingDeck.lineItems, "Pile/post installation") &&
     hoursByLabel(pileBoost.lineItems, "Decking installation") ===
       hoursByLabel(kwilaDeck.lineItems, "Decking installation")
 );
@@ -390,7 +398,9 @@ console.log("\n== MATERIAL DISPLAY ==");
 const joistLine = kwilaDeck.lineItems.find((item) => item.label === "Joists");
 const bearerLine = kwilaDeck.lineItems.find((item) => item.label === "Bearers");
 const rimLine = kwilaDeck.lineItems.find((item) => item.label === "Rim framing");
-const pileLine = kwilaDeck.lineItems.find((item) => item.label === "Piles / posts");
+const pileLine = confirmedFootingDeck.lineItems.find(
+  (item) => item.label === "Piles / posts"
+);
 const deckingLine = kwilaDeck.lineItems.find(
   (item) => item.label === DECKING_LINE_LABEL || item.label === DECKING_PACKAGE_LINE_LABEL
 );
@@ -620,8 +630,10 @@ check(
 console.log("\n== AUTHORITY ==");
 check(
   "45 no new piles + replacement allowance duplicate",
-  hasLabel(kwilaDeck.lineItems, /Piles \/ posts/) &&
-    !hasLabel(kwilaDeck.lineItems, /Pile\/post replacement/)
+  !hasLabel(kwilaDeck.lineItems, /Piles \/ posts/) &&
+    !hasLabel(kwilaDeck.lineItems, /Pile\/post replacement/) &&
+    hasLabel(confirmedFootingDeck.lineItems, /Piles \/ posts/) &&
+    !hasLabel(confirmedFootingDeck.lineItems, /Pile\/post replacement/)
 );
 check(
   "46 no step allowance + detail duplicate",
@@ -662,12 +674,14 @@ check(
   !hasLabel(kwilaDeck.lineItems, /Pile\/post replacement/)
 );
 check(
-  "54 18 supports remain",
-  pileLine?.identitySummary?.includes("18 ea") === true
+  "54 unconfirmed footings withhold spacing-derived supports",
+  !hasLabel(kwilaDeck.lineItems, /Piles \/ posts/) &&
+    kwilaDeck.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED) &&
+    pileLine?.identitySummary?.includes("18 ea") === true
 );
 check(
   "55 current detailed framing remains",
-  Boolean(joistLine && bearerLine && rimLine && pileLine)
+  Boolean(joistLine && bearerLine && rimLine)
 );
 const ownerView = composeBuilderReview({
   estimate: {

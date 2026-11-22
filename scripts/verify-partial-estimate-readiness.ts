@@ -14,7 +14,6 @@ import { INTERNAL_WALLS_SCOPE_UNRESOLVED } from "../lib/estimate/internal-walls-
 import { provisionalLabourBasisSentences } from "../lib/estimate/condition-basis";
 import {
   deckDetailGaps,
-  deckDetailGaps,
   deckDetailGapsBlockingEstimate,
   deckExcludedConcreteLeavesSupportUnresolved,
   unconfirmedSupportLeavesDependentWorkUnpriced,
@@ -215,12 +214,28 @@ check(
     )
 );
 const openSupportEstimate = calculateDeck(deckContext(openSupportFacts), deckArea);
+const acceptedHoleFacts = [
+  ...openSupportFacts,
+  fact("d1", "deck.hole_shape", "circular"),
+  fact("d1", "deck.hole_diameter_mm", 350),
+  fact("d1", "deck.hole_depth_mm", 600),
+  fact("d1", "deck.support_section", "125x125"),
+];
+const acceptedHoleEstimate = calculateDeck(deckContext(acceptedHoleFacts), deckArea);
 check(
   "unconfirmed supports price decking without calling footings excluded",
   openSupportEstimate.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED) &&
     !openSupportEstimate.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
-    !openSupportEstimate.lineItems.some(
-      (item) => item.label === "Concrete" || /concrete bag/i.test(item.label)
+    !openSupportEstimate.lineItems.some((item) =>
+      /pile|post|concrete|hole excavation/i.test(item.label)
+    )
+);
+check(
+  "saving the proposed hole does not confirm footings or clear the review block",
+  acceptedHoleEstimate.missingInfo.includes(DECK_SUPPORT_METHOD_UNCONFIRMED) &&
+    unresolvedScopeReviewBlock(acceptedHoleEstimate.missingInfo) != null &&
+    !acceptedHoleEstimate.lineItems.some((item) =>
+      /pile|post|concrete|hole excavation/i.test(item.label)
     )
 );
 const lowEstimate = calculateDeck(deckContext(lowFacts), deckArea);
