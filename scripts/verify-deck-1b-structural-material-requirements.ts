@@ -405,9 +405,18 @@ const deck1 = calculateEstimate({
   ],
   materialWastageSettings: { decking: 10, default: 5 },
 } as never);
+const deck1IncludedSell = deck1.lineItems
+  .filter((item) => item.includedInTotal !== false)
+  .reduce((sum, item) => sum + item.recommendedSell, 0);
 check(
-  "44 Deck 1 golden sell $39,638",
-  Math.round(deck1.recommendedSell) === 39638
+  "44 area-only deck drops the old support and unmeasured-stair sell",
+  Math.round(deck1.recommendedSell) !== 39638 &&
+    Math.abs(deck1.recommendedSell - deck1IncludedSell) < 0.02 &&
+    !deck1.lineItems.some((item) =>
+      /piles \/ posts|hole excavation|stair allowance|step-down allowance/i.test(item.label)
+    ) &&
+    deck1.missingInfo.some((item) => /support method is not confirmed/i.test(item)) &&
+    deck1.missingInfo.some((item) => /step width required/i.test(item))
 );
 
 const reconciliation = refDeck.deckSubstructureReconciliation;

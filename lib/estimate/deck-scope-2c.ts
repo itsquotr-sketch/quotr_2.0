@@ -197,6 +197,12 @@ export const DECK_SUPPORT_DESIGN_UNRESOLVED =
 export const DECK_SUPPORT_METHOD_UNCONFIRMED =
   "Support method is not confirmed. Post, excavation and concrete quantities stay unresolved and are not priced. This is not a decision that footings are excluded or that an existing slab is used.";
 
+export const DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED =
+  "The confirmed post layout sets the post quantity only. Footings, hole excavation and spoil disposal stay unresolved and are not priced.";
+
+export const DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED =
+  "Footings, hole excavation and spoil disposal are excluded. The confirmed post quantity does not include them.";
+
 export const DECK_BOARDS_CLIENT_SUPPLIED_FACT = "deck.boards_client_supplied";
 
 export const DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE =

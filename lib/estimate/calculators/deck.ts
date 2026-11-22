@@ -142,6 +142,8 @@ import {
   formatPilePurchaseIdentity,
   DECK_BOARDS_CLIENT_SUPPLIED_FACT,
   DECK_CUSTOMER_SUPPLIED_BOARDS_NOTE,
+  DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED,
+  DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
   DECK_SUPPORT_METHOD_UNCONFIRMED,
   PILE_ALLOWANCE_COVERAGE_GAP,
@@ -850,7 +852,9 @@ export function calculateDeck(
           includedInTotal: false,
         });
       }
-      if (supportCount > 0) {
+      const confirmedLayoutLeavesGroundworksOpen =
+        supportTreatment === "confirmed_new" && concreteDecision !== true;
+      if (supportCount > 0 && !confirmedLayoutLeavesGroundworksOpen) {
       const holePlan = planDeckHoleExcavation({
         facts,
         workAreaId: workArea.id,
@@ -1350,6 +1354,12 @@ export function calculateDeck(
   }
   if (derivedSupportsUnresolved && concreteFootingsUnconfirmed) {
     missingInfo.push(DECK_SUPPORT_METHOD_UNCONFIRMED);
+  }
+  if (supportTreatment === "confirmed_new" && concreteFootingsUnconfirmed) {
+    missingInfo.push(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED);
+  }
+  if (supportTreatment === "confirmed_new" && concreteFootingsExcluded) {
+    exclusions.push(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED);
   }
   if (supportTreatment === "withheld_retained") {
     assumptions.push(PILE_SUPPORTS_RETAINED);

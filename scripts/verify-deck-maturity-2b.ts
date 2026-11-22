@@ -322,6 +322,44 @@ const kwilaQty = calculateDeckStructureQuantities({
   facts: kwilaStructure,
   framingWastePercent: 5,
 });
+const footingFacts = [
+  ...kwilaFacts,
+  fact("deck.concrete_to_supports", kwilaId, true),
+];
+const footingDeck = calculateDeck(ctx(footingFacts), wa(kwilaId));
+const kwilaAreaM2 = 27;
+const installedDeckingLm = round2(kwilaAreaM2 / 0.14);
+const deckingPurchaseLm = round2(installedDeckingLm * 1.1);
+const timber90 = STRUCTURAL_TIMBER_BENCHMARKS.find((row) => row.evidenceId === "T10");
+const timber140 = STRUCTURAL_TIMBER_BENCHMARKS.find((row) => row.evidenceId === "T01");
+if (!timber90 || !timber140) throw new Error("Structural timber benchmarks T10 and T01 are required");
+const deckingHours = round2(kwilaAreaM2 * (35 / 60));
+const framingInstalledLm = round2(66.15 / 1.05 + 28.35 / 1.05 + 18.9 / 1.05);
+const framingHours = round2(framingInstalledLm * (1 / 6));
+const unconfirmedLabourHours = round2(deckingHours + framingHours);
+function sellFromQuantity(quantity: number, costRate: number): number {
+  return round2(quantity * round2(costRate / 0.8));
+}
+const authorisedUnconfirmedCost = round2(
+  round2(deckingPurchaseLm * DECK_BENCHMARKS.kwilaLm.cost) +
+    round2(deckingHours * 60) +
+    round2(framingHours * 60) +
+    round2(66.15 * timber90.normalizedRateExGst) +
+    round2(28.35 * timber140.normalizedRateExGst) +
+    round2(18.9 * timber90.normalizedRateExGst) +
+    round2(kwilaAreaM2 * DECK_BENCHMARKS.fixings.cost)
+);
+const authorisedUnconfirmedSell = round2(
+  sellFromQuantity(deckingPurchaseLm, DECK_BENCHMARKS.kwilaLm.cost) +
+    sellFromQuantity(deckingHours, 60) +
+    sellFromQuantity(framingHours, 60) +
+    sellFromQuantity(66.15, timber90.normalizedRateExGst) +
+    sellFromQuantity(28.35, timber140.normalizedRateExGst) +
+    sellFromQuantity(18.9, timber90.normalizedRateExGst) +
+    sellFromQuantity(kwilaAreaM2, DECK_BENCHMARKS.fixings.cost)
+);
+const confirmedPileMaterial = round2(10.8 * HOUSE_PILE_BENCHMARK_COST_EX_GST);
+const confirmedPileLabour = round2(18 * 0.5 * 60);
 
 const realFacts = Object.entries(REAL.facts).map(([key, value]) =>
   fact(key, "real", value)
@@ -375,7 +413,7 @@ check("10 support quantity reused", kwilaQty.supportCount === 18);
 check(
   "11 support material identity exact",
   kwilaStructure.supportSection === DEFAULT_SUPPORT_SECTION &&
-    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY)?.materialIdentity?.section ===
+    materialReq(footingDeck, DECK_SUPPORTS_COMPONENT_KEY)?.materialIdentity?.section ===
       "125x125"
 );
 check(
@@ -449,18 +487,19 @@ check(
 );
 check(
   "22 pile labour per EA is promoted once",
-  kwilaDeck.lineItems.filter((item) => /pile\/post installation/i.test(item.label))
+  footingDeck.lineItems.filter((item) => /pile\/post installation/i.test(item.label))
     .length === 1 &&
-    kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+    footingDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
       ?.itemKey === "deck.posts.set.hours_per_post" &&
-    kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+    footingDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
       ?.quantity === 18 &&
-    kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+    footingDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
       ?.labourHours === 9 &&
-    kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
-      ?.recommendedCost === 540 &&
-    (kwilaDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
-      ?.notes ?? "").includes("Quotr provisional benchmark")
+    footingDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+      ?.recommendedCost === confirmedPileLabour &&
+    (footingDeck.lineItems.find((item) => /pile\/post installation/i.test(item.label))
+      ?.notes ?? "").includes("Quotr provisional benchmark") &&
+    !kwilaDeck.lineItems.some((item) => /pile\/post installation/i.test(item.label))
 );
 
 check("23 included steps derive riser count", estimateDeckRiseCount(0.7) === 4);
@@ -504,7 +543,8 @@ check(
 );
 check(
   "33 pile productivity once",
-  kwilaDeck.lineItems.filter((item) => item.label === "Pile/post installation").length === 1
+  footingDeck.lineItems.filter((item) => item.label === "Pile/post installation").length === 1 &&
+    !kwilaDeck.lineItems.some((item) => item.label === "Pile/post installation")
 );
 check(
   "34 fascia productivity once (hours path)",
@@ -553,9 +593,10 @@ check(
 );
 check(
   "44 posts priced via 125×125 H5 procurement",
-  materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY)?.priced === true &&
-    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseUnit === "lm" &&
-    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseQuantity === 10.8
+  materialReq(footingDeck, DECK_SUPPORTS_COMPONENT_KEY)?.priced === true &&
+    materialReq(footingDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseUnit === "lm" &&
+    materialReq(footingDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseQuantity === 10.8 &&
+    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY) == null
 );
 check(
   "45 margin/sell architecture unchanged",
@@ -649,7 +690,8 @@ check(
   "55 labour components understandable",
   kwilaDeck.lineItems.some((item) => item.label === "Decking installation") &&
     kwilaDeck.lineItems.some((item) => item.label === "Substructure framing") &&
-    kwilaDeck.lineItems.some((item) => item.label === "Pile/post installation")
+    !kwilaDeck.lineItems.some((item) => item.label === "Pile/post installation") &&
+    footingDeck.lineItems.some((item) => item.label === "Pile/post installation")
 );
 check(
   "56 planning takeoff does not duplicate commercial children",
@@ -774,7 +816,7 @@ check(
 );
 
 const overrideDeck = calculateDeck(
-  ctx(kwilaFacts, [
+  ctx(footingFacts, [
     productivityOrgRate("deck.decking.install.hours_per_lm", "lm", 0.12),
   ]),
   wa(kwilaId)
@@ -786,19 +828,19 @@ const legacyM2Ignored = calculateDeck(
   wa(kwilaId)
 );
 const overridePile = calculateDeck(
-  ctx(kwilaFacts, [
+  ctx(footingFacts, [
     productivityOrgRate("deck.posts.install.hours_per_ea", "ea", 0.3),
   ]),
   wa(kwilaId)
 );
 const baseDeckingH =
-  kwilaDeck.lineItems.find((item) => item.label === "Decking installation")
+  footingDeck.lineItems.find((item) => item.label === "Decking installation")
     ?.labourHours ?? 0;
 const baseFramingH =
-  kwilaDeck.lineItems.find((item) => item.label === "Substructure framing")
+  footingDeck.lineItems.find((item) => item.label === "Substructure framing")
     ?.labourHours ?? 0;
 const basePileH =
-  kwilaDeck.lineItems.find((item) => item.label === "Pile/post installation")
+  footingDeck.lineItems.find((item) => item.label === "Pile/post installation")
     ?.labourHours ?? 0;
 check(
   "72 company decking productivity override is modular",
@@ -885,7 +927,11 @@ check(
 );
 
 const post100 = calculateDeck(
-  ctx([...kwilaFacts, fact("deck.support_section", kwilaId, "100x100")]),
+  ctx([
+    ...kwilaFacts,
+    fact("deck.support_section", kwilaId, "100x100"),
+    fact("deck.concrete_to_supports", kwilaId, true),
+  ]),
   wa(kwilaId)
 );
 check(
@@ -919,14 +965,13 @@ const stairDeck = calculateDeck(
   wa(kwilaId)
 );
 check(
-  "82 steps XOR: detailed install or stair lump, not both",
+  "82 unmeasured stairs do not buy the allowance or detailed install",
   starterSteps.hoursPerUnit === 4 &&
-    (stairDeck.lineItems.some((item) => item.label === "Step installation") ||
-      stairDeck.lineItems.some((item) => /stair|step-down/i.test(item.label))) &&
-    !(
-      stairDeck.lineItems.some((item) => item.label === "Step installation") &&
-      stairDeck.lineItems.some((item) => /allowance/i.test(item.label) && /stair|step-down/i.test(item.label))
-    )
+    !stairDeck.lineItems.some((item) => item.label === "Step installation") &&
+    !stairDeck.lineItems.some(
+      (item) => /allowance/i.test(item.label) && /stair|step/i.test(item.label)
+    ) &&
+    stairDeck.missingInfo.some((item) => /step width required/i.test(item))
 );
 
 check(
@@ -935,8 +980,9 @@ check(
     ?.labourHours ?? 0) > 0 &&
     (kwilaDeck.lineItems.find((item) => item.label === "Substructure framing")
       ?.labourHours ?? 0) > 0 &&
-    (kwilaDeck.lineItems.find((item) => item.label === "Pile/post installation")
-      ?.labourHours ?? 0) === 9
+    (footingDeck.lineItems.find((item) => item.label === "Pile/post installation")
+      ?.labourHours ?? 0) === 9 &&
+    !kwilaDeck.lineItems.some((item) => item.label === "Pile/post installation")
 );
 check(
   "84 no compliance claims",
@@ -1008,13 +1054,14 @@ const materials78 = materialCostTotal(kwila78.lineItems);
 
 check(
   "89 $60→$78 changes dollars, not hours",
-  Math.abs(kwilaHours - 42.75) < 0.001 &&
+  Math.abs(kwilaHours - unconfirmedLabourHours) < 0.001 &&
     hours78 === kwilaHours &&
-    hoursByLabel(kwila78.lineItems, "Decking installation") === 15.75 &&
-    hoursByLabel(kwila78.lineItems, "Substructure framing") === 18 &&
-    hoursByLabel(kwila78.lineItems, "Pile/post installation") === 9 &&
-    kwila78.lineItems.find((item) => item.label === "Hole excavation")?.includedInTotal === false &&
-    Math.abs(labour78 - 3334.5) < 0.005 &&
+    hoursByLabel(kwila78.lineItems, "Decking installation") === deckingHours &&
+    hoursByLabel(kwila78.lineItems, "Substructure framing") === framingHours &&
+    !kwila78.lineItems.some((item) => item.label === "Pile/post installation") &&
+    hoursByLabel(footingDeck.lineItems, "Pile/post installation") === 9 &&
+    footingDeck.lineItems.find((item) => item.label === "Hole excavation")?.includedInTotal === false &&
+    Math.abs(labour78 - round2(unconfirmedLabourHours * 78)) < 0.005 &&
     Math.abs(labour78 - labour60) > 1 &&
     company78Resolved.costRate === 78 &&
     company78Resolved.sourceType === "user_rate" &&
@@ -1056,9 +1103,9 @@ check(
 );
 check(
   "92 effective GM reconciles mathematically",
-  Math.abs(kwilaDirect - 6641.54) < 0.02 &&
-    Math.abs(kwilaSell - 8301.16) < 0.02 &&
-    Math.abs(kwilaGp - (8301.16 - 6641.54)) < 0.02 &&
+  Math.abs(kwilaDirect - authorisedUnconfirmedCost) < 0.02 &&
+    Math.abs(kwilaSell - authorisedUnconfirmedSell) < 0.02 &&
+    Math.abs(kwilaGp - (authorisedUnconfirmedSell - authorisedUnconfirmedCost)) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05
 );
 check(
@@ -1120,7 +1167,8 @@ check(
     Math.abs(lineCost(kwilaDeck.lineItems, "Joists") - 535.15) < 0.02 &&
     Math.abs(lineCost(kwilaDeck.lineItems, "Bearers") - 386.98) < 0.02 &&
     Math.abs(lineCost(kwilaDeck.lineItems, "Rim framing") - 152.9) < 0.02 &&
-    Math.abs(lineCost(kwilaDeck.lineItems, "Piles / posts") - 253.8) < 0.02 &&
+    !kwilaDeck.lineItems.some((item) => item.label === "Piles / posts") &&
+    Math.abs(lineCost(footingDeck.lineItems, "Piles / posts") - confirmedPileMaterial) < 0.02 &&
     !read("lib/estimate/calculators/deck.ts").includes("fixings.cost -")
 );
 check(
@@ -1135,7 +1183,8 @@ check(
     kwilaQty.postPurchaseLm === 10.8 &&
     kwilaQty.postTotalLm != null &&
     kwilaQty.postPurchaseLm !== kwilaQty.postTotalLm &&
-    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseQuantity === 10.8
+    materialReq(footingDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseQuantity === 10.8 &&
+    materialReq(kwilaDeck, DECK_SUPPORTS_COMPONENT_KEY) == null
 );
 
 const kwilaEstimate = calculateEstimate(estimateCtx(kwilaId, kwilaFacts));
@@ -1205,8 +1254,8 @@ check(
   "102 company $60 vs $78 modularity (cost-only rates)",
   company60vs78HoursEqual &&
     company60vs78MaterialsEqual &&
-    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - 2565) < 0.02 &&
-    Math.abs(labour78 - 3334.5) < 0.02 &&
+    Math.abs(labourCostTotal(kwilaCompany60.lineItems) - round2(unconfirmedLabourHours * 60)) < 0.02 &&
+    Math.abs(labour78 - round2(unconfirmedLabourHours * 78)) < 0.02 &&
     included(kwilaCompany60.lineItems).every(
       (item) =>
         item.category !== "labour" ||
@@ -1225,7 +1274,7 @@ check(
   realLabourSource.costRate === 60 &&
     realLabourSource.sourceType === "benchmark" &&
     !hasPackage(realDeck.lineItems) &&
-    labourHoursTotal(realDeck.lineItems) === 42.75 &&
+    labourHoursTotal(realDeck.lineItems) === unconfirmedLabourHours &&
     included(realDeck.lineItems).every(
       (item) =>
         item.includedInTotal === false ||
@@ -1261,7 +1310,7 @@ const pairedLabourOk = included(kwilaCompanyPair.lineItems)
   );
 check(
   "105 Quotr fallbacks derive 20% GM; company paired sell is not flattened",
-  Math.abs(kwilaSell - 8301.16) < 0.02 &&
+  Math.abs(kwilaSell - authorisedUnconfirmedSell) < 0.02 &&
     Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
     pairedLabourOk &&
     kwilaEstimate.estimateSellAuthority === "line_resolved_sells"
@@ -1274,7 +1323,8 @@ const structuralQtyUnchanged =
     0.02 &&
   Math.abs(lineCost(kwilaDeck.lineItems, "Rim framing") - round2(18.9 * 8.09)) <
     0.02 &&
-  Math.abs(lineCost(kwilaDeck.lineItems, "Piles / posts") - round2(10.8 * 23.5)) < 0.02;
+  !kwilaDeck.lineItems.some((item) => item.label === "Piles / posts") &&
+  Math.abs(lineCost(footingDeck.lineItems, "Piles / posts") - confirmedPileMaterial) < 0.02;
 check("106 structural material result unchanged", structuralQtyUnchanged);
 
 console.log("\n=== DECK-MATURITY-2B-R3 fixture / residual closure ===\n");
@@ -1314,7 +1364,7 @@ check(
     read("tests/fixtures/deck-calibration/OWNER-KWILA-01.json").includes(
       ownerRateClass
     ) &&
-    Math.abs(labour78 - 3334.5) < 0.005
+    Math.abs(labour78 - round2(unconfirmedLabourHours * 78)) < 0.005
 );
 check(
   "109 $78 cannot mutate global default labour fallback",
@@ -1326,8 +1376,20 @@ check(
 );
 check(
   "110 Owner $78 effective GM reconciles",
-  Math.abs(owner78Cost - 7411.04) < 0.02 &&
-    Math.abs(owner78Sell - 9263.04) < 0.02 &&
+  Math.abs(
+    owner78Cost -
+      (authorisedUnconfirmedCost -
+        round2(unconfirmedLabourHours * 60) +
+        round2(unconfirmedLabourHours * 78))
+  ) < 0.02 &&
+    Math.abs(
+      owner78Sell -
+        (authorisedUnconfirmedSell -
+          sellFromQuantity(deckingHours, 60) -
+          sellFromQuantity(framingHours, 60) +
+          sellFromQuantity(deckingHours, 78) +
+          sellFromQuantity(framingHours, 78))
+    ) < 0.02 &&
     Math.abs(owner78Gm - 20) < 0.05
 );
 check(
@@ -1411,8 +1473,8 @@ check(
 );
 check(
   "121 REAL-JOB DEFAULT-RATE golden matches engine",
-  Math.abs(realDirect - 6641.54) < 0.02 &&
-    Math.abs(realSell - 8301.16) < 0.02 &&
+  Math.abs(realDirect - authorisedUnconfirmedCost) < 0.02 &&
+    Math.abs(realSell - authorisedUnconfirmedSell) < 0.02 &&
     realLabourSource.costRate === 60
 );
 check(

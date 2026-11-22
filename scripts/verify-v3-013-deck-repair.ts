@@ -11,7 +11,10 @@
  * Run: npx tsx scripts/verify-v3-013-deck-repair.ts
  */
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
-import { classifyReviewNotice } from "../lib/assistant/presentation/estimate-issues";
+import {
+  classifyReviewNotice,
+  missingRateReviewBlockFromLines,
+} from "../lib/assistant/presentation/estimate-issues";
 import { deckJobPlanAdapter } from "../lib/assistant/job-plan/adapters/deck";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
 import {
@@ -23,6 +26,8 @@ import {
   typicalPostHoleSetupSummary,
 } from "../lib/estimate/deck-hole-excavation";
 import {
+  DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED,
+  DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED,
   DECK_SUPPORT_DESIGN_UNRESOLVED,
   DECK_SUPPORT_METHOD_UNCONFIRMED,
 } from "../lib/estimate/deck-scope-2c";
@@ -139,11 +144,54 @@ const qt006LaidOut = calculateDeck(
   ]),
   area
 );
+const laidOutRateBlock = missingRateReviewBlockFromLines(
+  qt006LaidOut.lineItems.map((item) => ({
+    rate_source: item.rateSource,
+    notes: item.notes,
+  }))
+);
 check(
-  "QT-006 a confirmed support layout stays priced without calling footings excluded",
+  "QT-006 a confirmed post layout prices posts and leaves groundworks unresolved",
   qt006LaidOut.lineItems.some((item) => item.label === "Piles / posts") &&
-    !qt006LaidOut.lineItems.some((item) => /concrete/i.test(item.label)) &&
-    !qt006LaidOut.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED)
+    !qt006LaidOut.lineItems.some((item) =>
+      /concrete|hole excavation|spoil/i.test(item.label)
+    ) &&
+    !qt006LaidOut.missingInfo.includes(DECK_SUPPORT_DESIGN_UNRESOLVED) &&
+    qt006LaidOut.missingInfo.includes(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED) &&
+    unresolvedScopeReviewBlock(qt006LaidOut.missingInfo) != null &&
+    laidOutRateBlock == null &&
+    !qt006LaidOut.exclusions.includes(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED)
+);
+const qt006LaidOutExcluded = calculateDeck(
+  context([...qt006, fact("deck.bearer_row_count", 2), fact("deck.supports_per_bearer", 3), fact("deck.concrete_to_supports", false)]),
+  area
+);
+check(
+  "QT-006 excluded footings stay explicit and do not request excavation",
+  qt006LaidOutExcluded.lineItems.some((item) => item.label === "Piles / posts") &&
+    !qt006LaidOutExcluded.lineItems.some((item) =>
+      /concrete|hole excavation|spoil/i.test(item.label)
+    ) &&
+    qt006LaidOutExcluded.exclusions.includes(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_EXCLUDED) &&
+    unresolvedScopeReviewBlock(qt006LaidOutExcluded.missingInfo) == null
+);
+const qt006LaidOutIncluded = calculateDeck(
+  context([...qt006, fact("deck.bearer_row_count", 2), fact("deck.supports_per_bearer", 3), fact("deck.concrete_to_supports", true)]),
+  area
+);
+const includedRateBlock = missingRateReviewBlockFromLines(
+  qt006LaidOutIncluded.lineItems.map((item) => ({
+    rate_source: item.rateSource,
+    notes: item.notes,
+  }))
+);
+check(
+  "QT-006 included footings request excavation and block review while it is unpriced",
+  qt006LaidOutIncluded.lineItems.some((item) => item.label === "Hole excavation" && item.includedInTotal === false) &&
+    qt006LaidOutIncluded.lineItems.some((item) => /spoil/i.test(item.label) && item.includedInTotal === false) &&
+    qt006LaidOutIncluded.lineItems.some((item) => /concrete/i.test(item.label)) &&
+    includedRateBlock != null &&
+    !qt006LaidOutIncluded.missingInfo.includes(DECK_CONFIRMED_LAYOUT_GROUNDWORKS_UNRESOLVED)
 );
 check(
   "QT-006 accepting the proposed hole does not confirm footings",
