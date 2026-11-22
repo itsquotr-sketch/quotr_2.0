@@ -401,14 +401,9 @@ function deckClarifyAssumptionStatement(key: string): string | null {
   return null;
 }
 
-function deckEconomicClass(key: string): ClarifyEconomicClass | undefined {
-  if (
-    key === DECK_BOARD_WIDTH_FACT_KEY ||
-    key === "deck.step_width_m" ||
-    key === "deck.step_going_m"
-  ) {
-    return "REQUIRED_FOR_ECONOMIC_MODEL";
-  }
+function deckEconomicClass(_key: string): ClarifyEconomicClass | undefined {
+  // Missing board width and unmeasured step geometry stay visible.
+  // They do not block a partial estimate, and Create does not save a default.
   return undefined;
 }
 
@@ -1966,7 +1961,11 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           write: null,
           blocksEstimate: askClass === "HARD_MINIMUM",
           assumable:
-            askClass !== "HARD_MINIMUM" && key !== "deck.boards_client_supplied",
+            askClass !== "HARD_MINIMUM" &&
+            key !== "deck.boards_client_supplied" &&
+            key !== DECK_BOARD_WIDTH_FACT_KEY &&
+            key !== "deck.step_width_m" &&
+            key !== "deck.step_going_m",
           rankScore: CHECK_SCORES[key] ?? 50,
           rankReason: `${descriptor.askClass} · ${descriptor.section}`,
           assumptionStatement: deckClarifyAssumptionStatement(key),

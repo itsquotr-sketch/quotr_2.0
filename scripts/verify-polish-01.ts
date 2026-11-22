@@ -307,8 +307,8 @@ check(
   missingQ.candidates.some(
     (c) =>
       c.factKey === DECK_BOARD_WIDTH_FACT_KEY &&
-      c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL" &&
-      c.assumable === true &&
+      c.economicClass == null &&
+      c.assumable === false &&
       c.inputType === "number"
   )
 );

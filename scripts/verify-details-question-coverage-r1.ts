@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { isInitialCaptureQuestion } from "../lib/assistant/clarify/question-contract";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { composeRefineView } from "../lib/assistant/refine/compose";
 import {
@@ -170,8 +171,14 @@ check(
     withStepKeys.includes("deck.step_going_m") &&
     widthRow?.askClass === goingRow?.askClass &&
     widthRow?.askClass === "ASSUME_IF_SKIPPED" &&
-    widthRow?.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL" &&
-    goingRow?.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
+    widthRow?.assumable === false &&
+    goingRow?.assumable === false &&
+    !isInitialCaptureQuestion(widthRow!) &&
+    !isInitialCaptureQuestion(goingRow!) &&
+    !withSteps.clarify.assumptions.some(
+      (row) =>
+        row.factKey === "deck.step_width_m" || row.factKey === "deck.step_going_m"
+    )
 );
 
 const noSteps = composeDeck({
